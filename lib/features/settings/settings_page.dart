@@ -8,6 +8,7 @@ import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_switch.dart';
+import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 
 /// Settings page (§15): General / Network / Advanced cards.
@@ -19,6 +20,48 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  String _coreVersion = '加载中…';
+  bool _restarting = false;
+  bool _exporting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AppController.getCoreVersion().then((v) {
+      if (mounted) setState(() => _coreVersion = v);
+    });
+  }
+
+  Future<void> _onRestart() async {
+    setState(() => _restarting = true);
+    final error = await AppScope.of(context).restartCore();
+    if (!mounted) return;
+    setState(() => _restarting = false);
+    if (error != null) {
+      AppToast.show(context, error, type: AppToastType.error);
+    } else {
+      AppToast.show(context, '核心已重启', type: AppToastType.success);
+    }
+  }
+
+  Future<void> _onFixProxy() async {
+    await AppScope.of(context).fixProxy();
+    if (!mounted) return;
+    AppToast.show(context, '代理设置已同步', type: AppToastType.success);
+  }
+
+  Future<void> _onExportLogs() async {
+    setState(() => _exporting = true);
+    final path = await AppScope.of(context).exportLogs();
+    if (!mounted) return;
+    setState(() => _exporting = false);
+    if (path != null) {
+      AppToast.show(context, '日志已保存至 $path', type: AppToastType.success);
+    } else {
+      AppToast.show(context, '暂无日志，请先连接后再导出', type: AppToastType.error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
@@ -111,6 +154,45 @@ class _SettingsPageState extends State<SettingsPage> {
                 trailing: AppSwitch(
                   value: ctrl.devMode,
                   onChanged: ctrl.setDevMode,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // ── Core management ────────────────────────────────────────────────
+          _SettingsGroup(
+            title: '核心管理',
+            children: [
+              _SettingRow(
+                label: '核心版本',
+                trailing: Text(
+                  _coreVersion,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.of(context).textMuted,
+                  ),
+                ),
+              ),
+              _SettingRow(
+                label: '重启核心',
+                trailing: _DiagnosticButton(
+                  label: _restarting ? '重启中…' : '重启',
+                  enabled: ctrl.coreRunning && !_restarting,
+                  onTap: _onRestart,
+                ),
+              ),
+              _SettingRow(
+                label: '修复系统代理',
+                trailing: _DiagnosticButton(
+                  label: '修复',
+                  onTap: _onFixProxy,
+                ),
+              ),
+              _SettingRow(
+                label: '导出诊断日志',
+                trailing: _DiagnosticButton(
+                  label: _exporting ? '导出中…' : '导出',
+                  enabled: !_exporting,
+                  onTap: _onExportLogs,
                 ),
               ),
             ],
@@ -210,6 +292,50 @@ class _SettingRow extends StatelessWidget {
           ),
           trailing,
         ],
+      ),
+    );
+  }
+}
+
+/// Small action button used inside diagnostic setting rows.
+class _DiagnosticButton extends StatelessWidget {
+  const _DiagnosticButton({
+    required this.label,
+    required this.onTap,
+    this.enabled = true,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: Container(
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: enabled ? c.primarySoft : c.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(
+              color: enabled ? c.primary.withValues(alpha: 0.3) : c.softBorder,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.button.copyWith(
+              color: enabled ? c.primary : c.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -250,9 +250,16 @@ class _ModeMiniCard extends StatelessWidget {
           _ProxyModeSegment(
             value: ctrl.proxyMode,
             onChanged: (mode) {
-              final changed = mode != ctrl.proxyMode;
-              ctrl.setProxyMode(mode);
-              if (changed && ctrl.coreRunning) {
+              if (mode == ctrl.proxyMode) return;
+              final wasRunning = ctrl.coreRunning;
+              ctrl.setProxyMode(mode); // saves pref + fires Clash API if running
+              if (wasRunning) {
+                AppToast.show(
+                  context,
+                  '已切换至 ${_proxyModeLabel(mode)}',
+                  type: AppToastType.success,
+                );
+              } else {
                 AppToast.show(context, '代理模式将在下次连接后生效');
               }
             },
@@ -597,7 +604,6 @@ class _ConnectionStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
-    final connected = ctrl.coreRunning;
     final latency = ctrl.currentNode.latency;
     final latencyValue = latency > 0 && latency < 9999
         ? latency.toString()
@@ -608,16 +614,8 @@ class _ConnectionStatsRow extends StatelessWidget {
         final threeCols = constraints.maxWidth >= 560;
         final cards = [
           _ConnectionStatCard(label: '当前延迟', value: latencyValue, unit: 'ms'),
-          _ConnectionStatCard(
-            label: '下载速度',
-            value: connected ? '12.8' : '--',
-            unit: connected ? 'MB/s' : '',
-          ),
-          _ConnectionStatCard(
-            label: '上传速度',
-            value: connected ? '2.1' : '--',
-            unit: connected ? 'MB/s' : '',
-          ),
+          const _ConnectionStatCard(label: '下载速度', value: '--', unit: ''),
+          const _ConnectionStatCard(label: '上传速度', value: '--', unit: ''),
         ];
 
         if (threeCols) {

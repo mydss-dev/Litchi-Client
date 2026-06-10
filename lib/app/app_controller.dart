@@ -89,7 +89,10 @@ class AppController extends ChangeNotifier {
   void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
   void setDevMode(bool v) => _settings.setDevMode(v);
   void setLanguage(String v) => _settings.setLanguage(v);
-  void setProxyMode(String v) => _settings.setProxyMode(v);
+  void setProxyMode(String v) {
+    _settings.setProxyMode(v);
+    if (_core.isRunning) unawaited(_core.setMode(v));
+  }
   void setDnsMode(String v) => _settings.setDnsMode(v);
 
   // ── Core delegates ─────────────────────────────────────────────────────────
@@ -98,7 +101,27 @@ class AppController extends ChangeNotifier {
   bool get coreConnecting => _core.coreConnecting;
   String get coreError => _core.coreError;
   Stream<String> get coreLogStream => _core.logStream;
+  List<String> get coreLogs => _core.recentLogs;
   Duration get connectedDuration => _core.connectedDuration;
+
+  /// Graceful shutdown: kills core + disables system proxy. Call before exit.
+  Future<void> shutdown() => _core.shutdown();
+
+  /// Restart the running core (stop → 800 ms pause → reconnect).
+  Future<String?> restartCore() async {
+    if (!coreRunning) return null;
+    await toggleConnection(); // stop
+    await Future.delayed(const Duration(milliseconds: 800));
+    return toggleConnection(); // start
+  }
+
+  /// Force-sync the system proxy to match current core state.
+  Future<void> fixProxy() => _core.fixProxy(_settings.proxyPort);
+
+  /// Export buffered log lines to %LOCALAPPDATA%\Litchi\. Returns the path.
+  Future<String?> exportLogs() => _core.exportLogs();
+
+  static Future<String> getCoreVersion() => CoreController.getCoreVersion();
 
   // ── Navigation / auth getters ─────────────────────────────────────────────
 
@@ -287,13 +310,17 @@ class AppController extends ChangeNotifier {
 
   // ── Node selection ────────────────────────────────────────────────────────
 
-  Future<void> setCurrentNode(NodeModel node) async {
+  /// Switch to [node]. Returns an error string if the Clash API rejected the
+  /// switch (core running), or null on success.
+  Future<String?> setCurrentNode(NodeModel node) async {
     _autoSelected = false;
     _currentNode = node;
     notifyListeners();
     if (_core.isRunning) {
-      await _core.switchNode(node);
+      final ok = await _core.switchNode(node);
+      if (!ok) return '节点切换失败，核心未响应，请重试';
     }
+    return null;
   }
 
   Future<void> selectAuto() async {

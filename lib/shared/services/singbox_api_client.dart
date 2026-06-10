@@ -77,6 +77,29 @@ abstract final class SingboxApiClient {
     }
   }
 
+  /// Patch the running core's mode (rule / global / direct) via Clash API.
+  ///
+  /// [clashMode] must be one of: 'rule', 'global', 'direct'.
+  /// Returns true on success (204 No Content).
+  static Future<bool> setMode(String clashMode, {int apiPort = 9090}) async {
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 2);
+      final request = await client.patchUrl(
+        Uri.parse('http://127.0.0.1:$apiPort/configs'),
+      );
+      request.headers.contentType = ContentType.json;
+      request.headers.add('Authorization', 'Bearer ${SingboxConfig.apiSecret}');
+      request.write(jsonEncode({'mode': clashMode}));
+      final response = await request.close();
+      await response.drain<void>();
+      client.close();
+      return response.statusCode == 204;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Fetch the current proxy state from the running core.
   ///
   /// Returns the raw JSON map or null if the core is not reachable.

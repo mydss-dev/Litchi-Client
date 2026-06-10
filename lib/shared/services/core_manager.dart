@@ -59,6 +59,12 @@ class CoreManager {
     // Kill any previously owned sing-box process (by saved PID).
     await _killSavedPid();
 
+    // Verify the API port is actually free before we try to start.
+    if (!await _isPortFree(apiPort)) {
+      _setError('端口 $apiPort 已被占用，请关闭其他代理软件后重试');
+      return;
+    }
+
     _lastError = '';
     _setState(CoreState.starting);
     _emitLog('── sing-box 启动中 ──');
@@ -102,15 +108,14 @@ class CoreManager {
       }));
 
       // Poll the Clash API port to confirm sing-box is actually ready.
-      // Pass `this` so the loop can abort immediately if the process exits.
-      final ready = await _waitForPort(apiPort, this);
+      final ready = await _waitForPort(apiPort);
 
       if (_process != null && _state != CoreState.error) {
         if (ready) {
           _emitLog('── sing-box 运行中 (PID ${_process!.pid}) ──');
           _setState(CoreState.running);
         } else {
-          _setError('核心启动超时，请检查配置或重试');
+          _setError('核心启动超时 (端口 $apiPort)，请检查配置文件或重试');
           _emitLog('── 启动超时，已停止 ──');
           _process?.kill();
           _process = null;
@@ -118,8 +123,17 @@ class CoreManager {
         }
       }
     } catch (e) {
-      _setError('启动失败: $e');
-      _emitLog('── 启动异常: $e ──');
+      final raw = '$e';
+      final String msg;
+      if (raw.contains('Access is denied') || raw.contains('access')) {
+        msg = '权限不足，请以管理员身份运行客户端';
+      } else if (raw.contains('No such file') || raw.contains('系统找不到')) {
+        msg = '未找到 sing-box.exe，请检查文件是否存在';
+      } else {
+        msg = '启动失败，请检查 sing-box.exe 是否完整';
+      }
+      _setError(msg);
+      _emitLog('── 启动异常: $raw ──');
       _process = null;
       _deletePidFile();
     }
@@ -179,16 +193,30 @@ class CoreManager {
     try { _pidFile.deleteSync(); } catch (_) {}
   }
 
+  /// Returns true when [port] can be bound — i.e. nothing else is using it.
+  static Future<bool> _isPortFree(int port) async {
+    try {
+      final s = await ServerSocket.bind(
+        InternetAddress.loopbackIPv4, port,
+        shared: false,
+      );
+      await s.close();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Poll [port] on 127.0.0.1 until it accepts connections (core is ready).
   /// Aborts early if the process already died (state == error/stopped).
   /// Tries up to 20 times × 200 ms = max 4 seconds.
-  static Future<bool> _waitForPort(int port, CoreManager mgr) async {
+  Future<bool> _waitForPort(int port) async {
     for (int i = 0; i < 20; i++) {
-      if (mgr._state == CoreState.error || mgr._state == CoreState.stopped) {
+      if (_state == CoreState.error || _state == CoreState.stopped) {
         return false;
       }
       await Future.delayed(const Duration(milliseconds: 200));
-      if (mgr._state == CoreState.error || mgr._state == CoreState.stopped) {
+      if (_state == CoreState.error || _state == CoreState.stopped) {
         return false;
       }
       try {

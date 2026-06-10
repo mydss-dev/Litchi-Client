@@ -140,14 +140,17 @@ class _NodesPageState extends State<NodesPage> {
                     node: n,
                     selected: !isAuto && n.id == effectiveId,
                     favorite: _favorites.contains(n.id),
-                    onTap: () {
+                    onTap: () async {
                       setState(() => _selectedId = n.id);
-                      ctrl.setCurrentNode(n);
-                      AppToast.show(
-                        context,
-                        '已切换至 ${n.name}',
-                        type: AppToastType.success,
-                      );
+                      final error = await ctrl.setCurrentNode(n);
+                      if (!mounted) return;
+                      if (error != null) {
+                        // ignore: use_build_context_synchronously
+                        AppToast.show(context, error, type: AppToastType.error);
+                      } else {
+                        // ignore: use_build_context_synchronously
+                        AppToast.show(context, '已切换至 ${n.name}', type: AppToastType.success);
+                      }
                     },
                     onToggleFavorite: () => setState(() {
                       if (!_favorites.add(n.id)) _favorites.remove(n.id);

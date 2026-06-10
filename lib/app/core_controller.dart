@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -16,16 +17,22 @@ import '../shared/services/singbox_config.dart';
 class CoreController extends ChangeNotifier {
   final CoreManager _core = CoreManager();
   StreamSubscription<CoreState>? _sub;
+  StreamSubscription<String>? _logSub;
 
   DateTime? _connectedAt;
   bool _coreConnecting = false;
   String _coreError = '';
+
+  // Rolling log buffer — last 500 lines, timestamped.
+  final _logs = <String>[];
+  static const _maxLogs = 500;
 
   bool get isRunning => _core.isRunning;
   bool get coreRunning => _core.isRunning;
   bool get coreConnecting => _coreConnecting;
   String get coreError => _coreError;
   Stream<String> get logStream => _core.logStream;
+  List<String> get recentLogs => List.unmodifiable(_logs);
   Duration get connectedDuration => _connectedAt != null
       ? DateTime.now().difference(_connectedAt!)
       : Duration.zero;
@@ -33,13 +40,32 @@ class CoreController extends ChangeNotifier {
   /// Must be called once after construction (inside [AppController.init]).
   void init() {
     _sub = _core.stateStream.listen(_onCoreStateChanged);
+    _logSub = _core.logStream.listen((line) {
+      final ts = DateTime.now().toLocal().toString().substring(11, 19);
+      _logs.add('[$ts] $line');
+      if (_logs.length > _maxLogs) _logs.removeAt(0);
+    });
   }
 
   @override
   void dispose() {
     _sub?.cancel();
+    _logSub?.cancel();
     _core.dispose();
     super.dispose();
+  }
+
+  /// Graceful shutdown: kill core process + disable system proxy.
+  /// Called from the window-close handler before [windowManager.destroy()].
+  Future<void> shutdown() async {
+    await _sub?.cancel();
+    await _logSub?.cancel();
+    _sub = null;
+    _logSub = null;
+    _core.dispose(); // synchronously kills the process + deletes PID file
+    try {
+      await ProxySetter.disable();
+    } catch (_) {}
   }
 
   // ── Connection ────────────────────────────────────────────────────────────
@@ -108,7 +134,12 @@ class CoreController extends ChangeNotifier {
             : '连接失败，请检查 sing-box.exe 是否存在';
       }
     } catch (e) {
-      _coreError = '连接异常: $e';
+      final raw = '$e';
+      if (raw.contains('Access') || raw.contains('denied')) {
+        _coreError = '权限不足，请以管理员身份运行客户端';
+      } else {
+        _coreError = '连接失败，请重启客户端后重试';
+      }
     } finally {
       _coreConnecting = false;
       notifyListeners();
@@ -130,11 +161,80 @@ class CoreController extends ChangeNotifier {
   // ── Node switching ────────────────────────────────────────────────────────
 
   /// Switches the active proxy at runtime without restarting the core.
-  Future<void> switchNode(NodeModel node) async {
-    await SingboxApiClient.switchProxy(
-      SingboxConfig.nodeTagFor(node),
+  /// Returns true if the Clash API accepted the change.
+  Future<bool> switchNode(NodeModel node) => SingboxApiClient.switchProxy(
+        SingboxConfig.nodeTagFor(node),
+        apiPort: SingboxConfig.defaultApiPort,
+      );
+
+  // ── Mode switching ────────────────────────────────────────────────────────
+
+  /// Apply [proxyMode] to the running core via Clash API (no restart needed).
+  Future<void> setMode(String proxyMode) async {
+    if (!_core.isRunning) return;
+    await SingboxApiClient.setMode(
+      _toClashMode(proxyMode),
       apiPort: SingboxConfig.defaultApiPort,
     );
+  }
+
+  static String _toClashMode(String mode) => switch (mode) {
+        '全局模式' => 'global',
+        '直连模式' => 'direct',
+        _ => 'rule',
+      };
+
+  // ── Proxy repair ──────────────────────────────────────────────────────────
+
+  /// Force-sync the Windows system proxy to match the current core state.
+  Future<void> fixProxy(int proxyPort) async {
+    if (_core.isRunning) {
+      await ProxySetter.enable(port: proxyPort);
+    } else {
+      await ProxySetter.disable();
+    }
+  }
+
+  // ── Diagnostics ───────────────────────────────────────────────────────────
+
+  /// Run `sing-box version` and return the version string.
+  static Future<String> getCoreVersion() async {
+    final exe = CoreManager.findExecutable();
+    if (exe == null) return '未找到 sing-box.exe';
+    try {
+      final r = await Process.run(exe, ['version']).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => ProcessResult(0, 1, '', ''),
+      );
+      final out = '${r.stdout}'.trim();
+      final m = RegExp(r'sing-box version ([\d.]+\S*)').firstMatch(out);
+      return m?.group(1) ?? out.split('\n').first.trim();
+    } catch (_) {
+      return '获取失败';
+    }
+  }
+
+  /// Write the buffered log lines to %LOCALAPPDATA%\Litchi\ and return the path.
+  Future<String?> exportLogs() async {
+    if (_logs.isEmpty) return null;
+    try {
+      final base = Platform.environment['LOCALAPPDATA'] ??
+          Platform.environment['APPDATA'] ??
+          Directory.systemTemp.path;
+      final dir = Directory('$base\\Litchi');
+      await dir.create(recursive: true);
+      final ts = DateTime.now()
+          .toLocal()
+          .toString()
+          .substring(0, 19)
+          .replaceAll(':', '-')
+          .replaceAll(' ', '_');
+      final file = File('${dir.path}\\logs-$ts.txt');
+      await file.writeAsString(_logs.join('\n'));
+      return file.path;
+    } catch (_) {
+      return null;
+    }
   }
 
   // ── Latency testing ───────────────────────────────────────────────────────

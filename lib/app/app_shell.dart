@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -32,11 +34,22 @@ class _AppShellState extends State<AppShell> with WindowListener {
   static const double _radius = 18;
   bool _maximized = false;
 
+  // Cached so onWindowClose can call shutdown without a context lookup.
+  AppController? _ctrl;
+
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    // Intercept the close button so we can clean up before the OS exits.
+    unawaited(windowManager.setPreventClose(true));
     _sync();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _ctrl = AppScope.of(context);
   }
 
   @override
@@ -55,6 +68,13 @@ class _AppShellState extends State<AppShell> with WindowListener {
 
   @override
   void onWindowUnmaximize() => setState(() => _maximized = false);
+
+  /// Stop sing-box + disable system proxy before the window actually closes.
+  @override
+  Future<void> onWindowClose() async {
+    await _ctrl?.shutdown();
+    await windowManager.destroy();
+  }
 
   @override
   Widget build(BuildContext context) {
