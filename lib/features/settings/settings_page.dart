@@ -51,11 +51,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 label: '外观模式',
                 trailing: AppSelect<ThemeMode>(
                   value: ctrl.themeMode,
-                  items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
+                  items: const [
+                    ThemeMode.system,
+                    ThemeMode.light,
+                    ThemeMode.dark,
+                  ],
                   labelOf: (v) => switch (v) {
                     ThemeMode.system => '跟随系统',
-                    ThemeMode.light  => '浅色模式',
-                    ThemeMode.dark   => '深色模式',
+                    ThemeMode.light => '浅色模式',
+                    ThemeMode.dark => '深色模式',
                   },
                   onChanged: ctrl.setThemeMode,
                 ),
@@ -80,7 +84,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 label: '代理模式',
                 trailing: AppSelect<String>(
                   value: ctrl.proxyMode,
-                  items: const ['智能模式', '全局模式', '直连模式'],
+                  items: const ['规则模式', '全局模式', '直连模式'],
                   labelOf: (v) => v,
                   onChanged: ctrl.setProxyMode,
                 ),
@@ -115,9 +119,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // ── Account ────────────────────────────────────────────────────────
           _SettingsGroup(
             title: '账户',
-            children: [
-              _LogoutRow(onLogout: ctrl.logout),
-            ],
+            children: [_LogoutRow(onLogout: ctrl.logout)],
           ),
         ],
       ),
@@ -138,8 +140,10 @@ class _LogoutRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text('退出登录',
-                style: AppTextStyles.body.copyWith(color: c.danger)),
+            child: Text(
+              '退出登录',
+              style: AppTextStyles.body.copyWith(color: c.danger),
+            ),
           ),
           MouseRegion(
             cursor: SystemMouseCursors.click,
@@ -169,8 +173,10 @@ class _SettingsGroup extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary)),
+          Text(
+            title,
+            style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
+          ),
           const SizedBox(height: 6),
           for (int i = 0; i < children.length; i++) ...[
             children[i],
@@ -197,8 +203,10 @@ class _SettingRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label,
-                style: AppTextStyles.body.copyWith(color: c.textPrimary)),
+            child: Text(
+              label,
+              style: AppTextStyles.body.copyWith(color: c.textPrimary),
+            ),
           ),
           trailing,
         ],
@@ -237,8 +245,9 @@ class _PortSettingRowState extends State<_PortSettingRow> {
     if (v == null || v < 1 || v > 65535) {
       setState(() => _hasError = true);
       _ctrl.text = widget.controller.proxyPort.toString();
-      Future.delayed(const Duration(milliseconds: 800),
-          () { if (mounted) setState(() => _hasError = false); });
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) setState(() => _hasError = false);
+      });
       return;
     }
     setState(() => _hasError = false);
@@ -257,11 +266,17 @@ class _PortSettingRowState extends State<_PortSettingRow> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('代理端口',
-                    style: AppTextStyles.body.copyWith(color: c.textPrimary)),
-                Text('HTTP + SOCKS5  127.0.0.1:${widget.controller.proxyPort}',
-                    style: AppTextStyles.caption
-                        .copyWith(color: c.textMuted, fontSize: 10)),
+                Text(
+                  '代理端口',
+                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
+                ),
+                Text(
+                  'HTTP + SOCKS5  127.0.0.1:${widget.controller.proxyPort}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
               ],
             ),
           ),
@@ -279,8 +294,10 @@ class _PortSettingRowState extends State<_PortSettingRow> {
               ),
               decoration: InputDecoration(
                 isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                   borderSide: BorderSide(

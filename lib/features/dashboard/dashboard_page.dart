@@ -10,8 +10,6 @@ import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/widgets/app_badge.dart';
-import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
@@ -84,7 +82,7 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageHeader(title: 'Litchi Client', subtitle: '现代化跨平台网络加速客户端'),
+          const PageHeader(title: '首页', subtitle: '查看当前连接、节点与流量状态'),
           const SizedBox(height: 12),
           _ConnectionHeroCard(
             connected: connected,
@@ -95,7 +93,7 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 12),
           const _InfoMiniCardsRow(),
           const SizedBox(height: 12),
-          _StatusBar(connected: connected),
+          const _ConnectionStatsRow(),
         ],
       ),
     );
@@ -120,7 +118,6 @@ class _ConnectionHeroCard extends StatelessWidget {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final node = ctrl.currentNode;
-    final user = ctrl.user;
 
     return AppCard(
       radius: AppRadius.xl,
@@ -133,91 +130,65 @@ class _ConnectionHeroCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _WelcomeTitle(name: user.name),
-                const SizedBox(height: 8),
-                Text(
-                  'Premium Plan · 到期 ${user.expiry}',
-                  style: AppTextStyles.body.copyWith(color: c.textMuted),
-                ),
-                const Spacer(),
                 Row(
                   children: [
-                    _SoftPill(
-                      icon: ctrl.autoSelected
-                          ? LucideIcons.sparkles
-                          : LucideIcons.radio,
-                      text: ctrl.autoSelected ? '智能推荐' : '当前节点',
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
+                    Expanded(
                       child: Text(
-                        ctrl.autoSelected ? '最优节点' : '手动选择',
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(
-                          color: c.textMuted,
+                        '当前节点',
+                        style: AppTextStyles.heroTitle.copyWith(
+                          color: c.textPrimary,
+                          fontSize: 22,
                         ),
                       ),
                     ),
+                    _NodeInlineAction(
+                      onTap: () => ctrl.goToPage(AppPage.nodes),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const Spacer(),
+                _ConnectionStateLabel(connected: connected),
+                const SizedBox(height: 20),
                 Row(
                   children: [
                     CountryFlag.fromCountryCode(
                       node.code.isNotEmpty ? node.code : 'UN',
                       theme: const ImageTheme(
-                        width: 28,
-                        height: 20,
-                        shape: RoundedRectangle(3),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        node.name,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          color: c.textPrimary,
-                          fontSize: 15,
-                        ),
+                        width: 36,
+                        height: 26,
+                        shape: RoundedRectangle(4),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    if (node.latency > 0 && node.latency < 9999)
-                      AppBadge.latency(context, text: '${node.latency} ms'),
+                    Expanded(
+                      child: Text(
+                        node.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.heroTitle.copyWith(
+                          color: c.textPrimary,
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
                   ],
+                ),
+                const SizedBox(height: 14),
+                _NodeMetaRow(
+                  proxyMode: ctrl.proxyMode,
+                  automatic: ctrl.autoSelected,
                 ),
                 const Spacer(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _HeroActionButton(
-                        icon: LucideIcons.refreshCw,
-                        label: '切换节点',
-                        onTap: () => ctrl.goToPage(AppPage.nodes),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _HeroActionButton(
-                        icon: LucideIcons.gem,
-                        label: '续费套餐',
-                        onTap: () => ctrl.goToPage(AppPage.shop),
-                        accent: true,
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
           Container(
             width: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
             color: c.softBorder,
           ),
-          SizedBox(
-            width: 178,
+          Expanded(
             child: Column(
               children: [
                 const Spacer(),
@@ -227,37 +198,76 @@ class _ConnectionHeroCard extends StatelessWidget {
                   onTap: onToggle,
                 ),
                 const SizedBox(height: 14),
-                Text(
-                  connecting
-                      ? (connected ? '断开中…' : '连接中…')
-                      : (connected ? '已连接' : '未连接'),
-                  style: AppTextStyles.sectionTitle.copyWith(
-                    color: c.textPrimary,
-                    fontSize: 17,
+                _ConnectionActionText(
+                  connected: connected,
+                  connecting: connecting,
+                ),
+                if (connected) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    elapsedLabel,
+                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  connected ? elapsedLabel : '点击连接',
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
+                ],
                 const Spacer(),
-                _ProxyModeSegment(
-                  value: ctrl.proxyMode,
-                  onChanged: (mode) {
-                    final changed = mode != ctrl.proxyMode;
-                    ctrl.setProxyMode(mode);
-                    if (changed && ctrl.coreRunning) {
-                      AppToast.show(context, '代理模式将在下次连接后生效');
-                    }
-                  },
-                ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _ModeMiniCard extends StatelessWidget {
+  const _ModeMiniCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    return AppCard(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '代理模式',
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: c.textPrimary,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${_proxyModeLabel(ctrl.proxyMode)} · ${ctrl.coreRunning ? '系统代理已开启' : '系统代理未开启'}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.body.copyWith(color: c.textMuted),
+          ),
+          const SizedBox(height: 16),
+          _ProxyModeSegment(
+            value: ctrl.proxyMode,
+            onChanged: (mode) {
+              final changed = mode != ctrl.proxyMode;
+              ctrl.setProxyMode(mode);
+              if (changed && ctrl.coreRunning) {
+                AppToast.show(context, '代理模式将在下次连接后生效');
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _proxyModeLabel(String mode) {
+    return switch (mode) {
+      '全局模式' => '全局模式',
+      '直连模式' => '直连模式',
+      _ => '规则模式',
+    };
   }
 }
 
@@ -268,7 +278,7 @@ class _ProxyModeSegment extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   static const _items = [
-    _ProxyModeItem(label: '规则', value: '智能模式'),
+    _ProxyModeItem(label: '规则', value: '规则模式'),
     _ProxyModeItem(label: '全局', value: '全局模式'),
     _ProxyModeItem(label: '直连', value: '直连模式'),
   ];
@@ -363,66 +373,33 @@ class _ProxyModeItem {
   final String value;
 }
 
-class _WelcomeTitle extends StatelessWidget {
-  const _WelcomeTitle({required this.name});
+class _ConnectionStateLabel extends StatelessWidget {
+  const _ConnectionStateLabel({required this.connected});
 
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return RichText(
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      text: TextSpan(
-        style: AppTextStyles.heroTitle.copyWith(color: c.textPrimary),
-        children: [
-          const TextSpan(text: '欢迎回来，'),
-          WidgetSpan(
-            alignment: PlaceholderAlignment.baseline,
-            baseline: TextBaseline.alphabetic,
-            child: ShaderMask(
-              shaderCallback: (bounds) =>
-                  AppPalette.brandGradient.createShader(bounds),
-              child: Text(
-                name,
-                style: AppTextStyles.heroTitle.copyWith(color: Colors.white),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SoftPill extends StatelessWidget {
-  const _SoftPill({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
+  final bool connected;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final color = connected ? c.success : c.textMuted;
     return Container(
       height: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
-        color: c.primarySoft,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: c.primary.withValues(alpha: 0.22)),
-      ),
+      alignment: Alignment.centerLeft,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: c.primary),
-          const SizedBox(width: 5),
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
           Text(
-            text,
-            style: AppTextStyles.badge.copyWith(
-              color: c.primary,
-              fontSize: 10.5,
+            connected ? '已连接' : '未连接',
+            style: AppTextStyles.button.copyWith(
+              color: color,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -431,53 +408,68 @@ class _SoftPill extends StatelessWidget {
   }
 }
 
-class _HeroActionButton extends StatelessWidget {
-  const _HeroActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.accent = false,
-  });
+class _NodeMetaRow extends StatelessWidget {
+  const _NodeMetaRow({required this.proxyMode, required this.automatic});
 
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool accent;
+  final String proxyMode;
+  final bool automatic;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final color = accent ? c.secondary : c.primary;
+
+    return Text(
+      '${_proxyModeLabel(proxyMode)} · ${automatic ? '自动选择' : '手动选择'}',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: AppTextStyles.body.copyWith(
+        color: c.textMuted,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  String _proxyModeLabel(String mode) {
+    return switch (mode) {
+      '全局模式' => '全局模式',
+      '直连模式' => '直连模式',
+      _ => '规则模式',
+    };
+  }
+}
+
+class _NodeInlineAction extends StatelessWidget {
+  const _NodeInlineAction({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(999),
         child: Ink(
-          height: 38,
+          height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: accent ? c.secondarySoft : c.cardBg,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: color.withValues(alpha: accent ? 0.18 : 0.24),
-            ),
+            color: c.primarySoft,
+            borderRadius: BorderRadius.circular(999),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 15, color: color),
-              const SizedBox(width: 7),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.button.copyWith(
-                    color: color,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+              Icon(LucideIcons.refreshCw, size: 13, color: c.primary),
+              const SizedBox(width: 6),
+              Text(
+                '切换节点',
+                style: AppTextStyles.button.copyWith(
+                  color: c.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -507,8 +499,8 @@ class _PowerButton extends StatelessWidget {
       child: GestureDetector(
         onTap: connecting ? null : onTap,
         child: Container(
-          width: 96,
-          height: 96,
+          width: 118,
+          height: 118,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: connected && !connecting
@@ -517,10 +509,21 @@ class _PowerButton extends StatelessWidget {
             color: connecting
                 ? c.surfaceMuted
                 : (connected ? null : c.surfaceMuted),
-            boxShadow: connected && !connecting ? AppShadows.powerButton : null,
+            border: connected || connecting
+                ? null
+                : Border.all(color: c.primary.withValues(alpha: 0.14)),
+            boxShadow: connected && !connecting
+                ? AppShadows.powerButton
+                : [
+                    BoxShadow(
+                      color: c.primary.withValues(alpha: 0.08),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
           ),
           child: Container(
-            margin: const EdgeInsets.all(6),
+            margin: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
@@ -532,7 +535,7 @@ class _PowerButton extends StatelessWidget {
             ),
             child: connecting
                 ? Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(32),
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
                       color: c.primary,
@@ -540,11 +543,162 @@ class _PowerButton extends StatelessWidget {
                   )
                 : Icon(
                     LucideIcons.power,
-                    size: 36,
-                    color: connected ? Colors.white : c.iconMuted,
+                    size: 44,
+                    color: connected ? Colors.white : c.primary,
                   ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ConnectionActionText extends StatelessWidget {
+  const _ConnectionActionText({
+    required this.connected,
+    required this.connecting,
+  });
+
+  final bool connected;
+  final bool connecting;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final text = connecting
+        ? (connected ? '断开中…' : '连接中…')
+        : (connected ? '断开连接' : '开始连接');
+    final color = connecting ? c.primary : (connected ? c.success : c.primary);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: AppTextStyles.sectionTitle.copyWith(
+            color: color,
+            fontSize: 18,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ConnectionStatsRow extends StatelessWidget {
+  const _ConnectionStatsRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final connected = ctrl.coreRunning;
+    final latency = ctrl.currentNode.latency;
+    final latencyValue = latency > 0 && latency < 9999
+        ? latency.toString()
+        : '--';
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final threeCols = constraints.maxWidth >= 560;
+        final cards = [
+          _ConnectionStatCard(label: '当前延迟', value: latencyValue, unit: 'ms'),
+          _ConnectionStatCard(
+            label: '下载速度',
+            value: connected ? '12.8' : '--',
+            unit: connected ? 'MB/s' : '',
+          ),
+          _ConnectionStatCard(
+            label: '上传速度',
+            value: connected ? '2.1' : '--',
+            unit: connected ? 'MB/s' : '',
+          ),
+        ];
+
+        if (threeCols) {
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (int i = 0; i < cards.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 14),
+                  Expanded(child: cards[i]),
+                ],
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            for (int i = 0; i < cards.length; i++) ...[
+              if (i > 0) const SizedBox(height: 14),
+              cards[i],
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ConnectionStatCard extends StatelessWidget {
+  const _ConnectionStatCard({
+    required this.label,
+    required this.value,
+    required this.unit,
+  });
+
+  final String label;
+  final String value;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AppCard(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.body.copyWith(
+              color: c.textMuted,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                value,
+                style: AppTextStyles.largeNumber(
+                  fontSize: 24,
+                ).copyWith(color: c.textPrimary, height: 1),
+              ),
+              const SizedBox(width: 5),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text(
+                  unit,
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -558,242 +712,149 @@ class _InfoMiniCardsRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final twoCols = constraints.maxWidth >= 380;
-        final traffic = _TrafficMiniCard();
-        final plan = _PlanMiniCard();
+        final mode = _ModeMiniCard();
+        final network = _NetworkSettingsCard();
         if (twoCols) {
           return IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: traffic),
+                Expanded(child: mode),
                 const SizedBox(width: 14),
-                Expanded(child: plan),
+                Expanded(child: network),
               ],
             ),
           );
         }
-        return Column(children: [traffic, const SizedBox(height: 14), plan]);
+        return Column(children: [mode, const SizedBox(height: 14), network]);
       },
     );
   }
 }
 
-class _TrafficMiniCard extends StatelessWidget {
+class _NetworkSettingsCard extends StatefulWidget {
+  const _NetworkSettingsCard();
+
+  @override
+  State<_NetworkSettingsCard> createState() => _NetworkSettingsCardState();
+}
+
+class _NetworkSettingsCardState extends State<_NetworkSettingsCard> {
+  String _mode = 'system';
+
+  void _setMode(String mode) {
+    if (_mode == mode) return;
+    setState(() => _mode = mode);
+    if (mode == 'tun') {
+      AppToast.show(context, '虚拟网卡模式暂未接入，将在后续版本启用');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final t = AppScope.of(context).traffic;
-    final ratio = (t.usedGb / t.totalGb).clamp(0.0, 1.0);
 
     return AppCard(
       radius: AppRadius.card,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _MetricIcon(icon: LucideIcons.wifi, color: c.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '本月流量',
-                      style: AppTextStyles.cardTitle.copyWith(
-                        color: c.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${t.usedGb.toInt()} / ${t.totalGb.toInt()} GB',
-                      style: AppTextStyles.largeNumber(
-                        fontSize: 20,
-                      ).copyWith(color: c.textPrimary),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '剩余 ${t.remainGb.toInt()} GB',
-                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 13),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: Stack(
-              children: [
-                Container(height: 7, color: c.surfaceMuted),
-                FractionallySizedBox(
-                  widthFactor: ratio,
-                  child: Container(
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      gradient: AppPalette.brandGradient,
-                    ),
-                  ),
-                ),
-              ],
+          Text(
+            '网络设置',
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: c.textPrimary,
+              fontSize: 15,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlanMiniCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final controller = AppScope.of(context);
-    final user = controller.user;
-
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _MetricIcon(icon: LucideIcons.crown, color: c.warning),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '当前套餐',
-                      style: AppTextStyles.cardTitle.copyWith(
-                        color: c.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      user.plan,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.largeNumber(
-                        fontSize: 20,
-                      ).copyWith(color: c.textPrimary),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '到期时间：${user.expiry}',
-                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: AppSecondaryButton(
-                  label: '续费',
-                  height: 30,
-                  onPressed: () => controller.goToPage(AppPage.shop),
-                ),
-              ),
-            ],
+          const SizedBox(height: 10),
+          Text(
+            _mode == 'system' ? '使用系统代理接管网络请求' : '通过虚拟网卡接管全部流量',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.body.copyWith(color: c.textMuted),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricIcon extends StatelessWidget {
-  const _MetricIcon({required this.icon, required this.color});
-
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(icon, size: 20, color: color),
-    );
-  }
-}
-
-class _StatusBar extends StatelessWidget {
-  const _StatusBar({required this.connected});
-
-  final bool connected;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppCard(
-      radius: AppRadius.card,
-      height: 66,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
+          const SizedBox(height: 16),
           Container(
-            width: 42,
-            height: 42,
-            alignment: Alignment.center,
+            height: 38,
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: connected ? c.primarySoft : c.surfaceMuted,
+              color: c.surfaceMuted,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.softBorder),
             ),
-            child: Icon(
-              connected ? LucideIcons.shieldCheck : LucideIcons.shieldOff,
-              size: 21,
-              color: connected ? c.primary : c.iconMuted,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  connected ? 'Litchi Client 已为您保护网络连接' : '当前未连接，点击电源按钮开始连接',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: c.textPrimary,
+                Expanded(
+                  child: _NetworkModeOption(
+                    label: '系统代理',
+                    selected: _mode == 'system',
+                    onTap: () => _setMode('system'),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  connected ? '安全、稳定、纯净的网络体验' : '连接后将自动启用系统代理',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                Expanded(
+                  child: _NetworkModeOption(
+                    label: '虚拟网卡',
+                    selected: _mode == 'tun',
+                    onTap: () => _setMode('tun'),
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          AppBadge(
-            text: connected ? '安全' : '未保护',
-            background: connected
-                ? c.success.withValues(alpha: 0.12)
-                : c.danger.withValues(alpha: 0.12),
-            textColor: connected ? c.success : c.danger,
-            fontSize: 11,
-            height: 22,
-          ),
-          const SizedBox(width: 10),
-          Icon(LucideIcons.chevronRight, size: 18, color: c.iconMuted),
         ],
+      ),
+    );
+  }
+}
+
+class _NetworkModeOption extends StatelessWidget {
+  const _NetworkModeOption({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? c.cardBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: c.primary.withValues(alpha: 0.14),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.button.copyWith(
+              color: selected ? c.primary : c.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
       ),
     );
   }

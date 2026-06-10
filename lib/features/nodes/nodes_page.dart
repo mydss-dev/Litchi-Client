@@ -42,13 +42,20 @@ class _NodesPageState extends State<NodesPage> {
         return false;
       }
       switch (_tabs[_tab]) {
-        case '收藏':  return _favorites.contains(n.id);
-        case 'VIP':   return n.tags.contains('Premium');
-        case '亚洲':  return n.region == NodeRegion.asia;
-        case '欧洲':  return n.region == NodeRegion.europe;
-        case '美洲':  return n.region == NodeRegion.america;
-        case '大洋洲': return n.region == NodeRegion.oceania;
-        default:      return true;
+        case '收藏':
+          return _favorites.contains(n.id);
+        case 'VIP':
+          return n.tags.contains('Premium');
+        case '亚洲':
+          return n.region == NodeRegion.asia;
+        case '欧洲':
+          return n.region == NodeRegion.europe;
+        case '美洲':
+          return n.region == NodeRegion.america;
+        case '大洋洲':
+          return n.region == NodeRegion.oceania;
+        default:
+          return true;
       }
     }).toList();
   }
@@ -58,7 +65,9 @@ class _NodesPageState extends State<NodesPage> {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final isAuto = ctrl.autoSelected;
-    final effectiveId = isAuto ? '__auto__' : (_selectedId ?? ctrl.currentNode.id);
+    final effectiveId = isAuto
+        ? '__auto__'
+        : (_selectedId ?? ctrl.currentNode.id);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,8 +95,11 @@ class _NodesPageState extends State<NodesPage> {
           onTap: () {
             setState(() => _selectedId = null);
             ctrl.selectAuto();
-            AppToast.show(context, '已开启智能推荐，自动选择最优节点',
-                type: AppToastType.success);
+            AppToast.show(
+              context,
+              '已开启自动选择，将使用最优节点',
+              type: AppToastType.success,
+            );
           },
         ),
         const SizedBox(height: 12),
@@ -105,8 +117,10 @@ class _NodesPageState extends State<NodesPage> {
               final nodes = _filtered;
               if (nodes.isEmpty) {
                 return Center(
-                  child: Text('没有匹配的节点',
-                      style: AppTextStyles.body.copyWith(color: c.textMuted)),
+                  child: Text(
+                    '没有匹配的节点',
+                    style: AppTextStyles.body.copyWith(color: c.textMuted),
+                  ),
                 );
               }
               return GridView.builder(
@@ -127,8 +141,11 @@ class _NodesPageState extends State<NodesPage> {
                     onTap: () {
                       setState(() => _selectedId = n.id);
                       ctrl.setCurrentNode(n);
-                      AppToast.show(context, '已切换至 ${n.name}',
-                          type: AppToastType.success);
+                      AppToast.show(
+                        context,
+                        '已切换至 ${n.name}',
+                        type: AppToastType.success,
+                      );
                     },
                     onToggleFavorite: () => setState(() {
                       if (!_favorites.add(n.id)) _favorites.remove(n.id);
@@ -161,7 +178,9 @@ class _AutoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final nodes = ctrl.nodes;
-    final tested = nodes.where((n) => n.latency > 0 && n.latency < 9999).toList();
+    final tested = nodes
+        .where((n) => n.latency > 0 && n.latency < 9999)
+        .toList();
     final testing = nodes.any((n) => n.latency == -1);
 
     // Find best node for display
@@ -202,9 +221,11 @@ class _AutoCard extends StatelessWidget {
                   color: selected ? null : c.surfaceMuted,
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(LucideIcons.zap,
-                    size: 16,
-                    color: selected ? Colors.white : c.primary),
+                child: Icon(
+                  LucideIcons.zap,
+                  size: 16,
+                  color: selected ? Colors.white : c.primary,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -212,9 +233,12 @@ class _AutoCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('智能推荐',
-                        style: AppTextStyles.bodyStrong
-                            .copyWith(color: selected ? c.primary : c.textPrimary)),
+                    Text(
+                      '自动选择',
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: selected ? c.primary : c.textPrimary,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     if (testing && best == null)
                       _TestingDots(color: c.textMuted)
@@ -233,20 +257,29 @@ class _AutoCard extends StatelessWidget {
                           const SizedBox(width: 5),
                           Text(
                             '${best.name} · ${best.latency} ms',
-                            style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                            style: AppTextStyles.caption.copyWith(
+                              color: c.textMuted,
+                            ),
                           ),
                         ],
                       )
                     else
-                      Text('暂无可用节点',
-                          style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                      Text(
+                        '暂无可用节点',
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textMuted,
+                        ),
+                      ),
                   ],
                 ),
               ),
               // Latency summary badge
               if (tested.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: _bestColor(best?.latency, c).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
@@ -302,8 +335,9 @@ class _TestingDotsState extends State<_TestingDots>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat();
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
   }
 
   @override
@@ -318,8 +352,10 @@ class _TestingDotsState extends State<_TestingDots>
       animation: _ctrl,
       builder: (_, child) {
         final dots = '.' * ((_ctrl.value * 4).floor() % 4);
-        return Text('测速中$dots',
-            style: AppTextStyles.caption.copyWith(color: widget.color));
+        return Text(
+          '测速中$dots',
+          style: AppTextStyles.caption.copyWith(color: widget.color),
+        );
       },
     );
   }
@@ -344,8 +380,9 @@ class _RefreshButtonState extends State<_RefreshButton>
   void initState() {
     super.initState();
     _spin = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600))
-      ..repeat();
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat();
     _spin.stop();
   }
 
@@ -386,8 +423,11 @@ class _RefreshButtonState extends State<_RefreshButton>
           ),
           child: RotationTransition(
             turns: _spin,
-            child: Icon(LucideIcons.refreshCw,
-                size: 18, color: _loading ? c.primary : c.iconDefault),
+            child: Icon(
+              LucideIcons.refreshCw,
+              size: 18,
+              color: _loading ? c.primary : c.iconDefault,
+            ),
           ),
         ),
       ),
@@ -460,9 +500,11 @@ class _NodeCard extends StatelessWidget {
                   ),
                   GestureDetector(
                     onTap: onToggleFavorite,
-                    child: Icon(LucideIcons.star,
-                        size: 15,
-                        color: favorite ? c.warning : c.iconMuted),
+                    child: Icon(
+                      LucideIcons.star,
+                      size: 15,
+                      color: favorite ? c.warning : c.iconMuted,
+                    ),
                   ),
                 ],
               ),
@@ -473,8 +515,10 @@ class _NodeCard extends StatelessWidget {
                   padding: const EdgeInsets.only(left: 38),
                   child: Text(
                     node.englishName,
-                    style: AppTextStyles.caption
-                        .copyWith(color: c.textMuted, fontSize: 11),
+                    style: AppTextStyles.caption.copyWith(
+                      color: c.textMuted,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               const Spacer(),
@@ -508,29 +552,53 @@ class _LatencyIndicator extends StatelessWidget {
     final c = AppColors.of(context);
     if (latency == -1) {
       // Testing
-      return Row(children: [
-        SizedBox(
-          width: 8, height: 8,
-          child: CircularProgressIndicator(strokeWidth: 1.5, color: c.textMuted),
-        ),
-        const SizedBox(width: 6),
-        Text('测速中', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-      ]);
+      return Row(
+        children: [
+          SizedBox(
+            width: 8,
+            height: 8,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: c.textMuted,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '测速中',
+            style: AppTextStyles.caption.copyWith(color: c.textMuted),
+          ),
+        ],
+      );
     }
     if (latency == 0 || latency >= 9999) {
-      return Row(children: [
-        Container(width: 8, height: 8,
-            decoration: BoxDecoration(color: c.textMuted, shape: BoxShape.circle)),
-        const SizedBox(width: 6),
-        Text('--', style: AppTextStyles.menu.copyWith(color: c.textMuted)),
-      ]);
+      return Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: c.textMuted,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text('--', style: AppTextStyles.menu.copyWith(color: c.textMuted)),
+        ],
+      );
     }
-    final color = latency < 60 ? c.success : (latency < 150 ? c.warning : c.danger);
-    return Row(children: [
-      Container(width: 8, height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-      const SizedBox(width: 6),
-      Text('$latency ms', style: AppTextStyles.menu.copyWith(color: color)),
-    ]);
+    final color = latency < 60
+        ? c.success
+        : (latency < 150 ? c.warning : c.danger);
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text('$latency ms', style: AppTextStyles.menu.copyWith(color: color)),
+      ],
+    );
   }
 }

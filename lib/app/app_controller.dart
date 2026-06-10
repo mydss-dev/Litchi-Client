@@ -17,7 +17,16 @@ import '../shared/services/singbox_config.dart';
 import '../shared/services/token_storage.dart';
 
 /// Top-level navigation destinations shown in the sidebar (§8.4).
-enum AppPage { dashboard, nodes, shop, traffic, invite, settings, account, orders }
+enum AppPage {
+  dashboard,
+  nodes,
+  shop,
+  traffic,
+  invite,
+  settings,
+  account,
+  orders,
+}
 
 /// Which authentication screen is visible while logged out (§16).
 enum AuthScreen { login, register, changePassword }
@@ -29,103 +38,105 @@ class AppController extends ChangeNotifier {
 
   // ── Navigation / init state ───────────────────────────────────────────────
 
-  bool       _isAuthenticated = false;
-  bool       _isInitializing  = true;
-  AppPage    _page             = AppPage.dashboard;
-  AuthScreen _authScreen       = AuthScreen.login;
-  ThemeMode  _themeMode        = ThemeMode.light;
+  bool _isAuthenticated = false;
+  bool _isInitializing = true;
+  AppPage _page = AppPage.dashboard;
+  AuthScreen _authScreen = AuthScreen.login;
+  ThemeMode _themeMode = ThemeMode.light;
 
   // ── Settings ──────────────────────────────────────────────────────────────
 
-  bool   _autoStart  = false;
-  bool   _autoUpdate = true;
-  bool   _devMode    = false;
-  String _language   = '简体中文';
-  String _proxyMode  = '智能模式';
-  String _dnsMode    = '系统 DNS';
-  int    _proxyPort  = 7890;
+  bool _autoStart = false;
+  bool _autoUpdate = true;
+  bool _devMode = false;
+  String _language = '简体中文';
+  String _proxyMode = '规则模式';
+  String _dnsMode = '系统 DNS';
+  int _proxyPort = 7890;
 
   // ── Services ──────────────────────────────────────────────────────────────
 
-  final ApiClient  _apiClient  = ApiClient();
-  late final PanelApi  _api        = PanelApi(_apiClient);
+  final ApiClient _apiClient = ApiClient();
+  late final PanelApi _api = PanelApi(_apiClient);
   late final DataLoader _dataLoader = DataLoader(_api);
-  final CoreManager    _core        = CoreManager();
+  final CoreManager _core = CoreManager();
   StreamSubscription<CoreState>? _coreStateSub;
 
   // ── Connection state ──────────────────────────────────────────────────────
 
   DateTime? _connectedAt;
-  bool      _coreConnecting = false;
-  String    _coreError      = '';
+  bool _coreConnecting = false;
+  String _coreError = '';
 
   // ── Data (mock defaults until API populates) ──────────────────────────────
 
-  String           _subscribeUrl   = '';
-  UserModel        _user           = MockData.user;
-  TrafficModel     _traffic        = MockData.traffic;
-  NodeModel        _currentNode    = MockData.currentNode;
-  List<NodeModel>  _nodes          = MockData.nodes;
-  List<PlanModel>  _plans          = MockData.plans;
-  bool             _autoSelected   = false;
-  String           _inviteCode     = MockData.inviteCode;
-  String           _inviteLink     = MockData.inviteLink;
-  double           _commissionRate = MockData.commissionRate;
-  int              _invitedCount   = MockData.invitedCount;
-  double           _withdrawable   = MockData.withdrawable;
-  List<double>     _dailyUsage     = MockData.dailyUsage;
+  String _subscribeUrl = '';
+  UserModel _user = MockData.user;
+  TrafficModel _traffic = MockData.traffic;
+  NodeModel _currentNode = MockData.currentNode;
+  List<NodeModel> _nodes = MockData.nodes;
+  List<PlanModel> _plans = MockData.plans;
+  bool _autoSelected = false;
+  String _inviteCode = MockData.inviteCode;
+  String _inviteLink = MockData.inviteLink;
+  double _commissionRate = MockData.commissionRate;
+  int _invitedCount = MockData.invitedCount;
+  double _withdrawable = MockData.withdrawable;
+  List<double> _dailyUsage = MockData.dailyUsage;
 
   // ── Getters ───────────────────────────────────────────────────────────────
 
-  bool       get isAuthenticated => _isAuthenticated;
-  bool       get isInitializing  => _isInitializing;
-  AppPage    get page            => _page;
-  AuthScreen get authScreen      => _authScreen;
-  ThemeMode  get themeMode       => _themeMode;
-  bool       get isDark          => _themeMode == ThemeMode.dark;
+  bool get isAuthenticated => _isAuthenticated;
+  bool get isInitializing => _isInitializing;
+  AppPage get page => _page;
+  AuthScreen get authScreen => _authScreen;
+  ThemeMode get themeMode => _themeMode;
+  bool get isDark => _themeMode == ThemeMode.dark;
 
-  bool   get autoStart  => _autoStart;
-  bool   get autoUpdate => _autoUpdate;
-  bool   get devMode    => _devMode;
-  String get language   => _language;
-  String get proxyMode  => _proxyMode;
-  String get dnsMode    => _dnsMode;
+  bool get autoStart => _autoStart;
+  bool get autoUpdate => _autoUpdate;
+  bool get devMode => _devMode;
+  String get language => _language;
+  String get proxyMode => _proxyMode;
+  String get dnsMode => _dnsMode;
 
-  UserModel    get user    => _user;
+  UserModel get user => _user;
   TrafficModel get traffic => _traffic;
-  bool         get autoSelected => _autoSelected;
+  bool get autoSelected => _autoSelected;
 
-  bool             get coreRunning    => _core.isRunning;
-  bool             get coreConnecting => _coreConnecting;
-  String           get coreError      => _coreError;
-  int              get proxyPort      => _proxyPort;
-  Stream<String>   get coreLogStream  => _core.logStream;
-  PanelApi         get api            => _api;
-  Duration get connectedDuration =>
-      _connectedAt != null ? DateTime.now().difference(_connectedAt!) : Duration.zero;
+  bool get coreRunning => _core.isRunning;
+  bool get coreConnecting => _coreConnecting;
+  String get coreError => _coreError;
+  int get proxyPort => _proxyPort;
+  Stream<String> get coreLogStream => _core.logStream;
+  PanelApi get api => _api;
+  Duration get connectedDuration => _connectedAt != null
+      ? DateTime.now().difference(_connectedAt!)
+      : Duration.zero;
 
-  NodeModel        get currentNode    => _autoSelected ? (_bestNode ?? _currentNode) : _currentNode;
-  List<NodeModel>  get nodes          => _nodes;
-  List<PlanModel>  get plans          => _plans;
-  String           get inviteCode     => _inviteCode;
-  String           get inviteLink     => _inviteLink;
-  double           get commissionRate => _commissionRate;
-  int              get invitedCount   => _invitedCount;
-  double           get withdrawable   => _withdrawable;
-  List<double>     get dailyUsage     => _dailyUsage;
+  NodeModel get currentNode =>
+      _autoSelected ? (_bestNode ?? _currentNode) : _currentNode;
+  List<NodeModel> get nodes => _nodes;
+  List<PlanModel> get plans => _plans;
+  String get inviteCode => _inviteCode;
+  String get inviteLink => _inviteLink;
+  double get commissionRate => _commissionRate;
+  int get invitedCount => _invitedCount;
+  double get withdrawable => _withdrawable;
+  List<double> get dailyUsage => _dailyUsage;
 
   // ── Initialization ────────────────────────────────────────────────────────
 
   Future<void> init() async {
     final s = await SettingsService.load();
-    _proxyPort  = s.proxyPort;
-    _autoStart  = s.autoStart;
+    _proxyPort = s.proxyPort;
+    _autoStart = s.autoStart;
     _autoUpdate = s.autoUpdate;
-    _devMode    = s.devMode;
-    _language   = s.language;
-    _proxyMode  = s.proxyMode;
-    _dnsMode    = s.dnsMode;
-    _themeMode  = s.themeMode;
+    _devMode = s.devMode;
+    _language = s.language;
+    _proxyMode = s.proxyMode;
+    _dnsMode = s.dnsMode;
+    _themeMode = s.themeMode;
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;
@@ -283,8 +294,8 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       await _core.stop();
       await ProxySetter.disable();
-      _connectedAt    = null;
-      _coreError      = '';
+      _connectedAt = null;
+      _coreError = '';
       _coreConnecting = false;
       notifyListeners();
       return null;
@@ -314,7 +325,7 @@ class AppController extends ChangeNotifier {
     }
 
     _coreConnecting = true;
-    _coreError      = '';
+    _coreError = '';
     notifyListeners();
 
     try {
@@ -324,7 +335,7 @@ class AppController extends ChangeNotifier {
       if (_core.isRunning) {
         await ProxySetter.enable(port: _proxyPort);
         _connectedAt = DateTime.now();
-        _coreError   = '';
+        _coreError = '';
       } else {
         _coreError = _core.lastError.isNotEmpty
             ? _core.lastError
@@ -346,23 +357,23 @@ class AppController extends ChangeNotifier {
       _connectedAt = null;
     }
     _isAuthenticated = false;
-    _authScreen      = AuthScreen.login;
-    _subscribeUrl    = '';
-    _autoSelected    = false;
-    _coreError       = '';
+    _authScreen = AuthScreen.login;
+    _subscribeUrl = '';
+    _autoSelected = false;
+    _coreError = '';
     TokenStorage.clearAuthData();
     _apiClient.updateAuthData(null);
-    _user           = MockData.user;
-    _traffic        = MockData.traffic;
-    _currentNode    = MockData.currentNode;
-    _nodes          = MockData.nodes;
-    _plans          = MockData.plans;
-    _inviteCode     = MockData.inviteCode;
-    _inviteLink     = MockData.inviteLink;
+    _user = MockData.user;
+    _traffic = MockData.traffic;
+    _currentNode = MockData.currentNode;
+    _nodes = MockData.nodes;
+    _plans = MockData.plans;
+    _inviteCode = MockData.inviteCode;
+    _inviteLink = MockData.inviteLink;
     _commissionRate = MockData.commissionRate;
-    _invitedCount   = MockData.invitedCount;
-    _withdrawable   = MockData.withdrawable;
-    _dailyUsage     = MockData.dailyUsage;
+    _invitedCount = MockData.invitedCount;
+    _withdrawable = MockData.withdrawable;
+    _dailyUsage = MockData.dailyUsage;
     notifyListeners();
   }
 
@@ -372,7 +383,7 @@ class AppController extends ChangeNotifier {
     // React only to unexpected crashes (deliberate stop() clears _connectedAt first).
     if ((state == CoreState.error || state == CoreState.stopped) &&
         (_connectedAt != null || _coreConnecting)) {
-      _connectedAt    = null;
+      _connectedAt = null;
       _coreConnecting = false;
       if (_core.lastError.isNotEmpty) _coreError = _core.lastError;
       ProxySetter.disable();
@@ -386,7 +397,7 @@ class AppController extends ChangeNotifier {
     final snap = await _dataLoader.loadAll();
     _applySnapshot(snap);
     if (_nodes.isNotEmpty) {
-      _currentNode  = _nodes.first;
+      _currentNode = _nodes.first;
       _autoSelected = true;
       testLatencies(); // fire-and-forget; notifies per node as results arrive
     }
@@ -395,8 +406,8 @@ class AppController extends ChangeNotifier {
   Future<void> refreshNodes() async {
     final snap = await _dataLoader.loadNodes(_subscribeUrl);
     if (snap.nodes != null && snap.nodes!.isNotEmpty) {
-      _nodes        = snap.nodes!;
-      _currentNode  = _nodes.first;
+      _nodes = snap.nodes!;
+      _currentNode = _nodes.first;
       _autoSelected = true;
       if (snap.traffic != null) _traffic = snap.traffic!;
       testLatencies(); // fire-and-forget
@@ -405,24 +416,24 @@ class AppController extends ChangeNotifier {
   }
 
   void _applySnapshot(DataSnapshot snap) {
-    if (snap.user           != null) _user           = snap.user!;
-    if (snap.traffic        != null) _traffic        = snap.traffic!;
-    if (snap.subscribeUrl   != null) _subscribeUrl   = snap.subscribeUrl!;
-    if (snap.nodes          != null) _nodes          = snap.nodes!;
-    if (snap.plans          != null) _plans          = snap.plans!;
-    if (snap.inviteCode     != null) _inviteCode     = snap.inviteCode!;
-    if (snap.inviteLink     != null) _inviteLink     = snap.inviteLink!;
+    if (snap.user != null) _user = snap.user!;
+    if (snap.traffic != null) _traffic = snap.traffic!;
+    if (snap.subscribeUrl != null) _subscribeUrl = snap.subscribeUrl!;
+    if (snap.nodes != null) _nodes = snap.nodes!;
+    if (snap.plans != null) _plans = snap.plans!;
+    if (snap.inviteCode != null) _inviteCode = snap.inviteCode!;
+    if (snap.inviteLink != null) _inviteLink = snap.inviteLink!;
     if (snap.commissionRate != null) _commissionRate = snap.commissionRate!;
-    if (snap.invitedCount   != null) _invitedCount   = snap.invitedCount!;
-    if (snap.withdrawable   != null) _withdrawable   = snap.withdrawable!;
-    if (snap.dailyUsage     != null) _dailyUsage     = snap.dailyUsage!;
+    if (snap.invitedCount != null) _invitedCount = snap.invitedCount!;
+    if (snap.withdrawable != null) _withdrawable = snap.withdrawable!;
+    if (snap.dailyUsage != null) _dailyUsage = snap.dailyUsage!;
   }
 
   // ── Node selection ────────────────────────────────────────────────────────
 
   Future<void> setCurrentNode(NodeModel node) async {
     _autoSelected = false;
-    _currentNode  = node;
+    _currentNode = node;
     notifyListeners();
     if (_core.isRunning) {
       await SingboxApiClient.switchProxy(
@@ -466,36 +477,40 @@ class AppController extends ChangeNotifier {
 
     final sem = _Semaphore(10);
 
-    await Future.wait(_nodes.asMap().entries.map((e) async {
-      await sem.acquire();
-      try {
-        final idx  = e.key;
-        final node = e.value;
+    await Future.wait(
+      _nodes.asMap().entries.map((e) async {
+        await sem.acquire();
+        try {
+          final idx = e.key;
+          final node = e.value;
 
-        final int ms;
-        if (_core.isRunning) {
-          ms = await SingboxApiClient.testDelay(
-                SingboxConfig.nodeTagFor(node),
-                apiPort: SingboxConfig.defaultApiPort,
-              ) ?? LatencyTester.unreachable;
-        } else {
-          ms = await LatencyTester.ping(node.server, node.port);
-        }
-
-        if (idx < _nodes.length) {
-          final updated = List<NodeModel>.from(_nodes);
-          updated[idx] = node.copyWith(latency: ms);
-          _nodes = updated;
-          if (_autoSelected) {
-            final best = _bestNode;
-            if (best != null) _currentNode = best;
+          final int ms;
+          if (_core.isRunning) {
+            ms =
+                await SingboxApiClient.testDelay(
+                  SingboxConfig.nodeTagFor(node),
+                  apiPort: SingboxConfig.defaultApiPort,
+                ) ??
+                LatencyTester.unreachable;
+          } else {
+            ms = await LatencyTester.ping(node.server, node.port);
           }
-          notifyListeners();
+
+          if (idx < _nodes.length) {
+            final updated = List<NodeModel>.from(_nodes);
+            updated[idx] = node.copyWith(latency: ms);
+            _nodes = updated;
+            if (_autoSelected) {
+              final best = _bestNode;
+              if (best != null) _currentNode = best;
+            }
+            notifyListeners();
+          }
+        } finally {
+          sem.release();
         }
-      } finally {
-        sem.release();
-      }
-    }));
+      }),
+    );
   }
 }
 
@@ -524,7 +539,10 @@ class _Semaphore {
   final _queue = <Completer<void>>[];
 
   Future<void> acquire() async {
-    if (_count < _max) { _count++; return; }
+    if (_count < _max) {
+      _count++;
+      return;
+    }
     final c = Completer<void>();
     _queue.add(c);
     await c.future;

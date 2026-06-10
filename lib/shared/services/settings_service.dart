@@ -28,17 +28,17 @@ abstract final class SettingsService {
   static Future<SettingsSnapshot> load() async {
     final p = await SharedPreferences.getInstance();
     return SettingsSnapshot(
-      proxyPort:  p.getInt('proxy_port')    ?? 7890,
-      autoStart:  p.getBool('auto_start')   ?? false,
-      autoUpdate: p.getBool('auto_update')  ?? true,
-      devMode:    p.getBool('dev_mode')     ?? false,
-      language:   p.getString('language')   ?? '简体中文',
-      proxyMode:  p.getString('proxy_mode') ?? '智能模式',
-      dnsMode:    p.getString('dns_mode')   ?? '系统 DNS',
+      proxyPort: p.getInt('proxy_port') ?? 7890,
+      autoStart: p.getBool('auto_start') ?? false,
+      autoUpdate: p.getBool('auto_update') ?? true,
+      devMode: p.getBool('dev_mode') ?? false,
+      language: p.getString('language') ?? '简体中文',
+      proxyMode: _normalizeProxyMode(p.getString('proxy_mode')),
+      dnsMode: p.getString('dns_mode') ?? '系统 DNS',
       themeMode: switch (p.getString('theme_mode') ?? 'light') {
-        'dark'   => ThemeMode.dark,
+        'dark' => ThemeMode.dark,
         'system' => ThemeMode.system,
-        _        => ThemeMode.light,
+        _ => ThemeMode.light,
       },
     );
   }
@@ -64,13 +64,20 @@ abstract final class SettingsService {
   static void setDnsMode(String v) =>
       SharedPreferences.getInstance().then((p) => p.setString('dns_mode', v));
 
-  static void setThemeMode(ThemeMode m) =>
-      SharedPreferences.getInstance().then((p) => p.setString(
-            'theme_mode',
-            switch (m) {
-              ThemeMode.dark   => 'dark',
-              ThemeMode.system => 'system',
-              _                => 'light',
-            },
-          ));
+  static void setThemeMode(ThemeMode m) => SharedPreferences.getInstance().then(
+    (p) => p.setString('theme_mode', switch (m) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.system => 'system',
+      _ => 'light',
+    }),
+  );
+
+  static String _normalizeProxyMode(String? v) {
+    return switch (v) {
+      '智能模式' => '规则模式',
+      '全局模式' => '全局模式',
+      '直连模式' => '直连模式',
+      _ => '规则模式',
+    };
+  }
 }

@@ -11,7 +11,7 @@ import '../models/app_models.dart';
 /// - Clash-compatible REST API is enabled so the active node can be
 ///   switched at runtime via HTTP — no process restart required.
 abstract final class SingboxConfig {
-  static const int defaultPort   = 7890;
+  static const int defaultPort = 7890;
   static const int defaultApiPort = 9090;
 
   /// Build a complete multi-node config.
@@ -20,20 +20,20 @@ abstract final class SingboxConfig {
   /// [selectedTag] — the node tag that should be active on first start.
   /// [port]        — mixed inbound port (HTTP + SOCKS5).
   /// [apiPort]     — Clash-compatible REST API port for runtime switching.
-  /// [proxyMode]   — '智能模式' | '全局模式' | '直连模式'
+  /// [proxyMode]   — '规则模式' | '全局模式' | '直连模式'
   /// [dnsMode]     — '系统 DNS' | 'Cloudflare' | 'Google'
   ///
   /// Returns null only when [nodes] is empty or all URIs are unparseable.
   static Map<String, dynamic>? buildFullConfig(
     List<NodeModel> nodes, {
     required String selectedTag,
-    int port    = defaultPort,
+    int port = defaultPort,
     int apiPort = defaultApiPort,
-    String proxyMode = '智能模式',
-    String dnsMode   = '系统 DNS',
+    String proxyMode = '规则模式',
+    String dnsMode = '系统 DNS',
   }) {
     final outbounds = <Map<String, dynamic>>[];
-    final tags      = <String>[];
+    final tags = <String>[];
 
     for (final n in nodes) {
       if (n.rawUri.isEmpty) continue;
@@ -63,7 +63,9 @@ abstract final class SingboxConfig {
         routeRules = [
           {'protocol': 'dns', 'action': 'hijack-dns'},
         ];
-      default: // 智能模式
+      case '规则模式':
+      case '智能模式': // Backward compatibility with older stored settings.
+      default:
         routeFinal = 'PROXY';
         routeRules = [
           {'protocol': 'dns', 'action': 'hijack-dns'},
@@ -76,9 +78,19 @@ abstract final class SingboxConfig {
     final Map<String, dynamic> remoteDnsServer;
     switch (dnsMode) {
       case 'Cloudflare':
-        remoteDnsServer = {'tag': 'remote-dns', 'type': 'tls', 'server': '1.1.1.1', 'detour': 'PROXY'};
+        remoteDnsServer = {
+          'tag': 'remote-dns',
+          'type': 'tls',
+          'server': '1.1.1.1',
+          'detour': 'PROXY',
+        };
       case 'Google':
-        remoteDnsServer = {'tag': 'remote-dns', 'type': 'tls', 'server': '8.8.8.8', 'detour': 'PROXY'};
+        remoteDnsServer = {
+          'tag': 'remote-dns',
+          'type': 'tls',
+          'server': '8.8.8.8',
+          'detour': 'PROXY',
+        };
       default: // '系统 DNS'
         remoteDnsServer = {'tag': 'remote-dns', 'type': 'local'};
     }
@@ -94,11 +106,7 @@ abstract final class SingboxConfig {
       'dns': {
         'servers': [
           remoteDnsServer,
-          {
-            'tag': 'local-dns',
-            'type': 'udp',
-            'server': '223.5.5.5',
-          },
+          {'tag': 'local-dns', 'type': 'udp', 'server': '223.5.5.5'},
         ],
         'rules': [],
         'final': 'remote-dns',
@@ -142,12 +150,15 @@ abstract final class SingboxConfig {
 
   // ── URI parsers ───────────────────────────────────────────────────────────
 
-  static Map<String, dynamic>? _parseOutbound(String uri, {required String tag}) {
+  static Map<String, dynamic>? _parseOutbound(
+    String uri, {
+    required String tag,
+  }) {
     try {
-      if (uri.startsWith('vmess://'))   return _vmess(uri, tag: tag);
-      if (uri.startsWith('vless://'))   return _vless(uri, tag: tag);
-      if (uri.startsWith('trojan://'))  return _trojan(uri, tag: tag);
-      if (uri.startsWith('ss://'))      return _ss(uri, tag: tag);
+      if (uri.startsWith('vmess://')) return _vmess(uri, tag: tag);
+      if (uri.startsWith('vless://')) return _vless(uri, tag: tag);
+      if (uri.startsWith('trojan://')) return _trojan(uri, tag: tag);
+      if (uri.startsWith('ss://')) return _ss(uri, tag: tag);
       if (uri.startsWith('hysteria2://') || uri.startsWith('hy2://')) {
         return _hysteria2(uri, tag: tag);
       }
@@ -159,17 +170,19 @@ abstract final class SingboxConfig {
 
   static Map<String, dynamic> _vmess(String uri, {required String tag}) {
     final b64 = uri.substring('vmess://'.length);
-    final j   = jsonDecode(utf8.decode(base64.decode(_pad(b64)))) as Map<String, dynamic>;
+    final j =
+        jsonDecode(utf8.decode(base64.decode(_pad(b64))))
+            as Map<String, dynamic>;
 
     final server = j['add']?.toString() ?? '';
-    final port   = int.tryParse(j['port']?.toString() ?? '') ?? 0;
-    final uuid   = j['id']?.toString() ?? '';
-    final aid    = int.tryParse(j['aid']?.toString() ?? '') ?? 0;
-    final scy    = j['scy']?.toString() ?? 'auto';
-    final net    = j['net']?.toString() ?? 'tcp';
-    final tls    = j['tls']?.toString() ?? '';
-    final path   = j['path']?.toString() ?? '';
-    final host   = j['host']?.toString() ?? '';
+    final port = int.tryParse(j['port']?.toString() ?? '') ?? 0;
+    final uuid = j['id']?.toString() ?? '';
+    final aid = int.tryParse(j['aid']?.toString() ?? '') ?? 0;
+    final scy = j['scy']?.toString() ?? 'auto';
+    final net = j['net']?.toString() ?? 'tcp';
+    final tls = j['tls']?.toString() ?? '';
+    final path = j['path']?.toString() ?? '';
+    final host = j['host']?.toString() ?? '';
 
     final out = <String, dynamic>{
       'type': 'vmess',
@@ -201,10 +214,7 @@ abstract final class SingboxConfig {
     }
 
     if (tls == 'tls') {
-      out['tls'] = {
-        'enabled': true,
-        if (host.isNotEmpty) 'server_name': host,
-      };
+      out['tls'] = {'enabled': true, if (host.isNotEmpty) 'server_name': host};
     }
 
     return out;
@@ -213,18 +223,20 @@ abstract final class SingboxConfig {
   // ── VLESS ─────────────────────────────────────────────────────────────────
 
   static Map<String, dynamic> _vless(String uri, {required String tag}) {
-    final (password, server, port, params) =
-        _parseUserAtHostPort(uri, 'vless://');
+    final (password, server, port, params) = _parseUserAtHostPort(
+      uri,
+      'vless://',
+    );
 
     final security = params['security'] ?? '';
-    final flow     = params['flow'] ?? '';
-    final sni      = params['sni'] ?? params['servername'] ?? server;
-    final type     = params['type'] ?? 'tcp';
-    final path     = params['path'] ?? '';
-    final host     = params['host'] ?? '';
-    final pbk      = params['pbk'] ?? '';
-    final sid      = params['sid'] ?? '';
-    final fp       = params['fp'] ?? 'chrome';
+    final flow = params['flow'] ?? '';
+    final sni = params['sni'] ?? params['servername'] ?? server;
+    final type = params['type'] ?? 'tcp';
+    final path = params['path'] ?? '';
+    final host = params['host'] ?? '';
+    final pbk = params['pbk'] ?? '';
+    final sid = params['sid'] ?? '';
+    final fp = params['fp'] ?? 'chrome';
 
     final out = <String, dynamic>{
       'type': 'vless',
@@ -258,15 +270,17 @@ abstract final class SingboxConfig {
   // ── Trojan ────────────────────────────────────────────────────────────────
 
   static Map<String, dynamic> _trojan(String uri, {required String tag}) {
-    final (password, server, port, params) =
-        _parseUserAtHostPort(uri, 'trojan://');
+    final (password, server, port, params) = _parseUserAtHostPort(
+      uri,
+      'trojan://',
+    );
 
-    final sni      = params['sni'] ?? params['peer'] ?? server;
+    final sni = params['sni'] ?? params['peer'] ?? server;
     final security = params['security'] ?? 'tls';
-    final type     = params['type'] ?? 'tcp';
-    final path     = params['path'] ?? '';
-    final host     = params['host'] ?? '';
-    final fp       = params['fp'] ?? '';
+    final type = params['type'] ?? 'tcp';
+    final path = params['path'] ?? '';
+    final host = params['host'] ?? '';
+    final fp = params['fp'] ?? '';
 
     final out = <String, dynamic>{
       'type': 'trojan',
@@ -293,8 +307,10 @@ abstract final class SingboxConfig {
 
   static Map<String, dynamic> _ss(String uri, {required String tag}) {
     final hashIdx = uri.lastIndexOf('#');
-    final main    = uri.substring('ss://'.length,
-        hashIdx > 0 ? hashIdx : uri.length);
+    final main = uri.substring(
+      'ss://'.length,
+      hashIdx > 0 ? hashIdx : uri.length,
+    );
 
     String method = 'aes-128-gcm', password = '', server = '';
     int port = 0;
@@ -311,13 +327,13 @@ abstract final class SingboxConfig {
       }
       final ci = decoded.indexOf(':');
       if (ci > 0) {
-        method   = decoded.substring(0, ci);
+        method = decoded.substring(0, ci);
         password = decoded.substring(ci + 1);
       }
       final hc = hostPort.lastIndexOf(':');
       if (hc > 0) {
         server = hostPort.substring(0, hc);
-        port   = int.tryParse(hostPort.substring(hc + 1)) ?? 0;
+        port = int.tryParse(hostPort.substring(hc + 1)) ?? 0;
       }
     } else {
       final decoded = utf8.decode(base64.decode(_pad(main.split('?').first)));
@@ -327,13 +343,13 @@ abstract final class SingboxConfig {
         final hp = decoded.substring(a + 1);
         final ci = up.indexOf(':');
         if (ci > 0) {
-          method   = up.substring(0, ci);
+          method = up.substring(0, ci);
           password = up.substring(ci + 1);
         }
         final hc = hp.lastIndexOf(':');
         if (hc > 0) {
           server = hp.substring(0, hc);
-          port   = int.tryParse(hp.substring(hc + 1)) ?? 0;
+          port = int.tryParse(hp.substring(hc + 1)) ?? 0;
         }
       }
     }
@@ -351,27 +367,31 @@ abstract final class SingboxConfig {
   // ── Hysteria2 ─────────────────────────────────────────────────────────────
 
   static Map<String, dynamic> _hysteria2(String uri, {required String tag}) {
-    final scheme  = uri.startsWith('hy2://') ? 'hy2' : 'hysteria2';
+    final scheme = uri.startsWith('hy2://') ? 'hy2' : 'hysteria2';
     final hashIdx = uri.lastIndexOf('#');
-    final main    = uri.substring('$scheme://'.length,
-        hashIdx > 0 ? hashIdx : uri.length);
+    final main = uri.substring(
+      '$scheme://'.length,
+      hashIdx > 0 ? hashIdx : uri.length,
+    );
 
     final atIdx = main.lastIndexOf('@');
-    final pass  = atIdx >= 0 ? Uri.decodeComponent(main.substring(0, atIdx)) : '';
-    final rest  = atIdx >= 0 ? main.substring(atIdx + 1) : main;
-    final qIdx  = rest.indexOf('?');
-    final hp    = qIdx > 0 ? rest.substring(0, qIdx) : rest;
-    final qs    = qIdx > 0 ? rest.substring(qIdx + 1) : '';
+    final pass = atIdx >= 0
+        ? Uri.decodeComponent(main.substring(0, atIdx))
+        : '';
+    final rest = atIdx >= 0 ? main.substring(atIdx + 1) : main;
+    final qIdx = rest.indexOf('?');
+    final hp = qIdx > 0 ? rest.substring(0, qIdx) : rest;
+    final qs = qIdx > 0 ? rest.substring(qIdx + 1) : '';
     final params = Uri.splitQueryString(qs);
 
     final colonIdx = hp.lastIndexOf(':');
-    final server   = colonIdx > 0 ? hp.substring(0, colonIdx) : hp;
-    final port     = colonIdx > 0
+    final server = colonIdx > 0 ? hp.substring(0, colonIdx) : hp;
+    final port = colonIdx > 0
         ? (int.tryParse(hp.substring(colonIdx + 1)) ?? 443)
         : 443;
-    final sni      = params['sni'] ?? params['peer'] ?? server;
-    final insecure = params['insecure'] == '1' ||
-        params['skip-cert-verify'] == 'true';
+    final sni = params['sni'] ?? params['peer'] ?? server;
+    final insecure =
+        params['insecure'] == '1' || params['skip-cert-verify'] == 'true';
 
     return {
       'type': 'hysteria2',
@@ -390,27 +410,35 @@ abstract final class SingboxConfig {
   // ── Shared helpers ────────────────────────────────────────────────────────
 
   static (String, String, int, Map<String, String>) _parseUserAtHostPort(
-      String uri, String scheme) {
+    String uri,
+    String scheme,
+  ) {
     final hashIdx = uri.lastIndexOf('#');
-    final body    = uri.substring(scheme.length,
-        hashIdx > 0 ? hashIdx : uri.length);
-    final atIdx   = body.lastIndexOf('@');
-    final user    = atIdx >= 0
+    final body = uri.substring(
+      scheme.length,
+      hashIdx > 0 ? hashIdx : uri.length,
+    );
+    final atIdx = body.lastIndexOf('@');
+    final user = atIdx >= 0
         ? Uri.decodeComponent(body.substring(0, atIdx))
         : '';
-    final rest    = atIdx >= 0 ? body.substring(atIdx + 1) : body;
-    final qIdx    = rest.indexOf('?');
-    final hp      = qIdx > 0 ? rest.substring(0, qIdx) : rest;
-    final qs      = qIdx > 0 ? rest.substring(qIdx + 1) : '';
-    final params  = Uri.splitQueryString(qs);
-    final ci      = hp.lastIndexOf(':');
-    final server  = ci > 0 ? hp.substring(0, ci) : hp;
-    final port    = ci > 0 ? (int.tryParse(hp.substring(ci + 1)) ?? 0) : 0;
+    final rest = atIdx >= 0 ? body.substring(atIdx + 1) : body;
+    final qIdx = rest.indexOf('?');
+    final hp = qIdx > 0 ? rest.substring(0, qIdx) : rest;
+    final qs = qIdx > 0 ? rest.substring(qIdx + 1) : '';
+    final params = Uri.splitQueryString(qs);
+    final ci = hp.lastIndexOf(':');
+    final server = ci > 0 ? hp.substring(0, ci) : hp;
+    final port = ci > 0 ? (int.tryParse(hp.substring(ci + 1)) ?? 0) : 0;
     return (user, server, port, params);
   }
 
-  static void _applyTransport(Map<String, dynamic> out, String type,
-      String path, String host) {
+  static void _applyTransport(
+    Map<String, dynamic> out,
+    String type,
+    String path,
+    String host,
+  ) {
     final decoded = path.isNotEmpty ? Uri.decodeComponent(path) : '';
     if (type == 'ws') {
       out['transport'] = {
@@ -442,7 +470,8 @@ abstract final class SingboxConfig {
   static Future<String> writeConfig(Map<String, dynamic> config) async {
     final file = File('${Directory.systemTemp.path}\\litchi_core.json');
     await file.writeAsString(
-        const JsonEncoder.withIndent('  ').convert(config));
+      const JsonEncoder.withIndent('  ').convert(config),
+    );
     return file.path;
   }
 }
