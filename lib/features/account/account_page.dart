@@ -12,6 +12,7 @@ import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/page_status_cards.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -82,103 +83,20 @@ class _AccountPageState extends State<AccountPage> {
                 child: PageHeader(title: '我的账户', subtitle: '查看账户信息与订阅详情'),
               ),
               if (!_loading)
-                _RefreshButton(onTap: _load),
+                RefreshIconButton(onTap: _load),
             ],
           ),
           const SizedBox(height: 12),
           if (_loading)
-            const _LoadingCard()
+            const PageLoadingCard()
           else if (_error != null)
-            _ErrorCard(message: _error!, onRetry: _load)
+            PageErrorCard(message: _error!, onRetry: _load)
           else
             _AccountContent(
               user: _user!,
               subscribeUrl: _subscribeUrl,
               onCopy: _copy,
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RefreshButton extends StatelessWidget {
-  const _RefreshButton({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 32,
-          height: 32,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: c.surfaceMuted,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-          ),
-          child: Icon(LucideIcons.refreshCw, size: 14, color: c.iconDefault),
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadingCard extends StatelessWidget {
-  const _LoadingCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(40),
-      child: Center(
-        child: CircularProgressIndicator(color: c.primary, strokeWidth: 2),
-      ),
-    );
-  }
-}
-
-class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        children: [
-          Icon(LucideIcons.circleX, size: 32, color: c.danger),
-          const SizedBox(height: 12),
-          Text(message,
-              style: AppTextStyles.body.copyWith(color: c.textMuted),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: onRetry,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: c.primarySoft,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Text('重试',
-                    style: AppTextStyles.body.copyWith(color: c.primary)),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -388,7 +306,7 @@ class _InfoRow extends StatelessWidget {
           child: Text(value,
               style: AppTextStyles.body.copyWith(color: c.textPrimary)),
         ),
-        if (trailing != null) trailing!,
+        ?trailing,
       ],
     );
   }

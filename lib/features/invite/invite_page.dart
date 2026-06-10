@@ -16,17 +16,17 @@ class InvitePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return const SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageHeader(title: '邀请好友', subtitle: '分享邀请链接获得返佣奖励'),
-          const SizedBox(height: 12),
-          const _InviteHero(),
-          const SizedBox(height: 16),
-          const _StatsGrid(),
-          const SizedBox(height: 16),
-          const _InviteLinkCard(),
+          PageHeader(title: '邀请好友', subtitle: '分享邀请链接获得返佣奖励'),
+          SizedBox(height: 12),
+          _InviteHero(),
+          SizedBox(height: 16),
+          _StatsGrid(),
+          SizedBox(height: 16),
+          _InviteLinkCard(),
         ],
       ),
     );

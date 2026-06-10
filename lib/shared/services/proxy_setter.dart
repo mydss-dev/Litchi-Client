@@ -12,12 +12,21 @@ abstract final class ProxySetter {
   }
 
   static Future<void> disable() async {
-    await _reg('ProxyEnable', 'REG_DWORD', '0');
+    try {
+      await _reg('ProxyEnable', 'REG_DWORD', '0');
+    } catch (_) {}
     await _notify();
   }
 
-  static Future<void> _reg(String name, String type, String value) =>
-      Process.run('reg', ['add', _key, '/v', name, '/t', type, '/d', value, '/f']);
+  static Future<void> _reg(String name, String type, String value) async {
+    final result = await Process.run(
+      'reg',
+      ['add', _key, '/v', name, '/t', type, '/d', value, '/f'],
+    );
+    if (result.exitCode != 0) {
+      throw Exception('系统代理设置失败 (exit ${result.exitCode}): ${result.stderr}');
+    }
+  }
 
   /// Notify WinInet so browsers pick up the registry change immediately.
   ///

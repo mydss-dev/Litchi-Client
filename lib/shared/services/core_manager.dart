@@ -89,7 +89,7 @@ class CoreManager {
         }
       });
 
-      _process!.exitCode.then((code) {
+      unawaited(_process!.exitCode.then((code) {
         if (_state == CoreState.running || _state == CoreState.starting) {
           if (_lastError.isEmpty && stderrLines.isNotEmpty) {
             _lastError = _stripAnsi(stderrLines.last);
@@ -99,7 +99,7 @@ class CoreManager {
           _process = null;
           _deletePidFile();
         }
-      });
+      }));
 
       // Poll the Clash API port to confirm sing-box is actually ready.
       // Pass `this` so the loop can abort immediately if the process exits.

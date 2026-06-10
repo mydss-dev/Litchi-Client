@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../config/app_config.dart';
 import '../models/app_models.dart';
 import '../models/model_mappers.dart';
@@ -59,16 +61,14 @@ class DataLoader {
     try {
       snap.subscribeUrl = await _api.getSubscribeUrl();
     } catch (e) {
-      // ignore: avoid_print
-      print('[Litchi] getSubscribeUrl error: $e');
+      debugPrint('[Litchi] getSubscribeUrl error: $e');
     }
   }
 
   Future<void> _fillNodes(DataSnapshot snap) async {
     final url = snap.subscribeUrl;
     if (url == null || url.isEmpty) {
-      // ignore: avoid_print
-      print('[Litchi] _fillNodes: no subscribe URL, skipping');
+      debugPrint('[Litchi] _fillNodes: no subscribe URL, skipping');
       return;
     }
     try {
@@ -84,8 +84,7 @@ class DataLoader {
         snap.traffic = TrafficModel(totalGb: total, usedGb: used, remainGb: remain);
       }
     } catch (e) {
-      // ignore: avoid_print
-      print('[Litchi] _fillNodes error: $e');
+      debugPrint('[Litchi] _fillNodes error: $e');
     }
   }
 

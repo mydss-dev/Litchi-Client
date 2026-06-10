@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:window_manager/window_manager.dart';
@@ -48,9 +50,9 @@ class _WindowControlsBarState extends State<WindowControlsBar>
 
   Future<void> _toggleMaximize() async {
     if (await windowManager.isMaximized()) {
-      windowManager.unmaximize();
+      unawaited(windowManager.unmaximize());
     } else {
-      windowManager.maximize();
+      unawaited(windowManager.maximize());
     }
   }
 

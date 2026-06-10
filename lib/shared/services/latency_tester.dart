@@ -13,7 +13,7 @@ class LatencyTester {
       final socket = await Socket.connect(
         host,
         port,
-        timeout: Duration(milliseconds: timeout),
+        timeout: const Duration(milliseconds: timeout),
       );
       sw.stop();
       socket.destroy();

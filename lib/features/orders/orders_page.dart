@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -10,7 +12,8 @@ import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
-import '../shop/order_confirm_dialog.dart';
+import '../../shared/widgets/page_status_cards.dart';
+import '../shop/payment_dialog.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -42,7 +45,7 @@ class _OrdersPageState extends State<OrdersPage> {
       finalPrice: order.totalAmount / 100.0,
       api: api,
     );
-    if (mounted) _load();
+    if (mounted) unawaited(_load());
   }
 
   Future<void> _cancelOrder(RemoteOrder order) async {
@@ -56,7 +59,7 @@ class _OrdersPageState extends State<OrdersPage> {
       await AppScope.of(context).api.cancelOrder(order.tradeNo);
       if (mounted) {
         AppToast.show(context, '订单已取消', type: AppToastType.info);
-        _load();
+        unawaited(_load());
       }
     } catch (e) {
       if (mounted) {
@@ -104,68 +107,14 @@ class _OrdersPageState extends State<OrdersPage> {
               const Expanded(
                 child: PageHeader(title: '我的订单', subtitle: '查看购买记录'),
               ),
-              if (!_loading)
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: _load,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: c.surfaceMuted,
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                      child: Icon(LucideIcons.refreshCw,
-                          size: 14, color: c.iconDefault),
-                    ),
-                  ),
-                ),
+              if (!_loading) RefreshIconButton(onTap: _load),
             ],
           ),
           const SizedBox(height: 12),
           if (_loading)
-            AppCard(
-              radius: AppRadius.card,
-              padding: const EdgeInsets.all(40),
-              child: Center(
-                child: CircularProgressIndicator(
-                    color: c.primary, strokeWidth: 2),
-              ),
-            )
+            const PageLoadingCard()
           else if (_error != null)
-            AppCard(
-              radius: AppRadius.card,
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                children: [
-                  Icon(LucideIcons.circleX, size: 32, color: c.danger),
-                  const SizedBox(height: 12),
-                  Text(_error!,
-                      style: AppTextStyles.body.copyWith(color: c.textMuted),
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: _load,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: c.primarySoft,
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Text('重试',
-                            style:
-                                AppTextStyles.body.copyWith(color: c.primary)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
+            PageErrorCard(message: _error!, onRetry: _load)
           else if (_orders.isEmpty)
             AppCard(
               radius: AppRadius.card,
@@ -346,7 +295,7 @@ class _OrderCard extends StatelessWidget {
     };
 
     final tradeNoShort = order.tradeNo.length > 16
-        ? order.tradeNo.substring(0, 16) + '…'
+        ? '${order.tradeNo.substring(0, 16)}…'
         : order.tradeNo;
 
     return AppCard(

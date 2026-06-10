@@ -6,17 +6,16 @@ import '../shared/config/app_config.dart';
 import '../shared/models/app_models.dart';
 import '../shared/models/mock_data.dart';
 import '../shared/services/api_client.dart';
-import '../shared/services/core_manager.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/latency_tester.dart';
 import '../shared/services/panel_api.dart';
-import '../shared/services/proxy_setter.dart';
-import '../shared/services/settings_service.dart';
 import '../shared/services/singbox_api_client.dart';
 import '../shared/services/singbox_config.dart';
 import '../shared/services/token_storage.dart';
+import 'core_controller.dart';
+import 'settings_controller.dart';
 
-/// Top-level navigation destinations shown in the sidebar (§8.4).
+/// Top-level navigation destinations shown in the sidebar.
 enum AppPage {
   dashboard,
   nodes,
@@ -28,45 +27,34 @@ enum AppPage {
   orders,
 }
 
-/// Which authentication screen is visible while logged out (§16).
+/// Which authentication screen is visible while logged out.
 enum AuthScreen { login, register, changePassword }
 
-/// Coordinator: holds all UI state, delegates persistence and data fetching
-/// to [SettingsService] and [DataLoader].
+/// Coordinator: owns navigation, auth, and subscription data.
+/// Settings and core-process concerns are delegated to [SettingsController]
+/// and [CoreController] respectively. All public getters/setters are preserved
+/// so [AppScope] callers require no changes.
 class AppController extends ChangeNotifier {
-  AppController();
+  AppController() {
+    _settings.addListener(notifyListeners);
+    _core.addListener(notifyListeners);
+  }
 
-  // ── Navigation / init state ───────────────────────────────────────────────
+  final SettingsController _settings = SettingsController();
+  final CoreController _core = CoreController();
+
+  // ── Navigation / auth state ───────────────────────────────────────────────
 
   bool _isAuthenticated = false;
   bool _isInitializing = true;
   AppPage _page = AppPage.dashboard;
   AuthScreen _authScreen = AuthScreen.login;
-  ThemeMode _themeMode = ThemeMode.light;
-
-  // ── Settings ──────────────────────────────────────────────────────────────
-
-  bool _autoStart = false;
-  bool _autoUpdate = true;
-  bool _devMode = false;
-  String _language = '简体中文';
-  String _proxyMode = '规则模式';
-  String _dnsMode = '系统 DNS';
-  int _proxyPort = 7890;
 
   // ── Services ──────────────────────────────────────────────────────────────
 
   final ApiClient _apiClient = ApiClient();
   late final PanelApi _api = PanelApi(_apiClient);
   late final DataLoader _dataLoader = DataLoader(_api);
-  final CoreManager _core = CoreManager();
-  StreamSubscription<CoreState>? _coreStateSub;
-
-  // ── Connection state ──────────────────────────────────────────────────────
-
-  DateTime? _connectedAt;
-  bool _coreConnecting = false;
-  String _coreError = '';
 
   // ── Data (mock defaults until API populates) ──────────────────────────────
 
@@ -84,36 +72,48 @@ class AppController extends ChangeNotifier {
   double _withdrawable = MockData.withdrawable;
   List<double> _dailyUsage = MockData.dailyUsage;
 
-  // ── Getters ───────────────────────────────────────────────────────────────
+  // ── Settings delegates ────────────────────────────────────────────────────
+
+  ThemeMode get themeMode => _settings.themeMode;
+  bool get isDark => _settings.isDark;
+  bool get autoStart => _settings.autoStart;
+  bool get autoUpdate => _settings.autoUpdate;
+  bool get devMode => _settings.devMode;
+  String get language => _settings.language;
+  String get proxyMode => _settings.proxyMode;
+  String get dnsMode => _settings.dnsMode;
+  int get proxyPort => _settings.proxyPort;
+
+  void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
+  void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
+  Future<void> setProxyPort(int port) => _settings.setProxyPort(port);
+  void setAutoStart(bool v) => _settings.setAutoStart(v);
+  void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
+  void setDevMode(bool v) => _settings.setDevMode(v);
+  void setLanguage(String v) => _settings.setLanguage(v);
+  void setProxyMode(String v) => _settings.setProxyMode(v);
+  void setDnsMode(String v) => _settings.setDnsMode(v);
+
+  // ── Core delegates ─────────────────────────────────────────────────────────
+
+  bool get coreRunning => _core.coreRunning;
+  bool get coreConnecting => _core.coreConnecting;
+  String get coreError => _core.coreError;
+  Stream<String> get coreLogStream => _core.logStream;
+  Duration get connectedDuration => _core.connectedDuration;
+
+  // ── Navigation / auth getters ─────────────────────────────────────────────
 
   bool get isAuthenticated => _isAuthenticated;
   bool get isInitializing => _isInitializing;
   AppPage get page => _page;
   AuthScreen get authScreen => _authScreen;
-  ThemeMode get themeMode => _themeMode;
-  bool get isDark => _themeMode == ThemeMode.dark;
 
-  bool get autoStart => _autoStart;
-  bool get autoUpdate => _autoUpdate;
-  bool get devMode => _devMode;
-  String get language => _language;
-  String get proxyMode => _proxyMode;
-  String get dnsMode => _dnsMode;
+  // ── Data getters ──────────────────────────────────────────────────────────
 
   UserModel get user => _user;
   TrafficModel get traffic => _traffic;
   bool get autoSelected => _autoSelected;
-
-  bool get coreRunning => _core.isRunning;
-  bool get coreConnecting => _coreConnecting;
-  String get coreError => _coreError;
-  int get proxyPort => _proxyPort;
-  Stream<String> get coreLogStream => _core.logStream;
-  PanelApi get api => _api;
-  Duration get connectedDuration => _connectedAt != null
-      ? DateTime.now().difference(_connectedAt!)
-      : Duration.zero;
-
   NodeModel get currentNode =>
       _autoSelected ? (_bestNode ?? _currentNode) : _currentNode;
   List<NodeModel> get nodes => _nodes;
@@ -124,19 +124,12 @@ class AppController extends ChangeNotifier {
   int get invitedCount => _invitedCount;
   double get withdrawable => _withdrawable;
   List<double> get dailyUsage => _dailyUsage;
+  PanelApi get api => _api;
 
   // ── Initialization ────────────────────────────────────────────────────────
 
   Future<void> init() async {
-    final s = await SettingsService.load();
-    _proxyPort = s.proxyPort;
-    _autoStart = s.autoStart;
-    _autoUpdate = s.autoUpdate;
-    _devMode = s.devMode;
-    _language = s.language;
-    _proxyMode = s.proxyMode;
-    _dnsMode = s.dnsMode;
-    _themeMode = s.themeMode;
+    await _settings.load();
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;
@@ -153,14 +146,16 @@ class AppController extends ChangeNotifier {
       }
     }
 
-    _coreStateSub = _core.stateStream.listen(_onCoreStateChanged);
+    _core.init();
     _isInitializing = false;
     notifyListeners();
   }
 
   @override
   void dispose() {
-    _coreStateSub?.cancel();
+    _settings.removeListener(notifyListeners);
+    _core.removeListener(notifyListeners);
+    _settings.dispose();
     _core.dispose();
     super.dispose();
   }
@@ -222,145 +217,12 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Settings setters ──────────────────────────────────────────────────────
-
-  Future<void> setProxyPort(int port) async {
-    if (port < 1 || port > 65535 || port == _proxyPort) return;
-    _proxyPort = port;
-    SettingsService.setProxyPort(port);
-    notifyListeners();
-  }
-
-  void setThemeMode(ThemeMode mode) {
-    if (_themeMode == mode) return;
-    _themeMode = mode;
-    SettingsService.setThemeMode(mode);
-    notifyListeners();
-  }
-
-  void toggleDarkMode(bool enabled) =>
-      setThemeMode(enabled ? ThemeMode.dark : ThemeMode.light);
-
-  void setAutoStart(bool v) {
-    if (_autoStart == v) return;
-    _autoStart = v;
-    SettingsService.setAutoStart(v);
-    notifyListeners();
-  }
-
-  void setAutoUpdate(bool v) {
-    if (_autoUpdate == v) return;
-    _autoUpdate = v;
-    SettingsService.setAutoUpdate(v);
-    notifyListeners();
-  }
-
-  void setDevMode(bool v) {
-    if (_devMode == v) return;
-    _devMode = v;
-    SettingsService.setDevMode(v);
-    notifyListeners();
-  }
-
-  void setLanguage(String v) {
-    if (_language == v) return;
-    _language = v;
-    SettingsService.setLanguage(v);
-    notifyListeners();
-  }
-
-  void setProxyMode(String v) {
-    if (_proxyMode == v) return;
-    _proxyMode = v;
-    SettingsService.setProxyMode(v);
-    notifyListeners();
-  }
-
-  void setDnsMode(String v) {
-    if (_dnsMode == v) return;
-    _dnsMode = v;
-    SettingsService.setDnsMode(v);
-    notifyListeners();
-  }
-
-  // ── Connection ────────────────────────────────────────────────────────────
-
-  /// Connect or disconnect sing-box. Returns an error string or null.
-  Future<String?> toggleConnection() async {
-    if (_coreConnecting) return null;
-
-    if (_core.isRunning) {
-      _coreConnecting = true;
-      notifyListeners();
-      await _core.stop();
-      await ProxySetter.disable();
-      _connectedAt = null;
-      _coreError = '';
-      _coreConnecting = false;
-      notifyListeners();
-      return null;
-    }
-
-    final validNodes = _nodes.where((n) => n.rawUri.isNotEmpty).toList();
-    if (validNodes.isEmpty) {
-      _coreError = '没有可用节点，请刷新节点列表后重试';
-      notifyListeners();
-      return _coreError;
-    }
-
-    final selectedTag = SingboxConfig.nodeTagFor(currentNode);
-    final config = SingboxConfig.buildFullConfig(
-      validNodes,
-      selectedTag: selectedTag,
-      port: _proxyPort,
-      apiPort: SingboxConfig.defaultApiPort,
-      proxyMode: _proxyMode,
-      dnsMode: _dnsMode,
-    );
-
-    if (config == null) {
-      _coreError = '生成配置失败，请选择其他节点后重试';
-      notifyListeners();
-      return _coreError;
-    }
-
-    _coreConnecting = true;
-    _coreError = '';
-    notifyListeners();
-
-    try {
-      final configPath = await SingboxConfig.writeConfig(config);
-      await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
-
-      if (_core.isRunning) {
-        await ProxySetter.enable(port: _proxyPort);
-        _connectedAt = DateTime.now();
-        _coreError = '';
-      } else {
-        _coreError = _core.lastError.isNotEmpty
-            ? _core.lastError
-            : '连接失败，请检查 sing-box.exe 是否存在';
-      }
-    } catch (e) {
-      _coreError = '连接异常: $e';
-    } finally {
-      _coreConnecting = false;
-      notifyListeners();
-    }
-    return _coreError.isNotEmpty ? _coreError : null;
-  }
-
   void logout() {
-    if (_core.isRunning) {
-      _core.stop();
-      ProxySetter.disable();
-      _connectedAt = null;
-    }
+    _core.stopAndReset();
     _isAuthenticated = false;
     _authScreen = AuthScreen.login;
     _subscribeUrl = '';
     _autoSelected = false;
-    _coreError = '';
     TokenStorage.clearAuthData();
     _apiClient.updateAuthData(null);
     _user = MockData.user;
@@ -377,19 +239,15 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Core state watcher ────────────────────────────────────────────────────
+  // ── Connection ────────────────────────────────────────────────────────────
 
-  void _onCoreStateChanged(CoreState state) {
-    // React only to unexpected crashes (deliberate stop() clears _connectedAt first).
-    if ((state == CoreState.error || state == CoreState.stopped) &&
-        (_connectedAt != null || _coreConnecting)) {
-      _connectedAt = null;
-      _coreConnecting = false;
-      if (_core.lastError.isNotEmpty) _coreError = _core.lastError;
-      ProxySetter.disable();
-      notifyListeners();
-    }
-  }
+  Future<String?> toggleConnection() => _core.toggleConnection(
+        nodes: _nodes,
+        currentNode: currentNode,
+        proxyMode: _settings.proxyMode,
+        dnsMode: _settings.dnsMode,
+        proxyPort: _settings.proxyPort,
+      );
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -399,7 +257,7 @@ class AppController extends ChangeNotifier {
     if (_nodes.isNotEmpty) {
       _currentNode = _nodes.first;
       _autoSelected = true;
-      testLatencies(); // fire-and-forget; notifies per node as results arrive
+      unawaited(testLatencies()); // notifies per node as results arrive
     }
   }
 
@@ -410,7 +268,7 @@ class AppController extends ChangeNotifier {
       _currentNode = _nodes.first;
       _autoSelected = true;
       if (snap.traffic != null) _traffic = snap.traffic!;
-      testLatencies(); // fire-and-forget
+      unawaited(testLatencies());
     }
     notifyListeners();
   }
@@ -436,10 +294,7 @@ class AppController extends ChangeNotifier {
     _currentNode = node;
     notifyListeners();
     if (_core.isRunning) {
-      await SingboxApiClient.switchProxy(
-        SingboxConfig.nodeTagFor(node),
-        apiPort: SingboxConfig.defaultApiPort,
-      );
+      await _core.switchProxy(SingboxConfig.nodeTagFor(node));
     }
   }
 
@@ -450,10 +305,7 @@ class AppController extends ChangeNotifier {
       _currentNode = best;
       notifyListeners();
       if (_core.isRunning) {
-        await SingboxApiClient.switchProxy(
-          SingboxConfig.nodeTagFor(best),
-          apiPort: SingboxConfig.defaultApiPort,
-        );
+        await _core.switchProxy(SingboxConfig.nodeTagFor(best));
       }
     } else {
       notifyListeners();
@@ -486,11 +338,10 @@ class AppController extends ChangeNotifier {
 
           final int ms;
           if (_core.isRunning) {
-            ms =
-                await SingboxApiClient.testDelay(
-                  SingboxConfig.nodeTagFor(node),
-                  apiPort: SingboxConfig.defaultApiPort,
-                ) ??
+            ms = await SingboxApiClient.testDelay(
+                      SingboxConfig.nodeTagFor(node),
+                      apiPort: SingboxConfig.defaultApiPort,
+                    ) ??
                 LatencyTester.unreachable;
           } else {
             ms = await LatencyTester.ping(node.server, node.port);

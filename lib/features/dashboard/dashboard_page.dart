@@ -712,8 +712,8 @@ class _InfoMiniCardsRow extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final twoCols = constraints.maxWidth >= 380;
-        final mode = _ModeMiniCard();
-        final network = _NetworkSettingsCard();
+        final mode = const _ModeMiniCard();
+        final network = const _NetworkSettingsCard();
         if (twoCols) {
           return IntrinsicHeight(
             child: Row(

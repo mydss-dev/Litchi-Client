@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'singbox_config.dart';
+
 /// Clash-compatible REST API client for sing-box runtime control.
 ///
 /// sing-box exposes the same REST surface as Clash's external-controller,
@@ -25,6 +27,7 @@ abstract final class SingboxApiClient {
       final request = await client.putUrl(
           Uri.parse('http://127.0.0.1:$apiPort/proxies/$_selectorGroup'));
       request.headers.contentType = ContentType.json;
+      request.headers.add('Authorization', 'Bearer ${SingboxConfig.apiSecret}');
       request.write(jsonEncode({'name': tag}));
 
       final response = await request.close();
@@ -61,6 +64,7 @@ abstract final class SingboxApiClient {
       final client  = HttpClient();
       client.connectionTimeout = const Duration(seconds: 3);
       final request  = await client.getUrl(uri);
+      request.headers.add('Authorization', 'Bearer ${SingboxConfig.apiSecret}');
       final response = await request.close();
       final body     = await response.transform(utf8.decoder).join();
       client.close();
@@ -82,6 +86,7 @@ abstract final class SingboxApiClient {
       client.connectionTimeout = const Duration(seconds: 2);
       final request  = await client.getUrl(
           Uri.parse('http://127.0.0.1:$apiPort/proxies'));
+      request.headers.add('Authorization', 'Bearer ${SingboxConfig.apiSecret}');
       final response = await request.close();
       final body     = await response.transform(utf8.decoder).join();
       client.close();

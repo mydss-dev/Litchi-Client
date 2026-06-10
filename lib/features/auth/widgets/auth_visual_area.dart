@@ -66,7 +66,7 @@ class AuthVisualArea extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Litchi',
+                          const Text('Litchi',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -86,7 +86,7 @@ class AuthVisualArea extends StatelessWidget {
                   const Spacer(),
                   Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
