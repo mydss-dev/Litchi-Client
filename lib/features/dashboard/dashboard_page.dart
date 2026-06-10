@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/core_controller.dart' show ConnectionStatus;
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
@@ -74,8 +75,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
-    final connected = ctrl.coreRunning;
-    final connecting = ctrl.coreConnecting;
+    final status = ctrl.connectionStatus;
     final elapsed = _formatDuration(ctrl.connectedDuration);
 
     return SingleChildScrollView(
@@ -85,11 +85,14 @@ class _DashboardPageState extends State<DashboardPage> {
           const PageHeader(title: '首页', subtitle: '查看当前连接、节点与流量状态'),
           const SizedBox(height: 12),
           _ConnectionHeroCard(
-            connected: connected,
-            connecting: connecting,
+            status: status,
             elapsedLabel: elapsed,
             onToggle: _onToggle,
           ),
+          if (status == ConnectionStatus.error && ctrl.coreError.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _ErrorBanner(message: ctrl.coreError, onRetry: _onToggle),
+          ],
           const SizedBox(height: 12),
           const _InfoMiniCardsRow(),
           const SizedBox(height: 12),
@@ -102,14 +105,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
 class _ConnectionHeroCard extends StatelessWidget {
   const _ConnectionHeroCard({
-    required this.connected,
-    required this.connecting,
+    required this.status,
     required this.elapsedLabel,
     required this.onToggle,
   });
 
-  final bool connected;
-  final bool connecting;
+  final ConnectionStatus status;
   final String elapsedLabel;
   final VoidCallback onToggle;
 
@@ -147,7 +148,7 @@ class _ConnectionHeroCard extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                _ConnectionStateLabel(connected: connected),
+                _ConnectionStateLabel(status: status),
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -193,16 +194,12 @@ class _ConnectionHeroCard extends StatelessWidget {
               children: [
                 const Spacer(),
                 _PowerButton(
-                  connected: connected,
-                  connecting: connecting,
+                  status: status,
                   onTap: onToggle,
                 ),
                 const SizedBox(height: 14),
-                _ConnectionActionText(
-                  connected: connected,
-                  connecting: connecting,
-                ),
-                if (connected) ...[
+                _ConnectionActionText(status: status),
+                if (status == ConnectionStatus.connected) ...[
                   const SizedBox(height: 6),
                   Text(
                     elapsedLabel,
@@ -381,14 +378,20 @@ class _ProxyModeItem {
 }
 
 class _ConnectionStateLabel extends StatelessWidget {
-  const _ConnectionStateLabel({required this.connected});
+  const _ConnectionStateLabel({required this.status});
 
-  final bool connected;
+  final ConnectionStatus status;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final color = connected ? c.success : c.textMuted;
+    final (label, color) = switch (status) {
+      ConnectionStatus.connected => ('已连接', c.success),
+      ConnectionStatus.connecting => ('连接中', c.primary),
+      ConnectionStatus.disconnecting => ('断开中', c.textMuted),
+      ConnectionStatus.error => ('连接失败', c.danger),
+      ConnectionStatus.disconnected => ('未连接', c.textMuted),
+    };
     return Container(
       height: 24,
       alignment: Alignment.centerLeft,
@@ -402,7 +405,7 @@ class _ConnectionStateLabel extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            connected ? '已连接' : '未连接',
+            label,
             style: AppTextStyles.button.copyWith(
               color: color,
               fontSize: 13,
@@ -488,38 +491,35 @@ class _NodeInlineAction extends StatelessWidget {
 }
 
 class _PowerButton extends StatelessWidget {
-  const _PowerButton({
-    required this.connected,
-    required this.connecting,
-    required this.onTap,
-  });
+  const _PowerButton({required this.status, required this.onTap});
 
-  final bool connected;
-  final bool connecting;
+  final ConnectionStatus status;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final isConnected = status == ConnectionStatus.connected;
+    final isTransitioning = status == ConnectionStatus.connecting ||
+        status == ConnectionStatus.disconnecting;
+
     return MouseRegion(
-      cursor: connecting ? MouseCursor.defer : SystemMouseCursors.click,
+      cursor: isTransitioning ? MouseCursor.defer : SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: connecting ? null : onTap,
+        onTap: isTransitioning ? null : onTap,
         child: Container(
           width: 118,
           height: 118,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: connected && !connecting
-                ? AppPalette.brandGradient
-                : null,
-            color: connecting
+            gradient: isConnected ? AppPalette.brandGradient : null,
+            color: isTransitioning
                 ? c.surfaceMuted
-                : (connected ? null : c.surfaceMuted),
-            border: connected || connecting
+                : (isConnected ? null : c.surfaceMuted),
+            border: isConnected || isTransitioning
                 ? null
                 : Border.all(color: c.primary.withValues(alpha: 0.14)),
-            boxShadow: connected && !connecting
+            boxShadow: isConnected
                 ? AppShadows.powerButton
                 : [
                     BoxShadow(
@@ -534,13 +534,13 @@ class _PowerButton extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: connected
+                color: isConnected
                     ? Colors.white.withValues(alpha: 0.72)
                     : c.cardBg.withValues(alpha: 0.72),
                 width: 3,
               ),
             ),
-            child: connecting
+            child: isTransitioning
                 ? Padding(
                     padding: const EdgeInsets.all(32),
                     child: CircularProgressIndicator(
@@ -551,7 +551,7 @@ class _PowerButton extends StatelessWidget {
                 : Icon(
                     LucideIcons.power,
                     size: 44,
-                    color: connected ? Colors.white : c.primary,
+                    color: isConnected ? Colors.white : c.primary,
                   ),
           ),
         ),
@@ -561,21 +561,20 @@ class _PowerButton extends StatelessWidget {
 }
 
 class _ConnectionActionText extends StatelessWidget {
-  const _ConnectionActionText({
-    required this.connected,
-    required this.connecting,
-  });
+  const _ConnectionActionText({required this.status});
 
-  final bool connected;
-  final bool connecting;
+  final ConnectionStatus status;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final text = connecting
-        ? (connected ? '断开中…' : '连接中…')
-        : (connected ? '断开连接' : '开始连接');
-    final color = connecting ? c.primary : (connected ? c.success : c.primary);
+    final (text, color) = switch (status) {
+      ConnectionStatus.disconnected => ('开始连接', c.primary),
+      ConnectionStatus.connecting => ('连接中…', c.primary),
+      ConnectionStatus.connected => ('断开连接', c.success),
+      ConnectionStatus.disconnecting => ('断开中…', c.textMuted),
+      ConnectionStatus.error => ('重新连接', c.danger),
+    };
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -598,6 +597,75 @@ class _ConnectionActionText extends StatelessWidget {
   }
 }
 
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: c.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.danger.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(LucideIcons.alertCircle, size: 16, color: c.danger),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.body.copyWith(
+                color: c.danger,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: onRetry,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: c.danger.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: c.danger.withValues(alpha: 0.30)),
+                ),
+                child: Text(
+                  '重试',
+                  style: AppTextStyles.button.copyWith(
+                    color: c.danger,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Formats bytes-per-second into a human-readable (value, unit) pair.
+(String, String) _formatSpeed(int bps) {
+  if (bps <= 0) return ('--', '');
+  if (bps < 1024) return ('$bps', 'B/s');
+  if (bps < 1024 * 1024) return ((bps / 1024).toStringAsFixed(1), 'KB/s');
+  return ((bps / (1024 * 1024)).toStringAsFixed(1), 'MB/s');
+}
+
 class _ConnectionStatsRow extends StatelessWidget {
   const _ConnectionStatsRow();
 
@@ -608,14 +676,16 @@ class _ConnectionStatsRow extends StatelessWidget {
     final latencyValue = latency > 0 && latency < 9999
         ? latency.toString()
         : '--';
+    final (downValue, downUnit) = _formatSpeed(ctrl.downBps);
+    final (upValue, upUnit) = _formatSpeed(ctrl.upBps);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final threeCols = constraints.maxWidth >= 560;
         final cards = [
           _ConnectionStatCard(label: '当前延迟', value: latencyValue, unit: 'ms'),
-          const _ConnectionStatCard(label: '下载速度', value: '--', unit: ''),
-          const _ConnectionStatCard(label: '上传速度', value: '--', unit: ''),
+          _ConnectionStatCard(label: '下载速度', value: downValue, unit: downUnit),
+          _ConnectionStatCard(label: '上传速度', value: upValue, unit: upUnit),
         ];
 
         if (threeCols) {

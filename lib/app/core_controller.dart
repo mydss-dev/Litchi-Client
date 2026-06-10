@@ -10,6 +10,9 @@ import '../shared/services/proxy_setter.dart';
 import '../shared/services/singbox_api_client.dart';
 import '../shared/services/singbox_config.dart';
 
+/// High-level connection lifecycle state exposed to UI.
+enum ConnectionStatus { disconnected, connecting, connected, disconnecting, error }
+
 /// Owns the sing-box process, connection lifecycle, and latency testing.
 ///
 /// Settings values and the node list are passed in at call time to avoid
@@ -20,17 +23,27 @@ class CoreController extends ChangeNotifier {
   StreamSubscription<String>? _logSub;
 
   DateTime? _connectedAt;
-  bool _coreConnecting = false;
+  ConnectionStatus _status = ConnectionStatus.disconnected;
   String _coreError = '';
+
+  // Traffic monitoring (bytes/sec, updated by Clash /traffic stream).
+  int _upBps = 0;
+  int _downBps = 0;
+  StreamSubscription<({int upBps, int downBps})>? _trafficSub;
 
   // Rolling log buffer — last 500 lines, timestamped.
   final _logs = <String>[];
   static const _maxLogs = 500;
 
-  bool get isRunning => _core.isRunning;
-  bool get coreRunning => _core.isRunning;
-  bool get coreConnecting => _coreConnecting;
+  ConnectionStatus get connectionStatus => _status;
+  bool get isRunning => _status == ConnectionStatus.connected;
+  bool get coreRunning => _status == ConnectionStatus.connected;
+  bool get coreConnecting =>
+      _status == ConnectionStatus.connecting ||
+      _status == ConnectionStatus.disconnecting;
   String get coreError => _coreError;
+  int get upBps => _upBps;
+  int get downBps => _downBps;
   Stream<String> get logStream => _core.logStream;
   List<String> get recentLogs => List.unmodifiable(_logs);
   Duration get connectedDuration => _connectedAt != null
@@ -38,7 +51,11 @@ class CoreController extends ChangeNotifier {
       : Duration.zero;
 
   /// Must be called once after construction (inside [AppController.init]).
-  void init() {
+  /// Kills any orphaned sing-box process and clears a stale system proxy
+  /// before subscribing to the core state stream.
+  Future<void> init() async {
+    await CoreManager.cleanupOnStartup();
+    await ProxySetter.disableIfStale();
     _sub = _core.stateStream.listen(_onCoreStateChanged);
     _logSub = _core.logStream.listen((line) {
       final ts = DateTime.now().toLocal().toString().substring(11, 19);
@@ -49,6 +66,7 @@ class CoreController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _stopTrafficMonitor();
     _sub?.cancel();
     _logSub?.cancel();
     _core.dispose();
@@ -58,6 +76,7 @@ class CoreController extends ChangeNotifier {
   /// Graceful shutdown: kill core process + disable system proxy.
   /// Called from the window-close handler before [windowManager.destroy()].
   Future<void> shutdown() async {
+    _stopTrafficMonitor();
     await _sub?.cancel();
     await _logSub?.cancel();
     _sub = null;
@@ -79,16 +98,17 @@ class CoreController extends ChangeNotifier {
     required String dnsMode,
     required int proxyPort,
   }) async {
-    if (_coreConnecting) return null;
+    if (coreConnecting) return null;
 
     if (_core.isRunning) {
-      _coreConnecting = true;
+      _status = ConnectionStatus.disconnecting;
       notifyListeners();
-      await _core.stop();
+      _stopTrafficMonitor();
       await ProxySetter.disable();
+      await _core.stop();
       _connectedAt = null;
       _coreError = '';
-      _coreConnecting = false;
+      _status = ConnectionStatus.disconnected;
       notifyListeners();
       return null;
     }
@@ -116,7 +136,7 @@ class CoreController extends ChangeNotifier {
       return _coreError;
     }
 
-    _coreConnecting = true;
+    _status = ConnectionStatus.connecting;
     _coreError = '';
     notifyListeners();
 
@@ -128,10 +148,13 @@ class CoreController extends ChangeNotifier {
         await ProxySetter.enable(port: proxyPort);
         _connectedAt = DateTime.now();
         _coreError = '';
+        _status = ConnectionStatus.connected;
+        _startTrafficMonitor();
       } else {
         _coreError = _core.lastError.isNotEmpty
             ? _core.lastError
             : '连接失败，请检查 sing-box.exe 是否存在';
+        _status = ConnectionStatus.error;
       }
     } catch (e) {
       final raw = '$e';
@@ -140,8 +163,8 @@ class CoreController extends ChangeNotifier {
       } else {
         _coreError = '连接失败，请重启客户端后重试';
       }
+      _status = ConnectionStatus.error;
     } finally {
-      _coreConnecting = false;
       notifyListeners();
     }
     return _coreError.isNotEmpty ? _coreError : null;
@@ -150,12 +173,12 @@ class CoreController extends ChangeNotifier {
   /// Stops the core and clears connection state. Called by [AppController.logout].
   void stopAndReset() {
     if (_core.isRunning) {
-      _core.stop();
-      ProxySetter.disable();
+      unawaited(_core.stop());
+      unawaited(ProxySetter.disable());
       _connectedAt = null;
     }
     _coreError = '';
-    _coreConnecting = false;
+    _status = ConnectionStatus.disconnected;
   }
 
   // ── Node switching ────────────────────────────────────────────────────────
@@ -237,6 +260,28 @@ class CoreController extends ChangeNotifier {
     }
   }
 
+  // ── Traffic monitoring ────────────────────────────────────────────────────
+
+  void _startTrafficMonitor() {
+    _stopTrafficMonitor();
+    _trafficSub = SingboxApiClient.trafficStream(
+      apiPort: SingboxConfig.defaultApiPort,
+    ).listen((t) {
+      _upBps = t.upBps;
+      _downBps = t.downBps;
+      notifyListeners();
+    });
+  }
+
+  void _stopTrafficMonitor() {
+    if (_trafficSub != null) {
+      unawaited(_trafficSub!.cancel());
+      _trafficSub = null;
+    }
+    _upBps = 0;
+    _downBps = 0;
+  }
+
   // ── Latency testing ───────────────────────────────────────────────────────
 
   /// Tests latency for every node in [nodes] (max 10 concurrent).
@@ -276,13 +321,20 @@ class CoreController extends ChangeNotifier {
   // ── Internal ──────────────────────────────────────────────────────────────
 
   void _onCoreStateChanged(CoreState state) {
-    // React only to unexpected crashes (deliberate stop() clears _connectedAt first).
+    // React only to unexpected terminations — a deliberate disconnect sets
+    // status to disconnecting before stop(), so those are excluded here.
     if ((state == CoreState.error || state == CoreState.stopped) &&
-        (_connectedAt != null || _coreConnecting)) {
+        (_status == ConnectionStatus.connected ||
+            _status == ConnectionStatus.connecting)) {
+      _stopTrafficMonitor();
       _connectedAt = null;
-      _coreConnecting = false;
-      if (_core.lastError.isNotEmpty) _coreError = _core.lastError;
-      ProxySetter.disable();
+      if (state == CoreState.error && _core.lastError.isNotEmpty) {
+        _coreError = _core.lastError;
+      }
+      _status = state == CoreState.error
+          ? ConnectionStatus.error
+          : ConnectionStatus.disconnected;
+      unawaited(ProxySetter.disable());
       notifyListeners();
     }
   }

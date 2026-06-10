@@ -18,6 +18,22 @@ abstract final class ProxySetter {
     await _notify();
   }
 
+  /// On startup: if the system proxy points to 127.0.0.1 but no sing-box
+  /// is alive (PID file already removed by [CoreManager.cleanupOnStartup]),
+  /// the proxy was left behind by a crash. Clear it silently.
+  static Future<void> disableIfStale() async {
+    try {
+      final r1 = await Process.run(
+        'reg', ['query', _key, '/v', 'ProxyEnable'],
+      );
+      if (!'${r1.stdout}'.contains('0x1')) return;
+      final r2 = await Process.run(
+        'reg', ['query', _key, '/v', 'ProxyServer'],
+      );
+      if ('${r2.stdout}'.contains('127.0.0.1:')) await disable();
+    } catch (_) {}
+  }
+
   static Future<void> _reg(String name, String type, String value) async {
     final result = await Process.run(
       'reg',

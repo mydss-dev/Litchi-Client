@@ -167,6 +167,10 @@ class CoreManager {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  /// Called at app startup to kill any orphaned sing-box process left by a
+  /// previous crash and remove the stale PID file.
+  static Future<void> cleanupOnStartup() => _killSavedPid();
+
   /// Kill the specific sing-box process we previously spawned (by saved PID).
   /// This only affects our own process — not any other sing-box instances.
   static Future<void> _killSavedPid() async {

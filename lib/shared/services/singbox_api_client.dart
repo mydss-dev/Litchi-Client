@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -98,6 +99,54 @@ abstract final class SingboxApiClient {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Subscribe to the sing-box traffic stream and emit upload/download rates.
+  ///
+  /// The endpoint sends a JSON object roughly once per second:
+  ///   `{"up": N, "down": N}` (bytes/second)
+  ///
+  /// Cancel the subscription to close the underlying HTTP connection.
+  static Stream<({int upBps, int downBps})> trafficStream({
+    int apiPort = 9090,
+  }) {
+    final controller = StreamController<({int upBps, int downBps})>();
+    HttpClient? httpClient;
+
+    controller.onCancel = () => httpClient?.close(force: true);
+
+    unawaited(() async {
+      httpClient = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 3);
+      try {
+        final request = await httpClient!.getUrl(
+          Uri.parse('http://127.0.0.1:$apiPort/traffic'),
+        );
+        request.headers.add(
+          'Authorization',
+          'Bearer ${SingboxConfig.apiSecret}',
+        );
+        final response = await request.close();
+        await for (final line in response
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())) {
+          if (controller.isClosed) break;
+          try {
+            final data = jsonDecode(line) as Map<String, dynamic>;
+            controller.add((
+              upBps: (data['up'] as num?)?.toInt() ?? 0,
+              downBps: (data['down'] as num?)?.toInt() ?? 0,
+            ));
+          } catch (_) {}
+        }
+      } catch (_) {
+      } finally {
+        httpClient?.close();
+        if (!controller.isClosed) unawaited(controller.close());
+      }
+    }());
+
+    return controller.stream;
   }
 
   /// Fetch the current proxy state from the running core.

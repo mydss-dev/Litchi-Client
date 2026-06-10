@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../shared/services/auto_start.dart';
 import '../shared/services/settings_service.dart';
 
 /// Owns all user-configurable settings. Persists changes via [SettingsService].
@@ -38,6 +41,13 @@ class SettingsController extends ChangeNotifier {
     _proxyMode = s.proxyMode;
     _dnsMode = s.dnsMode;
     _themeMode = s.themeMode;
+    // Sync registry to match the saved preference (also refreshes exe path
+    // if the app was updated and moved to a new location).
+    if (_autoStart) {
+      unawaited(AutoStart.enable());
+    } else {
+      unawaited(AutoStart.disable());
+    }
   }
 
   void setThemeMode(ThemeMode mode) {
@@ -61,6 +71,11 @@ class SettingsController extends ChangeNotifier {
     if (_autoStart == v) return;
     _autoStart = v;
     SettingsService.setAutoStart(v);
+    if (v) {
+      unawaited(AutoStart.enable());
+    } else {
+      unawaited(AutoStart.disable());
+    }
     notifyListeners();
   }
 

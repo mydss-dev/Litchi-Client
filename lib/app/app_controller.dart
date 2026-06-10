@@ -97,9 +97,12 @@ class AppController extends ChangeNotifier {
 
   // ── Core delegates ─────────────────────────────────────────────────────────
 
+  ConnectionStatus get connectionStatus => _core.connectionStatus;
   bool get coreRunning => _core.coreRunning;
   bool get coreConnecting => _core.coreConnecting;
   String get coreError => _core.coreError;
+  int get upBps => _core.upBps;
+  int get downBps => _core.downBps;
   Stream<String> get coreLogStream => _core.logStream;
   List<String> get coreLogs => _core.recentLogs;
   Duration get connectedDuration => _core.connectedDuration;
@@ -167,7 +170,7 @@ class AppController extends ChangeNotifier {
       }
     }
 
-    _core.init();
+    await _core.init();
     _isInitializing = false;
     notifyListeners();
   }
