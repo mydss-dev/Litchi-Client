@@ -318,15 +318,31 @@ class PanelApi {
         .toList();
   }
 
-  /// Returns a redirect URL. Empty string means checkout was handled
-  /// server-side (e.g. balance deduction) — poll order status.
-  Future<String> checkoutOrder(String tradeNo, int methodId) async {
+  /// Returns checkout result with URL and type.
+  /// type=0: QR code content — encode as QR.
+  /// type=1: Redirect URL — open in browser.
+  /// Empty URL means balance deduction — poll for completion.
+  Future<CheckoutResult> checkoutOrder(String tradeNo, int methodId) async {
     final res = await _client.post('/user/order/checkout', data: {
       'trade_no': tradeNo,
       'method': methodId,
     });
     _check(res);
-    return res['data']?.toString() ?? '';
+    final url = res['data']?.toString() ?? '';
+    final type = (res['type'] as num?)?.toInt() ?? 0;
+    return CheckoutResult(url, type);
+  }
+
+  Future<List<RemoteOrder>> fetchOrders() async {
+    final res = await _client.get('/user/order/fetch');
+    _check(res);
+    final list = res['data'] as List? ?? [];
+    return list.map((e) => RemoteOrder.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> cancelOrder(String tradeNo) async {
+    final res = await _client.post('/user/order/cancel', data: {'trade_no': tradeNo});
+    _check(res);
   }
 
   /// Status: 0=pending, 1=processing, 2=cancelled, 3=complete, 4=refunded.

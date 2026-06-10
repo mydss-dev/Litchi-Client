@@ -102,7 +102,8 @@ class CoreManager {
       });
 
       // Poll the Clash API port to confirm sing-box is actually ready.
-      final ready = await _waitForPort(apiPort);
+      // Pass `this` so the loop can abort immediately if the process exits.
+      final ready = await _waitForPort(apiPort, this);
 
       if (_process != null && _state != CoreState.error) {
         if (ready) {
@@ -179,10 +180,17 @@ class CoreManager {
   }
 
   /// Poll [port] on 127.0.0.1 until it accepts connections (core is ready).
+  /// Aborts early if the process already died (state == error/stopped).
   /// Tries up to 20 times × 200 ms = max 4 seconds.
-  static Future<bool> _waitForPort(int port) async {
+  static Future<bool> _waitForPort(int port, CoreManager mgr) async {
     for (int i = 0; i < 20; i++) {
+      if (mgr._state == CoreState.error || mgr._state == CoreState.stopped) {
+        return false;
+      }
       await Future.delayed(const Duration(milliseconds: 200));
+      if (mgr._state == CoreState.error || mgr._state == CoreState.stopped) {
+        return false;
+      }
       try {
         final socket = await Socket.connect(
           '127.0.0.1', port,

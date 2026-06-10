@@ -3,13 +3,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_palette.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
 import '../theme/app_text_styles.dart';
 import 'brand_logo.dart';
 
-/// Left navigation rail (§8). Fixed 208px wide.
+/// Left navigation rail (§8). Fixed 160px wide.
 class AppSidebar extends StatelessWidget {
   const AppSidebar({super.key});
 
@@ -28,7 +27,7 @@ class AppSidebar extends StatelessWidget {
     final controller = AppScope.of(context);
 
     return Container(
-      width: 208,
+      width: 200,
       decoration: BoxDecoration(
         color: c.sidebarBg,
         border: Border(right: BorderSide(color: c.sidebarBorder)),
@@ -69,29 +68,33 @@ class _BrandArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return SizedBox(
-      height: 64,
+      height: 56,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const BrandLogo(size: 48, radius: 14),
-          const SizedBox(width: 12),
+          const BrandLogo(size: 40, radius: 12),
+          const SizedBox(width: 10),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Litchi',
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: c.textPrimary,
-                    fontSize: 18,
-                  )),
+              Text(
+                'Litchi',
+                style: AppTextStyles.bodyStrong.copyWith(
+                  color: c.textPrimary,
+                  fontSize: 15,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text('Network Client',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: c.textMuted,
-                    fontFamilyFallback: AppTextStyles.fontFamilyFallback,
-                  )),
+              Text(
+                'Network Client',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w400,
+                  color: c.textMuted,
+                  fontFamilyFallback: AppTextStyles.fontFamilyFallback,
+                ),
+              ),
             ],
           ),
         ],
@@ -190,9 +193,10 @@ class _UserCardState extends State<_UserCard>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 220));
-    _sizeFactor =
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _sizeFactor = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
   }
 
@@ -226,9 +230,7 @@ class _UserCardState extends State<_UserCard>
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final user = ctrl.user;
-    final traffic = ctrl.traffic;
     final avatarColor = _avatarColor(user.name);
-    final ratio = (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -241,106 +243,176 @@ class _UserCardState extends State<_UserCard>
             opacity: _fade,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                decoration: BoxDecoration(
-                  color: c.cardBg,
-                  borderRadius: BorderRadius.circular(AppRadius.card),
-                  border: Border.all(color: c.softBorder),
-                  boxShadow: AppShadows.soft(c),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  // Reserve space for: sidebar padding(18+16) + brand(56) +
+                  // gap(28) + 6 menu items(360) + user card row(54) +
+                  // popup bottom margin(8) + small buffer(8).
+                  maxHeight: (MediaQuery.of(context).size.height - 548).clamp(
+                    120.0,
+                    500.0,
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Plan row
-                    Row(
+                child: SingleChildScrollView(
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                    decoration: BoxDecoration(
+                      color: c.cardBg,
+                      borderRadius: BorderRadius.circular(AppRadius.card),
+                      border: Border.all(color: c.softBorder),
+                      boxShadow: AppShadows.soft(c),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(LucideIcons.crown, size: 13, color: c.warning),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            user.plan,
-                            style: AppTextStyles.bodyStrong
-                                .copyWith(color: c.textPrimary),
+                        // Plan row
+                        Row(
+                          children: [
+                            Icon(LucideIcons.crown, size: 13, color: c.warning),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                user.plan,
+                                style: AppTextStyles.bodyStrong.copyWith(
+                                  color: c.textPrimary,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: c.premiumBadgeBg,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '到期 ${user.expiry}',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: c.premiumBadgeText,
+                                  fontFamilyFallback:
+                                      AppTextStyles.fontFamilyFallback,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // My Account
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              _toggle();
+                              ctrl.goToPage(AppPage.account);
+                            },
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 26,
+                                  height: 26,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: c.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    LucideIcons.user,
+                                    size: 13,
+                                    color: c.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '我的账户',
+                                  style: AppTextStyles.body.copyWith(
+                                    color: c.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: c.premiumBadgeBg,
-                            borderRadius: BorderRadius.circular(999),
+                        const SizedBox(height: 6),
+                        // My Orders
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              _toggle();
+                              ctrl.goToPage(AppPage.orders);
+                            },
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 26,
+                                  height: 26,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: c.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    LucideIcons.clipboardList,
+                                    size: 13,
+                                    color: c.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '我的订单',
+                                  style: AppTextStyles.body.copyWith(
+                                    color: c.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Text(
-                            '到期 ${user.expiry}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: c.premiumBadgeText,
-                              fontFamilyFallback:
-                                  AppTextStyles.fontFamilyFallback,
+                        ),
+                        const SizedBox(height: 8),
+                        Divider(height: 1, color: c.softBorder),
+                        const SizedBox(height: 8),
+                        // Logout button
+                        MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              _toggle();
+                              ctrl.logout();
+                            },
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 26,
+                                  height: 26,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: c.danger.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    LucideIcons.logOut,
+                                    size: 13,
+                                    color: c.danger,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '退出登录',
+                                  style: AppTextStyles.body.copyWith(
+                                    color: c.danger,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    // Traffic progress
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: Stack(
-                        children: [
-                          Container(height: 5, color: c.surfaceMuted),
-                          FractionallySizedBox(
-                            widthFactor: ratio,
-                            child: Container(
-                              height: 5,
-                              decoration: const BoxDecoration(
-                                  gradient: AppPalette.brandGradient),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '剩余 ${traffic.remainGb.toInt()} / ${traffic.totalGb.toInt()} GB',
-                      style:
-                          AppTextStyles.caption.copyWith(color: c.textMuted),
-                    ),
-                    const SizedBox(height: 10),
-                    Divider(height: 1, color: c.softBorder),
-                    const SizedBox(height: 10),
-                    // Logout button
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () {
-                          _toggle();
-                          ctrl.logout();
-                        },
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 26,
-                              height: 26,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: c.danger.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(LucideIcons.logOut,
-                                  size: 13, color: c.danger),
-                            ),
-                            const SizedBox(width: 8),
-                            Text('退出登录',
-                                style: AppTextStyles.body
-                                    .copyWith(color: c.danger)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -375,8 +447,9 @@ class _UserCardState extends State<_UserCard>
                     ),
                     child: Text(
                       user.avatarLetter,
-                      style: AppTextStyles.cardTitle
-                          .copyWith(color: avatarColor),
+                      style: AppTextStyles.cardTitle.copyWith(
+                        color: avatarColor,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),

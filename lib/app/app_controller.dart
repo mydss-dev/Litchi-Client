@@ -17,7 +17,7 @@ import '../shared/services/singbox_config.dart';
 import '../shared/services/token_storage.dart';
 
 /// Top-level navigation destinations shown in the sidebar (§8.4).
-enum AppPage { dashboard, nodes, shop, traffic, invite, settings }
+enum AppPage { dashboard, nodes, shop, traffic, invite, settings, account, orders }
 
 /// Which authentication screen is visible while logged out (§16).
 enum AuthScreen { login, register, changePassword }
@@ -317,21 +317,25 @@ class AppController extends ChangeNotifier {
     _coreError      = '';
     notifyListeners();
 
-    final configPath = await SingboxConfig.writeConfig(config);
-    await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
+    try {
+      final configPath = await SingboxConfig.writeConfig(config);
+      await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
 
-    if (_core.isRunning) {
-      await ProxySetter.enable(port: _proxyPort);
-      _connectedAt = DateTime.now();
-      _coreError   = '';
-    } else {
-      _coreError = _core.lastError.isNotEmpty
-          ? _core.lastError
-          : '连接失败，请检查 sing-box.exe 是否存在';
+      if (_core.isRunning) {
+        await ProxySetter.enable(port: _proxyPort);
+        _connectedAt = DateTime.now();
+        _coreError   = '';
+      } else {
+        _coreError = _core.lastError.isNotEmpty
+            ? _core.lastError
+            : '连接失败，请检查 sing-box.exe 是否存在';
+      }
+    } catch (e) {
+      _coreError = '连接异常: $e';
+    } finally {
+      _coreConnecting = false;
+      notifyListeners();
     }
-
-    _coreConnecting = false;
-    notifyListeners();
     return _coreError.isNotEmpty ? _coreError : null;
   }
 

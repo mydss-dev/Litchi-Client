@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../features/account/account_page.dart';
 import '../features/auth/auth_flow.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/invite/invite_page.dart';
 import '../features/nodes/nodes_page.dart';
+import '../features/orders/orders_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/shop/shop_page.dart';
 import '../features/traffic/traffic_page.dart';
@@ -94,7 +96,7 @@ class _MainShell extends StatelessWidget {
               Expanded(
                 child: Container(
                   color: c.appBg,
-                  padding: const EdgeInsets.fromLTRB(32, 14, 32, 24),
+                  padding: const EdgeInsets.fromLTRB(24, 2, 24, 24),
                   child: _pageFor(controller.page),
                 ),
               ),
@@ -119,6 +121,10 @@ class _MainShell extends StatelessWidget {
         return const InvitePage();
       case AppPage.settings:
         return const SettingsPage();
+      case AppPage.account:
+        return const AccountPage();
+      case AppPage.orders:
+        return const OrdersPage();
     }
   }
 }

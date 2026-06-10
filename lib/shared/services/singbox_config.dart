@@ -55,37 +55,32 @@ abstract final class SingboxConfig {
       case '全局模式':
         routeFinal = 'PROXY';
         routeRules = [
-          {'protocol': 'dns', 'outbound': 'dns-out'},
+          {'protocol': 'dns', 'action': 'hijack-dns'},
           {'ip_is_private': true, 'outbound': 'direct'},
         ];
       case '直连模式':
         routeFinal = 'direct';
         routeRules = [
-          {'protocol': 'dns', 'outbound': 'dns-out'},
+          {'protocol': 'dns', 'action': 'hijack-dns'},
         ];
       default: // 智能模式
         routeFinal = 'PROXY';
         routeRules = [
-          {'protocol': 'dns', 'outbound': 'dns-out'},
+          {'protocol': 'dns', 'action': 'hijack-dns'},
           {'ip_is_private': true, 'outbound': 'direct'},
-          {'geoip': 'cn', 'outbound': 'direct'},
-          {'geosite': 'cn', 'outbound': 'direct'},
         ];
     }
 
-    // Remote DNS address and routing depend on user's DNS mode setting.
-    final String remoteDnsAddr;
-    final String remoteDnsDetour;
+    // Remote DNS config depends on user's DNS mode setting.
+    // sing-box 1.14+ requires new format: "type" + "server" instead of "address" URL.
+    final Map<String, dynamic> remoteDnsServer;
     switch (dnsMode) {
       case 'Cloudflare':
-        remoteDnsAddr   = 'tls://1.1.1.1';
-        remoteDnsDetour = 'PROXY';
+        remoteDnsServer = {'tag': 'remote-dns', 'type': 'tls', 'server': '1.1.1.1', 'detour': 'PROXY'};
       case 'Google':
-        remoteDnsAddr   = 'tls://8.8.8.8';
-        remoteDnsDetour = 'PROXY';
-      default: // '系统 DNS' — use OS resolver; no encryption, no tunnel
-        remoteDnsAddr   = 'local';
-        remoteDnsDetour = 'direct';
+        remoteDnsServer = {'tag': 'remote-dns', 'type': 'tls', 'server': '8.8.8.8', 'detour': 'PROXY'};
+      default: // '系统 DNS'
+        remoteDnsServer = {'tag': 'remote-dns', 'type': 'local'};
     }
 
     return {
@@ -98,21 +93,14 @@ abstract final class SingboxConfig {
       },
       'dns': {
         'servers': [
-          {
-            'tag': 'remote-dns',
-            'address': remoteDnsAddr,
-            'detour': remoteDnsDetour,
-          },
+          remoteDnsServer,
           {
             'tag': 'local-dns',
-            'address': '223.5.5.5',
-            'detour': 'direct',
+            'type': 'udp',
+            'server': '223.5.5.5',
           },
         ],
-        'rules': [
-          {'outbound': 'any', 'server': 'local-dns'},
-          {'geosite': 'cn', 'server': 'local-dns'},
-        ],
+        'rules': [],
         'final': 'remote-dns',
         'independent_cache': true,
       },
@@ -134,13 +122,12 @@ abstract final class SingboxConfig {
         },
         ...outbounds,
         {'type': 'direct', 'tag': 'direct'},
-        {'type': 'block',  'tag': 'block'},
-        {'type': 'dns',    'tag': 'dns-out'},
       ],
       'route': {
         'rules': routeRules,
         'final': routeFinal,
         'auto_detect_interface': true,
+        'default_domain_resolver': 'local-dns',
       },
     };
   }

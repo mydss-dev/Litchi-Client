@@ -262,3 +262,77 @@ class CouponResult {
     );
   }
 }
+
+/// A single order from /user/order/fetch.
+/// status: 0=pending 1=processing 2=cancelled 3=complete 4=refunded
+class RemoteOrder {
+  final String tradeNo;
+  final String? planName;
+  final String period;
+  final int totalAmount; // cents
+  final int status;
+  final int createdAt; // unix timestamp (seconds)
+
+  const RemoteOrder({
+    required this.tradeNo,
+    this.planName,
+    required this.period,
+    required this.totalAmount,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory RemoteOrder.fromJson(Map<String, dynamic> json) {
+    return RemoteOrder(
+      tradeNo:     json['trade_no']?.toString() ?? '',
+      planName:    json['plan_name']?.toString(),
+      period:      json['period']?.toString() ?? '',
+      totalAmount: (json['total_amount'] as num?)?.toInt() ?? 0,
+      status:      (json['status'] as num?)?.toInt() ?? 0,
+      createdAt:   (json['created_at'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  String get statusLabel => switch (status) {
+    0 => '待支付',
+    1 => '处理中',
+    2 => '已取消',
+    3 => '已完成',
+    4 => '已退款',
+    _ => '未知',
+  };
+
+  String get periodLabel => switch (period) {
+    'month_price'     => '月付',
+    'quarter_price'   => '季付',
+    'half_year_price' => '半年付',
+    'year_price'      => '年付',
+    'two_year_price'  => '两年付',
+    'three_year_price'=> '三年付',
+    'onetime_price'   => '买断',
+    _                 => period,
+  };
+
+  String get amountDisplay {
+    final yuan = totalAmount / 100.0;
+    return '¥${yuan.toStringAsFixed(2)}';
+  }
+
+  String get dateDisplay {
+    if (createdAt == 0) return '—';
+    final dt = DateTime.fromMillisecondsSinceEpoch(createdAt * 1000);
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    return '${dt.year}-$m-$d';
+  }
+}
+
+/// Result from POST /user/order/checkout.
+/// type=0: [url] is QR code content (WeChat/Alipay scheme) — show as QR.
+/// type=1: [url] is a web redirect link — open in browser and optionally show QR.
+/// Empty [url] means balance deduction — order processed immediately.
+class CheckoutResult {
+  const CheckoutResult(this.url, this.type);
+  final String url;
+  final int type; // 0 = qr, 1 = redirect link
+}

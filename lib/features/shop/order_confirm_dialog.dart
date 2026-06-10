@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -57,6 +58,30 @@ Future<void> showOrderConfirmDialog({
     context: context,
     barrierColor: Colors.black54,
     builder: (_) => _OrderConfirmDialog(plan: plan, cycle: cycle, api: api),
+  );
+}
+
+/// Opens the payment dialog directly for an existing pending order.
+Future<void> showOrderPaymentDialog({
+  required BuildContext context,
+  required String tradeNo,
+  required double finalPrice,
+  required PanelApi api,
+}) async {
+  String sym = '¥';
+  try {
+    sym = await api.getCommCurrencySymbol();
+  } catch (_) {}
+  if (!context.mounted) return;
+  return showDialog<void>(
+    context: context,
+    barrierColor: Colors.black54,
+    builder: (_) => _PaymentDialog(
+      tradeNo: tradeNo,
+      finalPrice: finalPrice,
+      currencySymbol: sym,
+      api: api,
+    ),
   );
 }
 
@@ -522,6 +547,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   // qr + timer
   _Stage _stage = _Stage.methods;
   String _payUrl = '';
+  int _payType = 0; // 0=qr content, 1=redirect link
   Timer? _countdown;
   Timer? _pollTimer;
   int _secondsLeft = 900; // 15 minutes
@@ -564,9 +590,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     if (_selectedId == null || _checkingOut) return;
     setState(() => _checkingOut = true);
     try {
-      final url = await widget.api.checkoutOrder(widget.tradeNo, _selectedId!);
+      final result = await widget.api.checkoutOrder(widget.tradeNo, _selectedId!);
       if (!mounted) return;
-      if (url.isEmpty) {
+      if (result.url.isEmpty) {
         // Balance deduction — processed server-side immediately
         setState(() {
           _stage = _Stage.success;
@@ -574,11 +600,14 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         });
       } else {
         setState(() {
-          _payUrl = url;
+          _payUrl = result.url;
+          _payType = result.type;
           _stage = _Stage.qr;
           _secondsLeft = 900;
           _checkingOut = false;
         });
+        // For redirect-type payments, open in browser automatically.
+        if (result.type == 1) _openInBrowser(result.url);
         _startTimers();
       }
     } catch (e) {
@@ -587,6 +616,14 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         AppToast.show(context, '发起支付失败：$e', type: AppToastType.error);
       }
     }
+  }
+
+  Future<void> _openInBrowser(String url) async {
+    try {
+      if (Platform.isWindows) {
+        await Process.run('cmd', ['/c', 'start', '', url]);
+      }
+    } catch (_) {}
   }
 
   void _startTimers() {
@@ -642,14 +679,16 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     if (_selectedId == null || _refreshing) return;
     setState(() => _refreshing = true);
     try {
-      final url = await widget.api.checkoutOrder(widget.tradeNo, _selectedId!);
+      final result = await widget.api.checkoutOrder(widget.tradeNo, _selectedId!);
       if (!mounted) return;
       setState(() {
-        _payUrl = url;
+        _payUrl = result.url;
+        _payType = result.type;
         _stage = _Stage.qr;
         _secondsLeft = 900;
         _refreshing = false;
       });
+      if (result.type == 1) _openInBrowser(result.url);
       _startTimers();
     } catch (e) {
       if (mounted) {
@@ -713,9 +752,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   Widget _buildHeader(AppColors c) {
     final titles = {
       _Stage.methods: '选择支付方式',
-      _Stage.qr: '扫码支付',
+      _Stage.qr: _payType == 1 ? '浏览器支付' : '扫码支付',
       _Stage.success: '支付成功',
-      _Stage.expired: '二维码已过期',
+      _Stage.expired: _payType == 1 ? '支付已超时' : '二维码已过期',
     };
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 16, 16),
@@ -891,7 +930,6 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   Widget _buildQr(AppColors c) {
     return Column(
       children: [
-        // Payment method badge
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -903,22 +941,20 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           ],
         ),
         const SizedBox(height: 12),
-        // Amount
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(widget.currencySymbol,
-                style:
-                    AppTextStyles.sectionTitle.copyWith(color: c.primary, fontSize: 18)),
+                style: AppTextStyles.sectionTitle
+                    .copyWith(color: c.primary, fontSize: 18)),
             Text(widget.finalPrice.toStringAsFixed(2),
                 style: AppTextStyles.largeNumber(fontSize: 34)
                     .copyWith(color: c.primary)),
           ],
         ),
         const SizedBox(height: 20),
-        // QR code — always white background so scanners can read it
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -941,25 +977,59 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           ),
         ),
         const SizedBox(height: 16),
-        Text(
-          '请使用手机扫描二维码完成支付',
-          style: AppTextStyles.body.copyWith(color: c.textSecondary),
-        ),
-        const SizedBox(height: 8),
-        // Countdown
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(LucideIcons.timer, size: 13, color: _timerColor(c)),
-            const SizedBox(width: 5),
-            Text(
-              '剩余 $_countdownText',
-              style: AppTextStyles.caption.copyWith(color: _timerColor(c)),
+        Text('使用手机扫码完成支付',
+            style: AppTextStyles.body.copyWith(color: c.textSecondary)),
+        if (_payType == 1) ...[
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: () => _openInBrowser(_payUrl),
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(LucideIcons.externalLink, size: 12, color: c.primary),
+                  const SizedBox(width: 4),
+                  Text('或在浏览器打开',
+                      style: AppTextStyles.caption
+                          .copyWith(color: c.primary)),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        _buildCountdown(c),
         const SizedBox(height: 24),
-        // Action buttons
+        _buildQrActions(c),
+      ],
+    );
+  }
+
+  // Browser-payment UI (type=1): no QR shown — browser was opened automatically.
+  Widget _buildBrowserPayment(AppColors c) {
+    return Column(
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: c.primary.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(LucideIcons.globe, size: 36, color: c.primary),
+        ),
+        const SizedBox(height: 16),
+        Text('支付页面已在浏览器打开',
+            style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary)),
+        const SizedBox(height: 8),
+        Text('请在浏览器中完成支付，完成后点击"我已完成支付"',
+            style: AppTextStyles.body.copyWith(color: c.textMuted),
+            textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        _buildCountdown(c),
+        const SizedBox(height: 24),
+        // Reopen + check buttons
         Row(
           children: [
             Expanded(
@@ -1002,20 +1072,99 @@ class _PaymentDialogState extends State<_PaymentDialog> {
               child: SizedBox(
                 height: 44,
                 child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => _openInBrowser(_payUrl),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: c.border),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
-                  child: Text('取消',
-                      style:
-                          AppTextStyles.button.copyWith(color: c.textSecondary)),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(LucideIcons.externalLink,
+                          size: 14, color: c.textSecondary),
+                      const SizedBox(width: 5),
+                      Text('重新打开',
+                          style: AppTextStyles.button
+                              .copyWith(color: c.textSecondary)),
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCountdown(AppColors c) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(LucideIcons.timer, size: 13, color: _timerColor(c)),
+        const SizedBox(width: 5),
+        Text('剩余 $_countdownText',
+            style: AppTextStyles.caption.copyWith(color: _timerColor(c))),
+      ],
+    );
+  }
+
+  Widget _buildQrActions(AppColors c) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: SizedBox(
+            height: 44,
+            child: ElevatedButton(
+              onPressed: _manualChecking ? null : _manualCheck,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              child: Ink(
+                decoration: BoxDecoration(
+                  gradient: AppPalette.brandGradient,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Center(
+                  child: _manualChecking
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : Text('我已完成支付',
+                          style: AppTextStyles.button.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: SizedBox(
+            height: 44,
+            child: OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: c.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+              ),
+              child: Text('取消',
+                  style: AppTextStyles.button.copyWith(color: c.textSecondary)),
+            ),
+          ),
         ),
       ],
     );
