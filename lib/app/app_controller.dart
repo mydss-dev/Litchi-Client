@@ -9,8 +9,6 @@ import '../shared/services/api_client.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/latency_tester.dart';
 import '../shared/services/panel_api.dart';
-import '../shared/services/singbox_api_client.dart';
-import '../shared/services/singbox_config.dart';
 import '../shared/services/token_storage.dart';
 import 'core_controller.dart';
 import 'settings_controller.dart';
@@ -294,7 +292,7 @@ class AppController extends ChangeNotifier {
     _currentNode = node;
     notifyListeners();
     if (_core.isRunning) {
-      await _core.switchProxy(SingboxConfig.nodeTagFor(node));
+      await _core.switchNode(node);
     }
   }
 
@@ -305,7 +303,7 @@ class AppController extends ChangeNotifier {
       _currentNode = best;
       notifyListeners();
       if (_core.isRunning) {
-        await _core.switchProxy(SingboxConfig.nodeTagFor(best));
+        await _core.switchNode(best);
       }
     } else {
       notifyListeners();
@@ -321,47 +319,26 @@ class AppController extends ChangeNotifier {
     return best;
   }
 
-  /// Tests latencies for all nodes (max 10 concurrent). Notifies per result.
+  /// Tests latencies for all nodes. Delegates to [CoreController]; updates
+  /// node list and notifies on each result.
   Future<void> testLatencies() async {
     if (_nodes.isEmpty) return;
     _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
     notifyListeners();
 
-    final sem = _Semaphore(10);
-
-    await Future.wait(
-      _nodes.asMap().entries.map((e) async {
-        await sem.acquire();
-        try {
-          final idx = e.key;
-          final node = e.value;
-
-          final int ms;
-          if (_core.isRunning) {
-            ms = await SingboxApiClient.testDelay(
-                      SingboxConfig.nodeTagFor(node),
-                      apiPort: SingboxConfig.defaultApiPort,
-                    ) ??
-                LatencyTester.unreachable;
-          } else {
-            ms = await LatencyTester.ping(node.server, node.port);
-          }
-
-          if (idx < _nodes.length) {
-            final updated = List<NodeModel>.from(_nodes);
-            updated[idx] = node.copyWith(latency: ms);
-            _nodes = updated;
-            if (_autoSelected) {
-              final best = _bestNode;
-              if (best != null) _currentNode = best;
-            }
-            notifyListeners();
-          }
-        } finally {
-          sem.release();
+    final snapshot = List<NodeModel>.from(_nodes);
+    await _core.testLatencies(snapshot, onResult: (idx, updated) {
+      if (idx < _nodes.length) {
+        final list = List<NodeModel>.from(_nodes);
+        list[idx] = updated;
+        _nodes = list;
+        if (_autoSelected) {
+          final best = _bestNode;
+          if (best != null) _currentNode = best;
         }
-      }),
-    );
+        notifyListeners();
+      }
+    });
   }
 }
 
@@ -377,31 +354,5 @@ class AppScope extends InheritedNotifier<AppController> {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
     assert(scope?.notifier != null, 'AppScope not found in widget tree');
     return scope!.notifier!;
-  }
-}
-
-// ── Simple counting semaphore ─────────────────────────────────────────────────
-
-class _Semaphore {
-  _Semaphore(this._max);
-
-  final int _max;
-  int _count = 0;
-  final _queue = <Completer<void>>[];
-
-  Future<void> acquire() async {
-    if (_count < _max) {
-      _count++;
-      return;
-    }
-    final c = Completer<void>();
-    _queue.add(c);
-    await c.future;
-    _count++;
-  }
-
-  void release() {
-    _count--;
-    if (_queue.isNotEmpty) _queue.removeAt(0).complete();
   }
 }

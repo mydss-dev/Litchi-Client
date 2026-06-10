@@ -4,14 +4,15 @@ import 'package:flutter/foundation.dart';
 
 import '../shared/models/app_models.dart';
 import '../shared/services/core_manager.dart';
+import '../shared/services/latency_tester.dart';
 import '../shared/services/proxy_setter.dart';
 import '../shared/services/singbox_api_client.dart';
 import '../shared/services/singbox_config.dart';
 
-/// Owns the sing-box process and connection lifecycle.
+/// Owns the sing-box process, connection lifecycle, and latency testing.
 ///
-/// Settings values (proxyMode, dnsMode, proxyPort) and the current node list
-/// are passed in by [AppController] at call time — no circular reference.
+/// Settings values and the node list are passed in at call time to avoid
+/// storing references that would create circular dependencies.
 class CoreController extends ChangeNotifier {
   final CoreManager _core = CoreManager();
   StreamSubscription<CoreState>? _sub;
@@ -40,6 +41,8 @@ class CoreController extends ChangeNotifier {
     _core.dispose();
     super.dispose();
   }
+
+  // ── Connection ────────────────────────────────────────────────────────────
 
   /// Toggles sing-box on/off. Settings and node list are provided by the caller
   /// rather than stored here to avoid coupling with [AppController].
@@ -124,10 +127,53 @@ class CoreController extends ChangeNotifier {
     _coreConnecting = false;
   }
 
+  // ── Node switching ────────────────────────────────────────────────────────
+
   /// Switches the active proxy at runtime without restarting the core.
-  Future<void> switchProxy(String tag) async {
-    await SingboxApiClient.switchProxy(tag, apiPort: SingboxConfig.defaultApiPort);
+  Future<void> switchNode(NodeModel node) async {
+    await SingboxApiClient.switchProxy(
+      SingboxConfig.nodeTagFor(node),
+      apiPort: SingboxConfig.defaultApiPort,
+    );
   }
+
+  // ── Latency testing ───────────────────────────────────────────────────────
+
+  /// Tests latency for every node in [nodes] (max 10 concurrent).
+  ///
+  /// Calls [onResult] with the index and updated node as each result arrives.
+  /// When the core is running, uses the Clash API; otherwise falls back to
+  /// direct TCP ping.
+  Future<void> testLatencies(
+    List<NodeModel> nodes, {
+    required void Function(int idx, NodeModel updated) onResult,
+  }) async {
+    if (nodes.isEmpty) return;
+    final sem = _Semaphore(10);
+    await Future.wait(
+      nodes.asMap().entries.map((e) async {
+        await sem.acquire();
+        try {
+          final node = e.value;
+          final int ms;
+          if (_core.isRunning) {
+            ms = await SingboxApiClient.testDelay(
+                      SingboxConfig.nodeTagFor(node),
+                      apiPort: SingboxConfig.defaultApiPort,
+                    ) ??
+                LatencyTester.unreachable;
+          } else {
+            ms = await LatencyTester.ping(node.server, node.port);
+          }
+          onResult(e.key, node.copyWith(latency: ms));
+        } finally {
+          sem.release();
+        }
+      }),
+    );
+  }
+
+  // ── Internal ──────────────────────────────────────────────────────────────
 
   void _onCoreStateChanged(CoreState state) {
     // React only to unexpected crashes (deliberate stop() clears _connectedAt first).
@@ -139,5 +185,31 @@ class CoreController extends ChangeNotifier {
       ProxySetter.disable();
       notifyListeners();
     }
+  }
+}
+
+// ── Simple counting semaphore ─────────────────────────────────────────────────
+
+class _Semaphore {
+  _Semaphore(this._max);
+
+  final int _max;
+  int _count = 0;
+  final _queue = <Completer<void>>[];
+
+  Future<void> acquire() async {
+    if (_count < _max) {
+      _count++;
+      return;
+    }
+    final c = Completer<void>();
+    _queue.add(c);
+    await c.future;
+    _count++;
+  }
+
+  void release() {
+    _count--;
+    if (_queue.isNotEmpty) _queue.removeAt(0).complete();
   }
 }
