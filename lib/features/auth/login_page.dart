@@ -19,10 +19,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _emailCtrl    = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _remember = true;
-  bool _loading  = false;
+  bool _loading = false;
 
   @override
   void initState() {
@@ -34,7 +34,7 @@ class _LoginPageState extends State<LoginPage> {
     final saved = await CredentialsStorage.load();
     if (saved != null && mounted) {
       setState(() {
-        _emailCtrl.text    = saved.email;
+        _emailCtrl.text = saved.email;
         _passwordCtrl.text = saved.password;
         _remember = true;
       });
@@ -50,7 +50,8 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _submit() async {
     final controller = AppScope.of(context);
-    final email    = _emailCtrl.text.trim();
+    final overlay = Overlay.of(context, rootOverlay: true);
+    final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
 
     if (email.isEmpty || password.isEmpty) {
@@ -69,9 +70,7 @@ class _LoginPageState extends State<LoginPage> {
         await CredentialsStorage.clear();
       }
 
-      if (mounted) {
-        AppToast.show(context, '登录成功，欢迎回来！', type: AppToastType.success);
-      }
+      AppToast.showInOverlay(overlay, '登录成功，欢迎回来！', type: AppToastType.success);
     } catch (e) {
       if (mounted) {
         AppToast.show(context, e.toString(), type: AppToastType.error);
@@ -83,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final c          = AppColors.of(context);
+    final c = AppColors.of(context);
     final controller = AppScope.of(context);
 
     return Padding(
@@ -92,10 +91,15 @@ class _LoginPageState extends State<LoginPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('登录', style: AppTextStyles.authTitle.copyWith(color: c.textPrimary)),
+          Text(
+            '登录',
+            style: AppTextStyles.authTitle.copyWith(color: c.textPrimary),
+          ),
           const SizedBox(height: 8),
-          Text('登录到你的 Litchi 账户',
-              style: AppTextStyles.authSubtitle.copyWith(color: c.textSecondary)),
+          Text(
+            '登录到你的 Litchi 账户',
+            style: AppTextStyles.authSubtitle.copyWith(color: c.textSecondary),
+          ),
           const SizedBox(height: 28),
           AuthInput(
             icon: LucideIcons.mail,
@@ -121,7 +125,8 @@ class _LoginPageState extends State<LoginPage> {
               ),
               AuthLinkText(
                 text: '忘记密码？',
-                onTap: () => controller.goToAuthScreen(AuthScreen.changePassword),
+                onTap: () =>
+                    controller.goToAuthScreen(AuthScreen.changePassword),
               ),
             ],
           ),

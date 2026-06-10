@@ -9,7 +9,7 @@ import '../theme/app_shadows.dart';
 import '../theme/app_text_styles.dart';
 import 'brand_logo.dart';
 
-/// Left navigation rail (§8). Fixed 160px wide.
+/// Left navigation rail (§8). Fixed 208px wide.
 class AppSidebar extends StatelessWidget {
   const AppSidebar({super.key});
 
@@ -28,7 +28,7 @@ class AppSidebar extends StatelessWidget {
     final controller = AppScope.of(context);
 
     return Container(
-      width: 160,
+      width: 208,
       decoration: BoxDecoration(
         color: c.sidebarBg,
         border: Border(right: BorderSide(color: c.sidebarBorder)),
@@ -69,12 +69,12 @@ class _BrandArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return SizedBox(
-      height: 56,
+      height: 64,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const BrandLogo(size: 40, radius: 12),
-          const SizedBox(width: 10),
+          const BrandLogo(size: 48, radius: 14),
+          const SizedBox(width: 12),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,12 +82,12 @@ class _BrandArea extends StatelessWidget {
               Text('Litchi',
                   style: AppTextStyles.bodyStrong.copyWith(
                     color: c.textPrimary,
-                    fontSize: 15,
+                    fontSize: 18,
                   )),
               const SizedBox(height: 2),
               Text('Network Client',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w400,
                     color: c.textMuted,
                     fontFamilyFallback: AppTextStyles.fontFamilyFallback,

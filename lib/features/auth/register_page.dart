@@ -36,6 +36,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> _submit() async {
     final controller = AppScope.of(context);
+    final overlay = Overlay.of(context, rootOverlay: true);
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
     final confirm = _confirmCtrl.text;
@@ -62,9 +63,11 @@ class _RegisterPageState extends State<RegisterPage> {
         passwordConfirmation: confirm,
         inviteCode: invite.isNotEmpty ? invite : null,
       );
-      if (mounted) {
-        AppToast.show(context, '注册成功，欢迎加入 Litchi！', type: AppToastType.success);
-      }
+      AppToast.showInOverlay(
+        overlay,
+        '注册成功，欢迎加入 Litchi！',
+        type: AppToastType.success,
+      );
     } catch (e) {
       if (mounted) {
         AppToast.show(context, e.toString(), type: AppToastType.error);
@@ -85,10 +88,15 @@ class _RegisterPageState extends State<RegisterPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('注册', style: AppTextStyles.authTitle.copyWith(color: c.textPrimary)),
+          Text(
+            '注册',
+            style: AppTextStyles.authTitle.copyWith(color: c.textPrimary),
+          ),
           const SizedBox(height: 6),
-          Text('创建你的 Litchi 账户',
-              style: AppTextStyles.authSubtitle.copyWith(color: c.textSecondary)),
+          Text(
+            '创建你的 Litchi 账户',
+            style: AppTextStyles.authSubtitle.copyWith(color: c.textSecondary),
+          ),
           const SizedBox(height: 20),
           AuthInput(
             icon: LucideIcons.mail,
@@ -125,11 +133,17 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('我已阅读并同意 ',
-                    style: AppTextStyles.caption
-                        .copyWith(color: c.textSecondary, fontSize: 12)),
-                Text('服务条款',
-                    style: AppTextStyles.button.copyWith(color: c.primary)),
+                Text(
+                  '我已阅读并同意 ',
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  '服务条款',
+                  style: AppTextStyles.button.copyWith(color: c.primary),
+                ),
               ],
             ),
           ),

@@ -24,14 +24,24 @@ class AppToast {
     AppToastType type = AppToastType.info,
     Duration duration = _defaultDuration,
   }) {
+    showInOverlay(
+      Overlay.of(context, rootOverlay: true),
+      message,
+      type: type,
+      duration: duration,
+    );
+  }
+
+  static void showInOverlay(
+    OverlayState overlay,
+    String message, {
+    AppToastType type = AppToastType.info,
+    Duration duration = _defaultDuration,
+  }) {
     _clear();
-    final overlay = Overlay.of(context);
     final entry = OverlayEntry(
-      builder: (_) => _ToastWidget(
-        message: message,
-        type: type,
-        duration: duration,
-      ),
+      builder: (_) =>
+          _ToastWidget(message: message, type: type, duration: duration),
     );
     _current = entry;
     overlay.insert(entry);
@@ -112,74 +122,77 @@ class _ToastWidgetState extends State<_ToastWidget>
       AppToastType.info => (LucideIcons.info, c.primary),
     };
 
-    return Padding(
-      // Offset right by sidebar width so Align.topCenter lands in content area.
-      padding: const EdgeInsets.only(left: 160),
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 56),
-          child: FadeTransition(
-            opacity: _fade,
-            child: SlideTransition(
-              position: _slide,
-              child: Material(
-                color: Colors.transparent,
-                child: IntrinsicWidth(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 160, maxWidth: 360),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: c.cardBg,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        border: Border.all(color: c.softBorder),
-                        boxShadow: AppShadows.soft(c),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadius.md - 1),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 11),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 28,
-                                    height: 28,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: color.withValues(alpha: 0.12),
-                                      borderRadius:
-                                          BorderRadius.circular(AppRadius.xs),
-                                    ),
-                                    child: Icon(icon, size: 15, color: color),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Flexible(
-                                    child: Text(
-                                      widget.message,
-                                      style: AppTextStyles.body
-                                          .copyWith(color: c.textPrimary),
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 56),
+        child: FadeTransition(
+          opacity: _fade,
+          child: SlideTransition(
+            position: _slide,
+            child: Material(
+              color: Colors.transparent,
+              child: IntrinsicWidth(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    minWidth: 160,
+                    maxWidth: 360,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: c.cardBg,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: c.softBorder),
+                      boxShadow: AppShadows.soft(c),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.md - 1),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 11,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: color.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.xs,
                                     ),
                                   ),
-                                ],
-                              ),
+                                  child: Icon(icon, size: 15, color: color),
+                                ),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    widget.message,
+                                    style: AppTextStyles.body.copyWith(
+                                      color: c.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            AnimatedBuilder(
-                              animation: _progressCtrl,
-                              builder: (_, child) => LinearProgressIndicator(
-                                value: _progressCtrl.value,
-                                minHeight: 3,
-                                backgroundColor: Colors.transparent,
-                                color: color.withValues(alpha: 0.5),
-                              ),
+                          ),
+                          AnimatedBuilder(
+                            animation: _progressCtrl,
+                            builder: (_, child) => LinearProgressIndicator(
+                              value: _progressCtrl.value,
+                              minHeight: 3,
+                              backgroundColor: Colors.transparent,
+                              color: color.withValues(alpha: 0.5),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
