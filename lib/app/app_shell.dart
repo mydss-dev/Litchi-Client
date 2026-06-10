@@ -94,7 +94,7 @@ class _MainShell extends StatelessWidget {
               Expanded(
                 child: Container(
                   color: c.appBg,
-                  padding: const EdgeInsets.fromLTRB(24, 2, 24, 24),
+                  padding: const EdgeInsets.fromLTRB(32, 14, 32, 24),
                   child: _pageFor(controller.page),
                 ),
               ),

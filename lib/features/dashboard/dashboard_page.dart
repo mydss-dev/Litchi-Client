@@ -37,7 +37,9 @@ class _DashboardPageState extends State<DashboardPage> {
     final ctrl = AppScope.of(context);
     if (ctrl.coreRunning && _tickTimer == null) {
       _tickTimer = Timer.periodic(
-          const Duration(seconds: 1), (_) => setState(() {}));
+        const Duration(seconds: 1),
+        (_) => setState(() {}),
+      );
     } else if (!ctrl.coreRunning && _tickTimer != null) {
       _tickTimer!.cancel();
       _tickTimer = null;
@@ -82,7 +84,11 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageHeader(title: 'Litchi Client', subtitle: '现代化跨平台网络加速客户端'),
+          const PageHeader(
+            title: 'Litchi Client',
+            subtitle: '现代化跨平台网络加速客户端',
+            prominent: true,
+          ),
           const SizedBox(height: 12),
           _ConnectionHeroCard(
             connected: connected,
@@ -119,92 +125,133 @@ class _ConnectionHeroCard extends StatelessWidget {
     final ctrl = AppScope.of(context);
     final node = ctrl.currentNode;
     final user = ctrl.user;
+    final nodeLabel = ctrl.autoSelected ? '智能推荐节点' : '当前节点';
 
     return AppCard(
       radius: AppRadius.xl,
-      height: 250,
-      padding: const EdgeInsets.all(28),
+      height: 240,
+      padding: const EdgeInsets.all(24),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
+            flex: 11,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('欢迎回来，${user.name}',
-                    style: AppTextStyles.heroTitle.copyWith(color: c.textPrimary)),
-                const SizedBox(height: 8),
-                Text('Premium Plan · 到期 ${user.expiry}',
-                    style: AppTextStyles.body.copyWith(color: c.textMuted)),
-                const Spacer(),
-                // Node label row: "智能推荐" badge when auto, plain label otherwise
-                if (ctrl.autoSelected)
-                  Row(
+                Text.rich(
+                  TextSpan(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: c.primarySoft,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: c.primary.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(LucideIcons.zap, size: 11, color: c.primary),
-                            const SizedBox(width: 4),
-                            Text('智能推荐',
-                                style: AppTextStyles.badge.copyWith(
-                                    color: c.primary, fontSize: 11)),
-                          ],
+                      TextSpan(
+                        text: '欢迎回来，',
+                        style: AppTextStyles.heroTitle.copyWith(
+                          color: c.textPrimary,
+                          fontSize: 23,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Text('最优节点',
-                          style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                      TextSpan(
+                        text: user.name,
+                        style: AppTextStyles.heroTitle.copyWith(
+                          color: c.primary,
+                          fontSize: 23,
+                        ),
+                      ),
                     ],
-                  )
-                else
-                  Text('当前节点',
-                      style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                  ),
+                ),
                 const SizedBox(height: 8),
+                Text(
+                  'Premium Plan · 到期 ${user.expiry}',
+                  style: AppTextStyles.body.copyWith(
+                    color: c.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  nodeLabel,
+                  style: AppTextStyles.body.copyWith(
+                    color: c.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     CountryFlag.fromCountryCode(
                       node.code.isNotEmpty ? node.code : 'UN',
                       theme: const ImageTheme(
-                        width: 28, height: 20, shape: RoundedRectangle(3),
+                        width: 28,
+                        height: 20,
+                        shape: RoundedRectangle(3),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(node.name,
-                        style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary)),
-                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        node.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          color: c.textPrimary,
+                          fontSize: 22,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
                     if (node.latency > 0 && node.latency < 9999)
-                      AppBadge.latency(context, text: '${node.latency} ms'),
+                      AppBadge(
+                        text: '${node.latency} ms',
+                        background: c.success.withValues(alpha: 0.12),
+                        textColor: c.success,
+                        fontSize: 13,
+                        height: 28,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 10,
+                  children: [
+                    _HeroActionButton(
+                      icon: LucideIcons.refreshCw,
+                      label: '切换节点',
+                      onTap: () => ctrl.goToPage(AppPage.nodes),
+                    ),
+                    _HeroActionButton(
+                      icon: LucideIcons.crown,
+                      label: '续费套餐',
+                      onTap: () => ctrl.goToPage(AppPage.shop),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 24),
-          SizedBox(
-            width: 180,
+          const SizedBox(width: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Container(width: 1, color: c.softBorder),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            flex: 10,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _PowerButton(
-                    connected: connected,
-                    connecting: connecting,
-                    onTap: onToggle),
-                const SizedBox(height: 18),
+                  connected: connected,
+                  connecting: connecting,
+                  onTap: onToggle,
+                ),
+                const SizedBox(height: 14),
                 Text(
                   connecting
                       ? (connected ? '断开中…' : '连接中…')
                       : (connected ? '已连接' : '未连接'),
                   style: AppTextStyles.sectionTitle.copyWith(
                     color: c.textPrimary,
-                    fontSize: 18,
+                    fontSize: 20,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -239,30 +286,107 @@ class _PowerButton extends StatelessWidget {
       cursor: connecting ? MouseCursor.defer : SystemMouseCursors.click,
       child: GestureDetector(
         onTap: connecting ? null : onTap,
-        child: Container(
-          width: 104,
-          height: 104,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: connected && !connecting ? AppPalette.brandGradient : null,
-            color: connecting
-                ? c.surfaceMuted
-                : (connected ? null : c.surfaceMuted),
-            boxShadow: connected && !connecting ? AppShadows.powerButton : null,
-          ),
-          child: connecting
-              ? Padding(
-                  padding: const EdgeInsets.all(30),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    color: c.primary,
-                  ),
-                )
-              : Icon(
-                  LucideIcons.power,
-                  size: 40,
-                  color: connected ? Colors.white : c.iconMuted,
+        child: SizedBox(
+          width: 128,
+          height: 128,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 128,
+                height: 128,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: connected
+                      ? c.primarySoft.withValues(alpha: 0.7)
+                      : c.surfaceMuted.withValues(alpha: 0.65),
                 ),
+              ),
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: connected && !connecting
+                      ? AppPalette.brandGradient
+                      : null,
+                  color: connecting
+                      ? c.surfaceMuted
+                      : (connected ? null : c.surfaceMuted),
+                  border: Border.all(
+                    color: connected
+                        ? Colors.white.withValues(alpha: 0.82)
+                        : c.softBorder,
+                    width: 2,
+                  ),
+                  boxShadow: connected && !connecting
+                      ? AppShadows.powerButton
+                      : null,
+                ),
+                child: connecting
+                    ? Padding(
+                        padding: const EdgeInsets.all(34),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: c.primary,
+                        ),
+                      )
+                    : Icon(
+                        LucideIcons.power,
+                        size: 46,
+                        color: connected ? Colors.white : c.iconMuted,
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroActionButton extends StatelessWidget {
+  const _HeroActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Ink(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: c.softBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: c.primary),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: AppTextStyles.button.copyWith(
+                  color: c.primary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -285,13 +409,13 @@ class _InfoMiniCardsRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(child: traffic),
-                const SizedBox(width: 14),
+                const SizedBox(width: 24),
                 Expanded(child: plan),
               ],
             ),
           );
         }
-        return Column(children: [traffic, const SizedBox(height: 14), plan]);
+        return Column(children: [traffic, const SizedBox(height: 16), plan]);
       },
     );
   }
@@ -306,40 +430,74 @@ class _TrafficMiniCard extends StatelessWidget {
 
     return AppCard(
       radius: AppRadius.card,
+      height: 120,
       padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(LucideIcons.wifi, size: 16, color: c.primary),
-              const SizedBox(width: 8),
-              Text('本月流量',
-                  style: AppTextStyles.cardTitle.copyWith(color: c.textSecondary)),
-            ],
+          _DashboardIconBox(
+            icon: LucideIcons.wifi,
+            color: c.primary,
+            background: c.primarySoft,
           ),
-          const SizedBox(height: 12),
-          Text('${t.usedGb.toInt()} / ${t.totalGb.toInt()} GB',
-              style: AppTextStyles.largeNumber(fontSize: 20).copyWith(color: c.textPrimary)),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: Stack(
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(height: 8, color: c.surfaceMuted),
-                FractionallySizedBox(
-                  widthFactor: ratio,
-                  child: Container(
-                    height: 8,
-                    decoration: const BoxDecoration(gradient: AppPalette.brandGradient),
+                Text(
+                  '本月流量',
+                  style: AppTextStyles.sectionTitle.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '${t.usedGb.toInt()}',
+                        style: AppTextStyles.largeNumber(
+                          fontSize: 23,
+                        ).copyWith(color: c.primary),
+                      ),
+                      TextSpan(
+                        text: ' / ${t.totalGb.toInt()} GB',
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          color: c.textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '剩余 ${t.remainGb.toInt()} GB',
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: Stack(
+                    children: [
+                      Container(height: 8, color: c.surfaceMuted),
+                      FractionallySizedBox(
+                        widthFactor: ratio,
+                        child: Container(
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            gradient: AppPalette.brandGradient,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text('剩余 ${t.remainGb.toInt()} GB',
-              style: AppTextStyles.caption.copyWith(color: c.textMuted)),
         ],
       ),
     );
@@ -355,38 +513,77 @@ class _PlanMiniCard extends StatelessWidget {
 
     return AppCard(
       radius: AppRadius.card,
+      height: 120,
       padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(LucideIcons.crown, size: 16, color: c.warning),
-              const SizedBox(width: 8),
-              Text('当前套餐',
-                  style: AppTextStyles.cardTitle.copyWith(color: c.textSecondary)),
-            ],
+          _DashboardIconBox(
+            icon: LucideIcons.crown,
+            color: c.secondary,
+            background: c.secondarySoft,
           ),
-          const SizedBox(height: 12),
-          Text(user.plan,
-              style: AppTextStyles.largeNumber(fontSize: 20).copyWith(color: c.textPrimary)),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text('到期时间：${user.expiry}',
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-              ),
-              AppSecondaryButton(
-                label: '续费',
-                height: 30,
-                onPressed: () => controller.goToPage(AppPage.shop),
-              ),
-            ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '当前套餐',
+                  style: AppTextStyles.sectionTitle.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  user.plan,
+                  style: AppTextStyles.largeNumber(
+                    fontSize: 22,
+                  ).copyWith(color: c.textPrimary),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '到期时间：${user.expiry}',
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+              ],
+            ),
+          ),
+          AppSecondaryButton(
+            label: '续费',
+            height: 34,
+            radius: AppRadius.md,
+            onPressed: () => controller.goToPage(AppPage.shop),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DashboardIconBox extends StatelessWidget {
+  const _DashboardIconBox({
+    required this.icon,
+    required this.color,
+    required this.background,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Icon(icon, size: 24, color: color),
     );
   }
 }
@@ -401,40 +598,37 @@ class _StatusBar extends StatelessWidget {
     final c = AppColors.of(context);
     return AppCard(
       radius: AppRadius.card,
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      height: 82,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
       child: Row(
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: connected ? c.primarySoft : c.surfaceMuted,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Icon(
-              connected ? LucideIcons.shieldCheck : LucideIcons.shieldOff,
-              size: 18,
-              color: connected ? c.primary : c.iconMuted,
-            ),
+          _DashboardIconBox(
+            icon: connected ? LucideIcons.shieldCheck : LucideIcons.shieldOff,
+            color: connected ? c.primary : c.iconMuted,
+            background: connected ? c.primarySoft : c.surfaceMuted,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 22),
           Expanded(
-            child: Text(
-              connected ? 'Litchi Client 已为您保护网络连接' : '当前未连接，点击电源按钮开始连接',
-              style: AppTextStyles.body.copyWith(color: c.textPrimary),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  connected ? 'Litchi Client 已为您保护网络连接' : '当前未连接，点击电源按钮开始连接',
+                  style: AppTextStyles.sectionTitle.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  connected ? '安全、稳定、纯净的网络体验' : '开启后将自动应用当前节点代理',
+                  style: AppTextStyles.body.copyWith(color: c.textMuted),
+                ),
+              ],
             ),
           ),
-          AppBadge(
-            text: connected ? '安全' : '未保护',
-            background: connected
-                ? c.success.withValues(alpha: 0.12)
-                : c.danger.withValues(alpha: 0.12),
-            textColor: connected ? c.success : c.danger,
-            fontSize: 11,
-            height: 22,
-          ),
+          Icon(LucideIcons.chevronRight, size: 22, color: c.iconMuted),
         ],
       ),
     );
