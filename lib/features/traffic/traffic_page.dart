@@ -4,19 +4,15 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/models/mock_data.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_select.dart';
-import '../../shared/widgets/log_panel.dart';
 import '../../shared/widgets/page_header.dart';
 
-/// Statistics page (§13): traffic overview (donut) + daily usage (bars) +
-/// online devices + login records.
+/// Statistics page (§13): compact traffic, device, and subscription stats.
 class TrafficPage extends StatefulWidget {
   const TrafficPage({super.key});
 
@@ -25,299 +21,76 @@ class TrafficPage extends StatefulWidget {
 }
 
 class _TrafficPageState extends State<TrafficPage> {
-  String _period = '月用';
+  String _period = '最近7天';
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = AppScope.of(context);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: PageHeader(title: '统计', subtitle: '查看流量概览和近期登录记录'),
-              ),
-              AppSelect<String>(
-                value: _period,
-                items: const ['日用', '月用', '年用'],
-                labelOf: (v) => v,
-                onChanged: (v) => setState(() => _period = v),
-              ),
-            ],
-          ),
+          const PageHeader(title: '统计', subtitle: '查看流量、设备和套餐周期'),
           const SizedBox(height: 12),
-          const _SummaryCard(),
+          const _StatsGrid(),
           const SizedBox(height: 16),
-          const _DailyUsageCard(),
-          const SizedBox(height: 16),
-          const _DevicesCard(),
-          const SizedBox(height: 16),
-          const _LoginRecordsCard(),
-          const SizedBox(height: 16),
-          _LogCard(logStream: ctrl.coreLogStream),
-        ],
-      ),
-    );
-  }
-}
-
-class _LogCard extends StatelessWidget {
-  const _LogCard({required this.logStream});
-
-  final Stream<String> logStream;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: c.softBorder),
-      ),
-      child: LogPanel(logStream: logStream),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppScope.of(context).traffic;
-    return AppCard(
-      radius: AppRadius.lg,
-      padding: const EdgeInsets.all(24),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // 580 so the stats+donut sit side-by-side at the real content width.
-          final wide = constraints.maxWidth >= 580;
-          final stats = _SummaryStats(traffic: t);
-          final donut = _TrafficDonut(percent: t.usedPercent);
-          if (wide) {
-            return Row(
-              children: [
-                Expanded(child: stats),
-                const SizedBox(width: 18),
-                SizedBox(width: 150, height: 150, child: donut),
-              ],
-            );
-          }
-          return Column(
-            children: [
-              stats,
-              const SizedBox(height: 18),
-              SizedBox(width: 150, height: 150, child: donut),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _SummaryStats extends StatelessWidget {
-  const _SummaryStats({required this.traffic});
-
-  final TrafficModel traffic;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('总计流量', style: AppTextStyles.cardTitle.copyWith(color: c.textSecondary)),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text('${traffic.totalGb.toInt()}',
-                style: AppTextStyles.largeNumber(fontSize: 34).copyWith(color: c.textPrimary)),
-            const SizedBox(width: 6),
-            Text('GB', style: AppTextStyles.sectionTitle.copyWith(color: c.textMuted)),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            _legend(c, c.primary, '已用', '${traffic.usedGb.toInt()} GB'),
-            const SizedBox(width: 28),
-            _legend(c, c.surfaceMuted, '剩余', '${traffic.remainGb.toInt()} GB',
-                dotBorder: true),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _legend(AppColors c, Color dot, String label, String value,
-      {bool dotBorder = false}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(
-            color: dot,
-            shape: BoxShape.circle,
-            border: dotBorder ? Border.all(color: c.border) : null,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-            Text(value, style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary)),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _TrafficDonut extends StatelessWidget {
-  const _TrafficDonut({required this.percent});
-
-  final double percent;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        PieChart(
-          PieChartData(
-            startDegreeOffset: -90,
-            sectionsSpace: 0,
-            centerSpaceRadius: 52,
-            sections: [
-              PieChartSectionData(
-                value: percent,
-                radius: 18,
-                showTitle: false,
-                gradient: AppPalette.brandGradient,
-              ),
-              PieChartSectionData(
-                value: 100 - percent,
-                radius: 18,
-                showTitle: false,
-                color: c.surfaceMuted,
-              ),
-            ],
-          ),
-        ),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('${percent.toStringAsFixed(1)}%',
-                style: AppTextStyles.largeNumber(fontSize: 22).copyWith(color: c.textPrimary)),
-            Text('已用', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _DailyUsageCard extends StatelessWidget {
-  const _DailyUsageCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final data = AppScope.of(context).dailyUsage;
-    final maxV = data.reduce((a, b) => a > b ? a : b);
-
-    return AppCard(
-      radius: AppRadius.lg,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('每日使用情况',
-              style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary)),
-          const SizedBox(height: 18),
-          SizedBox(
-            height: 160,
-            child: BarChart(
-              BarChartData(
-                maxY: (maxV / 10).ceil() * 10,
-                alignment: BarChartAlignment.spaceBetween,
-                borderData: FlBorderData(show: false),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 10,
-                  getDrawingHorizontalLine: (_) =>
-                      FlLine(color: c.softBorder, strokeWidth: 1),
-                ),
-                titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 34,
-                      interval: 10,
-                      getTitlesWidget: (value, meta) => Text(
-                        '${value.toInt()}',
-                        style: AppTextStyles.caption.copyWith(
-                            color: c.textMuted, fontSize: 10),
-                      ),
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 22,
-                      interval: 1,
-                      getTitlesWidget: (value, meta) {
-                        final i = value.toInt();
-                        // Label every 5th day to avoid clutter.
-                        if (i % 5 != 0) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text('${i + 1}',
-                              style: AppTextStyles.caption.copyWith(
-                                  color: c.textMuted, fontSize: 10)),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                barGroups: [
-                  for (int i = 0; i < data.length; i++)
-                    BarChartGroupData(
-                      x: i,
-                      barRods: [
-                        BarChartRodData(
-                          toY: data[i],
-                          width: 6,
-                          borderRadius: BorderRadius.circular(3),
-                          gradient: const LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [AppPalette.brandStart, AppPalette.brandEnd],
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
+          _UsageTrendCard(
+            period: _period,
+            onPeriodChanged: (v) => setState(() => _period = v),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StatsGrid extends StatelessWidget {
+  const _StatsGrid();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 1040
+            ? 4
+            : constraints.maxWidth >= 640
+            ? 2
+            : 1;
+        const gap = 16.0;
+        final cardWidth =
+            (constraints.maxWidth - gap * (columns - 1)) / columns;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(width: cardWidth, child: const _TrafficCard()),
+            SizedBox(width: cardWidth, child: const _RemainingDaysCard()),
+            SizedBox(width: cardWidth, child: const _DevicesCard()),
+            SizedBox(width: cardWidth, child: const _TrafficResetCard()),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TrafficCard extends StatelessWidget {
+  const _TrafficCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final traffic = AppScope.of(context).traffic;
+    final ratio = traffic.totalGb > 0
+        ? (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0)
+        : 0.0;
+
+    return _StatCard(
+      icon: LucideIcons.chartPie,
+      title: '流量统计',
+      value: '${traffic.usedGb.toStringAsFixed(0)} GB',
+      unit: '/ ${traffic.totalGb.toStringAsFixed(0)} GB',
+      footer: '剩余 ${traffic.remainGb.toStringAsFixed(0)} GB',
+      progress: ratio,
     );
   }
 }
@@ -327,80 +100,123 @@ class _DevicesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final devices = MockData.devices;
-    final online = devices.where((d) => d.online).length;
+    final ctrl = AppScope.of(context);
+    final deviceCount = ctrl.aliveIp ?? 0;
+    final deviceLimit = ctrl.deviceLimit;
+    final hasLimit = deviceLimit != null && deviceLimit > 0;
 
-    return AppCard(
-      radius: AppRadius.lg,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(LucideIcons.monitorSmartphone, size: 18, color: c.primary),
-              const SizedBox(width: 8),
-              Text('在线设备',
-                  style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary)),
-              const Spacer(),
-              Text('$online / 5',
-                  style: AppTextStyles.bodyStrong.copyWith(color: c.primary)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          for (int i = 0; i < devices.length; i++) ...[
-            _deviceRow(c, devices[i]),
-            if (i != devices.length - 1) Divider(color: c.softBorder, height: 16),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _deviceRow(AppColors c, DeviceModel d) {
-    final icon = d.platform.contains('Windows')
-        ? LucideIcons.monitor
-        : d.platform.contains('iOS')
-            ? LucideIcons.smartphone
-            : LucideIcons.laptop;
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: c.iconDefault),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(d.name, style: AppTextStyles.body.copyWith(color: c.textPrimary)),
-              Text(d.platform,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-            ],
-          ),
-        ),
-        Text(d.lastActive,
-            style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-        const SizedBox(width: 10),
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: d.online ? c.success : c.iconMuted,
-            shape: BoxShape.circle,
-          ),
-        ),
-      ],
+    return _StatCard(
+      icon: LucideIcons.monitorSmartphone,
+      title: '在线设备',
+      value: '$deviceCount',
+      unit: '/ ${hasLimit ? deviceLimit : '∞'}',
+      footer: '当前在线设备数',
+      progress: hasLimit ? (deviceCount / deviceLimit).clamp(0.0, 1.0) : null,
     );
   }
 }
 
-class _LoginRecordsCard extends StatelessWidget {
-  const _LoginRecordsCard();
+class _RemainingDaysCard extends StatelessWidget {
+  const _RemainingDaysCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final expiredAt = ctrl.expiredAt;
+    final expiry = expiredAt == null || expiredAt == 0
+        ? ctrl.user.expiry
+        : _formatDate(DateTime.fromMillisecondsSinceEpoch(expiredAt * 1000));
+    final remainingDays = expiredAt == null || expiredAt == 0
+        ? _remainingDays(expiry)
+        : _remainingDaysFromTimestamp(expiredAt);
+
+    return _StatCard(
+      icon: LucideIcons.calendarDays,
+      title: '剩余日期',
+      value: remainingDays == null ? '永久' : '$remainingDays',
+      unit: remainingDays == null ? '' : '天',
+      footer: remainingDays == null ? '订阅长期有效' : '到期 $expiry',
+      progress: null,
+    );
+  }
+
+  int? _remainingDays(String expiry) {
+    final expiryDate = DateTime.tryParse(expiry);
+    if (expiryDate == null) return null;
+    final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day);
+    final end = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
+    return end.difference(start).inDays.clamp(0, 9999);
+  }
+
+  int _remainingDaysFromTimestamp(int timestamp) {
+    final expiryDate = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day);
+    final end = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
+    return end.difference(start).inDays.clamp(0, 9999);
+  }
+
+  String _formatDate(DateTime date) {
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$m-$d';
+  }
+}
+
+class _TrafficResetCard extends StatelessWidget {
+  const _TrafficResetCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final resetDay = AppScope.of(context).resetDay;
+    return _StatCard(
+      icon: LucideIcons.refreshCw,
+      title: '流量重置时间',
+      value: resetDay == null ? '不重置' : '$resetDay 天',
+      footer: resetDay == null ? '当前套餐未配置重置周期' : '距下次重置',
+      progress: null,
+    );
+  }
+}
+
+class _UsageTrendCard extends StatefulWidget {
+  const _UsageTrendCard({required this.period, required this.onPeriodChanged});
+
+  final String period;
+  final ValueChanged<String> onPeriodChanged;
+
+  @override
+  State<_UsageTrendCard> createState() => _UsageTrendCardState();
+}
+
+class _UsageTrendCardState extends State<_UsageTrendCard> {
+  final _scrollController = ScrollController();
+  String? _scrollKey;
+
+  String get period => widget.period;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final records = MockData.loginRecords;
+    final ctrl = AppScope.of(context);
+    final data = _chartData(ctrl.trafficUsage, ctrl.dailyUsage);
+    final maxV = data.isEmpty
+        ? 10.0
+        : data.map((p) => p.value).reduce((a, b) => a > b ? a : b);
+    final maxY = _niceMaxY(maxV);
+    final axisUnit = maxY < 1 ? _TrafficAxisUnit.mb : _TrafficAxisUnit.gb;
+    final total = data.fold<double>(0, (sum, p) => sum + p.value);
+    final days = _daysForPeriod();
+    final slotWidth = days <= 7 ? 54.0 : 36.0;
+    final barWidth = days <= 7 ? 18.0 : 12.0;
+    _scrollToLatestAfterLayout(data);
 
     return AppCard(
       radius: AppRadius.lg,
@@ -410,51 +226,454 @@ class _LoginRecordsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(LucideIcons.calendar, size: 18, color: c.primary),
+              Icon(LucideIcons.activity, size: 18, color: c.primary),
               const SizedBox(width: 8),
-              Text('登录记录',
-                  style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '流量趋势图',
+                      style: AppTextStyles.sectionTitle.copyWith(
+                        color: c.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$period 共 ${_formatGb(total)}',
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              AppSelect<String>(
+                value: period,
+                items: const ['最近7天', '最近30天', '最近90天'],
+                labelOf: (v) => v,
+                onChanged: widget.onPeriodChanged,
+                minWidth: 104,
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          for (int i = 0; i < records.length; i++) ...[
-            _recordRow(c, records[i]),
-            if (i != records.length - 1) Divider(color: c.softBorder, height: 16),
-          ],
+          const SizedBox(height: 18),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final minWidth = data.length * slotWidth;
+              const axisWidth = 58.0;
+              final scrollWidth = (constraints.maxWidth - axisWidth).clamp(
+                120.0,
+                double.infinity,
+              );
+              final chartWidth = minWidth > scrollWidth
+                  ? minWidth
+                  : scrollWidth;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: axisWidth,
+                    height: 226,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 60),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _axisLabel(maxY, axisUnit),
+                            style: AppTextStyles.caption.copyWith(
+                              color: c.textMuted,
+                              fontSize: 10,
+                            ),
+                          ),
+                          Text(
+                            _axisLabel(0, axisUnit),
+                            style: AppTextStyles.caption.copyWith(
+                              color: c.textMuted,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Scrollbar(
+                      controller: _scrollController,
+                      thumbVisibility: true,
+                      trackVisibility: true,
+                      interactive: true,
+                      thickness: 6,
+                      radius: const Radius.circular(999),
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: chartWidth,
+                          height: 226,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: 170,
+                                  child: BarChart(
+                                    BarChartData(
+                                      maxY: maxY,
+                                      barTouchData: BarTouchData(
+                                        touchTooltipData: BarTouchTooltipData(
+                                          fitInsideHorizontally: true,
+                                          fitInsideVertically: true,
+                                          maxContentWidth: 160,
+                                          getTooltipColor: (_) => c.textPrimary,
+                                          getTooltipItem:
+                                              (
+                                                group,
+                                                groupIndex,
+                                                rod,
+                                                rodIndex,
+                                              ) {
+                                                final point =
+                                                    data[group.x.toInt()];
+                                                return BarTooltipItem(
+                                                  '${point.tooltipLabel}\n上行 ${_formatGb(point.uploadGb)}\n下行 ${_formatGb(point.downloadGb)}\n合计 ${_formatGb(point.value)}',
+                                                  AppTextStyles.caption
+                                                      .copyWith(
+                                                        color: c.cardBg,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                );
+                                              },
+                                        ),
+                                      ),
+                                      alignment: BarChartAlignment.spaceAround,
+                                      borderData: FlBorderData(show: false),
+                                      gridData: FlGridData(
+                                        show: true,
+                                        drawVerticalLine: false,
+                                        horizontalInterval: _gridInterval(maxY),
+                                        getDrawingHorizontalLine: (_) => FlLine(
+                                          color: c.softBorder,
+                                          strokeWidth: 1,
+                                        ),
+                                      ),
+                                      titlesData: const FlTitlesData(
+                                        topTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
+                                        ),
+                                        rightTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
+                                        ),
+                                        leftTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
+                                        ),
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
+                                        ),
+                                      ),
+                                      barGroups: [
+                                        for (int i = 0; i < data.length; i++)
+                                          BarChartGroupData(
+                                            x: i,
+                                            barRods: [
+                                              BarChartRodData(
+                                                toY: data[i].value,
+                                                width: barWidth,
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                                gradient: const LinearGradient(
+                                                  begin: Alignment.bottomCenter,
+                                                  end: Alignment.topCenter,
+                                                  colors: [
+                                                    AppPalette.brandStart,
+                                                    AppPalette.brandEnd,
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                    duration: Duration.zero,
+                                  ),
+                                ),
+                                Container(height: 1, color: c.softBorder),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                  children: [
+                                    for (final point in data)
+                                      SizedBox(
+                                        width: slotWidth,
+                                        child: Text(
+                                          point.label,
+                                          textAlign: TextAlign.center,
+                                          maxLines: 1,
+                                          style: AppTextStyles.caption.copyWith(
+                                            color: c.textMuted,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _recordRow(AppColors c, LoginRecord r) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(r.location,
-                      style: AppTextStyles.body.copyWith(color: c.textPrimary)),
-                  const SizedBox(width: 8),
-                  if (r.suspicious)
-                    AppBadge(
-                      text: '异常',
-                      background: c.dangerSoft,
-                      textColor: c.danger,
-                      fontSize: 10,
-                      height: 18,
-                    ),
-                ],
-              ),
-              Text(r.device,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-            ],
-          ),
+  List<_ChartPoint> _chartData(
+    List<TrafficUsagePoint> usage,
+    List<double> fallback,
+  ) {
+    final days = _daysForPeriod();
+    if (usage.isEmpty) {
+      final raw = fallback.skip(
+        (fallback.length - days).clamp(0, fallback.length),
+      );
+      return raw
+          .toList()
+          .asMap()
+          .entries
+          .map((e) => _ChartPoint(label: _fallbackLabel(e.key), value: e.value))
+          .toList();
+    }
+
+    final points = _lastCalendarDays(usage, days);
+    return [
+      for (int i = 0; i < points.length; i++)
+        _ChartPoint(
+          label: _monthDay(points[i].date),
+          tooltipLabel:
+              '${_monthDay(points[i].date)} ${_weekdayLabel(points[i].date.weekday)}',
+          value: points[i].totalGb,
+          uploadGb: points[i].uploadGb,
+          downloadGb: points[i].downloadGb,
         ),
-        Text(r.time, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-      ],
+    ];
+  }
+
+  List<TrafficUsagePoint> _lastCalendarDays(
+    List<TrafficUsagePoint> usage,
+    int count,
+  ) {
+    if (usage.isEmpty) return const [];
+    final byDate = {
+      for (final p in usage) DateTime(p.date.year, p.date.month, p.date.day): p,
+    };
+    final endRaw = usage.last.date;
+    final end = DateTime(endRaw.year, endRaw.month, endRaw.day);
+    return [
+      for (int i = count - 1; i >= 0; i--)
+        () {
+          final date = end.subtract(Duration(days: i));
+          return byDate[date] ?? TrafficUsagePoint(date: date, totalGb: 0);
+        }(),
+    ];
+  }
+
+  String _monthDay(DateTime date) => '${date.month}/${date.day}';
+
+  String _weekdayLabel(int weekday) {
+    const labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    if (weekday < 1 || weekday > labels.length) return '';
+    return labels[weekday - 1];
+  }
+
+  String _fallbackLabel(int index) => '${index + 1}';
+
+  int _daysForPeriod() => switch (period) {
+    '最近30天' => 30,
+    '最近90天' => 90,
+    _ => 7,
+  };
+
+  double _niceMaxY(double value) {
+    if (value <= 0.05) return 0.05;
+    if (value <= 0.1) return 0.1;
+    if (value <= 0.5) return 0.5;
+    if (value <= 1) return 1;
+    if (value <= 5) return value.ceilToDouble();
+    return ((value / 10).ceil() * 10).toDouble();
+  }
+
+  double _gridInterval(double maxY) {
+    if (maxY <= 0.1) return 0.05;
+    if (maxY <= 0.5) return 0.1;
+    if (maxY <= 1) return 0.25;
+    if (maxY <= 5) return 1;
+    return maxY / 5;
+  }
+
+  String _axisLabel(double value, _TrafficAxisUnit unit) {
+    if (unit == _TrafficAxisUnit.mb) {
+      final mb = value * 1024;
+      if (mb == 0) return '0 MB';
+      if (mb < 10) return '${mb.toStringAsFixed(1)} MB';
+      return '${mb.round()} MB';
+    }
+    if (value == 0) return '0 GB';
+    if (value == value.roundToDouble()) return '${value.toInt()} GB';
+    return '${value.toStringAsFixed(1)} GB';
+  }
+
+  String _formatGb(double value) {
+    if (value == 0) return '0 GB';
+    if (value < 0.01) return '${(value * 1024).toStringAsFixed(1)} MB';
+    if (value < 1) return '${value.toStringAsFixed(2)} GB';
+    return '${value.toStringAsFixed(1)} GB';
+  }
+
+  void _scrollToLatestAfterLayout(List<_ChartPoint> data) {
+    final key = '$period:${data.length}:${data.isEmpty ? '' : data.last.label}';
+    if (_scrollKey == key) return;
+    _scrollKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    });
+  }
+}
+
+class _ChartPoint {
+  const _ChartPoint({
+    required this.label,
+    required this.value,
+    String? tooltipLabel,
+    this.uploadGb = 0,
+    this.downloadGb = 0,
+  }) : tooltipLabel = tooltipLabel ?? label;
+
+  final String label;
+  final double value;
+  final String tooltipLabel;
+  final double uploadGb;
+  final double downloadGb;
+}
+
+enum _TrafficAxisUnit { mb, gb }
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.footer,
+    this.unit = '',
+    this.progress,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final String unit;
+  final String footer;
+  final double? progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+
+    return AppCard(
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(20),
+      child: SizedBox(
+        height: 138,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: c.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.sectionTitle.copyWith(
+                      color: c.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Flexible(
+                  child: Text(
+                    value,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.largeNumber(
+                      fontSize: 30,
+                    ).copyWith(color: c.textPrimary),
+                  ),
+                ),
+                if (unit.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    unit,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: c.textMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const Spacer(),
+            if (progress != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: Stack(
+                  children: [
+                    Container(height: 8, color: c.surfaceMuted),
+                    FractionallySizedBox(
+                      widthFactor: progress,
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: progress! >= 1 ? c.danger : c.primary,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            Text(
+              footer,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption.copyWith(color: c.textMuted),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

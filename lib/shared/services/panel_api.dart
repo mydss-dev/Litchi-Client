@@ -4,7 +4,6 @@ import '../models/api_models.dart';
 import 'api_client.dart';
 import 'subscription_parser.dart';
 
-
 /// Generic subscription panel API client.
 ///
 /// Handles authentication, user data, subscription parsing, plans, invite and
@@ -17,10 +16,10 @@ class PanelApi {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   Future<AuthResult> login(String email, String password) async {
-    final res = await _client.post('/passport/auth/login', data: {
-      'email': email,
-      'password': password,
-    });
+    final res = await _client.post(
+      '/passport/auth/login',
+      data: {'email': email, 'password': password},
+    );
     _check(res);
     return AuthResult.fromJson(res['data'] as Map<String, dynamic>);
   }
@@ -49,11 +48,14 @@ class PanelApi {
     required String newPassword,
     required String passwordConfirmation,
   }) async {
-    final res = await _client.post('/user/changePassword', data: {
-      'old_password': oldPassword,
-      'new_password': newPassword,
-      'password_confirmation': passwordConfirmation,
-    });
+    final res = await _client.post(
+      '/user/changePassword',
+      data: {
+        'old_password': oldPassword,
+        'new_password': newPassword,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
     _check(res);
   }
 
@@ -68,28 +70,35 @@ class PanelApi {
   // ── Subscription / Nodes ─────────────────────────────────────────────────
 
   Future<String> getSubscribeUrl() async {
+    final info = await getSubscribeInfo();
+    if (info.subscribeUrl.isNotEmpty) return info.subscribeUrl;
+    throw const ApiException('无法获取订阅地址');
+  }
+
+  Future<RemoteSubscribe> getSubscribeInfo() async {
     final res = await _client.get('/user/getSubscribe');
     _check(res);
     final data = res['data'];
     if (data is Map) {
-      final url = data['subscribe_url']?.toString() ?? '';
-      if (url.isNotEmpty) return url;
+      return RemoteSubscribe.fromJson(Map<String, dynamic>.from(data));
     }
-    throw const ApiException('无法获取订阅地址');
+    throw const ApiException('无法获取订阅信息');
   }
 
   /// Fetches [subscribeUrl] and parses the returned node list.
   /// Returns nodes plus optional updated traffic from the subscription-userinfo header.
   Future<SubscriptionResult> fetchSubscription(String subscribeUrl) async {
-    final dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {
-        // Neutral UA → panel returns Base64 URI list (default format).
-        // UA containing "clash" → panel returns Clash YAML.
-        'User-Agent': 'LitchiClient/1.0',
-      },
-    ));
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: {
+          // Neutral UA → panel returns Base64 URI list (default format).
+          // UA containing "clash" → panel returns Clash YAML.
+          'User-Agent': 'LitchiClient/1.0',
+        },
+      ),
+    );
 
     final res = await dio.get<String>(
       subscribeUrl,
@@ -113,7 +122,9 @@ class PanelApi {
     final res = await _client.get('/user/plan/fetch');
     _check(res);
     final list = res['data'] as List? ?? [];
-    return list.map((e) => RemotePlan.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => RemotePlan.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // ── Invite ────────────────────────────────────────────────────────────────
@@ -148,10 +159,10 @@ class PanelApi {
   }
 
   Future<CouponResult?> verifyCoupon(String code, int planId) async {
-    final res = await _client.post('/user/coupon/check', data: {
-      'code': code,
-      'plan_id': planId,
-    });
+    final res = await _client.post(
+      '/user/coupon/check',
+      data: {'code': code, 'plan_id': planId},
+    );
     _check(res);
     if (res['data'] == null) return null;
     return CouponResult.fromJson(res['data'] as Map<String, dynamic>);
@@ -185,10 +196,10 @@ class PanelApi {
   /// type=1: Redirect URL — open in browser.
   /// Empty URL means balance deduction — poll for completion.
   Future<CheckoutResult> checkoutOrder(String tradeNo, int methodId) async {
-    final res = await _client.post('/user/order/checkout', data: {
-      'trade_no': tradeNo,
-      'method': methodId,
-    });
+    final res = await _client.post(
+      '/user/order/checkout',
+      data: {'trade_no': tradeNo, 'method': methodId},
+    );
     _check(res);
     final url = res['data']?.toString() ?? '';
     final type = (res['type'] as num?)?.toInt() ?? 0;
@@ -199,17 +210,25 @@ class PanelApi {
     final res = await _client.get('/user/order/fetch');
     _check(res);
     final list = res['data'] as List? ?? [];
-    return list.map((e) => RemoteOrder.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => RemoteOrder.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<void> cancelOrder(String tradeNo) async {
-    final res = await _client.post('/user/order/cancel', data: {'trade_no': tradeNo});
+    final res = await _client.post(
+      '/user/order/cancel',
+      data: {'trade_no': tradeNo},
+    );
     _check(res);
   }
 
   /// Status: 0=pending, 1=processing, 2=cancelled, 3=complete, 4=refunded.
   Future<int> checkOrderStatus(String tradeNo) async {
-    final res = await _client.get('/user/order/check', params: {'trade_no': tradeNo});
+    final res = await _client.get(
+      '/user/order/check',
+      params: {'trade_no': tradeNo},
+    );
     _check(res);
     return (res['data'] as num?)?.toInt() ?? 0;
   }

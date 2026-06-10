@@ -11,6 +11,7 @@ class SettingsSnapshot {
     required this.proxyMode,
     required this.dnsMode,
     required this.themeMode,
+    required this.wasConnected,
   });
 
   final int proxyPort;
@@ -21,6 +22,7 @@ class SettingsSnapshot {
   final String proxyMode;
   final String dnsMode;
   final ThemeMode themeMode;
+  final bool wasConnected;
 }
 
 /// Handles loading and persisting user preferences via SharedPreferences.
@@ -40,6 +42,7 @@ abstract final class SettingsService {
         'system' => ThemeMode.system,
         _ => ThemeMode.light,
       },
+      wasConnected: p.getBool('was_connected') ?? false,
     );
   }
 
@@ -71,6 +74,9 @@ abstract final class SettingsService {
       _ => 'light',
     }),
   );
+
+  static void setWasConnected(bool v) =>
+      SharedPreferences.getInstance().then((p) => p.setBool('was_connected', v));
 
   static String _normalizeProxyMode(String? v) {
     return switch (v) {

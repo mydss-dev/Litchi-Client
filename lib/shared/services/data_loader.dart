@@ -19,6 +19,11 @@ class DataSnapshot {
   int? invitedCount;
   double? withdrawable;
   List<double>? dailyUsage;
+  List<TrafficUsagePoint>? trafficUsage;
+  int? aliveIp;
+  int? deviceLimit;
+  int? resetDay;
+  int? expiredAt;
 }
 
 /// Fetches all remote data and returns a [DataSnapshot].
@@ -55,13 +60,29 @@ class DataLoader {
   Future<void> _fillUserInfo(DataSnapshot snap) async {
     try {
       final info = await _api.getUserInfo();
-      snap.user    = ModelMappers.toUser(info);
+      snap.user = ModelMappers.toUser(info);
       snap.traffic = ModelMappers.toTraffic(info);
     } catch (_) {}
     try {
-      snap.subscribeUrl = await _api.getSubscribeUrl();
+      final subscribe = await _api.getSubscribeInfo();
+      snap.subscribeUrl = subscribe.subscribeUrl;
+      snap.aliveIp = subscribe.aliveIp;
+      snap.deviceLimit = subscribe.deviceLimit;
+      snap.resetDay = subscribe.resetDay;
+      snap.expiredAt = subscribe.expiredAt;
+      if (subscribe.transferEnable > 0) {
+        final total = subscribe.transferEnable / AppConfig.bytesPerGb;
+        final used =
+            (subscribe.upload + subscribe.download) / AppConfig.bytesPerGb;
+        final remain = (total - used).clamp(0.0, double.infinity);
+        snap.traffic = TrafficModel(
+          totalGb: total,
+          usedGb: used,
+          remainGb: remain,
+        );
+      }
     } catch (e) {
-      debugPrint('[Litchi] getSubscribeUrl error: $e');
+      debugPrint('[Litchi] getSubscribeInfo error: $e');
     }
   }
 
@@ -78,10 +99,14 @@ class DataLoader {
       }
       final st = result.traffic;
       if (st != null && st.total > 0) {
-        final total  = st.total / AppConfig.bytesPerGb;
-        final used   = (st.upload + st.download) / AppConfig.bytesPerGb;
+        final total = st.total / AppConfig.bytesPerGb;
+        final used = (st.upload + st.download) / AppConfig.bytesPerGb;
         final remain = (total - used).clamp(0.0, double.infinity);
-        snap.traffic = TrafficModel(totalGb: total, usedGb: used, remainGb: remain);
+        snap.traffic = TrafficModel(
+          totalGb: total,
+          usedGb: used,
+          remainGb: remain,
+        );
       }
     } catch (e) {
       debugPrint('[Litchi] _fillNodes error: $e');
@@ -101,10 +126,10 @@ class DataLoader {
     try {
       final info = await _api.getInviteInfo();
       if (info.inviteCode.isNotEmpty) snap.inviteCode = info.inviteCode;
-      if (info.inviteUrl.isNotEmpty)  snap.inviteLink = info.inviteUrl;
+      if (info.inviteUrl.isNotEmpty) snap.inviteLink = info.inviteUrl;
       snap.commissionRate = info.commissionRate;
-      snap.invitedCount   = info.effectCount;
-      snap.withdrawable   = info.balance / 100; // balance stored in cents
+      snap.invitedCount = info.effectCount;
+      snap.withdrawable = info.balance / 100; // balance stored in cents
     } catch (_) {}
   }
 
@@ -112,8 +137,32 @@ class DataLoader {
     try {
       final logs = await _api.getTrafficLog();
       if (logs.isNotEmpty) {
-        snap.dailyUsage =
-            logs.map((l) => l.traffic / AppConfig.bytesPerGb).toList();
+        final totalDaily = <DateTime, double>{};
+        final uploadDaily = <DateTime, double>{};
+        final downloadDaily = <DateTime, double>{};
+        for (final log in logs) {
+          final date = DateTime(log.date.year, log.date.month, log.date.day);
+          totalDaily[date] =
+              (totalDaily[date] ?? 0) + log.traffic / AppConfig.bytesPerGb;
+          uploadDaily[date] =
+              (uploadDaily[date] ?? 0) + log.upload / AppConfig.bytesPerGb;
+          downloadDaily[date] =
+              (downloadDaily[date] ?? 0) + log.download / AppConfig.bytesPerGb;
+        }
+        final points =
+            totalDaily.entries
+                .map(
+                  (e) => TrafficUsagePoint(
+                    date: e.key,
+                    totalGb: e.value,
+                    uploadGb: uploadDaily[e.key] ?? 0,
+                    downloadGb: downloadDaily[e.key] ?? 0,
+                  ),
+                )
+                .toList()
+              ..sort((a, b) => a.date.compareTo(b.date));
+        snap.trafficUsage = points;
+        snap.dailyUsage = points.map((p) => p.totalGb).toList();
       }
     } catch (_) {}
   }

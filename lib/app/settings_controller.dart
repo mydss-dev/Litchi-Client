@@ -10,6 +10,7 @@ import '../shared/services/settings_service.dart';
 /// Consumed via [AppController] delegates — callers use
 /// `AppScope.of(context).proxyMode` etc. unchanged.
 class SettingsController extends ChangeNotifier {
+  bool _wasConnected = false;
   bool _autoStart = false;
   bool _autoUpdate = true;
   bool _devMode = false;
@@ -19,6 +20,7 @@ class SettingsController extends ChangeNotifier {
   int _proxyPort = 7890;
   ThemeMode _themeMode = ThemeMode.light;
 
+  bool get wasConnected => _wasConnected;
   bool get autoStart => _autoStart;
   bool get autoUpdate => _autoUpdate;
   bool get devMode => _devMode;
@@ -40,6 +42,7 @@ class SettingsController extends ChangeNotifier {
     _language = s.language;
     _proxyMode = s.proxyMode;
     _dnsMode = s.dnsMode;
+    _wasConnected = s.wasConnected;
     _themeMode = s.themeMode;
     // Sync registry to match the saved preference (also refreshes exe path
     // if the app was updated and moved to a new location).
@@ -65,6 +68,12 @@ class SettingsController extends ChangeNotifier {
     _proxyPort = port;
     SettingsService.setProxyPort(port);
     notifyListeners();
+  }
+
+  void setWasConnected(bool v) {
+    if (_wasConnected == v) return;
+    _wasConnected = v;
+    SettingsService.setWasConnected(v);
   }
 
   void setAutoStart(bool v) {

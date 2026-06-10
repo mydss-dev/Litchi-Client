@@ -17,10 +17,10 @@ class AppSidebar extends StatelessWidget {
     _MenuItem(AppPage.traffic, '统计', LucideIcons.barChart3),
     _MenuItem.separator(),
     _MenuItem(AppPage.shop, '商城', LucideIcons.shoppingBag),
-    _MenuItem(AppPage.invite, '邀请', LucideIcons.gift),
+    _MenuItem(AppPage.orders, '订单', LucideIcons.clipboardList),
     _MenuItem.separator(),
     _MenuItem(AppPage.account, '账户', LucideIcons.user),
-    _MenuItem(AppPage.orders, '订单', LucideIcons.clipboardList),
+    _MenuItem(AppPage.invite, '邀请', LucideIcons.gift),
     _MenuItem.separator(),
     _MenuItem(AppPage.settings, '设置', LucideIcons.settings),
   ];

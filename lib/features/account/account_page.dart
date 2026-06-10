@@ -5,6 +5,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../shared/config/app_config.dart';
 import '../../shared/models/api_models.dart';
+import '../../shared/models/app_models.dart';
+import '../../shared/models/mock_data.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
@@ -82,8 +84,7 @@ class _AccountPageState extends State<AccountPage> {
               const Expanded(
                 child: PageHeader(title: '我的账户', subtitle: '查看账户信息与订阅详情'),
               ),
-              if (!_loading)
-                RefreshIconButton(onTap: _load),
+              if (!_loading) RefreshIconButton(onTap: _load),
             ],
           ),
           const SizedBox(height: 12),
@@ -122,7 +123,12 @@ class _AccountContent extends StatelessWidget {
         _AccountInfoCard(user: user, onCopy: onCopy),
         const SizedBox(height: 14),
         _SubscriptionCard(
-            user: user, subscribeUrl: subscribeUrl, onCopy: onCopy),
+          user: user,
+          subscribeUrl: subscribeUrl,
+          onCopy: onCopy,
+        ),
+        const SizedBox(height: 14),
+        const _LoginRecordsCard(),
       ],
     );
   }
@@ -155,31 +161,29 @@ class _AccountInfoCard extends StatelessWidget {
             children: [
               Icon(LucideIcons.user, size: 15, color: c.primary),
               const SizedBox(width: 8),
-              Text('账户信息',
-                  style: AppTextStyles.cardTitle
-                      .copyWith(color: c.textSecondary)),
+              Text(
+                '账户信息',
+                style: AppTextStyles.cardTitle.copyWith(color: c.textSecondary),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           _InfoRow(
             label: '邮箱',
             value: user.email,
-            trailing: _CopyButton(
-              onTap: () => onCopy(user.email, '邮箱'),
-            ),
+            trailing: _CopyButton(onTap: () => onCopy(user.email, '邮箱')),
           ),
           const SizedBox(height: 12),
-          _InfoRow(
-            label: '账户余额',
-            value: '¥${balanceYuan.toStringAsFixed(2)}',
-          ),
+          _InfoRow(label: '账户余额', value: '¥${balanceYuan.toStringAsFixed(2)}'),
           const SizedBox(height: 12),
           Row(
             children: [
               SizedBox(
                 width: 80,
-                child: Text('账户状态',
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                child: Text(
+                  '账户状态',
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
               ),
               AppBadge(
                 text: statusLabel,
@@ -226,16 +230,19 @@ class _SubscriptionCard extends StatelessWidget {
             children: [
               Icon(LucideIcons.calendar, size: 15, color: c.primary),
               const SizedBox(width: 8),
-              Text('订阅信息',
-                  style: AppTextStyles.cardTitle
-                      .copyWith(color: c.textSecondary)),
+              Text(
+                '订阅信息',
+                style: AppTextStyles.cardTitle.copyWith(color: c.textSecondary),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           _InfoRow(label: '到期时间', value: user.expiryDisplay),
           const SizedBox(height: 16),
-          Text('流量使用',
-              style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+          Text(
+            '流量使用',
+            style: AppTextStyles.caption.copyWith(color: c.textMuted),
+          ),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
@@ -259,8 +266,10 @@ class _SubscriptionCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('已用 ${usedGb.toStringAsFixed(1)} GB',
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+              Text(
+                '已用 ${usedGb.toStringAsFixed(1)} GB',
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
               Text(
                 '剩余 ${remainGb.toStringAsFixed(1)} / ${totalGb.toStringAsFixed(1)} GB',
                 style: AppTextStyles.caption.copyWith(color: c.textMuted),
@@ -274,9 +283,7 @@ class _SubscriptionCard extends StatelessWidget {
               value: subscribeUrl.length > 36
                   ? '${subscribeUrl.substring(0, 36)}…'
                   : subscribeUrl,
-              trailing: _CopyButton(
-                onTap: () => onCopy(subscribeUrl, '订阅地址'),
-              ),
+              trailing: _CopyButton(onTap: () => onCopy(subscribeUrl, '订阅地址')),
             ),
           ],
         ],
@@ -299,12 +306,16 @@ class _InfoRow extends StatelessWidget {
       children: [
         SizedBox(
           width: 80,
-          child: Text(label,
-              style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+          child: Text(
+            label,
+            style: AppTextStyles.caption.copyWith(color: c.textMuted),
+          ),
         ),
         Expanded(
-          child: Text(value,
-              style: AppTextStyles.body.copyWith(color: c.textPrimary)),
+          child: Text(
+            value,
+            style: AppTextStyles.body.copyWith(color: c.textPrimary),
+          ),
         ),
         ?trailing,
       ],
@@ -334,6 +345,78 @@ class _CopyButton extends StatelessWidget {
           child: Icon(LucideIcons.copy, size: 13, color: c.iconDefault),
         ),
       ),
+    );
+  }
+}
+
+class _LoginRecordsCard extends StatelessWidget {
+  const _LoginRecordsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final records = MockData.loginRecords;
+
+    return AppCard(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.calendar, size: 15, color: c.primary),
+              const SizedBox(width: 8),
+              Text(
+                '登录记录',
+                style: AppTextStyles.cardTitle.copyWith(color: c.textSecondary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (int i = 0; i < records.length; i++) ...[
+            _recordRow(c, records[i]),
+            if (i != records.length - 1)
+              Divider(color: c.softBorder, height: 16),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _recordRow(AppColors c, LoginRecord r) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    r.location,
+                    style: AppTextStyles.body.copyWith(color: c.textPrimary),
+                  ),
+                  const SizedBox(width: 8),
+                  if (r.suspicious)
+                    AppBadge(
+                      text: '异常',
+                      background: c.dangerSoft,
+                      textColor: c.danger,
+                      fontSize: 10,
+                      height: 18,
+                    ),
+                ],
+              ),
+              Text(
+                r.device,
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
+            ],
+          ),
+        ),
+        Text(r.time, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+      ],
     );
   }
 }

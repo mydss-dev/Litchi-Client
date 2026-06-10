@@ -35,10 +35,13 @@ class NodeModel {
   final String id;
   final String name;
   final String flag;
+
   /// ISO 3166-1 alpha-2 code, e.g. "HK", "SG".
   final String code;
+
   /// English region name, e.g. "Hong Kong", "Singapore".
   final String englishName;
+
   /// -1 = testing in progress, 0 = not tested, >0 = real ms, 9999 = timeout
   final int latency;
   final List<String> tags;
@@ -46,26 +49,28 @@ class NodeModel {
   final NodeRegion region;
   final String server;
   final int port;
+
   /// True for the virtual "自动选择" entry.
   final bool isAuto;
+
   /// Original proxy URI for sing-box config generation.
   final String rawUri;
 
   NodeModel copyWith({int? latency}) => NodeModel(
-        id: id,
-        name: name,
-        flag: flag,
-        code: code,
-        englishName: englishName,
-        latency: latency ?? this.latency,
-        tags: tags,
-        favorite: favorite,
-        region: region,
-        server: server,
-        port: port,
-        isAuto: isAuto,
-        rawUri: rawUri,
-      );
+    id: id,
+    name: name,
+    flag: flag,
+    code: code,
+    englishName: englishName,
+    latency: latency ?? this.latency,
+    tags: tags,
+    favorite: favorite,
+    region: region,
+    server: server,
+    port: port,
+    isAuto: isAuto,
+    rawUri: rawUri,
+  );
 }
 
 enum NodeRegion { asia, europe, america, oceania }
@@ -82,6 +87,20 @@ class TrafficModel {
   final double remainGb;
 
   double get usedPercent => totalGb == 0 ? 0 : usedGb / totalGb * 100;
+}
+
+class TrafficUsagePoint {
+  const TrafficUsagePoint({
+    required this.date,
+    required this.totalGb,
+    this.uploadGb = 0,
+    this.downloadGb = 0,
+  });
+
+  final DateTime date;
+  final double totalGb;
+  final double uploadGb;
+  final double downloadGb;
 }
 
 class DeviceModel {

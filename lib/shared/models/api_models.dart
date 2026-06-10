@@ -67,7 +67,7 @@ class RemoteNode {
   final String name;
   final double rate;
   final String server; // hostname / IP
-  final int port;      // TCP port (0 = unknown)
+  final int port; // TCP port (0 = unknown)
   /// Original proxy URI (vmess://, vless://, trojan://, ss://, hy2://).
   /// Empty for nodes parsed from Clash YAML without URI reconstruction.
   final String rawUri;
@@ -121,7 +121,8 @@ class RemotePlan {
     return RemotePlan(
       id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['name']?.toString() ?? '',
-      description: json['content']?.toString() ?? json['description']?.toString(),
+      description:
+          json['content']?.toString() ?? json['description']?.toString(),
       transferEnable: (json['transfer_enable'] as num?)?.toDouble() ?? 0,
       monthPrice: (json['month_price'] as num?)?.toInt(),
       quarterPrice: (json['quarter_price'] as num?)?.toInt(),
@@ -166,25 +167,84 @@ class RemoteInvite {
 }
 
 class RemoteTrafficLog {
-  final String date;
-  final double traffic; // bytes
+  final DateTime date;
+  final double upload; // bytes
+  final double download; // bytes
+  final double serverRate;
+  final double traffic; // bytes, rate-adjusted when possible
 
-  const RemoteTrafficLog({required this.date, required this.traffic});
+  const RemoteTrafficLog({
+    required this.date,
+    required this.upload,
+    required this.download,
+    required this.serverRate,
+    required this.traffic,
+  });
 
   factory RemoteTrafficLog.fromJson(Map<String, dynamic> json) {
+    final recordAt = (json['record_at'] as num?)?.toInt();
+    final dateText = json['date']?.toString() ?? '';
+    final parsedDate = recordAt != null
+        ? DateTime.fromMillisecondsSinceEpoch(recordAt * 1000)
+        : DateTime.tryParse(dateText) ?? DateTime.now();
+    final upload = (json['u'] as num?)?.toDouble() ?? 0;
+    final download = (json['d'] as num?)?.toDouble() ?? 0;
+    final serverRate =
+        double.tryParse(json['server_rate']?.toString() ?? '') ?? 1;
+    final traffic =
+        (json['traffic'] as num?)?.toDouble() ??
+        (upload + download) * serverRate;
     return RemoteTrafficLog(
-      date: json['date']?.toString() ?? '',
-      traffic: (json['traffic'] as num?)?.toDouble() ?? 0,
+      date: parsedDate,
+      upload: upload,
+      download: download,
+      serverRate: serverRate,
+      traffic: traffic,
+    );
+  }
+}
+
+class RemoteSubscribe {
+  final String subscribeUrl;
+  final double transferEnable; // bytes
+  final double upload; // bytes
+  final double download; // bytes
+  final int? expiredAt; // unix timestamp
+  final int? resetDay;
+  final int? deviceLimit;
+  final int? aliveIp;
+
+  const RemoteSubscribe({
+    required this.subscribeUrl,
+    required this.transferEnable,
+    required this.upload,
+    required this.download,
+    this.expiredAt,
+    this.resetDay,
+    this.deviceLimit,
+    this.aliveIp,
+  });
+
+  factory RemoteSubscribe.fromJson(Map<String, dynamic> json) {
+    return RemoteSubscribe(
+      subscribeUrl: json['subscribe_url']?.toString() ?? '',
+      transferEnable: (json['transfer_enable'] as num?)?.toDouble() ?? 0,
+      upload: (json['u'] as num?)?.toDouble() ?? 0,
+      download: (json['d'] as num?)?.toDouble() ?? 0,
+      expiredAt: (json['expired_at'] as num?)?.toInt(),
+      resetDay: (json['reset_day'] as num?)?.toInt(),
+      deviceLimit: (json['device_limit'] as num?)?.toInt(),
+      aliveIp: (json['alive_ip'] as num?)?.toInt(),
     );
   }
 }
 
 /// Traffic info parsed from subscription-userinfo response header.
 class SubTraffic {
-  final double upload;   // bytes
+  final double upload; // bytes
   final double download; // bytes
-  final double total;    // bytes
-  final int? expire;     // unix timestamp
+  final double total; // bytes
+  final int? expire; // unix timestamp
 
   const SubTraffic({
     required this.upload,
@@ -203,13 +263,26 @@ class SubTraffic {
       final k = kv[0].trim();
       final v = kv[1].trim();
       switch (k) {
-        case 'upload':   upload   = double.tryParse(v) ?? 0; break;
-        case 'download': download = double.tryParse(v) ?? 0; break;
-        case 'total':    total    = double.tryParse(v) ?? 0; break;
-        case 'expire':   expire   = int.tryParse(v); break;
+        case 'upload':
+          upload = double.tryParse(v) ?? 0;
+          break;
+        case 'download':
+          download = double.tryParse(v) ?? 0;
+          break;
+        case 'total':
+          total = double.tryParse(v) ?? 0;
+          break;
+        case 'expire':
+          expire = int.tryParse(v);
+          break;
       }
     }
-    return SubTraffic(upload: upload, download: download, total: total, expire: expire);
+    return SubTraffic(
+      upload: upload,
+      download: download,
+      total: total,
+      expire: expire,
+    );
   }
 }
 
@@ -225,7 +298,7 @@ class RemotePaymentMethod {
   final int id;
   final String name;
   final String? iconUrl;
-  final int? handlingFeeFixed;   // cents
+  final int? handlingFeeFixed; // cents
   final double? handlingFeePercent; // e.g. 2.5 = 2.5%
 
   const RemotePaymentMethod({
@@ -252,7 +325,11 @@ class CouponResult {
   final int type; // 1 = fixed deduction (cents), 2 = percent off
   final int value;
 
-  const CouponResult({required this.name, required this.type, required this.value});
+  const CouponResult({
+    required this.name,
+    required this.type,
+    required this.value,
+  });
 
   factory CouponResult.fromJson(Map<String, dynamic> json) {
     return CouponResult(
@@ -284,12 +361,12 @@ class RemoteOrder {
 
   factory RemoteOrder.fromJson(Map<String, dynamic> json) {
     return RemoteOrder(
-      tradeNo:     json['trade_no']?.toString() ?? '',
-      planName:    json['plan_name']?.toString(),
-      period:      json['period']?.toString() ?? '',
+      tradeNo: json['trade_no']?.toString() ?? '',
+      planName: json['plan_name']?.toString(),
+      period: json['period']?.toString() ?? '',
       totalAmount: (json['total_amount'] as num?)?.toInt() ?? 0,
-      status:      (json['status'] as num?)?.toInt() ?? 0,
-      createdAt:   (json['created_at'] as num?)?.toInt() ?? 0,
+      status: (json['status'] as num?)?.toInt() ?? 0,
+      createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -303,14 +380,14 @@ class RemoteOrder {
   };
 
   String get periodLabel => switch (period) {
-    'month_price'     => '月付',
-    'quarter_price'   => '季付',
+    'month_price' => '月付',
+    'quarter_price' => '季付',
     'half_year_price' => '半年付',
-    'year_price'      => '年付',
-    'two_year_price'  => '两年付',
-    'three_year_price'=> '三年付',
-    'onetime_price'   => '买断',
-    _                 => period,
+    'year_price' => '年付',
+    'two_year_price' => '两年付',
+    'three_year_price' => '三年付',
+    'onetime_price' => '买断',
+    _ => period,
   };
 
   String get amountDisplay {

@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
+import '../../shared/models/app_models.dart' show UserModel;
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
@@ -84,6 +85,7 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           const PageHeader(title: '首页', subtitle: '查看当前连接、节点与流量状态'),
           const SizedBox(height: 12),
+          _ExpiryBanner(user: ctrl.user),
           _ConnectionHeroCard(
             status: status,
             elapsedLabel: elapsed,
@@ -593,6 +595,77 @@ class _ConnectionActionText extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ExpiryBanner extends StatelessWidget {
+  const _ExpiryBanner({required this.user});
+
+  final UserModel user;
+
+  @override
+  Widget build(BuildContext context) {
+    if (user.expiry.isEmpty) return const SizedBox.shrink();
+    final expiry = DateTime.tryParse(user.expiry);
+    if (expiry == null) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final expiryDay = DateTime(expiry.year, expiry.month, expiry.day);
+    final daysLeft = expiryDay.difference(today).inDays;
+
+    if (daysLeft > 7) return const SizedBox.shrink();
+
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final color = daysLeft <= 0 ? c.danger : c.warning;
+    final message = daysLeft < 0
+        ? '订阅已过期，连接将无法使用'
+        : daysLeft == 0
+            ? '订阅今日到期，请及时续费'
+            : '订阅将在 $daysLeft 天后到期';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GestureDetector(
+        onTap: () => ctrl.goToPage(AppPage.shop),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: color.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                Icon(LucideIcons.alertTriangle, size: 16, color: color),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: AppTextStyles.body.copyWith(
+                      color: color,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '去续费 →',
+                  style: AppTextStyles.button.copyWith(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

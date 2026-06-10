@@ -35,6 +35,7 @@ enum AuthScreen { login, register, changePassword }
 class AppController extends ChangeNotifier {
   AppController() {
     _settings.addListener(notifyListeners);
+    _core.addListener(_onCoreChanged);
     _core.addListener(notifyListeners);
   }
 
@@ -69,6 +70,11 @@ class AppController extends ChangeNotifier {
   int _invitedCount = MockData.invitedCount;
   double _withdrawable = MockData.withdrawable;
   List<double> _dailyUsage = MockData.dailyUsage;
+  List<TrafficUsagePoint> _trafficUsage = [];
+  int? _aliveIp;
+  int? _deviceLimit;
+  int? _resetDay;
+  int? _expiredAt;
 
   // ── Settings delegates ────────────────────────────────────────────────────
 
@@ -93,6 +99,7 @@ class AppController extends ChangeNotifier {
     _settings.setProxyMode(v);
     if (_core.isRunning) unawaited(_core.setMode(v));
   }
+
   void setDnsMode(String v) => _settings.setDnsMode(v);
 
   // ── Core delegates ─────────────────────────────────────────────────────────
@@ -148,6 +155,11 @@ class AppController extends ChangeNotifier {
   int get invitedCount => _invitedCount;
   double get withdrawable => _withdrawable;
   List<double> get dailyUsage => _dailyUsage;
+  List<TrafficUsagePoint> get trafficUsage => _trafficUsage;
+  int? get aliveIp => _aliveIp;
+  int? get deviceLimit => _deviceLimit;
+  int? get resetDay => _resetDay;
+  int? get expiredAt => _expiredAt;
   PanelApi get api => _api;
 
   // ── Initialization ────────────────────────────────────────────────────────
@@ -173,15 +185,30 @@ class AppController extends ChangeNotifier {
     await _core.init();
     _isInitializing = false;
     notifyListeners();
+
+    if (_isAuthenticated && _settings.wasConnected) {
+      unawaited(toggleConnection());
+    }
   }
 
   @override
   void dispose() {
     _settings.removeListener(notifyListeners);
+    _core.removeListener(_onCoreChanged);
     _core.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
     super.dispose();
+  }
+
+  void _onCoreChanged() {
+    final status = _core.connectionStatus;
+    if (status == ConnectionStatus.connected) {
+      _settings.setWasConnected(true);
+    } else if (status == ConnectionStatus.disconnected) {
+      _settings.setWasConnected(false);
+    }
+    // error / connecting / disconnecting: keep existing value.
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -260,18 +287,23 @@ class AppController extends ChangeNotifier {
     _invitedCount = MockData.invitedCount;
     _withdrawable = MockData.withdrawable;
     _dailyUsage = MockData.dailyUsage;
+    _trafficUsage = [];
+    _aliveIp = null;
+    _deviceLimit = null;
+    _resetDay = null;
+    _expiredAt = null;
     notifyListeners();
   }
 
   // ── Connection ────────────────────────────────────────────────────────────
 
   Future<String?> toggleConnection() => _core.toggleConnection(
-        nodes: _nodes,
-        currentNode: currentNode,
-        proxyMode: _settings.proxyMode,
-        dnsMode: _settings.dnsMode,
-        proxyPort: _settings.proxyPort,
-      );
+    nodes: _nodes,
+    currentNode: currentNode,
+    proxyMode: _settings.proxyMode,
+    dnsMode: _settings.dnsMode,
+    proxyPort: _settings.proxyPort,
+  );
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -309,6 +341,11 @@ class AppController extends ChangeNotifier {
     if (snap.invitedCount != null) _invitedCount = snap.invitedCount!;
     if (snap.withdrawable != null) _withdrawable = snap.withdrawable!;
     if (snap.dailyUsage != null) _dailyUsage = snap.dailyUsage!;
+    if (snap.trafficUsage != null) _trafficUsage = snap.trafficUsage!;
+    if (snap.aliveIp != null) _aliveIp = snap.aliveIp;
+    if (snap.deviceLimit != null) _deviceLimit = snap.deviceLimit;
+    if (snap.resetDay != null) _resetDay = snap.resetDay;
+    if (snap.expiredAt != null) _expiredAt = snap.expiredAt;
   }
 
   // ── Node selection ────────────────────────────────────────────────────────
@@ -357,18 +394,21 @@ class AppController extends ChangeNotifier {
     notifyListeners();
 
     final snapshot = List<NodeModel>.from(_nodes);
-    await _core.testLatencies(snapshot, onResult: (idx, updated) {
-      if (idx < _nodes.length) {
-        final list = List<NodeModel>.from(_nodes);
-        list[idx] = updated;
-        _nodes = list;
-        if (_autoSelected) {
-          final best = _bestNode;
-          if (best != null) _currentNode = best;
+    await _core.testLatencies(
+      snapshot,
+      onResult: (idx, updated) {
+        if (idx < _nodes.length) {
+          final list = List<NodeModel>.from(_nodes);
+          list[idx] = updated;
+          _nodes = list;
+          if (_autoSelected) {
+            final best = _bestNode;
+            if (best != null) _currentNode = best;
+          }
+          notifyListeners();
         }
-        notifyListeners();
-      }
-    });
+      },
+    );
   }
 }
 
