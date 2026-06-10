@@ -1,0 +1,39 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="leafGrad" x1="126" y1="26" x2="175" y2="74" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6BEA57"/>
+      <stop offset="1" stop-color="#00B86B"/>
+    </linearGradient>
+    <linearGradient id="bodyGrad" x1="48" y1="72" x2="211" y2="194" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF006B"/>
+      <stop offset="0.37" stop-color="#FF5C93"/>
+      <stop offset="0.62" stop-color="#6A67FF"/>
+      <stop offset="1" stop-color="#A44CFF"/>
+    </linearGradient>
+    <linearGradient id="blueSeg" x1="67" y1="135" x2="126" y2="212" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2C69FF"/>
+      <stop offset="1" stop-color="#6F6BFF"/>
+    </linearGradient>
+    <linearGradient id="purpleSeg" x1="132" y1="161" x2="205" y2="214" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8C63FF"/>
+      <stop offset="1" stop-color="#B45DFF"/>
+    </linearGradient>
+    <linearGradient id="orangeSeg" x1="159" y1="81" x2="209" y2="145" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFBE9D"/>
+      <stop offset="1" stop-color="#FF7C8F"/>
+    </linearGradient>
+    <filter id="shadow" x="26" y="22" width="204" height="205" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#2563EB" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <path d="M126.4 40.5C126.4 40.5 150.2 17.3 193 18C189.2 55.1 168.6 78 132.5 82.6C121.5 84 115.9 89.7 113 97.5C107.4 80.6 111.7 58.2 126.4 40.5Z" fill="url(#leafGrad)"/>
+    <path d="M120.6 111.3C132.4 96.8 149.5 88.4 171 88.4C205.7 88.4 224 114.2 224 153.2C224 191.1 195.1 220 154.4 220H101.6C61 220 32 191 32 150.8C32 95.1 68 57 116.4 57C140.1 57 160.4 66.1 176.4 84.2C159.7 78.1 144.6 78.8 131 86.8C109.7 99.2 96.8 122.2 96.8 149.4C96.8 175.6 109.3 193.5 126.7 204C113.2 204.5 91.2 204 87.8 204C54.1 204 44 177.8 44 151C44 111.2 71.1 69 117.5 69C146 69 167.2 79.8 184.1 100.4C175.4 97.5 167 96.2 158.5 96.2C141.3 96.2 128.3 101.3 120.6 111.3Z" fill="url(#bodyGrad)"/>
+    <path d="M74.3 136.2C85.6 121.1 103.8 114 123.6 114C103.1 128.8 93.1 151.4 93.1 172.8C93.1 185.6 96.8 196.7 103.7 205.8C76.2 204.6 52.8 181.6 52.8 152.3C52.8 146.8 53.7 141.4 55.5 136.2H74.3Z" fill="url(#blueSeg)"/>
+    <path d="M145.5 205.7C172.4 203.1 194 181.3 194 154C194 143.6 190.8 134.1 185.4 126.3C199.7 131.4 210 145.1 210 161.2C210 188.7 187.7 211 160.2 211H125.5C133 209.8 139.6 207.9 145.5 205.7Z" fill="url(#purpleSeg)"/>
+    <path d="M171.6 88.5C201.5 88.7 221.8 110.3 223.9 142.4C212.2 123.2 190.2 110.4 164.3 110.4C150.8 110.4 139.2 113.2 128.6 118.8C134.4 101.4 149.2 88.5 171.6 88.5Z" fill="url(#orangeSeg)" opacity="0.95"/>
+    <circle cx="129.5" cy="149.5" r="54.5" fill="white"/>
+    <path d="M158.2 46.6C151.3 50.7 142.8 58.1 138.5 65.8" stroke="#10B981" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

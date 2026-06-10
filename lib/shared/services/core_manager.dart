@@ -1,0 +1,210 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+enum CoreState { stopped, starting, running, error }
+
+/// Manages the sing-box process lifecycle.
+class CoreManager {
+  Process? _process;
+  CoreState _state = CoreState.stopped;
+  String _lastError = '';
+
+  final _stateCtrl = StreamController<CoreState>.broadcast();
+  final _logCtrl   = StreamController<String>.broadcast();
+
+  CoreState get state      => _state;
+  String get lastError     => _lastError;
+  bool get isRunning       => _state == CoreState.running;
+  Stream<CoreState> get stateStream => _stateCtrl.stream;
+
+  /// Emits stripped log lines from sing-box stdout + stderr.
+  Stream<String> get logStream => _logCtrl.stream;
+
+  // ── PID file ──────────────────────────────────────────────────────────────
+
+  static File get _pidFile {
+    final tmp = Platform.environment['TEMP'] ??
+        Platform.environment['TMP'] ??
+        Directory.systemTemp.path;
+    return File('$tmp\\litchi_singbox.pid');
+  }
+
+  // ── Executable discovery ──────────────────────────────────────────────────
+
+  static String? findExecutable() {
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    final candidates = [
+      '$exeDir\\sing-box.exe',
+      '$exeDir\\core\\sing-box.exe',
+      '${Platform.environment['LOCALAPPDATA']}\\LitchiClient\\sing-box.exe',
+    ];
+    for (final p in candidates) {
+      if (File(p).existsSync()) return p;
+    }
+    return null;
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+  Future<void> start(String configPath, {int apiPort = 9090}) async {
+    if (_state == CoreState.running || _state == CoreState.starting) return;
+
+    final exe = findExecutable();
+    if (exe == null) {
+      _setError('未找到 sing-box.exe，请将其放置在应用目录下');
+      return;
+    }
+
+    // Kill any previously owned sing-box process (by saved PID).
+    await _killSavedPid();
+
+    _lastError = '';
+    _setState(CoreState.starting);
+    _emitLog('── sing-box 启动中 ──');
+
+    try {
+      _process = await Process.start(exe, ['run', '-c', configPath]);
+
+      // Save PID so the next startup can clean this process up if we crash.
+      await _pidFile.writeAsString(_process!.pid.toString());
+
+      _process!.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) => _emitLog(line));
+
+      final stderrLines = <String>[];
+      _process!.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) {
+        stderrLines.add(line);
+        _emitLog(line);
+        if (_state == CoreState.starting) {
+          final lower = line.toLowerCase();
+          if (lower.contains('fatal') || lower.contains('error')) {
+            _lastError = _stripAnsi(line);
+          }
+        }
+      });
+
+      _process!.exitCode.then((code) {
+        if (_state == CoreState.running || _state == CoreState.starting) {
+          if (_lastError.isEmpty && stderrLines.isNotEmpty) {
+            _lastError = _stripAnsi(stderrLines.last);
+          }
+          if (_lastError.isEmpty) _lastError = '核心进程退出 (code: $code)';
+          _setState(CoreState.error);
+          _process = null;
+          _deletePidFile();
+        }
+      });
+
+      // Poll the Clash API port to confirm sing-box is actually ready.
+      final ready = await _waitForPort(apiPort);
+
+      if (_process != null && _state != CoreState.error) {
+        if (ready) {
+          _emitLog('── sing-box 运行中 (PID ${_process!.pid}) ──');
+          _setState(CoreState.running);
+        } else {
+          _setError('核心启动超时，请检查配置或重试');
+          _emitLog('── 启动超时，已停止 ──');
+          _process?.kill();
+          _process = null;
+          _deletePidFile();
+        }
+      }
+    } catch (e) {
+      _setError('启动失败: $e');
+      _emitLog('── 启动异常: $e ──');
+      _process = null;
+      _deletePidFile();
+    }
+  }
+
+  Future<void> stop() async {
+    final p = _process;
+    _process = null;
+    _lastError = '';
+    _setState(CoreState.stopped);
+    _emitLog('── sing-box 已停止 ──');
+    p?.kill();
+    _deletePidFile();
+    // Brief wait so the port is released before any next start().
+    await Future.delayed(const Duration(milliseconds: 300));
+  }
+
+  void dispose() {
+    _process?.kill();
+    _stateCtrl.close();
+    _logCtrl.close();
+    _deletePidFile();
+  }
+
+  void _emitLog(String raw) {
+    if (_logCtrl.isClosed) return;
+    final line = _stripAnsi(raw);
+    if (line.isEmpty) return;
+    _logCtrl.add(line);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  /// Kill the specific sing-box process we previously spawned (by saved PID).
+  /// This only affects our own process — not any other sing-box instances.
+  static Future<void> _killSavedPid() async {
+    try {
+      if (!await _pidFile.exists()) return;
+      final pidStr = (await _pidFile.readAsString()).trim();
+      final pid = int.tryParse(pidStr);
+      if (pid == null) {
+        await _pidFile.delete();
+        return;
+      }
+      await Process.run(
+        'taskkill',
+        ['/F', '/PID', pid.toString()],
+        runInShell: true,
+      );
+      await _pidFile.delete();
+      // Give the OS a moment to release the port.
+      await Future.delayed(const Duration(milliseconds: 400));
+    } catch (_) {}
+  }
+
+  static void _deletePidFile() {
+    try { _pidFile.deleteSync(); } catch (_) {}
+  }
+
+  /// Poll [port] on 127.0.0.1 until it accepts connections (core is ready).
+  /// Tries up to 20 times × 200 ms = max 4 seconds.
+  static Future<bool> _waitForPort(int port) async {
+    for (int i = 0; i < 20; i++) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      try {
+        final socket = await Socket.connect(
+          '127.0.0.1', port,
+          timeout: const Duration(milliseconds: 300),
+        );
+        socket.destroy();
+        return true;
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  static String _stripAnsi(String s) =>
+      s.replaceAll(RegExp(r'\x1B\[[0-9;]*m'), '').trim();
+
+  void _setState(CoreState s) {
+    _state = s;
+    if (!_stateCtrl.isClosed) _stateCtrl.add(s);
+  }
+
+  void _setError(String msg) {
+    _lastError = msg;
+    _setState(CoreState.error);
+  }
+}
