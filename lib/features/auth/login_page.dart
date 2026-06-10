@@ -63,7 +63,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await controller.loginWithCredentials(email, password);
 
-      // Save or clear credentials based on "remember me".
+      // Save or clear credentials based on remembered account/password.
       if (_remember) {
         await CredentialsStorage.save(email: email, password: password);
       } else {
@@ -120,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               AuthCheckboxRow(
                 value: _remember,
-                label: '记住登录',
+                label: '记住账号密码',
                 onChanged: (v) => setState(() => _remember = v),
               ),
               AuthLinkText(

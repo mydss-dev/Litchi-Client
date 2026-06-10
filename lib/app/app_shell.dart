@@ -12,6 +12,8 @@ import '../features/shop/shop_page.dart';
 import '../features/traffic/traffic_page.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_shadows.dart';
+import '../shared/theme/app_text_styles.dart';
+import '../shared/widgets/brand_logo.dart';
 import '../shared/widgets/app_sidebar.dart';
 import 'app_controller.dart';
 import 'app_window_bar.dart';
@@ -69,10 +71,66 @@ class _AppShellState extends State<AppShell> with WindowListener {
           borderRadius: BorderRadius.circular(radius),
           boxShadow: _maximized ? null : AppShadows.window,
         ),
-        child: controller.isAuthenticated
-            ? const _MainShell()
-            : const _AuthShell(),
+        child: controller.isInitializing
+            ? const _InitializingShell()
+            : (controller.isAuthenticated
+                  ? const _MainShell()
+                  : const _AuthShell()),
       ),
+    );
+  }
+}
+
+class _InitializingShell extends StatelessWidget {
+  const _InitializingShell();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Stack(
+      children: [
+        Center(
+          child: Container(
+            width: 220,
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+            decoration: BoxDecoration(
+              color: c.cardBg,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: c.softBorder),
+              boxShadow: AppShadows.card(c),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const BrandLogo(size: 44, radius: 14),
+                const SizedBox(height: 14),
+                Text(
+                  'Litchi Client',
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '正在登录...',
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+                const SizedBox(height: 18),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    minHeight: 3,
+                    color: c.primary,
+                    backgroundColor: c.surfaceMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const Positioned(top: 0, left: 0, right: 0, child: WindowControlsBar()),
+      ],
     );
   }
 }

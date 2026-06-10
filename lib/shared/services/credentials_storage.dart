@@ -3,13 +3,13 @@ import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Stores login credentials encrypted via Windows DPAPI.
+/// Stores remembered login credentials.
 ///
-/// Uses PowerShell's ConvertTo/From-SecureString which calls DPAPI under
-/// the hood — the encrypted blob can only be decrypted by the same Windows
-/// user on the same machine.
+/// The account/email is stored as plain text for reliable autofill. The
+/// password is encrypted via Windows DPAPI.
 abstract final class CredentialsStorage {
-  static const _keyEmail    = 'dpapi_email';
+  static const _keyEmail = 'remember_email';
+  static const _legacyKeyEmail = 'dpapi_email';
   static const _keyPassword = 'dpapi_password';
 
   static Future<void> save({
@@ -17,24 +17,23 @@ abstract final class CredentialsStorage {
     required String password,
   }) async {
     try {
-      final encEmail = await _protect(email);
-      final encPass  = await _protect(password);
-      if (encEmail == null || encPass == null) return;
+      final encPass = await _protect(password);
+      if (encPass == null) return;
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyEmail,    encEmail);
+      await prefs.setString(_keyEmail, email);
+      await prefs.remove(_legacyKeyEmail);
       await prefs.setString(_keyPassword, encPass);
     } catch (_) {}
   }
 
   static Future<({String email, String password})?> load() async {
     try {
-      final prefs    = await SharedPreferences.getInstance();
-      final encEmail = prefs.getString(_keyEmail);
-      final encPass  = prefs.getString(_keyPassword);
-      if (encEmail == null || encPass == null) return null;
-      final email    = await _unprotect(encEmail);
+      final prefs = await SharedPreferences.getInstance();
+      final email = await _loadEmail(prefs);
+      final encPass = prefs.getString(_keyPassword);
+      if (email == null || email.isEmpty || encPass == null) return null;
       final password = await _unprotect(encPass);
-      if (email == null || email.isEmpty || password == null) return null;
+      if (password == null) return null;
       return (email: email, password: password);
     } catch (_) {
       return null;
@@ -44,7 +43,23 @@ abstract final class CredentialsStorage {
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyEmail);
+    await prefs.remove(_legacyKeyEmail);
     await prefs.remove(_keyPassword);
+  }
+
+  static Future<String?> _loadEmail(SharedPreferences prefs) async {
+    final email = prefs.getString(_keyEmail);
+    if (email != null && email.isNotEmpty) return email;
+
+    // Migration from the old DPAPI-encrypted email key. If decryption fails,
+    // do not surface the encrypted blob in the input field.
+    final legacy = prefs.getString(_legacyKeyEmail);
+    if (legacy == null || legacy.isEmpty) return null;
+    final migrated = await _unprotect(legacy);
+    await prefs.remove(_legacyKeyEmail);
+    if (migrated == null || migrated.isEmpty) return null;
+    await prefs.setString(_keyEmail, migrated);
+    return migrated;
   }
 
   // ── Auth token (session) ──────────────────────────────────────────────────
@@ -84,29 +99,38 @@ abstract final class CredentialsStorage {
     final b64in = base64.encode(utf8.encode(plaintext));
     final outPath = _tmpPath('litchi_p_out');
 
-    final script = '''
+    final script =
+        '''
 \$b=[Convert]::FromBase64String('$b64in')
 \$t=[Text.Encoding]::UTF8.GetString(\$b)
 \$s=ConvertTo-SecureString \$t -AsPlainText -Force
 ConvertFrom-SecureString \$s|Set-Content '$outPath' -Encoding ASCII -NoNewline
 ''';
 
-    await Process.run('powershell', ['-NoProfile', '-NonInteractive', '-Command', script]);
+    await Process.run('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      script,
+    ]);
 
     final f = File(outPath);
     if (!f.existsSync()) return null;
     final result = (await f.readAsString()).trim();
-    try { await f.delete(); } catch (_) {}
+    try {
+      await f.delete();
+    } catch (_) {}
     return result.isNotEmpty ? result : null;
   }
 
   /// Decrypt a blob previously created by [_protect].
   static Future<String?> _unprotect(String encrypted) async {
-    final inPath  = _tmpPath('litchi_u_in');
+    final inPath = _tmpPath('litchi_u_in');
     final outPath = _tmpPath('litchi_u_out');
     await File(inPath).writeAsString(encrypted, flush: true);
 
-    final script = '''
+    final script =
+        '''
 \$enc=(Get-Content '$inPath' -Raw -Encoding ASCII).Trim()
 \$s=ConvertTo-SecureString \$enc
 \$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR(\$s)
@@ -115,15 +139,24 @@ ConvertFrom-SecureString \$s|Set-Content '$outPath' -Encoding ASCII -NoNewline
 [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(\$plain))|Set-Content '$outPath' -Encoding ASCII -NoNewline
 ''';
 
-    await Process.run('powershell', ['-NoProfile', '-NonInteractive', '-Command', script]);
+    await Process.run('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      script,
+    ]);
 
-    final inF  = File(inPath);
+    final inF = File(inPath);
     final outF = File(outPath);
-    try { await inF.delete(); } catch (_) {}
+    try {
+      await inF.delete();
+    } catch (_) {}
 
     if (!outF.existsSync()) return null;
     final b64out = (await outF.readAsString()).trim();
-    try { await outF.delete(); } catch (_) {}
+    try {
+      await outF.delete();
+    } catch (_) {}
 
     try {
       return utf8.decode(base64.decode(b64out));
