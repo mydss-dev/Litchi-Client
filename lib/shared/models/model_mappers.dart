@@ -113,22 +113,16 @@ abstract final class ModelMappers {
       '新加坡', '香港', '日本', '台湾', '韩国', '印度', '越南', '泰国', '马来', '菲律宾', '印尼',
       'singapore', 'hong kong', 'japan', 'taiwan', 'korea', 'india',
       'tokyo', 'seoul', 'bangkok', 'asia',
-    ])) {
-      return NodeRegion.asia;
-    }
+    ])) return NodeRegion.asia;
     if (_any(n, [
       '英国', '德国', '法国', '荷兰', '俄罗斯', '土耳其',
       'uk', 'germany', 'france', 'netherlands', 'london',
       'frankfurt', 'amsterdam', 'europe',
-    ])) {
-      return NodeRegion.europe;
-    }
+    ])) return NodeRegion.europe;
     if (_any(n, [
       '美国', '加拿大', '巴西', 'usa', 'united states', 'canada', 'brazil',
       'los angeles', 'new york', 'america',
-    ])) {
-      return NodeRegion.america;
-    }
+    ])) return NodeRegion.america;
     if (_any(n, ['澳大利亚', '新西兰', 'australia', 'sydney', 'melbourne'])) {
       return NodeRegion.oceania;
     }
