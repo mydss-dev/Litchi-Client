@@ -84,9 +84,9 @@ jobs:
           # they switched to .db format. The pre-compiled binary rule sets (.srs)
           # live in the `sing` branch of each repo and are updated on every push.
           $files = @{
-            "geosite-cn.srs"              = "https://raw.githubusercontent.com/SagerNet/sing-geosite/sing/geosite-cn.srs"
-            "geosite-category-ads-all.srs"= "https://raw.githubusercontent.com/SagerNet/sing-geosite/sing/geosite-category-ads-all.srs"
-            "geoip-cn.srs"                = "https://raw.githubusercontent.com/SagerNet/sing-geoip/sing/geoip-cn.srs"
+            "geosite-cn.srs"              = "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs"
+            "geosite-category-ads-all.srs"= "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs"
+            "geoip-cn.srs"                = "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"
           }
           foreach ($kv in $files.GetEnumerator()) {
             Write-Host "Downloading $($kv.Key) ..."
