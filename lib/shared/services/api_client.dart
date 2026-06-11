@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 
 typedef SessionExpiredCallback = void Function();
 
@@ -16,6 +19,11 @@ class ApiClient {
   String _baseUrl = '';
   String? _authData;
 
+  /// Active Windows system proxy as "host:port", or null when none is set.
+  /// Dio is routed through it so a geo-blocked API panel domain is reachable
+  /// whenever the user has a proxy (Clash / v2rayN in system-proxy mode) up.
+  String? _proxy;
+
   SessionExpiredCallback? onSessionExpired;
 
   bool get isConfigured => _baseUrl.isNotEmpty;
@@ -31,14 +39,64 @@ class ApiClient {
     if (_baseUrl.isNotEmpty) _rebuild();
   }
 
+  /// Re-reads the Windows system proxy and, if it changed, rebuilds Dio to
+  /// route through it. Call before login and on token-based startup so the
+  /// request goes out through whatever proxy the user currently has running.
+  Future<void> refreshSystemProxy() async {
+    final p = await _readSystemProxy();
+    if (p != _proxy) {
+      _proxy = p;
+      if (_baseUrl.isNotEmpty) _rebuild();
+    }
+  }
+
+  static Future<String?> _readSystemProxy() async {
+    if (!Platform.isWindows) return null;
+    try {
+      const key =
+          r'HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings';
+      final en = await Process.run('reg', ['query', key, '/v', 'ProxyEnable']);
+      if (!'${en.stdout}'.contains('0x1')) return null; // proxy disabled
+      final sv = await Process.run('reg', ['query', key, '/v', 'ProxyServer']);
+      final m =
+          RegExp(r'ProxyServer\s+REG_SZ\s+(\S+)').firstMatch('${sv.stdout}');
+      var v = m?.group(1)?.trim();
+      if (v == null || v.isEmpty) return null;
+      // Per-protocol form "http=host:port;https=host:port" → pick https/first.
+      if (v.contains('=')) {
+        final parts = v.split(';');
+        final https = parts.firstWhere(
+          (p) => p.startsWith('https='),
+          orElse: () => parts.first,
+        );
+        v = https.split('=').last.trim();
+      }
+      return v.isEmpty ? null : v;
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _rebuild() {
-    _dio = Dio(BaseOptions(
+    final dio = Dio(BaseOptions(
       baseUrl: '$_baseUrl/api/v1',
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 30),
       contentType: 'application/json',
     ));
-    _dio!.interceptors.add(InterceptorsWrapper(
+
+    final proxy = _proxy;
+    if (proxy != null && proxy.isNotEmpty) {
+      dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+          client.findProxy = (_) => 'PROXY $proxy';
+          return client;
+        },
+      );
+    }
+
+    dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         if (_authData != null && _authData!.isNotEmpty) {
           options.headers['Authorization'] = _authData;
@@ -60,6 +118,8 @@ class ApiClient {
         handler.next(response);
       },
     ));
+
+    _dio = dio;
   }
 
   Future<Map<String, dynamic>> get(

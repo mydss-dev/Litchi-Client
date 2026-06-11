@@ -207,6 +207,10 @@ class AppController extends ChangeNotifier {
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;
+    // Route API calls through the user's system proxy (Clash etc.) so a
+    // geo-blocked panel domain is reachable. Without this, requests went out
+    // direct, hit the blocked/poisoned domain, and hung until timeout.
+    await _apiClient.refreshSystemProxy();
 
     final authData = await TokenStorage.getAuthData();
     final hasToken = authData != null && authData.isNotEmpty;
@@ -315,6 +319,8 @@ class AppController extends ChangeNotifier {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   Future<void> loginWithCredentials(String email, String password) async {
+    // Pick up any proxy the user started after launch before hitting the API.
+    await _apiClient.refreshSystemProxy();
     final result = await _api.login(email, password);
     await _completeAuthentication(result.authData);
   }
@@ -326,6 +332,7 @@ class AppController extends ChangeNotifier {
     String? inviteCode,
     String? emailCode,
   }) async {
+    await _apiClient.refreshSystemProxy();
     final result = await _api.register(
       email: email,
       password: password,
