@@ -17,8 +17,6 @@ abstract final class SingboxConfig {
   static const int defaultPort    = 7890;
   static const int defaultApiPort = 9090;
 
-  static const String _ossRulesBase = 'https://oss.qingniaojiasu.top/rules';
-
   // Rule set files are bundled next to the exe under rules\ in production.
   // During development they won't exist — _ruleSets() falls back to OSS.
   static String get _rulesDir {
@@ -109,45 +107,28 @@ abstract final class SingboxConfig {
           if (networkMode == NetworkMode.tun)
             {'inbound': ['tun-in'], 'action': 'sniff'},
           {'protocol': 'dns', 'action': 'hijack-dns'},
-          // Ad domains → block
-          {'rule_set': 'geosite-ads', 'outbound': 'block'},
-          // LAN / loopback → always direct
+          if (_hasLocalRules) ...[
+            {'rule_set': 'geosite-ads', 'outbound': 'block'},
+            {'rule_set': ['geosite-cn', 'geoip-cn'], 'outbound': 'direct'},
+          ],
           {'ip_is_private': true, 'outbound': 'direct'},
-          // Chinese domains + IPs → direct
-          {
-            'rule_set': ['geosite-cn', 'geoip-cn'],
-            'outbound': 'direct',
-          },
         ];
         ruleSets = _ruleSets();
     }
+
 
     // ── DNS servers ─────────────────────────────────────────────────────────
     // cn-dns: always present; used for CN domains and routing-engine queries.
     // remote-dns: foreign / encrypted resolver (choice depends on dnsMode).
     final Map<String, dynamic> remoteDnsServer;
+    final String dohServer;
     switch (dnsMode) {
-      case 'Cloudflare':
-        remoteDnsServer = {
-          'tag': 'remote-dns',
-          'type': 'https',
-          'server': '1.1.1.1',
-          'detour': 'direct',
-        };
       case 'Google':
-        remoteDnsServer = {
-          'tag': 'remote-dns',
-          'type': 'https',
-          'server': '8.8.8.8',
-          'detour': 'direct',
-        };
-      default: // '系统 DNS' — use Cloudflare DoH to bypass transparent-proxy fake-ip
-        remoteDnsServer = {
-          'tag': 'remote-dns',
-          'type': 'https',
-          'server': '1.1.1.1',
-          'detour': 'direct',
-        };
+        remoteDnsServer = {'tag': 'remote-dns', 'type': 'https', 'server': '8.8.8.8'};
+        dohServer = '8.8.8.8';
+      default: // '系统 DNS' and 'Cloudflare' both use Cloudflare DoH
+        remoteDnsServer = {'tag': 'remote-dns', 'type': 'https', 'server': '1.1.1.1'};
+        dohServer = '1.1.1.1';
     }
 
     // DNS rules only matter in rule mode; global/direct uses the final server.
@@ -232,7 +213,8 @@ abstract final class SingboxConfig {
         {'type': 'block',  'tag': 'block'},
       ],
       'route': {
-        'rules': routeRules,
+        // DoH server IP must go direct to avoid circular DNS → PROXY → DNS.
+        'rules': [{'ip_cidr': [dohServer], 'outbound': 'direct'}, ...routeRules],
         if (ruleSets.isNotEmpty) 'rule_set': ruleSets,
         'final': routeFinal,
         'auto_detect_interface': true,
@@ -256,18 +238,8 @@ abstract final class SingboxConfig {
          'path': '$dir\\geosite-category-ads-all.srs'},
       ];
     }
-    // Development / missing rules: fall back to OSS remote.
-    return [
-      {'tag': 'geosite-cn',  'type': 'remote', 'format': 'binary',
-       'url': '$_ossRulesBase/geosite-cn.srs',
-       'download_detour': 'direct', 'update_interval': '7d'},
-      {'tag': 'geoip-cn',    'type': 'remote', 'format': 'binary',
-       'url': '$_ossRulesBase/geoip-cn.srs',
-       'download_detour': 'direct', 'update_interval': '7d'},
-      {'tag': 'geosite-ads', 'type': 'remote', 'format': 'binary',
-       'url': '$_ossRulesBase/geosite-category-ads-all.srs',
-       'download_detour': 'direct', 'update_interval': '7d'},
-    ];
+    // No local rules — rule-sets disabled, routing falls back to global (all via PROXY).
+    return [];
   }
 
   // ── Tag helpers ────────────────────────────────────────────────────────────

@@ -411,28 +411,3 @@ class CoreController extends ChangeNotifier {
   }
 }
 
-// ── Simple counting semaphore ─────────────────────────────────────────────────
-
-class _Semaphore {
-  _Semaphore(this._max);
-
-  final int _max;
-  int _count = 0;
-  final _queue = <Completer<void>>[];
-
-  Future<void> acquire() async {
-    if (_count < _max) {
-      _count++;
-      return;
-    }
-    final c = Completer<void>();
-    _queue.add(c);
-    await c.future;
-    _count++;
-  }
-
-  void release() {
-    _count--;
-    if (_queue.isNotEmpty) _queue.removeAt(0).complete();
-  }
-}
