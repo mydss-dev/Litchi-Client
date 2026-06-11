@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../app/app_controller.dart';
 import '../../../shared/models/app_models.dart';
@@ -18,8 +17,6 @@ class NetworkSettingsCard extends StatefulWidget {
 
 class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
   bool _checkingAdmin = false;
-  bool _testingSpeed = false;
-  double? _speedMbps;
 
   Future<void> _setMode(NetworkMode mode) async {
     final ctrl = AppScope.of(context);
@@ -58,33 +55,11 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
     }
   }
 
-  Future<void> _runSpeedTest() async {
-    if (_testingSpeed) return;
-    setState(() {
-      _testingSpeed = true;
-      _speedMbps = null;
-    });
-
-    final ctrl = AppScope.of(context);
-    final result = await ctrl.testBandwidth();
-
-    if (!mounted) return;
-    setState(() {
-      _testingSpeed = false;
-      _speedMbps = result;
-    });
-
-    if (result == null) {
-      AppToast.show(context, '测速失败，请确认已连接后重试', type: AppToastType.error);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final mode = ctrl.networkMode;
-    final connected = ctrl.coreRunning;
 
     return AppCard(
       radius: AppRadius.card,
@@ -139,91 +114,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
               ],
             ),
           ),
-          // ── Speed test (only when connected) ─────────────────────────────
-          if (connected) ...[
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Icon(
-                  LucideIcons.gauge,
-                  size: 14,
-                  color: c.textMuted,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    _speedMbps != null
-                        ? '下载速度 ${_speedMbps!.toStringAsFixed(1)} Mbps'
-                        : '带宽测速',
-                    style: AppTextStyles.body.copyWith(
-                      color: _speedMbps != null ? c.textPrimary : c.textMuted,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                _SpeedTestButton(
-                  testing: _testingSpeed,
-                  hasResult: _speedMbps != null,
-                  onTap: _runSpeedTest,
-                ),
-              ],
-            ),
-          ],
         ],
-      ),
-    );
-  }
-}
-
-// ── Speed test button ─────────────────────────────────────────────────────────
-
-class _SpeedTestButton extends StatelessWidget {
-  const _SpeedTestButton({
-    required this.testing,
-    required this.hasResult,
-    required this.onTap,
-  });
-
-  final bool testing;
-  final bool hasResult;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-
-    return MouseRegion(
-      cursor: testing ? MouseCursor.defer : SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: testing ? null : onTap,
-        child: Container(
-          height: 26,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: c.surfaceMuted,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: c.softBorder),
-          ),
-          child: testing
-              ? SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.5,
-                      color: c.primary,
-                    ),
-                  ),
-                )
-              : Text(
-                  hasResult ? '重测' : '开始',
-                  style: AppTextStyles.button.copyWith(
-                    color: c.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-        ),
       ),
     );
   }

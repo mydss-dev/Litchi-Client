@@ -203,8 +203,6 @@ class _AutoCard extends StatelessWidget {
     final tested = nodes
         .where((n) => n.latency > 0 && n.latency < 9999)
         .toList();
-    final testing = nodes.any((n) => n.latency == -1);
-
     // Find best node for display
     NodeModel? best;
     for (final n in tested) {
@@ -262,9 +260,7 @@ class _AutoCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    if (testing && best == null)
-                      _TestingDots(color: c.textMuted)
-                    else if (best != null)
+                    if (best != null)
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -313,15 +309,6 @@ class _AutoCard extends StatelessWidget {
                       fontSize: 11,
                     ),
                   ),
-                )
-              else if (testing)
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.5,
-                    color: c.primary,
-                  ),
                 ),
               const SizedBox(width: 8),
               if (selected)
@@ -338,48 +325,6 @@ class _AutoCard extends StatelessWidget {
     if (ms < 60) return c.success;
     if (ms < 150) return c.warning;
     return c.danger;
-  }
-}
-
-// Animated "测速中..." dots
-class _TestingDots extends StatefulWidget {
-  const _TestingDots({required this.color});
-  final Color color;
-  @override
-  State<_TestingDots> createState() => _TestingDotsState();
-}
-
-class _TestingDotsState extends State<_TestingDots>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, child) {
-        final dots = '.' * ((_ctrl.value * 4).floor() % 4);
-        return Text(
-          '测速中$dots',
-          style: AppTextStyles.caption.copyWith(color: widget.color),
-        );
-      },
-    );
   }
 }
 
@@ -572,27 +517,7 @@ class _LatencyIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    if (latency == -1) {
-      // Testing
-      return Row(
-        children: [
-          SizedBox(
-            width: 8,
-            height: 8,
-            child: CircularProgressIndicator(
-              strokeWidth: 1.5,
-              color: c.textMuted,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '测速中',
-            style: AppTextStyles.caption.copyWith(color: c.textMuted),
-          ),
-        ],
-      );
-    }
-    if (latency == 0 || latency >= 9999) {
+    if (latency <= 0 || latency >= 9999) {
       return Row(
         children: [
           Container(

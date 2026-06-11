@@ -12,7 +12,6 @@ import '../shared/services/data_loader.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/settings_service.dart';
 import '../shared/services/token_storage.dart';
-import '../shared/services/speed_tester.dart';
 import '../shared/services/update_service.dart';
 import 'core_controller.dart';
 import 'settings_controller.dart';
@@ -382,9 +381,6 @@ class AppController extends ChangeNotifier {
     networkMode: _settings.networkMode,
   );
 
-  /// Downloads 10 MB through the active proxy and returns speed in Mbps.
-  Future<double?> testBandwidth() => SpeedTester.testDownload(_settings.proxyPort);
-
   /// Checks whether the current process is running with elevated (admin) privileges.
   /// Returns true on non-Windows platforms (no-op).
   static Future<bool> checkAdminPrivileges() async {
@@ -515,10 +511,14 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _startCoreInBackground() async {
+    // Always use global mode for background start — no rule-set files needed,
+    // so the core starts instantly and the Clash API is immediately available
+    // for latency testing. When the user explicitly connects, a full restart
+    // rebuilds the config with the user's configured proxy/network mode.
     await _core.startCoreOnly(
       nodes: _nodes,
       currentNode: currentNode,
-      proxyMode: _settings.proxyMode,
+      proxyMode: ProxyMode.global,
       dnsMode: _settings.dnsMode,
       proxyPort: _settings.proxyPort,
     );
@@ -533,8 +533,6 @@ class AppController extends ChangeNotifier {
   /// Requires the sing-box process to be running (not necessarily connected).
   Future<void> testLatencies() async {
     if (_nodes.isEmpty || !_core.coreProcessRunning) return;
-    _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
-    notifyListeners();
 
     final snapshot = List<NodeModel>.from(_nodes);
     await _core.testLatencies(
