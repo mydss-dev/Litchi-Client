@@ -168,4 +168,36 @@ abstract final class SingboxApiClient {
       return null;
     }
   }
+
+  /// Trigger the urltest group (自动选择) to re-test all nodes, then return
+  /// a map of outbound tag → latest delay in ms for every node that responded.
+  ///
+  /// This is more efficient than calling [testDelay] per node: sing-box runs
+  /// all tests concurrently internally and only one round-trip is needed to
+  /// read back the results.
+  static Future<Map<String, int>> testAllViaUrltest({
+    int apiPort = 9090,
+    int timeout = 10000,
+  }) async {
+    // 1. Trigger the urltest group — blocks until all member tests finish.
+    await testDelay('自动选择', timeout: timeout, apiPort: apiPort);
+
+    // 2. Read the updated history for every proxy in one call.
+    final data = await getProxies(apiPort: apiPort);
+    if (data == null) return {};
+
+    final proxies = data['proxies'] as Map<String, dynamic>?;
+    if (proxies == null) return {};
+
+    final results = <String, int>{};
+    proxies.forEach((tag, value) {
+      if (value is! Map<String, dynamic>) return;
+      final history = value['history'] as List?;
+      if (history == null || history.isEmpty) return;
+      final last = history.last as Map<String, dynamic>?;
+      final delay = last?['delay'];
+      if (delay is int && delay > 0) results[tag] = delay;
+    });
+    return results;
+  }
 }

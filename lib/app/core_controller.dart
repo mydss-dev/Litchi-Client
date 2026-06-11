@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/core_manager.dart';
 import '../shared/services/proxy_setter.dart';
-import '../shared/services/latency_tester.dart';
 import '../shared/services/singbox_api_client.dart';
 import '../shared/services/singbox_config.dart';
 
@@ -368,42 +367,26 @@ class CoreController extends ChangeNotifier {
 
   // ── Latency testing ───────────────────────────────────────────────────────
 
-  /// Tests latency for every node in [nodes] via the Clash API (max 10 concurrent).
+  /// Tests latency for every node in [nodes].
   /// Requires the core to be running — no-ops otherwise.
   ///
-  /// Calls [onResult] with the index and updated node as each result arrives.
+  /// Triggers sing-box's urltest group to re-test all nodes concurrently
+  /// (two API calls total), then maps history results back to the node list.
   Future<void> testLatencies(
     List<NodeModel> nodes, {
     required void Function(int idx, NodeModel updated) onResult,
   }) async {
-    if (nodes.isEmpty) return;
-    // Two paths, picked by whether the core is up:
-    // - core running  → real proxy latency via the Clash API
-    // - core not ready → direct TCP handshake to the node server, so a
-    //   latency still shows before the user connects (and even if the box
-    //   never comes up).
-    final useApi = _core.isRunning;
-    final sem = _Semaphore(10);
-    await Future.wait(
-      nodes.asMap().entries.map((e) async {
-        await sem.acquire();
-        try {
-          final node = e.value;
-          final int ms;
-          if (useApi) {
-            ms = await SingboxApiClient.testDelay(
-                  SingboxConfig.nodeTagFor(node),
-                  apiPort: SingboxConfig.defaultApiPort,
-                ) ?? LatencyTester.unreachable;
-          } else {
-            ms = await LatencyTester.ping(node.server, node.port);
-          }
-          onResult(e.key, node.copyWith(latency: ms));
-        } finally {
-          sem.release();
-        }
-      }),
+    if (nodes.isEmpty || !_core.isRunning) return;
+
+    final history = await SingboxApiClient.testAllViaUrltest(
+      apiPort: SingboxConfig.defaultApiPort,
     );
+
+    for (var i = 0; i < nodes.length; i++) {
+      final node = nodes[i];
+      final ms   = history[SingboxConfig.nodeTagFor(node)] ?? 9999;
+      onResult(i, node.copyWith(latency: ms));
+    }
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────
