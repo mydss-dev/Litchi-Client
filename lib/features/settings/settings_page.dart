@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -204,6 +206,22 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           const SizedBox(height: 16),
+          // ── Support ────────────────────────────────────────────────────────
+          if (AppConfig.supportUrl.isNotEmpty) ...[
+            _SettingsGroup(
+              title: '帮助与支持',
+              children: [
+                _SettingRow(
+                  label: '联系客服',
+                  trailing: _DiagnosticButton(
+                    label: '打开',
+                    onTap: () => _openUrl(AppConfig.supportUrl),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
           // ── Account ────────────────────────────────────────────────────────
           _SettingsGroup(
             title: '账户',
@@ -213,6 +231,10 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+}
+
+void _openUrl(String url) {
+  Process.run('explorer', [url]);
 }
 
 class _HttpsWarningCard extends StatelessWidget {

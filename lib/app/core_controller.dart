@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 
 import '../shared/models/app_models.dart';
 import '../shared/services/core_manager.dart';
-import '../shared/services/latency_tester.dart';
 import '../shared/services/proxy_setter.dart';
 import '../shared/services/singbox_api_client.dart';
 import '../shared/services/singbox_config.dart';
@@ -41,6 +40,10 @@ class CoreController extends ChangeNotifier {
   bool get coreConnecting =>
       _status == ConnectionStatus.connecting ||
       _status == ConnectionStatus.disconnecting;
+  /// True when the sing-box process is alive, regardless of proxy state.
+  /// Use this to guard latency tests — the Clash API is available whenever
+  /// the process is running, even before the user explicitly connects.
+  bool get coreProcessRunning => _core.isRunning;
   String get coreError => _coreError;
   int get upBps => upBpsNotifier.value;
   int get downBps => downBpsNotifier.value;
@@ -91,8 +94,48 @@ class CoreController extends ChangeNotifier {
 
   // ── Connection ────────────────────────────────────────────────────────────
 
-  /// Toggles sing-box on/off. Settings and node list are provided by the caller
-  /// rather than stored here to avoid coupling with [AppController].
+  /// Starts sing-box in the background WITHOUT enabling system proxy or TUN.
+  /// Called after login so latency testing works before the user connects.
+  /// No-ops if the process is already running.
+  Future<void> startCoreOnly({
+    required List<NodeModel> nodes,
+    required NodeModel currentNode,
+    required ProxyMode proxyMode,
+    required String dnsMode,
+    required int proxyPort,
+  }) async {
+    if (_core.isRunning) return;
+    final validNodes = nodes.where((n) => n.rawUri.isNotEmpty).toList();
+    if (validNodes.isEmpty) return;
+
+    final config = SingboxConfig.buildFullConfig(
+      validNodes,
+      selectedTag: SingboxConfig.nodeTagFor(currentNode),
+      port: proxyPort,
+      apiPort: SingboxConfig.defaultApiPort,
+      proxyMode: proxyMode,
+      dnsMode: dnsMode,
+      networkMode: NetworkMode.system, // no TUN in background mode
+    );
+    if (config == null) return;
+
+    try {
+      final configPath = await SingboxConfig.writeConfig(config);
+      await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
+      // _status stays disconnected — proxy is NOT enabled yet.
+      if (_core.isRunning) notifyListeners();
+    } catch (_) {
+      // Background start failure is non-fatal; user can still connect manually.
+    }
+  }
+
+  /// Toggles proxy on/off. When the sing-box process is already running
+  /// (started via [startCoreOnly]), connecting only enables the system proxy —
+  /// no process restart needed. Disconnecting keeps the process alive so
+  /// latency testing continues in the background.
+  ///
+  /// TUN mode always performs a full restart since the TUN adapter cannot be
+  /// toggled without reloading the config.
   Future<String?> toggleConnection({
     required List<NodeModel> nodes,
     required NodeModel currentNode,
@@ -103,12 +146,17 @@ class CoreController extends ChangeNotifier {
   }) async {
     if (coreConnecting) return null;
 
-    if (_core.isRunning) {
+    // ── DISCONNECT ──────────────────────────────────────────────────────────
+    if (_status == ConnectionStatus.connected) {
       _status = ConnectionStatus.disconnecting;
       notifyListeners();
       _stopTrafficMonitor();
       await ProxySetter.disable();
-      await _core.stop();
+      if (networkMode == NetworkMode.tun) {
+        // TUN requires a full restart to remove the adapter; stop the process.
+        await _core.stop();
+      }
+      // System proxy mode: keep process alive for background latency testing.
       _connectedAt = null;
       _coreError = '';
       _status = ConnectionStatus.disconnected;
@@ -116,6 +164,7 @@ class CoreController extends ChangeNotifier {
       return null;
     }
 
+    // ── CONNECT ─────────────────────────────────────────────────────────────
     final validNodes = nodes.where((n) => n.rawUri.isNotEmpty).toList();
     if (validNodes.isEmpty) {
       _coreError = '没有可用节点，请刷新节点列表后重试';
@@ -124,6 +173,30 @@ class CoreController extends ChangeNotifier {
     }
 
     final selectedTag = SingboxConfig.nodeTagFor(currentNode);
+
+    // Fast path: core already running in system proxy mode — just enable proxy.
+    if (_core.isRunning && networkMode == NetworkMode.system) {
+      _status = ConnectionStatus.connecting;
+      _coreError = '';
+      notifyListeners();
+      try {
+        await SingboxApiClient.switchProxy(
+          selectedTag,
+          apiPort: SingboxConfig.defaultApiPort,
+        );
+        await ProxySetter.enable(port: proxyPort);
+        _connectedAt = DateTime.now();
+        _status = ConnectionStatus.connected;
+        _startTrafficMonitor();
+      } catch (_) {
+        _coreError = '连接失败，请重启客户端后重试';
+        _status = ConnectionStatus.error;
+      }
+      notifyListeners();
+      return _coreError.isNotEmpty ? _coreError : null;
+    }
+
+    // Full start: build config, (re)start process, enable proxy.
     final config = SingboxConfig.buildFullConfig(
       validNodes,
       selectedTag: selectedTag,
@@ -193,6 +266,13 @@ class CoreController extends ChangeNotifier {
   /// Returns true if the Clash API accepted the change.
   Future<bool> switchNode(NodeModel node) => SingboxApiClient.switchProxy(
         SingboxConfig.nodeTagFor(node),
+        apiPort: SingboxConfig.defaultApiPort,
+      );
+
+  /// Switches the PROXY selector to the urltest outbound (自动选择).
+  /// sing-box then picks the fastest node internally based on real latency.
+  Future<bool> switchToAuto() => SingboxApiClient.switchProxy(
+        '自动选择',
         apiPort: SingboxConfig.defaultApiPort,
       );
 
@@ -285,32 +365,25 @@ class CoreController extends ChangeNotifier {
 
   // ── Latency testing ───────────────────────────────────────────────────────
 
-  /// Tests latency for every node in [nodes] (max 10 concurrent).
+  /// Tests latency for every node in [nodes] via the Clash API (max 10 concurrent).
+  /// Requires the core to be running — no-ops otherwise.
   ///
   /// Calls [onResult] with the index and updated node as each result arrives.
-  /// When the core is running, uses the Clash API; otherwise falls back to
-  /// direct TCP ping.
   Future<void> testLatencies(
     List<NodeModel> nodes, {
     required void Function(int idx, NodeModel updated) onResult,
   }) async {
-    if (nodes.isEmpty) return;
+    if (!_core.isRunning || nodes.isEmpty) return;
     final sem = _Semaphore(10);
     await Future.wait(
       nodes.asMap().entries.map((e) async {
         await sem.acquire();
         try {
           final node = e.value;
-          final int ms;
-          if (_core.isRunning) {
-            ms = await SingboxApiClient.testDelay(
-                      SingboxConfig.nodeTagFor(node),
-                      apiPort: SingboxConfig.defaultApiPort,
-                    ) ??
-                LatencyTester.unreachable;
-          } else {
-            ms = await LatencyTester.ping(node.server, node.port);
-          }
+          final ms = await SingboxApiClient.testDelay(
+                SingboxConfig.nodeTagFor(node),
+                apiPort: SingboxConfig.defaultApiPort,
+              ) ?? 9999;
           onResult(e.key, node.copyWith(latency: ms));
         } finally {
           sem.release();

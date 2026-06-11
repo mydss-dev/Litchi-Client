@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../shared/config/app_config.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -160,7 +161,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       AppToast.showInOverlay(
         overlay,
-        '注册成功，欢迎加入 Litchi！',
+        '注册成功，欢迎加入 ${AppConfig.appName}！',
         type: AppToastType.success,
       );
     } catch (e) {
@@ -192,7 +193,7 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            '创建你的 Litchi 账户',
+            '创建你的 ${AppConfig.appName} 账户',
             style: AppTextStyles.authSubtitle.copyWith(color: c.textSecondary),
           ),
           const SizedBox(height: 20),

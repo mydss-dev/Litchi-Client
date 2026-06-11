@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../shared/config/app_config.dart';
 import '../shared/theme/app_theme.dart';
 import 'app_controller.dart';
 import 'app_shell.dart';
@@ -36,7 +37,7 @@ class _LitchiAppState extends State<LitchiApp> {
         animation: _controller,
         builder: (context, _) {
           return MaterialApp(
-            title: 'Litchi Client',
+            title: '${AppConfig.appName} Client',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),

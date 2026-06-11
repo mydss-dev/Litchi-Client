@@ -287,7 +287,7 @@ class _AutoCard extends StatelessWidget {
                       )
                     else
                       Text(
-                        '暂无可用节点',
+                        '连接后自动选择最优节点',
                         style: AppTextStyles.caption.copyWith(
                           color: c.textMuted,
                         ),

@@ -391,7 +391,7 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
                                                 width: barWidth,
                                                 borderRadius:
                                                     BorderRadius.circular(5),
-                                                gradient: const LinearGradient(
+                                                gradient: LinearGradient(
                                                   begin: Alignment.bottomCenter,
                                                   end: Alignment.topCenter,
                                                   colors: [

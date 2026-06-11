@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../theme/app_palette.dart';
+import '../config/app_config.dart';
 
-/// Renders the Litchi brand mark.
+/// Renders the brand mark.
 ///
-/// Uses the bundled SVG when available and falls back to a gradient circle
-/// with an "L" glyph (§8.3) if the asset fails to load.
+/// Loads `assets/images/brand_logo.svg` when present; falls back to a
+/// gradient rounded square with [AppConfig.logoLetter].
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.size = 30, this.radius});
 
   final double size;
-
-  /// Corner radius of the rounded container. Defaults to a circle.
   final double? radius;
 
-  static const String _asset = 'assets/images/litchi_logo.svg';
+  static const String _asset = 'assets/images/brand_logo.svg';
 
   @override
   Widget build(BuildContext context) {
@@ -36,12 +34,12 @@ class BrandLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: AppPalette.brandGradient,
+        gradient: AppConfig.brandGradient,
         borderRadius: BorderRadius.circular(r),
       ),
       alignment: Alignment.center,
       child: Text(
-        'L',
+        AppConfig.logoLetter,
         style: TextStyle(
           color: Colors.white,
           fontSize: size * 0.47,

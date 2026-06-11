@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../config/app_config.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_text_styles.dart';
@@ -116,7 +117,7 @@ class _BrandArea extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Litchi',
+                AppConfig.appName,
                 style: AppTextStyles.bodyStrong.copyWith(
                   color: c.textPrimary,
                   fontSize: 15,
@@ -124,7 +125,7 @@ class _BrandArea extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                'Network Client',
+                AppConfig.appSubtitle,
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w400,

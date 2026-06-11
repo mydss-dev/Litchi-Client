@@ -12,6 +12,7 @@ import '../shared/services/settings_service.dart';
 /// `AppScope.of(context).proxyMode` etc. unchanged.
 class SettingsController extends ChangeNotifier {
   bool _wasConnected = false;
+  String _lastNodeId = '';
   bool _autoStart = false;
   bool _autoUpdate = true;
   bool _devMode = false;
@@ -23,6 +24,7 @@ class SettingsController extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
 
   bool get wasConnected => _wasConnected;
+  String get lastNodeId => _lastNodeId;
   bool get autoStart => _autoStart;
   bool get autoUpdate => _autoUpdate;
   bool get devMode => _devMode;
@@ -47,6 +49,7 @@ class SettingsController extends ChangeNotifier {
     _networkMode = s.networkMode;
     _dnsMode = s.dnsMode;
     _wasConnected = s.wasConnected;
+    _lastNodeId = s.lastNodeId;
     _themeMode = s.themeMode;
     // Sync registry to match the saved preference (also refreshes exe path
     // if the app was updated and moved to a new location).
@@ -78,6 +81,12 @@ class SettingsController extends ChangeNotifier {
     if (_wasConnected == v) return;
     _wasConnected = v;
     SettingsService.setWasConnected(v);
+  }
+
+  void setLastNodeId(String id) {
+    if (_lastNodeId == id) return;
+    _lastNodeId = id;
+    SettingsService.setLastNodeId(id);
   }
 
   void setAutoStart(bool v) {

@@ -34,12 +34,22 @@ jobs:
       - name: Build release
         shell: pwsh
         run: |
-          $apiBase = if ("${{ secrets.API_BASE }}") { "${{ secrets.API_BASE }}" } else { "https://placeholder.example.com" }
-          $updateUrl = if ("${{ secrets.UPDATE_CHECK_URL }}") { "${{ secrets.UPDATE_CHECK_URL }}" } else { "" }
+          $apiBase     = if ("${{ secrets.API_BASE }}")          { "${{ secrets.API_BASE }}" }          else { "https://placeholder.example.com" }
+          $updateUrl   = if ("${{ secrets.UPDATE_CHECK_URL }}")  { "${{ secrets.UPDATE_CHECK_URL }}" }  else { "" }
+          $appName     = if ("${{ secrets.APP_NAME }}")          { "${{ secrets.APP_NAME }}" }          else { "Litchi" }
+          $appSubtitle = if ("${{ secrets.APP_SUBTITLE }}")      { "${{ secrets.APP_SUBTITLE }}" }      else { "Network Client" }
+          $logoLetter  = if ("${{ secrets.LOGO_LETTER }}")       { "${{ secrets.LOGO_LETTER }}" }       else { "L" }
+          $colorStart  = if ("${{ secrets.BRAND_COLOR_START }}") { "${{ secrets.BRAND_COLOR_START }}" } else { "2563EB" }
+          $colorEnd    = if ("${{ secrets.BRAND_COLOR_END }}")   { "${{ secrets.BRAND_COLOR_END }}" }   else { "7C3AED" }
           flutter build windows --release `
             "--dart-define=API_BASE=$apiBase" `
             "--dart-define=APP_VERSION=1.2.0" `
-            "--dart-define=UPDATE_CHECK_URL=$updateUrl"
+            "--dart-define=UPDATE_CHECK_URL=$updateUrl" `
+            "--dart-define=APP_NAME=$appName" `
+            "--dart-define=APP_SUBTITLE=$appSubtitle" `
+            "--dart-define=LOGO_LETTER=$logoLetter" `
+            "--dart-define=BRAND_COLOR_START=$colorStart" `
+            "--dart-define=BRAND_COLOR_END=$colorEnd"
 
       - name: Download sing-box
         shell: pwsh
@@ -63,11 +73,56 @@ jobs:
           Copy-Item "wintun-tmp\wintun\bin\amd64\wintun.dll" "build\windows\x64\runner\Release\wintun.dll"
           Write-Host "wintun.dll ready"
 
+      - name: Download rule sets
+        shell: pwsh
+        run: |
+          $rulesDir = "build\windows\x64\runner\Release\rules"
+          New-Item -ItemType Directory -Force -Path $rulesDir | Out-Null
+
+          $gsRelease = Invoke-RestMethod `
+            -Uri "https://api.github.com/repos/SagerNet/sing-geosite/releases/latest" `
+            -Headers @{ "User-Agent" = "litchi-ci" }
+          foreach ($name in @("geosite-cn.srs", "geosite-category-ads-all.srs")) {
+            $asset = $gsRelease.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
+            if (-not $asset) { Write-Error "$name not found in release"; exit 1 }
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "$rulesDir\$name"
+            Write-Host "Downloaded $name ($([math]::Round($asset.size/1KB)) KB)"
+          }
+
+          $giRelease = Invoke-RestMethod `
+            -Uri "https://api.github.com/repos/SagerNet/sing-geoip/releases/latest" `
+            -Headers @{ "User-Agent" = "litchi-ci" }
+          $asset = $giRelease.assets | Where-Object { $_.name -eq "geoip-cn.srs" } | Select-Object -First 1
+          if (-not $asset) { Write-Error "geoip-cn.srs not found in release"; exit 1 }
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "$rulesDir\geoip-cn.srs"
+          Write-Host "Downloaded geoip-cn.srs ($([math]::Round($asset.size/1KB)) KB)"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          # 从 tag 提取版本号（v1.2.0 → 1.2.0），非 tag 构建用 0.0.0
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "0.0.0" }
+          $appName = if ("${{ secrets.APP_NAME }}") { "${{ secrets.APP_NAME }} Client" } else { "Litchi Client" }
+          $publisher = if ("${{ secrets.APP_NAME }}") { "${{ secrets.APP_NAME }}" } else { "Litchi" }
+          Write-Host "Building installer: $appName $version"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            /DMyAppVersion=$version `
+            "/DMyAppName=$appName" `
+            "/DMyAppPublisher=$publisher" `
+            litchi_setup.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "Installer ready: installer_output\LitchiClient-Setup-$version.exe"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: litchi-windows-${{ github.sha }}
-          path: build\windows\x64\runner\Release\
+          path: installer_output\*.exe
           retention-days: 30
 
       # 打了 tag（v1.2.0 等）才自动创建 GitHub Release
@@ -75,5 +130,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build\windows\x64\runner\Release\**
+          files: installer_output\*.exe
           generate_release_notes: true

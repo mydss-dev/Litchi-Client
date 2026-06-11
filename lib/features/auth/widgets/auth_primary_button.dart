@@ -29,7 +29,7 @@ class AuthPrimaryButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Ink(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [AppPalette.authButtonStart, AppPalette.authButtonEnd],
               ),
               borderRadius: BorderRadius.circular(AppRadius.md),

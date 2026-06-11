@@ -71,7 +71,7 @@ class AppColors extends ThemeExtension<AppColors> {
   /// Brand gradient is theme-independent.
   LinearGradient get brandGradient => AppPalette.brandGradient;
 
-  static const AppColors light = AppColors(
+  static final AppColors light = AppColors(
     appBg: AppPalette.lightAppBg,
     sidebarBg: AppPalette.lightSidebarBg,
     cardBg: AppPalette.lightCardBg,
@@ -98,7 +98,7 @@ class AppColors extends ThemeExtension<AppColors> {
     shadow: AppPalette.lightShadow,
   );
 
-  static const AppColors dark = AppColors(
+  static final AppColors dark = AppColors(
     appBg: AppPalette.darkAppBg,
     sidebarBg: AppPalette.darkSidebarBg,
     cardBg: AppPalette.darkCardBg,

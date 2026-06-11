@@ -83,11 +83,14 @@ abstract final class ModelMappers {
 
   static String _flagFor(String name) {
     final n = name.toLowerCase();
-    if (_any(n, ['新加坡', 'singapore', 'sg'])) return '🇸🇬';
-    if (_any(n, ['香港', 'hong kong', 'hongkong', 'hk'])) return '🇭🇰';
-    if (_any(n, ['日本', 'japan', 'jp', 'tokyo', 'osaka'])) return '🇯🇵';
-    if (_any(n, ['台湾', 'taiwan', 'tw'])) return '🇹🇼';
-    if (_any(n, ['韩国', 'korea', 'kr', 'seoul'])) return '🇰🇷';
+    // Pass 1: Chinese keywords + unambiguous long Latin names.
+    // Short 2-letter codes (hk, jp, tw…) are excluded here to avoid
+    // false positives when they appear as a prefix (e.g. "HK-台湾01").
+    if (_any(n, ['新加坡', 'singapore'])) return '🇸🇬';
+    if (_any(n, ['香港', 'hong kong', 'hongkong'])) return '🇭🇰';
+    if (_any(n, ['日本', 'japan', 'tokyo', 'osaka'])) return '🇯🇵';
+    if (_any(n, ['台湾', 'taiwan'])) return '🇹🇼';
+    if (_any(n, ['韩国', 'korea', 'seoul'])) return '🇰🇷';
     if (_any(n, ['美国', 'united states', 'usa', 'los angeles', 'new york', 'chicago'])) return '🇺🇸';
     if (_any(n, ['英国', 'united kingdom', 'london', 'britain'])) return '🇬🇧';
     if (_any(n, ['德国', 'germany', 'frankfurt', 'berlin'])) return '🇩🇪';
@@ -104,8 +107,44 @@ abstract final class ModelMappers {
     if (_any(n, ['马来西亚', 'malaysia', 'kuala lumpur'])) return '🇲🇾';
     if (_any(n, ['菲律宾', 'philippines', 'manila'])) return '🇵🇭';
     if (_any(n, ['印尼', 'indonesia', 'jakarta'])) return '🇮🇩';
+    // Pass 2: Short 2-letter codes, matched only as standalone tokens
+    // (surrounded by non-alpha characters) so "HK-" prefix is ignored.
+    if (_token(n, 'sg')) return '🇸🇬';
+    if (_token(n, 'hk')) return '🇭🇰';
+    if (_token(n, 'jp')) return '🇯🇵';
+    if (_token(n, 'tw')) return '🇹🇼';
+    if (_token(n, 'kr')) return '🇰🇷';
+    if (_token(n, 'us')) return '🇺🇸';
+    if (_token(n, 'uk')) return '🇬🇧';
+    if (_token(n, 'de')) return '🇩🇪';
+    if (_token(n, 'fr')) return '🇫🇷';
+    if (_token(n, 'nl')) return '🇳🇱';
+    if (_token(n, 'au')) return '🇦🇺';
+    if (_token(n, 'ca')) return '🇨🇦';
+    if (_token(n, 'ru')) return '🇷🇺';
+    if (_token(n, 'tr')) return '🇹🇷';
+    if (_token(n, 'vn')) return '🇻🇳';
+    if (_token(n, 'th')) return '🇹🇭';
+    if (_token(n, 'my')) return '🇲🇾';
+    if (_token(n, 'ph')) return '🇵🇭';
+    if (_token(n, 'id')) return '🇮🇩';
     return '🌐';
   }
+
+  /// True if [code] appears in [s] as a standalone token —
+  /// not preceded or followed by another ASCII letter.
+  static bool _token(String s, String code) {
+    var idx = s.indexOf(code);
+    while (idx != -1) {
+      final before = idx == 0 || !_isAlpha(s[idx - 1]);
+      final after  = idx + code.length >= s.length || !_isAlpha(s[idx + code.length]);
+      if (before && after) return true;
+      idx = s.indexOf(code, idx + 1);
+    }
+    return false;
+  }
+
+  static bool _isAlpha(String ch) => ch.codeUnitAt(0) >= 97 && ch.codeUnitAt(0) <= 122;
 
   static NodeRegion _regionFor(String name) {
     final n = name.toLowerCase();

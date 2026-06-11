@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../shared/config/app_config.dart';
 import '../../shared/services/credentials_storage.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_text_styles.dart';
@@ -108,7 +109,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            '登录到你的 Litchi 账户',
+            '登录到你的 ${AppConfig.appName} 账户',
             style: AppTextStyles.authSubtitle.copyWith(color: c.textSecondary),
           ),
           const SizedBox(height: 28),
@@ -147,14 +148,16 @@ class _LoginPageState extends State<LoginPage> {
             isLoading: _loading,
             onPressed: _submit,
           ),
-          const SizedBox(height: 22),
-          const AuthDivider(label: '其他方式'),
-          const SizedBox(height: 22),
-          AuthBottomJump(
-            leadingText: '还没有账号？',
-            actionText: '注册账号',
-            onTap: () => controller.goToAuthScreen(AuthScreen.register),
-          ),
+          if (AppConfig.registerEnabled) ...[
+            const SizedBox(height: 22),
+            const AuthDivider(label: '其他方式'),
+            const SizedBox(height: 22),
+            AuthBottomJump(
+              leadingText: '还没有账号？',
+              actionText: '注册账号',
+              onTap: () => controller.goToAuthScreen(AuthScreen.register),
+            ),
+          ],
         ],
       ),
     );

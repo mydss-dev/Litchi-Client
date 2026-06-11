@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/config/app_config.dart';
 import '../../../shared/theme/app_palette.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/brand_logo.dart';
@@ -23,7 +24,7 @@ class AuthVisualArea extends StatelessWidget {
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(gradient: AppPalette.brandGradient),
+        decoration: BoxDecoration(gradient: AppPalette.brandGradient),
         child: Stack(
           children: [
             // ---- Decorative blobs / orbits (§16.8) ----
@@ -66,14 +67,14 @@ class AuthVisualArea extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('Litchi',
-                              style: TextStyle(
+                          Text(AppConfig.appName,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
                                 fontFamilyFallback: AppTextStyles.fontFamilyFallback,
                               )),
-                          Text('Network Client',
+                          Text(AppConfig.appSubtitle,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.8),
                                 fontSize: 11,

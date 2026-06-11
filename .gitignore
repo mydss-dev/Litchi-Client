@@ -1,3 +1,8 @@
+# Inno Setup local output
+installer_output/
+# OSS config (contains api_base, keep off git)
+oss_config.json
+
 # Miscellaneous
 *.class
 *.log

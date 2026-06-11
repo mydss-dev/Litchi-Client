@@ -1,25 +1,25 @@
 import 'package:flutter/widgets.dart';
 
-/// Raw color values for Litchi Client, transcribed from the design spec (§6).
+import '../config/app_config.dart';
+
+/// Raw color values transcribed from the design spec (§6).
 ///
-/// These are the literal palette tokens. Prefer consuming semantic colors via
-/// [AppColors.of] in widgets; this class only holds the underlying constants.
+/// Brand gradient colors delegate to [BrandConfig] so they can be swapped at
+/// build time via --dart-define. All other palette tokens remain const.
+/// Prefer consuming semantic colors via [AppColors.of] in widgets.
 class AppPalette {
   AppPalette._();
 
   // ---------------------------------------------------------------------------
-  // Brand gradients (shared across light/dark)
+  // Brand gradients — driven by BrandConfig (--dart-define overridable)
   // ---------------------------------------------------------------------------
-  static const Color brandStart = Color(0xFF2563EB);
-  static const Color brandEnd = Color(0xFF7C3AED);
+  static Color get brandStart => AppConfig.brandStart;
+  static Color get brandEnd   => AppConfig.brandEnd;
 
-  /// Primary action gradient used on the auth main button.
-  static const Color authButtonStart = Color(0xFF2563EB);
-  static const Color authButtonEnd = Color(0xFF4F46E5);
+  static Color get authButtonStart => AppConfig.brandStart;
+  static Color get authButtonEnd   => AppConfig.brandEnd;
 
-  static const LinearGradient brandGradient = LinearGradient(
-    colors: [brandStart, brandEnd],
-  );
+  static LinearGradient get brandGradient => AppConfig.brandGradient;
 
   // ---------------------------------------------------------------------------
   // Light theme (§6.1)
@@ -40,11 +40,11 @@ class AppPalette {
   static const Color lightIconDefault = Color(0xFF64748B);
   static const Color lightIconMuted = Color(0xFF94A3B8);
 
-  static const Color lightPrimary = Color(0xFF2563EB);
+  static Color get lightPrimary => AppConfig.brandStart;
   static const Color lightPrimaryHover = Color(0xFF1D4ED8);
   static const Color lightPrimarySoft = Color(0xFFEFF6FF);
 
-  static const Color lightSecondary = Color(0xFF7C3AED);
+  static Color get lightSecondary => AppConfig.brandEnd;
   static const Color lightSecondarySoft = Color(0xFFF5F3FF);
 
   static const Color lightSuccess = Color(0xFF22C55E);
@@ -76,11 +76,11 @@ class AppPalette {
   static const Color darkIconDefault = Color(0xFFCBD5E1);
   static const Color darkIconMuted = Color(0xFF94A3B8);
 
-  static const Color darkPrimary = Color(0xFF3B82F6);
+  static Color get darkPrimary => AppConfig.brandStart;
   static const Color darkPrimaryHover = Color(0xFF2563EB);
   static const Color darkPrimarySoft = Color(0x293B82F6); // rgba(59,130,246,0.16)
 
-  static const Color darkSecondary = Color(0xFF8B5CF6);
+  static Color get darkSecondary => AppConfig.brandEnd;
   static const Color darkSecondarySoft = Color(0x298B5CF6); // rgba(139,92,246,0.16)
 
   static const Color darkSuccess = Color(0xFF22C55E);

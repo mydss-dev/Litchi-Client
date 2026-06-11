@@ -15,6 +15,7 @@ class SettingsSnapshot {
     required this.dnsMode,
     required this.themeMode,
     required this.wasConnected,
+    required this.lastNodeId,
   });
 
   final int proxyPort;
@@ -27,6 +28,10 @@ class SettingsSnapshot {
   final String dnsMode;
   final ThemeMode themeMode;
   final bool wasConnected;
+
+  /// ID of the node the user last manually selected.
+  /// Empty string means "use auto-select".
+  final String lastNodeId;
 }
 
 /// Handles loading and persisting user preferences via SharedPreferences.
@@ -48,6 +53,7 @@ abstract final class SettingsService {
         _ => ThemeMode.light,
       },
       wasConnected: p.getBool('was_connected') ?? false,
+      lastNodeId: p.getString('last_node_id') ?? '',
     );
   }
 
@@ -87,6 +93,9 @@ abstract final class SettingsService {
 
   static void setWasConnected(bool v) =>
       SharedPreferences.getInstance().then((p) => p.setBool('was_connected', v));
+
+  static void setLastNodeId(String id) =>
+      SharedPreferences.getInstance().then((p) => p.setString('last_node_id', id));
 
   static Future<int> loadLastSeenNoticeId() async {
     final p = await SharedPreferences.getInstance();

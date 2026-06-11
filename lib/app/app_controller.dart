@@ -9,7 +9,6 @@ import '../shared/models/app_models.dart';
 import '../shared/models/mock_data.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/data_loader.dart';
-import '../shared/services/latency_tester.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/settings_service.dart';
 import '../shared/services/token_storage.dart';
@@ -131,6 +130,8 @@ class AppController extends ChangeNotifier {
   Stream<String> get coreLogStream => _core.logStream;
   List<String> get coreLogs => _core.recentLogs;
   Duration get connectedDuration => _core.connectedDuration;
+
+  bool get coreProcessRunning => _core.coreProcessRunning;
 
   /// Graceful shutdown: kills core + disables system proxy. Call before exit.
   Future<void> shutdown() => _core.shutdown();
@@ -269,10 +270,16 @@ class AppController extends ChangeNotifier {
     final status = _core.connectionStatus;
     if (status == ConnectionStatus.connected) {
       _settings.setWasConnected(true);
+      unawaited(testLatencies());
     } else if (status == ConnectionStatus.disconnected) {
       _settings.setWasConnected(false);
+      // Core process may still be alive (system proxy mode) — keep latency data.
+      // Only clear when process actually stopped (e.g. TUN disconnect / logout).
+      if (!_core.coreProcessRunning) {
+        _nodes = _nodes.map((n) => n.copyWith(latency: 0)).toList();
+        notifyListeners();
+      }
     }
-    // error / connecting / disconnecting: keep existing value.
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -403,9 +410,9 @@ class AppController extends ChangeNotifier {
     _currencySymbol = await _api.getCommCurrencySymbol();
     _notices = await _api.getNotices();
     if (_nodes.isNotEmpty) {
-      _currentNode = _nodes.first;
-      _autoSelected = true;
-      unawaited(testLatencies()); // notifies per node as results arrive
+      _restoreLastNode();
+      // Start core in background so latency testing works before user connects.
+      unawaited(_startCoreInBackground());
     }
   }
 
@@ -421,10 +428,10 @@ class AppController extends ChangeNotifier {
     final snap = await _dataLoader.loadNodes(_subscribeUrl);
     if (snap.nodes != null && snap.nodes!.isNotEmpty) {
       _nodes = snap.nodes!;
-      _currentNode = _nodes.first;
-      _autoSelected = true;
+      _restoreLastNode();
       if (snap.traffic != null) _traffic = snap.traffic!;
-      unawaited(testLatencies());
+      // Restart core with updated node list, then test latency.
+      unawaited(_startCoreInBackground());
     }
     notifyListeners();
   }
@@ -437,6 +444,11 @@ class AppController extends ChangeNotifier {
     if (snap.plans != null) _plans = snap.plans!;
     if (snap.inviteCode != null) _inviteCode = snap.inviteCode!;
     if (snap.inviteLink != null) _inviteLink = snap.inviteLink!;
+    // OSS override: rebuild invite link with the configured base domain.
+    if (AppConfig.inviteUrlBase.isNotEmpty && _inviteCode.isNotEmpty) {
+      final base = AppConfig.inviteUrlBase.replaceAll(RegExp(r'/+$'), '');
+      _inviteLink = '$base/register?code=$_inviteCode';
+    }
     if (snap.commissionRate != null) _commissionRate = snap.commissionRate!;
     if (snap.invitedCount != null) _invitedCount = snap.invitedCount!;
     if (snap.withdrawable != null) _withdrawable = snap.withdrawable!;
@@ -451,11 +463,28 @@ class AppController extends ChangeNotifier {
 
   // ── Node selection ────────────────────────────────────────────────────────
 
-  /// Switch to [node]. Returns an error string if the Clash API rejected the
-  /// switch (core running), or null on success.
+  /// Tries to restore the last manually-selected node from persistent storage.
+  /// Falls back to the first node in auto-select mode if the node is not found.
+  void _restoreLastNode() {
+    final lastId = _settings.lastNodeId;
+    final saved = lastId.isNotEmpty
+        ? _nodes.where((n) => n.id == lastId).firstOrNull
+        : null;
+    if (saved != null) {
+      _currentNode = saved;
+      _autoSelected = false;
+    } else {
+      _currentNode = _nodes.first;
+      _autoSelected = true;
+    }
+  }
+
+  /// Switch to [node]. Returns an error string if the core rejected the
+  /// switch, or null on success.
   Future<String?> setCurrentNode(NodeModel node) async {
     _autoSelected = false;
     _currentNode = node;
+    _settings.setLastNodeId(node.id);
     notifyListeners();
     if (_core.isRunning) {
       final ok = await _core.switchNode(node);
@@ -466,31 +495,44 @@ class AppController extends ChangeNotifier {
 
   Future<void> selectAuto() async {
     _autoSelected = true;
-    final best = _bestNode;
-    if (best != null) {
-      _currentNode = best;
-      notifyListeners();
-      if (_core.isRunning) {
-        await _core.switchNode(best);
-      }
-    } else {
-      notifyListeners();
+    _settings.setLastNodeId('');
+    notifyListeners();
+    if (_core.isRunning) {
+      // Hand off to sing-box's urltest outbound — it picks the fastest node
+      // automatically based on real proxy latency, no Flutter involvement.
+      await _core.switchToAuto();
     }
   }
 
+  // Used by _AutoCard to display the current best-latency node for reference.
   NodeModel? get _bestNode {
     NodeModel? best;
     for (final n in _nodes) {
-      if (n.latency <= 0 || n.latency >= LatencyTester.unreachable) continue;
+      if (n.latency <= 0 || n.latency >= 9999) continue;
       if (best == null || n.latency < best.latency) best = n;
     }
     return best;
   }
 
-  /// Tests latencies for all nodes. Delegates to [CoreController]; updates
-  /// node list and notifies on each result.
+  Future<void> _startCoreInBackground() async {
+    await _core.startCoreOnly(
+      nodes: _nodes,
+      currentNode: currentNode,
+      proxyMode: _settings.proxyMode,
+      dnsMode: _settings.dnsMode,
+      proxyPort: _settings.proxyPort,
+    );
+    if (_core.coreProcessRunning) {
+      // Small delay to let the Clash API initialise before testing.
+      await Future.delayed(const Duration(milliseconds: 800));
+      unawaited(testLatencies());
+    }
+  }
+
+  /// Tests latencies for all nodes via the Clash API.
+  /// Requires the sing-box process to be running (not necessarily connected).
   Future<void> testLatencies() async {
-    if (_nodes.isEmpty) return;
+    if (_nodes.isEmpty || !_core.coreProcessRunning) return;
     _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
     notifyListeners();
 
@@ -502,10 +544,6 @@ class AppController extends ChangeNotifier {
           final list = List<NodeModel>.from(_nodes);
           list[idx] = updated;
           _nodes = list;
-          if (_autoSelected) {
-            final best = _bestNode;
-            if (best != null) _currentNode = best;
-          }
           notifyListeners();
         }
       },

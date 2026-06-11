@@ -1,10 +1,11 @@
 import 'dart:io';
 
 /// Measures TCP-handshake latency to a proxy server.
-/// Returns milliseconds, or 9999 on timeout / unreachable.
+/// Used when the core is not running to give a basic reachability indicator.
+/// Returns milliseconds, or [unreachable] on timeout / error.
 class LatencyTester {
-  static const int timeout = 3000; // ms
   static const int unreachable = 9999;
+  static const int _timeout    = 3000;
 
   static Future<int> ping(String host, int port) async {
     if (host.isEmpty || port == 0) return unreachable;
@@ -13,7 +14,7 @@ class LatencyTester {
       final socket = await Socket.connect(
         host,
         port,
-        timeout: const Duration(milliseconds: timeout),
+        timeout: const Duration(milliseconds: _timeout),
       );
       sw.stop();
       socket.destroy();

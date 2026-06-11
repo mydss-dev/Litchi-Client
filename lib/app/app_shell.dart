@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../shared/config/app_config.dart';
 import '../features/account/account_page.dart';
 import '../features/auth/auth_flow.dart';
 import '../features/dashboard/dashboard_page.dart';
@@ -33,18 +35,20 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> with WindowListener {
+class _AppShellState extends State<AppShell>
+    with WindowListener, TrayListener {
   static const double _radius = 18;
   bool _maximized = false;
+  bool _trayActive = false;
+  bool _versionChecked = false;
 
-  // Cached so onWindowClose can call shutdown without a context lookup.
+  // Cached so onWindowClose / tray callbacks can act without a context lookup.
   AppController? _ctrl;
 
   @override
   void initState() {
     super.initState();
     windowManager.addListener(this);
-    // Intercept the close button so we can clean up before the OS exits.
     unawaited(windowManager.setPreventClose(true));
     _sync();
   }
@@ -52,12 +56,55 @@ class _AppShellState extends State<AppShell> with WindowListener {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _ctrl = AppScope.of(context);
+    final ctrl = AppScope.of(context);
+    _ctrl = ctrl;
+
+    final shouldHaveTray = ctrl.isAuthenticated && !ctrl.isInitializing;
+    if (shouldHaveTray && !_trayActive) {
+      _trayActive = true;
+      unawaited(_initTray());
+    } else if (!shouldHaveTray && _trayActive) {
+      _trayActive = false;
+      unawaited(_destroyTray());
+    }
+
+    // One-time version check after the user is authenticated and UI is ready.
+    if (ctrl.isAuthenticated && !ctrl.isInitializing && !_versionChecked) {
+      _versionChecked = true;
+      if (AppConfig.isVersionOutdated) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _showOutdatedDialog());
+      }
+    }
+  }
+
+  void _showOutdatedDialog() {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('需要更新'),
+        content: Text(
+          '当前版本 ${AppConfig.currentVersion} 已过期，'
+          '请更新到 ${AppConfig.minVersion} 或更高版本后继续使用。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   void dispose() {
     windowManager.removeListener(this);
+    if (_trayActive) {
+      trayManager.removeListener(this);
+      unawaited(trayManager.destroy());
+    }
     super.dispose();
   }
 
@@ -66,17 +113,78 @@ class _AppShellState extends State<AppShell> with WindowListener {
     if (mounted) setState(() => _maximized = m);
   }
 
+  // ── Tray ─────────────────────────────────────────────────────────────────
+
+  Future<void> _initTray() async {
+    await trayManager.setIcon('assets/images/tray_icon.ico');
+    await trayManager.setToolTip('${AppConfig.appName} Client');
+    await trayManager.setContextMenu(Menu(
+      items: [
+        MenuItem(key: 'toggle', label: '显示 / 隐藏窗口'),
+        MenuItem.separator(),
+        MenuItem(key: 'quit', label: '退出 ${AppConfig.appName}'),
+      ],
+    ));
+    trayManager.addListener(this);
+  }
+
+  Future<void> _destroyTray() async {
+    trayManager.removeListener(this);
+    await trayManager.destroy();
+  }
+
+  Future<void> _toggleWindow() async {
+    if (await windowManager.isVisible()) {
+      await windowManager.hide();
+    } else {
+      await windowManager.show();
+      await windowManager.focus();
+    }
+  }
+
+  Future<void> _quit() async {
+    if (_trayActive) {
+      trayManager.removeListener(this);
+      await trayManager.destroy();
+      _trayActive = false;
+    }
+    await _ctrl?.shutdown();
+    await windowManager.destroy();
+  }
+
+  // ── TrayListener ──────────────────────────────────────────────────────────
+
+  @override
+  void onTrayIconMouseDown() => unawaited(_toggleWindow());
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    switch (menuItem.key) {
+      case 'toggle':
+        unawaited(_toggleWindow());
+      case 'quit':
+        unawaited(_quit());
+    }
+  }
+
+  // ── WindowListener ────────────────────────────────────────────────────────
+
   @override
   void onWindowMaximize() => setState(() => _maximized = true);
 
   @override
   void onWindowUnmaximize() => setState(() => _maximized = false);
 
-  /// Stop sing-box + disable system proxy before the window actually closes.
+  /// Close button / Alt+F4 behavior:
+  /// - Logged in  → hide to tray (connection stays alive)
+  /// - Logged out → full exit
   @override
   Future<void> onWindowClose() async {
-    await _ctrl?.shutdown();
-    await windowManager.destroy();
+    if (_ctrl?.isAuthenticated == true) {
+      await windowManager.hide();
+    } else {
+      await windowManager.destroy();
+    }
   }
 
   @override
@@ -128,7 +236,7 @@ class _InitializingShell extends StatelessWidget {
                 const BrandLogo(size: 44, radius: 14),
                 const SizedBox(height: 14),
                 Text(
-                  'Litchi Client',
+                  '${AppConfig.appName} Client',
                   style: AppTextStyles.bodyStrong.copyWith(
                     color: c.textPrimary,
                     fontSize: 15,
@@ -227,15 +335,12 @@ class _MainShell extends StatelessWidget {
   }
 }
 
-/// Logged-out layout: full-width controls strip + centered auth panel. No
-/// sidebar; the brand lives inside the auth panel's visual area.
+/// Logged-out layout: full-width controls strip + centered auth panel.
 class _AuthShell extends StatelessWidget {
   const _AuthShell();
 
   @override
   Widget build(BuildContext context) {
-    // Full-bleed auth fills the window; the controls float on top so the left
-    // gradient reaches the rounded top-left corner.
     return const Stack(
       children: [
         Positioned.fill(child: AuthFlow()),
