@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../shared/config/app_config.dart';
+import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
@@ -72,6 +74,10 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           const PageHeader(title: '设置', subtitle: '配置客户端偏好和网络选项'),
           const SizedBox(height: 12),
+          if (!AppConfig.isSecureServer) ...[
+            const _HttpsWarningCard(),
+            const SizedBox(height: 12),
+          ],
           // ── General ────────────────────────────────────────────────────────
           _SettingsGroup(
             title: '通用设置',
@@ -125,10 +131,10 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               _SettingRow(
                 label: '代理模式',
-                trailing: AppSelect<String>(
+                trailing: AppSelect<ProxyMode>(
                   value: ctrl.proxyMode,
-                  items: const ['规则模式', '全局模式', '直连模式'],
-                  labelOf: (v) => v,
+                  items: ProxyMode.values,
+                  labelOf: (v) => v.label,
                   onChanged: ctrl.setProxyMode,
                 ),
               ),
@@ -202,6 +208,41 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingsGroup(
             title: '账户',
             children: [_LogoutRow(onLogout: ctrl.logout)],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HttpsWarningCard extends StatelessWidget {
+  const _HttpsWarningCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: c.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: c.warning.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(LucideIcons.triangleAlert, size: 15, color: c.warning),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '当前服务器使用 HTTP 连接，数据传输未加密，存在中间人攻击风险。'
+              '建议联系服务商开启 HTTPS。',
+              style: AppTextStyles.caption.copyWith(
+                color: c.warning,
+                height: 1.5,
+              ),
+            ),
           ),
         ],
       ),

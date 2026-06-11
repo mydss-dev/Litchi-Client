@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/app_models.dart';
+
 class SettingsSnapshot {
   const SettingsSnapshot({
     required this.proxyPort,
@@ -9,6 +11,7 @@ class SettingsSnapshot {
     required this.devMode,
     required this.language,
     required this.proxyMode,
+    required this.networkMode,
     required this.dnsMode,
     required this.themeMode,
     required this.wasConnected,
@@ -19,7 +22,8 @@ class SettingsSnapshot {
   final bool autoUpdate;
   final bool devMode;
   final String language;
-  final String proxyMode;
+  final ProxyMode proxyMode;
+  final NetworkMode networkMode;
   final String dnsMode;
   final ThemeMode themeMode;
   final bool wasConnected;
@@ -35,7 +39,8 @@ abstract final class SettingsService {
       autoUpdate: p.getBool('auto_update') ?? true,
       devMode: p.getBool('dev_mode') ?? false,
       language: p.getString('language') ?? '简体中文',
-      proxyMode: _normalizeProxyMode(p.getString('proxy_mode')),
+      proxyMode: ProxyMode.fromStorageKey(p.getString('proxy_mode')),
+      networkMode: NetworkMode.fromStorageKey(p.getString('network_mode')),
       dnsMode: p.getString('dns_mode') ?? '系统 DNS',
       themeMode: switch (p.getString('theme_mode') ?? 'light') {
         'dark' => ThemeMode.dark,
@@ -61,8 +66,13 @@ abstract final class SettingsService {
   static void setLanguage(String v) =>
       SharedPreferences.getInstance().then((p) => p.setString('language', v));
 
-  static void setProxyMode(String v) =>
-      SharedPreferences.getInstance().then((p) => p.setString('proxy_mode', v));
+  static void setProxyMode(ProxyMode v) =>
+      SharedPreferences.getInstance()
+          .then((p) => p.setString('proxy_mode', v.storageKey));
+
+  static void setNetworkMode(NetworkMode v) =>
+      SharedPreferences.getInstance()
+          .then((p) => p.setString('network_mode', v.storageKey));
 
   static void setDnsMode(String v) =>
       SharedPreferences.getInstance().then((p) => p.setString('dns_mode', v));
@@ -78,12 +88,22 @@ abstract final class SettingsService {
   static void setWasConnected(bool v) =>
       SharedPreferences.getInstance().then((p) => p.setBool('was_connected', v));
 
-  static String _normalizeProxyMode(String? v) {
-    return switch (v) {
-      '智能模式' => '规则模式',
-      '全局模式' => '全局模式',
-      '直连模式' => '直连模式',
-      _ => '规则模式',
-    };
+  static Future<int> loadLastSeenNoticeId() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getInt('last_seen_notice_id') ?? 0;
   }
+
+  static void setLastSeenNoticeId(int id) =>
+      SharedPreferences.getInstance()
+          .then((p) => p.setInt('last_seen_notice_id', id));
+
+  static Future<Set<String>> loadFavorites() async {
+    final p = await SharedPreferences.getInstance();
+    return (p.getStringList('node_favorites') ?? []).toSet();
+  }
+
+  static void saveFavorites(Set<String> ids) =>
+      SharedPreferences.getInstance()
+          .then((p) => p.setStringList('node_favorites', ids.toList()));
+
 }

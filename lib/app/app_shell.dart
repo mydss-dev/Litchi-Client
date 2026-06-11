@@ -11,12 +11,15 @@ import '../features/nodes/nodes_page.dart';
 import '../features/orders/orders_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/shop/shop_page.dart';
+import '../features/tickets/tickets_page.dart';
 import '../features/traffic/traffic_page.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_shadows.dart';
 import '../shared/theme/app_text_styles.dart';
-import '../shared/widgets/brand_logo.dart';
 import '../shared/widgets/app_sidebar.dart';
+import '../shared/widgets/brand_logo.dart';
+import '../shared/widgets/notice_banner.dart';
+import '../shared/widgets/update_banner.dart';
 import 'app_controller.dart';
 import 'app_window_bar.dart';
 
@@ -175,7 +178,22 @@ class _MainShell extends StatelessWidget {
                 child: Container(
                   color: c.appBg,
                   padding: const EdgeInsets.fromLTRB(24, 2, 24, 24),
-                  child: _pageFor(controller.page),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (controller.updateInfo != null)
+                        UpdateBanner(
+                          info: controller.updateInfo!,
+                          onDismiss: controller.dismissUpdate,
+                        ),
+                      if (controller.hasUnreadNotice)
+                        NoticeBanner(
+                          notice: controller.notices.first,
+                          onDismiss: controller.markNoticeRead,
+                        ),
+                      Expanded(child: _pageFor(controller.page)),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -203,6 +221,8 @@ class _MainShell extends StatelessWidget {
         return const AccountPage();
       case AppPage.orders:
         return const OrdersPage();
+      case AppPage.tickets:
+        return const TicketsPage();
     }
   }
 }

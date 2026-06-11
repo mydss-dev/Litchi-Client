@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../shared/theme/app_colors.dart';
 import 'change_password_page.dart';
+import 'forgot_password_page.dart';
 import 'login_page.dart';
 import 'register_page.dart';
 import 'widgets/auth_visual_area.dart';
@@ -36,6 +37,11 @@ class AuthFlow extends StatelessWidget {
           '修改密码',
           '更新你的账户密码，提升账号安全性',
           const ChangePasswordPage(),
+        ),
+      AuthScreen.forgotPassword => (
+          '找回密码',
+          '通过邮件验证码重置你的账户密码',
+          const ForgotPasswordPage(),
         ),
     };
 

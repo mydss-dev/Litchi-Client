@@ -27,8 +27,8 @@ class CoreController extends ChangeNotifier {
   String _coreError = '';
 
   // Traffic monitoring (bytes/sec, updated by Clash /traffic stream).
-  int _upBps = 0;
-  int _downBps = 0;
+  final ValueNotifier<int> upBpsNotifier = ValueNotifier(0);
+  final ValueNotifier<int> downBpsNotifier = ValueNotifier(0);
   StreamSubscription<({int upBps, int downBps})>? _trafficSub;
 
   // Rolling log buffer — last 500 lines, timestamped.
@@ -42,8 +42,8 @@ class CoreController extends ChangeNotifier {
       _status == ConnectionStatus.connecting ||
       _status == ConnectionStatus.disconnecting;
   String get coreError => _coreError;
-  int get upBps => _upBps;
-  int get downBps => _downBps;
+  int get upBps => upBpsNotifier.value;
+  int get downBps => downBpsNotifier.value;
   Stream<String> get logStream => _core.logStream;
   List<String> get recentLogs => List.unmodifiable(_logs);
   Duration get connectedDuration => _connectedAt != null
@@ -70,6 +70,8 @@ class CoreController extends ChangeNotifier {
     _sub?.cancel();
     _logSub?.cancel();
     _core.dispose();
+    upBpsNotifier.dispose();
+    downBpsNotifier.dispose();
     super.dispose();
   }
 
@@ -94,9 +96,10 @@ class CoreController extends ChangeNotifier {
   Future<String?> toggleConnection({
     required List<NodeModel> nodes,
     required NodeModel currentNode,
-    required String proxyMode,
+    required ProxyMode proxyMode,
     required String dnsMode,
     required int proxyPort,
+    NetworkMode networkMode = NetworkMode.system,
   }) async {
     if (coreConnecting) return null;
 
@@ -128,6 +131,7 @@ class CoreController extends ChangeNotifier {
       apiPort: SingboxConfig.defaultApiPort,
       proxyMode: proxyMode,
       dnsMode: dnsMode,
+      networkMode: networkMode,
     );
 
     if (config == null) {
@@ -145,7 +149,9 @@ class CoreController extends ChangeNotifier {
       await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
 
       if (_core.isRunning) {
-        await ProxySetter.enable(port: proxyPort);
+        if (networkMode == NetworkMode.system) {
+          await ProxySetter.enable(port: proxyPort);
+        }
         _connectedAt = DateTime.now();
         _coreError = '';
         _status = ConnectionStatus.connected;
@@ -193,19 +199,13 @@ class CoreController extends ChangeNotifier {
   // ── Mode switching ────────────────────────────────────────────────────────
 
   /// Apply [proxyMode] to the running core via Clash API (no restart needed).
-  Future<void> setMode(String proxyMode) async {
+  Future<void> setMode(ProxyMode proxyMode) async {
     if (!_core.isRunning) return;
     await SingboxApiClient.setMode(
-      _toClashMode(proxyMode),
+      proxyMode.clashValue,
       apiPort: SingboxConfig.defaultApiPort,
     );
   }
-
-  static String _toClashMode(String mode) => switch (mode) {
-        '全局模式' => 'global',
-        '直连模式' => 'direct',
-        _ => 'rule',
-      };
 
   // ── Proxy repair ──────────────────────────────────────────────────────────
 
@@ -267,9 +267,10 @@ class CoreController extends ChangeNotifier {
     _trafficSub = SingboxApiClient.trafficStream(
       apiPort: SingboxConfig.defaultApiPort,
     ).listen((t) {
-      _upBps = t.upBps;
-      _downBps = t.downBps;
-      notifyListeners();
+      downBpsNotifier.value = t.downBps;
+      upBpsNotifier.value = t.upBps;
+      // Intentionally no notifyListeners() — speed widgets use
+      // ValueListenableBuilder, so the global rebuild is avoided.
     });
   }
 
@@ -278,8 +279,8 @@ class CoreController extends ChangeNotifier {
       unawaited(_trafficSub!.cancel());
       _trafficSub = null;
     }
-    _upBps = 0;
-    _downBps = 0;
+    downBpsNotifier.value = 0;
+    upBpsNotifier.value = 0;
   }
 
   // ── Latency testing ───────────────────────────────────────────────────────

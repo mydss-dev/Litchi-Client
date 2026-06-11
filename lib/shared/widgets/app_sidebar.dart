@@ -21,6 +21,7 @@ class AppSidebar extends StatelessWidget {
     _MenuItem.separator(),
     _MenuItem(AppPage.account, '账户', LucideIcons.user),
     _MenuItem(AppPage.invite, '邀请', LucideIcons.gift),
+    _MenuItem(AppPage.tickets, '工单', LucideIcons.messageSquare),
     _MenuItem.separator(),
     _MenuItem(AppPage.settings, '设置', LucideIcons.settings),
   ];

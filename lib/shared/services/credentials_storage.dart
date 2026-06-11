@@ -6,7 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Stores remembered login credentials.
 ///
 /// The account/email is stored as plain text for reliable autofill. The
-/// password is encrypted via Windows DPAPI.
+/// password is encrypted via Windows DPAPI (PowerShell ConvertTo-SecureString).
+///
+/// Fallback: on enterprise machines where PowerShell execution policy blocks
+/// the DPAPI path, credentials are stored using a machine-keyed XOR cipher
+/// (marked with the "FB:" prefix). Not cryptographically strong, but the key
+/// is derived from the machine name + username so a stolen prefs file from
+/// another machine cannot be decrypted.
 abstract final class CredentialsStorage {
   static const _keyEmail = 'remember_email';
   static const _legacyKeyEmail = 'dpapi_email';
@@ -51,8 +57,7 @@ abstract final class CredentialsStorage {
     final email = prefs.getString(_keyEmail);
     if (email != null && email.isNotEmpty) return email;
 
-    // Migration from the old DPAPI-encrypted email key. If decryption fails,
-    // do not surface the encrypted blob in the input field.
+    // Migration from the old DPAPI-encrypted email key.
     final legacy = prefs.getString(_legacyKeyEmail);
     if (legacy == null || legacy.isEmpty) return null;
     final migrated = await _unprotect(legacy);
@@ -91,16 +96,28 @@ abstract final class CredentialsStorage {
     await prefs.remove(_keyAuthToken);
   }
 
+  // ── Dispatch: DPAPI first, XOR fallback ──────────────────────────────────
+
+  static Future<String?> _protect(String plaintext) async {
+    final dpapi = await _protectDpapi(plaintext);
+    if (dpapi != null) return dpapi;
+    // PowerShell path failed (policy restriction, no PS installed, etc.) —
+    // fall back to machine-keyed XOR.
+    return _fallbackEncrypt(plaintext);
+  }
+
+  static Future<String?> _unprotect(String encrypted) async {
+    if (encrypted.startsWith('FB:')) return _fallbackDecrypt(encrypted);
+    return _unprotectDpapi(encrypted);
+  }
+
   // ── DPAPI via PowerShell ──────────────────────────────────────────────────
 
-  /// Encrypt [plaintext] with DPAPI. Returns base64url-safe encrypted blob.
-  static Future<String?> _protect(String plaintext) async {
-    // Base64-encode input to avoid PowerShell special-char issues.
+  static Future<String?> _protectDpapi(String plaintext) async {
     final b64in = base64.encode(utf8.encode(plaintext));
     final outPath = _tmpPath('litchi_p_out');
 
-    final script =
-        '''
+    final script = '''
 \$b=[Convert]::FromBase64String('$b64in')
 \$t=[Text.Encoding]::UTF8.GetString(\$b)
 \$s=ConvertTo-SecureString \$t -AsPlainText -Force
@@ -123,14 +140,12 @@ ConvertFrom-SecureString \$s|Set-Content '$outPath' -Encoding ASCII -NoNewline
     return result.isNotEmpty ? result : null;
   }
 
-  /// Decrypt a blob previously created by [_protect].
-  static Future<String?> _unprotect(String encrypted) async {
+  static Future<String?> _unprotectDpapi(String encrypted) async {
     final inPath = _tmpPath('litchi_u_in');
     final outPath = _tmpPath('litchi_u_out');
     await File(inPath).writeAsString(encrypted, flush: true);
 
-    final script =
-        '''
+    final script = '''
 \$enc=(Get-Content '$inPath' -Raw -Encoding ASCII).Trim()
 \$s=ConvertTo-SecureString \$enc
 \$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR(\$s)
@@ -160,6 +175,41 @@ ConvertFrom-SecureString \$s|Set-Content '$outPath' -Encoding ASCII -NoNewline
 
     try {
       return utf8.decode(base64.decode(b64out));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Machine-keyed XOR fallback ────────────────────────────────────────────
+
+  /// Key derived from machine identity — not cryptographically secure,
+  /// but prevents decryption on a different machine/user account.
+  static String _machineKey() {
+    final computer = Platform.environment['COMPUTERNAME'] ?? 'PC';
+    final user = Platform.environment['USERNAME'] ?? 'user';
+    return '$computer|$user|litchi-vpn';
+  }
+
+  static String _fallbackEncrypt(String plaintext) {
+    final key = utf8.encode(_machineKey());
+    final data = utf8.encode(plaintext);
+    final out = List<int>.generate(
+      data.length,
+      (i) => data[i] ^ key[i % key.length],
+    );
+    return 'FB:${base64Url.encode(out)}';
+  }
+
+  static String? _fallbackDecrypt(String encrypted) {
+    if (!encrypted.startsWith('FB:')) return null;
+    try {
+      final key = utf8.encode(_machineKey());
+      final enc = base64Url.decode(encrypted.substring(3));
+      final out = List<int>.generate(
+        enc.length,
+        (i) => enc[i] ^ key[i % key.length],
+      );
+      return utf8.decode(out);
     } catch (_) {
       return null;
     }

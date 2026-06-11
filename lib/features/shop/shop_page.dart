@@ -33,8 +33,37 @@ class _ShopPageState extends State<ShopPage> {
         _ => PlanCategory.dataPack,
       };
 
-  List<PlanModel> _plans(BuildContext context) =>
+  List<PlanModel> _plansFor(BuildContext context) =>
       AppScope.of(context).plans.where((p) => p.category == _category).toList();
+
+  /// Computes average savings per cycle across all recurring plans that support it.
+  Map<BillingCycle, String?> _computeSavings(BuildContext context) {
+    final recurring = AppScope.of(context)
+        .plans
+        .where((p) => p.category == PlanCategory.recurring)
+        .toList();
+    final result = <BillingCycle, String?>{};
+    for (final cycle in [BillingCycle.quarterly, BillingCycle.yearly]) {
+      final months = cycle == BillingCycle.quarterly ? 3 : 12;
+      final ratios = <double>[];
+      for (final plan in recurring) {
+        final monthly = plan.priceForCycle(BillingCycle.monthly);
+        final target = plan.priceForCycle(cycle);
+        if (monthly != null && target != null && monthly > 0) {
+          final full = monthly * months;
+          if (full > target) ratios.add((full - target) / full);
+        }
+      }
+      if (ratios.isNotEmpty) {
+        final avg = ratios.reduce((a, b) => a + b) / ratios.length;
+        final pct = (avg * 100).round();
+        result[cycle] = pct > 0 ? '省 $pct%' : null;
+      } else {
+        result[cycle] = null;
+      }
+    }
+    return result;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +83,7 @@ class _ShopPageState extends State<ShopPage> {
             const SizedBox(height: 14),
             _CycleSelector(
               cycle: _cycle,
+              savings: _computeSavings(context),
               onChanged: (v) => setState(() => _cycle = v),
             ),
           ],
@@ -63,7 +93,7 @@ class _ShopPageState extends State<ShopPage> {
               // 560 (not the spec's 680) so the 2-column default (§27.16)
               // triggers at the real ~675px content width.
               final cols = constraints.maxWidth >= 560 ? 2 : 1;
-              final plans = _plans(context);
+              final plans = _plansFor(context);
               return GridView.builder(
                 shrinkWrap: true,
                 padding: EdgeInsets.zero,
@@ -88,21 +118,20 @@ class _ShopPageState extends State<ShopPage> {
 
 /// Segmented month / quarter / year selector (§12 billing selector).
 class _CycleSelector extends StatelessWidget {
-  const _CycleSelector({required this.cycle, required this.onChanged});
+  const _CycleSelector({
+    required this.cycle,
+    required this.savings,
+    required this.onChanged,
+  });
 
   final BillingCycle cycle;
+  final Map<BillingCycle, String?> savings;
   final ValueChanged<BillingCycle> onChanged;
 
   static const _labels = {
     BillingCycle.monthly: '月付',
     BillingCycle.quarterly: '季付',
     BillingCycle.yearly: '年付',
-  };
-
-  // Savings hints vs. monthly, shown on the longer cycles.
-  static const _savings = {
-    BillingCycle.quarterly: '省 10%',
-    BillingCycle.yearly: '省 20%',
   };
 
   @override
@@ -120,7 +149,7 @@ class _CycleSelector extends StatelessWidget {
           for (final entry in _labels.entries)
             _CycleChip(
               label: entry.value,
-              savings: _savings[entry.key],
+              savings: savings[entry.key],
               selected: cycle == entry.key,
               onTap: () => onChanged(entry.key),
             ),
@@ -214,6 +243,7 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final featured = plan.featured;
+    final currency = AppScope.of(context).currencySymbol;
 
     return AppCard(
       radius: AppRadius.lg,
@@ -270,7 +300,7 @@ class _PlanCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text('¥',
+                Text(currency,
                     style: AppTextStyles.sectionTitle.copyWith(color: c.primary)),
                 Text(_priceLabel,
                     style: AppTextStyles.largeNumber(fontSize: 30).copyWith(color: c.primary)),

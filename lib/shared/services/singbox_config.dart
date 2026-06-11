@@ -29,8 +29,9 @@ abstract final class SingboxConfig {
   /// [selectedTag] — the node tag that should be active on first start.
   /// [port]        — mixed inbound port (HTTP + SOCKS5).
   /// [apiPort]     — Clash-compatible REST API port for runtime switching.
-  /// [proxyMode]   — '规则模式' | '全局模式' | '直连模式'
+  /// [proxyMode]   — [ProxyMode.rule] | [ProxyMode.global] | [ProxyMode.direct]
   /// [dnsMode]     — '系统 DNS' | 'Cloudflare' | 'Google'
+  /// [networkMode] — [NetworkMode.system] | [NetworkMode.tun]
   ///
   /// Returns null only when [nodes] is empty or all URIs are unparseable.
   static Map<String, dynamic>? buildFullConfig(
@@ -38,8 +39,9 @@ abstract final class SingboxConfig {
     required String selectedTag,
     int port = defaultPort,
     int apiPort = defaultApiPort,
-    String proxyMode = '规则模式',
+    ProxyMode proxyMode = ProxyMode.rule,
     String dnsMode = '系统 DNS',
+    NetworkMode networkMode = NetworkMode.system,
   }) {
     final outbounds = <Map<String, dynamic>>[];
     final tags = <String>[];
@@ -61,20 +63,18 @@ abstract final class SingboxConfig {
     final List<Map<String, dynamic>> routeRules;
 
     switch (proxyMode) {
-      case '全局模式':
+      case ProxyMode.global:
         routeFinal = 'PROXY';
         routeRules = [
           {'protocol': 'dns', 'action': 'hijack-dns'},
           {'ip_is_private': true, 'outbound': 'direct'},
         ];
-      case '直连模式':
+      case ProxyMode.direct:
         routeFinal = 'direct';
         routeRules = [
           {'protocol': 'dns', 'action': 'hijack-dns'},
         ];
-      case '规则模式':
-      case '智能模式': // Backward compatibility with older stored settings.
-      default:
+      case ProxyMode.rule:
         routeFinal = 'PROXY';
         routeRules = [
           {'protocol': 'dns', 'action': 'hijack-dns'},
@@ -128,6 +128,16 @@ abstract final class SingboxConfig {
           'listen': '127.0.0.1',
           'listen_port': port,
         },
+        if (networkMode == NetworkMode.tun)
+          {
+            'type': 'tun',
+            'tag': 'tun-in',
+            'address': ['172.19.0.1/30'],
+            'auto_route': true,
+            'strict_route': false,
+            'stack': 'system',
+            'sniff': true,
+          },
       ],
       'outbounds': [
         // Selector — the single exit point; switched at runtime via API.

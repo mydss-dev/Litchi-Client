@@ -24,6 +24,9 @@ class DataSnapshot {
   int? deviceLimit;
   int? resetDay;
   int? expiredAt;
+
+  /// Non-null when a critical load (user info) failed.
+  String? criticalError;
 }
 
 /// Fetches all remote data and returns a [DataSnapshot].
@@ -62,7 +65,10 @@ class DataLoader {
       final info = await _api.getUserInfo();
       snap.user = ModelMappers.toUser(info);
       snap.traffic = ModelMappers.toTraffic(info);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[Litchi] getUserInfo error: $e');
+      snap.criticalError = '用户信息加载失败，请检查网络后重试';
+    }
     try {
       final subscribe = await _api.getSubscribeInfo();
       snap.subscribeUrl = subscribe.subscribeUrl;
@@ -119,7 +125,9 @@ class DataLoader {
       if (plans.isNotEmpty) {
         snap.plans = plans.map(ModelMappers.toPlan).toList();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[Litchi] getPlans error: $e');
+    }
   }
 
   Future<void> _fillInvite(DataSnapshot snap) async {
@@ -130,7 +138,9 @@ class DataLoader {
       snap.commissionRate = info.commissionRate;
       snap.invitedCount = info.effectCount;
       snap.withdrawable = info.balance / 100; // balance stored in cents
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[Litchi] getInviteInfo error: $e');
+    }
   }
 
   Future<void> _fillTrafficLog(DataSnapshot snap) async {
@@ -164,6 +174,8 @@ class DataLoader {
         snap.trafficUsage = points;
         snap.dailyUsage = points.map((p) => p.totalGb).toList();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[Litchi] getTrafficLog error: $e');
+    }
   }
 }

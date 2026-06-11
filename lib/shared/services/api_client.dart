@@ -67,8 +67,12 @@ class ApiClient {
     Map<String, dynamic>? params,
   }) async {
     _assertReady();
-    final res = await _dio!.get(path, queryParameters: params);
-    return _parse(res);
+    try {
+      final res = await _dio!.get(path, queryParameters: params);
+      return _parse(res);
+    } on DioException catch (e) {
+      throw ApiException(_friendlyMessage(e));
+    }
   }
 
   Future<Map<String, dynamic>> post(
@@ -76,8 +80,12 @@ class ApiClient {
     Map<String, dynamic>? data,
   }) async {
     _assertReady();
-    final res = await _dio!.post(path, data: data);
-    return _parse(res);
+    try {
+      final res = await _dio!.post(path, data: data);
+      return _parse(res);
+    } on DioException catch (e) {
+      throw ApiException(_friendlyMessage(e));
+    }
   }
 
   Map<String, dynamic> _parse(Response res) {
@@ -87,5 +95,18 @@ class ApiClient {
 
   void _assertReady() {
     if (!isConfigured) throw const ApiException('请先配置服务器地址');
+  }
+
+  static String _friendlyMessage(DioException e) {
+    return switch (e.type) {
+      DioExceptionType.connectionTimeout ||
+      DioExceptionType.sendTimeout ||
+      DioExceptionType.receiveTimeout =>
+        '连接超时，请检查网络后重试',
+      DioExceptionType.connectionError => '无法连接到服务器，请检查网络',
+      DioExceptionType.badResponse =>
+        '服务器响应异常（${e.response?.statusCode ?? '未知'}）',
+      _ => '网络请求失败，请重试',
+    };
   }
 }

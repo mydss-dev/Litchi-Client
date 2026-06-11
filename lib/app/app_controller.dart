@@ -1,15 +1,20 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
 import '../shared/config/app_config.dart';
+import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
 import '../shared/models/mock_data.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/latency_tester.dart';
 import '../shared/services/panel_api.dart';
+import '../shared/services/settings_service.dart';
 import '../shared/services/token_storage.dart';
+import '../shared/services/speed_tester.dart';
+import '../shared/services/update_service.dart';
 import 'core_controller.dart';
 import 'settings_controller.dart';
 
@@ -23,10 +28,11 @@ enum AppPage {
   settings,
   account,
   orders,
+  tickets,
 }
 
 /// Which authentication screen is visible while logged out.
-enum AuthScreen { login, register, changePassword }
+enum AuthScreen { login, register, changePassword, forgotPassword }
 
 /// Coordinator: owns navigation, auth, and subscription data.
 /// Settings and core-process concerns are delegated to [SettingsController]
@@ -75,6 +81,13 @@ class AppController extends ChangeNotifier {
   int? _deviceLimit;
   int? _resetDay;
   int? _expiredAt;
+  String? _dataLoadError;
+  String _currencySymbol = '¥';
+  String? _startupMessage;
+  List<NoticeModel> _notices = [];
+  int _lastSeenNoticeId = 0;
+  UpdateInfo? _updateInfo;
+  bool _disposed = false;
 
   // ── Settings delegates ────────────────────────────────────────────────────
 
@@ -84,7 +97,8 @@ class AppController extends ChangeNotifier {
   bool get autoUpdate => _settings.autoUpdate;
   bool get devMode => _settings.devMode;
   String get language => _settings.language;
-  String get proxyMode => _settings.proxyMode;
+  ProxyMode get proxyMode => _settings.proxyMode;
+  NetworkMode get networkMode => _settings.networkMode;
   String get dnsMode => _settings.dnsMode;
   int get proxyPort => _settings.proxyPort;
 
@@ -95,10 +109,12 @@ class AppController extends ChangeNotifier {
   void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
   void setDevMode(bool v) => _settings.setDevMode(v);
   void setLanguage(String v) => _settings.setLanguage(v);
-  void setProxyMode(String v) {
+  void setProxyMode(ProxyMode v) {
     _settings.setProxyMode(v);
     if (_core.isRunning) unawaited(_core.setMode(v));
   }
+
+  void setNetworkMode(NetworkMode v) => _settings.setNetworkMode(v);
 
   void setDnsMode(String v) => _settings.setDnsMode(v);
 
@@ -110,6 +126,8 @@ class AppController extends ChangeNotifier {
   String get coreError => _core.coreError;
   int get upBps => _core.upBps;
   int get downBps => _core.downBps;
+  ValueNotifier<int> get upBpsNotifier => _core.upBpsNotifier;
+  ValueNotifier<int> get downBpsNotifier => _core.downBpsNotifier;
   Stream<String> get coreLogStream => _core.logStream;
   List<String> get coreLogs => _core.recentLogs;
   Duration get connectedDuration => _core.connectedDuration;
@@ -160,12 +178,32 @@ class AppController extends ChangeNotifier {
   int? get deviceLimit => _deviceLimit;
   int? get resetDay => _resetDay;
   int? get expiredAt => _expiredAt;
+  String? get dataLoadError => _dataLoadError;
+  String get currencySymbol => _currencySymbol;
+  String? get startupMessage => _startupMessage;
+  void clearStartupMessage() => _startupMessage = null;
   PanelApi get api => _api;
+  UpdateInfo? get updateInfo => _updateInfo;
+  void dismissUpdate() {
+    _updateInfo = null;
+    notifyListeners();
+  }
+  List<NoticeModel> get notices => _notices;
+  bool get hasUnreadNotice =>
+      _notices.isNotEmpty && _notices.first.id > _lastSeenNoticeId;
+
+  void markNoticeRead() {
+    if (_notices.isEmpty) return;
+    _lastSeenNoticeId = _notices.first.id;
+    SettingsService.setLastSeenNoticeId(_lastSeenNoticeId);
+    notifyListeners();
+  }
 
   // ── Initialization ────────────────────────────────────────────────────────
 
   Future<void> init() async {
     await _settings.load();
+    _lastSeenNoticeId = await SettingsService.loadLastSeenNoticeId();
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;
@@ -176,9 +214,17 @@ class AppController extends ChangeNotifier {
       try {
         await _loadAllData();
         _isAuthenticated = true;
-      } catch (_) {
-        await TokenStorage.clearAuthData();
-        _apiClient.updateAuthData(null);
+      } catch (e) {
+        if (_isNetworkError(e)) {
+          // Network unavailable at startup — token is likely still valid.
+          // Stay logged in and let the ErrorBanner guide the user to retry.
+          _isAuthenticated = true;
+          _dataLoadError = '网络连接失败，请检查网络后刷新';
+        } else {
+          await TokenStorage.clearAuthData();
+          _apiClient.updateAuthData(null);
+          _startupMessage = '登录已过期，请重新登录';
+        }
       }
     }
 
@@ -189,10 +235,28 @@ class AppController extends ChangeNotifier {
     if (_isAuthenticated && _settings.wasConnected) {
       unawaited(toggleConnection());
     }
+    unawaited(_checkForUpdate());
+  }
+
+  static bool _isNetworkError(Object e) {
+    final msg = e.toString();
+    return msg.contains('超时') ||
+        msg.contains('无法连接') ||
+        msg.contains('网络请求失败') ||
+        msg.contains('服务器响应异常');
+  }
+
+  Future<void> _checkForUpdate() async {
+    final info = await UpdateService.check();
+    if (info != null && !_disposed) {
+      _updateInfo = info;
+      notifyListeners();
+    }
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _settings.removeListener(notifyListeners);
     _core.removeListener(_onCoreChanged);
     _core.removeListener(notifyListeners);
@@ -237,12 +301,14 @@ class AppController extends ChangeNotifier {
     required String password,
     required String passwordConfirmation,
     String? inviteCode,
+    String? emailCode,
   }) async {
     final result = await _api.register(
       email: email,
       password: password,
       passwordConfirmation: passwordConfirmation,
       inviteCode: inviteCode,
+      emailCode: emailCode,
     );
     await _completeAuthentication(result.authData);
   }
@@ -292,6 +358,9 @@ class AppController extends ChangeNotifier {
     _deviceLimit = null;
     _resetDay = null;
     _expiredAt = null;
+    _dataLoadError = null;
+    _currencySymbol = '¥';
+    _notices = [];
     notifyListeners();
   }
 
@@ -303,18 +372,49 @@ class AppController extends ChangeNotifier {
     proxyMode: _settings.proxyMode,
     dnsMode: _settings.dnsMode,
     proxyPort: _settings.proxyPort,
+    networkMode: _settings.networkMode,
   );
+
+  /// Downloads 10 MB through the active proxy and returns speed in Mbps.
+  Future<double?> testBandwidth() => SpeedTester.testDownload(_settings.proxyPort);
+
+  /// Checks whether the current process is running with elevated (admin) privileges.
+  /// Returns true on non-Windows platforms (no-op).
+  static Future<bool> checkAdminPrivileges() async {
+    if (!Platform.isWindows) return true;
+    try {
+      final result = await Process.run('powershell', [
+        '-NonInteractive',
+        '-NoProfile',
+        '-Command',
+        '([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)',
+      ]).timeout(const Duration(seconds: 8));
+      return result.stdout.toString().trim().toLowerCase() == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
   Future<void> _loadAllData() async {
     final snap = await _dataLoader.loadAll();
     _applySnapshot(snap);
+    _currencySymbol = await _api.getCommCurrencySymbol();
+    _notices = await _api.getNotices();
     if (_nodes.isNotEmpty) {
       _currentNode = _nodes.first;
       _autoSelected = true;
       unawaited(testLatencies()); // notifies per node as results arrive
     }
+  }
+
+  /// Re-fetches all remote data. Clears any prior load error.
+  Future<void> refreshData() async {
+    _dataLoadError = null;
+    notifyListeners();
+    await _loadAllData();
+    notifyListeners();
   }
 
   Future<void> refreshNodes() async {
@@ -346,6 +446,7 @@ class AppController extends ChangeNotifier {
     if (snap.deviceLimit != null) _deviceLimit = snap.deviceLimit;
     if (snap.resetDay != null) _resetDay = snap.resetDay;
     if (snap.expiredAt != null) _expiredAt = snap.expiredAt;
+    if (snap.criticalError != null) _dataLoadError = snap.criticalError;
   }
 
   // ── Node selection ────────────────────────────────────────────────────────

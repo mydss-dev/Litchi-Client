@@ -28,6 +28,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _loadSaved();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showStartupMessage());
   }
 
   Future<void> _loadSaved() async {
@@ -38,6 +39,16 @@ class _LoginPageState extends State<LoginPage> {
         _passwordCtrl.text = saved.password;
         _remember = true;
       });
+    }
+  }
+
+  void _showStartupMessage() {
+    if (!mounted) return;
+    final ctrl = AppScope.of(context);
+    final msg = ctrl.startupMessage;
+    if (msg != null) {
+      ctrl.clearStartupMessage();
+      AppToast.show(context, msg, type: AppToastType.warning);
     }
   }
 
@@ -126,7 +137,7 @@ class _LoginPageState extends State<LoginPage> {
               AuthLinkText(
                 text: '忘记密码？',
                 onTap: () =>
-                    controller.goToAuthScreen(AuthScreen.changePassword),
+                    controller.goToAuthScreen(AuthScreen.forgotPassword),
               ),
             ],
           ),

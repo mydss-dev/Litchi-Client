@@ -413,3 +413,168 @@ class CheckoutResult {
   final String url;
   final int type; // 0 = qr, 1 = redirect link
 }
+
+/// A single entry from GET /user/login/log.
+/// [remind] = true means the backend flagged this login as suspicious.
+class RemoteLoginLog {
+  final String ip;
+  final int createdAt; // unix timestamp (seconds)
+  final bool remind;
+
+  const RemoteLoginLog({
+    required this.ip,
+    required this.createdAt,
+    required this.remind,
+  });
+
+  factory RemoteLoginLog.fromJson(Map<String, dynamic> json) {
+    return RemoteLoginLog(
+      ip: json['ip']?.toString() ?? '',
+      createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
+      remind: (json['remind'] as int? ?? 0) == 1,
+    );
+  }
+
+  String get dateDisplay {
+    if (createdAt == 0) return '—';
+    final dt = DateTime.fromMillisecondsSinceEpoch(createdAt * 1000).toLocal();
+    final date =
+        '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+    final time =
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return '$date $time';
+  }
+}
+
+/// A notice/announcement from GET /user/notice/fetch.
+class NoticeModel {
+  final int id;
+  final String title;
+  final String content; // may contain HTML markup
+  final String? imgUrl;
+  final int createdAt; // unix timestamp (seconds)
+
+  const NoticeModel({
+    required this.id,
+    required this.title,
+    required this.content,
+    this.imgUrl,
+    required this.createdAt,
+  });
+
+  factory NoticeModel.fromJson(Map<String, dynamic> json) => NoticeModel(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        title: json['title']?.toString() ?? '',
+        content: json['content']?.toString() ?? '',
+        imgUrl: json['img_url']?.toString(),
+        createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
+      );
+
+  String get dateDisplay {
+    if (createdAt == 0) return '—';
+    final dt = DateTime.fromMillisecondsSinceEpoch(createdAt * 1000).toLocal();
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  }
+}
+
+/// A single support ticket message from GET /user/ticket/fetch?id=N.
+class TicketMessageModel {
+  final int id;
+  final bool isAdmin; // true = sent by support staff
+  final String message;
+  final int createdAt;
+
+  const TicketMessageModel({
+    required this.id,
+    required this.isAdmin,
+    required this.message,
+    required this.createdAt,
+  });
+
+  factory TicketMessageModel.fromJson(Map<String, dynamic> json) =>
+      TicketMessageModel(
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        isAdmin: (json['is_manager'] as int? ?? 0) == 1,
+        message: json['message']?.toString() ?? '',
+        createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
+      );
+
+  String get timeDisplay {
+    if (createdAt == 0) return '';
+    final dt = DateTime.fromMillisecondsSinceEpoch(createdAt * 1000).toLocal();
+    return '${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+/// A support ticket from GET /user/ticket/fetch.
+/// level: 1=low, 2=medium, 3=high
+/// status: 0=open, 1=closed
+class TicketModel {
+  final int id;
+  final String subject;
+  final int level;
+  final int status;
+  final int createdAt;
+  final int updatedAt;
+  final List<TicketMessageModel> messages;
+
+  const TicketModel({
+    required this.id,
+    required this.subject,
+    required this.level,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+    this.messages = const [],
+  });
+
+  factory TicketModel.fromJson(Map<String, dynamic> json) {
+    final raw = json['message'];
+    final msgs = raw is List
+        ? raw
+            .whereType<Map<String, dynamic>>()
+            .map(TicketMessageModel.fromJson)
+            .toList()
+        : <TicketMessageModel>[];
+    return TicketModel(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      subject: json['subject']?.toString() ?? '',
+      level: (json['level'] as num?)?.toInt() ?? 1,
+      status: (json['status'] as num?)?.toInt() ?? 0,
+      createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
+      updatedAt: (json['updated_at'] as num?)?.toInt() ?? 0,
+      messages: msgs,
+    );
+  }
+
+  bool get isOpen => status == 0;
+
+  String get levelLabel => switch (level) {
+        3 => '紧急',
+        2 => '中等',
+        _ => '低',
+      };
+
+  String get statusLabel => isOpen ? '处理中' : '已关闭';
+
+  String get dateDisplay {
+    final ts = updatedAt > 0 ? updatedAt : createdAt;
+    if (ts == 0) return '—';
+    final dt = DateTime.fromMillisecondsSinceEpoch(ts * 1000).toLocal();
+    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Panel registration configuration loaded from /guest/comm/config.
+class RegisterConfig {
+  const RegisterConfig({
+    this.emailSuffixes = const [],
+    this.emailVerifyRequired = false,
+  });
+
+  /// Allowed email suffixes; empty means no restriction.
+  final List<String> emailSuffixes;
+
+  /// Whether the panel requires an emailed verification code to register.
+  final bool emailVerifyRequired;
+}

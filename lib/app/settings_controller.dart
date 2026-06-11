@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../shared/models/app_models.dart';
 import '../shared/services/auto_start.dart';
 import '../shared/services/settings_service.dart';
 
@@ -15,7 +16,8 @@ class SettingsController extends ChangeNotifier {
   bool _autoUpdate = true;
   bool _devMode = false;
   String _language = '简体中文';
-  String _proxyMode = '规则模式';
+  ProxyMode _proxyMode = ProxyMode.rule;
+  NetworkMode _networkMode = NetworkMode.system;
   String _dnsMode = '系统 DNS';
   int _proxyPort = 7890;
   ThemeMode _themeMode = ThemeMode.light;
@@ -25,7 +27,8 @@ class SettingsController extends ChangeNotifier {
   bool get autoUpdate => _autoUpdate;
   bool get devMode => _devMode;
   String get language => _language;
-  String get proxyMode => _proxyMode;
+  ProxyMode get proxyMode => _proxyMode;
+  NetworkMode get networkMode => _networkMode;
   String get dnsMode => _dnsMode;
   int get proxyPort => _proxyPort;
   ThemeMode get themeMode => _themeMode;
@@ -41,6 +44,7 @@ class SettingsController extends ChangeNotifier {
     _devMode = s.devMode;
     _language = s.language;
     _proxyMode = s.proxyMode;
+    _networkMode = s.networkMode;
     _dnsMode = s.dnsMode;
     _wasConnected = s.wasConnected;
     _themeMode = s.themeMode;
@@ -109,10 +113,17 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setProxyMode(String v) {
+  void setProxyMode(ProxyMode v) {
     if (_proxyMode == v) return;
     _proxyMode = v;
     SettingsService.setProxyMode(v);
+    notifyListeners();
+  }
+
+  void setNetworkMode(NetworkMode v) {
+    if (_networkMode == v) return;
+    _networkMode = v;
+    SettingsService.setNetworkMode(v);
     notifyListeners();
   }
 

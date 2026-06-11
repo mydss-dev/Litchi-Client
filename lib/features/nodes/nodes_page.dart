@@ -9,6 +9,7 @@ import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/services/settings_service.dart';
 import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/filter_tabs.dart';
@@ -27,7 +28,25 @@ class _NodesPageState extends State<NodesPage> {
   int _tab = 0;
   String _query = '';
   String? _selectedId;
-  final Set<String> _favorites = {};
+  Set<String> _favorites = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final favs = await SettingsService.loadFavorites();
+    if (mounted) setState(() => _favorites = favs);
+  }
+
+  void _toggleFavorite(String id) {
+    setState(() {
+      if (!_favorites.add(id)) _favorites.remove(id);
+    });
+    SettingsService.saveFavorites(_favorites);
+  }
 
   @override
   void didChangeDependencies() {
@@ -152,9 +171,7 @@ class _NodesPageState extends State<NodesPage> {
                         AppToast.show(context, '已切换至 ${n.name}', type: AppToastType.success);
                       }
                     },
-                    onToggleFavorite: () => setState(() {
-                      if (!_favorites.add(n.id)) _favorites.remove(n.id);
-                    }),
+                    onToggleFavorite: () => _toggleFavorite(n.id),
                   );
                 },
               );

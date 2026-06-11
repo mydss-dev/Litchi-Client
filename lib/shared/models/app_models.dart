@@ -123,6 +123,58 @@ enum PlanCategory { recurring, oneTime, dataPack }
 /// Billing cycle, only meaningful for [PlanCategory.recurring].
 enum BillingCycle { monthly, quarterly, yearly }
 
+/// Proxy routing mode. Replaces the old Chinese magic-string constants.
+enum ProxyMode {
+  rule,
+  global,
+  direct;
+
+  /// Display label shown in UI.
+  String get label => switch (this) {
+        ProxyMode.rule => '规则模式',
+        ProxyMode.global => '全局模式',
+        ProxyMode.direct => '直连模式',
+      };
+
+  /// Value sent to the Clash-compatible API (sing-box `/configs` endpoint).
+  String get clashValue => switch (this) {
+        ProxyMode.rule => 'rule',
+        ProxyMode.global => 'global',
+        ProxyMode.direct => 'direct',
+      };
+
+  /// Stable key used when persisting to SharedPreferences.
+  String get storageKey => clashValue;
+
+  /// Deserialises from storage key or the old Chinese label strings.
+  static ProxyMode fromStorageKey(String? key) => switch (key) {
+        'global' || '全局模式' => ProxyMode.global,
+        'direct' || '直连模式' => ProxyMode.direct,
+        _ => ProxyMode.rule,
+      };
+}
+
+/// Network interception mode — controls how sing-box captures traffic.
+enum NetworkMode {
+  system,
+  tun;
+
+  String get label => switch (this) {
+    NetworkMode.system => '系统代理',
+    NetworkMode.tun => '虚拟网卡',
+  };
+
+  String get storageKey => switch (this) {
+    NetworkMode.system => 'system',
+    NetworkMode.tun => 'tun',
+  };
+
+  static NetworkMode fromStorageKey(String? key) => switch (key) {
+    'tun' => NetworkMode.tun,
+    _ => NetworkMode.system,
+  };
+}
+
 class PlanModel {
   const PlanModel({
     required this.id,
@@ -179,4 +231,17 @@ class LoginRecord {
   final String device;
   final String time;
   final bool suspicious;
+}
+
+/// Carries version info returned by the update manifest endpoint.
+class UpdateInfo {
+  const UpdateInfo({
+    required this.version,
+    required this.downloadUrl,
+    this.changelog = '',
+  });
+
+  final String version;
+  final String downloadUrl;
+  final String changelog;
 }
