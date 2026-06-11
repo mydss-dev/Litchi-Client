@@ -80,22 +80,43 @@ jobs:
         run: |
           $rulesDir = "build\windows\x64\runner\Release\rules"
           New-Item -ItemType Directory -Force -Path $rulesDir | Out-Null
+          $headers = @{ "User-Agent" = "litchi-ci"; "Authorization" = "Bearer $env:GITHUB_TOKEN" }
 
-          $gsRelease = Invoke-RestMethod `
-            -Uri "https://api.github.com/repos/SagerNet/sing-geosite/releases/latest" `
-            -Headers @{ "User-Agent" = "litchi-ci"; "Authorization" = "Bearer $env:GITHUB_TOKEN" }
+          # Find the most recent sing-geosite release that contains geosite-cn.srs.
+          # Using /releases list instead of /latest because latest may be a pre-release
+          # or may have changed its asset naming.
+          $gsReleases = Invoke-RestMethod `
+            -Uri "https://api.github.com/repos/SagerNet/sing-geosite/releases?per_page=10" `
+            -Headers $headers
+          $gsRelease = $gsReleases | Where-Object {
+            ($_.assets | Where-Object { $_.name -eq "geosite-cn.srs" }).Count -gt 0
+          } | Select-Object -First 1
+          if (-not $gsRelease) {
+            Write-Host "sing-geosite assets in most recent release:"
+            $gsReleases[0].assets | ForEach-Object { Write-Host "  $($_.name)" }
+            Write-Error "No sing-geosite release found containing geosite-cn.srs"; exit 1
+          }
+          Write-Host "Using sing-geosite release: $($gsRelease.tag_name)"
           foreach ($name in @("geosite-cn.srs", "geosite-category-ads-all.srs")) {
             $asset = $gsRelease.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
-            if (-not $asset) { Write-Error "$name not found in release"; exit 1 }
+            if (-not $asset) { Write-Error "$name not found in release $($gsRelease.tag_name)"; exit 1 }
             Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "$rulesDir\$name"
             Write-Host "Downloaded $name ($([math]::Round($asset.size/1KB)) KB)"
           }
 
-          $giRelease = Invoke-RestMethod `
-            -Uri "https://api.github.com/repos/SagerNet/sing-geoip/releases/latest" `
-            -Headers @{ "User-Agent" = "litchi-ci"; "Authorization" = "Bearer $env:GITHUB_TOKEN" }
+          $giReleases = Invoke-RestMethod `
+            -Uri "https://api.github.com/repos/SagerNet/sing-geoip/releases?per_page=10" `
+            -Headers $headers
+          $giRelease = $giReleases | Where-Object {
+            ($_.assets | Where-Object { $_.name -eq "geoip-cn.srs" }).Count -gt 0
+          } | Select-Object -First 1
+          if (-not $giRelease) {
+            Write-Host "sing-geoip assets in most recent release:"
+            $giReleases[0].assets | ForEach-Object { Write-Host "  $($_.name)" }
+            Write-Error "No sing-geoip release found containing geoip-cn.srs"; exit 1
+          }
+          Write-Host "Using sing-geoip release: $($giRelease.tag_name)"
           $asset = $giRelease.assets | Where-Object { $_.name -eq "geoip-cn.srs" } | Select-Object -First 1
-          if (-not $asset) { Write-Error "geoip-cn.srs not found in release"; exit 1 }
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "$rulesDir\geoip-cn.srs"
           Write-Host "Downloaded geoip-cn.srs ($([math]::Round($asset.size/1KB)) KB)"
 
