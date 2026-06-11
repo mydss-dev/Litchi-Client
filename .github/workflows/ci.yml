@@ -55,7 +55,7 @@ jobs:
         shell: pwsh
         run: |
           $release = Invoke-RestMethod -Uri "https://api.github.com/repos/SagerNet/sing-box/releases/latest" `
-            -Headers @{ "User-Agent" = "litchi-ci" }
+            -Headers @{ "User-Agent" = "litchi-ci"; "Authorization" = "Bearer $env:GITHUB_TOKEN" }
           $asset = $release.assets | Where-Object { $_.name -match "windows-amd64\.zip$" } | Select-Object -First 1
           if (-not $asset) { Write-Error "sing-box Windows asset not found"; exit 1 }
           Write-Host "Downloading $($asset.name)"
@@ -81,7 +81,7 @@ jobs:
 
           $gsRelease = Invoke-RestMethod `
             -Uri "https://api.github.com/repos/SagerNet/sing-geosite/releases/latest" `
-            -Headers @{ "User-Agent" = "litchi-ci" }
+            -Headers @{ "User-Agent" = "litchi-ci"; "Authorization" = "Bearer $env:GITHUB_TOKEN" }
           foreach ($name in @("geosite-cn.srs", "geosite-category-ads-all.srs")) {
             $asset = $gsRelease.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
             if (-not $asset) { Write-Error "$name not found in release"; exit 1 }
@@ -91,7 +91,7 @@ jobs:
 
           $giRelease = Invoke-RestMethod `
             -Uri "https://api.github.com/repos/SagerNet/sing-geoip/releases/latest" `
-            -Headers @{ "User-Agent" = "litchi-ci" }
+            -Headers @{ "User-Agent" = "litchi-ci"; "Authorization" = "Bearer $env:GITHUB_TOKEN" }
           $asset = $giRelease.assets | Where-Object { $_.name -eq "geoip-cn.srs" } | Select-Object -First 1
           if (-not $asset) { Write-Error "geoip-cn.srs not found in release"; exit 1 }
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "$rulesDir\geoip-cn.srs"
