@@ -198,8 +198,6 @@ abstract final class SingboxConfig {
             'tag': 'cn-dns',
             'type': 'udp',
             'server': '223.5.5.5',
-            // Force CN DNS queries to bypass the proxy (avoids TUN capture).
-            'detour': 'direct',
           },
         ],
         'rules': dnsRules,
