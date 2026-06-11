@@ -58,7 +58,7 @@ Future<void> main() async {
     center: true,
     backgroundColor: Colors.transparent,
     titleBarStyle: TitleBarStyle.hidden,
-    title: '${AppConfig.appName} Client',
+    title: '${AppConfig.appName}',
   );
 
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
