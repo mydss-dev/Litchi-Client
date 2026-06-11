@@ -140,10 +140,10 @@ abstract final class SingboxConfig {
     }
 
     // DNS rules only matter in rule mode; global/direct uses the final server.
+    // Note: routing-loop prevention is handled by default_domain_resolver in
+    // route, so no outbound:any rule is needed (deprecated in sing-box v1.9+).
     final List<Map<String, dynamic>> dnsRules = proxyMode == ProxyMode.rule
         ? [
-            // Routing-engine queries use direct CN DNS (prevents routing loops).
-            {'outbound': 'any', 'server': 'cn-dns'},
             // CN-domain queries stay on CN DNS (avoids proxy DNS for local sites).
             {'rule_set': 'geosite-cn', 'server': 'cn-dns'},
           ]
