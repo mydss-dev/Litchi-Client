@@ -66,6 +66,8 @@ class _AppShellState extends State<AppShell>
     } else if (!shouldHaveTray && _trayActive) {
       _trayActive = false;
       unawaited(_destroyTray());
+    } else if (_trayActive) {
+      unawaited(_updateTrayTooltip());
     }
 
     // One-time version check after the user is authenticated and UI is ready.
@@ -117,15 +119,22 @@ class _AppShellState extends State<AppShell>
 
   Future<void> _initTray() async {
     await trayManager.setIcon('assets/images/tray_icon.ico');
-    await trayManager.setToolTip('${AppConfig.appName} Client');
+    await _updateTrayTooltip();
     await trayManager.setContextMenu(Menu(
       items: [
-        MenuItem(key: 'toggle', label: '显示 / 隐藏窗口'),
+        MenuItem(key: 'show',  label: '打开 ${AppConfig.appName}'),
         MenuItem.separator(),
-        MenuItem(key: 'quit', label: '退出 ${AppConfig.appName}'),
+        MenuItem(key: 'quit',  label: '退出 ${AppConfig.appName}'),
       ],
     ));
     trayManager.addListener(this);
+  }
+
+  Future<void> _updateTrayTooltip() async {
+    final ctrl = _ctrl;
+    if (ctrl == null) return;
+    final status = ctrl.coreRunning ? '已连接' : '未连接';
+    await trayManager.setToolTip('${AppConfig.appName}  $status');
   }
 
   Future<void> _destroyTray() async {
@@ -158,13 +167,14 @@ class _AppShellState extends State<AppShell>
   void onTrayIconMouseDown() => unawaited(_toggleWindow());
 
   @override
-  void onTrayIconRightMouseUp() => unawaited(trayManager.popUpContextMenu());
+  void onTrayIconRightMouseDown() => unawaited(trayManager.popUpContextMenu());
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
-      case 'toggle':
-        unawaited(_toggleWindow());
+      case 'show':
+        unawaited(windowManager.show());
+        unawaited(windowManager.focus());
       case 'quit':
         unawaited(_quit());
     }
