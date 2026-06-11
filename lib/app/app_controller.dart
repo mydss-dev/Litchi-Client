@@ -207,56 +207,35 @@ class AppController extends ChangeNotifier {
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;
-    // Route API calls through the user's system proxy (Clash etc.) so a
-    // geo-blocked panel domain is reachable. Without this, requests went out
-    // direct, hit the blocked/poisoned domain, and hung until timeout.
-    await _apiClient.refreshSystemProxy();
 
     final authData = await TokenStorage.getAuthData();
-    final hasToken = authData != null && authData.isNotEmpty;
-    if (hasToken) {
-      // A stored token means the user was logged in — show the main UI
-      // immediately and load remote data in the background. Blocking the
-      // splash on the network made startup hang for the full request timeout
-      // whenever the network was slow or unreachable.
+    if (authData != null && authData.isNotEmpty) {
       _apiClient.updateAuthData(authData);
-      _isAuthenticated = true;
+      try {
+        await _loadAllData();
+        _isAuthenticated = true;
+      } catch (e) {
+        if (_isNetworkError(e)) {
+          // Network unavailable at startup — token is likely still valid.
+          // Stay logged in and let the ErrorBanner guide the user to retry.
+          _isAuthenticated = true;
+          _dataLoadError = '网络连接失败，请检查网络后刷新';
+        } else {
+          await TokenStorage.clearAuthData();
+          _apiClient.updateAuthData(null);
+          _startupMessage = '登录已过期，请重新登录';
+        }
+      }
     }
 
     await _core.init();
     _isInitializing = false;
     notifyListeners();
 
-    if (hasToken) {
-      unawaited(_loadInitialData());
-    }
-    unawaited(_checkForUpdate());
-  }
-
-  /// Background data load after a token-based startup. The UI is already
-  /// visible; this populates it and surfaces a retry banner on network errors,
-  /// or signs out if the session is genuinely invalid.
-  Future<void> _loadInitialData() async {
-    try {
-      await _loadAllData();
-    } catch (e) {
-      if (_isNetworkError(e)) {
-        // Token is likely still valid — keep the user in, guide them to retry.
-        _dataLoadError = '网络连接失败，请检查网络后刷新';
-        notifyListeners();
-      } else {
-        // Session genuinely invalid — sign out cleanly. Set the message first
-        // so logout()'s notifyListeners() surfaces it on the login screen.
-        _startupMessage = '登录已过期，请重新登录';
-        logout();
-      }
-      return;
-    }
-
-    // Data is ready — restore the previous connection if the user was connected.
-    if (_isAuthenticated && _settings.wasConnected && !_core.coreRunning) {
+    if (_isAuthenticated && _settings.wasConnected) {
       unawaited(toggleConnection());
     }
+    unawaited(_checkForUpdate());
   }
 
   static bool _isNetworkError(Object e) {
@@ -319,8 +298,6 @@ class AppController extends ChangeNotifier {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   Future<void> loginWithCredentials(String email, String password) async {
-    // Pick up any proxy the user started after launch before hitting the API.
-    await _apiClient.refreshSystemProxy();
     final result = await _api.login(email, password);
     await _completeAuthentication(result.authData);
   }
@@ -332,7 +309,6 @@ class AppController extends ChangeNotifier {
     String? inviteCode,
     String? emailCode,
   }) async {
-    await _apiClient.refreshSystemProxy();
     final result = await _api.register(
       email: email,
       password: password,
@@ -427,8 +403,9 @@ class AppController extends ChangeNotifier {
   Future<void> _loadAllData() async {
     final snap = await _dataLoader.loadAll();
     _applySnapshot(snap);
-    _currencySymbol = await _api.getCommCurrencySymbol();
-    _notices = await _api.getNotices();
+    // Non-critical extras — must never abort node restore / core startup.
+    try { _currencySymbol = await _api.getCommCurrencySymbol(); } catch (_) {}
+    try { _notices = await _api.getNotices(); } catch (_) {}
     if (_nodes.isNotEmpty) {
       _restoreLastNode();
       // Start core in background so latency testing works before user connects.
@@ -535,14 +512,10 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _startCoreInBackground() async {
-    // Always use global mode for background start — no rule-set files needed,
-    // so the core starts instantly and the Clash API is immediately available
-    // for latency testing. When the user explicitly connects, a full restart
-    // rebuilds the config with the user's configured proxy/network mode.
     await _core.startCoreOnly(
       nodes: _nodes,
       currentNode: currentNode,
-      proxyMode: ProxyMode.global,
+      proxyMode: _settings.proxyMode,
       dnsMode: _settings.dnsMode,
       proxyPort: _settings.proxyPort,
     );
