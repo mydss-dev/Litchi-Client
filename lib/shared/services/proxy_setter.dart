@@ -11,11 +11,15 @@ abstract final class ProxySetter {
     await _notify();
   }
 
-  static Future<void> disable() async {
+  /// Clears the system proxy. [notify] broadcasts the change to WinInet so
+  /// open browsers pick it up immediately — skip it on app exit, where the
+  /// registry write already takes effect and waiting on the PowerShell helper
+  /// would stall the shutdown by up to several seconds.
+  static Future<void> disable({bool notify = true}) async {
     try {
       await _reg('ProxyEnable', 'REG_DWORD', '0');
     } catch (_) {}
-    await _notify();
+    if (notify) await _notify();
   }
 
   /// On startup: if the system proxy points to 127.0.0.1 but no sing-box
@@ -30,7 +34,7 @@ abstract final class ProxySetter {
       final r2 = await Process.run(
         'reg', ['query', _key, '/v', 'ProxyServer'],
       );
-      if ('${r2.stdout}'.contains('127.0.0.1:')) await disable();
+      if ('${r2.stdout}'.contains('127.0.0.1:')) await disable(notify: false);
     } catch (_) {}
   }
 

@@ -88,7 +88,9 @@ class CoreController extends ChangeNotifier {
     _logSub = null;
     _core.dispose(); // synchronously kills the process + deletes PID file
     try {
-      await ProxySetter.disable();
+      // Exit path: don't wait on the WinInet broadcast — the registry write
+      // alone disables the proxy and keeps shutdown snappy.
+      await ProxySetter.disable(notify: false);
     } catch (_) {}
   }
 

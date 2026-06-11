@@ -209,33 +209,50 @@ class AppController extends ChangeNotifier {
     _apiClient.onSessionExpired = logout;
 
     final authData = await TokenStorage.getAuthData();
-    if (authData != null && authData.isNotEmpty) {
+    final hasToken = authData != null && authData.isNotEmpty;
+    if (hasToken) {
+      // A stored token means the user was logged in — show the main UI
+      // immediately and load remote data in the background. Blocking the
+      // splash on the network made startup hang for the full request timeout
+      // whenever the network was slow or unreachable.
       _apiClient.updateAuthData(authData);
-      try {
-        await _loadAllData();
-        _isAuthenticated = true;
-      } catch (e) {
-        if (_isNetworkError(e)) {
-          // Network unavailable at startup — token is likely still valid.
-          // Stay logged in and let the ErrorBanner guide the user to retry.
-          _isAuthenticated = true;
-          _dataLoadError = '网络连接失败，请检查网络后刷新';
-        } else {
-          await TokenStorage.clearAuthData();
-          _apiClient.updateAuthData(null);
-          _startupMessage = '登录已过期，请重新登录';
-        }
-      }
+      _isAuthenticated = true;
     }
 
     await _core.init();
     _isInitializing = false;
     notifyListeners();
 
-    if (_isAuthenticated && _settings.wasConnected) {
-      unawaited(toggleConnection());
+    if (hasToken) {
+      unawaited(_loadInitialData());
     }
     unawaited(_checkForUpdate());
+  }
+
+  /// Background data load after a token-based startup. The UI is already
+  /// visible; this populates it and surfaces a retry banner on network errors,
+  /// or signs out if the session is genuinely invalid.
+  Future<void> _loadInitialData() async {
+    try {
+      await _loadAllData();
+    } catch (e) {
+      if (_isNetworkError(e)) {
+        // Token is likely still valid — keep the user in, guide them to retry.
+        _dataLoadError = '网络连接失败，请检查网络后刷新';
+        notifyListeners();
+      } else {
+        // Session genuinely invalid — sign out cleanly. Set the message first
+        // so logout()'s notifyListeners() surfaces it on the login screen.
+        _startupMessage = '登录已过期，请重新登录';
+        logout();
+      }
+      return;
+    }
+
+    // Data is ready — restore the previous connection if the user was connected.
+    if (_isAuthenticated && _settings.wasConnected && !_core.coreRunning) {
+      unawaited(toggleConnection());
+    }
   }
 
   static bool _isNetworkError(Object e) {

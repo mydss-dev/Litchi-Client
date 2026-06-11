@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -10,14 +11,15 @@ import 'shared/config/app_config.dart';
 
 // Held open for the process lifetime — binding this port prevents a second
 // instance from starting. Automatically released when the process exits.
-// ignore: unused_element
 ServerSocket? _instanceLock;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Single-instance enforcement: bind a loopback port as a mutex.
-  // If the port is already taken, another instance is running — exit early.
+  // If the port is already taken, another instance is running — ping it so it
+  // surfaces its window, then exit. This makes re-launching the desktop icon
+  // (while we're hidden in the tray) bring the existing window to the front.
   try {
     _instanceLock = await ServerSocket.bind(
       InternetAddress.loopbackIPv4,
@@ -25,10 +27,25 @@ Future<void> main() async {
       shared: false,
     );
   } catch (_) {
+    try {
+      final ping = await Socket.connect(
+        InternetAddress.loopbackIPv4,
+        54891,
+        timeout: const Duration(seconds: 2),
+      );
+      ping.destroy();
+    } catch (_) {}
     exit(0);
   }
 
   await windowManager.ensureInitialized();
+
+  // Any later instance that pings the lock port asks us to show ourselves.
+  _instanceLock!.listen((client) {
+    client.destroy();
+    unawaited(windowManager.show());
+    unawaited(windowManager.focus());
+  });
 
   // Load remote config from cache before the window appears so the first
   // frame already has the correct branding / API base URL.
