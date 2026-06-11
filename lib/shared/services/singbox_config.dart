@@ -27,7 +27,7 @@ abstract final class SingboxConfig {
   }
 
   static bool get _hasLocalRules =>
-      File('${_rulesDir}\\geosite-cn.srs').existsSync();
+      File('$_rulesDir\\geosite-cn.srs').existsSync();
 
   /// Random secret generated once per process — required by Clash API.
   static final String apiSecret = _generateSecret();
