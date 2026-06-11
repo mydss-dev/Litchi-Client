@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -220,6 +221,13 @@ class AppController extends ChangeNotifier {
           // Stay logged in and let the ErrorBanner guide the user to retry.
           _isAuthenticated = true;
           _dataLoadError = '网络连接失败，请检查网络后刷新';
+          // Restore cached nodes so the core can still start for latency tests.
+          final cached = await _loadNodeCache();
+          if (cached.isNotEmpty) {
+            _nodes = cached;
+            _restoreLastNode();
+            unawaited(_startCoreInBackground());
+          }
         } else {
           await TokenStorage.clearAuthData();
           _apiClient.updateAuthData(null);
@@ -407,6 +415,7 @@ class AppController extends ChangeNotifier {
     try { _currencySymbol = await _api.getCommCurrencySymbol(); } catch (_) {}
     try { _notices = await _api.getNotices(); } catch (_) {}
     if (_nodes.isNotEmpty) {
+      unawaited(_saveNodeCache(_nodes));
       _restoreLastNode();
       // Start core in background so latency testing works before user connects.
       unawaited(_startCoreInBackground());
@@ -543,6 +552,36 @@ class AppController extends ChangeNotifier {
         }
       },
     );
+  }
+
+  // ── Node cache ────────────────────────────────────────────────────────────
+
+  static String get _nodeCachePath {
+    final base = Platform.environment['LOCALAPPDATA'] ??
+        Platform.environment['APPDATA'] ??
+        Directory.systemTemp.path;
+    return '$base\\Litchi\\nodes_cache.json';
+  }
+
+  static Future<void> _saveNodeCache(List<NodeModel> nodes) async {
+    try {
+      final file = File(_nodeCachePath);
+      await file.parent.create(recursive: true);
+      await file.writeAsString(
+        jsonEncode(nodes.where((n) => !n.isAuto).map((n) => n.toJson()).toList()),
+      );
+    } catch (_) {}
+  }
+
+  static Future<List<NodeModel>> _loadNodeCache() async {
+    try {
+      final file = File(_nodeCachePath);
+      if (!file.existsSync()) return [];
+      final list = jsonDecode(await file.readAsString()) as List;
+      return list.map((e) => NodeModel.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 }
 

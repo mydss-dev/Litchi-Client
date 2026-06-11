@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 
 typedef SessionExpiredCallback = void Function();
 
@@ -38,6 +41,12 @@ class ApiClient {
       receiveTimeout: const Duration(seconds: 30),
       contentType: 'application/json',
     ));
+    // Route through the Windows system proxy when one is active (e.g. sing-box).
+    // This allows API calls to reach blocked domains via the VPN tunnel.
+    _dio!.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () => HttpClient()
+        ..findProxy = HttpClient.findProxyFromEnvironment,
+    );
     _dio!.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
         if (_authData != null && _authData!.isNotEmpty) {

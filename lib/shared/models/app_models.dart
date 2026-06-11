@@ -71,6 +71,40 @@ class NodeModel {
     isAuto: isAuto,
     rawUri: rawUri,
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'flag': flag,
+    'code': code,
+    'englishName': englishName,
+    'tags': tags,
+    'favorite': favorite,
+    'region': region.name,
+    'server': server,
+    'port': port,
+    'isAuto': isAuto,
+    'rawUri': rawUri,
+  };
+
+  factory NodeModel.fromJson(Map<String, dynamic> j) => NodeModel(
+    id: j['id'] as String,
+    name: j['name'] as String,
+    flag: j['flag'] as String,
+    code: j['code'] as String? ?? '',
+    englishName: j['englishName'] as String? ?? '',
+    tags: (j['tags'] as List?)?.cast<String>() ?? [],
+    favorite: j['favorite'] as bool? ?? false,
+    region: NodeRegion.values.firstWhere(
+      (r) => r.name == j['region'],
+      orElse: () => NodeRegion.asia,
+    ),
+    server: j['server'] as String? ?? '',
+    port: j['port'] as int? ?? 0,
+    isAuto: j['isAuto'] as bool? ?? false,
+    rawUri: j['rawUri'] as String? ?? '',
+    latency: 0,
+  );
 }
 
 enum NodeRegion { asia, europe, america, oceania }
