@@ -529,7 +529,7 @@ class AppController extends ChangeNotifier {
   /// Tests latencies for all nodes via the Clash API.
   /// Requires the sing-box process to be running (not necessarily connected).
   Future<void> testLatencies() async {
-    if (_nodes.isEmpty || !_core.coreProcessRunning) return;
+    if (_nodes.isEmpty) return;
 
     final snapshot = List<NodeModel>.from(_nodes);
     await _core.testLatencies(

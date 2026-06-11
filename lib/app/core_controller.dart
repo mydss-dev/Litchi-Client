@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/core_manager.dart';
 import '../shared/services/proxy_setter.dart';
+import '../shared/services/latency_tester.dart';
 import '../shared/services/singbox_api_client.dart';
 import '../shared/services/singbox_config.dart';
 
@@ -375,17 +376,28 @@ class CoreController extends ChangeNotifier {
     List<NodeModel> nodes, {
     required void Function(int idx, NodeModel updated) onResult,
   }) async {
-    if (!_core.isRunning || nodes.isEmpty) return;
+    if (nodes.isEmpty) return;
+    // Two paths, picked by whether the core is up:
+    // - core running  → real proxy latency via the Clash API
+    // - core not ready → direct TCP handshake to the node server, so a
+    //   latency still shows before the user connects (and even if the box
+    //   never comes up).
+    final useApi = _core.isRunning;
     final sem = _Semaphore(10);
     await Future.wait(
       nodes.asMap().entries.map((e) async {
         await sem.acquire();
         try {
           final node = e.value;
-          final ms = await SingboxApiClient.testDelay(
-                SingboxConfig.nodeTagFor(node),
-                apiPort: SingboxConfig.defaultApiPort,
-              ) ?? 9999;
+          final int ms;
+          if (useApi) {
+            ms = await SingboxApiClient.testDelay(
+                  SingboxConfig.nodeTagFor(node),
+                  apiPort: SingboxConfig.defaultApiPort,
+                ) ?? LatencyTester.unreachable;
+          } else {
+            ms = await LatencyTester.ping(node.server, node.port);
+          }
           onResult(e.key, node.copyWith(latency: ms));
         } finally {
           sem.release();

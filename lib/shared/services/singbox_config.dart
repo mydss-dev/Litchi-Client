@@ -130,19 +130,24 @@ abstract final class SingboxConfig {
       case 'Cloudflare':
         remoteDnsServer = {
           'tag': 'remote-dns',
-          'type': 'tls',
+          'type': 'https',
           'server': '1.1.1.1',
-          'detour': 'PROXY',
+          'detour': 'direct',
         };
       case 'Google':
         remoteDnsServer = {
           'tag': 'remote-dns',
-          'type': 'tls',
+          'type': 'https',
           'server': '8.8.8.8',
-          'detour': 'PROXY',
+          'detour': 'direct',
         };
-      default: // '系统 DNS'
-        remoteDnsServer = {'tag': 'remote-dns', 'type': 'local'};
+      default: // '系统 DNS' — use Cloudflare DoH to bypass transparent-proxy fake-ip
+        remoteDnsServer = {
+          'tag': 'remote-dns',
+          'type': 'https',
+          'server': '1.1.1.1',
+          'detour': 'direct',
+        };
     }
 
     // DNS rules only matter in rule mode; global/direct uses the final server.
