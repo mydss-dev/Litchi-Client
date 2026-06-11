@@ -158,6 +158,9 @@ class _AppShellState extends State<AppShell>
   void onTrayIconMouseDown() => unawaited(_toggleWindow());
 
   @override
+  void onTrayIconRightMouseUp() => unawaited(trayManager.popUpContextMenu());
+
+  @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
       case 'toggle':

@@ -87,6 +87,8 @@ abstract final class SingboxConfig {
       case ProxyMode.global:
         routeFinal = 'PROXY';
         routeRules = [
+          if (networkMode == NetworkMode.tun)
+            {'inbound': ['tun-in'], 'action': 'sniff'},
           {'protocol': 'dns', 'action': 'hijack-dns'},
           {'ip_is_private': true, 'outbound': 'direct'},
         ];
@@ -95,6 +97,8 @@ abstract final class SingboxConfig {
       case ProxyMode.direct:
         routeFinal = 'direct';
         routeRules = [
+          if (networkMode == NetworkMode.tun)
+            {'inbound': ['tun-in'], 'action': 'sniff'},
           {'protocol': 'dns', 'action': 'hijack-dns'},
         ];
         ruleSets = [];
@@ -102,6 +106,8 @@ abstract final class SingboxConfig {
       case ProxyMode.rule:
         routeFinal = 'PROXY';
         routeRules = [
+          if (networkMode == NetworkMode.tun)
+            {'inbound': ['tun-in'], 'action': 'sniff'},
           {'protocol': 'dns', 'action': 'hijack-dns'},
           // Ad domains → block
           {'rule_set': 'geosite-ads', 'outbound': 'block'},
@@ -166,9 +172,8 @@ abstract final class SingboxConfig {
           'auto_route': true,
           'strict_route': true,
           'stack': 'system',
-          'sniff': true,
-          // In rule mode, exclude CN IPs at the TUN driver level (more efficient
-          // than catching and re-routing to direct inside sing-box).
+          // sniff moved to route rule action (deprecated on inbound in v1.11,
+          // removed in v1.13).
           if (proxyMode == ProxyMode.rule)
             'route_exclude_address_set': ['geoip-cn'],
         },
