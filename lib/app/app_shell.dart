@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -157,8 +158,12 @@ class _AppShellState extends State<AppShell>
       await trayManager.destroy();
       _trayActive = false;
     }
-    await _ctrl?.shutdown();
-    await windowManager.destroy();
+    // Clean up core + system proxy, but never let a slow cleanup hang the
+    // exit — cap it and then terminate the process hard.
+    try {
+      await _ctrl?.shutdown().timeout(const Duration(seconds: 2));
+    } catch (_) {}
+    exit(0);
   }
 
   // ── TrayListener ──────────────────────────────────────────────────────────
@@ -196,7 +201,10 @@ class _AppShellState extends State<AppShell>
     if (_ctrl?.isAuthenticated == true) {
       await windowManager.hide();
     } else {
-      await windowManager.destroy();
+      // Logged out: no core or system proxy to clean up. Exit hard so a
+      // pending login / remote-config request can't stall the close (which
+      // made windowManager.destroy() hang until the request timed out).
+      exit(0);
     }
   }
 
