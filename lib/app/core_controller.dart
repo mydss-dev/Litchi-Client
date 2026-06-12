@@ -440,21 +440,23 @@ class CoreController extends ChangeNotifier {
   /// Tests latency for every node in [nodes].
   /// Requires the core to be running — no-ops otherwise.
   ///
-  /// Triggers sing-box's urltest group to re-test all nodes concurrently
-  /// (two API calls total), then maps history results back to the node list.
+  /// Triggers sing-box's urltest group to re-test all nodes concurrently,
+  /// then falls back to direct per-node tests if urltest history is empty.
   Future<void> testLatencies(
     List<NodeModel> nodes, {
     required void Function(int idx, NodeModel updated) onResult,
   }) async {
     if (nodes.isEmpty || !_core.isRunning) return;
 
+    final tags = nodes.map(SingboxConfig.nodeTagFor).toList();
     final history = await SingboxApiClient.testAllViaUrltest(
+      tags: tags,
       apiPort: SingboxConfig.defaultApiPort,
     );
 
     for (var i = 0; i < nodes.length; i++) {
       final node = nodes[i];
-      final ms   = history[SingboxConfig.nodeTagFor(node)] ?? 9999;
+      final ms = history[SingboxConfig.nodeTagFor(node)] ?? 9999;
       onResult(i, node.copyWith(latency: ms));
     }
   }
