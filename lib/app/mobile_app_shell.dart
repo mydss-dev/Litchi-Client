@@ -5,6 +5,7 @@ import '../features/auth/auth_flow.dart';
 import '../features/mobile/mobile_home_page.dart';
 import '../features/mobile/mobile_nodes_page.dart';
 import '../features/mobile/mobile_profile_page.dart';
+import '../features/mobile/mobile_settings_page.dart';
 import '../features/mobile/mobile_shop_page.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
@@ -61,9 +62,10 @@ class _MobileShell extends StatelessWidget {
       case AppPage.shop:
       case AppPage.orders:
         return const MobileShopPage();
+      case AppPage.settings:
+        return const MobileSettingsPage();
       case AppPage.account:
       case AppPage.invite:
-      case AppPage.settings:
       case AppPage.tickets:
         return const MobileProfilePage();
     }
