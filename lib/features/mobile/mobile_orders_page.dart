@@ -10,7 +10,7 @@ class MobileOrdersPage extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        Text('订单', style: AppTextStyles.h1.copyWith(fontSize: 26)),
+        Text('订单', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
         const SizedBox(height: 16),
         const ListTile(
           title: Text('订单记录'),
