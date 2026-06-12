@@ -90,6 +90,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ErrorBanner(
               message: ctrl.dataLoadError!,
               onRetry: _onRefreshData,
+              warning: true,
             ),
             const SizedBox(height: 12),
           ],
