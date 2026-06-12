@@ -12,6 +12,7 @@ import 'singbox_config.dart';
 /// Reference: https://sing-box.sagernet.org/configuration/experimental/clash-api/
 abstract final class SingboxApiClient {
   static const String _selectorGroup = 'PROXY';
+  static const String defaultDelayTestUrl = 'https://cp.cloudflare.com/generate_204';
 
   /// Switch the active outbound inside the running sing-box process.
   ///
@@ -51,7 +52,7 @@ abstract final class SingboxApiClient {
   /// Returns latency in ms, or null if unreachable / core not running.
   static Future<int?> testDelay(
     String tag, {
-    String testUrl = 'http://www.gstatic.com/generate_204',
+    String testUrl = defaultDelayTestUrl,
     int    timeout = 5000,
     int    apiPort = 9090,
   }) async {
@@ -173,10 +174,10 @@ abstract final class SingboxApiClient {
   /// Trigger the urltest group (自动选择) to re-test all nodes, then return
   /// a map of outbound tag → latest delay in ms for every node that responded.
   ///
-  /// This is more efficient than calling [testDelay] per node: sing-box runs
-  /// all tests concurrently internally and only one round-trip is needed to
-  /// read back the results.
+  /// If the urltest history is empty, falls back to direct per-node delay calls.
+  /// This is slower, but much more reliable for manual "测速" button clicks.
   static Future<Map<String, int>> testAllViaUrltest({
+    required List<String> tags,
     int apiPort = 9090,
     int timeout = 10000,
   }) async {
@@ -184,6 +185,17 @@ abstract final class SingboxApiClient {
     await testDelay('自动选择', timeout: timeout, apiPort: apiPort);
 
     // 2. Read the updated history for every proxy in one call.
+    final results = await _readDelayHistory(apiPort: apiPort);
+    if (results.isNotEmpty) return results;
+
+    // 3. Fallback: test each node directly. Keep concurrency limited so the
+    // local API and remote network are not overloaded.
+    return _testDirect(tags, apiPort: apiPort, timeout: timeout);
+  }
+
+  static Future<Map<String, int>> _readDelayHistory({
+    required int apiPort,
+  }) async {
     final data = await getProxies(apiPort: apiPort);
     if (data == null) return {};
 
@@ -199,6 +211,31 @@ abstract final class SingboxApiClient {
       final delay = last?['delay'];
       if (delay is int && delay > 0) results[tag] = delay;
     });
+    return results;
+  }
+
+  static Future<Map<String, int>> _testDirect(
+    List<String> tags, {
+    required int apiPort,
+    required int timeout,
+  }) async {
+    final results = <String, int>{};
+    const concurrency = 4;
+
+    for (var i = 0; i < tags.length; i += concurrency) {
+      final chunk = tags.skip(i).take(concurrency).toList();
+      final values = await Future.wait(
+        chunk.map((tag) async {
+          final delay = await testDelay(tag, apiPort: apiPort, timeout: timeout);
+          return MapEntry(tag, delay);
+        }),
+      );
+      for (final entry in values) {
+        final delay = entry.value;
+        if (delay != null && delay > 0) results[entry.key] = delay;
+      }
+    }
+
     return results;
   }
 }
