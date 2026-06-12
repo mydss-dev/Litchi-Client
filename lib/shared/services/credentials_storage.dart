@@ -23,7 +23,7 @@ abstract final class CredentialsStorage {
     required String password,
   }) async {
     try {
-      final encPass = await _protect(password);
+      final encPass = await protectString(password);
       if (encPass == null) return;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyEmail, email);
@@ -38,7 +38,7 @@ abstract final class CredentialsStorage {
       final email = await _loadEmail(prefs);
       final encPass = prefs.getString(_keyPassword);
       if (email == null || email.isEmpty || encPass == null) return null;
-      final password = await _unprotect(encPass);
+      final password = await unprotectString(encPass);
       if (password == null) return null;
       return (email: email, password: password);
     } catch (_) {
@@ -60,7 +60,7 @@ abstract final class CredentialsStorage {
     // Migration from the old DPAPI-encrypted email key.
     final legacy = prefs.getString(_legacyKeyEmail);
     if (legacy == null || legacy.isEmpty) return null;
-    final migrated = await _unprotect(legacy);
+    final migrated = await unprotectString(legacy);
     await prefs.remove(_legacyKeyEmail);
     if (migrated == null || migrated.isEmpty) return null;
     await prefs.setString(_keyEmail, migrated);
@@ -73,7 +73,7 @@ abstract final class CredentialsStorage {
 
   static Future<void> saveAuthToken(String token) async {
     try {
-      final enc = await _protect(token);
+      final enc = await protectString(token);
       if (enc == null) return;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyAuthToken, enc);
@@ -85,7 +85,7 @@ abstract final class CredentialsStorage {
       final prefs = await SharedPreferences.getInstance();
       final enc = prefs.getString(_keyAuthToken);
       if (enc == null || enc.isEmpty) return null;
-      return await _unprotect(enc);
+      return await unprotectString(enc);
     } catch (_) {
       return null;
     }
@@ -96,13 +96,16 @@ abstract final class CredentialsStorage {
     await prefs.remove(_keyAuthToken);
   }
 
-  // ── Dispatch ──────────────────────────────────────────────────────────────
+  // ── Generic protected strings ─────────────────────────────────────────────
 
-  static Future<String?> _protect(String plaintext) => _protectDpapi(plaintext);
+  /// Protects arbitrary sensitive text with the same DPAPI path used for
+  /// credentials. Used by secure local caches that must survive app restarts.
+  static Future<String?> protectString(String plaintext) =>
+      _protectDpapi(plaintext);
 
-  static Future<String?> _unprotect(String encrypted) async {
-    // Legacy FB: prefix = old XOR cipher (removed). Treat as invalid so the
-    // user is prompted to re-enter credentials rather than using a weak key.
+  /// Unprotects text returned by [protectString]. Legacy weak fallback payloads
+  /// are rejected so callers never silently depend on the removed XOR path.
+  static Future<String?> unprotectString(String encrypted) async {
     if (encrypted.startsWith('FB:')) return null;
     return _unprotectDpapi(encrypted);
   }
