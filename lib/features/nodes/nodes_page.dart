@@ -162,12 +162,10 @@ class _NodesPageState extends State<NodesPage> {
                     onTap: () async {
                       setState(() => _selectedId = n.id);
                       final error = await ctrl.setCurrentNode(n);
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       if (error != null) {
-                        // ignore: use_build_context_synchronously
                         AppToast.show(context, error, type: AppToastType.error);
                       } else {
-                        // ignore: use_build_context_synchronously
                         AppToast.show(
                           context,
                           '已切换至 ${n.name}',
