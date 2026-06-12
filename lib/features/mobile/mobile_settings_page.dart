@@ -13,7 +13,7 @@ class MobileSettingsPage extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        Text('设置', style: AppTextStyles.h1.copyWith(fontSize: 26)),
+        Text('设置', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
         const SizedBox(height: 16),
         SwitchListTile(
           title: const Text('深色模式'),
