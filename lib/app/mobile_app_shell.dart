@@ -3,10 +3,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/auth/auth_flow.dart';
 import '../features/mobile/mobile_home_page.dart';
+import '../features/mobile/mobile_invite_page.dart';
 import '../features/mobile/mobile_orders_page.dart';
 import '../features/mobile/mobile_profile_page.dart';
 import '../features/mobile/mobile_settings_page.dart';
 import '../features/mobile/mobile_shop_page.dart';
+import '../features/mobile/mobile_tickets_page.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_text_styles.dart';
@@ -64,9 +66,11 @@ class _MobileShell extends StatelessWidget {
         return const MobileOrdersPage();
       case AppPage.settings:
         return const MobileSettingsPage();
-      case AppPage.account:
       case AppPage.invite:
+        return const MobileInvitePage();
       case AppPage.tickets:
+        return const MobileTicketsPage();
+      case AppPage.account:
         return const MobileProfilePage();
     }
   }
