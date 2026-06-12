@@ -38,7 +38,7 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('节点', style: AppTextStyles.h1.copyWith(fontSize: 26)),
+                  Text('节点', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
                   const SizedBox(height: 3),
                   Text('选择适合你的线路', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
                 ],
