@@ -43,9 +43,9 @@ class MobileHomePage extends StatelessWidget {
           ],
           _ConnectCard(nodeName: current.name.isEmpty ? '请选择节点' : current.name),
           const SizedBox(height: 12),
-          _InfoCard(icon: LucideIcons.crown, title: '当前套餐', subtitle: ctrl.user.plan.isEmpty ? '--' : ctrl.user.plan, color: c.primary),
+          _HomeNodePicker(),
           const SizedBox(height: 12),
-          _InfoCard(icon: LucideIcons.globe, title: '当前节点', subtitle: current.name.isEmpty ? '未选择' : current.name, color: c.secondary),
+          _InfoCard(icon: LucideIcons.crown, title: '当前套餐', subtitle: ctrl.user.plan.isEmpty ? '--' : ctrl.user.plan, color: c.primary),
           const SizedBox(height: 12),
           _InfoCard(icon: LucideIcons.activity, title: '流量剩余', subtitle: '${ctrl.traffic.remainGb.toStringAsFixed(1)} GB', color: c.success),
         ],
@@ -82,6 +82,72 @@ class _ConnectCard extends StatelessWidget {
           Text('Android VPN 核心稍后接入', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
         ],
       ),
+    );
+  }
+}
+
+class _HomeNodePicker extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final c = AppColors.of(context);
+    final current = ctrl.currentNode;
+    final nodes = ctrl.nodes.take(8).toList();
+
+    return Container(
+      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.softBorder)),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        leading: Icon(LucideIcons.globe, color: c.secondary, size: 20),
+        title: Text('选择节点', style: AppTextStyles.bodyStrong),
+        subtitle: Text(ctrl.autoSelected ? '自动选择' : (current.name.isEmpty ? '未选择' : current.name), style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+        children: [
+          _NodeChoiceTile(
+            title: '自动选择',
+            subtitle: '根据测速结果选择最优节点',
+            selected: ctrl.autoSelected,
+            onTap: ctrl.selectAuto,
+          ),
+          for (final node in nodes)
+            _NodeChoiceTile(
+              title: node.name,
+              subtitle: node.englishName.isEmpty ? node.region.name : node.englishName,
+              selected: !ctrl.autoSelected && current.id == node.id,
+              onTap: () => ctrl.setCurrentNode(node),
+            ),
+          if (ctrl.nodes.length > nodes.length)
+            ListTile(
+              dense: true,
+              title: Text('更多节点', style: AppTextStyles.bodyStrong),
+              subtitle: Text('进入节点页查看全部 ${ctrl.nodes.length} 个节点', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+              trailing: Icon(LucideIcons.chevronRight, color: c.iconMuted, size: 18),
+              onTap: () => ctrl.goToPage(AppPage.nodes),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NodeChoiceTile extends StatelessWidget {
+  const _NodeChoiceTile({required this.title, required this.subtitle, required this.selected, required this.onTap});
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodyStrong),
+      subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+      trailing: selected ? Icon(LucideIcons.circleCheck, color: c.primary, size: 18) : null,
+      onTap: onTap,
     );
   }
 }
