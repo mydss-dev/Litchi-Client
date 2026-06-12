@@ -24,9 +24,7 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
     final nodes = ctrl.nodes.where((node) {
       final key = _query.trim().toLowerCase();
       if (key.isEmpty) return true;
-      return node.name.toLowerCase().contains(key) ||
-          node.englishName.toLowerCase().contains(key) ||
-          node.code.toLowerCase().contains(key);
+      return node.name.toLowerCase().contains(key) || node.englishName.toLowerCase().contains(key) || node.code.toLowerCase().contains(key);
     }).toList();
 
     return Column(
@@ -118,7 +116,6 @@ class _NodeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final color = selected ? c.primary : c.textMuted;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -130,7 +127,7 @@ class _NodeTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(LucideIcons.globe, color: color, size: 22),
+            _NodeFlag(node: node),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -150,6 +147,25 @@ class _NodeTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _NodeFlag extends StatelessWidget {
+  const _NodeFlag({required this.node});
+
+  final NodeModel node;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final flag = node.flag.isNotEmpty ? node.flag : '🌐';
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: c.surfaceMuted, borderRadius: BorderRadius.circular(AppRadius.sm)),
+      child: Text(flag, style: const TextStyle(fontSize: 20)),
     );
   }
 }
