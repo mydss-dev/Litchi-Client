@@ -25,7 +25,12 @@ jobs:
           test -f android/app/src/main/AndroidManifest.xml
           test -f android/app/src/main/kotlin/com/litchi/client/MainActivity.kt
           test -f lib/app/mobile_app_shell.dart
-          test -d lib/features/mobile
+          test -f lib/features/mobile/mobile_home_page.dart
+          test -f lib/features/mobile/mobile_nodes_page.dart
+          test -f lib/features/mobile/mobile_shop_page.dart
+          test -f lib/features/mobile/mobile_profile_page.dart
+          test -f lib/features/mobile/mobile_settings_page.dart
+          test -f lib/features/mobile/mobile_orders_page.dart
 
       - name: Print scaffold status
-        run: echo "Android scaffold exists. APK build is intentionally paused until the Android project structure is complete."
+        run: echo "Android scaffold and mobile UI pages exist. APK build is intentionally paused until testing starts."
