@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,6 +8,7 @@ import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/data_loader.dart';
+import '../shared/services/node_cache_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/settings_service.dart';
 import '../shared/services/token_storage.dart';
@@ -262,7 +262,7 @@ class AppController extends ChangeNotifier {
           _isAuthenticated = true;
           _dataLoadError = '网络连接失败，请检查网络后刷新';
           // Restore cached nodes so the core can still start for latency tests.
-          final cached = await _loadNodeCache();
+          final cached = await NodeCacheService.load();
           if (cached.isNotEmpty) {
             _nodes = cached;
             _restoreLastNode();
@@ -414,6 +414,7 @@ class AppController extends ChangeNotifier {
     _dataLoadError = null;
     _currencySymbol = '¥';
     _notices = [];
+    unawaited(NodeCacheService.clear());
     notifyListeners();
   }
 
@@ -458,7 +459,7 @@ class AppController extends ChangeNotifier {
       _notices = await _api.getNotices();
     } catch (_) {}
     if (_nodes.isNotEmpty) {
-      unawaited(_saveNodeCache(_nodes));
+      unawaited(NodeCacheService.save(_nodes));
       _restoreLastNode();
       // Start core in background so latency testing works before user connects.
       unawaited(_startCoreInBackground());
@@ -479,7 +480,7 @@ class AppController extends ChangeNotifier {
       _nodes = snap.nodes!;
       _restoreLastNode();
       if (snap.traffic != null) _traffic = snap.traffic!;
-      unawaited(_saveNodeCache(_nodes));
+      unawaited(NodeCacheService.save(_nodes));
       await _reloadCoreConfig(startIfStopped: true);
     }
     notifyListeners();
@@ -628,40 +629,6 @@ class AppController extends ChangeNotifier {
         }
       },
     );
-  }
-
-  // ── Node cache ────────────────────────────────────────────────────────────
-
-  static String get _nodeCachePath {
-    final base = Platform.environment['LOCALAPPDATA'] ??
-        Platform.environment['APPDATA'] ??
-        Directory.systemTemp.path;
-    return '$base\\Litchi\\nodes_cache.json';
-  }
-
-  static Future<void> _saveNodeCache(List<NodeModel> nodes) async {
-    try {
-      final file = File(_nodeCachePath);
-      await file.parent.create(recursive: true);
-      await file.writeAsString(
-        jsonEncode(
-          nodes.where((n) => !n.isAuto).map((n) => n.toJson()).toList(),
-        ),
-      );
-    } catch (_) {}
-  }
-
-  static Future<List<NodeModel>> _loadNodeCache() async {
-    try {
-      final file = File(_nodeCachePath);
-      if (!file.existsSync()) return [];
-      final list = jsonDecode(await file.readAsString()) as List;
-      return list
-          .map((e) => NodeModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
-      return [];
-    }
   }
 }
 
