@@ -20,7 +20,10 @@ class MobileShopPage extends StatelessWidget {
       children: [
         Text('套餐', style: AppTextStyles.h1.copyWith(fontSize: 26)),
         const SizedBox(height: 3),
-        Text('选择适合你的订阅计划', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+        Text(
+          '选择适合你的订阅计划',
+          style: AppTextStyles.caption.copyWith(color: c.textMuted),
+        ),
         const SizedBox(height: 14),
         Expanded(
           child: ctrl.plans.isEmpty
@@ -34,7 +37,8 @@ class MobileShopPage extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   itemCount: ctrl.plans.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) => _PlanCard(plan: ctrl.plans[index]),
+                  itemBuilder: (context, index) =>
+                      _PlanCard(plan: ctrl.plans[index]),
                 ),
         ),
       ],
@@ -50,6 +54,12 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final price = plan.monthlyPrice ?? plan.oneTimePrice ?? plan.quarterlyPrice ?? plan.yearlyPrice;
+    final priceLabel = price == null ? '--' : '¥${price.toStringAsFixed(2)}';
+    final subtitle = plan.features.isEmpty
+        ? plan.capacity
+        : '${plan.capacity} · ${plan.features.take(2).join(' / ')}';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -74,14 +84,22 @@ class _PlanCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(plan.name, style: AppTextStyles.bodyStrong),
+                Text(plan.title, style: AppTextStyles.bodyStrong),
                 const SizedBox(height: 3),
-                Text(plan.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Text(plan.priceLabel, style: AppTextStyles.bodyStrong.copyWith(color: c.primary)),
+          Text(
+            priceLabel,
+            style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
+          ),
         ],
       ),
     );
