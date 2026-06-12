@@ -1,4 +1,3 @@
-import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -8,32 +7,57 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
 
-class MobileNodesPage extends StatelessWidget {
+class MobileNodesPage extends StatefulWidget {
   const MobileNodesPage({super.key});
+
+  @override
+  State<MobileNodesPage> createState() => _MobileNodesPageState();
+}
+
+class _MobileNodesPageState extends State<MobileNodesPage> {
+  String _query = '';
 
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
     final c = AppColors.of(context);
-    final nodes = ctrl.nodes;
+    final nodes = ctrl.nodes.where((node) {
+      final key = _query.trim().toLowerCase();
+      if (key.isEmpty) return true;
+      return node.name.toLowerCase().contains(key) ||
+          node.englishName.toLowerCase().contains(key) ||
+          node.code.toLowerCase().contains(key);
+    }).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('节点', style: AppTextStyles.h1.copyWith(fontSize: 26)),
-        const SizedBox(height: 3),
-        Text('选择适合你的线路', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('节点', style: AppTextStyles.h1.copyWith(fontSize: 26)),
+                  const SizedBox(height: 3),
+                  Text('选择适合你的线路', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                ],
+              ),
+            ),
+            IconButton(onPressed: ctrl.refreshNodes, icon: Icon(LucideIcons.refreshCw, color: c.primary)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          onChanged: (value) => setState(() => _query = value),
+          decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: '搜索节点'),
+        ),
+        const SizedBox(height: 12),
         _AutoSelectCard(selected: ctrl.autoSelected, onTap: ctrl.selectAuto),
         const SizedBox(height: 12),
         Expanded(
           child: nodes.isEmpty
-              ? Center(
-                  child: Text(
-                    '暂无节点，请检查服务器连接',
-                    style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  ),
-                )
+              ? Center(child: Text('暂无节点', style: AppTextStyles.body.copyWith(color: c.textMuted)))
               : ListView.separated(
                   padding: EdgeInsets.zero,
                   itemCount: nodes.length,
@@ -73,27 +97,9 @@ class _AutoSelectCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: c.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(LucideIcons.zap, color: c.primary, size: 18),
-            ),
+            Icon(LucideIcons.zap, color: c.primary, size: 20),
             const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('自动选择', style: AppTextStyles.bodyStrong),
-                  const SizedBox(height: 2),
-                  Text('根据测速结果自动选择最优节点', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
-                ],
-              ),
-            ),
+            Expanded(child: Text('自动选择', style: AppTextStyles.bodyStrong)),
             if (selected) Icon(LucideIcons.circleCheck, color: c.primary, size: 18),
           ],
         ),
@@ -112,8 +118,7 @@ class _NodeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final code = node.code.isNotEmpty ? node.code : 'UN';
-
+    final color = selected ? c.primary : c.textMuted;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -125,14 +130,7 @@ class _NodeTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CountryFlag.fromCountryCode(
-              code,
-              theme: const ImageTheme(
-                width: 32,
-                height: 24,
-                shape: RoundedRectangle(4),
-              ),
-            ),
+            Icon(LucideIcons.globe, color: color, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -145,8 +143,10 @@ class _NodeTile extends StatelessWidget {
               ),
             ),
             _Latency(latency: node.latency),
-            const SizedBox(width: 8),
-            if (selected) Icon(LucideIcons.circleCheck, color: c.primary, size: 18),
+            if (selected) ...[
+              const SizedBox(width: 8),
+              Icon(LucideIcons.circleCheck, color: c.primary, size: 18),
+            ],
           ],
         ),
       ),
@@ -163,11 +163,7 @@ class _Latency extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     if (latency == -1) {
-      return SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2, color: c.warning),
-      );
+      return SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.warning));
     }
     if (latency <= 0 || latency >= 9999) {
       return Text('--', style: AppTextStyles.caption.copyWith(color: c.textMuted));
