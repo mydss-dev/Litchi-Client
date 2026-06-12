@@ -76,10 +76,10 @@ class _MobileBottomNav extends StatelessWidget {
   final double bottomPadding;
 
   static const _items = [
-    _MobileNavItem(AppPage.dashboard, LucideIcons.house, '首页'),
-    _MobileNavItem(AppPage.nodes, LucideIcons.globe2, '节点'),
+    _MobileNavItem(AppPage.dashboard, LucideIcons.home, '首页'),
+    _MobileNavItem(AppPage.nodes, LucideIcons.globe, '节点'),
     _MobileNavItem(AppPage.shop, LucideIcons.shoppingBag, '套餐'),
-    _MobileNavItem(AppPage.account, LucideIcons.userRound, '我的'),
+    _MobileNavItem(AppPage.account, LucideIcons.user, '我的'),
   ];
 
   @override
