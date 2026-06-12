@@ -1,4 +1,4 @@
-name: Android Project Scaffold
+name: Android Debug APK
 
 on:
   push:
@@ -7,30 +7,36 @@ on:
     branches: [main]
 
 jobs:
-  scaffold:
+  build-apk:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Verify Android project structure
-        shell: bash
-        run: |
-          test -d android
-          test -f android/settings.gradle
-          test -f android/build.gradle
-          test -f android/gradle.properties
-          test -f android/app/build.gradle
-          test -f android/app/src/main/AndroidManifest.xml
-          test -f android/app/src/main/kotlin/com/litchi/client/MainActivity.kt
-          test -f lib/app/mobile_app_shell.dart
-          test -f lib/features/mobile/mobile_home_page.dart
-          test -f lib/features/mobile/mobile_nodes_page.dart
-          test -f lib/features/mobile/mobile_shop_page.dart
-          test -f lib/features/mobile/mobile_profile_page.dart
-          test -f lib/features/mobile/mobile_settings_page.dart
-          test -f lib/features/mobile/mobile_orders_page.dart
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-      - name: Print scaffold status
-        run: echo "Android scaffold and mobile UI pages exist. APK build is intentionally paused until testing starts."
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: false
+
+      - name: Ensure generated Android files
+        run: flutter create --platforms=android .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: litchi-android-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
