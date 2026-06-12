@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../features/auth/auth_flow.dart';
 import '../features/mobile/mobile_home_page.dart';
 import '../features/mobile/mobile_nodes_page.dart';
+import '../features/mobile/mobile_orders_page.dart';
 import '../features/mobile/mobile_profile_page.dart';
 import '../features/mobile/mobile_settings_page.dart';
 import '../features/mobile/mobile_shop_page.dart';
@@ -60,8 +61,9 @@ class _MobileShell extends StatelessWidget {
       case AppPage.nodes:
         return const MobileNodesPage();
       case AppPage.shop:
-      case AppPage.orders:
         return const MobileShopPage();
+      case AppPage.orders:
+        return const MobileOrdersPage();
       case AppPage.settings:
         return const MobileSettingsPage();
       case AppPage.account:
