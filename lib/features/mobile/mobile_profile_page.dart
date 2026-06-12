@@ -18,24 +18,31 @@ class MobileProfilePage extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        Text('我的', style: AppTextStyles.h1.copyWith(fontSize: 26)),
+        Row(
+          children: [
+            Expanded(child: Text('我的', style: AppTextStyles.h1.copyWith(fontSize: 26))),
+            GestureDetector(
+              onTap: ctrl.refreshData,
+              child: Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: c.primarySoft, borderRadius: BorderRadius.circular(AppRadius.md)),
+                child: Icon(LucideIcons.refreshCw, color: c.primary, size: 18),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: c.softBorder),
-          ),
+          decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.softBorder)),
           child: Row(
             children: [
               CircleAvatar(
                 radius: 24,
                 backgroundColor: c.primarySoft,
-                child: Text(
-                  user.avatarLetter.isEmpty ? 'L' : user.avatarLetter,
-                  style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
-                ),
+                child: Text(user.avatarLetter.isEmpty ? 'L' : user.avatarLetter, style: AppTextStyles.bodyStrong.copyWith(color: c.primary)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -45,6 +52,7 @@ class MobileProfilePage extends StatelessWidget {
                     Text(user.name.isEmpty ? '--' : user.name, style: AppTextStyles.bodyStrong),
                     const SizedBox(height: 3),
                     Text(user.plan.isEmpty ? '暂无套餐' : user.plan, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                    if (user.expiry.isNotEmpty) Text('到期：${user.expiry}', style: AppTextStyles.caption.copyWith(color: c.textMuted)),
                   ],
                 ),
               ),
@@ -52,22 +60,56 @@ class MobileProfilePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(child: _StatCard(label: '邀请码', value: ctrl.inviteCode.isEmpty ? '--' : ctrl.inviteCode)),
+            const SizedBox(width: 10),
+            Expanded(child: _StatCard(label: '邀请人数', value: ctrl.invitedCount.toString())),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _StatCard(label: '佣金比例', value: '${ctrl.commissionRate.toStringAsFixed(0)}%')),
+            const SizedBox(width: 10),
+            Expanded(child: _StatCard(label: '可提现', value: '${ctrl.currencySymbol}${ctrl.withdrawable.toStringAsFixed(2)}')),
+          ],
+        ),
+        const SizedBox(height: 14),
         _MenuTile(icon: LucideIcons.gift, title: '邀请好友', subtitle: '查看邀请码与返佣信息', onTap: () => ctrl.goToPage(AppPage.invite)),
-        _MenuTile(icon: LucideIcons.ticket, title: '工单支持', subtitle: '联系在线客服', onTap: () => ctrl.goToPage(AppPage.tickets)),
+        _MenuTile(icon: LucideIcons.clipboardList, title: '订单记录', subtitle: '查看购买记录与支付状态', onTap: () => ctrl.goToPage(AppPage.orders)),
+        _MenuTile(icon: LucideIcons.messageSquare, title: '工单支持', subtitle: '联系在线客服', onTap: () => ctrl.goToPage(AppPage.tickets)),
         _MenuTile(icon: LucideIcons.settings, title: '设置', subtitle: '网络与应用设置', onTap: () => ctrl.goToPage(AppPage.settings)),
       ],
     );
   }
 }
 
-class _MenuTile extends StatelessWidget {
-  const _MenuTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.label, required this.value});
+  final String label;
+  final String value;
 
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.softBorder)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+          const SizedBox(height: 6),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodyStrong),
+        ],
+      ),
+    );
+  }
+}
+
+class _MenuTile extends StatelessWidget {
+  const _MenuTile({required this.icon, required this.title, required this.subtitle, required this.onTap});
   final IconData icon;
   final String title;
   final String subtitle;
@@ -82,11 +124,7 @@ class _MenuTile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: c.softBorder),
-          ),
+          decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.card), border: Border.all(color: c.softBorder)),
           child: Row(
             children: [
               Icon(icon, color: c.iconDefault, size: 20),
@@ -97,7 +135,7 @@ class _MenuTile extends StatelessWidget {
                   children: [
                     Text(title, style: AppTextStyles.bodyStrong),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                    Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
                   ],
                 ),
               ),
