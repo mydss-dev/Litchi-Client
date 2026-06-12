@@ -33,7 +33,7 @@ class _MobileTicketsPageState extends State<MobileTicketsPage> {
       _error = null;
     });
     try {
-      final tickets = await AppScope.of(context).api.fetchTickets();
+      final tickets = await AppScope.of(context).api.getTickets();
       if (!mounted) return;
       setState(() {
         _tickets = tickets;
