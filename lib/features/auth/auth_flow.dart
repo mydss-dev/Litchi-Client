@@ -8,15 +8,12 @@ import 'login_page.dart';
 import 'register_page.dart';
 import 'widgets/auth_visual_area.dart';
 
-/// Full-bleed auth layout: the left gradient visual area and the right form
-/// area fill the entire window (below the overlaid window controls). No
-/// floating card, no outer margins (§16.2 — the panel is the body itself).
 class AuthFlow extends StatelessWidget {
   const AuthFlow({super.key});
 
-  // Left visual : right form ≈ 40 : 60.
   static const int _visualFlex = 40;
   static const int _formFlex = 60;
+  static const double _mobileBreakpoint = 700;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +42,15 @@ class AuthFlow extends StatelessWidget {
         ),
     };
 
+    final isMobile = MediaQuery.sizeOf(context).width < _mobileBreakpoint;
+
+    if (isMobile) {
+      return _FormArea(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: form,
+      );
+    }
+
     return Row(
       children: [
         Expanded(
@@ -60,12 +66,14 @@ class AuthFlow extends StatelessWidget {
   }
 }
 
-/// White right-hand area that vertically centers the form and caps its width
-/// so inputs stay a comfortable size on the wide full-bleed panel.
 class _FormArea extends StatelessWidget {
-  const _FormArea({required this.child});
+  const _FormArea({
+    required this.child,
+    this.padding = EdgeInsets.zero,
+  });
 
   final Widget child;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -73,9 +81,14 @@ class _FormArea extends StatelessWidget {
     return Container(
       color: c.cardBg,
       alignment: Alignment.center,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: child,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: padding,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: child,
+          ),
+        ),
       ),
     );
   }
