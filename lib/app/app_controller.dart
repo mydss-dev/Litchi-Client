@@ -266,7 +266,7 @@ class AppController extends ChangeNotifier {
           if (cached.isNotEmpty) {
             _nodes = cached;
             _restoreLastNode();
-            unawaited(_startCoreInBackground());
+            unawaited(_startCoreInBackground(runLatencyTest: true));
           }
         } else {
           await TokenStorage.clearAuthData();
@@ -342,7 +342,7 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth ─────────────────────────────────────────────────────────────────
 
   Future<void> loginWithCredentials(String email, String password) async {
     final result = await _api.login(email, password);
@@ -462,7 +462,7 @@ class AppController extends ChangeNotifier {
       unawaited(NodeCacheService.save(_nodes));
       _restoreLastNode();
       // Start core in background so latency testing works before user connects.
-      unawaited(_startCoreInBackground());
+      unawaited(_startCoreInBackground(runLatencyTest: true));
     }
   }
 
@@ -565,7 +565,7 @@ class AppController extends ChangeNotifier {
     return best;
   }
 
-  Future<void> _startCoreInBackground() async {
+  Future<void> _startCoreInBackground({bool runLatencyTest = false}) async {
     await _core.startCoreOnly(
       nodes: _nodes,
       currentNode: currentNode,
@@ -573,10 +573,10 @@ class AppController extends ChangeNotifier {
       dnsMode: _settings.dnsMode,
       proxyPort: _settings.proxyPort,
     );
-    if (_core.coreProcessRunning) {
+    if (_core.coreProcessRunning && runLatencyTest) {
       // Small delay to let the Clash API initialise before testing.
-      await Future.delayed(const Duration(milliseconds: 800));
-      unawaited(testLatencies());
+      await Future.delayed(const Duration(milliseconds: 1000));
+      await testLatencies();
     }
   }
 
@@ -599,22 +599,32 @@ class AppController extends ChangeNotifier {
     }
 
     if (_core.coreProcessRunning) {
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future.delayed(const Duration(milliseconds: 1000));
       unawaited(testLatencies());
     }
   }
 
   /// Tests latencies for all nodes via the Clash API.
-  /// Requires the sing-box process to be running (not necessarily connected).
+  /// Starts the sing-box process in background mode if needed.
   Future<void> testLatencies() async {
     if (_nodes.isEmpty) return;
 
+    if (!_core.coreProcessRunning) {
+      await _startCoreInBackground();
+      if (_core.coreProcessRunning) {
+        await Future.delayed(const Duration(milliseconds: 1000));
+      }
+    }
+
     // Mark all nodes as testing (-1) so the UI shows an in-progress state.
-    // Only when the core is alive — otherwise the test no-ops and the marks
-    // would never be resolved back to real values.
-    if (_core.coreProcessRunning) {
-      _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
+    _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
+    notifyListeners();
+
+    if (!_core.coreProcessRunning) {
+      _nodes = _nodes.map((n) => n.copyWith(latency: 9999)).toList();
+      _startupMessage = '测速失败：核心未启动，请检查 sing-box.exe 是否存在';
       notifyListeners();
+      return;
     }
 
     final snapshot = List<NodeModel>.from(_nodes);
