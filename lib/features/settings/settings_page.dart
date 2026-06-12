@@ -234,6 +234,8 @@ class _SettingsPageState extends State<SettingsPage> {
 }
 
 void _openUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
   Process.run('explorer', [url]);
 }
 
@@ -277,6 +279,41 @@ class _LogoutRow extends StatelessWidget {
 
   final VoidCallback onLogout;
 
+  Future<void> _confirmLogout(BuildContext context) async {
+    final c = AppColors.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: c.cardBg,
+        title: Text(
+          '确认退出登录？',
+          style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
+        ),
+        content: Text(
+          '退出后代理连接将断开。',
+          style: AppTextStyles.body.copyWith(color: c.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              '取消',
+              style: AppTextStyles.body.copyWith(color: c.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              '退出登录',
+              style: AppTextStyles.body.copyWith(color: c.danger),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) onLogout();
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
@@ -293,7 +330,7 @@ class _LogoutRow extends StatelessWidget {
           MouseRegion(
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
-              onTap: onLogout,
+              onTap: () => _confirmLogout(context),
               child: Icon(LucideIcons.logOut, size: 18, color: c.danger),
             ),
           ),

@@ -134,12 +134,15 @@ abstract final class SingboxConfig {
     // DNS rules only matter in rule mode; global/direct uses the final server.
     // Note: routing-loop prevention is handled by default_domain_resolver in
     // route, so no outbound:any rule is needed (deprecated in sing-box v1.9+).
-    final List<Map<String, dynamic>> dnsRules = proxyMode == ProxyMode.rule
-        ? [
-            // CN-domain queries stay on CN DNS (avoids proxy DNS for local sites).
-            {'rule_set': 'geosite-cn', 'server': 'cn-dns'},
-          ]
-        : [];
+    // Must mirror the _hasLocalRules guard on route rules — referencing a
+    // rule_set that isn't defined makes sing-box exit with FATAL at startup.
+    final List<Map<String, dynamic>> dnsRules =
+        proxyMode == ProxyMode.rule && _hasLocalRules
+            ? [
+                // CN-domain queries stay on CN DNS (avoids proxy DNS for local sites).
+                {'rule_set': 'geosite-cn', 'server': 'cn-dns'},
+              ]
+            : [];
 
     // ── Inbounds ─────────────────────────────────────────────────────────────
     final inbounds = <Map<String, dynamic>>[
@@ -181,8 +184,11 @@ abstract final class SingboxConfig {
         'servers': [
           remoteDnsServer,
           {
+            // DoH over the raw IP: encrypted on port 443, so transparent-proxy
+            // gateways (e.g. router OpenClash) can't hijack it and return
+            // fake-ip for node server domains — plain UDP 53 gets intercepted.
             'tag': 'cn-dns',
-            'type': 'udp',
+            'type': 'https',
             'server': '223.5.5.5',
           },
         ],
@@ -213,8 +219,11 @@ abstract final class SingboxConfig {
         {'type': 'block',  'tag': 'block'},
       ],
       'route': {
-        // DoH server IP must go direct to avoid circular DNS → PROXY → DNS.
-        'rules': [{'ip_cidr': [dohServer], 'outbound': 'direct'}, ...routeRules],
+        // DoH server IPs must go direct to avoid circular DNS → PROXY → DNS.
+        'rules': [
+          {'ip_cidr': [dohServer, '223.5.5.5'], 'outbound': 'direct'},
+          ...routeRules,
+        ],
         if (ruleSets.isNotEmpty) 'rule_set': ruleSets,
         'final': routeFinal,
         'auto_detect_interface': true,

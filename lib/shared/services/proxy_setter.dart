@@ -6,8 +6,10 @@ abstract final class ProxySetter {
       r'HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings';
 
   static Future<void> enable({int port = 7890}) async {
-    await _reg('ProxyEnable', 'REG_DWORD', '1');
+    // ProxyServer first: if either write fails, the proxy is never left
+    // enabled while pointing at a stale address.
     await _reg('ProxyServer', 'REG_SZ', '127.0.0.1:$port');
+    await _reg('ProxyEnable', 'REG_DWORD', '1');
     await _notify();
   }
 
@@ -30,10 +32,14 @@ abstract final class ProxySetter {
       final r1 = await Process.run(
         'reg', ['query', _key, '/v', 'ProxyEnable'],
       );
-      if (!'${r1.stdout}'.contains('0x1')) return;
+      if (r1.exitCode != 0) return;
+      // reg query prints "ProxyEnable    REG_DWORD    0x1" — match the value
+      // token exactly so error text containing "0x1" can't false-positive.
+      if (!RegExp(r'REG_DWORD\s+0x1\b').hasMatch('${r1.stdout}')) return;
       final r2 = await Process.run(
         'reg', ['query', _key, '/v', 'ProxyServer'],
       );
+      if (r2.exitCode != 0) return;
       if ('${r2.stdout}'.contains('127.0.0.1:')) await disable(notify: false);
     } catch (_) {}
   }

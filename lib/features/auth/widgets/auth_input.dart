@@ -15,6 +15,7 @@ class AuthInput extends StatefulWidget {
     this.controller,
     this.obscure = false,
     this.showRevealToggle = false,
+    this.onSubmitted,
   });
 
   final IconData icon;
@@ -26,6 +27,9 @@ class AuthInput extends StatefulWidget {
 
   /// Show an eye/eye-off toggle on the right (password fields).
   final bool showRevealToggle;
+
+  /// Called when the user presses Enter in this field.
+  final ValueChanged<String>? onSubmitted;
 
   @override
   State<AuthInput> createState() => _AuthInputState();
@@ -73,6 +77,7 @@ class _AuthInputState extends State<AuthInput> {
               controller: widget.controller,
               focusNode: _focusNode,
               obscureText: _obscured,
+              onSubmitted: widget.onSubmitted,
               style: AppTextStyles.input.copyWith(color: c.textPrimary),
               cursorColor: c.primary,
               decoration: InputDecoration(

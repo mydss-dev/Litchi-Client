@@ -66,6 +66,8 @@ class UpdateBanner extends StatelessWidget {
   }
 
   Future<void> _openDownload(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
     try {
       if (Platform.isWindows) {
         await Process.run('cmd', ['/c', 'start', '', url]);

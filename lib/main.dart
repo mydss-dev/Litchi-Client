@@ -13,7 +13,29 @@ import 'shared/config/app_config.dart';
 // instance from starting. Automatically released when the process exits.
 ServerSocket? _instanceLock;
 
-Future<void> main() async {
+void _writeCrashLog(String message) {
+  try {
+    final base = Platform.environment['LOCALAPPDATA'] ??
+        Platform.environment['APPDATA'] ??
+        Directory.systemTemp.path;
+    final file = File('$base\\Litchi\\crash.log');
+    file.parent.createSync(recursive: true);
+    final ts = DateTime.now().toLocal().toString().substring(0, 19);
+    file.writeAsStringSync('[$ts] $message\n\n', mode: FileMode.append);
+  } catch (_) {}
+}
+
+Future<void> main() {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    _writeCrashLog('FlutterError: ${details.exceptionAsString()}\n${details.stack}');
+  };
+  return runZonedGuarded(_boot, (error, stack) {
+    _writeCrashLog('Uncaught: $error\n$stack');
+  }) ?? Future.value();
+}
+
+Future<void> _boot() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Single-instance enforcement: bind a loopback port as a mutex.
@@ -72,3 +94,4 @@ Future<void> main() async {
 
   runApp(const LitchiApp());
 }
+

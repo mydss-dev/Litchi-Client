@@ -73,7 +73,7 @@ class ConnectionHeroCard extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        node.name,
+                        node.name.isEmpty ? '加载中…' : node.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.heroTitle.copyWith(

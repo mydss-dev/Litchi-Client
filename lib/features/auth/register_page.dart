@@ -206,12 +206,14 @@ class _RegisterPageState extends State<RegisterPage> {
                   ? _config.emailSuffixes.first
                   : _selectedSuffix,
               onSuffixChanged: (s) => setState(() => _selectedSuffix = s),
+              onSubmitted: () => FocusScope.of(context).nextFocus(),
             )
           else
             AuthInput(
               icon: LucideIcons.mail,
               hintText: '请输入邮箱地址',
               controller: _emailCtrl,
+              onSubmitted: (_) => FocusScope.of(context).nextFocus(),
             ),
           // Send-code button + code input (only when panel requires verification)
           if (_config.emailVerifyRequired) ...[
@@ -226,6 +228,7 @@ class _RegisterPageState extends State<RegisterPage> {
               icon: LucideIcons.shieldCheck,
               hintText: '请输入邮件验证码',
               controller: _codeCtrl,
+              onSubmitted: (_) => FocusScope.of(context).nextFocus(),
             ),
           ],
           const SizedBox(height: 12),
@@ -235,6 +238,7 @@ class _RegisterPageState extends State<RegisterPage> {
             controller: _passwordCtrl,
             obscure: true,
             showRevealToggle: true,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           const SizedBox(height: 12),
           AuthInput(
@@ -243,12 +247,14 @@ class _RegisterPageState extends State<RegisterPage> {
             controller: _confirmCtrl,
             obscure: true,
             showRevealToggle: true,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           const SizedBox(height: 12),
           AuthInput(
             icon: LucideIcons.ticket,
             hintText: '邀请码（可选）',
             controller: _inviteCtrl,
+            onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 16),
           AuthCheckboxRow(
@@ -368,12 +374,14 @@ class _EmailSuffixInput extends StatefulWidget {
     required this.suffixes,
     required this.selected,
     required this.onSuffixChanged,
+    this.onSubmitted,
   });
 
   final TextEditingController prefixCtrl;
   final List<String> suffixes;
   final String selected;
   final ValueChanged<String> onSuffixChanged;
+  final VoidCallback? onSubmitted;
 
   @override
   State<_EmailSuffixInput> createState() => _EmailSuffixInputState();
@@ -420,6 +428,7 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
             child: TextField(
               controller: widget.prefixCtrl,
               focusNode: _focusNode,
+              onSubmitted: widget.onSubmitted != null ? (_) => widget.onSubmitted!() : null,
               style: AppTextStyles.input.copyWith(color: c.textPrimary),
               cursorColor: c.primary,
               decoration: InputDecoration(

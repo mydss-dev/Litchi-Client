@@ -91,6 +91,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             controller: _oldCtrl,
             obscure: true,
             showRevealToggle: true,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           const SizedBox(height: 14),
           AuthInput(
@@ -99,6 +100,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             controller: _newCtrl,
             obscure: true,
             showRevealToggle: true,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           const SizedBox(height: 14),
           AuthInput(
@@ -107,6 +109,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             controller: _confirmCtrl,
             obscure: true,
             showRevealToggle: true,
+            onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 14),
           Row(

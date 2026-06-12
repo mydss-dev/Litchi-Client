@@ -96,18 +96,14 @@ abstract final class CredentialsStorage {
     await prefs.remove(_keyAuthToken);
   }
 
-  // ── Dispatch: DPAPI first, XOR fallback ──────────────────────────────────
+  // ── Dispatch ──────────────────────────────────────────────────────────────
 
-  static Future<String?> _protect(String plaintext) async {
-    final dpapi = await _protectDpapi(plaintext);
-    if (dpapi != null) return dpapi;
-    // PowerShell path failed (policy restriction, no PS installed, etc.) —
-    // fall back to machine-keyed XOR.
-    return _fallbackEncrypt(plaintext);
-  }
+  static Future<String?> _protect(String plaintext) => _protectDpapi(plaintext);
 
   static Future<String?> _unprotect(String encrypted) async {
-    if (encrypted.startsWith('FB:')) return _fallbackDecrypt(encrypted);
+    // Legacy FB: prefix = old XOR cipher (removed). Treat as invalid so the
+    // user is prompted to re-enter credentials rather than using a weak key.
+    if (encrypted.startsWith('FB:')) return null;
     return _unprotectDpapi(encrypted);
   }
 
@@ -175,41 +171,6 @@ ConvertFrom-SecureString \$s|Set-Content '$outPath' -Encoding ASCII -NoNewline
 
     try {
       return utf8.decode(base64.decode(b64out));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // ── Machine-keyed XOR fallback ────────────────────────────────────────────
-
-  /// Key derived from machine identity — not cryptographically secure,
-  /// but prevents decryption on a different machine/user account.
-  static String _machineKey() {
-    final computer = Platform.environment['COMPUTERNAME'] ?? 'PC';
-    final user = Platform.environment['USERNAME'] ?? 'user';
-    return '$computer|$user|litchi-vpn';
-  }
-
-  static String _fallbackEncrypt(String plaintext) {
-    final key = utf8.encode(_machineKey());
-    final data = utf8.encode(plaintext);
-    final out = List<int>.generate(
-      data.length,
-      (i) => data[i] ^ key[i % key.length],
-    );
-    return 'FB:${base64Url.encode(out)}';
-  }
-
-  static String? _fallbackDecrypt(String encrypted) {
-    if (!encrypted.startsWith('FB:')) return null;
-    try {
-      final key = utf8.encode(_machineKey());
-      final enc = base64Url.decode(encrypted.substring(3));
-      final out = List<int>.generate(
-        enc.length,
-        (i) => enc[i] ^ key[i % key.length],
-      );
-      return utf8.decode(out);
     } catch (_) {
       return null;
     }

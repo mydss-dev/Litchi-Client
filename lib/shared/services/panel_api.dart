@@ -21,7 +21,7 @@ class PanelApi {
       data: {'email': email, 'password': password},
     );
     _check(res);
-    return AuthResult.fromJson(res['data'] as Map<String, dynamic>);
+    return AuthResult.fromJson(_dataMap(res));
   }
 
   Future<AuthResult> register({
@@ -44,7 +44,7 @@ class PanelApi {
     }
     final res = await _client.post('/passport/auth/register', data: body);
     _check(res);
-    return AuthResult.fromJson(res['data'] as Map<String, dynamic>);
+    return AuthResult.fromJson(_dataMap(res));
   }
 
   Future<void> changePassword({
@@ -126,10 +126,7 @@ class PanelApi {
     try {
       final res = await _client.get('/user/login/log');
       _check(res);
-      final list = res['data'] as List? ?? [];
-      return list
-          .map((e) => RemoteLoginLog.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return _dataList(res).map(RemoteLoginLog.fromJson).toList();
     } catch (_) {
       return [];
     }
@@ -138,7 +135,7 @@ class PanelApi {
   Future<RemoteUser> getUserInfo() async {
     final res = await _client.get('/user/info');
     _check(res);
-    return RemoteUser.fromJson(res['data'] as Map<String, dynamic>);
+    return RemoteUser.fromJson(_dataMap(res));
   }
 
   // ── Subscription / Nodes ─────────────────────────────────────────────────
@@ -195,10 +192,7 @@ class PanelApi {
   Future<List<RemotePlan>> getPlans() async {
     final res = await _client.get('/user/plan/fetch');
     _check(res);
-    final list = res['data'] as List? ?? [];
-    return list
-        .map((e) => RemotePlan.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _dataList(res).map(RemotePlan.fromJson).toList();
   }
 
   // ── Invite ────────────────────────────────────────────────────────────────
@@ -206,7 +200,7 @@ class PanelApi {
   Future<RemoteInvite> getInviteInfo() async {
     final res = await _client.get('/user/invite/fetch');
     _check(res);
-    return RemoteInvite.fromJson(res['data'] as Map<String, dynamic>);
+    return RemoteInvite.fromJson(_dataMap(res));
   }
 
   // ── Traffic ───────────────────────────────────────────────────────────────
@@ -214,10 +208,7 @@ class PanelApi {
   Future<List<RemoteTrafficLog>> getTrafficLog() async {
     final res = await _client.get('/user/stat/getTrafficLog');
     _check(res);
-    final list = res['data'] as List? ?? [];
-    return list
-        .map((e) => RemoteTrafficLog.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _dataList(res).map(RemoteTrafficLog.fromJson).toList();
   }
 
   // ── Order ─────────────────────────────────────────────────────────────────
@@ -239,7 +230,7 @@ class PanelApi {
     );
     _check(res);
     if (res['data'] == null) return null;
-    return CouponResult.fromJson(res['data'] as Map<String, dynamic>);
+    return CouponResult.fromJson(_dataMap(res));
   }
 
   Future<String> submitOrder({
@@ -270,10 +261,7 @@ class PanelApi {
   Future<List<RemotePaymentMethod>> getPaymentMethods() async {
     final res = await _client.get('/user/order/getPaymentMethod');
     _check(res);
-    final list = res['data'] as List? ?? [];
-    return list
-        .map((e) => RemotePaymentMethod.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _dataList(res).map(RemotePaymentMethod.fromJson).toList();
   }
 
   /// Returns checkout result with URL and type.
@@ -294,10 +282,7 @@ class PanelApi {
   Future<List<RemoteOrder>> fetchOrders() async {
     final res = await _client.get('/user/order/fetch');
     _check(res);
-    final list = res['data'] as List? ?? [];
-    return list
-        .map((e) => RemoteOrder.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _dataList(res).map(RemoteOrder.fromJson).toList();
   }
 
   Future<void> cancelOrder(String tradeNo) async {
@@ -386,5 +371,26 @@ class PanelApi {
     if (code != 0 && code != null) {
       throw ApiException(res['message']?.toString() ?? '请求失败');
     }
+  }
+
+  /// Safely extracts `data` as an object. Throws a readable [ApiException]
+  /// instead of a raw cast crash when the backend shape changes.
+  static Map<String, dynamic> _dataMap(Map<String, dynamic> res) {
+    final data = res['data'];
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    throw const ApiException('服务器返回数据格式异常');
+  }
+
+  /// Safely extracts `data` as a list of objects, skipping malformed items.
+  static List<Map<String, dynamic>> _dataList(Map<String, dynamic> res) {
+    final data = res['data'];
+    if (data is! List) return const [];
+    return data
+        .map((e) => e is Map<String, dynamic>
+            ? e
+            : (e is Map ? Map<String, dynamic>.from(e) : null))
+        .whereType<Map<String, dynamic>>()
+        .toList();
   }
 }

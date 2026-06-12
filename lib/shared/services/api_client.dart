@@ -114,8 +114,20 @@ class ApiClient {
         '连接超时，请检查网络后重试',
       DioExceptionType.connectionError => '无法连接到服务器，请检查网络',
       DioExceptionType.badResponse =>
-        '服务器响应异常（${e.response?.statusCode ?? '未知'}）',
+        _serverMessage(e) ?? '服务器响应异常（${e.response?.statusCode ?? '未知'}）',
       _ => '网络请求失败，请重试',
     };
+  }
+
+  /// V2Board panels put the human-readable reason (wrong password, account
+  /// locked, too many attempts…) in the error body — surface it instead of
+  /// a bare status code.
+  static String? _serverMessage(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final msg = data['message']?.toString() ?? '';
+      if (msg.isNotEmpty && !msg.contains('Server Error')) return msg;
+    }
+    return null;
   }
 }

@@ -85,8 +85,8 @@ abstract final class AppConfig {
   // ── Remote override ───────────────────────────────────────────────────────
 
   static void applyRemote(Map<String, dynamic> json) {
-    _str(json, 'api_base',           (v) => apiBase          = v);
-    _str(json, 'update_check_url',   (v) => updateCheckUrl  = v);
+    _url(json, 'api_base',           (v) => apiBase          = v);
+    _url(json, 'update_check_url',   (v) => updateCheckUrl  = v);
     _str(json, 'app_name',           (v) => appName         = v);
     _str(json, 'app_subtitle',       (v) => appSubtitle     = v);
     _str(json, 'logo_letter',        (v) => logoLetter      = v);
@@ -106,6 +106,21 @@ abstract final class AppConfig {
   ) {
     final v = json[key];
     if (v is String && v.isNotEmpty) apply(v);
+  }
+
+  /// Like [_str], but only accepts well-formed http(s) URLs — protects the
+  /// app from a corrupted/malicious remote config redirecting all requests.
+  static void _url(
+    Map<String, dynamic> json,
+    String key,
+    void Function(String) apply,
+  ) {
+    final v = json[key];
+    if (v is! String || v.isEmpty) return;
+    final u = Uri.tryParse(v);
+    if (u != null && (u.scheme == 'https' || u.scheme == 'http') && u.host.isNotEmpty) {
+      apply(v);
+    }
   }
 
   static void _color(

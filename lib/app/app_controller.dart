@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import '../shared/config/app_config.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
-import '../shared/models/mock_data.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/panel_api.dart';
@@ -63,18 +62,18 @@ class AppController extends ChangeNotifier {
   // ── Data (mock defaults until API populates) ──────────────────────────────
 
   String _subscribeUrl = '';
-  UserModel _user = MockData.user;
-  TrafficModel _traffic = MockData.traffic;
-  NodeModel _currentNode = MockData.currentNode;
-  List<NodeModel> _nodes = MockData.nodes;
-  List<PlanModel> _plans = MockData.plans;
+  UserModel _user = const UserModel(name: '', plan: '', avatarLetter: '', expiry: '');
+  TrafficModel _traffic = const TrafficModel(totalGb: 0, usedGb: 0, remainGb: 0);
+  NodeModel _currentNode = const NodeModel(id: '', name: '', flag: '', latency: 0);
+  List<NodeModel> _nodes = const [];
+  List<PlanModel> _plans = const [];
   bool _autoSelected = false;
-  String _inviteCode = MockData.inviteCode;
-  String _inviteLink = MockData.inviteLink;
-  double _commissionRate = MockData.commissionRate;
-  int _invitedCount = MockData.invitedCount;
-  double _withdrawable = MockData.withdrawable;
-  List<double> _dailyUsage = MockData.dailyUsage;
+  String _inviteCode = '';
+  String _inviteLink = '';
+  double _commissionRate = 0;
+  int _invitedCount = 0;
+  double _withdrawable = 0;
+  List<double> _dailyUsage = const [];
   List<TrafficUsagePoint> _trafficUsage = [];
   int? _aliveIp;
   int? _deviceLimit;
@@ -356,17 +355,17 @@ class AppController extends ChangeNotifier {
     _autoSelected = false;
     TokenStorage.clearAuthData();
     _apiClient.updateAuthData(null);
-    _user = MockData.user;
-    _traffic = MockData.traffic;
-    _currentNode = MockData.currentNode;
-    _nodes = MockData.nodes;
-    _plans = MockData.plans;
-    _inviteCode = MockData.inviteCode;
-    _inviteLink = MockData.inviteLink;
-    _commissionRate = MockData.commissionRate;
-    _invitedCount = MockData.invitedCount;
-    _withdrawable = MockData.withdrawable;
-    _dailyUsage = MockData.dailyUsage;
+    _user = const UserModel(name: '', plan: '', avatarLetter: '', expiry: '');
+    _traffic = const TrafficModel(totalGb: 0, usedGb: 0, remainGb: 0);
+    _currentNode = const NodeModel(id: '', name: '', flag: '', latency: 0);
+    _nodes = const [];
+    _plans = const [];
+    _inviteCode = '';
+    _inviteLink = '';
+    _commissionRate = 0;
+    _invitedCount = 0;
+    _withdrawable = 0;
+    _dailyUsage = const [];
     _trafficUsage = [];
     _aliveIp = null;
     _deviceLimit = null;
@@ -472,6 +471,7 @@ class AppController extends ChangeNotifier {
   /// Tries to restore the last manually-selected node from persistent storage.
   /// Falls back to the first node in auto-select mode if the node is not found.
   void _restoreLastNode() {
+    if (_nodes.isEmpty) return;
     final lastId = _settings.lastNodeId;
     final saved = lastId.isNotEmpty
         ? _nodes.where((n) => n.id == lastId).firstOrNull
@@ -539,6 +539,14 @@ class AppController extends ChangeNotifier {
   /// Requires the sing-box process to be running (not necessarily connected).
   Future<void> testLatencies() async {
     if (_nodes.isEmpty) return;
+
+    // Mark all nodes as testing (-1) so the UI shows an in-progress state.
+    // Only when the core is alive — otherwise the test no-ops and the marks
+    // would never be resolved back to real values.
+    if (_core.coreProcessRunning) {
+      _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
+      notifyListeners();
+    }
 
     final snapshot = List<NodeModel>.from(_nodes);
     await _core.testLatencies(

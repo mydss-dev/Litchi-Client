@@ -144,6 +144,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   icon: LucideIcons.mail,
                   hintText: '请输入注册邮箱',
                   controller: _emailCtrl,
+                  onSubmitted: (_) => _sendCode(),
                 ),
               ),
               const SizedBox(width: 10),
@@ -161,6 +162,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               icon: LucideIcons.keyRound,
               hintText: '请输入邮件验证码',
               controller: _codeCtrl,
+              onSubmitted: (_) => FocusScope.of(context).nextFocus(),
             ),
             const SizedBox(height: 14),
             AuthInput(
@@ -169,6 +171,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               controller: _passwordCtrl,
               obscure: true,
               showRevealToggle: true,
+              onSubmitted: (_) => FocusScope.of(context).nextFocus(),
             ),
             const SizedBox(height: 14),
             AuthInput(
@@ -177,6 +180,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               controller: _confirmCtrl,
               obscure: true,
               showRevealToggle: true,
+              onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 24),
             AuthPrimaryButton(

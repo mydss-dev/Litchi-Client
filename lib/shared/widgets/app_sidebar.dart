@@ -230,7 +230,10 @@ class _PlanStatusCard extends StatelessWidget {
     final ctrl = AppScope.of(context);
     final user = ctrl.user;
     final traffic = ctrl.traffic;
-    final ratio = (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0);
+    final ratio = traffic.totalGb <= 0
+        ? 0.0
+        : (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0);
+    final planName = user.plan.isEmpty ? '--' : user.plan;
 
     return Container(
       width: double.infinity,
@@ -247,7 +250,7 @@ class _PlanStatusCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  user.plan,
+                  planName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodyStrong.copyWith(
@@ -300,7 +303,7 @@ class _PlanStatusCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '剩余 ${traffic.remainGb.toStringAsFixed(0)} GB · ${user.plan}',
+            '剩余 ${traffic.remainGb.toStringAsFixed(0)} GB · $planName',
             style: AppTextStyles.caption.copyWith(color: c.textMuted),
           ),
         ],

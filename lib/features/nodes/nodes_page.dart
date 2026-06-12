@@ -517,6 +517,25 @@ class _LatencyIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    if (latency == -1) {
+      return Row(
+        children: [
+          SizedBox(
+            width: 8,
+            height: 8,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              valueColor: AlwaysStoppedAnimation(c.warning),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '测速中',
+            style: AppTextStyles.menu.copyWith(color: c.warning),
+          ),
+        ],
+      );
+    }
     if (latency <= 0 || latency >= 9999) {
       return Row(
         children: [

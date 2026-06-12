@@ -21,10 +21,9 @@ abstract final class SingboxApiClient {
   /// Returns true on success, false if the request fails (e.g. core not yet
   /// ready) — callers should treat false as a no-op, not an error.
   static Future<bool> switchProxy(String tag, {int apiPort = 9090}) async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 2);
     try {
-      final client  = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 2);
-
       final request = await client.putUrl(
           Uri.parse('http://127.0.0.1:$apiPort/proxies/$_selectorGroup'));
       request.headers.contentType = ContentType.json;
@@ -33,12 +32,13 @@ abstract final class SingboxApiClient {
 
       final response = await request.close();
       await response.drain<void>();
-      client.close();
 
       // 204 No Content = success per Clash API spec.
       return response.statusCode == 204;
     } catch (_) {
       return false;
+    } finally {
+      client.close();
     }
   }
 
@@ -55,26 +55,25 @@ abstract final class SingboxApiClient {
     int    timeout = 5000,
     int    apiPort = 9090,
   }) async {
+    final uri = Uri.parse(
+      'http://127.0.0.1:$apiPort/proxies/'
+      '${Uri.encodeComponent(tag)}/delay'
+      '?url=${Uri.encodeComponent(testUrl)}&timeout=$timeout',
+    );
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 3);
     try {
-      final uri = Uri.parse(
-        'http://127.0.0.1:$apiPort/proxies/'
-        '${Uri.encodeComponent(tag)}/delay'
-        '?url=${Uri.encodeComponent(testUrl)}&timeout=$timeout',
-      );
-
-      final client  = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 3);
       final request  = await client.getUrl(uri);
       request.headers.add('Authorization', 'Bearer ${SingboxConfig.apiSecret}');
       final response = await request.close();
       final body     = await response.transform(utf8.decoder).join();
-      client.close();
-
       if (response.statusCode != 200) return null;
       final json = jsonDecode(body) as Map<String, dynamic>;
       return (json['delay'] as num?)?.toInt();
     } catch (_) {
       return null;
+    } finally {
+      client.close();
     }
   }
 
@@ -83,9 +82,9 @@ abstract final class SingboxApiClient {
   /// [clashMode] must be one of: 'rule', 'global', 'direct'.
   /// Returns true on success (204 No Content).
   static Future<bool> setMode(String clashMode, {int apiPort = 9090}) async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 2);
     try {
-      final client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 2);
       final request = await client.patchUrl(
         Uri.parse('http://127.0.0.1:$apiPort/configs'),
       );
@@ -94,10 +93,11 @@ abstract final class SingboxApiClient {
       request.write(jsonEncode({'mode': clashMode}));
       final response = await request.close();
       await response.drain<void>();
-      client.close();
       return response.statusCode == 204;
     } catch (_) {
       return false;
+    } finally {
+      client.close();
     }
   }
 
@@ -153,19 +153,20 @@ abstract final class SingboxApiClient {
   ///
   /// Returns the raw JSON map or null if the core is not reachable.
   static Future<Map<String, dynamic>?> getProxies({int apiPort = 9090}) async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 2);
     try {
-      final client   = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 2);
       final request  = await client.getUrl(
           Uri.parse('http://127.0.0.1:$apiPort/proxies'));
       request.headers.add('Authorization', 'Bearer ${SingboxConfig.apiSecret}');
       final response = await request.close();
       final body     = await response.transform(utf8.decoder).join();
-      client.close();
       if (response.statusCode != 200) return null;
       return jsonDecode(body) as Map<String, dynamic>;
     } catch (_) {
       return null;
+    } finally {
+      client.close();
     }
   }
 

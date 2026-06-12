@@ -117,6 +117,7 @@ class _LoginPageState extends State<LoginPage> {
             icon: LucideIcons.mail,
             hintText: '请输入邮箱或用户名',
             controller: _emailCtrl,
+            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
           const SizedBox(height: 16),
           AuthInput(
@@ -125,6 +126,7 @@ class _LoginPageState extends State<LoginPage> {
             controller: _passwordCtrl,
             obscure: true,
             showRevealToggle: true,
+            onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 16),
           Row(
