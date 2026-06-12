@@ -25,7 +25,7 @@ abstract final class RemoteConfigService {
   /// Put PUBLIC_KEY here. Keep PRIVATE_KEY offline and never commit it.
   /// While this is left as the placeholder value, unsigned legacy config is
   /// still accepted for rollout compatibility.
-  static const publicKeyBase64Url = 'REPLACE_WITH_ED25519_PUBLIC_KEY';
+  static const publicKeyBase64Url = '4wHDNFW_Nnrtk9wBH3gKxSMRRC56F7ykvTwFvgM7QSU';
 
   // ── Internal settings ─────────────────────────────────────────────────────
 
