@@ -3,7 +3,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../features/auth/auth_flow.dart';
 import '../features/mobile/mobile_home_page.dart';
-import '../features/mobile/mobile_nodes_page.dart';
 import '../features/mobile/mobile_orders_page.dart';
 import '../features/mobile/mobile_profile_page.dart';
 import '../features/mobile/mobile_settings_page.dart';
@@ -57,9 +56,8 @@ class _MobileShell extends StatelessWidget {
     switch (page) {
       case AppPage.dashboard:
       case AppPage.traffic:
-        return const MobileHomePage();
       case AppPage.nodes:
-        return const MobileNodesPage();
+        return const MobileHomePage();
       case AppPage.shop:
         return const MobileShopPage();
       case AppPage.orders:
@@ -81,7 +79,6 @@ class _MobileBottomNav extends StatelessWidget {
 
   static const _items = [
     _MobileNavItem(AppPage.dashboard, LucideIcons.home, '首页'),
-    _MobileNavItem(AppPage.nodes, LucideIcons.globe, '节点'),
     _MobileNavItem(AppPage.shop, LucideIcons.shoppingBag, '套餐'),
     _MobileNavItem(AppPage.account, LucideIcons.user, '我的'),
   ];
@@ -93,17 +90,7 @@ class _MobileBottomNav extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.fromLTRB(10, 8, 10, bottomPadding + 8),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        border: Border(top: BorderSide(color: c.softBorder)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -8),
-          ),
-        ],
-      ),
+      decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.softBorder))),
       child: Row(
         children: [
           for (final item in _items)
@@ -121,27 +108,20 @@ class _MobileBottomNav extends StatelessWidget {
 
   bool _isSelected(AppPage current, AppPage tab) {
     if (tab == AppPage.dashboard) {
-      return current == AppPage.dashboard || current == AppPage.traffic;
+      return current == AppPage.dashboard || current == AppPage.traffic || current == AppPage.nodes;
     }
     if (tab == AppPage.shop) {
       return current == AppPage.shop || current == AppPage.orders;
     }
     if (tab == AppPage.account) {
-      return current == AppPage.account ||
-          current == AppPage.invite ||
-          current == AppPage.settings ||
-          current == AppPage.tickets;
+      return current == AppPage.account || current == AppPage.invite || current == AppPage.settings || current == AppPage.tickets;
     }
     return current == tab;
   }
 }
 
 class _MobileNavButton extends StatelessWidget {
-  const _MobileNavButton({
-    required this.item,
-    required this.selected,
-    required this.onTap,
-  });
+  const _MobileNavButton({required this.item, required this.selected, required this.onTap});
 
   final _MobileNavItem item;
   final bool selected;
@@ -158,22 +138,13 @@ class _MobileNavButton extends StatelessWidget {
       child: Container(
         height: 48,
         margin: const EdgeInsets.symmetric(horizontal: 3),
-        decoration: BoxDecoration(
-          color: selected ? c.primarySoft : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
+        decoration: BoxDecoration(color: selected ? c.primarySoft : Colors.transparent, borderRadius: BorderRadius.circular(AppRadius.md)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(item.icon, size: 18, color: color),
             const SizedBox(height: 3),
-            Text(
-              item.label,
-              style: AppTextStyles.caption.copyWith(
-                color: color,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
+            Text(item.label, style: AppTextStyles.caption.copyWith(color: color, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
           ],
         ),
       ),
