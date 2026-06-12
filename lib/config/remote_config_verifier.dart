@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 
+import 'remote_config_settings.dart';
+
 /// Verifies signed remote config files downloaded from OSS.
 ///
 /// Signed format:
@@ -16,16 +18,12 @@ import 'package:cryptography/cryptography.dart';
 /// The client verifies the exact payload bytes before decoding JSON, so signing
 /// is not affected by map key order or whitespace changes in the wrapper file.
 abstract final class RemoteConfigVerifier {
-  /// Replace this with your Ed25519 public key, encoded with base64url without
-  /// padding. Keep the private key offline and never commit it to the app.
-  static const String _publicKeyBase64Url = 'REPLACE_WITH_ED25519_PUBLIC_KEY';
-
   /// During rollout, unsigned legacy config is accepted when no public key is
   /// configured. After you upload signed config and set the public key, unsigned
   /// config will be rejected automatically.
   static bool get requiresSignature =>
-      _publicKeyBase64Url.isNotEmpty &&
-      !_publicKeyBase64Url.startsWith('REPLACE_WITH_');
+      RemoteConfigSettings.publicKeyBase64Url.isNotEmpty &&
+      !RemoteConfigSettings.publicKeyBase64Url.startsWith('REPLACE_WITH_');
 
   static Future<Map<String, dynamic>?> parseTrustedConfig(String body) async {
     final decoded = jsonDecode(body);
@@ -52,7 +50,9 @@ abstract final class RemoteConfigVerifier {
       final signatureB64 = wrapper['signature'] as String;
       final payloadBytes = _base64UrlDecode(payloadB64);
       final signatureBytes = _base64UrlDecode(signatureB64);
-      final publicKeyBytes = _base64UrlDecode(_publicKeyBase64Url);
+      final publicKeyBytes = _base64UrlDecode(
+        RemoteConfigSettings.publicKeyBase64Url,
+      );
 
       final algorithm = Ed25519();
       final publicKey = SimplePublicKey(
