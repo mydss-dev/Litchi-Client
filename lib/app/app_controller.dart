@@ -49,7 +49,7 @@ class AppController extends ChangeNotifier {
   // ── Navigation / auth state ───────────────────────────────────────────────
 
   bool _isAuthenticated = false;
-  bool _isInitializing = true;
+  bool _isInitializing = false;
   AppPage _page = AppPage.dashboard;
   AuthScreen _authScreen = AuthScreen.login;
 
@@ -250,39 +250,60 @@ class AppController extends ChangeNotifier {
     _apiClient.onSessionExpired = logout;
 
     final authData = await TokenStorage.getAuthData();
-    if (authData != null && authData.isNotEmpty) {
-      _apiClient.updateAuthData(authData);
-      try {
-        await _loadAllData();
-        _isAuthenticated = true;
-      } catch (e) {
-        if (_isNetworkError(e)) {
-          // Network unavailable at startup — token is likely still valid.
-          // Stay logged in and let the ErrorBanner guide the user to retry.
-          _isAuthenticated = true;
-          _dataLoadError = '网络连接失败，请检查网络后刷新';
-          // Restore cached nodes so the core can still start for latency tests.
-          final cached = await NodeCacheService.load();
-          if (cached.isNotEmpty) {
-            _nodes = cached;
-            _restoreLastNode();
-            unawaited(_startCoreInBackground(runLatencyTest: true));
-          }
-        } else {
-          await TokenStorage.clearAuthData();
-          _apiClient.updateAuthData(null);
-          _startupMessage = '登录已过期，请重新登录';
-        }
-      }
+    if (authData == null || authData.isEmpty) {
+      _isInitializing = false;
+      notifyListeners();
+      unawaited(_checkForUpdate());
+      return;
     }
 
+    _apiClient.updateAuthData(authData);
+
+    final cached = await NodeCacheService.load();
+    if (cached.isNotEmpty) {
+      _nodes = cached;
+      _restoreLastNode();
+      unawaited(_startCoreInBackground(runLatencyTest: true));
+    }
+
+    // Saved token auto-login should never block the UI. Enter the main shell
+    // first, then validate / refresh server data in the background.
+    _isAuthenticated = true;
     _isInitializing = false;
     notifyListeners();
 
-    if (_isAuthenticated && _settings.wasConnected) {
+    if (_settings.wasConnected) {
       unawaited(toggleConnection().then((_) {}));
     }
+
+    unawaited(_refreshAfterAutoLogin());
     unawaited(_checkForUpdate());
+  }
+
+  Future<void> _refreshAfterAutoLogin() async {
+    try {
+      await _loadAllData();
+      _dataLoadError = null;
+      if (!_disposed) notifyListeners();
+    } catch (e) {
+      if (_isNetworkError(e)) {
+        _dataLoadError = _nodes.isNotEmpty
+            ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
+            : '当前无法连接服务器，且暂无本地节点缓存，请检查网络或联系客服。';
+        if (!_disposed) notifyListeners();
+        return;
+      }
+
+      await TokenStorage.clearAuthData();
+      _apiClient.updateAuthData(null);
+      _isAuthenticated = false;
+      _authScreen = AuthScreen.login;
+      _startupMessage = '登录已过期，请重新登录';
+      _nodes = const [];
+      _currentNode = const NodeModel(id: '', name: '', flag: '', latency: 0);
+      _autoSelected = false;
+      if (!_disposed) notifyListeners();
+    }
   }
 
   static bool _isNetworkError(Object e) {
@@ -383,6 +404,7 @@ class AppController extends ChangeNotifier {
     _apiClient.updateAuthData(authData);
     await _loadAllData();
     _isAuthenticated = true;
+    _dataLoadError = null;
     _page = AppPage.dashboard;
     notifyListeners();
   }
@@ -470,7 +492,22 @@ class AppController extends ChangeNotifier {
   Future<void> refreshData() async {
     _dataLoadError = null;
     notifyListeners();
-    await _loadAllData();
+    try {
+      await _loadAllData();
+      _dataLoadError = null;
+    } catch (e) {
+      if (_isNetworkError(e)) {
+        _dataLoadError = _nodes.isNotEmpty
+            ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
+            : '当前无法连接服务器，且暂无本地节点缓存，请检查网络或联系客服。';
+      } else {
+        await TokenStorage.clearAuthData();
+        _apiClient.updateAuthData(null);
+        _isAuthenticated = false;
+        _authScreen = AuthScreen.login;
+        _startupMessage = '登录已过期，请重新登录';
+      }
+    }
     notifyListeners();
   }
 
