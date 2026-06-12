@@ -57,8 +57,17 @@ class CoreController extends ChangeNotifier {
   /// Kills any orphaned sing-box process and clears a stale system proxy
   /// before subscribing to the core state stream.
   Future<void> init() async {
-    await CoreManager.cleanupOnStartup();
-    await ProxySetter.disableIfStale();
+    if (_sub != null || _logSub != null) return;
+
+    // If callers started the core before init() finished, do not run startup
+    // cleanup because it would kill the freshly spawned process through the
+    // PID file. This makes the lifecycle tolerant while AppController ordering
+    // is being kept backward-compatible.
+    if (!_core.isRunning) {
+      await CoreManager.cleanupOnStartup();
+      await ProxySetter.disableIfStale();
+    }
+
     _sub = _core.stateStream.listen(_onCoreStateChanged);
     _logSub = _core.logStream.listen((line) {
       final ts = DateTime.now().toLocal().toString().substring(11, 19);
@@ -129,6 +138,67 @@ class CoreController extends ChangeNotifier {
     } catch (_) {
       // Background start failure is non-fatal; user can still connect manually.
     }
+  }
+
+  /// Rebuilds the sing-box config and restarts the core when it is already
+  /// running. If the user was connected, it reconnects with the new config;
+  /// otherwise it keeps the core alive in background mode for latency testing.
+  Future<String?> reloadCore({
+    required List<NodeModel> nodes,
+    required NodeModel currentNode,
+    required ProxyMode proxyMode,
+    required String dnsMode,
+    required int proxyPort,
+    NetworkMode networkMode = NetworkMode.system,
+  }) async {
+    if (coreConnecting) return null;
+
+    final wasConnected = _status == ConnectionStatus.connected;
+    final hadProcess = _core.isRunning;
+    if (!hadProcess) {
+      await startCoreOnly(
+        nodes: nodes,
+        currentNode: currentNode,
+        proxyMode: proxyMode,
+        dnsMode: dnsMode,
+        proxyPort: proxyPort,
+      );
+      return null;
+    }
+
+    _status = wasConnected
+        ? ConnectionStatus.disconnecting
+        : ConnectionStatus.disconnected;
+    notifyListeners();
+    _stopTrafficMonitor();
+    try {
+      await ProxySetter.disable(notify: false);
+    } catch (_) {}
+    await _core.stop();
+    _connectedAt = null;
+    _coreError = '';
+    _status = ConnectionStatus.disconnected;
+    notifyListeners();
+
+    if (wasConnected) {
+      return toggleConnection(
+        nodes: nodes,
+        currentNode: currentNode,
+        proxyMode: proxyMode,
+        dnsMode: dnsMode,
+        proxyPort: proxyPort,
+        networkMode: networkMode,
+      );
+    }
+
+    await startCoreOnly(
+      nodes: nodes,
+      currentNode: currentNode,
+      proxyMode: proxyMode,
+      dnsMode: dnsMode,
+      proxyPort: proxyPort,
+    );
+    return null;
   }
 
   /// Toggles proxy on/off. When the sing-box process is already running
@@ -410,4 +480,3 @@ class CoreController extends ChangeNotifier {
     }
   }
 }
-
