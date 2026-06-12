@@ -24,6 +24,8 @@ import '../shared/widgets/update_banner.dart';
 import 'app_controller.dart';
 import 'app_window_bar.dart';
 
+bool get _isDesktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+
 /// Root window shell. The whole app is clipped to an 18px rounded rectangle on
 /// a transparent window background, with a 1px border and outer shadow. Corners
 /// go square while maximized.
@@ -47,9 +49,11 @@ class _AppShellState extends State<AppShell>
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
-    unawaited(windowManager.setPreventClose(true));
-    _sync();
+    if (_isDesktop) {
+      windowManager.addListener(this);
+      unawaited(windowManager.setPreventClose(true));
+      _sync();
+    }
   }
 
   @override
@@ -58,7 +62,7 @@ class _AppShellState extends State<AppShell>
     final ctrl = AppScope.of(context);
     _ctrl = ctrl;
 
-    final shouldHaveTray = ctrl.isAuthenticated;
+    final shouldHaveTray = _isDesktop && ctrl.isAuthenticated;
     if (shouldHaveTray && !_trayActive) {
       _trayActive = true;
       unawaited(_initTray());
@@ -101,7 +105,9 @@ class _AppShellState extends State<AppShell>
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    if (_isDesktop) {
+      windowManager.removeListener(this);
+    }
     if (_trayActive) {
       trayManager.removeListener(this);
       unawaited(trayManager.destroy());
@@ -110,6 +116,7 @@ class _AppShellState extends State<AppShell>
   }
 
   Future<void> _sync() async {
+    if (!_isDesktop) return;
     final m = await windowManager.isMaximized();
     if (mounted) setState(() => _maximized = m);
   }
@@ -117,6 +124,7 @@ class _AppShellState extends State<AppShell>
   // ── Tray ─────────────────────────────────────────────────────────────────
 
   Future<void> _initTray() async {
+    if (!_isDesktop) return;
     await trayManager.setIcon('assets/images/tray_icon.ico');
     await _updateTrayTooltip();
     await trayManager.setContextMenu(Menu(
@@ -130,6 +138,7 @@ class _AppShellState extends State<AppShell>
   }
 
   Future<void> _updateTrayTooltip() async {
+    if (!_isDesktop) return;
     final ctrl = _ctrl;
     if (ctrl == null) return;
     final status = ctrl.coreRunning ? '已连接' : '未连接';
@@ -137,11 +146,13 @@ class _AppShellState extends State<AppShell>
   }
 
   Future<void> _destroyTray() async {
+    if (!_isDesktop) return;
     trayManager.removeListener(this);
     await trayManager.destroy();
   }
 
   Future<void> _toggleWindow() async {
+    if (!_isDesktop) return;
     if (await windowManager.isVisible()) {
       await windowManager.hide();
     } else {
@@ -170,14 +181,18 @@ class _AppShellState extends State<AppShell>
   void onTrayIconMouseDown() => unawaited(_toggleWindow());
 
   @override
-  void onTrayIconRightMouseDown() => unawaited(trayManager.popUpContextMenu());
+  void onTrayIconRightMouseDown() {
+    if (_isDesktop) unawaited(trayManager.popUpContextMenu());
+  }
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
       case 'show':
-        unawaited(windowManager.show());
-        unawaited(windowManager.focus());
+        if (_isDesktop) {
+          unawaited(windowManager.show());
+          unawaited(windowManager.focus());
+        }
       case 'quit':
         unawaited(_quit());
     }
@@ -196,6 +211,7 @@ class _AppShellState extends State<AppShell>
   /// - Logged out → full exit
   @override
   Future<void> onWindowClose() async {
+    if (!_isDesktop) return;
     if (_ctrl?.isAuthenticated == true) {
       await windowManager.hide();
     } else {
@@ -209,7 +225,7 @@ class _AppShellState extends State<AppShell>
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final controller = AppScope.of(context);
-    final radius = _maximized ? 0.0 : _radius;
+    final radius = _isDesktop && !_maximized ? _radius : 0.0;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
@@ -218,7 +234,7 @@ class _AppShellState extends State<AppShell>
         decoration: BoxDecoration(
           color: c.appBg,
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: _maximized ? null : AppShadows.window,
+          boxShadow: _isDesktop && !_maximized ? AppShadows.window : null,
         ),
         child: controller.isAuthenticated
             ? const _MainShell()
@@ -243,11 +259,11 @@ class _MainShell extends StatelessWidget {
         Expanded(
           child: Column(
             children: [
-              const WindowControlsBar(),
+              if (_isDesktop) const WindowControlsBar(),
               Expanded(
                 child: Container(
                   color: c.appBg,
-                  padding: const EdgeInsets.fromLTRB(24, 2, 24, 24),
+                  padding: EdgeInsets.fromLTRB(24, _isDesktop ? 2 : 24, 24, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -303,10 +319,11 @@ class _AuthShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Stack(
+    return Stack(
       children: [
-        Positioned.fill(child: AuthFlow()),
-        Positioned(top: 0, left: 0, right: 0, child: WindowControlsBar()),
+        const Positioned.fill(child: AuthFlow()),
+        if (_isDesktop)
+          const Positioned(top: 0, left: 0, right: 0, child: WindowControlsBar()),
       ],
     );
   }
