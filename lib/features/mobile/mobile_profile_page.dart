@@ -20,7 +20,7 @@ class MobileProfilePage extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text('我的', style: AppTextStyles.h1.copyWith(fontSize: 26))),
+            Expanded(child: Text('我的', style: AppTextStyles.pageTitle.copyWith(fontSize: 26))),
             GestureDetector(
               onTap: ctrl.refreshData,
               child: Container(
