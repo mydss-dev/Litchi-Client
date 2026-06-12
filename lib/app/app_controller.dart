@@ -62,9 +62,23 @@ class AppController extends ChangeNotifier {
   // ── Data (mock defaults until API populates) ──────────────────────────────
 
   String _subscribeUrl = '';
-  UserModel _user = const UserModel(name: '', plan: '', avatarLetter: '', expiry: '');
-  TrafficModel _traffic = const TrafficModel(totalGb: 0, usedGb: 0, remainGb: 0);
-  NodeModel _currentNode = const NodeModel(id: '', name: '', flag: '', latency: 0);
+  UserModel _user = const UserModel(
+    name: '',
+    plan: '',
+    avatarLetter: '',
+    expiry: '',
+  );
+  TrafficModel _traffic = const TrafficModel(
+    totalGb: 0,
+    usedGb: 0,
+    remainGb: 0,
+  );
+  NodeModel _currentNode = const NodeModel(
+    id: '',
+    name: '',
+    flag: '',
+    latency: 0,
+  );
   List<NodeModel> _nodes = const [];
   List<PlanModel> _plans = const [];
   bool _autoSelected = false;
@@ -102,19 +116,43 @@ class AppController extends ChangeNotifier {
 
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
-  Future<void> setProxyPort(int port) => _settings.setProxyPort(port);
+
+  Future<void> setProxyPort(int port) async {
+    final old = _settings.proxyPort;
+    await _settings.setProxyPort(port);
+    if (_settings.proxyPort != old) {
+      unawaited(_reloadCoreConfig());
+    }
+  }
+
   void setAutoStart(bool v) => _settings.setAutoStart(v);
   void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
   void setDevMode(bool v) => _settings.setDevMode(v);
   void setLanguage(String v) => _settings.setLanguage(v);
+
   void setProxyMode(ProxyMode v) {
+    final old = _settings.proxyMode;
     _settings.setProxyMode(v);
-    if (_core.isRunning) unawaited(_core.setMode(v));
+    if (_settings.proxyMode != old && _core.coreProcessRunning) {
+      unawaited(_core.setMode(v));
+    }
   }
 
-  void setNetworkMode(NetworkMode v) => _settings.setNetworkMode(v);
+  void setNetworkMode(NetworkMode v) {
+    final old = _settings.networkMode;
+    _settings.setNetworkMode(v);
+    if (_settings.networkMode != old) {
+      unawaited(_reloadCoreConfig());
+    }
+  }
 
-  void setDnsMode(String v) => _settings.setDnsMode(v);
+  void setDnsMode(String v) {
+    final old = _settings.dnsMode;
+    _settings.setDnsMode(v);
+    if (_settings.dnsMode != old) {
+      unawaited(_reloadCoreConfig());
+    }
+  }
 
   // ── Core delegates ─────────────────────────────────────────────────────────
 
@@ -184,10 +222,12 @@ class AppController extends ChangeNotifier {
   void clearStartupMessage() => _startupMessage = null;
   PanelApi get api => _api;
   UpdateInfo? get updateInfo => _updateInfo;
+
   void dismissUpdate() {
     _updateInfo = null;
     notifyListeners();
   }
+
   List<NoticeModel> get notices => _notices;
   bool get hasUnreadNotice =>
       _notices.isNotEmpty && _notices.first.id > _lastSeenNoticeId;
@@ -204,6 +244,7 @@ class AppController extends ChangeNotifier {
   Future<void> init() async {
     await _settings.load();
     _lastSeenNoticeId = await SettingsService.loadLastSeenNoticeId();
+    await _core.init();
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;
@@ -235,12 +276,11 @@ class AppController extends ChangeNotifier {
       }
     }
 
-    await _core.init();
     _isInitializing = false;
     notifyListeners();
 
     if (_isAuthenticated && _settings.wasConnected) {
-      unawaited(toggleConnection());
+      unawaited(toggleConnection().then((_) {}));
     }
     unawaited(_checkForUpdate());
   }
@@ -380,13 +420,13 @@ class AppController extends ChangeNotifier {
   // ── Connection ────────────────────────────────────────────────────────────
 
   Future<String?> toggleConnection() => _core.toggleConnection(
-    nodes: _nodes,
-    currentNode: currentNode,
-    proxyMode: _settings.proxyMode,
-    dnsMode: _settings.dnsMode,
-    proxyPort: _settings.proxyPort,
-    networkMode: _settings.networkMode,
-  );
+        nodes: _nodes,
+        currentNode: currentNode,
+        proxyMode: _settings.proxyMode,
+        dnsMode: _settings.dnsMode,
+        proxyPort: _settings.proxyPort,
+        networkMode: _settings.networkMode,
+      );
 
   /// Checks whether the current process is running with elevated (admin) privileges.
   /// Returns true on non-Windows platforms (no-op).
@@ -411,8 +451,12 @@ class AppController extends ChangeNotifier {
     final snap = await _dataLoader.loadAll();
     _applySnapshot(snap);
     // Non-critical extras — must never abort node restore / core startup.
-    try { _currencySymbol = await _api.getCommCurrencySymbol(); } catch (_) {}
-    try { _notices = await _api.getNotices(); } catch (_) {}
+    try {
+      _currencySymbol = await _api.getCommCurrencySymbol();
+    } catch (_) {}
+    try {
+      _notices = await _api.getNotices();
+    } catch (_) {}
     if (_nodes.isNotEmpty) {
       unawaited(_saveNodeCache(_nodes));
       _restoreLastNode();
@@ -435,8 +479,8 @@ class AppController extends ChangeNotifier {
       _nodes = snap.nodes!;
       _restoreLastNode();
       if (snap.traffic != null) _traffic = snap.traffic!;
-      // Restart core with updated node list, then test latency.
-      unawaited(_startCoreInBackground());
+      unawaited(_saveNodeCache(_nodes));
+      await _reloadCoreConfig(startIfStopped: true);
     }
     notifyListeners();
   }
@@ -492,7 +536,7 @@ class AppController extends ChangeNotifier {
     _currentNode = node;
     _settings.setLastNodeId(node.id);
     notifyListeners();
-    if (_core.isRunning) {
+    if (_core.coreProcessRunning) {
       final ok = await _core.switchNode(node);
       if (!ok) return '节点切换失败，核心未响应，请重试';
     }
@@ -503,7 +547,7 @@ class AppController extends ChangeNotifier {
     _autoSelected = true;
     _settings.setLastNodeId('');
     notifyListeners();
-    if (_core.isRunning) {
+    if (_core.coreProcessRunning) {
       // Hand off to sing-box's urltest outbound — it picks the fastest node
       // automatically based on real proxy latency, no Flutter involvement.
       await _core.switchToAuto();
@@ -530,6 +574,30 @@ class AppController extends ChangeNotifier {
     );
     if (_core.coreProcessRunning) {
       // Small delay to let the Clash API initialise before testing.
+      await Future.delayed(const Duration(milliseconds: 800));
+      unawaited(testLatencies());
+    }
+  }
+
+  Future<void> _reloadCoreConfig({bool startIfStopped = false}) async {
+    if (_nodes.isEmpty) return;
+    if (!startIfStopped && !_core.coreProcessRunning) return;
+
+    final error = await _core.reloadCore(
+      nodes: _nodes,
+      currentNode: currentNode,
+      proxyMode: _settings.proxyMode,
+      dnsMode: _settings.dnsMode,
+      proxyPort: _settings.proxyPort,
+      networkMode: _settings.networkMode,
+    );
+    if (error != null && error.isNotEmpty) {
+      _startupMessage = error;
+      notifyListeners();
+      return;
+    }
+
+    if (_core.coreProcessRunning) {
       await Future.delayed(const Duration(milliseconds: 800));
       unawaited(testLatencies());
     }
@@ -576,7 +644,9 @@ class AppController extends ChangeNotifier {
       final file = File(_nodeCachePath);
       await file.parent.create(recursive: true);
       await file.writeAsString(
-        jsonEncode(nodes.where((n) => !n.isAuto).map((n) => n.toJson()).toList()),
+        jsonEncode(
+          nodes.where((n) => !n.isAuto).map((n) => n.toJson()).toList(),
+        ),
       );
     } catch (_) {}
   }
@@ -586,7 +656,9 @@ class AppController extends ChangeNotifier {
       final file = File(_nodeCachePath);
       if (!file.existsSync()) return [];
       final list = jsonDecode(await file.readAsString()) as List;
-      return list.map((e) => NodeModel.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((e) => NodeModel.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (_) {
       return [];
     }
