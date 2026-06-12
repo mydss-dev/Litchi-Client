@@ -18,7 +18,7 @@ class MobileShopPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('套餐', style: AppTextStyles.h1.copyWith(fontSize: 26)),
+        Text('套餐', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
         const SizedBox(height: 3),
         Text(
           '选择适合你的订阅计划',
