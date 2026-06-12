@@ -168,7 +168,11 @@ class _NodesPageState extends State<NodesPage> {
                         AppToast.show(context, error, type: AppToastType.error);
                       } else {
                         // ignore: use_build_context_synchronously
-                        AppToast.show(context, '已切换至 ${n.name}', type: AppToastType.success);
+                        AppToast.show(
+                          context,
+                          '已切换至 ${n.name}',
+                          type: AppToastType.success,
+                        );
                       }
                     },
                     onToggleFavorite: () => _toggleFavorite(n.id),
@@ -363,12 +367,10 @@ class _RefreshButtonState extends State<_RefreshButton>
     if (_loading) return;
     setState(() => _loading = true);
     unawaited(_spin.repeat());
-    AppToast.show(context, '正在刷新节点并测速…', type: AppToastType.info);
     await widget.ctrl.refreshNodes();
     if (mounted) {
       _spin.stop();
       setState(() => _loading = false);
-      AppToast.show(context, '节点已更新，测速进行中', type: AppToastType.success);
     }
   }
 
