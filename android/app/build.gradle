@@ -52,18 +52,16 @@ tasks.register("ensureOfficialLibbox") {
             if (!psScript.exists()) {
                 throw new GradleException("Missing libbox build script: ${psScript}")
             }
-            project.exec {
-                executable "powershell"
-                args "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
-            }
+            providers.exec {
+                commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
+            }.result.get().assertNormalExitValue()
         } else {
             if (!shScript.exists()) {
                 throw new GradleException("Missing libbox build script: ${shScript}")
             }
-            project.exec {
-                executable "bash"
-                args shScript.absolutePath
-            }
+            providers.exec {
+                commandLine "bash", shScript.absolutePath
+            }.result.get().assertNormalExitValue()
         }
         if (!aar.exists()) {
             throw new GradleException("Official libbox.aar was not generated")
