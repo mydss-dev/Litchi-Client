@@ -52,7 +52,7 @@ tasks.register("ensureOfficialLibbox") {
             if (!psScript.exists()) {
                 throw new GradleException("Missing libbox build script: ${psScript}")
             }
-            exec {
+            project.exec {
                 executable "powershell"
                 args "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
             }
@@ -60,7 +60,7 @@ tasks.register("ensureOfficialLibbox") {
             if (!shScript.exists()) {
                 throw new GradleException("Missing libbox build script: ${shScript}")
             }
-            exec {
+            project.exec {
                 executable "bash"
                 args shScript.absolutePath
             }
