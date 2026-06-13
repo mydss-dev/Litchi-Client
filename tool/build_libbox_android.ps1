@@ -1,5 +1,5 @@
 param(
-  [string]$Ref = "main",
+  [string]$Ref = "testing",
   [string]$WorkDir = "$PSScriptRoot\..\build\sing-box-src"
 )
 

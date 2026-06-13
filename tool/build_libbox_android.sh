@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REF="${1:-main}"
+REF="${1:-testing}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORK_DIR="${LIBBOX_WORK_DIR:-$ROOT/build/sing-box-src}"

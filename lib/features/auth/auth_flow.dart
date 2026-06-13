@@ -116,13 +116,9 @@ class _CompactAuthArea extends StatelessWidget {
 /// White right-hand area that vertically centers the form and caps its width
 /// so inputs stay a comfortable size on the wide full-bleed panel.
 class _FormArea extends StatelessWidget {
-  const _FormArea({
-    required this.child,
-    this.padding = EdgeInsets.zero,
-  });
+  const _FormArea({required this.child});
 
   final Widget child;
-  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +128,6 @@ class _FormArea extends StatelessWidget {
       alignment: Alignment.center,
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: padding,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 460),
             child: child,
