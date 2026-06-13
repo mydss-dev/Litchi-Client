@@ -36,7 +36,7 @@ class MobileShopPage extends StatelessWidget {
               : ListView.separated(
                   padding: EdgeInsets.zero,
                   itemCount: ctrl.plans.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) =>
                       _PlanCard(plan: ctrl.plans[index]),
                 ),
@@ -54,7 +54,11 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final price = plan.monthlyPrice ?? plan.oneTimePrice ?? plan.quarterlyPrice ?? plan.yearlyPrice;
+    final price =
+        plan.monthlyPrice ??
+        plan.oneTimePrice ??
+        plan.quarterlyPrice ??
+        plan.yearlyPrice;
     final priceLabel = price == null ? '--' : '¥${price.toStringAsFixed(2)}';
     final subtitle = plan.features.isEmpty
         ? plan.capacity
