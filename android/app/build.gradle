@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId "com.litchi.client"
-        minSdk 23
+        minSdkVersion 23
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode
         versionName flutter.versionName
@@ -36,4 +36,45 @@ android {
 
 flutter {
     source "../.."
+}
+
+tasks.register("ensureOfficialLibbox") {
+    def aar = file("libs/libbox.aar")
+    def psScript = file("../../tool/build_libbox_android.ps1")
+    def shScript = file("../../tool/build_libbox_android.sh")
+    outputs.file(aar)
+    doLast {
+        if (aar.exists()) {
+            logger.lifecycle("Using existing official libbox: ${aar}")
+            return
+        }
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            if (!psScript.exists()) {
+                throw new GradleException("Missing libbox build script: ${psScript}")
+            }
+            exec {
+                executable "powershell"
+                args "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
+            }
+        } else {
+            if (!shScript.exists()) {
+                throw new GradleException("Missing libbox build script: ${shScript}")
+            }
+            exec {
+                executable "bash"
+                args shScript.absolutePath
+            }
+        }
+        if (!aar.exists()) {
+            throw new GradleException("Official libbox.aar was not generated")
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn("ensureOfficialLibbox")
+}
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar", "*.aar"])
 }

@@ -260,6 +260,9 @@ abstract final class SingboxConfig {
 
   // ── File I/O ───────────────────────────────────────────────────────────────
 
+  static String encodeConfig(Map<String, dynamic> config) =>
+      const JsonEncoder.withIndent('  ').convert(config);
+
   static Future<String> writeConfig(Map<String, dynamic> config) async {
     final base = Platform.environment['LOCALAPPDATA'] ??
         Platform.environment['APPDATA'] ??
@@ -267,9 +270,7 @@ abstract final class SingboxConfig {
     final dir = Directory('$base\\Litchi');
     await dir.create(recursive: true);
     final file = File('${dir.path}\\core.json');
-    await file.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(config),
-    );
+    await file.writeAsString(encodeConfig(config));
     return file.path;
   }
 }

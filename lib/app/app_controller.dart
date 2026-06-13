@@ -133,7 +133,10 @@ class AppController extends ChangeNotifier {
   void setProxyMode(ProxyMode v) {
     final old = _settings.proxyMode;
     _settings.setProxyMode(v);
-    if (_settings.proxyMode != old && _core.coreProcessRunning) {
+    if (_settings.proxyMode == old) return;
+    if (Platform.isAndroid && coreRunning) {
+      unawaited(_reloadCoreConfig());
+    } else if (_core.coreProcessRunning) {
       unawaited(_core.setMode(v));
     }
   }
@@ -169,6 +172,7 @@ class AppController extends ChangeNotifier {
   Duration get connectedDuration => _core.connectedDuration;
 
   bool get coreProcessRunning => _core.coreProcessRunning;
+  bool get supportsCoreConnection => Platform.isWindows || Platform.isAndroid;
 
   /// Graceful shutdown: kills core + disables system proxy. Call before exit.
   Future<void> shutdown() => _core.shutdown();
@@ -263,7 +267,9 @@ class AppController extends ChangeNotifier {
     if (cached.isNotEmpty) {
       _nodes = cached;
       _restoreLastNode();
-      unawaited(_startCoreInBackground(runLatencyTest: true));
+      if (supportsCoreConnection) {
+        unawaited(_startCoreInBackground(runLatencyTest: true));
+      }
     }
 
     // Saved token auto-login should never block the UI. Enter the main shell
@@ -272,7 +278,7 @@ class AppController extends ChangeNotifier {
     _isInitializing = false;
     notifyListeners();
 
-    if (_settings.wasConnected) {
+    if (supportsCoreConnection && _settings.wasConnected) {
       unawaited(toggleConnection().then((_) {}));
     }
 
@@ -442,14 +448,21 @@ class AppController extends ChangeNotifier {
 
   // ── Connection ────────────────────────────────────────────────────────────
 
-  Future<String?> toggleConnection() => _core.toggleConnection(
-        nodes: _nodes,
-        currentNode: currentNode,
-        proxyMode: _settings.proxyMode,
-        dnsMode: _settings.dnsMode,
-        proxyPort: _settings.proxyPort,
-        networkMode: _settings.networkMode,
+  Future<String?> toggleConnection() {
+    if (!supportsCoreConnection) {
+      return Future.value(
+        '当前平台暂未接入核心连接',
       );
+    }
+    return _core.toggleConnection(
+      nodes: _nodes,
+      currentNode: currentNode,
+      proxyMode: _settings.proxyMode,
+      dnsMode: _settings.dnsMode,
+      proxyPort: _settings.proxyPort,
+      networkMode: _settings.networkMode,
+    );
+  }
 
   /// Checks whether the current process is running with elevated (admin) privileges.
   /// Returns true on non-Windows platforms (no-op).
@@ -483,8 +496,10 @@ class AppController extends ChangeNotifier {
     if (_nodes.isNotEmpty) {
       unawaited(NodeCacheService.save(_nodes));
       _restoreLastNode();
-      // Start core in background so latency testing works before user connects.
-      unawaited(_startCoreInBackground(runLatencyTest: true));
+      if (supportsCoreConnection) {
+        // Start core in background so latency testing works before user connects.
+        unawaited(_startCoreInBackground(runLatencyTest: true));
+      }
     }
   }
 
@@ -518,7 +533,9 @@ class AppController extends ChangeNotifier {
       _restoreLastNode();
       if (snap.traffic != null) _traffic = snap.traffic!;
       unawaited(NodeCacheService.save(_nodes));
-      await _reloadCoreConfig(startIfStopped: true);
+      if (supportsCoreConnection) {
+        await _reloadCoreConfig(startIfStopped: true);
+      }
     }
     notifyListeners();
   }
@@ -574,7 +591,11 @@ class AppController extends ChangeNotifier {
     _currentNode = node;
     _settings.setLastNodeId(node.id);
     notifyListeners();
-    if (_core.coreProcessRunning) {
+    if (Platform.isAndroid && coreRunning) {
+      await _reloadCoreConfig();
+      return null;
+    }
+    if (supportsCoreConnection && _core.coreProcessRunning) {
       final ok = await _core.switchNode(node);
       if (!ok) return '节点切换失败，核心未响应，请重试';
     }
@@ -585,7 +606,11 @@ class AppController extends ChangeNotifier {
     _autoSelected = true;
     _settings.setLastNodeId('');
     notifyListeners();
-    if (_core.coreProcessRunning) {
+    if (Platform.isAndroid && coreRunning) {
+      await _reloadCoreConfig();
+      return;
+    }
+    if (supportsCoreConnection && _core.coreProcessRunning) {
       // Hand off to sing-box's urltest outbound — it picks the fastest node
       // automatically based on real proxy latency, no Flutter involvement.
       await _core.switchToAuto();
@@ -603,6 +628,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _startCoreInBackground({bool runLatencyTest = false}) async {
+    if (!supportsCoreConnection) return;
     await _core.startCoreOnly(
       nodes: _nodes,
       currentNode: currentNode,
@@ -618,8 +644,9 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _reloadCoreConfig({bool startIfStopped = false}) async {
+    if (!supportsCoreConnection) return;
     if (_nodes.isEmpty) return;
-    if (!startIfStopped && !_core.coreProcessRunning) return;
+    if (!startIfStopped && !coreProcessRunning) return;
 
     final error = await _core.reloadCore(
       nodes: _nodes,
@@ -635,7 +662,7 @@ class AppController extends ChangeNotifier {
       return;
     }
 
-    if (_core.coreProcessRunning) {
+    if (coreProcessRunning) {
       await Future.delayed(const Duration(milliseconds: 1000));
       unawaited(testLatencies());
     }
@@ -644,11 +671,13 @@ class AppController extends ChangeNotifier {
   /// Tests latencies for all nodes via the Clash API.
   /// Starts the sing-box process in background mode if needed.
   Future<void> testLatencies() async {
+    if (!supportsCoreConnection) return;
+    if (Platform.isAndroid) return;
     if (_nodes.isEmpty) return;
 
-    if (!_core.coreProcessRunning) {
+    if (!coreProcessRunning) {
       await _startCoreInBackground();
-      if (_core.coreProcessRunning) {
+      if (coreProcessRunning) {
         await Future.delayed(const Duration(milliseconds: 1000));
       }
     }
@@ -657,7 +686,7 @@ class AppController extends ChangeNotifier {
     _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
     notifyListeners();
 
-    if (!_core.coreProcessRunning) {
+    if (!coreProcessRunning) {
       _nodes = _nodes.map((n) => n.copyWith(latency: 9999)).toList();
       _startupMessage = '测速失败：核心未启动，请检查 sing-box.exe 是否存在';
       notifyListeners();
