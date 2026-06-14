@@ -163,7 +163,7 @@ class _NodesPageState extends State<NodesPage> {
                       setState(() => _selectedId = n.id);
                       final overlay = Overlay.of(context, rootOverlay: true);
                       final error = await ctrl.setCurrentNode(n);
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       if (error != null) {
                         AppToast.showInOverlay(
                           overlay,
