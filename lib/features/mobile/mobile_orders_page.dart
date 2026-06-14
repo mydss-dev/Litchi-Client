@@ -56,6 +56,12 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
     }
   }
 
+  Future<void> _handlePullRefresh() async {
+    await _load();
+    if (!mounted || _error != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
+  }
+
   Future<void> _payOrder(RemoteOrder order) async {
     if (_activeTradeNo != null) return;
     setState(() => _activeTradeNo = order.tradeNo);
@@ -105,7 +111,7 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: _handlePullRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
@@ -121,10 +127,6 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
                   '订单记录',
                   style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
                 ),
-              ),
-              IconButton(
-                onPressed: _load,
-                icon: Icon(LucideIcons.refreshCw, color: c.primary),
               ),
             ],
           ),

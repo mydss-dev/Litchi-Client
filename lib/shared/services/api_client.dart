@@ -109,7 +109,9 @@ class ApiClient {
     _dio!.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          if (_authData != null && _authData!.isNotEmpty) {
+          if (_authData != null &&
+              _authData!.isNotEmpty &&
+              !_isPublicAuthPath(options.path)) {
             options.headers['Authorization'] = _authData;
           }
           handler.next(options);
@@ -125,12 +127,21 @@ class ApiClient {
                 msg.contains('未登录') ||
                 msg.toLowerCase().contains('unauthorized') ||
                 msg.toLowerCase().contains('unauthenticated');
-            if (isExpired) onSessionExpired?.call();
+            if (isExpired && !_isPublicAuthPath(response.requestOptions.path)) {
+              onSessionExpired?.call();
+            }
           }
           handler.next(response);
         },
       ),
     );
+  }
+
+  static bool _isPublicAuthPath(String path) {
+    final uri = Uri.tryParse(path);
+    final normalized = uri?.path ?? path;
+    return normalized.startsWith('/guest/') ||
+        normalized.startsWith('/passport/');
   }
 
   Future<Map<String, dynamic>> get(

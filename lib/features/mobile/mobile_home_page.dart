@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
+import '../../shared/config/app_config.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -62,8 +63,11 @@ class _MobileHomePageState extends State<MobileHomePage> {
     }
   }
 
-  Future<void> _refresh() async {
-    await AppScope.of(context).refreshData();
+  Future<void> _handlePullRefresh() async {
+    final ctrl = AppScope.of(context);
+    await ctrl.refreshData();
+    if (!mounted || ctrl.dataLoadError != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
   }
 
   String _formatDuration(Duration d) {
@@ -79,7 +83,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
     final c = AppColors.of(context);
 
     return RefreshIndicator(
-      onRefresh: _refresh,
+      onRefresh: _handlePullRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
@@ -120,7 +124,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
             children: [
               Expanded(
                 child: _MetricCard(
-                  icon: LucideIcons.crown,
+                  icon: LucideIcons.package,
                   label: '当前套餐',
                   value: ctrl.user.plan.isEmpty ? '--' : ctrl.user.plan,
                   color: c.primary,
@@ -129,10 +133,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
               const SizedBox(width: 10),
               Expanded(
                 child: _MetricCard(
-                  icon: LucideIcons.activity,
+                  icon: LucideIcons.gauge,
                   label: '剩余流量',
                   value: '${ctrl.traffic.remainGb.toStringAsFixed(1)} GB',
-                  color: c.success,
+                  color: c.primary,
                 ),
               ),
             ],
@@ -159,7 +163,7 @@ class _MobileHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Litchi',
+                AppConfig.appName,
                 style: AppTextStyles.pageTitle.copyWith(
                   color: c.textPrimary,
                   fontSize: 28,
@@ -297,20 +301,21 @@ class _MobileConnectionCard extends StatelessWidget {
               fontSize: 20,
             ),
           ),
-          if (status == ConnectionStatus.connected) ...[
-            const SizedBox(height: 4),
-            Text(
-              elapsedLabel,
-              style: AppTextStyles.caption.copyWith(color: c.textMuted),
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 18,
+            child: Center(
+              child: Text(
+                status == ConnectionStatus.connected
+                    ? elapsedLabel
+                    : !supportsConnection
+                    ? '当前 Android 版本先提供登录、购买和节点查看'
+                    : '',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
             ),
-          ] else if (!supportsConnection) ...[
-            const SizedBox(height: 4),
-            Text(
-              '当前 Android 版本先提供登录、购买和节点查看',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.caption.copyWith(color: c.textMuted),
-            ),
-          ],
+          ),
           const SizedBox(height: 20),
           GestureDetector(
             onTap: onNodesTap,

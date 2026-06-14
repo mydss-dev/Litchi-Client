@@ -177,8 +177,9 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
     final ctrl = AppScope.of(context);
     await showAppBottomSheet<void>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => AppBottomSheet(
+      builder: (context) => AnimatedBuilder(
+        animation: ctrl,
+        builder: (context, _) => AppBottomSheet(
           title: '高级设置',
           subtitle: '一般不用改，连接异常或调试时再调整',
           children: [
@@ -187,10 +188,7 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
               title: '本地端口',
               subtitle: 'HTTP / SOCKS 混合入口',
               value: ctrl.proxyPort.toString(),
-              onTap: () async {
-                await _editPort(context);
-                setSheetState(() {});
-              },
+              onTap: () => _editPort(context),
             ),
             _Divider(color: AppColors.of(context).softBorder),
             _SwitchRow(
@@ -198,10 +196,7 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
               title: '开发者模式',
               subtitle: '显示调试与高级信息',
               value: ctrl.devMode,
-              onChanged: (value) {
-                ctrl.setDevMode(value);
-                setSheetState(() {});
-              },
+              onChanged: ctrl.setDevMode,
             ),
           ],
         ),
@@ -452,9 +447,7 @@ class _OptionRow extends StatelessWidget {
                       subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(
-                        color: c.textMuted,
-                      ),
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
                     ),
                   ],
                 ),

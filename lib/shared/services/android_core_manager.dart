@@ -27,7 +27,7 @@ class AndroidCoreManager {
   Future<bool> start(String configJson) async {
     final prepared = await prepareVpn();
     if (!prepared) {
-      _lastError = '未授予 VPN 权限';
+      _lastError = '需要允许 VPN 权限后才能连接，请重新点击连接并授权';
       return false;
     }
     final launched = await _invokeBool('start', {'config': configJson});
@@ -43,7 +43,7 @@ class AndroidCoreManager {
     }
 
     _lastError = await _invokeString('lastError');
-    if (_lastError.isEmpty) _lastError = 'Android 核心启动超时';
+    if (_lastError.isEmpty) _lastError = 'Android 核心启动超时，请稍后重试';
     await stop();
     return false;
   }

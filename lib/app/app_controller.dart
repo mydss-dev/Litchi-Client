@@ -7,9 +7,11 @@ import '../shared/config/app_config.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/api_client.dart';
+import '../shared/services/credentials_storage.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/node_cache_service.dart';
 import '../shared/services/panel_api.dart';
+import '../shared/services/register_config_cache.dart';
 import '../shared/services/settings_service.dart';
 import '../shared/services/token_storage.dart';
 import '../shared/services/update_service.dart';
@@ -108,6 +110,7 @@ class AppController extends ChangeNotifier {
   List<NoticeModel> _notices = [];
   int _lastSeenNoticeId = 0;
   UpdateInfo? _updateInfo;
+  RegisterConfig _registerConfig = const RegisterConfig();
   bool _disposed = false;
 
   // ── Settings delegates ────────────────────────────────────────────────────
@@ -242,6 +245,7 @@ class AppController extends ChangeNotifier {
   void clearStartupMessage() => _startupMessage = null;
   PanelApi get api => _api;
   UpdateInfo? get updateInfo => _updateInfo;
+  RegisterConfig get registerConfig => _registerConfig;
 
   void dismissUpdate() {
     _updateInfo = null;
@@ -268,9 +272,15 @@ class AppController extends ChangeNotifier {
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;
+    await _loadCachedRegisterConfig();
+    unawaited(refreshRegisterConfigCache());
 
     final authData = await TokenStorage.getAuthData();
     if (authData == null || authData.isEmpty) {
+      if (await _loginFromSavedCredentials()) {
+        unawaited(_checkForUpdate());
+        return;
+      }
       _isInitializing = false;
       notifyListeners();
       unawaited(_checkForUpdate());
@@ -302,6 +312,24 @@ class AppController extends ChangeNotifier {
     unawaited(_checkForUpdate());
   }
 
+  Future<void> _loadCachedRegisterConfig() async {
+    final cached = await RegisterConfigCache.load(AppConfig.apiBase);
+    if (cached == null) return;
+    _registerConfig = cached;
+  }
+
+  Future<void> refreshRegisterConfigCache() async {
+    try {
+      final config = await _api.fetchRegisterConfig();
+      await RegisterConfigCache.save(AppConfig.apiBase, config);
+      _registerConfig = config;
+      if (!_disposed) notifyListeners();
+    } catch (_) {
+      // Keep the cached/default registration config. The register API remains
+      // the final authority when the user submits the form.
+    }
+  }
+
   Future<void> _refreshAfterAutoLogin() async {
     try {
       await _loadAllData();
@@ -318,6 +346,9 @@ class AppController extends ChangeNotifier {
 
       await TokenStorage.clearAuthData();
       _apiClient.updateAuthData(null);
+      if (await _loginFromSavedCredentials()) {
+        return;
+      }
       _isAuthenticated = false;
       _authScreen = AuthScreen.login;
       _startupMessage = '登录已过期，请重新登录';
@@ -387,8 +418,13 @@ class AppController extends ChangeNotifier {
 
   // ── Auth ─────────────────────────────────────────────────────────────────
 
-  Future<void> loginWithCredentials(String email, String password) async {
+  Future<void> loginWithCredentials(
+    String email,
+    String password, {
+    Future<void> Function(String authData)? onAuthenticated,
+  }) async {
     final result = await _api.login(email, password);
+    await onAuthenticated?.call(result.authData);
     await _completeAuthentication(result.authData);
   }
 
@@ -426,15 +462,24 @@ class AppController extends ChangeNotifier {
     required bool remindTraffic,
     required bool autoRenewal,
   }) async {
+    final previous = _user;
+    _user = _user.copyWith(
+      remindExpire: remindExpire,
+      remindTraffic: remindTraffic,
+      autoRenewal: autoRenewal,
+    );
+    notifyListeners();
+
     try {
       await _api.updateUserSettings(
         remindExpire: remindExpire,
         remindTraffic: remindTraffic,
         autoRenewal: autoRenewal,
       );
-      await refreshData();
       return null;
     } catch (e) {
+      _user = previous;
+      notifyListeners();
       return e.toString().replaceFirst('ApiException: ', '');
     }
   }
@@ -447,6 +492,21 @@ class AppController extends ChangeNotifier {
     _dataLoadError = null;
     _page = AppPage.dashboard;
     notifyListeners();
+  }
+
+  Future<bool> _loginFromSavedCredentials() async {
+    final saved = await CredentialsStorage.load();
+    if (saved == null) return false;
+    try {
+      final result = await _api.login(saved.email, saved.password);
+      await _completeAuthentication(result.authData);
+      return true;
+    } catch (_) {
+      _startupMessage = '自动登录失败，请手动登录';
+      await TokenStorage.clearAuthData();
+      _apiClient.updateAuthData(null);
+      return false;
+    }
   }
 
   void logout() {
@@ -766,19 +826,21 @@ class AppController extends ChangeNotifier {
     return null;
   }
 
-  Future<void> selectAuto() async {
+  Future<String?> selectAuto() async {
     _autoSelected = true;
     _settings.setLastNodeId('');
     notifyListeners();
     if (Platform.isAndroid && coreRunning) {
       await _reloadCoreConfig();
-      return;
+      return null;
     }
     if (supportsCoreConnection && _core.coreProcessRunning) {
       // Hand off to sing-box's urltest outbound — it picks the fastest node
       // automatically based on real proxy latency, no Flutter involvement.
-      await _core.switchToAuto();
+      final ok = await _core.switchToAuto();
+      if (!ok) return '自动选择切换失败，核心未响应，请重试';
     }
+    return null;
   }
 
   // Used by _AutoCard to display the current best-latency node for reference.

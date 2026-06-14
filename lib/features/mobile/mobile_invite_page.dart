@@ -48,6 +48,13 @@ class _MobileInvitePageState extends State<MobileInvitePage> {
     );
   }
 
+  Future<void> _handlePullRefresh() async {
+    final ctrl = AppScope.of(context);
+    await ctrl.refreshData();
+    if (!mounted || ctrl.dataLoadError != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
@@ -72,7 +79,7 @@ class _MobileInvitePageState extends State<MobileInvitePage> {
     }
 
     return RefreshIndicator(
-      onRefresh: ctrl.refreshData,
+      onRefresh: _handlePullRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,

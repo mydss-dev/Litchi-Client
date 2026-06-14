@@ -25,6 +25,8 @@ class RemoteUser {
   final double transferEnable; // GB
   final double used; // bytes (upload + download combined)
   final int subscribeStatus; // 0=normal 1=expired 2=banned
+  final int? planId;
+  final String planName;
   final bool remindExpire;
   final bool remindTraffic;
   final bool autoRenewal;
@@ -37,6 +39,8 @@ class RemoteUser {
     required this.transferEnable,
     required this.used,
     required this.subscribeStatus,
+    this.planId,
+    this.planName = '',
     required this.remindExpire,
     required this.remindTraffic,
     required this.autoRenewal,
@@ -44,6 +48,8 @@ class RemoteUser {
 
   factory RemoteUser.fromJson(Map<String, dynamic> json) {
     final usedRaw = json['used'] ?? json['u'];
+    final planMap = _map(json['plan']);
+    final subscribeMap = _map(json['subscribe']);
     return RemoteUser(
       id: (json['id'] as num?)?.toInt() ?? 0,
       email: json['email']?.toString() ?? '',
@@ -52,10 +58,55 @@ class RemoteUser {
       transferEnable: (json['transfer_enable'] as num?)?.toDouble() ?? 0,
       used: (usedRaw as num?)?.toDouble() ?? 0,
       subscribeStatus: (json['subscribe_status'] as num?)?.toInt() ?? 0,
+      planId:
+          _int(json['plan_id']) ??
+          _int(json['planId']) ??
+          _int(json['current_plan_id']) ??
+          _int(json['currentPlanId']) ??
+          _int(planMap?['id']) ??
+          _int(json['plan']),
+      planName:
+          _firstString(json, [
+            'plan_name',
+            'planName',
+            'plan_title',
+            'planTitle',
+            'product_name',
+            'productName',
+          ]) ??
+          _firstString(planMap, ['name', 'title']) ??
+          _firstString(subscribeMap, [
+            'plan_name',
+            'planName',
+            'name',
+            'title',
+          ]) ??
+          '',
       remindExpire: _bool(json['remind_expire']),
       remindTraffic: _bool(json['remind_traffic']),
       autoRenewal: _bool(json['auto_renewal']),
     );
+  }
+
+  static int? _int(Object? value) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static Map<String, dynamic>? _map(Object? value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return null;
+  }
+
+  static String? _firstString(Map<String, dynamic>? json, List<String> keys) {
+    if (json == null) return null;
+    for (final key in keys) {
+      final value = json[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
   }
 
   static bool _bool(Object? value) {
@@ -73,7 +124,12 @@ class RemoteUser {
     return '${dt.year}-$m-$d';
   }
 
-  String get planLabel => subscribeStatus == 1 ? '已到期' : 'Premium';
+  String get planLabel {
+    final name = planName.trim();
+    if (name.isNotEmpty) return name;
+    if (subscribeStatus == 1) return '已到期';
+    return '';
+  }
 }
 
 class RemoteNode {

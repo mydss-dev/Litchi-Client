@@ -72,70 +72,64 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     final c = AppColors.of(context);
     final controller = AppScope.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('修改密码',
-              style: AppTextStyles.authTitle.copyWith(color: c.textPrimary)),
-          const SizedBox(height: 8),
-          Text('更新你的账户密码',
-              style:
-                  AppTextStyles.authSubtitle.copyWith(color: c.textSecondary)),
-          const SizedBox(height: 24),
-          AuthInput(
-            icon: LucideIcons.lock,
-            hintText: '请输入当前密码',
-            controller: _oldCtrl,
-            obscure: true,
-            showRevealToggle: true,
-            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-          ),
-          const SizedBox(height: 14),
-          AuthInput(
-            icon: LucideIcons.lock,
-            hintText: '请输入新密码',
-            controller: _newCtrl,
-            obscure: true,
-            showRevealToggle: true,
-            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-          ),
-          const SizedBox(height: 14),
-          AuthInput(
-            icon: LucideIcons.lock,
-            hintText: '请再次输入新密码',
-            controller: _confirmCtrl,
-            obscure: true,
-            showRevealToggle: true,
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Icon(LucideIcons.shieldCheck, size: 14, color: c.textSecondary),
-              const SizedBox(width: 6),
-              Text('建议使用 8 位以上字母、数字组合',
-                  style: AppTextStyles.caption
-                      .copyWith(color: c.textSecondary, fontSize: 12)),
-            ],
-          ),
-          const SizedBox(height: 24),
-          AuthPrimaryButton(
-            label: '保存修改',
-            isLoading: _loading,
-            onPressed: _submit,
-          ),
-          const SizedBox(height: 20),
-          Center(
-            child: AuthLinkText(
-              text: '返回登录',
-              onTap: () => controller.goToAuthScreen(AuthScreen.login),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        AuthInput(
+          icon: LucideIcons.lock,
+          hintText: '请输入当前密码',
+          controller: _oldCtrl,
+          obscure: true,
+          showRevealToggle: true,
+          onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+        ),
+        const SizedBox(height: 14),
+        AuthInput(
+          icon: LucideIcons.lock,
+          hintText: '请输入新密码',
+          controller: _newCtrl,
+          obscure: true,
+          showRevealToggle: true,
+          onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+        ),
+        const SizedBox(height: 14),
+        AuthInput(
+          icon: LucideIcons.lock,
+          hintText: '请再次输入新密码',
+          controller: _confirmCtrl,
+          obscure: true,
+          showRevealToggle: true,
+          onSubmitted: (_) => _submit(),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Icon(LucideIcons.shieldCheck, size: 14, color: c.textSecondary),
+            const SizedBox(width: 6),
+            Text(
+              '建议使用 8 位以上字母、数字组合',
+              style: AppTextStyles.caption.copyWith(
+                color: c.textSecondary,
+                fontSize: 12,
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        AuthPrimaryButton(
+          label: '保存修改',
+          isLoading: _loading,
+          onPressed: _submit,
+        ),
+        const SizedBox(height: 20),
+        Center(
+          child: AuthLinkText(
+            text: '返回登录',
+            onTap: () => controller.goToAuthScreen(AuthScreen.login),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

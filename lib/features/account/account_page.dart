@@ -1,15 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../shared/config/app_config.dart';
 import '../../shared/models/api_models.dart';
-import '../../shared/services/panel_api.dart';
 import '../../shared/theme/app_colors.dart';
-import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_badge.dart';
@@ -17,7 +12,6 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
-import '../shop/payment_dialog.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -54,20 +48,18 @@ class _AccountPageState extends State<AccountPage> {
       try {
         logs = await api.getLoginLogs();
       } catch (_) {}
-      if (mounted) {
-        setState(() {
-          _user = user;
-          _loginLogs = logs;
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _user = user;
+        _loginLogs = logs;
+        _loading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceFirst('ApiException: ', '');
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('ApiException: ', '');
+        _loading = false;
+      });
     }
   }
 
@@ -76,30 +68,17 @@ class _AccountPageState extends State<AccountPage> {
     AppToast.show(context, '$label 已复制', type: AppToastType.success);
   }
 
-  Future<void> _openRechargeDialog() async {
-    final ctrl = AppScope.of(context);
-    await showDialog<void>(
-      context: context,
-      builder: (_) => _RechargeDialog(
-        api: ctrl.api,
-        currencySymbol: ctrl.currencySymbol,
-      ),
-    );
-    unawaited(_load());
-  }
-
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: PageHeader(title: '我的账户', subtitle: '查看账户信息与订阅详情'),
               ),
-              if (!_loading) RefreshIconButton(onTap: _load),
             ],
           ),
           const SizedBox(height: 12),
@@ -112,7 +91,7 @@ class _AccountPageState extends State<AccountPage> {
               user: _user!,
               loginLogs: _loginLogs,
               onCopy: _copy,
-              onRecharge: _openRechargeDialog,
+              onNavigate: AppScope.of(context).goToPage,
             ),
         ],
       ),
@@ -125,22 +104,22 @@ class _AccountContent extends StatelessWidget {
     required this.user,
     required this.loginLogs,
     required this.onCopy,
-    required this.onRecharge,
+    required this.onNavigate,
   });
 
   final RemoteUser user;
   final List<RemoteLoginLog> loginLogs;
   final void Function(String text, String label) onCopy;
-  final VoidCallback onRecharge;
+  final ValueChanged<AppPage> onNavigate;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _AccountInfoCard(user: user, onCopy: onCopy, onRecharge: onRecharge),
+        _AccountInfoCard(user: user, onCopy: onCopy),
         const SizedBox(height: 14),
-        _SubscriptionCard(user: user),
+        _AccountShortcutGrid(onNavigate: onNavigate),
         const SizedBox(height: 14),
         _LoginRecordsCard(logs: loginLogs),
       ],
@@ -149,28 +128,19 @@ class _AccountContent extends StatelessWidget {
 }
 
 class _AccountInfoCard extends StatelessWidget {
-  const _AccountInfoCard({
-    required this.user,
-    required this.onCopy,
-    required this.onRecharge,
-  });
+  const _AccountInfoCard({required this.user, required this.onCopy});
 
   final RemoteUser user;
   final void Function(String, String) onCopy;
-  final VoidCallback onRecharge;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final currency = AppScope.of(context).currencySymbol;
-
     final (statusLabel, statusColor) = switch (user.subscribeStatus) {
       1 => ('已到期', c.danger),
       2 => ('已封禁', c.warning),
       _ => ('正常', c.success),
     };
-
-    final balanceYuan = user.balance / 100.0;
 
     return AppCard(
       radius: AppRadius.card,
@@ -195,12 +165,6 @@ class _AccountInfoCard extends StatelessWidget {
             trailing: _CopyButton(onTap: () => onCopy(user.email, '邮箱')),
           ),
           const SizedBox(height: 12),
-          _InfoRow(
-            label: '账户余额',
-            value: '$currency${balanceYuan.toStringAsFixed(2)}',
-            trailing: _RechargeButton(onTap: onRecharge),
-          ),
-          const SizedBox(height: 12),
           Row(
             children: [
               SizedBox(
@@ -219,83 +183,162 @@ class _AccountInfoCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _InfoRow(label: '到期时间', value: user.expiryDisplay),
         ],
       ),
     );
   }
 }
 
-class _SubscriptionCard extends StatelessWidget {
-  const _SubscriptionCard({required this.user});
+class _AccountShortcutGrid extends StatelessWidget {
+  const _AccountShortcutGrid({required this.onNavigate});
 
-  final RemoteUser user;
+  final ValueChanged<AppPage> onNavigate;
+
+  static const _items = [
+    _AccountShortcut(
+      page: AppPage.wallet,
+      icon: LucideIcons.walletCards,
+      title: '我的钱包',
+      subtitle: '余额与充值',
+    ),
+    _AccountShortcut(
+      page: AppPage.orders,
+      icon: LucideIcons.clipboardList,
+      title: '订单记录',
+      subtitle: '购买与支付',
+    ),
+    _AccountShortcut(
+      page: AppPage.traffic,
+      icon: LucideIcons.chartNoAxesColumnIncreasing,
+      title: '流量统计',
+      subtitle: '使用记录',
+    ),
+    _AccountShortcut(
+      page: AppPage.tickets,
+      icon: LucideIcons.messageSquare,
+      title: '工单支持',
+      subtitle: '联系售后',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 860
+            ? 4
+            : constraints.maxWidth >= 560
+            ? 2
+            : 1;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            mainAxisExtent: 88,
+          ),
+          itemCount: _items.length,
+          itemBuilder: (context, index) {
+            final item = _items[index];
+            return _AccountShortcutTile(
+              item: item,
+              onTap: () => onNavigate(item.page),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _AccountShortcut {
+  const _AccountShortcut({
+    required this.page,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final AppPage page;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+}
+
+class _AccountShortcutTile extends StatefulWidget {
+  const _AccountShortcutTile({required this.item, required this.onTap});
+
+  final _AccountShortcut item;
+  final VoidCallback onTap;
+
+  @override
+  State<_AccountShortcutTile> createState() => _AccountShortcutTileState();
+}
+
+class _AccountShortcutTileState extends State<_AccountShortcutTile> {
+  bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-
-    final totalGb = user.transferEnable / AppConfig.bytesPerGb;
-    final usedGb = user.used / AppConfig.bytesPerGb;
-    final remainGb = (totalGb - usedGb).clamp(0.0, double.infinity);
-    final ratio = totalGb > 0 ? (usedGb / totalGb).clamp(0.0, 1.0) : 0.0;
-
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _hover ? c.primarySoft : c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: _hover ? c.primary : c.softBorder),
+          ),
+          child: Row(
             children: [
-              Icon(LucideIcons.calendar, size: 15, color: c.primary),
-              const SizedBox(width: 8),
-              Text(
-                '订阅信息',
-                style: AppTextStyles.cardTitle.copyWith(color: c.textSecondary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _InfoRow(label: '到期时间', value: user.expiryDisplay),
-          const SizedBox(height: 16),
-          Text(
-            '流量使用',
-            style: AppTextStyles.caption.copyWith(color: c.textMuted),
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: Stack(
-              children: [
-                Container(height: 8, color: c.surfaceMuted),
-                FractionallySizedBox(
-                  widthFactor: ratio,
-                  child: Container(
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: ratio > 0.8 ? c.danger : c.primary,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '已用 ${usedGb.toStringAsFixed(1)} GB',
-                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                child: Icon(widget.item.icon, size: 18, color: c.primary),
               ),
-              Text(
-                '剩余 ${remainGb.toStringAsFixed(1)} / ${totalGb.toStringAsFixed(1)} GB',
-                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: c.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      widget.item.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                    ),
+                  ],
+                ),
               ),
+              Icon(LucideIcons.chevronRight, size: 16, color: c.iconMuted),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -303,6 +346,7 @@ class _SubscriptionCard extends StatelessWidget {
 
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.label, required this.value, this.trailing});
+
   final String label;
   final String value;
   final Widget? trailing;
@@ -334,6 +378,7 @@ class _InfoRow extends StatelessWidget {
 
 class _CopyButton extends StatelessWidget {
   const _CopyButton({required this.onTap});
+
   final VoidCallback onTap;
 
   @override
@@ -358,40 +403,6 @@ class _CopyButton extends StatelessWidget {
   }
 }
 
-class _RechargeButton extends StatelessWidget {
-  const _RechargeButton({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 26,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: c.primarySoft,
-            borderRadius: BorderRadius.circular(AppRadius.xs),
-            border: Border.all(color: c.primary.withValues(alpha: 0.3)),
-          ),
-          child: Text(
-            '充值',
-            style: AppTextStyles.button.copyWith(
-              color: c.primary,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _LoginRecordsCard extends StatelessWidget {
   const _LoginRecordsCard({required this.logs});
 
@@ -400,7 +411,6 @@ class _LoginRecordsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-
     return AppCard(
       radius: AppRadius.card,
       padding: const EdgeInsets.all(20),
@@ -429,7 +439,8 @@ class _LoginRecordsCard extends StatelessWidget {
           else
             for (int i = 0; i < logs.length; i++) ...[
               _recordRow(c, logs[i]),
-              if (i != logs.length - 1) Divider(color: c.softBorder, height: 16),
+              if (i != logs.length - 1)
+                Divider(color: c.softBorder, height: 16),
             ],
         ],
       ),
@@ -463,279 +474,6 @@ class _LoginRecordsCard extends StatelessWidget {
           style: AppTextStyles.caption.copyWith(color: c.textMuted),
         ),
       ],
-    );
-  }
-}
-
-// ── Recharge Dialog ───────────────────────────────────────────────────────────
-
-class _RechargeDialog extends StatefulWidget {
-  const _RechargeDialog({required this.api, required this.currencySymbol});
-
-  final PanelApi api;
-  final String currencySymbol;
-
-  @override
-  State<_RechargeDialog> createState() => _RechargeDialogState();
-}
-
-class _RechargeDialogState extends State<_RechargeDialog> {
-  static const _presets = [10, 30, 50, 100];
-
-  int? _selectedPreset;
-  final _customCtrl = TextEditingController();
-  bool _useCustom = false;
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _customCtrl.dispose();
-    super.dispose();
-  }
-
-  int? get _amountYuan {
-    if (_useCustom) return int.tryParse(_customCtrl.text.trim());
-    return _selectedPreset;
-  }
-
-  Future<void> _submit() async {
-    final yuan = _amountYuan;
-    if (yuan == null || yuan <= 0) {
-      AppToast.show(context, '请输入有效的充值金额', type: AppToastType.warning);
-      return;
-    }
-    if (_submitting) return;
-    setState(() => _submitting = true);
-    try {
-      final tradeNo = await widget.api.submitRechargeOrder(yuan * 100);
-      if (!mounted) return;
-      await showOrderPaymentDialog(
-        context: context,
-        tradeNo: tradeNo,
-        finalPrice: yuan.toDouble(),
-        api: widget.api,
-        currencySymbol: widget.currencySymbol,
-      );
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      if (mounted) {
-        setState(() => _submitting = false);
-        AppToast.show(
-          context,
-          e.toString().replaceFirst('ApiException: ', ''),
-          type: AppToastType.error,
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: 380,
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: c.softBorder),
-            boxShadow: [
-              BoxShadow(
-                color: c.shadow,
-                blurRadius: 32,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildHeader(c),
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '选择充值金额',
-                      style: AppTextStyles.sectionTitle
-                          .copyWith(color: c.textPrimary),
-                    ),
-                    const SizedBox(height: 14),
-                    _buildPresets(c),
-                    const SizedBox(height: 14),
-                    _buildCustomInput(c),
-                    const SizedBox(height: 24),
-                    _buildConfirmButton(c),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(AppColors c) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 16, 16),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: c.softBorder)),
-      ),
-      child: Row(
-        children: [
-          Icon(LucideIcons.wallet, size: 16, color: c.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '钱包充值',
-              style:
-                  AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
-            ),
-          ),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Icon(LucideIcons.x, size: 16, color: c.textMuted),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPresets(AppColors c) {
-    return Row(
-      children: _presets.map((amount) {
-        final sel = !_useCustom && _selectedPreset == amount;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() {
-              _selectedPreset = amount;
-              _useCustom = false;
-            }),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              margin: const EdgeInsets.only(right: 8),
-              height: 50,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: sel ? c.primarySoft : c.surfaceMuted,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(
-                  color: sel ? c.primary : c.border,
-                  width: sel ? 1.5 : 1,
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${widget.currencySymbol}$amount',
-                    style: AppTextStyles.bodyStrong.copyWith(
-                      color: sel ? c.primary : c.textPrimary,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildCustomInput(AppColors c) {
-    return GestureDetector(
-      onTap: () => setState(() => _useCustom = true),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: _useCustom ? c.primarySoft : c.surfaceMuted,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(
-            color: _useCustom ? c.primary : c.border,
-            width: _useCustom ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Text(
-              widget.currencySymbol,
-              style: AppTextStyles.body.copyWith(
-                color: _useCustom ? c.primary : c.textMuted,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _customCtrl,
-                keyboardType: TextInputType.number,
-                onTap: () => setState(() => _useCustom = true),
-                onChanged: (_) => setState(() => _useCustom = true),
-                style: AppTextStyles.body.copyWith(color: c.textPrimary),
-                decoration: InputDecoration(
-                  hintText: '自定义金额',
-                  hintStyle: AppTextStyles.body
-                      .copyWith(color: c.textMuted),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConfirmButton(AppColors c) {
-    final enabled = _amountYuan != null && _amountYuan! > 0 && !_submitting;
-    return SizedBox(
-      width: double.infinity,
-      height: 44,
-      child: ElevatedButton(
-        onPressed: enabled ? _submit : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-        ),
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: enabled ? AppPalette.brandGradient : null,
-            color: enabled ? null : c.border,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: Center(
-            child: _submitting
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2),
-                  )
-                : Text(
-                    '确认充值',
-                    style: AppTextStyles.button.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-          ),
-        ),
-      ),
     );
   }
 }

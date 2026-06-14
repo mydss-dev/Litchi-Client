@@ -10,7 +10,9 @@ import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_select.dart';
+import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/page_status_cards.dart';
 
 /// Statistics page (§13): compact traffic, device, and subscription stats.
 class TrafficPage extends StatefulWidget {
@@ -23,13 +25,34 @@ class TrafficPage extends StatefulWidget {
 class _TrafficPageState extends State<TrafficPage> {
   String _period = '最近7天';
 
+  Future<void> _refresh() async {
+    final ctrl = AppScope.of(context);
+    await ctrl.refreshData();
+    if (!mounted || ctrl.dataLoadError != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageHeader(title: '统计', subtitle: '查看流量、设备和套餐周期'),
+          Row(
+            children: [
+              PageBackButton(
+                onTap: () => ctrl.goToPage(AppPage.account),
+                tooltip: '返回我的',
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: PageHeader(title: '流量统计', subtitle: '查看流量、设备和套餐周期'),
+              ),
+              const SizedBox(width: 10),
+              RefreshIconButton(onTap: _refresh),
+            ],
+          ),
           const SizedBox(height: 12),
           const _StatsGrid(),
           const SizedBox(height: 16),

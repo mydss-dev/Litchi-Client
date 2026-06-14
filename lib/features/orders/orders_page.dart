@@ -7,9 +7,8 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
+import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/widgets/app_badge.dart';
-import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
@@ -25,7 +24,8 @@ class OrdersPage extends StatefulWidget {
 class _OrdersPageState extends State<OrdersPage> {
   bool _loading = true;
   String? _error;
-  List<RemoteOrder> _orders = [];
+  List<RemoteOrder> _orders = const [];
+  String? _activeTradeNo;
   bool _initialized = false;
 
   @override
@@ -33,42 +33,7 @@ class _OrdersPageState extends State<OrdersPage> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
-      _load();
-    }
-  }
-
-  Future<void> _payOrder(RemoteOrder order) async {
-    final api = AppScope.of(context).api;
-    await showOrderPaymentDialog(
-      context: context,
-      tradeNo: order.tradeNo,
-      finalPrice: order.totalAmount / 100.0,
-      api: api,
-    );
-    if (mounted) unawaited(_load());
-  }
-
-  Future<void> _cancelOrder(RemoteOrder order) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierColor: Colors.black54,
-      builder: (_) => const _CancelConfirmDialog(),
-    );
-    if (confirmed != true || !mounted) return;
-    try {
-      await AppScope.of(context).api.cancelOrder(order.tradeNo);
-      if (mounted) {
-        AppToast.show(context, '订单已取消', type: AppToastType.info);
-        unawaited(_load());
-      }
-    } catch (e) {
-      if (mounted) {
-        AppToast.show(
-          context,
-          e.toString().replaceFirst('ApiException: ', ''),
-          type: AppToastType.error,
-        );
-      }
+      unawaited(_load());
     }
   }
 
@@ -79,55 +44,111 @@ class _OrdersPageState extends State<OrdersPage> {
     });
     try {
       final orders = await AppScope.of(context).api.fetchOrders();
-      if (mounted) {
-        setState(() {
-          _orders = orders;
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _orders = orders;
+        _loading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceFirst('ApiException: ', '');
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('ApiException: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    await _load();
+    if (!mounted || _error != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
+  }
+
+  Future<void> _payOrder(RemoteOrder order) async {
+    if (_activeTradeNo != null) return;
+    setState(() => _activeTradeNo = order.tradeNo);
+    final api = AppScope.of(context).api;
+    try {
+      await showOrderPaymentDialog(
+        context: context,
+        tradeNo: order.tradeNo,
+        finalPrice: order.totalAmount / 100,
+        api: api,
+      );
+      if (mounted) unawaited(_load());
+    } finally {
+      if (mounted) setState(() => _activeTradeNo = null);
+    }
+  }
+
+  Future<void> _cancelOrder(RemoteOrder order) async {
+    if (_activeTradeNo != null) return;
+    setState(() => _activeTradeNo = order.tradeNo);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.42),
+      builder: (_) => _CancelOrderDialog(orderNo: order.tradeNo),
+    );
+    if (confirmed != true || !mounted) {
+      if (mounted) setState(() => _activeTradeNo = null);
+      return;
+    }
+
+    try {
+      await AppScope.of(context).api.cancelOrder(order.tradeNo);
+      if (!mounted) return;
+      AppToast.show(context, '订单已取消', type: AppToastType.info);
+      unawaited(_load());
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        e.toString().replaceFirst('ApiException: ', ''),
+        type: AppToastType.error,
+      );
+    } finally {
+      if (mounted) setState(() => _activeTradeNo = null);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Expanded(
-                child: PageHeader(title: '我的订单', subtitle: '查看购买记录'),
+              PageBackButton(
+                onTap: () => ctrl.goToPage(AppPage.account),
+                tooltip: '返回我的',
               ),
-              if (!_loading) RefreshIconButton(onTap: _load),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: PageHeader(title: '订单记录', subtitle: '查看购买与支付记录'),
+              ),
+              if (!_loading) ...[
+                const SizedBox(width: 10),
+                RefreshIconButton(onTap: _handleRefresh),
+              ],
             ],
           ),
           const SizedBox(height: 12),
           if (_loading)
             const PageLoadingCard()
           else if (_error != null)
-            PageErrorCard(message: _error!, onRetry: _load)
+            PageStateCard(
+              icon: LucideIcons.circleAlert,
+              title: '订单加载失败',
+              subtitle: _error!,
+              onTap: _load,
+            )
           else if (_orders.isEmpty)
-            AppCard(
-              radius: AppRadius.card,
-              padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-              child: Column(
-                children: [
-                  Icon(LucideIcons.shoppingCart,
-                      size: 36, color: c.iconMuted),
-                  const SizedBox(height: 12),
-                  Text('暂无订单记录',
-                      style: AppTextStyles.body.copyWith(color: c.textMuted)),
-                ],
-              ),
+            const PageStateCard(
+              icon: LucideIcons.receipt,
+              title: '暂无订单',
+              subtitle: '购买套餐后会显示在这里',
             )
           else
             Column(
@@ -135,8 +156,11 @@ class _OrdersPageState extends State<OrdersPage> {
                 for (final order in _orders) ...[
                   _OrderCard(
                     order: order,
+                    busy: _activeTradeNo == order.tradeNo,
                     onPay: order.status == 0 ? () => _payOrder(order) : null,
-                    onCancel: order.status == 0 ? () => _cancelOrder(order) : null,
+                    onCancel: order.status == 0
+                        ? () => _cancelOrder(order)
+                        : null,
                   ),
                   const SizedBox(height: 10),
                 ],
@@ -148,144 +172,23 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 }
 
-class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({required this.label, required this.onTap, required this.color});
-  final String label;
-  final VoidCallback onTap;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: color.withValues(alpha: 0.3)),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CancelConfirmDialog extends StatelessWidget {
-  const _CancelConfirmDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: 320,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: c.softBorder),
-            boxShadow: [
-              BoxShadow(
-                  color: c.shadow, blurRadius: 24, offset: const Offset(0, 8)),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: c.danger.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child:
-                    Icon(LucideIcons.circleAlert, size: 24, color: c.danger),
-              ),
-              const SizedBox(height: 16),
-              Text('取消订单',
-                  style:
-                      AppTextStyles.pageTitle.copyWith(color: c.textPrimary)),
-              const SizedBox(height: 8),
-              Text('确认取消该待支付订单？',
-                  style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: c.border),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
-                          ),
-                        ),
-                        child: Text('再想想',
-                            style: AppTextStyles.button
-                                .copyWith(color: c.textSecondary)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: c.danger,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
-                          ),
-                        ),
-                        child: Text('确认取消',
-                            style: AppTextStyles.button
-                                .copyWith(color: Colors.white)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order, this.onPay, this.onCancel});
+  const _OrderCard({
+    required this.order,
+    required this.busy,
+    this.onPay,
+    this.onCancel,
+  });
+
   final RemoteOrder order;
+  final bool busy;
   final VoidCallback? onPay;
   final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-
-    final (statusColor) = switch (order.status) {
+    final statusColor = switch (order.status) {
       0 => c.warning,
       1 => c.primary,
       2 => c.textMuted,
@@ -293,118 +196,314 @@ class _OrderCard extends StatelessWidget {
       4 => c.danger,
       _ => c.textMuted,
     };
+    final orderNo = order.tradeNo.isEmpty ? '--' : order.tradeNo;
+    final isDeposit = order.period == 'deposit';
+    final typeValue = isDeposit ? '账户充值' : order.periodLabel;
 
-    final tradeNoShort = order.tradeNo.length > 16
-        ? '${order.tradeNo.substring(0, 16)}…'
-        : order.tradeNo;
-
-    return AppCard(
-      radius: AppRadius.card,
+    return Container(
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.softBorder),
+        boxShadow: AppShadows.soft(c),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 42,
+                height: 42,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  color: c.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(LucideIcons.receipt, size: 16, color: c.iconDefault),
+                child: Icon(LucideIcons.receipt, color: c.primary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            order.planName ?? '套餐订单',
-                            style: AppTextStyles.bodyStrong
-                                .copyWith(color: c.textPrimary),
-                          ),
-                        ),
-                        AppBadge(
-                          text: order.statusLabel,
-                          background: statusColor.withValues(alpha: 0.12),
-                          textColor: statusColor,
-                          fontSize: 11,
-                          height: 22,
-                        ),
-                      ],
+                child: Text(
+                  '订单号 $orderNo',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: c.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: c.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _OrderMeta(label: '类型', value: typeValue),
+                ),
+                Expanded(
+                  child: _OrderMeta(label: '日期', value: order.dateDisplay),
+                ),
+                Expanded(
+                  child: _OrderMeta(label: '金额', value: order.amountDisplay),
+                ),
+                Expanded(
+                  child: _OrderMeta(
+                    label: '状态',
+                    value: order.statusLabel,
+                    valueColor: statusColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (onPay != null || onCancel != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (onCancel != null)
+                  Expanded(
+                    child: _OrderActionButton(
+                      label: '取消订单',
+                      icon: LucideIcons.x,
+                      color: c.textMuted,
+                      onTap: busy ? null : onCancel,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          order.periodLabel,
-                          style: AppTextStyles.caption
-                              .copyWith(color: c.textMuted),
+                  ),
+                if (onCancel != null && onPay != null)
+                  const SizedBox(width: 10),
+                if (onPay != null)
+                  Expanded(
+                    flex: 2,
+                    child: _OrderActionButton(
+                      label: '继续支付',
+                      icon: LucideIcons.creditCard,
+                      color: c.primary,
+                      filled: true,
+                      loading: busy,
+                      onTap: busy ? null : onPay,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _OrderMeta extends StatelessWidget {
+  const _OrderMeta({required this.label, required this.value, this.valueColor});
+
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            color: c.textMuted,
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value.isEmpty ? '--' : value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.caption.copyWith(
+            color: valueColor ?? c.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OrderActionButton extends StatelessWidget {
+  const _OrderActionButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.filled = false,
+    this.loading = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+  final bool filled;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return MouseRegion(
+      cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: filled ? color : c.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: filled ? color : c.softBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (loading)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: filled ? Colors.white : color,
+                  ),
+                )
+              else
+                Icon(icon, size: 16, color: filled ? Colors.white : color),
+              const SizedBox(width: 6),
+              Text(
+                loading ? '处理中' : label,
+                style: AppTextStyles.button.copyWith(
+                  color: filled ? Colors.white : color,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CancelOrderDialog extends StatefulWidget {
+  const _CancelOrderDialog({required this.orderNo});
+
+  final String orderNo;
+
+  @override
+  State<_CancelOrderDialog> createState() => _CancelOrderDialogState();
+}
+
+class _CancelOrderDialogState extends State<_CancelOrderDialog> {
+  bool _submitting = false;
+
+  void _confirm() {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+    Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(color: c.softBorder),
+            boxShadow: AppShadows.card(c),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '取消订单',
+                style: AppTextStyles.sectionTitle.copyWith(
+                  color: c.textPrimary,
+                ),
+              ),
+              if (widget.orderNo.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '订单号 ${widget.orderNo}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: c.danger.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.circleAlert, color: c.danger, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '确认取消该待支付订单？取消后需要重新下单。',
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.danger,
+                          fontWeight: FontWeight.w700,
                         ),
-                        const SizedBox(width: 8),
-                        Text('·',
-                            style: AppTextStyles.caption
-                                .copyWith(color: c.textMuted)),
-                        const SizedBox(width: 8),
-                        Text(
-                          tradeNoShort,
-                          style: AppTextStyles.caption
-                              .copyWith(color: c.textMuted),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              const SizedBox(height: 16),
+              Row(
                 children: [
-                  Text(
-                    order.amountDisplay,
-                    style:
-                        AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('再想想'),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    order.dateDisplay,
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: FilledButton(
+                        onPressed: _submitting ? null : _confirm,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: c.danger,
+                        ),
+                        child: Text(_submitting ? '处理中' : '确认取消'),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ],
           ),
-          if (order.status == 0) ...[
-            const SizedBox(height: 12),
-            Divider(height: 1, color: c.softBorder),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (onCancel != null)
-                  _ActionBtn(
-                    label: '取消订单',
-                    onTap: onCancel!,
-                    color: c.danger,
-                  ),
-                if (onPay != null) ...[
-                  const SizedBox(width: 8),
-                  _ActionBtn(
-                    label: '去支付',
-                    onTap: onPay!,
-                    color: c.primary,
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }

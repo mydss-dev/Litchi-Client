@@ -66,10 +66,16 @@ class PanelApi {
   // ── Password reset ────────────────────────────────────────────────────────
 
   /// Sends a verification code to [email] for password reset.
-  Future<void> sendEmailVerify(String email) async {
+  Future<void> sendEmailVerify(
+    String email, {
+    bool isForgetPassword = false,
+  }) async {
     final res = await _client.post(
       '/passport/comm/sendEmailVerify',
-      data: {'email': email},
+      data: {
+        'email': email,
+        if (isForgetPassword) ...{'isForgetPassword': true, 'isforget': 1},
+      },
     );
     _check(res);
   }
@@ -112,29 +118,68 @@ class PanelApi {
   // ── Guest config ─────────────────────────────────────────────────────────
 
   /// Returns registration config from the panel (email suffixes + verify flag).
-  /// Never throws — returns safe defaults on failure.
+  /// Throws when the request fails, so cache callers can keep stale data.
+  Future<RegisterConfig> fetchRegisterConfig() async {
+    final res = await _client.get('/guest/comm/config');
+    final data = res['data'];
+    if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
+      return RegisterConfig(
+        emailSuffixes: _stringList(
+          map['email_whitelist_suffix'] ??
+              map['emailWhitelistSuffix'] ??
+              map['email_suffixes'] ??
+              map['emailSuffixes'],
+        ),
+        emailVerifyRequired: _truthy(
+          map['is_email_verify'] ??
+              map['isEmailVerify'] ??
+              map['email_verify'] ??
+              map['emailVerifyRequired'],
+        ),
+      );
+    }
+    return const RegisterConfig();
+  }
+
   Future<RegisterConfig> getRegisterConfig() async {
     try {
-      final res = await _client.get('/guest/comm/config');
-      final data = res['data'];
-      if (data is Map) {
-        final suffixes =
-            (data['email_whitelist_suffix'] as List?)
-                ?.whereType<String>()
-                .where((s) => s.isNotEmpty)
-                .toList() ??
-            [];
-        final v = data['is_email_verify'];
-        final verifyRequired = v == 1 || v == true;
-        return RegisterConfig(
-          emailSuffixes: suffixes,
-          emailVerifyRequired: verifyRequired,
-        );
-      }
-      return const RegisterConfig();
+      return await fetchRegisterConfig();
     } catch (_) {
       return const RegisterConfig();
     }
+  }
+
+  static bool _truthy(Object? value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == '1' ||
+          normalized == 'true' ||
+          normalized == 'yes' ||
+          normalized == 'on';
+    }
+    return false;
+  }
+
+  static List<String> _stringList(Object? value) {
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    if (value is String) {
+      final text = value.trim();
+      if (text.isEmpty) return const [];
+      return text
+          .split(RegExp(r'[,，\s]+'))
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const [];
   }
 
   // ── User ──────────────────────────────────────────────────────────────────

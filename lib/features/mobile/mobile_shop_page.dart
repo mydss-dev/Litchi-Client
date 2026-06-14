@@ -7,6 +7,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/widgets/app_toast.dart';
 import '../shop/order_confirm_dialog.dart';
 
 class MobileShopPage extends StatefulWidget {
@@ -31,40 +32,50 @@ class _MobileShopPageState extends State<MobileShopPage> {
     }).toList();
   }
 
+  Future<void> _handlePullRefresh() async {
+    final ctrl = AppScope.of(context);
+    await ctrl.refreshData();
+    if (!mounted || ctrl.dataLoadError != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
     final c = AppColors.of(context);
     final plans = _filtered(ctrl.plans);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('购买套餐', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
-        const SizedBox(height: 14),
-        _ShopTabs(
-          tabs: _tabs,
-          selected: _tab,
-          onSelected: (index) => setState(() => _tab = index),
-        ),
-        const SizedBox(height: 14),
-        Expanded(
-          child: plans.isEmpty
-              ? Center(
-                  child: Text(
-                    '暂无套餐信息',
-                    style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  ),
-                )
-              : ListView.separated(
-                  padding: EdgeInsets.zero,
-                  itemCount: plans.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) =>
-                      _PlanCard(plan: plans[index]),
+    return RefreshIndicator(
+      onRefresh: _handlePullRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          Text('购买套餐', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
+          const SizedBox(height: 14),
+          _ShopTabs(
+            tabs: _tabs,
+            selected: _tab,
+            onSelected: (index) => setState(() => _tab = index),
+          ),
+          const SizedBox(height: 14),
+          if (plans.isEmpty)
+            SizedBox(
+              height: 220,
+              child: Center(
+                child: Text(
+                  '暂无套餐信息',
+                  style: AppTextStyles.body.copyWith(color: c.textMuted),
                 ),
-        ),
-      ],
+              ),
+            )
+          else
+            for (var i = 0; i < plans.length; i++) ...[
+              _PlanCard(plan: plans[i]),
+              if (i != plans.length - 1) const SizedBox(height: 12),
+            ],
+        ],
+      ),
     );
   }
 }

@@ -54,6 +54,12 @@ class _MobileTicketsPageState extends State<MobileTicketsPage> {
     }
   }
 
+  Future<void> _handlePullRefresh() async {
+    await _load();
+    if (!mounted || _error != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
+  }
+
   void _showNewTicketSheet() {
     showAppBottomSheet<void>(
       context: context,
@@ -72,7 +78,7 @@ class _MobileTicketsPageState extends State<MobileTicketsPage> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: _handlePullRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
@@ -88,11 +94,6 @@ class _MobileTicketsPageState extends State<MobileTicketsPage> {
                   '工单支持',
                   style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
                 ),
-              ),
-              IconButton(
-                tooltip: '刷新',
-                onPressed: _load,
-                icon: Icon(LucideIcons.refreshCw, color: c.primary),
               ),
               IconButton(
                 tooltip: '新建工单',

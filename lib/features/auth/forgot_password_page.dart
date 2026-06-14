@@ -62,7 +62,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     }
     setState(() => _sending = true);
     try {
-      await AppScope.of(context).api.sendEmailVerify(email);
+      await AppScope.of(
+        context,
+      ).api.sendEmailVerify(email, isForgetPassword: true);
       if (mounted) {
         setState(() => _codeSent = true);
         _startCountdown();
@@ -95,11 +97,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _submitting = true);
     try {
       await AppScope.of(context).api.resetPassword(
-            email: email,
-            emailCode: code,
-            password: password,
-            passwordConfirmation: confirm,
-          );
+        email: email,
+        emailCode: code,
+        password: password,
+        passwordConfirmation: confirm,
+      );
       if (mounted) {
         AppToast.show(context, '密码重置成功，请重新登录', type: AppToastType.success);
         await Future.delayed(const Duration(milliseconds: 600));
@@ -118,86 +120,79 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
     final controller = AppScope.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('重置密码',
-              style: AppTextStyles.authTitle.copyWith(color: c.textPrimary)),
-          const SizedBox(height: 8),
-          Text(
-            _codeSent ? '输入验证码与新密码完成重置' : '输入注册邮箱，我们将发送验证码',
-            style: AppTextStyles.authSubtitle.copyWith(color: c.textSecondary),
-          ),
-          const SizedBox(height: 28),
-          // Email row — always visible; locked after code is sent
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: AuthInput(
-                  icon: LucideIcons.mail,
-                  hintText: '请输入注册邮箱',
-                  controller: _emailCtrl,
-                  onSubmitted: (_) => _sendCode(),
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        AuthInput(
+          icon: LucideIcons.mail,
+          label: '邮箱',
+          requiredMark: true,
+          hintText: '请输入注册邮箱',
+          controller: _emailCtrl,
+          onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: AuthInput(
+                icon: LucideIcons.keyRound,
+                label: '验证码',
+                requiredMark: true,
+                hintText: '请输入验证码',
+                controller: _codeCtrl,
+                onSubmitted: (_) => FocusScope.of(context).nextFocus(),
               ),
-              const SizedBox(width: 10),
-              _SendCodeButton(
-                codeSent: _codeSent,
-                countdown: _countdown,
-                sending: _sending,
-                onTap: _sendCode,
-              ),
-            ],
-          ),
-          if (_codeSent) ...[
-            const SizedBox(height: 14),
-            AuthInput(
-              icon: LucideIcons.keyRound,
-              hintText: '请输入邮件验证码',
-              controller: _codeCtrl,
-              onSubmitted: (_) => FocusScope.of(context).nextFocus(),
             ),
-            const SizedBox(height: 14),
-            AuthInput(
-              icon: LucideIcons.lock,
-              hintText: '请输入新密码',
-              controller: _passwordCtrl,
-              obscure: true,
-              showRevealToggle: true,
-              onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-            ),
-            const SizedBox(height: 14),
-            AuthInput(
-              icon: LucideIcons.lock,
-              hintText: '请再次输入新密码',
-              controller: _confirmCtrl,
-              obscure: true,
-              showRevealToggle: true,
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: 24),
-            AuthPrimaryButton(
-              label: '重置密码',
-              isLoading: _submitting,
-              onPressed: _submit,
+            const SizedBox(width: 10),
+            _SendCodeButton(
+              codeSent: _codeSent,
+              countdown: _countdown,
+              sending: _sending,
+              onTap: _sendCode,
             ),
           ],
-          const SizedBox(height: 20),
-          Center(
-            child: AuthLinkText(
-              text: '返回登录',
-              onTap: () => controller.goToAuthScreen(AuthScreen.login),
-            ),
+        ),
+        const SizedBox(height: 14),
+        AuthInput(
+          icon: LucideIcons.lock,
+          label: '新密码',
+          requiredMark: true,
+          hintText: '请输入新密码',
+          controller: _passwordCtrl,
+          obscure: true,
+          showRevealToggle: true,
+          onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+        ),
+        const SizedBox(height: 14),
+        AuthInput(
+          icon: LucideIcons.lock,
+          label: '确认密码',
+          requiredMark: true,
+          hintText: '请再次输入新密码',
+          controller: _confirmCtrl,
+          obscure: true,
+          showRevealToggle: true,
+          onSubmitted: (_) => _submit(),
+        ),
+        const SizedBox(height: 24),
+        AuthPrimaryButton(
+          label: '重置密码',
+          isLoading: _submitting,
+          onPressed: _submit,
+        ),
+        const SizedBox(height: 20),
+        Center(
+          child: AuthLinkText(
+            text: '返回登录',
+            onTap: () => controller.goToAuthScreen(AuthScreen.login),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -222,14 +217,13 @@ class _SendCodeButton extends StatelessWidget {
     final label = sending
         ? '发送中'
         : countdown > 0
-            ? '${countdown}s'
-            : codeSent
-                ? '重新发送'
-                : '发送验证码';
+        ? '${countdown}s'
+        : codeSent
+        ? '重新发送'
+        : '发送验证码';
 
     return MouseRegion(
-      cursor:
-          canSend ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      cursor: canSend ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: canSend ? onTap : null,
         child: Container(

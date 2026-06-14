@@ -21,6 +21,28 @@ class UserModel {
   final bool remindExpire;
   final bool remindTraffic;
   final bool autoRenewal;
+
+  UserModel copyWith({
+    String? name,
+    String? plan,
+    String? avatarLetter,
+    String? expiry,
+    double? balance,
+    bool? remindExpire,
+    bool? remindTraffic,
+    bool? autoRenewal,
+  }) {
+    return UserModel(
+      name: name ?? this.name,
+      plan: plan ?? this.plan,
+      avatarLetter: avatarLetter ?? this.avatarLetter,
+      expiry: expiry ?? this.expiry,
+      balance: balance ?? this.balance,
+      remindExpire: remindExpire ?? this.remindExpire,
+      remindTraffic: remindTraffic ?? this.remindTraffic,
+      autoRenewal: autoRenewal ?? this.autoRenewal,
+    );
+  }
 }
 
 class NodeModel {

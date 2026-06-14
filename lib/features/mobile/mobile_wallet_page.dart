@@ -51,6 +51,13 @@ class _MobileWalletPageState extends State<MobileWalletPage> {
     }
   }
 
+  Future<void> _handlePullRefresh() async {
+    final ctrl = AppScope.of(context);
+    await _refreshWalletData();
+    if (!mounted || ctrl.dataLoadError != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
+  }
+
   Future<bool> _rechargeAmount(double amount) async {
     final ctrl = AppScope.of(context);
     if (amount <= 0) {
@@ -135,49 +142,52 @@ class _MobileWalletPageState extends State<MobileWalletPage> {
     final balance = ctrl.user.balance / 100;
     final commission = ctrl.withdrawable;
     final total = balance + commission;
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        Row(
-          children: [
-            MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '我的钱包',
-                style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+    return RefreshIndicator(
+      onRefresh: _handlePullRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          Row(
+            children: [
+              MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '我的钱包',
+                  style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _WalletHero(
-          total: '${ctrl.currencySymbol}${total.toStringAsFixed(2)}',
-          balance: '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
-          commission: '${ctrl.currencySymbol}${commission.toStringAsFixed(2)}',
-          transferring: _transferring,
-          refreshing: _refreshing,
-          onTransfer: _transferCommission,
-          onWithdraw: _showWithdrawSheet,
-          onRefresh: _refreshWalletData,
-        ),
-        const SizedBox(height: 14),
-        _RechargeCard(
-          presets: _presets,
-          selectedPreset: _selectedPreset,
-          controller: _amountCtrl,
-          currencySymbol: ctrl.currencySymbol,
-          submitting: _submitting,
-          onPreset: (value) {
-            setState(() => _selectedPreset = value);
-            _amountCtrl.text = value.toString();
-          },
-          onSubmit: () async {
-            final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
-            await _rechargeAmount(amount);
-          },
-        ),
-      ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          _WalletHero(
+            total: '${ctrl.currencySymbol}${total.toStringAsFixed(2)}',
+            balance: '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
+            commission:
+                '${ctrl.currencySymbol}${commission.toStringAsFixed(2)}',
+            transferring: _transferring,
+            onTransfer: _transferCommission,
+            onWithdraw: _showWithdrawSheet,
+          ),
+          const SizedBox(height: 14),
+          _RechargeCard(
+            presets: _presets,
+            selectedPreset: _selectedPreset,
+            controller: _amountCtrl,
+            currencySymbol: ctrl.currencySymbol,
+            submitting: _submitting,
+            onPreset: (value) {
+              setState(() => _selectedPreset = value);
+              _amountCtrl.text = value.toString();
+            },
+            onSubmit: () async {
+              final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+              await _rechargeAmount(amount);
+            },
+          ),
+        ],
+      ),
     );
   }
 }
@@ -188,20 +198,16 @@ class _WalletHero extends StatelessWidget {
     required this.balance,
     required this.commission,
     required this.transferring,
-    required this.refreshing,
     required this.onTransfer,
     required this.onWithdraw,
-    required this.onRefresh,
   });
 
   final String total;
   final String balance;
   final String commission;
   final bool transferring;
-  final bool refreshing;
   final VoidCallback onTransfer;
   final VoidCallback onWithdraw;
-  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -237,29 +243,6 @@ class _WalletHero extends StatelessWidget {
               Text(
                 '账户资产',
                 style: AppTextStyles.caption.copyWith(color: c.textMuted),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: refreshing ? null : onRefresh,
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: c.surfaceMuted,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: refreshing
-                      ? SizedBox(
-                          width: 15,
-                          height: 15,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: c.primary,
-                          ),
-                        )
-                      : Icon(LucideIcons.refreshCw, color: c.primary, size: 17),
-                ),
               ),
             ],
           ),
@@ -703,10 +686,10 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
           runSpacing: 8,
           children: [
             for (final method in widget.methods)
-              ChoiceChip(
-                label: Text(method),
+              _WithdrawMethodChip(
+                label: method,
                 selected: method == _method,
-                onSelected: (_) => setState(() => _method = method),
+                onTap: () => setState(() => _method = method),
               ),
           ],
         ),
@@ -739,6 +722,45 @@ class _WithdrawSheetState extends State<_WithdrawSheet> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _WithdrawMethodChip extends StatelessWidget {
+  const _WithdrawMethodChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        constraints: const BoxConstraints(minWidth: 102, minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+        decoration: BoxDecoration(
+          color: selected ? c.primarySoft : c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: selected ? c.primary : c.softBorder),
+          boxShadow: selected ? AppShadows.soft(c) : null,
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.bodyStrong.copyWith(
+            color: selected ? c.primary : c.textPrimary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
     );
   }
 }

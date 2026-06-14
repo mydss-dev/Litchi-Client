@@ -19,7 +19,6 @@ class MobileProfilePage extends StatefulWidget {
 
 class _MobileProfilePageState extends State<MobileProfilePage> {
   bool _updating = false;
-  bool _refreshing = false;
 
   Future<void> _updateSettings({
     bool? remindExpire,
@@ -28,14 +27,14 @@ class _MobileProfilePageState extends State<MobileProfilePage> {
   }) async {
     if (_updating) return;
     final ctrl = AppScope.of(context);
-    setState(() => _updating = true);
+    _updating = true;
     final error = await ctrl.updateUserSettings(
       remindExpire: remindExpire ?? ctrl.user.remindExpire,
       remindTraffic: remindTraffic ?? ctrl.user.remindTraffic,
       autoRenewal: autoRenewal ?? ctrl.user.autoRenewal,
     );
     if (!mounted) return;
-    setState(() => _updating = false);
+    _updating = false;
     AppToast.show(
       context,
       error ?? '设置已更新',
@@ -50,7 +49,6 @@ class _MobileProfilePageState extends State<MobileProfilePage> {
       builder: (_) => AnimatedBuilder(
         animation: ctrl,
         builder: (context, _) => _AccountManageSheet(
-          updating: _updating,
           remindExpire: ctrl.user.remindExpire,
           remindTraffic: ctrl.user.remindTraffic,
           autoRenewal: ctrl.user.autoRenewal,
@@ -61,19 +59,20 @@ class _MobileProfilePageState extends State<MobileProfilePage> {
             Navigator.of(context).pop();
             _showChangePasswordSheet();
           },
+          onLogout: () {
+            Navigator.of(context).pop();
+            _confirmLogout();
+          },
         ),
       ),
     );
   }
 
-  Future<void> _refreshProfile() async {
-    if (_refreshing) return;
-    setState(() => _refreshing = true);
-    try {
-      await AppScope.of(context).refreshData();
-    } finally {
-      if (mounted) setState(() => _refreshing = false);
-    }
+  Future<void> _handlePullRefresh() async {
+    final ctrl = AppScope.of(context);
+    await ctrl.refreshData();
+    if (!mounted || ctrl.dataLoadError != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
   }
 
   void _showChangePasswordSheet() {
@@ -83,79 +82,123 @@ class _MobileProfilePageState extends State<MobileProfilePage> {
     );
   }
 
+  Future<void> _confirmLogout() async {
+    final confirmed = await showAppBottomSheet<bool>(
+      context: context,
+      builder: (_) => const _LogoutSheet(),
+    );
+    if (confirmed != true || !mounted) return;
+    AppScope.of(context).logout();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
-    final c = AppColors.of(context);
     final user = ctrl.user;
 
-    return ListView(
-      padding: EdgeInsets.zero,
+    return RefreshIndicator(
+      onRefresh: _handlePullRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          Text('用户中心', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
+          const SizedBox(height: 14),
+          _ProfileHeader(
+            userName: user.name,
+            plan: user.plan,
+            expiry: user.expiry,
+            avatar: user.avatarLetter,
+            onManage: _showAccountSheet,
+          ),
+          const SizedBox(height: 14),
+          _MenuTile(
+            icon: LucideIcons.walletCards,
+            title: '我的钱包',
+            subtitle: '余额、佣金与账户充值',
+            onTap: () => ctrl.goToPage(AppPage.wallet),
+          ),
+          _MenuTile(
+            icon: LucideIcons.clipboardList,
+            title: '订单记录',
+            subtitle: '查看购买记录与支付状态',
+            onTap: () => ctrl.goToPage(AppPage.orders),
+          ),
+          _MenuTile(
+            icon: LucideIcons.messageSquare,
+            title: '工单支持',
+            subtitle: '联系在线客服',
+            onTap: () => ctrl.goToPage(AppPage.tickets),
+          ),
+          _MenuTile(
+            icon: LucideIcons.settings,
+            title: '系统设置',
+            subtitle: '网络、代理与应用外观',
+            onTap: () => ctrl.goToPage(AppPage.settings),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogoutSheet extends StatelessWidget {
+  const _LogoutSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AppBottomSheet(
+      title: '退出登录',
+      subtitle: '当前登录状态和本地节点缓存将被清除',
       children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: c.danger.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Row(
+            children: [
+              Icon(LucideIcons.circleAlert, color: c.danger, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '确认退出当前账号？退出后需要重新登录。',
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.danger,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
-              child: Text(
-                '用户中心',
-                style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+              child: SizedBox(
+                height: 42,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('取消'),
+                ),
               ),
             ),
-            GestureDetector(
-              onTap: _refreshing ? null : _refreshProfile,
-              child: Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: c.primarySoft,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 42,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  style: FilledButton.styleFrom(backgroundColor: c.danger),
+                  child: const Text('确认退出'),
                 ),
-                child: _refreshing
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: c.primary,
-                        ),
-                      )
-                    : Icon(LucideIcons.refreshCw, color: c.primary, size: 18),
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 14),
-        _ProfileHeader(
-          userName: user.name,
-          plan: user.plan,
-          expiry: user.expiry,
-          avatar: user.avatarLetter,
-          onManage: _showAccountSheet,
-        ),
-        const SizedBox(height: 14),
-        _MenuTile(
-          icon: LucideIcons.walletCards,
-          title: '我的钱包',
-          subtitle: '余额、佣金与账户充值',
-          onTap: () => ctrl.goToPage(AppPage.wallet),
-        ),
-        _MenuTile(
-          icon: LucideIcons.clipboardList,
-          title: '订单记录',
-          subtitle: '查看购买记录与支付状态',
-          onTap: () => ctrl.goToPage(AppPage.orders),
-        ),
-        _MenuTile(
-          icon: LucideIcons.messageSquare,
-          title: '工单支持',
-          subtitle: '联系在线客服',
-          onTap: () => ctrl.goToPage(AppPage.tickets),
-        ),
-        _MenuTile(
-          icon: LucideIcons.settings,
-          title: '系统设置',
-          subtitle: '网络、代理与应用外观',
-          onTap: () => ctrl.goToPage(AppPage.settings),
         ),
       ],
     );
@@ -324,7 +367,6 @@ class _MenuTile extends StatelessWidget {
 
 class _AccountManageSheet extends StatelessWidget {
   const _AccountManageSheet({
-    required this.updating,
     required this.remindExpire,
     required this.remindTraffic,
     required this.autoRenewal,
@@ -332,9 +374,9 @@ class _AccountManageSheet extends StatelessWidget {
     required this.onTrafficChanged,
     required this.onAutoRenewalChanged,
     required this.onChangePassword,
+    required this.onLogout,
   });
 
-  final bool updating;
   final bool remindExpire;
   final bool remindTraffic;
   final bool autoRenewal;
@@ -342,6 +384,7 @@ class _AccountManageSheet extends StatelessWidget {
   final ValueChanged<bool> onTrafficChanged;
   final ValueChanged<bool> onAutoRenewalChanged;
   final VoidCallback onChangePassword;
+  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -354,7 +397,6 @@ class _AccountManageSheet extends StatelessWidget {
           title: '到期提醒',
           subtitle: '接收账户到期提醒邮件',
           value: remindExpire,
-          enabled: !updating,
           onChanged: onExpireChanged,
         ),
         _Divider(color: c.softBorder),
@@ -363,7 +405,6 @@ class _AccountManageSheet extends StatelessWidget {
           title: '流量提醒',
           subtitle: '接收流量用尽提醒邮件',
           value: remindTraffic,
-          enabled: !updating,
           onChanged: onTrafficChanged,
         ),
         _Divider(color: c.softBorder),
@@ -372,7 +413,6 @@ class _AccountManageSheet extends StatelessWidget {
           title: '自动续费',
           subtitle: '到期前自动续费套餐',
           value: autoRenewal,
-          enabled: !updating,
           onChanged: onAutoRenewalChanged,
         ),
         _Divider(color: c.softBorder),
@@ -381,6 +421,14 @@ class _AccountManageSheet extends StatelessWidget {
           title: '修改密码',
           subtitle: '更新登录密码',
           onTap: onChangePassword,
+        ),
+        _Divider(color: c.softBorder),
+        _ActionRow(
+          icon: LucideIcons.logOut,
+          title: '退出登录',
+          subtitle: '退出当前账号',
+          danger: true,
+          onTap: onLogout,
         ),
       ],
     );
@@ -393,7 +441,6 @@ class _SwitchRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.value,
-    required this.enabled,
     required this.onChanged,
   });
 
@@ -401,7 +448,6 @@ class _SwitchRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final bool enabled;
   final ValueChanged<bool> onChanged;
 
   @override
@@ -426,7 +472,7 @@ class _SwitchRow extends StatelessWidget {
               ],
             ),
           ),
-          AppSwitch(value: value, onChanged: enabled ? onChanged : null),
+          AppSwitch(value: value, onChanged: onChanged),
         ],
       ),
     );
@@ -439,29 +485,37 @@ class _ActionRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.danger = false,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final bool danger;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final color = danger ? c.danger : c.primary;
     return GestureDetector(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
           children: [
-            Icon(icon, color: c.primary, size: 19),
+            Icon(icon, color: color, size: 19),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextStyles.bodyStrong),
+                  Text(
+                    title,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: danger ? c.danger : c.textPrimary,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,

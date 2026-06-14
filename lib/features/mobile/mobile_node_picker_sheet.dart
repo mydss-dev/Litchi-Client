@@ -8,6 +8,7 @@ import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
+import '../../shared/widgets/app_toast.dart';
 
 Future<void> showMobileNodePicker(BuildContext context) {
   return showAppBottomSheet<void>(
@@ -51,13 +52,33 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
   }
 
   Future<void> _selectAuto(AppController ctrl) async {
-    await ctrl.selectAuto();
-    if (mounted) Navigator.of(context).pop();
+    final error = await ctrl.selectAuto();
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    AppToast.show(
+      context,
+      error ?? '已开启自动选择',
+      type: error == null ? AppToastType.success : AppToastType.error,
+    );
   }
 
   Future<void> _selectNode(AppController ctrl, NodeModel node) async {
-    await ctrl.setCurrentNode(node);
-    if (mounted) Navigator.of(context).pop();
+    final error = await ctrl.setCurrentNode(node);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    AppToast.show(
+      context,
+      error ?? '已切换到 ${node.name}',
+      type: error == null ? AppToastType.success : AppToastType.error,
+    );
+  }
+
+  void _testLatencies(AppController ctrl) {
+    if (ctrl.supportsCoreConnection && !ctrl.coreProcessRunning) {
+      AppToast.show(context, '请先连接后测速', type: AppToastType.warning);
+      return;
+    }
+    ctrl.testLatencies();
   }
 
   @override
@@ -124,7 +145,7 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
                         ),
                         IconButton(
                           tooltip: '测速',
-                          onPressed: ctrl.testLatencies,
+                          onPressed: () => _testLatencies(ctrl),
                           icon: Icon(LucideIcons.gauge, color: c.primary),
                         ),
                         IconButton(

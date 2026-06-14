@@ -10,6 +10,7 @@ import 'panel_api.dart';
 /// Null fields indicate the corresponding load was skipped or failed.
 class DataSnapshot {
   UserModel? user;
+  int? currentPlanId;
   TrafficModel? traffic;
   String? subscribeUrl;
   List<NodeModel>? nodes;
@@ -74,6 +75,7 @@ class DataLoader {
     try {
       final info = await _api.getUserInfo();
       snap.user = ModelMappers.toUser(info);
+      snap.currentPlanId = info.planId;
       snap.traffic = ModelMappers.toTraffic(info);
     } catch (e) {
       debugPrint('[Litchi] getUserInfo error: $e');
@@ -133,11 +135,25 @@ class DataLoader {
     try {
       final plans = await _api.getPlans();
       if (plans.isNotEmpty) {
-        snap.plans = plans.map(ModelMappers.toPlan).toList();
+        final mapped = plans.map(ModelMappers.toPlan).toList();
+        snap.plans = mapped;
+        final currentPlan = _planById(mapped, snap.currentPlanId);
+        final user = snap.user;
+        if (user != null && user.plan.trim().isEmpty && currentPlan != null) {
+          snap.user = user.copyWith(plan: currentPlan.title);
+        }
       }
     } catch (e) {
       debugPrint('[Litchi] getPlans error: $e');
     }
+  }
+
+  PlanModel? _planById(List<PlanModel> plans, int? id) {
+    if (id == null || id <= 0) return null;
+    for (final plan in plans) {
+      if (int.tryParse(plan.id) == id) return plan;
+    }
+    return null;
   }
 
   Future<void> _fillInvite(DataSnapshot snap) async {

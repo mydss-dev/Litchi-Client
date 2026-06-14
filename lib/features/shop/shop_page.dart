@@ -4,17 +4,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
-import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
+import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/widgets/app_badge.dart';
-import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/page_header.dart';
 import 'order_confirm_dialog.dart';
 
-/// Shop page (§12). Three product categories agreed with the user:
-/// 周期套餐 (with month/quarter/year toggle) / 一次性套餐 / 流量包.
 class ShopPage extends StatefulWidget {
   const ShopPage({super.key});
 
@@ -23,144 +18,131 @@ class ShopPage extends StatefulWidget {
 }
 
 class _ShopPageState extends State<ShopPage> {
-  static const _categoryTabs = ['周期套餐', '一次性套餐', '流量包'];
-  int _categoryIndex = 0;
-  BillingCycle _cycle = BillingCycle.monthly;
+  static const _tabs = ['全部', '周期套餐', '一次性', '流量包'];
+  int _tab = 0;
 
-  PlanCategory get _category => switch (_categoryIndex) {
-    0 => PlanCategory.recurring,
-    1 => PlanCategory.oneTime,
-    _ => PlanCategory.dataPack,
-  };
-
-  List<PlanModel> _plansFor(BuildContext context) =>
-      AppScope.of(context).plans.where((p) => p.category == _category).toList();
-
-  /// Computes average savings per cycle across all recurring plans that support it.
-  Map<BillingCycle, String?> _computeSavings(BuildContext context) {
-    final recurring = AppScope.of(
-      context,
-    ).plans.where((p) => p.category == PlanCategory.recurring).toList();
-    final result = <BillingCycle, String?>{};
-    for (final cycle in [
-      BillingCycle.quarterly,
-      BillingCycle.halfYear,
-      BillingCycle.yearly,
-    ]) {
-      final months = switch (cycle) {
-        BillingCycle.quarterly => 3,
-        BillingCycle.halfYear => 6,
-        BillingCycle.yearly => 12,
-        BillingCycle.monthly => 1,
+  List<PlanModel> _filtered(List<PlanModel> plans) {
+    return plans.where((plan) {
+      return switch (_tab) {
+        1 => plan.category == PlanCategory.recurring,
+        2 => plan.category == PlanCategory.oneTime,
+        3 => plan.category == PlanCategory.dataPack,
+        _ => true,
       };
-      final ratios = <double>[];
-      for (final plan in recurring) {
-        final monthly = plan.priceForCycle(BillingCycle.monthly);
-        final target = plan.priceForCycle(cycle);
-        if (monthly != null && target != null && monthly > 0) {
-          final full = monthly * months;
-          if (full > target) ratios.add((full - target) / full);
-        }
-      }
-      if (ratios.isNotEmpty) {
-        final avg = ratios.reduce((a, b) => a + b) / ratios.length;
-        final pct = (avg * 100).round();
-        result[cycle] = pct > 0 ? '省 $pct%' : null;
-      } else {
-        result[cycle] = null;
-      }
-    }
-    return result;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final c = AppColors.of(context);
+    final plans = _filtered(ctrl.plans);
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageHeader(title: '商城', subtitle: '选择更适合你的流量套餐和订阅周期'),
+          const PageHeader(title: '购买套餐', subtitle: '选择适合你的套餐和流量包'),
           const SizedBox(height: 12),
-          FilterTabs(
-            tabs: _categoryTabs,
-            selectedIndex: _categoryIndex,
-            onSelected: (i) => setState(() => _categoryIndex = i),
+          _ShopTabs(
+            tabs: _tabs,
+            selected: _tab,
+            onSelected: (index) => setState(() => _tab = index),
           ),
-          // The billing-cycle toggle only applies to recurring plans.
-          if (_category == PlanCategory.recurring) ...[
-            const SizedBox(height: 14),
-            _CycleSelector(
-              cycle: _cycle,
-              savings: _computeSavings(context),
-              onChanged: (v) => setState(() => _cycle = v),
-            ),
-          ],
-          const SizedBox(height: 18),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              // 560 (not the spec's 680) so the 2-column default (§27.16)
-              // triggers at the real ~675px content width.
-              final cols = constraints.maxWidth >= 560 ? 2 : 1;
-              final plans = _plansFor(context);
-              return GridView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets.zero,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: plans.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: cols,
-                  mainAxisSpacing: 18,
-                  crossAxisSpacing: 18,
-                  mainAxisExtent: 400,
+          const SizedBox(height: 14),
+          if (plans.isEmpty)
+            SizedBox(
+              height: 220,
+              child: Center(
+                child: Text(
+                  '暂无套餐信息',
+                  style: AppTextStyles.body.copyWith(color: c.textMuted),
                 ),
-                itemBuilder: (context, i) =>
-                    _PlanCard(plan: plans[i], cycle: _cycle),
-              );
-            },
-          ),
+              ),
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cols = constraints.maxWidth >= 980
+                    ? 3
+                    : constraints.maxWidth >= 620
+                    ? 2
+                    : 1;
+                return GridView.builder(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: plans.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    mainAxisExtent: 310,
+                  ),
+                  itemBuilder: (context, index) => _PlanCard(
+                    key: ValueKey(plans[index].id),
+                    plan: plans[index],
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
   }
 }
 
-/// Segmented month / quarter / year selector (§12 billing selector).
-class _CycleSelector extends StatelessWidget {
-  const _CycleSelector({
-    required this.cycle,
-    required this.savings,
-    required this.onChanged,
+class _ShopTabs extends StatelessWidget {
+  const _ShopTabs({
+    required this.tabs,
+    required this.selected,
+    required this.onSelected,
   });
 
-  final BillingCycle cycle;
-  final Map<BillingCycle, String?> savings;
-  final ValueChanged<BillingCycle> onChanged;
-
-  static const _labels = {
-    BillingCycle.monthly: '月付',
-    BillingCycle.quarterly: '季付',
-    BillingCycle.halfYear: '半年',
-    BillingCycle.yearly: '年付',
-  };
+  final List<String> tabs;
+  final int selected;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: c.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          for (final entry in _labels.entries)
-            _CycleChip(
-              label: entry.value,
-              savings: savings[entry.key],
-              selected: cycle == entry.key,
-              onTap: () => onChanged(entry.key),
+          for (var i = 0; i < tabs.length; i++)
+            Expanded(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => onSelected(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 140),
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected == i ? c.cardBg : Colors.transparent,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      boxShadow: selected == i ? AppShadows.soft(c) : null,
+                    ),
+                    child: Text(
+                      tabs[i],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(
+                        color: selected == i ? c.primary : c.textMuted,
+                        fontWeight: selected == i
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
         ],
       ),
@@ -168,92 +150,82 @@ class _CycleSelector extends StatelessWidget {
   }
 }
 
-class _CycleChip extends StatelessWidget {
-  const _CycleChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.savings,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final String? savings;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? c.cardBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: c.shadow,
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: AppTextStyles.menu.copyWith(
-                  color: selected ? c.primary : c.textSecondary,
-                ),
-              ),
-              if (savings != null) ...[
-                const SizedBox(width: 6),
-                Text(
-                  savings!,
-                  style: AppTextStyles.badge.copyWith(
-                    color: c.success,
-                    fontSize: 9,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PlanCard extends StatelessWidget {
-  const _PlanCard({required this.plan, required this.cycle});
+class _PlanCard extends StatefulWidget {
+  const _PlanCard({super.key, required this.plan});
 
   final PlanModel plan;
-  final BillingCycle cycle;
 
-  String get _priceLabel {
-    final price = plan.category == PlanCategory.recurring
-        ? plan.priceForCycle(cycle)
-        : plan.oneTimePrice;
-    return price == null ? '--' : price.toStringAsFixed(0);
+  @override
+  State<_PlanCard> createState() => _PlanCardState();
+}
+
+class _PlanCardState extends State<_PlanCard> {
+  late BillingCycle _cycle;
+
+  PlanModel get plan => widget.plan;
+
+  @override
+  void initState() {
+    super.initState();
+    final cycles = _availableCycles;
+    _cycle = cycles.isEmpty ? BillingCycle.monthly : cycles.first;
   }
 
-  String get _unitLabel {
-    if (plan.category != PlanCategory.recurring) return '一次性';
-    return switch (cycle) {
-      BillingCycle.monthly => '/ 月',
-      BillingCycle.quarterly => '/ 季',
-      BillingCycle.halfYear => '/ 半年',
-      BillingCycle.yearly => '/ 年',
-    };
+  @override
+  void didUpdateWidget(covariant _PlanCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final cycles = _availableCycles;
+    if (!cycles.contains(_cycle)) {
+      _cycle = cycles.isEmpty ? BillingCycle.monthly : cycles.first;
+    }
+  }
+
+  List<BillingCycle> get _cycleOptions {
+    if (plan.category != PlanCategory.recurring) return const [];
+    return const [
+      BillingCycle.monthly,
+      BillingCycle.quarterly,
+      BillingCycle.halfYear,
+      BillingCycle.yearly,
+    ];
+  }
+
+  List<BillingCycle> get _availableCycles => _cycleOptions
+      .where((cycle) => plan.priceForCycle(cycle) != null)
+      .toList();
+
+  double? get _price {
+    if (plan.category == PlanCategory.recurring) {
+      return plan.priceForCycle(_cycle) ??
+          plan.monthlyPrice ??
+          plan.quarterlyPrice ??
+          plan.halfYearPrice ??
+          plan.yearlyPrice;
+    }
+    return plan.oneTimePrice ??
+        plan.monthlyPrice ??
+        plan.quarterlyPrice ??
+        plan.halfYearPrice ??
+        plan.yearlyPrice;
+  }
+
+  String get _unit =>
+      plan.category == PlanCategory.recurring ? _cycleUnit(_cycle) : '';
+
+  String get _categoryLabel => switch (plan.category) {
+    PlanCategory.recurring => '周期套餐',
+    PlanCategory.oneTime => '一次性套餐',
+    PlanCategory.dataPack => '流量包',
+  };
+
+  String get _metaText {
+    final parts = <String>[_categoryLabel];
+    final capacity = plan.capacity.trim();
+    if (_hasCapacity(plan)) parts.add(capacity);
+    if (plan.deviceLimit != null) {
+      parts.add(plan.deviceLimit! > 0 ? '${plan.deviceLimit} 台设备' : '不限设备');
+    }
+    return parts.join(' · ');
   }
 
   IconData get _icon => switch (plan.category) {
@@ -265,162 +237,353 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final featured = plan.featured;
-    final currency = AppScope.of(context).currencySymbol;
+    final ctrl = AppScope.of(context);
+    final price = _price;
+    final features = plan.features.map(_cleanFeature).take(3).toList();
 
-    return AppCard(
-      radius: AppRadius.lg,
-      padding: const EdgeInsets.all(18),
-      border: !featured,
-      color: featured ? null : c.cardBg,
-      child: Container(
-        decoration: featured
-            ? BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.lg - 1),
-                border: Border.all(color: c.primary, width: 1.5),
-              )
-            : null,
-        padding: featured ? const EdgeInsets.all(2) : EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: c.primarySoft,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  child: Icon(_icon, size: 18, color: c.primary),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: plan.featured ? c.primary : c.softBorder,
+          width: plan.featured ? 1.3 : 1,
+        ),
+        boxShadow: AppShadows.soft(c),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        plan.title,
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          color: c.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        plan.capacity,
-                        style: AppTextStyles.caption.copyWith(
-                          color: c.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (plan.hot)
-                  AppBadge(
-                    text: '热门',
-                    background: c.danger.withValues(alpha: 0.12),
-                    textColor: c.danger,
-                    fontSize: 10,
-                    height: 20,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  currency,
-                  style: AppTextStyles.sectionTitle.copyWith(color: c.primary),
-                ),
-                Text(
-                  _priceLabel,
-                  style: AppTextStyles.largeNumber(
-                    fontSize: 30,
-                  ).copyWith(color: c.primary),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _unitLabel,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            for (final f in plan.features) ...[
-              Row(
-                children: [
-                  Icon(LucideIcons.check, size: 15, color: c.success),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      f,
-                      style: AppTextStyles.body.copyWith(
-                        color: c.textSecondary,
+                child: Icon(_icon, color: c.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      plan.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: c.textPrimary,
+                        fontSize: 16,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 3),
+                    Text(
+                      _metaText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 10),
+              if (plan.hot)
+                _MiniBadge(text: '热门', color: c.danger)
+              else if (plan.featured)
+                _MiniBadge(text: '推荐', color: c.primary),
             ],
-            const Spacer(),
-            _BuyButton(plan: plan, cycle: cycle, featured: featured),
+          ),
+          const SizedBox(height: 14),
+          _PricePanel(symbol: ctrl.currencySymbol, price: price, unit: _unit),
+          if (_cycleOptions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _CycleSelector(
+              cycles: _cycleOptions,
+              enabledCycles: _availableCycles,
+              selected: _cycle,
+              onChanged: (cycle) => setState(() => _cycle = cycle),
+            ),
           ],
+          if (features.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _FeatureList(features: features),
+          ],
+          const Spacer(),
+          _BuyButton(
+            enabled: price != null,
+            onTap: price == null
+                ? null
+                : () => showOrderConfirmDialog(
+                    context: context,
+                    plan: plan,
+                    cycle: _cycle,
+                    api: ctrl.api,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CycleSelector extends StatelessWidget {
+  const _CycleSelector({
+    required this.cycles,
+    required this.enabledCycles,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final List<BillingCycle> cycles;
+  final List<BillingCycle> enabledCycles;
+  final BillingCycle selected;
+  final ValueChanged<BillingCycle> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (var index = 0; index < cycles.length; index++) ...[
+          Expanded(
+            child: _CycleChip(
+              cycle: cycles[index],
+              enabled: enabledCycles.contains(cycles[index]),
+              selected: selected == cycles[index],
+              onTap: () => onChanged(cycles[index]),
+            ),
+          ),
+          if (index != cycles.length - 1) const SizedBox(width: 6),
+        ],
+      ],
+    );
+  }
+}
+
+class _CycleChip extends StatelessWidget {
+  const _CycleChip({
+    required this.cycle,
+    required this.enabled,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final BillingCycle cycle;
+  final bool enabled;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final fg = selected
+        ? c.primary
+        : enabled
+        ? c.textMuted
+        : c.iconMuted;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? c.primarySoft : c.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: selected ? c.primarySoft : c.softBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                enabled ? LucideIcons.check : LucideIcons.x,
+                color: fg,
+                size: 12,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                _cycleLabel(cycle),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 12,
+                  color: fg,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _BuyButton extends StatelessWidget {
-  const _BuyButton({
-    required this.plan,
-    required this.cycle,
-    required this.featured,
+class _PricePanel extends StatelessWidget {
+  const _PricePanel({
+    required this.symbol,
+    required this.price,
+    required this.unit,
   });
 
-  final PlanModel plan;
-  final BillingCycle cycle;
-  final bool featured;
+  final String symbol;
+  final double? price;
+  final String unit;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final ctrl = AppScope.of(context);
-    return SizedBox(
-      width: double.infinity,
-      height: 42,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => showOrderConfirmDialog(
-            context: context,
-            plan: plan,
-            cycle: cycle,
-            api: ctrl.api,
-          ),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: featured ? AppPalette.brandGradient : null,
-              color: featured ? null : c.primary,
-              borderRadius: BorderRadius.circular(AppRadius.md),
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 7),
+            child: Text(
+              symbol,
+              style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
             ),
-            child: Center(
+          ),
+          Text(
+            price == null ? '--' : price!.toStringAsFixed(0),
+            style: AppTextStyles.largeNumber(
+              fontSize: 38,
+            ).copyWith(color: c.textPrimary),
+          ),
+          if (unit.isNotEmpty) ...[
+            const SizedBox(width: 6),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: Text(
-                '立即购买',
-                style: AppTextStyles.button.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+                unit,
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FeatureList extends StatelessWidget {
+  const _FeatureList({required this.features});
+
+  final List<String> features;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Column(
+      children: [
+        for (final feature in features) ...[
+          Row(
+            children: [
+              Icon(LucideIcons.check, size: 15, color: c.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  feature,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(color: c.textSecondary),
                 ),
               ),
+            ],
+          ),
+          if (feature != features.last) const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+}
+
+class _MiniBadge extends StatelessWidget {
+  const _MiniBadge({required this.text, required this.color});
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 22,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Text(
+        text,
+        style: AppTextStyles.badge.copyWith(color: color, fontSize: 10),
+      ),
+    );
+  }
+}
+
+class _BuyButton extends StatelessWidget {
+  const _BuyButton({required this.enabled, required this.onTap});
+
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: enabled ? c.primary : c.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Text(
+            enabled ? '立即购买' : '暂不可购买',
+            style: AppTextStyles.button.copyWith(
+              color: enabled ? Colors.white : c.textMuted,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),
       ),
     );
   }
+}
+
+String _cycleLabel(BillingCycle cycle) => switch (cycle) {
+  BillingCycle.monthly => '月付',
+  BillingCycle.quarterly => '季付',
+  BillingCycle.halfYear => '半年',
+  BillingCycle.yearly => '年付',
+};
+
+String _cycleUnit(BillingCycle cycle) => switch (cycle) {
+  BillingCycle.monthly => '/ 月',
+  BillingCycle.quarterly => '/ 季',
+  BillingCycle.halfYear => '/ 半年',
+  BillingCycle.yearly => '/ 年',
+};
+
+String _cleanFeature(String value) {
+  return value
+      .replaceFirst(RegExp(r'^[^\p{L}\p{N}]+', unicode: true), '')
+      .trim();
+}
+
+bool _hasCapacity(PlanModel plan) {
+  final capacity = plan.capacity.trim();
+  return capacity.isNotEmpty && capacity != '0 GB' && capacity != '0 TB';
 }
