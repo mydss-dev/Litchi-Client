@@ -142,6 +142,56 @@ jobs:
           files: installer_output\*.exe
           generate_release_notes: true
 
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+
+      - name: Build unsigned app
+        run: |
+          api_base="${{ secrets.API_BASE }}"
+          update_url="${{ secrets.UPDATE_CHECK_URL }}"
+          app_name="${{ secrets.APP_NAME }}"
+          app_subtitle="${{ secrets.APP_SUBTITLE }}"
+          logo_letter="${{ secrets.LOGO_LETTER }}"
+          color_start="${{ secrets.BRAND_COLOR_START }}"
+          color_end="${{ secrets.BRAND_COLOR_END }}"
+          api_base="${api_base:-https://placeholder.example.com}"
+          app_name="${app_name:-Litchi}"
+          app_subtitle="${app_subtitle:-Network Client}"
+          logo_letter="${logo_letter:-L}"
+          color_start="${color_start:-2563EB}"
+          color_end="${color_end:-7C3AED}"
+          flutter build macos --release \
+            "--dart-define=API_BASE=$api_base" \
+            "--dart-define=APP_VERSION=1.2.0" \
+            "--dart-define=UPDATE_CHECK_URL=$update_url" \
+            "--dart-define=APP_NAME=$app_name" \
+            "--dart-define=APP_SUBTITLE=$app_subtitle" \
+            "--dart-define=LOGO_LETTER=$logo_letter" \
+            "--dart-define=BRAND_COLOR_START=$color_start" \
+            "--dart-define=BRAND_COLOR_END=$color_end"
+
+      - name: Package unsigned app
+        run: |
+          cd build/macos/Build/Products/Release
+          ditto -c -k --sequesterRsrc --keepParent *.app ../../../../../litchi-macos-unsigned.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: litchi-macos-unsigned-${{ github.sha }}
+          path: litchi-macos-unsigned.zip
+          retention-days: 30
+
   build-android:
     name: Build Android
     runs-on: ubuntu-latest
