@@ -21,10 +21,14 @@ class ConnectionStatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
     final latency = ctrl.currentNode.latency;
-    final latencyValue =
-        latency > 0 && latency < 9999 ? latency.toString() : '--';
-    final latencyCard =
-        _ConnectionStatCard(label: '当前延迟', value: latencyValue, unit: 'ms');
+    final latencyValue = latency > 0 && latency < 9999
+        ? latency.toString()
+        : '--';
+    final latencyCard = _ConnectionStatCard(
+      label: '当前延迟',
+      value: latencyValue,
+      unit: 'ms',
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -42,9 +46,15 @@ class ConnectionStatsRow extends StatelessWidget {
               final cards = [
                 latencyCard,
                 _ConnectionStatCard(
-                    label: '下载速度', value: downValue, unit: downUnit),
+                  label: '下载速度',
+                  value: downValue,
+                  unit: downUnit,
+                ),
                 _ConnectionStatCard(
-                    label: '上传速度', value: upValue, unit: upUnit),
+                  label: '上传速度',
+                  value: upValue,
+                  unit: upUnit,
+                ),
               ];
 
               if (threeCols) {
@@ -93,7 +103,7 @@ class _ConnectionStatCard extends StatelessWidget {
     final c = AppColors.of(context);
     return AppCard(
       radius: AppRadius.card,
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      padding: const EdgeInsets.fromLTRB(18, 15, 18, 15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -109,11 +119,15 @@ class _ConnectionStatCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                value,
-                style: AppTextStyles.largeNumber(
-                  fontSize: 24,
-                ).copyWith(color: c.textPrimary, height: 1),
+              Flexible(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.largeNumber(
+                    fontSize: 23,
+                  ).copyWith(color: c.textPrimary, height: 1),
+                ),
               ),
               const SizedBox(width: 5),
               Padding(

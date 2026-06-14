@@ -66,15 +66,37 @@ class PanelApi {
   // ── Password reset ────────────────────────────────────────────────────────
 
   /// Sends a verification code to [email] for password reset.
-  Future<void> sendEmailVerify(String email) async {
+  Future<void> sendEmailVerify(
+    String email, {
+    bool isForgetPassword = false,
+  }) async {
     final res = await _client.post(
       '/passport/comm/sendEmailVerify',
-      data: {'email': email},
+      data: {
+        'email': email,
+        if (isForgetPassword) ...{'isForgetPassword': true, 'isforget': 1},
+      },
     );
     _check(res);
   }
 
   /// Resets the password using the emailed verification code.
+  Future<void> updateUserSettings({
+    required bool remindExpire,
+    required bool remindTraffic,
+    required bool autoRenewal,
+  }) async {
+    final res = await _client.post(
+      '/user/update',
+      data: {
+        'remind_expire': remindExpire ? 1 : 0,
+        'remind_traffic': remindTraffic ? 1 : 0,
+        'auto_renewal': autoRenewal ? 1 : 0,
+      },
+    );
+    _check(res);
+  }
+
   Future<void> resetPassword({
     required String email,
     required String emailCode,
@@ -96,28 +118,68 @@ class PanelApi {
   // ── Guest config ─────────────────────────────────────────────────────────
 
   /// Returns registration config from the panel (email suffixes + verify flag).
-  /// Never throws — returns safe defaults on failure.
+  /// Throws when the request fails, so cache callers can keep stale data.
+  Future<RegisterConfig> fetchRegisterConfig() async {
+    final res = await _client.get('/guest/comm/config');
+    final data = res['data'];
+    if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
+      return RegisterConfig(
+        emailSuffixes: _stringList(
+          map['email_whitelist_suffix'] ??
+              map['emailWhitelistSuffix'] ??
+              map['email_suffixes'] ??
+              map['emailSuffixes'],
+        ),
+        emailVerifyRequired: _truthy(
+          map['is_email_verify'] ??
+              map['isEmailVerify'] ??
+              map['email_verify'] ??
+              map['emailVerifyRequired'],
+        ),
+      );
+    }
+    return const RegisterConfig();
+  }
+
   Future<RegisterConfig> getRegisterConfig() async {
     try {
-      final res = await _client.get('/guest/comm/config');
-      final data = res['data'];
-      if (data is Map) {
-        final suffixes = (data['email_whitelist_suffix'] as List?)
-                ?.whereType<String>()
-                .where((s) => s.isNotEmpty)
-                .toList() ??
-            [];
-        final v = data['is_email_verify'];
-        final verifyRequired = v == 1 || v == true;
-        return RegisterConfig(
-          emailSuffixes: suffixes,
-          emailVerifyRequired: verifyRequired,
-        );
-      }
-      return const RegisterConfig();
+      return await fetchRegisterConfig();
     } catch (_) {
       return const RegisterConfig();
     }
+  }
+
+  static bool _truthy(Object? value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == '1' ||
+          normalized == 'true' ||
+          normalized == 'yes' ||
+          normalized == 'on';
+    }
+    return false;
+  }
+
+  static List<String> _stringList(Object? value) {
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    if (value is String) {
+      final text = value.trim();
+      if (text.isEmpty) return const [];
+      return text
+          .split(RegExp(r'[,，\s]+'))
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const [];
   }
 
   // ── User ──────────────────────────────────────────────────────────────────
@@ -200,7 +262,60 @@ class PanelApi {
   Future<RemoteInvite> getInviteInfo() async {
     final res = await _client.get('/user/invite/fetch');
     _check(res);
-    return RemoteInvite.fromJson(_dataMap(res));
+    final data = res['data'];
+    if (data is Map<String, dynamic>) return RemoteInvite.fromJson(data);
+    if (data is Map) {
+      return RemoteInvite.fromJson(Map<String, dynamic>.from(data));
+    }
+    if (data is List) return RemoteInvite.fromJson({'codes': data});
+    throw const ApiException('服务器返回数据格式异常');
+  }
+
+  Future<void> createInviteCode() async {
+    final res = await _client.get('/user/invite/save');
+    _check(res);
+  }
+
+  Future<List<RemoteInviteRecord>> getInviteDetails({
+    int current = 1,
+    int pageSize = 10,
+  }) async {
+    final res = await _client.get(
+      '/user/invite/details',
+      params: {'current': current, 'page_size': pageSize},
+    );
+    _check(res);
+    return _dataList(res).map(RemoteInviteRecord.fromJson).toList();
+  }
+
+  Future<RemoteCommConfig> getCommConfig() async {
+    final res = await _client.get('/user/comm/config');
+    _check(res);
+    return RemoteCommConfig.fromJson(_dataMap(res));
+  }
+
+  Future<void> transferCommission(int amountCents) async {
+    final res = await _client.post(
+      '/user/transfer',
+      data: {'transfer_amount': amountCents},
+    );
+    _check(res);
+  }
+
+  Future<void> withdrawCommission({
+    required int amountCents,
+    required String account,
+    required String method,
+  }) async {
+    final res = await _client.post(
+      '/user/ticket/withdraw',
+      data: {
+        'withdraw_amount': amountCents,
+        'withdraw_account': account,
+        'withdraw_method': method,
+      },
+    );
+    _check(res);
   }
 
   // ── Traffic ───────────────────────────────────────────────────────────────
@@ -250,10 +365,10 @@ class PanelApi {
   /// Creates a wallet top-up order. [amountCents] is the amount in cents (fen).
   /// Returns the trade_no for the subsequent checkout call.
   Future<String> submitRechargeOrder(int amountCents) async {
-    final res = await _client.post('/user/order/save', data: {
-      'type': 1,
-      'amount': amountCents,
-    });
+    final res = await _client.post(
+      '/user/order/save',
+      data: {'period': 'deposit', 'deposit_amount': amountCents, 'plan_id': 0},
+    );
     _check(res);
     return res['data']?.toString() ?? '';
   }
@@ -333,7 +448,10 @@ class PanelApi {
   }
 
   Future<TicketModel> getTicketDetail(int ticketId) async {
-    final res = await _client.get('/user/ticket/fetch', params: {'id': ticketId});
+    final res = await _client.get(
+      '/user/ticket/fetch',
+      params: {'id': ticketId},
+    );
     _check(res);
     final data = res['data'];
     if (data is Map<String, dynamic>) return TicketModel.fromJson(data);
@@ -345,31 +463,36 @@ class PanelApi {
     required int level,
     required String message,
   }) async {
-    final res = await _client.post('/user/ticket/save', data: {
-      'subject': subject,
-      'level': level,
-      'message': message,
-    });
+    final res = await _client.post(
+      '/user/ticket/save',
+      data: {'subject': subject, 'level': level, 'message': message},
+    );
     _check(res);
   }
 
-  Future<void> replyTicket({required int ticketId, required String message}) async {
-    final res = await _client.post('/user/ticket/reply', data: {
-      'id': ticketId,
-      'message': message,
-    });
+  Future<void> replyTicket({
+    required int ticketId,
+    required String message,
+  }) async {
+    final res = await _client.post(
+      '/user/ticket/reply',
+      data: {'id': ticketId, 'message': message},
+    );
     _check(res);
   }
 
   Future<void> closeTicket(int ticketId) async {
-    final res = await _client.post('/user/ticket/close', data: {'id': ticketId});
+    final res = await _client.post(
+      '/user/ticket/close',
+      data: {'id': ticketId},
+    );
     _check(res);
   }
 
   void _check(Map<String, dynamic> res) {
     final code = res['code'];
     if (code != 0 && code != null) {
-      throw ApiException(res['message']?.toString() ?? '请求失败');
+      throw ApiException(extractApiErrorMessage(res) ?? '请求失败');
     }
   }
 
@@ -387,9 +510,11 @@ class PanelApi {
     final data = res['data'];
     if (data is! List) return const [];
     return data
-        .map((e) => e is Map<String, dynamic>
-            ? e
-            : (e is Map ? Map<String, dynamic>.from(e) : null))
+        .map(
+          (e) => e is Map<String, dynamic>
+              ? e
+              : (e is Map ? Map<String, dynamic>.from(e) : null),
+        )
         .whereType<Map<String, dynamic>>()
         .toList();
   }

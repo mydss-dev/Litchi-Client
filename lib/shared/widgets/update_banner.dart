@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/app_models.dart';
+import '../services/url_opener.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_text_styles.dart';
@@ -66,13 +65,7 @@ class UpdateBanner extends StatelessWidget {
   }
 
   Future<void> _openDownload(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
-    try {
-      if (Platform.isWindows) {
-        await Process.run('cmd', ['/c', 'start', '', url]);
-      }
-    } catch (_) {}
+    await UrlOpener.open(url);
   }
 }
 

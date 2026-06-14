@@ -12,6 +12,8 @@ class AuthInput extends StatefulWidget {
     super.key,
     required this.icon,
     required this.hintText,
+    this.label,
+    this.requiredMark = false,
     this.controller,
     this.obscure = false,
     this.showRevealToggle = false,
@@ -20,6 +22,8 @@ class AuthInput extends StatefulWidget {
 
   final IconData icon;
   final String hintText;
+  final String? label;
+  final bool requiredMark;
   final TextEditingController? controller;
 
   /// Whether the field starts obscured (password fields).
@@ -57,14 +61,14 @@ class _AuthInputState extends State<AuthInput> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Container(
-      height: 46,
+    final input = Container(
+      height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        color: c.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(
-          color: _focused ? c.primary : const Color(0xFFCBD5E1),
+          color: _focused ? c.primary : c.softBorder,
           width: _focused ? 1.5 : 1,
         ),
       ),
@@ -105,6 +109,39 @@ class _AuthInputState extends State<AuthInput> {
             ),
         ],
       ),
+    );
+
+    if (widget.label == null) return input;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              widget.label!,
+              style: AppTextStyles.caption.copyWith(
+                color: c.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (widget.requiredMark) ...[
+              const SizedBox(width: 4),
+              Text(
+                '*',
+                style: AppTextStyles.caption.copyWith(
+                  color: c.danger,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        input,
+      ],
     );
   }
 }

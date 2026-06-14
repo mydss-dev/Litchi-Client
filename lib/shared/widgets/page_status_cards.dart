@@ -25,7 +25,11 @@ class PageLoadingCard extends StatelessWidget {
 
 /// Error card with message and a retry button.
 class PageErrorCard extends StatelessWidget {
-  const PageErrorCard({super.key, required this.message, required this.onRetry});
+  const PageErrorCard({
+    super.key,
+    required this.message,
+    required this.onRetry,
+  });
   final String message;
   final VoidCallback onRetry;
 
@@ -50,7 +54,10 @@ class PageErrorCard extends StatelessWidget {
             child: GestureDetector(
               onTap: onRetry,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: c.primarySoft,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -68,29 +75,144 @@ class PageErrorCard extends StatelessWidget {
   }
 }
 
-/// Small square refresh icon button shown in page headers.
+/// Square icon buttons shown in secondary page headers.
 class RefreshIconButton extends StatelessWidget {
-  const RefreshIconButton({super.key, required this.onTap});
+  const RefreshIconButton({super.key, required this.onTap, this.tooltip});
+
   final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return PageIconButton(
+      icon: LucideIcons.refreshCw,
+      tooltip: tooltip ?? '刷新',
+      onTap: onTap,
+    );
+  }
+}
+
+class PageBackButton extends StatelessWidget {
+  const PageBackButton({super.key, required this.onTap, this.tooltip});
+
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return PageIconButton(
+      icon: LucideIcons.chevronLeft,
+      tooltip: tooltip ?? '返回',
+      onTap: onTap,
+    );
+  }
+}
+
+class PageIconButton extends StatelessWidget {
+  const PageIconButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+    this.filled = false,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+  final bool filled;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 32,
-          height: 32,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: c.surfaceMuted,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
+    return Tooltip(
+      message: tooltip ?? '',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: filled ? c.primarySoft : c.cardBg,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: filled ? c.primarySoft : c.softBorder),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: filled ? c.primary : c.textPrimary,
+            ),
           ),
-          child: Icon(LucideIcons.refreshCw, size: 14, color: c.iconDefault),
         ),
       ),
+    );
+  }
+}
+
+class PageStateCard extends StatelessWidget {
+  const PageStateCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final content = Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.softBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: c.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(icon, color: c.iconMuted, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.bodyStrong),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+              ],
+            ),
+          ),
+          if (onTap != null) ...[
+            const SizedBox(width: 10),
+            Icon(LucideIcons.chevronRight, color: c.iconMuted, size: 18),
+          ],
+        ],
+      ),
+    );
+    if (onTap == null) return content;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(onTap: onTap, child: content),
     );
   }
 }

@@ -13,6 +13,7 @@ abstract final class AutoStart {
 
   /// Register the current executable to launch at Windows startup.
   static Future<void> enable() async {
+    if (!Platform.isWindows) return;
     try {
       await Process.run('reg', [
         'add', _key, '/v', _name, '/t', 'REG_SZ', '/d', _exePath, '/f',
@@ -22,6 +23,7 @@ abstract final class AutoStart {
 
   /// Remove the auto-start registry entry.
   static Future<void> disable() async {
+    if (!Platform.isWindows) return;
     try {
       await Process.run('reg', [
         'delete', _key, '/v', _name, '/f',

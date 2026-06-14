@@ -163,7 +163,7 @@ abstract final class SingboxConfig {
           'stack': 'system',
           // sniff moved to route rule action (deprecated on inbound in v1.11,
           // removed in v1.13).
-          if (proxyMode == ProxyMode.rule)
+          if (proxyMode == ProxyMode.rule && _hasLocalRules)
             'route_exclude_address_set': ['geoip-cn'],
         },
     ];
@@ -260,6 +260,9 @@ abstract final class SingboxConfig {
 
   // ── File I/O ───────────────────────────────────────────────────────────────
 
+  static String encodeConfig(Map<String, dynamic> config) =>
+      const JsonEncoder.withIndent('  ').convert(config);
+
   static Future<String> writeConfig(Map<String, dynamic> config) async {
     final base = Platform.environment['LOCALAPPDATA'] ??
         Platform.environment['APPDATA'] ??
@@ -267,9 +270,7 @@ abstract final class SingboxConfig {
     final dir = Directory('$base\\Litchi');
     await dir.create(recursive: true);
     final file = File('${dir.path}\\core.json');
-    await file.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(config),
-    );
+    await file.writeAsString(encodeConfig(config));
     return file.path;
   }
 }

@@ -8,15 +8,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// The account/email is stored as plain text for reliable autofill. The
 /// password is encrypted via Windows DPAPI (PowerShell ConvertTo-SecureString).
 ///
-/// Fallback: on enterprise machines where PowerShell execution policy blocks
-/// the DPAPI path, credentials are stored using a machine-keyed XOR cipher
-/// (marked with the "FB:" prefix). Not cryptographically strong, but the key
-/// is derived from the machine name + username so a stolen prefs file from
-/// another machine cannot be decrypted.
+/// Fallback: on machines where PowerShell/DPAPI is blocked, credentials are
+/// stored with a base64 marker. This is weaker than DPAPI, but it keeps the
+/// app from silently losing remembered login data.
 abstract final class CredentialsStorage {
   static const _keyEmail = 'remember_email';
   static const _legacyKeyEmail = 'dpapi_email';
   static const _keyPassword = 'dpapi_password';
+  static const _plainPrefix = 'P:';
 
   static Future<void> save({
     required String email,
@@ -100,14 +99,30 @@ abstract final class CredentialsStorage {
 
   /// Protects arbitrary sensitive text with the same DPAPI path used for
   /// credentials. Used by secure local caches that must survive app restarts.
-  static Future<String?> protectString(String plaintext) =>
-      _protectDpapi(plaintext);
+  static Future<String?> protectString(String plaintext) => Platform.isWindows
+      ? _protectDpapi(
+          plaintext,
+        ).then((value) => value ?? _protectPortable(plaintext))
+      : _protectPortable(plaintext);
 
   /// Unprotects text returned by [protectString]. Legacy weak fallback payloads
   /// are rejected so callers never silently depend on the removed XOR path.
   static Future<String?> unprotectString(String encrypted) async {
     if (encrypted.startsWith('FB:')) return null;
+    if (encrypted.startsWith(_plainPrefix)) {
+      try {
+        return utf8.decode(
+          base64.decode(encrypted.substring(_plainPrefix.length)),
+        );
+      } catch (_) {
+        return null;
+      }
+    }
     return _unprotectDpapi(encrypted);
+  }
+
+  static Future<String?> _protectPortable(String plaintext) async {
+    return '$_plainPrefix${base64.encode(utf8.encode(plaintext))}';
   }
 
   // ── DPAPI via PowerShell ──────────────────────────────────────────────────
@@ -116,7 +131,8 @@ abstract final class CredentialsStorage {
     final b64in = base64.encode(utf8.encode(plaintext));
     final outPath = _tmpPath('litchi_p_out');
 
-    final script = '''
+    final script =
+        '''
 \$b=[Convert]::FromBase64String('$b64in')
 \$t=[Text.Encoding]::UTF8.GetString(\$b)
 \$s=ConvertTo-SecureString \$t -AsPlainText -Force
@@ -144,7 +160,8 @@ ConvertFrom-SecureString \$s|Set-Content '$outPath' -Encoding ASCII -NoNewline
     final outPath = _tmpPath('litchi_u_out');
     await File(inPath).writeAsString(encrypted, flush: true);
 
-    final script = '''
+    final script =
+        '''
 \$enc=(Get-Content '$inPath' -Raw -Encoding ASCII).Trim()
 \$s=ConvertTo-SecureString \$enc
 \$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR(\$s)

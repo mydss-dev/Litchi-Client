@@ -14,16 +14,9 @@ class AppSidebar extends StatelessWidget {
 
   static const _items = <_MenuItem>[
     _MenuItem(AppPage.dashboard, '首页', LucideIcons.home),
-    _MenuItem(AppPage.nodes, '节点', LucideIcons.globe),
-    _MenuItem(AppPage.traffic, '统计', LucideIcons.barChart3),
-    _MenuItem.separator(),
-    _MenuItem(AppPage.shop, '商城', LucideIcons.shoppingBag),
-    _MenuItem(AppPage.orders, '订单', LucideIcons.clipboardList),
-    _MenuItem.separator(),
-    _MenuItem(AppPage.account, '账户', LucideIcons.user),
+    _MenuItem(AppPage.shop, '套餐', LucideIcons.shoppingBag),
     _MenuItem(AppPage.invite, '邀请', LucideIcons.gift),
-    _MenuItem(AppPage.tickets, '工单', LucideIcons.messageSquare),
-    _MenuItem.separator(),
+    _MenuItem(AppPage.account, '我的', LucideIcons.user),
     _MenuItem(AppPage.settings, '设置', LucideIcons.settings),
   ];
 
@@ -33,7 +26,7 @@ class AppSidebar extends StatelessWidget {
     final controller = AppScope.of(context);
 
     return Container(
-      width: 200,
+      width: 176,
       decoration: BoxDecoration(
         color: c.sidebarBg,
         border: Border(right: BorderSide(color: c.sidebarBorder)),
@@ -49,17 +42,14 @@ class AppSidebar extends StatelessWidget {
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
-                  for (final item in _items)
-                    if (item.separator)
-                      _SidebarDivider(color: c.softBorder)
-                    else ...[
-                      _SidebarMenuItem(
-                        item: item,
-                        selected: controller.page == item.page,
-                        onTap: () => controller.goToPage(item.page!),
-                      ),
-                      const SizedBox(height: 6),
-                    ],
+                  for (final item in _items) ...[
+                    _SidebarMenuItem(
+                      item: item,
+                      selected: _isSelected(controller.page, item.page),
+                      onTap: () => controller.goToPage(item.page),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                 ],
               ),
             ),
@@ -70,33 +60,28 @@ class AppSidebar extends StatelessWidget {
       ),
     );
   }
+
+  bool _isSelected(AppPage current, AppPage item) {
+    if (item == AppPage.dashboard) {
+      return current == AppPage.dashboard || current == AppPage.nodes;
+    }
+    if (item == AppPage.account) {
+      return current == AppPage.account ||
+          current == AppPage.wallet ||
+          current == AppPage.orders ||
+          current == AppPage.tickets ||
+          current == AppPage.traffic;
+    }
+    return current == item;
+  }
 }
 
 class _MenuItem {
-  const _MenuItem(this.page, this.label, this.icon) : separator = false;
-  const _MenuItem.separator()
-    : page = null,
-      label = '',
-      icon = LucideIcons.minus,
-      separator = true;
+  const _MenuItem(this.page, this.label, this.icon);
 
-  final AppPage? page;
+  final AppPage page;
   final String label;
   final IconData icon;
-  final bool separator;
-}
-
-class _SidebarDivider extends StatelessWidget {
-  const _SidebarDivider({required this.color});
-
-  final Color color;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
-      child: Divider(height: 1, thickness: 1, color: color),
-    );
-  }
 }
 
 class _BrandArea extends StatelessWidget {
@@ -230,18 +215,23 @@ class _PlanStatusCard extends StatelessWidget {
     final ctrl = AppScope.of(context);
     final user = ctrl.user;
     final traffic = ctrl.traffic;
-    final ratio = traffic.totalGb <= 0
+    final remainRatio = traffic.totalGb <= 0
         ? 0.0
-        : (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0);
+        : (traffic.remainGb / traffic.totalGb).clamp(0.0, 1.0);
+    final progressColor = remainRatio <= 0.1
+        ? c.danger
+        : remainRatio <= 0.3
+        ? c.warning
+        : c.primary;
     final planName = user.plan.isEmpty ? '--' : user.plan;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        color: c.surfaceMuted.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.softBorder),
+        border: Border.all(color: c.softBorder.withValues(alpha: 0.75)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,11 +245,12 @@ class _PlanStatusCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodyStrong.copyWith(
                     color: c.textPrimary,
+                    fontSize: 13,
                   ),
                 ),
               ),
               Container(
-                height: 24,
+                height: 22,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
@@ -277,23 +268,42 @@ class _PlanStatusCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            '${traffic.usedGb.toStringAsFixed(1)} GB / ${traffic.totalGb.toStringAsFixed(0)} GB',
-            style: AppTextStyles.caption.copyWith(color: c.textSecondary),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '剩余 ${traffic.remainGb.toStringAsFixed(0)} GB',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+              Text(
+                '${(remainRatio * 100).round()}%',
+                style: AppTextStyles.caption.copyWith(
+                  color: progressColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: Stack(
               children: [
-                Container(height: 7, color: c.surfaceMuted),
+                Container(height: 7, color: c.cardBg),
                 FractionallySizedBox(
-                  widthFactor: ratio,
+                  widthFactor: remainRatio,
                   child: Container(
                     height: 7,
                     decoration: BoxDecoration(
-                      color: c.primary,
+                      color: progressColor,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -301,10 +311,13 @@ class _PlanStatusCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 7),
           Text(
-            '剩余 ${traffic.remainGb.toStringAsFixed(0)} GB · $planName',
-            style: AppTextStyles.caption.copyWith(color: c.textMuted),
+            '总量 ${traffic.totalGb.toStringAsFixed(0)} GB',
+            style: AppTextStyles.caption.copyWith(
+              color: c.textMuted,
+              fontSize: 11,
+            ),
           ),
         ],
       ),

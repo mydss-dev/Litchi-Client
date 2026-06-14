@@ -56,7 +56,7 @@ dependencies:
   qr_flutter: ^4.1.0
   # System tray icon + menu (Windows minimize-to-tray)
   tray_manager: ^0.2.3
-
+  package_info_plus: ^10.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

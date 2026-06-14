@@ -8,6 +8,7 @@ import '../../shared/config/app_config.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
+import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_select.dart';
@@ -80,9 +81,9 @@ class _SettingsPageState extends State<SettingsPage> {
             const _HttpsWarningCard(),
             const SizedBox(height: 12),
           ],
-          // ── General ────────────────────────────────────────────────────────
+          // ── System ─────────────────────────────────────────────────────────
           _SettingsGroup(
-            title: '通用设置',
+            title: '系统设置',
             children: [
               _SettingRow(
                 label: '开机启动',
@@ -127,9 +128,9 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           const SizedBox(height: 16),
-          // ── Network ────────────────────────────────────────────────────────
+          // ── Connection ─────────────────────────────────────────────────────
           _SettingsGroup(
-            title: '网络设置',
+            title: '连接设置',
             children: [
               _SettingRow(
                 label: '代理模式',
@@ -153,9 +154,9 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           const SizedBox(height: 16),
-          // ── Advanced ───────────────────────────────────────────────────────
+          // ── Diagnostics ────────────────────────────────────────────────────
           _SettingsGroup(
-            title: '高级设置',
+            title: '核心与诊断',
             children: [
               _SettingRow(
                 label: '开发者模式',
@@ -164,13 +165,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   onChanged: ctrl.setDevMode,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // ── Core management ────────────────────────────────────────────────
-          _SettingsGroup(
-            title: '核心管理',
-            children: [
               _SettingRow(
                 label: '核心版本',
                 trailing: Text(
@@ -190,10 +184,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               _SettingRow(
                 label: '修复系统代理',
-                trailing: _DiagnosticButton(
-                  label: '修复',
-                  onTap: _onFixProxy,
-                ),
+                trailing: _DiagnosticButton(label: '修复', onTap: _onFixProxy),
               ),
               _SettingRow(
                 label: '导出诊断日志',
@@ -209,7 +200,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // ── Support ────────────────────────────────────────────────────────
           if (AppConfig.supportUrl.isNotEmpty) ...[
             _SettingsGroup(
-              title: '帮助与支持',
+              title: '帮助与关于',
               children: [
                 _SettingRow(
                   label: '联系客服',
@@ -224,7 +215,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
           // ── Account ────────────────────────────────────────────────────────
           _SettingsGroup(
-            title: '账户',
+            title: '账号安全',
             children: [_LogoutRow(onLogout: ctrl.logout)],
           ),
         ],
@@ -280,36 +271,10 @@ class _LogoutRow extends StatelessWidget {
   final VoidCallback onLogout;
 
   Future<void> _confirmLogout(BuildContext context) async {
-    final c = AppColors.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: c.cardBg,
-        title: Text(
-          '确认退出登录？',
-          style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
-        ),
-        content: Text(
-          '退出后代理连接将断开。',
-          style: AppTextStyles.body.copyWith(color: c.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              '取消',
-              style: AppTextStyles.body.copyWith(color: c.textSecondary),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              '退出登录',
-              style: AppTextStyles.body.copyWith(color: c.danger),
-            ),
-          ),
-        ],
-      ),
+      barrierColor: Colors.black.withValues(alpha: 0.42),
+      builder: (_) => const _LogoutConfirmDialog(),
     );
     if (confirmed == true) onLogout();
   }
@@ -335,6 +300,147 @@ class _LogoutRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LogoutConfirmDialog extends StatelessWidget {
+  const _LogoutConfirmDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(color: c.softBorder),
+            boxShadow: AppShadows.card(c),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: c.dangerSoft,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Icon(LucideIcons.logOut, size: 19, color: c.danger),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '退出登录',
+                      style: AppTextStyles.sectionTitle.copyWith(
+                        color: c.textPrimary,
+                        fontSize: 19,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                '退出后会断开当前代理连接，并清除本次登录状态。',
+                style: AppTextStyles.body.copyWith(
+                  color: c.textSecondary,
+                  height: 1.55,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _DialogTextButton(
+                    label: '取消',
+                    onTap: () => Navigator.of(context).pop(false),
+                  ),
+                  const SizedBox(width: 10),
+                  _DialogDangerButton(
+                    label: '退出登录',
+                    onTap: () => Navigator.of(context).pop(true),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogTextButton extends StatelessWidget {
+  const _DialogTextButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: c.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: c.softBorder),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.button.copyWith(color: c.textSecondary),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogDangerButton extends StatelessWidget {
+  const _DialogDangerButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: c.danger,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.button.copyWith(color: Colors.white),
+          ),
+        ),
       ),
     );
   }

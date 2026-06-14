@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -7,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
+import '../../shared/services/url_opener.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
@@ -148,13 +148,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   }
 
   Future<void> _openInBrowser(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
-    try {
-      if (Platform.isWindows) {
-        await Process.run('cmd', ['/c', 'start', '', url]);
-      }
-    } catch (_) {}
+    await UrlOpener.open(url);
   }
 
   void _startTimers() {

@@ -161,13 +161,18 @@ class _NodesPageState extends State<NodesPage> {
                     favorite: _favorites.contains(n.id),
                     onTap: () async {
                       setState(() => _selectedId = n.id);
+                      final overlay = Overlay.of(context, rootOverlay: true);
                       final error = await ctrl.setCurrentNode(n);
                       if (!context.mounted) return;
                       if (error != null) {
-                        AppToast.show(context, error, type: AppToastType.error);
+                        AppToast.showInOverlay(
+                          overlay,
+                          error,
+                          type: AppToastType.error,
+                        );
                       } else {
-                        AppToast.show(
-                          context,
+                        AppToast.showInOverlay(
+                          overlay,
                           '已切换至 ${n.name}',
                           type: AppToastType.success,
                         );
@@ -529,10 +534,7 @@ class _LatencyIndicator extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          Text(
-            '测速中',
-            style: AppTextStyles.menu.copyWith(color: c.warning),
-          ),
+          Text('测速中', style: AppTextStyles.menu.copyWith(color: c.warning)),
         ],
       );
     }

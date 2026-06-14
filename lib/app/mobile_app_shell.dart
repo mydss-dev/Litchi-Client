@@ -1,0 +1,202 @@
+import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../features/auth/auth_flow.dart';
+import '../features/mobile/mobile_home_page.dart';
+import '../features/mobile/mobile_invite_page.dart';
+import '../features/mobile/mobile_nodes_page.dart';
+import '../features/mobile/mobile_orders_page.dart';
+import '../features/mobile/mobile_profile_page.dart';
+import '../features/mobile/mobile_settings_page.dart';
+import '../features/mobile/mobile_shop_page.dart';
+import '../features/mobile/mobile_tickets_page.dart';
+import '../features/mobile/mobile_wallet_page.dart';
+import '../shared/theme/app_colors.dart';
+import '../shared/theme/app_radius.dart';
+import '../shared/theme/app_shadows.dart';
+import '../shared/theme/app_text_styles.dart';
+import 'app_controller.dart';
+
+class MobileAppShell extends StatelessWidget {
+  const MobileAppShell({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    if (!ctrl.isAuthenticated) return const AuthFlow();
+    return const _MobileShell();
+  }
+}
+
+class _MobileShell extends StatelessWidget {
+  const _MobileShell();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final bottom = MediaQuery.paddingOf(context).bottom;
+
+    return Container(
+      color: c.appBg,
+      child: SafeArea(
+        top: true,
+        bottom: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: _pageFor(ctrl.page),
+              ),
+            ),
+            _MobileBottomNav(bottomPadding: bottom),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pageFor(AppPage page) {
+    switch (page) {
+      case AppPage.dashboard:
+      case AppPage.traffic:
+        return const MobileHomePage();
+      case AppPage.nodes:
+        return const MobileNodesPage();
+      case AppPage.shop:
+        return const MobileShopPage();
+      case AppPage.orders:
+        return const MobileOrdersPage();
+      case AppPage.settings:
+        return const MobileSettingsPage();
+      case AppPage.invite:
+        return const MobileInvitePage();
+      case AppPage.tickets:
+        return const MobileTicketsPage();
+      case AppPage.account:
+        return const MobileProfilePage();
+      case AppPage.wallet:
+        return const MobileWalletPage();
+    }
+  }
+}
+
+class _MobileBottomNav extends StatelessWidget {
+  const _MobileBottomNav({required this.bottomPadding});
+
+  final double bottomPadding;
+
+  static const _items = [
+    _MobileNavItem(AppPage.dashboard, LucideIcons.home, '首页'),
+    _MobileNavItem(AppPage.shop, LucideIcons.shoppingBag, '套餐'),
+    _MobileNavItem(AppPage.invite, LucideIcons.gift, '邀请'),
+    _MobileNavItem(AppPage.account, LucideIcons.user, '我的'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 2, 18, bottomPadding + 8),
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: c.softBorder),
+          boxShadow: AppShadows.soft(c),
+        ),
+        child: Row(
+          children: [
+            for (final item in _items)
+              Expanded(
+                child: _MobileNavButton(
+                  item: item,
+                  selected: _isSelected(ctrl.page, item.page),
+                  onTap: () => ctrl.goToPage(item.page),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _isSelected(AppPage current, AppPage tab) {
+    if (tab == AppPage.dashboard) {
+      return current == AppPage.dashboard || current == AppPage.traffic;
+    }
+    if (tab == AppPage.shop) {
+      return current == AppPage.shop;
+    }
+    if (tab == AppPage.account) {
+      return current == AppPage.account ||
+          current == AppPage.orders ||
+          current == AppPage.settings ||
+          current == AppPage.tickets ||
+          current == AppPage.wallet;
+    }
+    return current == tab;
+  }
+}
+
+class _MobileNavButton extends StatelessWidget {
+  const _MobileNavButton({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _MobileNavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final color = selected ? c.primary : c.textMuted;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Ink(
+            height: 44,
+            decoration: BoxDecoration(
+              color: selected ? c.primarySoft : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(item.icon, size: 18, color: color),
+                const SizedBox(height: 3),
+                Text(
+                  item.label,
+                  style: AppTextStyles.caption.copyWith(
+                    color: color,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileNavItem {
+  const _MobileNavItem(this.page, this.icon, this.label);
+
+  final AppPage page;
+  final IconData icon;
+  final String label;
+}

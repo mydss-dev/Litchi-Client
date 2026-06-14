@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -5,9 +7,8 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
+import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/widgets/app_badge.dart';
-import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
@@ -22,7 +23,7 @@ class TicketsPage extends StatefulWidget {
 class _TicketsPageState extends State<TicketsPage> {
   bool _loading = true;
   String? _error;
-  List<TicketModel> _tickets = [];
+  List<TicketModel> _tickets = const [];
   bool _initialized = false;
 
   @override
@@ -30,7 +31,7 @@ class _TicketsPageState extends State<TicketsPage> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
-      _load();
+      unawaited(_load());
     }
   }
 
@@ -41,31 +42,69 @@ class _TicketsPageState extends State<TicketsPage> {
     });
     try {
       final tickets = await AppScope.of(context).api.getTickets();
-      if (mounted) setState(() => _tickets = tickets);
+      if (!mounted) return;
+      setState(() {
+        _tickets = tickets;
+        _loading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('ApiException: ', ''));
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('ApiException: ', '');
+        _loading = false;
+      });
     }
+  }
+
+  Future<void> _handleRefresh() async {
+    await _load();
+    if (!mounted || _error != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
+  }
+
+  void _showNewTicketDialog() {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.42),
+      builder: (_) => _NewTicketDialog(onCreated: _load),
+    );
+  }
+
+  void _showTicketDetail(TicketModel ticket) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.42),
+      builder: (_) => _TicketDetailDialog(ticket: ticket, onChanged: _load),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              PageBackButton(
+                onTap: () => ctrl.goToPage(AppPage.account),
+                tooltip: '返回我的',
+              ),
+              const SizedBox(width: 10),
               const Expanded(
-                child: PageHeader(title: '工单', subtitle: '提交问题，与支持团队沟通'),
+                child: PageHeader(title: '工单支持', subtitle: '提交问题并查看回复'),
               ),
               if (!_loading) ...[
-                RefreshIconButton(onTap: _load),
+                const SizedBox(width: 10),
+                RefreshIconButton(onTap: _handleRefresh),
                 const SizedBox(width: 8),
-                _NewTicketButton(onCreated: _load),
+                PageIconButton(
+                  tooltip: '新建工单',
+                  icon: LucideIcons.messageSquarePlus,
+                  filled: true,
+                  onTap: _showNewTicketDialog,
+                ),
               ],
             ],
           ),
@@ -73,140 +112,109 @@ class _TicketsPageState extends State<TicketsPage> {
           if (_loading)
             const PageLoadingCard()
           else if (_error != null)
-            PageErrorCard(message: _error!, onRetry: _load)
+            PageStateCard(
+              icon: LucideIcons.circleAlert,
+              title: '工单加载失败',
+              subtitle: _error!,
+              onTap: _load,
+            )
           else if (_tickets.isEmpty)
-            _EmptyState(onNew: _load)
+            PageStateCard(
+              icon: LucideIcons.messageSquare,
+              title: '暂无工单',
+              subtitle: '有问题可以新建工单联系客服',
+              onTap: _showNewTicketDialog,
+            )
           else
-            _TicketList(tickets: _tickets, onRefresh: _load),
+            Column(
+              children: [
+                for (final ticket in _tickets) ...[
+                  _TicketCard(
+                    ticket: ticket,
+                    onTap: () => _showTicketDetail(ticket),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ],
+            ),
         ],
       ),
-    );
-  }
-}
-
-// ── New ticket button ─────────────────────────────────────────────────────────
-
-class _NewTicketButton extends StatelessWidget {
-  const _NewTicketButton({required this.onCreated});
-
-  final VoidCallback onCreated;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => showDialog(
-          context: context,
-          builder: (_) => _NewTicketDialog(onCreated: onCreated),
-        ),
-        child: Container(
-          height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: c.primary,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(LucideIcons.plus, size: 14, color: Colors.white),
-              const SizedBox(width: 6),
-              Text(
-                '新建工单',
-                style: AppTextStyles.button.copyWith(
-                  color: Colors.white,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Ticket list ───────────────────────────────────────────────────────────────
-
-class _TicketList extends StatelessWidget {
-  const _TicketList({required this.tickets, required this.onRefresh});
-
-  final List<TicketModel> tickets;
-  final VoidCallback onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (int i = 0; i < tickets.length; i++) ...[
-          if (i > 0) const SizedBox(height: 10),
-          _TicketCard(ticket: tickets[i], onRefresh: onRefresh),
-        ],
-      ],
     );
   }
 }
 
 class _TicketCard extends StatelessWidget {
-  const _TicketCard({required this.ticket, required this.onRefresh});
+  const _TicketCard({required this.ticket, required this.onTap});
 
   final TicketModel ticket;
-  final VoidCallback onRefresh;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(16),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () => showDialog(
-            context: context,
-            builder: (_) => _TicketDetailDialog(
-              ticket: ticket,
-              onRefresh: onRefresh,
-            ),
+    final statusColor = ticket.isOpen ? c.primary : c.textMuted;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: c.softBorder),
+            boxShadow: AppShadows.soft(c),
           ),
           child: Row(
             children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: ticket.isOpen ? c.primarySoft : c.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  LucideIcons.messageSquare,
+                  color: statusColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ticket.subject,
+                      ticket.subject.isEmpty ? '未命名工单' : ticket.subject,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyStrong.copyWith(
                         color: c.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 3),
                     Text(
-                      ticket.dateDisplay,
-                      style: AppTextStyles.caption.copyWith(
-                        color: c.textMuted,
-                        fontSize: 11,
-                      ),
+                      '${ticket.levelLabel} · ${ticket.dateDisplay}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              _LevelBadge(level: ticket.level),
-              const SizedBox(width: 8),
-              _StatusBadge(isOpen: ticket.isOpen),
               const SizedBox(width: 10),
-              Icon(
-                LucideIcons.chevronRight,
-                size: 14,
-                color: c.textMuted,
+              Text(
+                ticket.statusLabel,
+                style: AppTextStyles.caption.copyWith(
+                  color: statusColor,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
+              const SizedBox(width: 6),
+              Icon(LucideIcons.chevronRight, color: c.iconMuted, size: 18),
             ],
           ),
         ),
@@ -214,87 +222,6 @@ class _TicketCard extends StatelessWidget {
     );
   }
 }
-
-class _LevelBadge extends StatelessWidget {
-  const _LevelBadge({required this.level});
-
-  final int level;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final (label, bg, fg) = switch (level) {
-      3 => ('紧急', c.dangerSoft, c.danger),
-      2 => ('中等', c.warning.withValues(alpha: 0.12), c.warning),
-      _ => ('低', c.surfaceMuted, c.textMuted),
-    };
-    return AppBadge(
-      text: label,
-      background: bg,
-      textColor: fg,
-      fontSize: 10,
-      height: 20,
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.isOpen});
-
-  final bool isOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppBadge(
-      text: isOpen ? '处理中' : '已关闭',
-      background: isOpen
-          ? c.primary.withValues(alpha: 0.1)
-          : c.surfaceMuted,
-      textColor: isOpen ? c.primary : c.textMuted,
-      fontSize: 10,
-      height: 20,
-    );
-  }
-}
-
-// ── Empty state ───────────────────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onNew});
-
-  final VoidCallback onNew;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-      child: Center(
-        child: Column(
-          children: [
-            Icon(LucideIcons.messageSquare, size: 36, color: c.textMuted),
-            const SizedBox(height: 12),
-            Text(
-              '暂无工单',
-              style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '遇到问题？提交工单联系支持团队',
-              style: AppTextStyles.body.copyWith(color: c.textMuted),
-            ),
-            const SizedBox(height: 20),
-            _NewTicketButton(onCreated: onNew),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── New ticket dialog ─────────────────────────────────────────────────────────
 
 class _NewTicketDialog extends StatefulWidget {
   const _NewTicketDialog({required this.onCreated});
@@ -308,7 +235,7 @@ class _NewTicketDialog extends StatefulWidget {
 class _NewTicketDialogState extends State<_NewTicketDialog> {
   final _subjectCtrl = TextEditingController();
   final _messageCtrl = TextEditingController();
-  int _level = 1;
+  int _level = 0;
   bool _submitting = false;
 
   @override
@@ -319,28 +246,38 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
   }
 
   Future<void> _submit() async {
+    if (_submitting) return;
     final subject = _subjectCtrl.text.trim();
     final message = _messageCtrl.text.trim();
     if (subject.isEmpty || message.isEmpty) {
       AppToast.show(context, '请填写标题和问题描述', type: AppToastType.warning);
       return;
     }
+    if (subject.length < 5) {
+      AppToast.show(context, '问题标题至少 5 个字符', type: AppToastType.warning);
+      return;
+    }
+    if (message.length < 10) {
+      AppToast.show(context, '问题描述至少 10 个字符', type: AppToastType.warning);
+      return;
+    }
+
     setState(() => _submitting = true);
     try {
-      await AppScope.of(context).api.createTicket(
-            subject: subject,
-            level: _level,
-            message: message,
-          );
-      if (mounted) {
-        Navigator.of(context).pop();
-        widget.onCreated();
-        AppToast.show(context, '工单已提交', type: AppToastType.success);
-      }
+      await AppScope.of(
+        context,
+      ).api.createTicket(subject: subject, level: _level, message: message);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onCreated();
+      AppToast.show(context, '工单已提交', type: AppToastType.success);
     } catch (e) {
-      if (mounted) {
-        AppToast.show(context, e.toString(), type: AppToastType.error);
-      }
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        e.toString().replaceFirst('ApiException: ', ''),
+        type: AppToastType.error,
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -348,76 +285,51 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AlertDialog(
-      backgroundColor: c.cardBg,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        side: BorderSide(color: c.softBorder),
-      ),
-      title: Row(
+    return _DialogShell(
+      title: '新建工单',
+      icon: LucideIcons.messageSquarePlus,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(LucideIcons.messageSquarePlus, size: 18, color: c.primary),
-          const SizedBox(width: 10),
-          Text(
-            '新建工单',
-            style: AppTextStyles.bodyStrong.copyWith(
-              color: c.textPrimary,
-              fontSize: 15,
+          const _FormLabel('问题标题'),
+          const SizedBox(height: 6),
+          _FormTextField(controller: _subjectCtrl, hint: '用一句话描述你的问题'),
+          const SizedBox(height: 14),
+          const _FormLabel('优先级'),
+          const SizedBox(height: 8),
+          _PrioritySelector(
+            value: _level,
+            onChanged: (value) => setState(() => _level = value),
+          ),
+          const SizedBox(height: 14),
+          const _FormLabel('问题描述'),
+          const SizedBox(height: 6),
+          _FormTextField(
+            controller: _messageCtrl,
+            hint: '详细描述你遇到的问题',
+            maxLines: 5,
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: FilledButton(
+              onPressed: _submitting ? null : _submit,
+              child: Text(_submitting ? '提交中...' : '提交工单'),
             ),
           ),
         ],
       ),
-      content: SizedBox(
-        width: 440,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _FormLabel('问题标题', c),
-            const SizedBox(height: 6),
-            _InputField(controller: _subjectCtrl, hint: '用一句话描述你的问题', c: c),
-            const SizedBox(height: 14),
-            _FormLabel('优先级', c),
-            const SizedBox(height: 6),
-            _LevelSelector(value: _level, onChanged: (v) => setState(() => _level = v)),
-            const SizedBox(height: 14),
-            _FormLabel('问题描述', c),
-            const SizedBox(height: 6),
-            _InputField(
-              controller: _messageCtrl,
-              hint: '详细描述你遇到的问题…',
-              c: c,
-              maxLines: 5,
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('取消', style: AppTextStyles.button.copyWith(color: c.textMuted)),
-        ),
-        TextButton(
-          onPressed: _submitting ? null : _submit,
-          child: Text(
-            _submitting ? '提交中…' : '提交',
-            style: AppTextStyles.button.copyWith(color: c.primary),
-          ),
-        ),
-      ],
     );
   }
 }
 
-// ── Ticket detail dialog ──────────────────────────────────────────────────────
-
 class _TicketDetailDialog extends StatefulWidget {
-  const _TicketDetailDialog({required this.ticket, required this.onRefresh});
+  const _TicketDetailDialog({required this.ticket, required this.onChanged});
 
   final TicketModel ticket;
-  final VoidCallback onRefresh;
+  final VoidCallback onChanged;
 
   @override
   State<_TicketDetailDialog> createState() => _TicketDetailDialogState();
@@ -426,7 +338,7 @@ class _TicketDetailDialog extends StatefulWidget {
 class _TicketDetailDialogState extends State<_TicketDetailDialog> {
   late TicketModel _ticket;
   final _replyCtrl = TextEditingController();
-  bool _loadingDetail = true;
+  bool _loading = true;
   bool _replying = false;
   bool _closing = false;
 
@@ -434,7 +346,9 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
   void initState() {
     super.initState();
     _ticket = widget.ticket;
-    _loadDetail();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_loadDetail());
+    });
   }
 
   @override
@@ -444,51 +358,68 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
   }
 
   Future<void> _loadDetail() async {
-    setState(() => _loadingDetail = true);
+    setState(() => _loading = true);
     try {
       final detail = await AppScope.of(context).api.getTicketDetail(_ticket.id);
-      if (mounted) setState(() => _ticket = detail);
-    } catch (_) {
-      // keep showing basic info if detail fetch fails
+      if (!mounted) return;
+      setState(() => _ticket = detail);
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        e.toString().replaceFirst('ApiException: ', ''),
+        type: AppToastType.error,
+      );
     } finally {
-      if (mounted) setState(() => _loadingDetail = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _reply() async {
-    final msg = _replyCtrl.text.trim();
-    if (msg.isEmpty) return;
+    if (_replying) return;
+    final message = _replyCtrl.text.trim();
+    if (message.isEmpty) {
+      AppToast.show(context, '请输入回复内容', type: AppToastType.warning);
+      return;
+    }
     setState(() => _replying = true);
     try {
-      await AppScope.of(context).api.replyTicket(
-            ticketId: _ticket.id,
-            message: msg,
-          );
+      await AppScope.of(
+        context,
+      ).api.replyTicket(ticketId: _ticket.id, message: message);
       _replyCtrl.clear();
       await _loadDetail();
-      widget.onRefresh();
+      widget.onChanged();
+      if (!mounted) return;
+      AppToast.show(context, '回复已发送', type: AppToastType.success);
     } catch (e) {
-      if (mounted) {
-        AppToast.show(context, e.toString(), type: AppToastType.error);
-      }
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        e.toString().replaceFirst('ApiException: ', ''),
+        type: AppToastType.error,
+      );
     } finally {
       if (mounted) setState(() => _replying = false);
     }
   }
 
   Future<void> _close() async {
+    if (_closing) return;
     setState(() => _closing = true);
     try {
       await AppScope.of(context).api.closeTicket(_ticket.id);
-      if (mounted) {
-        Navigator.of(context).pop();
-        widget.onRefresh();
-        AppToast.show(context, '工单已关闭', type: AppToastType.success);
-      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      widget.onChanged();
+      AppToast.show(context, '工单已关闭', type: AppToastType.success);
     } catch (e) {
-      if (mounted) {
-        AppToast.show(context, e.toString(), type: AppToastType.error);
-      }
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        e.toString().replaceFirst('ApiException: ', ''),
+        type: AppToastType.error,
+      );
     } finally {
       if (mounted) setState(() => _closing = false);
     }
@@ -497,90 +428,257 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return AlertDialog(
-      backgroundColor: c.cardBg,
-      surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        side: BorderSide(color: c.softBorder),
-      ),
-      title: Row(
+    return _DialogShell(
+      title: _ticket.subject.isEmpty ? '工单详情' : _ticket.subject,
+      subtitle: '${_ticket.levelLabel} · ${_ticket.statusLabel}',
+      icon: LucideIcons.messageSquare,
+      maxWidth: 520,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Text(
-              _ticket.subject,
-              style: AppTextStyles.bodyStrong.copyWith(
-                color: c.textPrimary,
-                fontSize: 15,
-              ),
-            ),
+          SizedBox(
+            height: 300,
+            child: _loading
+                ? Center(child: CircularProgressIndicator(color: c.primary))
+                : _MessageThread(messages: _ticket.messages),
           ),
-          const SizedBox(width: 8),
-          _StatusBadge(isOpen: _ticket.isOpen),
-        ],
-      ),
-      content: SizedBox(
-        width: 480,
-        height: 340,
-        child: _loadingDetail
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  Expanded(
-                    child: _MessageThread(
-                      messages: _ticket.messages,
-                      c: c,
+          if (_ticket.isOpen) ...[
+            const SizedBox(height: 12),
+            _FormTextField(controller: _replyCtrl, hint: '输入回复内容', maxLines: 3),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 42,
+                    child: OutlinedButton.icon(
+                      onPressed: _closing ? null : _close,
+                      icon: const Icon(LucideIcons.archive, size: 16),
+                      label: Text(_closing ? '关闭中...' : '关闭工单'),
                     ),
                   ),
-                  if (_ticket.isOpen) ...[
-                    const SizedBox(height: 12),
-                    Divider(color: c.softBorder, height: 1),
-                    const SizedBox(height: 12),
-                    _InputField(
-                      controller: _replyCtrl,
-                      hint: '输入回复…',
-                      c: c,
-                      maxLines: 3,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: 42,
+                    child: FilledButton.icon(
+                      onPressed: _replying ? null : _reply,
+                      icon: _replying
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(LucideIcons.send, size: 16),
+                      label: Text(_replying ? '发送中...' : '发送回复'),
                     ),
-                  ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DialogShell extends StatelessWidget {
+  const _DialogShell({
+    required this.title,
+    required this.icon,
+    required this.child,
+    this.subtitle,
+    this.maxWidth = 460,
+  });
+
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final Widget child;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(color: c.softBorder),
+            boxShadow: AppShadows.card(c),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 18, color: c.primary),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.sectionTitle.copyWith(
+                            color: c.textPrimary,
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            subtitle!,
+                            style: AppTextStyles.caption.copyWith(
+                              color: c.textMuted,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Icon(LucideIcons.x, size: 17, color: c.textMuted),
+                    ),
+                  ),
                 ],
               ),
+              const SizedBox(height: 16),
+              child,
+            ],
+          ),
+        ),
       ),
-      actions: [
-        if (_ticket.isOpen) ...[
-          TextButton(
-            onPressed: _closing ? null : _close,
-            child: Text(
-              _closing ? '关闭中…' : '关闭工单',
-              style: AppTextStyles.button.copyWith(color: c.danger),
+    );
+  }
+}
+
+class _FormLabel extends StatelessWidget {
+  const _FormLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Text(
+      text,
+      style: AppTextStyles.caption.copyWith(
+        color: c.textMuted,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class _FormTextField extends StatelessWidget {
+  const _FormTextField({
+    required this.controller,
+    required this.hint,
+    this.maxLines = 1,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      style: AppTextStyles.input.copyWith(color: c.textPrimary),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: AppTextStyles.input.copyWith(color: c.textMuted),
+        filled: true,
+        fillColor: c.surfaceMuted,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: c.softBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: c.primary),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrioritySelector extends StatelessWidget {
+  const _PrioritySelector({required this.value, required this.onChanged});
+
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  static const _items = [(0, '低'), (1, '中'), (2, '紧急')];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Row(
+      children: [
+        for (final item in _items) ...[
+          Expanded(
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => onChanged(item.$1),
+                child: Container(
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: value == item.$1 ? c.primary : c.surfaceMuted,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(
+                      color: value == item.$1 ? c.primary : c.softBorder,
+                    ),
+                  ),
+                  child: Text(
+                    item.$2,
+                    style: AppTextStyles.button.copyWith(
+                      color: value == item.$1 ? Colors.white : c.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(width: 4),
-          TextButton(
-            onPressed: _replying ? null : _reply,
-            child: Text(
-              _replying ? '发送中…' : '发送回复',
-              style: AppTextStyles.button.copyWith(color: c.primary),
-            ),
-          ),
-        ] else
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('关闭', style: AppTextStyles.button.copyWith(color: c.textMuted)),
-          ),
+          if (item != _items.last) const SizedBox(width: 8),
+        ],
       ],
     );
   }
 }
 
 class _MessageThread extends StatelessWidget {
-  const _MessageThread({required this.messages, required this.c});
+  const _MessageThread({required this.messages});
 
   final List<TicketMessageModel> messages;
-  final AppColors c;
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     if (messages.isEmpty) {
       return Center(
         child: Text(
@@ -592,211 +690,63 @@ class _MessageThread extends StatelessWidget {
     return ListView.separated(
       itemCount: messages.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, i) => _MessageBubble(msg: messages[i], c: c),
+      itemBuilder: (_, index) => _MessageBubble(message: messages[index]),
     );
   }
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.msg, required this.c});
+  const _MessageBubble({required this.message});
 
-  final TicketMessageModel msg;
-  final AppColors c;
+  final TicketMessageModel message;
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = msg.isAdmin;
+    final c = AppColors.of(context);
+    final isAdmin = message.isAdmin;
     return Column(
-      crossAxisAlignment:
-          isAdmin ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      crossAxisAlignment: isAdmin
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
       children: [
         Row(
-          mainAxisAlignment:
-              isAdmin ? MainAxisAlignment.start : MainAxisAlignment.end,
+          mainAxisAlignment: isAdmin
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.end,
           children: [
-            if (isAdmin) ...[
-              Icon(LucideIcons.headphones, size: 12, color: c.primary),
-              const SizedBox(width: 4),
-              Text(
-                '客服',
-                style: AppTextStyles.caption.copyWith(color: c.primary, fontSize: 11),
-              ),
-              const SizedBox(width: 6),
-            ],
             Text(
-              msg.timeDisplay,
-              style: AppTextStyles.caption.copyWith(color: c.textMuted, fontSize: 10),
+              isAdmin ? '客服' : '我',
+              style: AppTextStyles.caption.copyWith(
+                color: isAdmin ? c.primary : c.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            if (!isAdmin) ...[
+            if (message.timeDisplay.isNotEmpty) ...[
               const SizedBox(width: 6),
               Text(
-                '我',
-                style: AppTextStyles.caption.copyWith(color: c.textSecondary, fontSize: 11),
+                message.timeDisplay,
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
               ),
             ],
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5),
         Container(
           constraints: const BoxConstraints(maxWidth: 360),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
             color: isAdmin ? c.primarySoft : c.surfaceMuted,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Text(
-            msg.message,
+            message.message,
             style: AppTextStyles.body.copyWith(
               color: c.textPrimary,
-              fontSize: 13,
-              height: 1.5,
+              height: 1.45,
             ),
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Shared form helpers ───────────────────────────────────────────────────────
-
-class _FormLabel extends StatelessWidget {
-  const _FormLabel(this.label, this.c);
-
-  final String label;
-  final AppColors c;
-
-  @override
-  Widget build(BuildContext context) => Text(
-        label,
-        style: AppTextStyles.caption.copyWith(color: c.textMuted),
-      );
-}
-
-class _InputField extends StatelessWidget {
-  const _InputField({
-    required this.controller,
-    required this.hint,
-    required this.c,
-    this.maxLines = 1,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final AppColors c;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      maxLines: maxLines,
-      style: AppTextStyles.body.copyWith(color: c.textPrimary),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: AppTextStyles.body.copyWith(color: c.textMuted, fontSize: 13),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          borderSide: BorderSide(color: c.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          borderSide: BorderSide(color: c.primary),
-        ),
-        filled: true,
-        fillColor: c.cardBg,
-      ),
-    );
-  }
-}
-
-class _LevelSelector extends StatelessWidget {
-  const _LevelSelector({required this.value, required this.onChanged});
-
-  final int value;
-  final ValueChanged<int> onChanged;
-
-  static const _levels = [
-    (1, '低'),
-    (2, '中等'),
-    (3, '紧急'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: c.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: c.softBorder),
-      ),
-      child: Row(
-        children: [
-          for (final (lvl, label) in _levels)
-            Expanded(
-              child: _LevelChip(
-                label: label,
-                level: lvl,
-                selected: value == lvl,
-                onTap: () => onChanged(lvl),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LevelChip extends StatelessWidget {
-  const _LevelChip({
-    required this.label,
-    required this.level,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final int level;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final Color fg = selected
-        ? switch (level) {
-            3 => c.danger,
-            2 => c.warning,
-            _ => c.primary,
-          }
-        : c.textSecondary;
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? c.cardBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.xs),
-          ),
-          child: Text(
-            label,
-            style: AppTextStyles.button.copyWith(
-              color: fg,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

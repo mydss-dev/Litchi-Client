@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
+import '../models/api_models.dart';
 import '../models/app_models.dart';
 import '../models/model_mappers.dart';
 import 'panel_api.dart';
@@ -9,15 +10,25 @@ import 'panel_api.dart';
 /// Null fields indicate the corresponding load was skipped or failed.
 class DataSnapshot {
   UserModel? user;
+  int? currentPlanId;
   TrafficModel? traffic;
   String? subscribeUrl;
   List<NodeModel>? nodes;
   List<PlanModel>? plans;
+  List<InviteCodeModel>? inviteCodes;
   String? inviteCode;
   String? inviteLink;
+  String? inviteUrlBase;
+  List<RemoteInviteRecord>? inviteRecords;
   double? commissionRate;
   int? invitedCount;
+  double? earnedCommission;
+  double? pendingCommission;
   double? withdrawable;
+  String? currencySymbol;
+  int? withdrawClose;
+  List<String>? withdrawMethods;
+  double? minWithdrawAmount;
   List<double>? dailyUsage;
   List<TrafficUsagePoint>? trafficUsage;
   int? aliveIp;
@@ -64,6 +75,7 @@ class DataLoader {
     try {
       final info = await _api.getUserInfo();
       snap.user = ModelMappers.toUser(info);
+      snap.currentPlanId = info.planId;
       snap.traffic = ModelMappers.toTraffic(info);
     } catch (e) {
       debugPrint('[Litchi] getUserInfo error: $e');
@@ -123,21 +135,51 @@ class DataLoader {
     try {
       final plans = await _api.getPlans();
       if (plans.isNotEmpty) {
-        snap.plans = plans.map(ModelMappers.toPlan).toList();
+        final mapped = plans.map(ModelMappers.toPlan).toList();
+        snap.plans = mapped;
+        final currentPlan = _planById(mapped, snap.currentPlanId);
+        final user = snap.user;
+        if (user != null && user.plan.trim().isEmpty && currentPlan != null) {
+          snap.user = user.copyWith(plan: currentPlan.title);
+        }
       }
     } catch (e) {
       debugPrint('[Litchi] getPlans error: $e');
     }
   }
 
+  PlanModel? _planById(List<PlanModel> plans, int? id) {
+    if (id == null || id <= 0) return null;
+    for (final plan in plans) {
+      if (int.tryParse(plan.id) == id) return plan;
+    }
+    return null;
+  }
+
   Future<void> _fillInvite(DataSnapshot snap) async {
     try {
       final info = await _api.getInviteInfo();
+      if (info.codes.isNotEmpty) {
+        snap.inviteCodes = info.codes
+            .map((item) => InviteCodeModel(code: item.code, link: item.link))
+            .toList();
+      }
       if (info.inviteCode.isNotEmpty) snap.inviteCode = info.inviteCode;
       if (info.inviteUrl.isNotEmpty) snap.inviteLink = info.inviteUrl;
       snap.commissionRate = info.commissionRate;
       snap.invitedCount = info.effectCount;
+      snap.earnedCommission = info.validCommission / 100;
+      snap.pendingCommission = info.pendingCommission / 100;
       snap.withdrawable = info.balance / 100; // balance stored in cents
+      final commConfig = await _api.getCommConfig();
+      if (commConfig.inviteUrlBase.isNotEmpty) {
+        snap.inviteUrlBase = commConfig.inviteUrlBase;
+      }
+      snap.currencySymbol = commConfig.currencySymbol;
+      snap.withdrawClose = commConfig.withdrawClose;
+      snap.withdrawMethods = commConfig.withdrawMethods;
+      snap.minWithdrawAmount = commConfig.minWithdrawAmount / 100;
+      snap.inviteRecords = await _api.getInviteDetails(pageSize: 10);
     } catch (e) {
       debugPrint('[Litchi] getInviteInfo error: $e');
     }

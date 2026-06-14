@@ -6,6 +6,7 @@ abstract final class ProxySetter {
       r'HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings';
 
   static Future<void> enable({int port = 7890}) async {
+    if (!Platform.isWindows) return;
     // ProxyServer first: if either write fails, the proxy is never left
     // enabled while pointing at a stale address.
     await _reg('ProxyServer', 'REG_SZ', '127.0.0.1:$port');
@@ -18,6 +19,7 @@ abstract final class ProxySetter {
   /// registry write already takes effect and waiting on the PowerShell helper
   /// would stall the shutdown by up to several seconds.
   static Future<void> disable({bool notify = true}) async {
+    if (!Platform.isWindows) return;
     try {
       await _reg('ProxyEnable', 'REG_DWORD', '0');
     } catch (_) {}
@@ -28,6 +30,7 @@ abstract final class ProxySetter {
   /// is alive (PID file already removed by [CoreManager.cleanupOnStartup]),
   /// the proxy was left behind by a crash. Clear it silently.
   static Future<void> disableIfStale() async {
+    if (!Platform.isWindows) return;
     try {
       final r1 = await Process.run(
         'reg', ['query', _key, '/v', 'ProxyEnable'],

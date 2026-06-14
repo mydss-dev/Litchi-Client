@@ -4,8 +4,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../shared/config/app_config.dart';
 import '../../shared/services/credentials_storage.dart';
-import '../../shared/theme/app_colors.dart';
-import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'widgets/auth_form_parts.dart';
 import 'widgets/auth_input.dart';
@@ -35,12 +33,21 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _loadSaved() async {
     final saved = await CredentialsStorage.load();
     if (saved != null && mounted) {
+      if (_looksLikeJwt(saved.password)) {
+        await CredentialsStorage.clear();
+        return;
+      }
       setState(() {
         _emailCtrl.text = saved.email;
         _passwordCtrl.text = saved.password;
         _remember = true;
       });
     }
+  }
+
+  bool _looksLikeJwt(String value) {
+    final parts = value.split('.');
+    return value.startsWith('eyJ') && parts.length == 3;
   }
 
   void _showStartupMessage() {
@@ -73,14 +80,17 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _loading = true);
     try {
-      await controller.loginWithCredentials(email, password);
-
-      // Save or clear credentials based on remembered account/password.
-      if (_remember) {
-        await CredentialsStorage.save(email: email, password: password);
-      } else {
-        await CredentialsStorage.clear();
-      }
+      await controller.loginWithCredentials(
+        email,
+        password,
+        onAuthenticated: (_) async {
+          if (_remember) {
+            await CredentialsStorage.save(email: email, password: password);
+          } else {
+            await CredentialsStorage.clear();
+          }
+        },
+      );
 
       AppToast.showInOverlay(overlay, '登录成功，欢迎回来！', type: AppToastType.success);
     } catch (e) {
@@ -94,74 +104,57 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
     final controller = AppScope.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 44),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '登录',
-            style: AppTextStyles.authTitle.copyWith(color: c.textPrimary),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '登录到你的 ${AppConfig.appName} 账户',
-            style: AppTextStyles.authSubtitle.copyWith(color: c.textSecondary),
-          ),
-          const SizedBox(height: 28),
-          AuthInput(
-            icon: LucideIcons.mail,
-            hintText: '请输入邮箱或用户名',
-            controller: _emailCtrl,
-            onSubmitted: (_) => FocusScope.of(context).nextFocus(),
-          ),
-          const SizedBox(height: 16),
-          AuthInput(
-            icon: LucideIcons.lock,
-            hintText: '请输入密码',
-            controller: _passwordCtrl,
-            obscure: true,
-            showRevealToggle: true,
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              AuthCheckboxRow(
-                value: _remember,
-                label: '记住账号密码',
-                onChanged: (v) => setState(() => _remember = v),
-              ),
-              AuthLinkText(
-                text: '忘记密码？',
-                onTap: () =>
-                    controller.goToAuthScreen(AuthScreen.forgotPassword),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          AuthPrimaryButton(
-            label: '登录',
-            isLoading: _loading,
-            onPressed: _submit,
-          ),
-          if (AppConfig.registerEnabled) ...[
-            const SizedBox(height: 22),
-            const AuthDivider(label: '其他方式'),
-            const SizedBox(height: 22),
-            AuthBottomJump(
-              leadingText: '还没有账号？',
-              actionText: '注册账号',
-              onTap: () => controller.goToAuthScreen(AuthScreen.register),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        AuthInput(
+          icon: LucideIcons.mail,
+          label: '邮箱',
+          requiredMark: true,
+          hintText: '请输入邮箱或用户名',
+          controller: _emailCtrl,
+          onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+        ),
+        const SizedBox(height: 16),
+        AuthInput(
+          icon: LucideIcons.lock,
+          label: '密码',
+          requiredMark: true,
+          hintText: '请输入密码',
+          controller: _passwordCtrl,
+          obscure: true,
+          showRevealToggle: true,
+          onSubmitted: (_) => _submit(),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            AuthCheckboxRow(
+              value: _remember,
+              label: '记住账号密码',
+              onChanged: (v) => setState(() => _remember = v),
+            ),
+            AuthLinkText(
+              text: '忘记密码？',
+              onTap: () => controller.goToAuthScreen(AuthScreen.forgotPassword),
             ),
           ],
+        ),
+        const SizedBox(height: 24),
+        AuthPrimaryButton(label: '登录', isLoading: _loading, onPressed: _submit),
+        if (AppConfig.registerEnabled) ...[
+          const SizedBox(height: 20),
+          AuthBottomJump(
+            leadingText: '还没有账号？',
+            actionText: '注册账号',
+            onTap: () => controller.goToAuthScreen(AuthScreen.register),
+          ),
         ],
-      ),
+      ],
     );
   }
 }

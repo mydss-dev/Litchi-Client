@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../shared/config/app_config.dart';
 import '../features/account/account_page.dart';
+import '../features/account/wallet_page.dart';
 import '../features/auth/auth_flow.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/invite/invite_page.dart';
@@ -17,12 +18,17 @@ import '../features/shop/shop_page.dart';
 import '../features/tickets/tickets_page.dart';
 import '../features/traffic/traffic_page.dart';
 import '../shared/theme/app_colors.dart';
+import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
+import '../shared/theme/app_text_styles.dart';
 import '../shared/widgets/app_sidebar.dart';
 import '../shared/widgets/notice_banner.dart';
 import '../shared/widgets/update_banner.dart';
 import 'app_controller.dart';
 import 'app_window_bar.dart';
+
+bool get _isDesktop =>
+    Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
 /// Root window shell. The whole app is clipped to an 18px rounded rectangle on
 /// a transparent window background, with a 1px border and outer shadow. Corners
@@ -34,8 +40,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell>
-    with WindowListener, TrayListener {
+class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const double _radius = 18;
   bool _maximized = false;
   bool _trayActive = false;
@@ -47,9 +52,11 @@ class _AppShellState extends State<AppShell>
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
-    unawaited(windowManager.setPreventClose(true));
-    _sync();
+    if (_isDesktop) {
+      windowManager.addListener(this);
+      unawaited(windowManager.setPreventClose(true));
+      _sync();
+    }
   }
 
   @override
@@ -58,7 +65,7 @@ class _AppShellState extends State<AppShell>
     final ctrl = AppScope.of(context);
     _ctrl = ctrl;
 
-    final shouldHaveTray = ctrl.isAuthenticated;
+    final shouldHaveTray = _isDesktop && ctrl.isAuthenticated;
     if (shouldHaveTray && !_trayActive) {
       _trayActive = true;
       unawaited(_initTray());
@@ -66,14 +73,16 @@ class _AppShellState extends State<AppShell>
       _trayActive = false;
       unawaited(_destroyTray());
     } else if (_trayActive) {
-      unawaited(_updateTrayTooltip());
+      unawaited(_syncTrayState());
     }
 
     // One-time version check after the user is authenticated and UI is ready.
     if (ctrl.isAuthenticated && !_versionChecked) {
       _versionChecked = true;
       if (AppConfig.isVersionOutdated) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _showOutdatedDialog());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _showOutdatedDialog(),
+        );
       }
     }
   }
@@ -83,25 +92,16 @@ class _AppShellState extends State<AppShell>
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text('需要更新'),
-        content: Text(
-          '当前版本 ${AppConfig.currentVersion} 已过期，'
-          '请更新到 ${AppConfig.minVersion} 或更高版本后继续使用。',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('知道了'),
-          ),
-        ],
-      ),
+      barrierColor: Colors.black.withValues(alpha: 0.42),
+      builder: (_) => const _OutdatedVersionDialog(),
     );
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(this);
+    if (_isDesktop) {
+      windowManager.removeListener(this);
+    }
     if (_trayActive) {
       trayManager.removeListener(this);
       unawaited(trayManager.destroy());
@@ -110,6 +110,7 @@ class _AppShellState extends State<AppShell>
   }
 
   Future<void> _sync() async {
+    if (!_isDesktop) return;
     final m = await windowManager.isMaximized();
     if (mounted) setState(() => _maximized = m);
   }
@@ -117,31 +118,64 @@ class _AppShellState extends State<AppShell>
   // ── Tray ─────────────────────────────────────────────────────────────────
 
   Future<void> _initTray() async {
+    if (!_isDesktop) return;
     await trayManager.setIcon('assets/images/tray_icon.ico');
-    await _updateTrayTooltip();
-    await trayManager.setContextMenu(Menu(
-      items: [
-        MenuItem(key: 'show',  label: '打开 ${AppConfig.appName}'),
-        MenuItem.separator(),
-        MenuItem(key: 'quit',  label: '退出 ${AppConfig.appName}'),
-      ],
-    ));
+    await _syncTrayState();
     trayManager.addListener(this);
   }
 
+  Future<void> _syncTrayState() async {
+    await _updateTrayTooltip();
+    await _updateTrayMenu();
+  }
+
   Future<void> _updateTrayTooltip() async {
+    if (!_isDesktop) return;
     final ctrl = _ctrl;
     if (ctrl == null) return;
     final status = ctrl.coreRunning ? '已连接' : '未连接';
     await trayManager.setToolTip('${AppConfig.appName}  $status');
   }
 
+  Future<void> _updateTrayMenu() async {
+    if (!_isDesktop) return;
+    final ctrl = _ctrl;
+    if (ctrl == null) return;
+    final nodeName = ctrl.currentNode.name.isEmpty
+        ? '暂无节点'
+        : ctrl.currentNode.name;
+    final canToggle = ctrl.nodes.isNotEmpty && !ctrl.coreConnecting;
+    await trayManager.setContextMenu(
+      Menu(
+        items: [
+          MenuItem(key: 'show', label: '打开 ${AppConfig.appName}'),
+          MenuItem.separator(),
+          MenuItem(
+            key: 'toggle_connection',
+            label: ctrl.coreRunning ? '断开连接' : '立即连接',
+            disabled: !canToggle,
+          ),
+          MenuItem(
+            key: 'current_node',
+            label: '当前节点：$nodeName',
+            disabled: true,
+          ),
+          MenuItem(key: 'fix_proxy', label: '修复系统代理'),
+          MenuItem.separator(),
+          MenuItem(key: 'quit', label: '退出 ${AppConfig.appName}'),
+        ],
+      ),
+    );
+  }
+
   Future<void> _destroyTray() async {
+    if (!_isDesktop) return;
     trayManager.removeListener(this);
     await trayManager.destroy();
   }
 
   Future<void> _toggleWindow() async {
+    if (!_isDesktop) return;
     if (await windowManager.isVisible()) {
       await windowManager.hide();
     } else {
@@ -164,20 +198,40 @@ class _AppShellState extends State<AppShell>
     exit(0);
   }
 
+  Future<void> _toggleConnectionFromTray() async {
+    final ctrl = _ctrl;
+    if (ctrl == null || ctrl.coreConnecting) return;
+    await ctrl.toggleConnection();
+    await _syncTrayState();
+  }
+
+  Future<void> _fixProxyFromTray() async {
+    await _ctrl?.fixProxy();
+    await _syncTrayState();
+  }
+
   // ── TrayListener ──────────────────────────────────────────────────────────
 
   @override
   void onTrayIconMouseDown() => unawaited(_toggleWindow());
 
   @override
-  void onTrayIconRightMouseDown() => unawaited(trayManager.popUpContextMenu());
+  void onTrayIconRightMouseDown() {
+    if (_isDesktop) unawaited(trayManager.popUpContextMenu());
+  }
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
       case 'show':
-        unawaited(windowManager.show());
-        unawaited(windowManager.focus());
+        if (_isDesktop) {
+          unawaited(windowManager.show());
+          unawaited(windowManager.focus());
+        }
+      case 'toggle_connection':
+        unawaited(_toggleConnectionFromTray());
+      case 'fix_proxy':
+        unawaited(_fixProxyFromTray());
       case 'quit':
         unawaited(_quit());
     }
@@ -196,6 +250,7 @@ class _AppShellState extends State<AppShell>
   /// - Logged out → full exit
   @override
   Future<void> onWindowClose() async {
+    if (!_isDesktop) return;
     if (_ctrl?.isAuthenticated == true) {
       await windowManager.hide();
     } else {
@@ -209,7 +264,7 @@ class _AppShellState extends State<AppShell>
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final controller = AppScope.of(context);
-    final radius = _maximized ? 0.0 : _radius;
+    final radius = _isDesktop && !_maximized ? _radius : 0.0;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
@@ -218,7 +273,7 @@ class _AppShellState extends State<AppShell>
         decoration: BoxDecoration(
           color: c.appBg,
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: _maximized ? null : AppShadows.window,
+          boxShadow: _isDesktop && !_maximized ? AppShadows.window : null,
         ),
         child: controller.isAuthenticated
             ? const _MainShell()
@@ -243,26 +298,34 @@ class _MainShell extends StatelessWidget {
         Expanded(
           child: Column(
             children: [
-              const WindowControlsBar(),
+              if (_isDesktop) const WindowControlsBar(),
               Expanded(
                 child: Container(
                   color: c.appBg,
-                  padding: const EdgeInsets.fromLTRB(24, 2, 24, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (controller.updateInfo != null)
-                        UpdateBanner(
-                          info: controller.updateInfo!,
-                          onDismiss: controller.dismissUpdate,
-                        ),
-                      if (controller.hasUnreadNotice)
-                        NoticeBanner(
-                          notice: controller.notices.first,
-                          onDismiss: controller.markNoticeRead,
-                        ),
-                      Expanded(child: _pageFor(controller.page)),
-                    ],
+                  padding: EdgeInsets.fromLTRB(
+                    _isDesktop ? 28 : 24,
+                    _isDesktop ? 14 : 24,
+                    _isDesktop ? 28 : 24,
+                    24,
+                  ),
+                  child: _DesktopPageFrame(
+                    page: controller.page,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (controller.updateInfo != null)
+                          UpdateBanner(
+                            info: controller.updateInfo!,
+                            onDismiss: controller.dismissUpdate,
+                          ),
+                        if (controller.hasUnreadNotice)
+                          NoticeBanner(
+                            notice: controller.notices.first,
+                            onDismiss: controller.markNoticeRead,
+                          ),
+                        Expanded(child: _pageFor(controller.page)),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -289,11 +352,133 @@ class _MainShell extends StatelessWidget {
         return const SettingsPage();
       case AppPage.account:
         return const AccountPage();
+      case AppPage.wallet:
+        return const WalletPage();
       case AppPage.orders:
         return const OrdersPage();
       case AppPage.tickets:
         return const TicketsPage();
     }
+  }
+}
+
+class _DesktopPageFrame extends StatelessWidget {
+  const _DesktopPageFrame({required this.page, required this.child});
+
+  final AppPage page;
+  final Widget child;
+
+  double get _maxWidth {
+    return switch (page) {
+      AppPage.dashboard => 1080,
+      AppPage.nodes => 1080,
+      AppPage.traffic => 1080,
+      AppPage.shop => 1080,
+      AppPage.invite => 980,
+      AppPage.settings => 980,
+      AppPage.account => 960,
+      AppPage.wallet => 960,
+      AppPage.orders => 980,
+      AppPage.tickets => 980,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isDesktop) return child;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: _maxWidth),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _OutdatedVersionDialog extends StatelessWidget {
+  const _OutdatedVersionDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+            border: Border.all(color: c.softBorder),
+            boxShadow: AppShadows.card(c),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: c.warning.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Icon(
+                      Icons.system_update_alt_rounded,
+                      size: 20,
+                      color: c.warning,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '需要更新',
+                      style: AppTextStyles.sectionTitle.copyWith(
+                        color: c.textPrimary,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                '当前版本 ${AppConfig.currentVersion} 已过期，请更新到 ${AppConfig.minVersion} 或更高版本后继续使用。',
+                style: AppTextStyles.body.copyWith(
+                  color: c.textSecondary,
+                  height: 1.55,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  height: 38,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: c.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                    ),
+                    child: const Text('知道了'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -303,10 +488,16 @@ class _AuthShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Stack(
+    return Stack(
       children: [
-        Positioned.fill(child: AuthFlow()),
-        Positioned(top: 0, left: 0, right: 0, child: WindowControlsBar()),
+        const Positioned.fill(child: AuthFlow()),
+        if (_isDesktop)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: WindowControlsBar(),
+          ),
       ],
     );
   }

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../shared/theme/app_palette.dart';
+import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_text_styles.dart';
 
-/// Full-width gradient auth button (§16.9): 46px tall, brand gradient.
+/// Full-width primary auth button.
 class AuthPrimaryButton extends StatelessWidget {
   const AuthPrimaryButton({
     super.key,
@@ -21,7 +21,7 @@ class AuthPrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 46,
+      height: 48,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -29,9 +29,7 @@ class AuthPrimaryButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Ink(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppPalette.authButtonStart, AppPalette.authButtonEnd],
-              ),
+              color: AppColors.of(context).primary,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Center(
@@ -44,13 +42,25 @@ class AuthPrimaryButton extends StatelessWidget {
                         valueColor: AlwaysStoppedAnimation(Colors.white),
                       ),
                     )
-                  : Text(
-                      label,
-                      style: AppTextStyles.button.copyWith(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          style: AppTextStyles.button.copyWith(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 19,
+                        ),
+                      ],
                     ),
             ),
           ),
