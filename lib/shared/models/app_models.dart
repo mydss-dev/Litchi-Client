@@ -60,6 +60,7 @@ class NodeModel {
     this.port = 0,
     this.isAuto = false,
     this.rawUri = '',
+    this.rawOutbound,
   });
 
   final String id;
@@ -86,6 +87,9 @@ class NodeModel {
   /// Original proxy URI for sing-box config generation.
   final String rawUri;
 
+  /// Original Clash proxy object for YAML subscriptions.
+  final Map<String, dynamic>? rawOutbound;
+
   NodeModel copyWith({int? latency}) => NodeModel(
     id: id,
     name: name,
@@ -100,6 +104,7 @@ class NodeModel {
     port: port,
     isAuto: isAuto,
     rawUri: rawUri,
+    rawOutbound: rawOutbound,
   );
 
   Map<String, dynamic> toJson() => {
@@ -115,6 +120,7 @@ class NodeModel {
     'port': port,
     'isAuto': isAuto,
     'rawUri': rawUri,
+    'rawOutbound': rawOutbound,
   };
 
   factory NodeModel.fromJson(Map<String, dynamic> j) => NodeModel(
@@ -133,6 +139,9 @@ class NodeModel {
     port: j['port'] as int? ?? 0,
     isAuto: j['isAuto'] as bool? ?? false,
     rawUri: j['rawUri'] as String? ?? '',
+    rawOutbound: j['rawOutbound'] is Map
+        ? Map<String, dynamic>.from(j['rawOutbound'] as Map)
+        : null,
     latency: 0,
   );
 }

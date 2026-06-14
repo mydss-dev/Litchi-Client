@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'secure_logger.dart';
+
 enum CoreState { stopped, starting, running, error }
 
 /// Manages the sing-box process lifecycle.
@@ -114,13 +116,18 @@ class CoreManager {
         if (ready) {
           _emitLog('── sing-box 运行中 (PID ${_process!.pid}) ──');
           _setState(CoreState.running);
+          _deleteConfigFile(configPath);
         } else {
           _setError('核心启动超时 (端口 $apiPort)，请检查配置文件或重试');
           _emitLog('── 启动超时，已停止 ──');
           _process?.kill();
           _process = null;
           _deletePidFile();
+          _deleteConfigFile(configPath);
         }
+      }
+      if (_process == null || _state == CoreState.error) {
+        _deleteConfigFile(configPath);
       }
     } catch (e) {
       final raw = '$e';
@@ -136,6 +143,7 @@ class CoreManager {
       _emitLog('── 启动异常: $raw ──');
       _process = null;
       _deletePidFile();
+      _deleteConfigFile(configPath);
     }
   }
 
@@ -160,7 +168,7 @@ class CoreManager {
 
   void _emitLog(String raw) {
     if (_logCtrl.isClosed) return;
-    final line = _stripAnsi(raw);
+    final line = SecureLogRedactor.redact(_stripAnsi(raw));
     if (line.isEmpty) return;
     _logCtrl.add(line);
   }
@@ -195,6 +203,10 @@ class CoreManager {
 
   static void _deletePidFile() {
     try { _pidFile.deleteSync(); } catch (_) {}
+  }
+
+  static void _deleteConfigFile(String path) {
+    try { File(path).deleteSync(); } catch (_) {}
   }
 
   /// Returns true when [port] can be bound — i.e. nothing else is using it.

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/services/node_filter.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
@@ -18,13 +21,45 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
   static const _tabs = ['全部', 'VIP', '亚洲', '欧洲', '美洲', '大洋洲'];
   int _tab = 0;
   String _query = '';
+  String _pendingQuery = '';
+  Timer? _searchDebounce;
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _pendingQuery = value;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      setState(() => _query = _pendingQuery);
+    });
+  }
+
+  NodeFilterTab get _selectedTab => switch (_tab) {
+    1 => NodeFilterTab.premium,
+    2 => NodeFilterTab.asia,
+    3 => NodeFilterTab.europe,
+    4 => NodeFilterTab.america,
+    5 => NodeFilterTab.oceania,
+    _ => NodeFilterTab.all,
+  };
 
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
     final c = AppColors.of(context);
+    final nodes = NodeFilter.apply(
+      nodes: ctrl.nodes,
+      query: _query,
+      tab: _selectedTab,
+    );
+    /*
     final key = _query.trim().toLowerCase();
-    final nodes = ctrl.nodes.where((node) {
+    final oldNodes = ctrl.nodes.where((node) {
       if (key.isNotEmpty) {
         final matchesSearch = node.name.toLowerCase().contains(key) ||
             node.englishName.toLowerCase().contains(key) ||
@@ -40,6 +75,7 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
         _ => true,
       };
     }).toList();
+    */
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,7 +110,7 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
         ),
         const SizedBox(height: 12),
         TextField(
-          onChanged: (value) => setState(() => _query = value),
+          onChanged: _onSearchChanged,
           decoration: InputDecoration(
             prefixIcon: const Icon(LucideIcons.search, size: 18),
             hintText: '搜索节点',

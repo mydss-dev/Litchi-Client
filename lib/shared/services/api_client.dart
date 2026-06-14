@@ -157,6 +157,27 @@ class ApiClient {
     }
   }
 
+  Future<Response<String>> getPlainUrl(
+    String url, {
+    Map<String, dynamic>? headers,
+  }) async {
+    final dio = _dio;
+    if (dio == null) {
+      throw const ApiException('请先配置服务器地址');
+    }
+    try {
+      return await dio.get<String>(
+        url,
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: headers,
+        ),
+      );
+    } on DioException catch (e) {
+      throw ApiException(_friendlyMessage(e));
+    }
+  }
+
   Future<Map<String, dynamic>> post(
     String path, {
     Map<String, dynamic>? data,

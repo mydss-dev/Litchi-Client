@@ -19,6 +19,26 @@ abstract final class OutboundParser {
     return null;
   }
 
+  /// Converts one Clash `proxies:` entry into a sing-box outbound.
+  static Map<String, dynamic>? parseClashProxy(
+    Map<String, dynamic> proxy, {
+    required String tag,
+  }) {
+    try {
+      final type = proxy['type']?.toString().toLowerCase() ?? '';
+      return switch (type) {
+        'vmess' => _vmessClash(proxy, tag: tag),
+        'vless' => _vlessClash(proxy, tag: tag),
+        'trojan' => _trojanClash(proxy, tag: tag),
+        'ss' || 'shadowsocks' => _ssClash(proxy, tag: tag),
+        'hysteria2' || 'hy2' => _hysteria2Clash(proxy, tag: tag),
+        _ => null,
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── VMess ─────────────────────────────────────────────────────────────────
 
   static Map<String, dynamic> _vmess(String uri, {required String tag}) {
@@ -262,6 +282,118 @@ abstract final class OutboundParser {
 
   // ── Shared helpers ────────────────────────────────────────────────────────
 
+  static Map<String, dynamic> _vmessClash(
+    Map<String, dynamic> proxy, {
+    required String tag,
+  }) {
+    final out = <String, dynamic>{
+      'type': 'vmess',
+      'tag': tag,
+      'server': proxy['server']?.toString() ?? '',
+      'server_port': _int(proxy['port']),
+      'uuid': proxy['uuid']?.toString() ?? '',
+      'security': proxy['cipher']?.toString() ?? 'auto',
+      'alter_id': _int(proxy['alterId'] ?? proxy['alter-id']),
+    };
+    _applyClashTransport(out, proxy);
+    if (_bool(proxy['tls'])) {
+      final serverName = proxy['servername']?.toString() ?? '';
+      out['tls'] = {
+        'enabled': true,
+        if (serverName.isNotEmpty) 'server_name': serverName,
+        if (_bool(proxy['skip-cert-verify'])) 'insecure': true,
+      };
+    }
+    return out;
+  }
+
+  static Map<String, dynamic> _vlessClash(
+    Map<String, dynamic> proxy, {
+    required String tag,
+  }) {
+    final reality = proxy['reality-opts'];
+    final security = reality is Map
+        ? 'reality'
+        : (_bool(proxy['tls']) ? 'tls' : '');
+    final query = <String, String>{
+      if (security.isNotEmpty) 'security': security,
+      if ((proxy['flow']?.toString() ?? '').isNotEmpty)
+        'flow': proxy['flow'].toString(),
+      if ((proxy['servername']?.toString() ?? '').isNotEmpty)
+        'sni': proxy['servername'].toString(),
+      if ((proxy['network']?.toString() ?? '').isNotEmpty)
+        'type': proxy['network'].toString(),
+      if ((proxy['client-fingerprint']?.toString() ?? '').isNotEmpty)
+        'fp': proxy['client-fingerprint'].toString(),
+      ..._clashTransportQuery(proxy),
+    };
+    if (reality is Map) {
+      final publicKey = reality['public-key']?.toString() ?? '';
+      final shortId = reality['short-id']?.toString() ?? '';
+      if (publicKey.isNotEmpty) query['pbk'] = publicKey;
+      if (shortId.isNotEmpty) query['sid'] = shortId;
+    }
+    final uri =
+        'vless://${Uri.encodeComponent(proxy['uuid']?.toString() ?? '')}'
+        '@${proxy['server']}:${_int(proxy['port'])}?${Uri(queryParameters: query).query}';
+    return _vless(uri, tag: tag);
+  }
+
+  static Map<String, dynamic> _trojanClash(
+    Map<String, dynamic> proxy, {
+    required String tag,
+  }) {
+    final out = <String, dynamic>{
+      'type': 'trojan',
+      'tag': tag,
+      'server': proxy['server']?.toString() ?? '',
+      'server_port': _int(proxy['port']),
+      'password': proxy['password']?.toString() ?? '',
+    };
+    _applyClashTransport(out, proxy);
+    out['tls'] = {
+      'enabled': true,
+      'server_name':
+          proxy['sni']?.toString() ?? proxy['servername']?.toString() ?? '',
+      if (_bool(proxy['skip-cert-verify'])) 'insecure': true,
+    };
+    return out;
+  }
+
+  static Map<String, dynamic> _ssClash(
+    Map<String, dynamic> proxy, {
+    required String tag,
+  }) {
+    return {
+      'type': 'shadowsocks',
+      'tag': tag,
+      'server': proxy['server']?.toString() ?? '',
+      'server_port': _int(proxy['port']),
+      'method': proxy['cipher']?.toString() ?? 'aes-128-gcm',
+      'password': proxy['password']?.toString() ?? '',
+    };
+  }
+
+  static Map<String, dynamic> _hysteria2Clash(
+    Map<String, dynamic> proxy, {
+    required String tag,
+  }) {
+    return {
+      'type': 'hysteria2',
+      'tag': tag,
+      'server': proxy['server']?.toString() ?? '',
+      'server_port': _int(proxy['port'] ?? 443),
+      'password': proxy['password']?.toString() ?? '',
+      'tls': {
+        'enabled': true,
+        'server_name':
+            proxy['sni']?.toString() ?? proxy['servername']?.toString() ?? '',
+        if (_bool(proxy['skip-cert-verify']) || _bool(proxy['insecure']))
+          'insecure': true,
+      },
+    };
+  }
+
   static (String, String, int, Map<String, String>) _parseUserAtHostPort(
     String uri,
     String scheme,
@@ -316,5 +448,54 @@ abstract final class OutboundParser {
   static String _pad(String s) {
     final r = s.length % 4;
     return r == 0 ? s : s + ('=' * (4 - r));
+  }
+
+  static int _int(Object? value) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static bool _bool(Object? value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.toLowerCase();
+      return normalized == 'true' || normalized == '1' || normalized == 'yes';
+    }
+    return false;
+  }
+
+  static Map<String, String> _clashTransportQuery(Map<String, dynamic> proxy) {
+    final network = proxy['network']?.toString() ?? '';
+    if (network == 'ws') {
+      final headers = proxy['ws-headers'];
+      return {
+        if ((proxy['ws-path']?.toString() ?? '').isNotEmpty)
+          'path': proxy['ws-path'].toString(),
+        if (headers is Map && (headers['Host']?.toString() ?? '').isNotEmpty)
+          'host': headers['Host'].toString(),
+      };
+    }
+    if (network == 'grpc') {
+      return {
+        if ((proxy['grpc-service-name']?.toString() ?? '').isNotEmpty)
+          'path': proxy['grpc-service-name'].toString(),
+      };
+    }
+    return const {};
+  }
+
+  static void _applyClashTransport(
+    Map<String, dynamic> out,
+    Map<String, dynamic> proxy,
+  ) {
+    final query = _clashTransportQuery(proxy);
+    _applyTransport(
+      out,
+      proxy['network']?.toString() ?? 'tcp',
+      query['path'] ?? '',
+      query['host'] ?? '',
+    );
   }
 }

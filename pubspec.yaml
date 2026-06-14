@@ -47,6 +47,8 @@ dependencies:
   dio: ^5.7.0
   # Persistent storage for auth token + server URL
   shared_preferences: ^2.3.3
+  # Platform secure storage for tokens and remembered credentials
+  flutter_secure_storage: ^10.3.1
   # Ed25519 signature verification for remote OSS config
   cryptography: ^2.7.0
   # Robust YAML parser for Clash subscription format

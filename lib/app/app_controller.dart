@@ -10,6 +10,7 @@ import '../shared/services/api_client.dart';
 import '../shared/services/credentials_storage.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/node_cache_service.dart';
+import '../shared/services/node_selection_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
 import '../shared/services/settings_service.dart';
@@ -76,12 +77,7 @@ class AppController extends ChangeNotifier {
     usedGb: 0,
     remainGb: 0,
   );
-  NodeModel _currentNode = const NodeModel(
-    id: '',
-    name: '',
-    flag: '',
-    latency: 0,
-  );
+  NodeModel _currentNode = NodeSelectionService.emptyNode;
   List<NodeModel> _nodes = const [];
   List<PlanModel> _plans = const [];
   bool _autoSelected = false;
@@ -185,6 +181,15 @@ class AppController extends ChangeNotifier {
 
   bool get coreProcessRunning => _core.coreProcessRunning;
   bool get supportsCoreConnection => Platform.isWindows || Platform.isAndroid;
+
+  CoreConnectionRequest get _connectionRequest => CoreConnectionRequest(
+    nodes: _nodes,
+    currentNode: currentNode,
+    proxyMode: _settings.proxyMode,
+    dnsMode: _settings.dnsMode,
+    proxyPort: _settings.proxyPort,
+    networkMode: _settings.networkMode,
+  );
 
   /// Graceful shutdown: kills core + disables system proxy. Call before exit.
   Future<void> shutdown() => _core.shutdown();
@@ -353,7 +358,7 @@ class AppController extends ChangeNotifier {
       _authScreen = AuthScreen.login;
       _startupMessage = '登录已过期，请重新登录';
       _nodes = const [];
-      _currentNode = const NodeModel(id: '', name: '', flag: '', latency: 0);
+      _currentNode = NodeSelectionService.emptyNode;
       _autoSelected = false;
       if (!_disposed) notifyListeners();
     }
@@ -396,7 +401,7 @@ class AppController extends ChangeNotifier {
       // Core process may still be alive (system proxy mode) — keep latency data.
       // Only clear when process actually stopped (e.g. TUN disconnect / logout).
       if (!_core.coreProcessRunning) {
-        _nodes = _nodes.map((n) => n.copyWith(latency: 0)).toList();
+        _nodes = NodeSelectionService.clearLatency(_nodes);
         notifyListeners();
       }
     }
@@ -519,7 +524,7 @@ class AppController extends ChangeNotifier {
     _apiClient.updateAuthData(null);
     _user = const UserModel(name: '', plan: '', avatarLetter: '', expiry: '');
     _traffic = const TrafficModel(totalGb: 0, usedGb: 0, remainGb: 0);
-    _currentNode = const NodeModel(id: '', name: '', flag: '', latency: 0);
+    _currentNode = NodeSelectionService.emptyNode;
     _nodes = const [];
     _plans = const [];
     _inviteCode = '';
@@ -554,14 +559,7 @@ class AppController extends ChangeNotifier {
     if (!supportsCoreConnection) {
       return Future.value('当前平台暂未接入核心连接');
     }
-    return _core.toggleConnection(
-      nodes: _nodes,
-      currentNode: currentNode,
-      proxyMode: _settings.proxyMode,
-      dnsMode: _settings.dnsMode,
-      proxyPort: _settings.proxyPort,
-      networkMode: _settings.networkMode,
-    );
+    return _core.toggleConnection(_connectionRequest);
   }
 
   /// Checks whether the current process is running with elevated (admin) privileges.
@@ -794,18 +792,12 @@ class AppController extends ChangeNotifier {
   /// Tries to restore the last manually-selected node from persistent storage.
   /// Falls back to the first node in auto-select mode if the node is not found.
   void _restoreLastNode() {
-    if (_nodes.isEmpty) return;
-    final lastId = _settings.lastNodeId;
-    final saved = lastId.isNotEmpty
-        ? _nodes.where((n) => n.id == lastId).firstOrNull
-        : null;
-    if (saved != null) {
-      _currentNode = saved;
-      _autoSelected = false;
-    } else {
-      _currentNode = _nodes.first;
-      _autoSelected = true;
-    }
+    final restored = NodeSelectionService.restoreLastSelection(
+      nodes: _nodes,
+      lastNodeId: _settings.lastNodeId,
+    );
+    _currentNode = restored.currentNode;
+    _autoSelected = restored.autoSelected;
   }
 
   /// Switch to [node]. Returns an error string if the core rejected the
@@ -844,24 +836,11 @@ class AppController extends ChangeNotifier {
   }
 
   // Used by _AutoCard to display the current best-latency node for reference.
-  NodeModel? get _bestNode {
-    NodeModel? best;
-    for (final n in _nodes) {
-      if (n.latency <= 0 || n.latency >= 9999) continue;
-      if (best == null || n.latency < best.latency) best = n;
-    }
-    return best;
-  }
+  NodeModel? get _bestNode => NodeSelectionService.bestLatencyNode(_nodes);
 
   Future<void> _startCoreInBackground({bool runLatencyTest = false}) async {
     if (!supportsCoreConnection) return;
-    await _core.startCoreOnly(
-      nodes: _nodes,
-      currentNode: currentNode,
-      proxyMode: _settings.proxyMode,
-      dnsMode: _settings.dnsMode,
-      proxyPort: _settings.proxyPort,
-    );
+    await _core.startCoreOnly(_connectionRequest);
     if (_core.coreProcessRunning && runLatencyTest) {
       // Small delay to let the Clash API initialise before testing.
       await Future.delayed(const Duration(milliseconds: 1000));
@@ -874,14 +853,7 @@ class AppController extends ChangeNotifier {
     if (_nodes.isEmpty) return;
     if (!startIfStopped && !coreProcessRunning) return;
 
-    final error = await _core.reloadCore(
-      nodes: _nodes,
-      currentNode: currentNode,
-      proxyMode: _settings.proxyMode,
-      dnsMode: _settings.dnsMode,
-      proxyPort: _settings.proxyPort,
-      networkMode: _settings.networkMode,
-    );
+    final error = await _core.reloadCore(_connectionRequest);
     if (error != null && error.isNotEmpty) {
       _startupMessage = error;
       notifyListeners();
@@ -911,28 +883,43 @@ class AppController extends ChangeNotifier {
     }
 
     // Mark all nodes as testing (-1) so the UI shows an in-progress state.
-    _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
+    _nodes = NodeSelectionService.markLatencyTesting(_nodes);
     notifyListeners();
 
     if (!coreProcessRunning) {
-      _nodes = _nodes.map((n) => n.copyWith(latency: 9999)).toList();
+      _nodes = NodeSelectionService.markLatencyFailed(_nodes);
       _startupMessage = '测速失败：核心未启动，请检查 sing-box.exe 是否存在';
       notifyListeners();
       return;
     }
 
     final snapshot = List<NodeModel>.from(_nodes);
+    final pending = <int, NodeModel>{};
+    Timer? flushTimer;
+
+    void flushLatencyResults() {
+      if (_disposed) return;
+      if (pending.isEmpty) return;
+      final list = NodeSelectionService.applyLatencyResults(_nodes, pending);
+      pending.clear();
+      _nodes = list;
+      notifyListeners();
+    }
+
     await _core.testLatencies(
       snapshot,
       onResult: (idx, updated) {
         if (idx < _nodes.length) {
-          final list = List<NodeModel>.from(_nodes);
-          list[idx] = updated;
-          _nodes = list;
-          notifyListeners();
+          pending[idx] = updated;
+          flushTimer ??= Timer.periodic(
+            const Duration(milliseconds: 100),
+            (_) => flushLatencyResults(),
+          );
         }
       },
     );
+    flushTimer?.cancel();
+    flushLatencyResults();
   }
 }
 

@@ -138,9 +138,14 @@ class RemoteNode {
   final double rate;
   final String server; // hostname / IP
   final int port; // TCP port (0 = unknown)
+
   /// Original proxy URI (vmess://, vless://, trojan://, ss://, hy2://).
   /// Empty for nodes parsed from Clash YAML without URI reconstruction.
   final String rawUri;
+
+  /// Original Clash proxy object for YAML subscriptions. This preserves the
+  /// protocol-specific fields needed to generate a sing-box outbound.
+  final Map<String, dynamic>? rawOutbound;
 
   const RemoteNode({
     required this.id,
@@ -149,6 +154,7 @@ class RemoteNode {
     this.server = '',
     this.port = 0,
     this.rawUri = '',
+    this.rawOutbound,
   });
 
   factory RemoteNode.fromJson(Map<String, dynamic> json) {
@@ -158,6 +164,9 @@ class RemoteNode {
       rate: (json['rate'] as num?)?.toDouble() ?? 1.0,
       server: json['server']?.toString() ?? json['add']?.toString() ?? '',
       port: (json['port'] as num?)?.toInt() ?? 0,
+      rawOutbound: json['rawOutbound'] is Map
+          ? Map<String, dynamic>.from(json['rawOutbound'] as Map)
+          : null,
     );
   }
 }

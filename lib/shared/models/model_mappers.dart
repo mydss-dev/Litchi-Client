@@ -41,6 +41,7 @@ abstract final class ModelMappers {
       server: node.server,
       port: node.port,
       rawUri: node.rawUri,
+      rawOutbound: node.rawOutbound,
     );
   }
 

@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
-
 import '../config/app_config.dart';
 import '../models/api_models.dart';
 import '../models/app_models.dart';
 import '../models/model_mappers.dart';
 import 'panel_api.dart';
+import 'secure_logger.dart';
+import 'subscription_data_service.dart';
 
 /// Mutable bag populated by [DataLoader] with best-effort API results.
 /// Null fields indicate the corresponding load was skipped or failed.
@@ -45,9 +45,10 @@ class DataSnapshot {
 /// All individual loads are best-effort — failures are swallowed and the
 /// corresponding field is left null. [AppController] applies non-null fields.
 class DataLoader {
-  const DataLoader(this._api);
+  DataLoader(this._api) : _subscriptionData = SubscriptionDataService(_api);
 
   final PanelApi _api;
+  final SubscriptionDataService _subscriptionData;
 
   /// Full load: user-info first (sequential), then all others in parallel.
   Future<DataSnapshot> loadAll() async {
@@ -78,7 +79,7 @@ class DataLoader {
       snap.currentPlanId = info.planId;
       snap.traffic = ModelMappers.toTraffic(info);
     } catch (e) {
-      debugPrint('[Litchi] getUserInfo error: $e');
+      SecureLogger.debug('[Litchi] getUserInfo error', e);
       snap.criticalError = '用户信息加载失败，请检查网络后重试';
     }
     try {
@@ -100,34 +101,22 @@ class DataLoader {
         );
       }
     } catch (e) {
-      debugPrint('[Litchi] getSubscribeInfo error: $e');
+      SecureLogger.debug('[Litchi] getSubscribeInfo error', e);
     }
   }
 
   Future<void> _fillNodes(DataSnapshot snap) async {
     final url = snap.subscribeUrl;
     if (url == null || url.isEmpty) {
-      debugPrint('[Litchi] _fillNodes: no subscribe URL, skipping');
+      SecureLogger.debug('[Litchi] _fillNodes: no subscribe URL, skipping');
       return;
     }
     try {
-      final result = await _api.fetchSubscription(url);
-      if (result.nodes.isNotEmpty) {
-        snap.nodes = result.nodes.map(ModelMappers.toNode).toList();
-      }
-      final st = result.traffic;
-      if (st != null && st.total > 0) {
-        final total = st.total / AppConfig.bytesPerGb;
-        final used = (st.upload + st.download) / AppConfig.bytesPerGb;
-        final remain = (total - used).clamp(0.0, double.infinity);
-        snap.traffic = TrafficModel(
-          totalGb: total,
-          usedGb: used,
-          remainGb: remain,
-        );
-      }
+      final result = await _subscriptionData.loadNodes(url);
+      if (result.nodes.isNotEmpty) snap.nodes = result.nodes;
+      if (result.traffic != null) snap.traffic = result.traffic;
     } catch (e) {
-      debugPrint('[Litchi] _fillNodes error: $e');
+      SecureLogger.debug('[Litchi] _fillNodes error', e);
     }
   }
 
@@ -144,7 +133,7 @@ class DataLoader {
         }
       }
     } catch (e) {
-      debugPrint('[Litchi] getPlans error: $e');
+      SecureLogger.debug('[Litchi] getPlans error', e);
     }
   }
 
@@ -181,7 +170,7 @@ class DataLoader {
       snap.minWithdrawAmount = commConfig.minWithdrawAmount / 100;
       snap.inviteRecords = await _api.getInviteDetails(pageSize: 10);
     } catch (e) {
-      debugPrint('[Litchi] getInviteInfo error: $e');
+      SecureLogger.debug('[Litchi] getInviteInfo error', e);
     }
   }
 
@@ -217,7 +206,7 @@ class DataLoader {
         snap.dailyUsage = points.map((p) => p.totalGb).toList();
       }
     } catch (e) {
-      debugPrint('[Litchi] getTrafficLog error: $e');
+      SecureLogger.debug('[Litchi] getTrafficLog error', e);
     }
   }
 }

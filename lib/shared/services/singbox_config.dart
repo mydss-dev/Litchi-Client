@@ -62,8 +62,14 @@ abstract final class SingboxConfig {
     final tags      = <String>[];
 
     for (final n in nodes) {
-      if (n.rawUri.isEmpty) continue;
-      final ob = OutboundParser.parse(n.rawUri, tag: _nodeTag(n));
+      final ob = n.rawUri.isNotEmpty
+          ? OutboundParser.parse(n.rawUri, tag: _nodeTag(n))
+          : (n.rawOutbound == null
+              ? null
+              : OutboundParser.parseClashProxy(
+                  n.rawOutbound!,
+                  tag: _nodeTag(n),
+                ));
       if (ob == null) continue;
       outbounds.add(ob);
       tags.add(_nodeTag(n));
@@ -269,7 +275,11 @@ abstract final class SingboxConfig {
         Directory.systemTemp.path;
     final dir = Directory('$base\\Litchi');
     await dir.create(recursive: true);
-    final file = File('${dir.path}\\core.json');
+    final nonce = List.generate(
+      8,
+      (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
+    ).join();
+    final file = File('${dir.path}\\core-$nonce.json');
     await file.writeAsString(encodeConfig(config));
     return file.path;
   }

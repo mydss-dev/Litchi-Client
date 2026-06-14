@@ -1,5 +1,3 @@
-import 'package:dio/dio.dart';
-
 import '../models/api_models.dart';
 import 'api_client.dart';
 import 'subscription_parser.dart';
@@ -221,21 +219,13 @@ class PanelApi {
   /// Fetches [subscribeUrl] and parses the returned node list.
   /// Returns nodes plus optional updated traffic from the subscription-userinfo header.
   Future<SubscriptionResult> fetchSubscription(String subscribeUrl) async {
-    final dio = Dio(
-      BaseOptions(
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 30),
-        headers: {
-          // Neutral UA → panel returns Base64 URI list (default format).
-          // UA containing "clash" → panel returns Clash YAML.
-          'User-Agent': 'LitchiClient/1.0',
-        },
-      ),
-    );
-
-    final res = await dio.get<String>(
+    final res = await _client.getPlainUrl(
       subscribeUrl,
-      options: Options(responseType: ResponseType.plain),
+      headers: {
+        // Neutral UA: panel returns Base64 URI list by default.
+        // UA containing "clash" often returns Clash YAML.
+        'User-Agent': 'LitchiClient/1.0',
+      },
     );
     final body = (res.data ?? '').trim();
 

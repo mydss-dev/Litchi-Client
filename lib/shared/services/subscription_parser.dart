@@ -9,7 +9,11 @@ import '../models/api_models.dart';
 /// Supports Base64-encoded URI lists, plain URI lists, and Clash YAML.
 /// All methods are stateless and synchronous — no network access.
 abstract final class SubscriptionParser {
+  static const int maxBodyBytes = 4 * 1024 * 1024;
+  static const int maxNodes = 5000;
+
   static List<RemoteNode> parse(String body) {
+    if (utf8.encode(body).length > maxBodyBytes) return [];
     if (body.contains('\nproxies:') || body.startsWith('proxies:')) {
       return _parseClashYaml(body);
     }
@@ -35,14 +39,24 @@ abstract final class SubscriptionParser {
       final proxies = doc['proxies'];
       if (proxies is! YamlList) return nodes;
       for (final proxy in proxies) {
+        if (nodes.length >= maxNodes) break;
         if (proxy is! YamlMap) continue;
+        final rawOutbound = <String, dynamic>{};
+        for (final entry in proxy.entries) {
+          rawOutbound[entry.key.toString()] = _plainYamlValue(entry.value);
+        }
         final name   = proxy['name']?.toString() ?? 'Node $id';
         final server = proxy['server']?.toString() ?? '';
         final port   = int.tryParse(proxy['port']?.toString() ?? '') ?? 0;
         final rate   = double.tryParse(proxy['rate']?.toString() ?? '') ?? 1.0;
         if (name.isNotEmpty) {
           nodes.add(RemoteNode(
-            id: id++, name: name, server: server, port: port, rate: rate,
+            id: id++,
+            name: name,
+            server: server,
+            port: port,
+            rate: rate,
+            rawOutbound: rawOutbound,
           ));
         }
       }
@@ -56,6 +70,7 @@ abstract final class SubscriptionParser {
     final nodes = <RemoteNode>[];
     int id = 1;
     for (final raw in text.split('\n')) {
+      if (nodes.length >= maxNodes) break;
       final line = raw.trim();
       if (line.isEmpty) continue;
       final node = _parseUri(line, id);
@@ -139,6 +154,19 @@ abstract final class SubscriptionParser {
   static String? _decodeStr(String? s) {
     if (s == null || s.isEmpty) return null;
     try { return Uri.decodeComponent(s); } catch (_) { return s; }
+  }
+
+  static Object? _plainYamlValue(Object? value) {
+    if (value is YamlMap) {
+      return {
+        for (final entry in value.entries)
+          entry.key.toString(): _plainYamlValue(entry.value),
+      };
+    }
+    if (value is YamlList) {
+      return value.map(_plainYamlValue).toList();
+    }
+    return value;
   }
 
   static String _pad(String s) {

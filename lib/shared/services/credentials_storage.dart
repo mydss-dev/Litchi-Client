@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Stores remembered login credentials.
@@ -16,11 +17,18 @@ abstract final class CredentialsStorage {
   static const _legacyKeyEmail = 'dpapi_email';
   static const _keyPassword = 'dpapi_password';
   static const _plainPrefix = 'P:';
+  static const _secureStorage = FlutterSecureStorage();
 
   static Future<void> save({
     required String email,
     required String password,
   }) async {
+    if (!Platform.isWindows) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyEmail, email);
+      await _secureStorage.write(key: _keyPassword, value: password);
+      return;
+    }
     try {
       final encPass = await protectString(password);
       if (encPass == null) return;
@@ -32,6 +40,13 @@ abstract final class CredentialsStorage {
   }
 
   static Future<({String email, String password})?> load() async {
+    if (!Platform.isWindows) {
+      final prefs = await SharedPreferences.getInstance();
+      final email = await _loadEmail(prefs);
+      final password = await _secureStorage.read(key: _keyPassword);
+      if (email == null || email.isEmpty || password == null) return null;
+      return (email: email, password: password);
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       final email = await _loadEmail(prefs);
@@ -50,6 +65,9 @@ abstract final class CredentialsStorage {
     await prefs.remove(_keyEmail);
     await prefs.remove(_legacyKeyEmail);
     await prefs.remove(_keyPassword);
+    if (!Platform.isWindows) {
+      await _secureStorage.delete(key: _keyPassword);
+    }
   }
 
   static Future<String?> _loadEmail(SharedPreferences prefs) async {
@@ -71,6 +89,10 @@ abstract final class CredentialsStorage {
   static const _keyAuthToken = 'dpapi_auth_token';
 
   static Future<void> saveAuthToken(String token) async {
+    if (!Platform.isWindows) {
+      await _secureStorage.write(key: _keyAuthToken, value: token);
+      return;
+    }
     try {
       final enc = await protectString(token);
       if (enc == null) return;
@@ -80,6 +102,9 @@ abstract final class CredentialsStorage {
   }
 
   static Future<String?> loadAuthToken() async {
+    if (!Platform.isWindows) {
+      return _secureStorage.read(key: _keyAuthToken);
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       final enc = prefs.getString(_keyAuthToken);
@@ -93,6 +118,9 @@ abstract final class CredentialsStorage {
   static Future<void> clearAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyAuthToken);
+    if (!Platform.isWindows) {
+      await _secureStorage.delete(key: _keyAuthToken);
+    }
   }
 
   // ── Generic protected strings ─────────────────────────────────────────────
@@ -100,10 +128,8 @@ abstract final class CredentialsStorage {
   /// Protects arbitrary sensitive text with the same DPAPI path used for
   /// credentials. Used by secure local caches that must survive app restarts.
   static Future<String?> protectString(String plaintext) => Platform.isWindows
-      ? _protectDpapi(
-          plaintext,
-        ).then((value) => value ?? _protectPortable(plaintext))
-      : _protectPortable(plaintext);
+      ? _protectDpapi(plaintext)
+      : Future.value(null);
 
   /// Unprotects text returned by [protectString]. Legacy weak fallback payloads
   /// are rejected so callers never silently depend on the removed XOR path.
@@ -119,10 +145,6 @@ abstract final class CredentialsStorage {
       }
     }
     return _unprotectDpapi(encrypted);
-  }
-
-  static Future<String?> _protectPortable(String plaintext) async {
-    return '$_plainPrefix${base64.encode(utf8.encode(plaintext))}';
   }
 
   // ── DPAPI via PowerShell ──────────────────────────────────────────────────

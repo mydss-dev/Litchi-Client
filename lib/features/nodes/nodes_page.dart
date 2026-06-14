@@ -6,10 +6,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/services/node_filter.dart';
+import '../../shared/services/settings_service.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/services/settings_service.dart';
 import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/filter_tabs.dart';
@@ -27,8 +28,10 @@ class _NodesPageState extends State<NodesPage> {
   static const _tabs = ['全部', '收藏', 'VIP', '亚洲', '欧洲', '美洲', '大洋洲'];
   int _tab = 0;
   String _query = '';
+  String _pendingQuery = '';
   String? _selectedId;
   Set<String> _favorites = {};
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -41,12 +44,37 @@ class _NodesPageState extends State<NodesPage> {
     if (mounted) setState(() => _favorites = favs);
   }
 
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
   void _toggleFavorite(String id) {
     setState(() {
       if (!_favorites.add(id)) _favorites.remove(id);
     });
     SettingsService.saveFavorites(_favorites);
   }
+
+  void _onSearchChanged(String value) {
+    _pendingQuery = value;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      setState(() => _query = _pendingQuery);
+    });
+  }
+
+  NodeFilterTab get _selectedTab => switch (_tab) {
+    1 => NodeFilterTab.favorite,
+    2 => NodeFilterTab.premium,
+    3 => NodeFilterTab.asia,
+    4 => NodeFilterTab.europe,
+    5 => NodeFilterTab.america,
+    6 => NodeFilterTab.oceania,
+    _ => NodeFilterTab.all,
+  };
 
   @override
   void didChangeDependencies() {
@@ -56,12 +84,13 @@ class _NodesPageState extends State<NodesPage> {
   }
 
   List<NodeModel> get _filtered {
-    final nodes = AppScope.of(context).nodes;
-    return nodes.where((n) {
-      if (_query.isNotEmpty &&
-          !n.name.toLowerCase().contains(_query.toLowerCase())) {
-        return false;
-      }
+    return NodeFilter.apply(
+      nodes: AppScope.of(context).nodes,
+      query: _query,
+      tab: _selectedTab,
+      favorites: _favorites,
+    );
+    /*
       switch (_tabs[_tab]) {
         case '收藏':
           return _favorites.contains(n.id);
@@ -79,6 +108,7 @@ class _NodesPageState extends State<NodesPage> {
           return true;
       }
     }).toList();
+    */
   }
 
   @override
@@ -101,7 +131,7 @@ class _NodesPageState extends State<NodesPage> {
             Expanded(
               child: SearchInput(
                 hintText: '搜索节点',
-                onChanged: (v) => setState(() => _query = v),
+                onChanged: _onSearchChanged,
               ),
             ),
             const SizedBox(width: 12),

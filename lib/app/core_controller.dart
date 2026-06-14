@@ -13,6 +13,55 @@ import '../shared/services/singbox_config.dart';
 /// High-level connection lifecycle state exposed to UI.
 enum ConnectionStatus { disconnected, connecting, connected, disconnecting, error }
 
+class CoreConnectionRequest {
+  const CoreConnectionRequest({
+    required this.nodes,
+    required this.currentNode,
+    required this.proxyMode,
+    required this.dnsMode,
+    required this.proxyPort,
+    this.networkMode = NetworkMode.system,
+  });
+
+  final List<NodeModel> nodes;
+  final NodeModel currentNode;
+  final ProxyMode proxyMode;
+  final String dnsMode;
+  final int proxyPort;
+  final NetworkMode networkMode;
+
+  List<NodeModel> get validNodes => nodes.where(_hasCoreConfig).toList();
+
+  String get selectedTag => SingboxConfig.nodeTagFor(currentNode);
+
+  CoreConnectionRequest withNetworkMode(NetworkMode mode) =>
+      CoreConnectionRequest(
+        nodes: nodes,
+        currentNode: currentNode,
+        proxyMode: proxyMode,
+        dnsMode: dnsMode,
+        proxyPort: proxyPort,
+        networkMode: mode,
+      );
+
+  Map<String, dynamic>? buildConfig({NetworkMode? overrideNetworkMode}) {
+    final availableNodes = validNodes;
+    if (availableNodes.isEmpty) return null;
+    return SingboxConfig.buildFullConfig(
+      availableNodes,
+      selectedTag: selectedTag,
+      port: proxyPort,
+      apiPort: SingboxConfig.defaultApiPort,
+      proxyMode: proxyMode,
+      dnsMode: dnsMode,
+      networkMode: overrideNetworkMode ?? networkMode,
+    );
+  }
+
+  static bool _hasCoreConfig(NodeModel node) =>
+      node.rawUri.isNotEmpty || node.rawOutbound != null;
+}
+
 /// Owns the sing-box process, connection lifecycle, and latency testing.
 ///
 /// Settings values and the node list are passed in at call time to avoid
@@ -125,27 +174,13 @@ class CoreController extends ChangeNotifier {
   /// Starts sing-box in the background WITHOUT enabling system proxy or TUN.
   /// Called after login so latency testing works before the user connects.
   /// No-ops if the process is already running.
-  Future<void> startCoreOnly({
-    required List<NodeModel> nodes,
-    required NodeModel currentNode,
-    required ProxyMode proxyMode,
-    required String dnsMode,
-    required int proxyPort,
-  }) async {
+  Future<void> startCoreOnly(CoreConnectionRequest request) async {
     if (Platform.isAndroid) return;
     if (_core.isRunning) return;
-    final validNodes = nodes.where((n) => n.rawUri.isNotEmpty).toList();
+    final validNodes = request.validNodes;
     if (validNodes.isEmpty) return;
 
-    final config = SingboxConfig.buildFullConfig(
-      validNodes,
-      selectedTag: SingboxConfig.nodeTagFor(currentNode),
-      port: proxyPort,
-      apiPort: SingboxConfig.defaultApiPort,
-      proxyMode: proxyMode,
-      dnsMode: dnsMode,
-      networkMode: NetworkMode.system, // no TUN in background mode
-    );
+    final config = request.buildConfig(overrideNetworkMode: NetworkMode.system);
     if (config == null) return;
 
     try {
@@ -161,26 +196,13 @@ class CoreController extends ChangeNotifier {
   /// Rebuilds the sing-box config and restarts the core when it is already
   /// running. If the user was connected, it reconnects with the new config;
   /// otherwise it keeps the core alive in background mode for latency testing.
-  Future<String?> reloadCore({
-    required List<NodeModel> nodes,
-    required NodeModel currentNode,
-    required ProxyMode proxyMode,
-    required String dnsMode,
-    required int proxyPort,
-    NetworkMode networkMode = NetworkMode.system,
-  }) async {
+  Future<String?> reloadCore(CoreConnectionRequest request) async {
     if (Platform.isAndroid) {
       if (coreConnecting || _status != ConnectionStatus.connected) return null;
       await _androidCore.stop();
       _connectedAt = null;
       _status = ConnectionStatus.disconnected;
-      return _toggleAndroidConnection(
-        nodes: nodes,
-        currentNode: currentNode,
-        proxyMode: proxyMode,
-        dnsMode: dnsMode,
-        proxyPort: proxyPort,
-      );
+      return _toggleAndroidConnection(request);
     }
 
     if (coreConnecting) return null;
@@ -188,13 +210,7 @@ class CoreController extends ChangeNotifier {
     final wasConnected = _status == ConnectionStatus.connected;
     final hadProcess = _core.isRunning;
     if (!hadProcess) {
-      await startCoreOnly(
-        nodes: nodes,
-        currentNode: currentNode,
-        proxyMode: proxyMode,
-        dnsMode: dnsMode,
-        proxyPort: proxyPort,
-      );
+      await startCoreOnly(request);
       return null;
     }
 
@@ -213,23 +229,10 @@ class CoreController extends ChangeNotifier {
     notifyListeners();
 
     if (wasConnected) {
-      return toggleConnection(
-        nodes: nodes,
-        currentNode: currentNode,
-        proxyMode: proxyMode,
-        dnsMode: dnsMode,
-        proxyPort: proxyPort,
-        networkMode: networkMode,
-      );
+      return toggleConnection(request);
     }
 
-    await startCoreOnly(
-      nodes: nodes,
-      currentNode: currentNode,
-      proxyMode: proxyMode,
-      dnsMode: dnsMode,
-      proxyPort: proxyPort,
-    );
+    await startCoreOnly(request);
     return null;
   }
 
@@ -240,22 +243,9 @@ class CoreController extends ChangeNotifier {
   ///
   /// TUN mode always performs a full restart since the TUN adapter cannot be
   /// toggled without reloading the config.
-  Future<String?> toggleConnection({
-    required List<NodeModel> nodes,
-    required NodeModel currentNode,
-    required ProxyMode proxyMode,
-    required String dnsMode,
-    required int proxyPort,
-    NetworkMode networkMode = NetworkMode.system,
-  }) async {
+  Future<String?> toggleConnection(CoreConnectionRequest request) async {
     if (Platform.isAndroid) {
-      return _toggleAndroidConnection(
-        nodes: nodes,
-        currentNode: currentNode,
-        proxyMode: proxyMode,
-        dnsMode: dnsMode,
-        proxyPort: proxyPort,
-      );
+      return _toggleAndroidConnection(request);
     }
 
     if (coreConnecting) return null;
@@ -266,7 +256,7 @@ class CoreController extends ChangeNotifier {
       notifyListeners();
       _stopTrafficMonitor();
       await ProxySetter.disable();
-      if (networkMode == NetworkMode.tun) {
+      if (request.networkMode == NetworkMode.tun) {
         // TUN requires a full restart to remove the adapter; stop the process.
         await _core.stop();
       }
@@ -279,17 +269,17 @@ class CoreController extends ChangeNotifier {
     }
 
     // ── CONNECT ─────────────────────────────────────────────────────────────
-    final validNodes = nodes.where((n) => n.rawUri.isNotEmpty).toList();
+    final validNodes = request.validNodes;
     if (validNodes.isEmpty) {
       _coreError = '没有可用节点，请刷新节点列表后重试';
       notifyListeners();
       return _coreError;
     }
 
-    final selectedTag = SingboxConfig.nodeTagFor(currentNode);
+    final selectedTag = request.selectedTag;
 
     // Fast path: core already running in system proxy mode — just enable proxy.
-    if (_core.isRunning && networkMode == NetworkMode.system) {
+    if (_core.isRunning && request.networkMode == NetworkMode.system) {
       _status = ConnectionStatus.connecting;
       _coreError = '';
       notifyListeners();
@@ -298,7 +288,7 @@ class CoreController extends ChangeNotifier {
           selectedTag,
           apiPort: SingboxConfig.defaultApiPort,
         );
-        await ProxySetter.enable(port: proxyPort);
+        await ProxySetter.enable(port: request.proxyPort);
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
         _startTrafficMonitor();
@@ -311,15 +301,7 @@ class CoreController extends ChangeNotifier {
     }
 
     // Full start: build config, (re)start process, enable proxy.
-    final config = SingboxConfig.buildFullConfig(
-      validNodes,
-      selectedTag: selectedTag,
-      port: proxyPort,
-      apiPort: SingboxConfig.defaultApiPort,
-      proxyMode: proxyMode,
-      dnsMode: dnsMode,
-      networkMode: networkMode,
-    );
+    final config = request.buildConfig();
 
     if (config == null) {
       _coreError = '生成配置失败，请选择其他节点后重试';
@@ -336,8 +318,8 @@ class CoreController extends ChangeNotifier {
       await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
 
       if (_core.isRunning) {
-        if (networkMode == NetworkMode.system) {
-          await ProxySetter.enable(port: proxyPort);
+        if (request.networkMode == NetworkMode.system) {
+          await ProxySetter.enable(port: request.proxyPort);
         }
         _connectedAt = DateTime.now();
         _coreError = '';
@@ -363,13 +345,7 @@ class CoreController extends ChangeNotifier {
     return _coreError.isNotEmpty ? _coreError : null;
   }
 
-  Future<String?> _toggleAndroidConnection({
-    required List<NodeModel> nodes,
-    required NodeModel currentNode,
-    required ProxyMode proxyMode,
-    required String dnsMode,
-    required int proxyPort,
-  }) async {
+  Future<String?> _toggleAndroidConnection(CoreConnectionRequest request) async {
     if (coreConnecting) return null;
 
     if (_status == ConnectionStatus.connected) {
@@ -384,22 +360,14 @@ class CoreController extends ChangeNotifier {
       return null;
     }
 
-    final validNodes = nodes.where((n) => n.rawUri.isNotEmpty).toList();
+    final validNodes = request.validNodes;
     if (validNodes.isEmpty) {
       _coreError = '没有可用节点，请刷新节点列表后重试';
       notifyListeners();
       return _coreError;
     }
 
-    final config = SingboxConfig.buildFullConfig(
-      validNodes,
-      selectedTag: SingboxConfig.nodeTagFor(currentNode),
-      port: proxyPort,
-      apiPort: SingboxConfig.defaultApiPort,
-      proxyMode: proxyMode,
-      dnsMode: dnsMode,
-      networkMode: NetworkMode.tun,
-    );
+    final config = request.buildConfig(overrideNetworkMode: NetworkMode.tun);
 
     if (config == null) {
       _coreError = '生成配置失败，请选择其他节点后重试';
