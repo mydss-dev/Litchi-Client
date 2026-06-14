@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
+import '../models/api_models.dart';
 import '../models/app_models.dart';
 import '../models/model_mappers.dart';
 import 'panel_api.dart';
@@ -13,11 +14,20 @@ class DataSnapshot {
   String? subscribeUrl;
   List<NodeModel>? nodes;
   List<PlanModel>? plans;
+  List<InviteCodeModel>? inviteCodes;
   String? inviteCode;
   String? inviteLink;
+  String? inviteUrlBase;
+  List<RemoteInviteRecord>? inviteRecords;
   double? commissionRate;
   int? invitedCount;
+  double? earnedCommission;
+  double? pendingCommission;
   double? withdrawable;
+  String? currencySymbol;
+  int? withdrawClose;
+  List<String>? withdrawMethods;
+  double? minWithdrawAmount;
   List<double>? dailyUsage;
   List<TrafficUsagePoint>? trafficUsage;
   int? aliveIp;
@@ -133,11 +143,27 @@ class DataLoader {
   Future<void> _fillInvite(DataSnapshot snap) async {
     try {
       final info = await _api.getInviteInfo();
+      if (info.codes.isNotEmpty) {
+        snap.inviteCodes = info.codes
+            .map((item) => InviteCodeModel(code: item.code, link: item.link))
+            .toList();
+      }
       if (info.inviteCode.isNotEmpty) snap.inviteCode = info.inviteCode;
       if (info.inviteUrl.isNotEmpty) snap.inviteLink = info.inviteUrl;
       snap.commissionRate = info.commissionRate;
       snap.invitedCount = info.effectCount;
+      snap.earnedCommission = info.validCommission / 100;
+      snap.pendingCommission = info.pendingCommission / 100;
       snap.withdrawable = info.balance / 100; // balance stored in cents
+      final commConfig = await _api.getCommConfig();
+      if (commConfig.inviteUrlBase.isNotEmpty) {
+        snap.inviteUrlBase = commConfig.inviteUrlBase;
+      }
+      snap.currencySymbol = commConfig.currencySymbol;
+      snap.withdrawClose = commConfig.withdrawClose;
+      snap.withdrawMethods = commConfig.withdrawMethods;
+      snap.minWithdrawAmount = commConfig.minWithdrawAmount / 100;
+      snap.inviteRecords = await _api.getInviteDetails(pageSize: 10);
     } catch (e) {
       debugPrint('[Litchi] getInviteInfo error: $e');
     }

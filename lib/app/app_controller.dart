@@ -25,6 +25,7 @@ enum AppPage {
   invite,
   settings,
   account,
+  wallet,
   orders,
   tickets,
 }
@@ -82,11 +83,19 @@ class AppController extends ChangeNotifier {
   List<NodeModel> _nodes = const [];
   List<PlanModel> _plans = const [];
   bool _autoSelected = false;
+  List<InviteCodeModel> _inviteCodes = const [];
   String _inviteCode = '';
   String _inviteLink = '';
+  String _inviteUrlBase = '';
+  List<RemoteInviteRecord> _inviteRecords = const [];
   double _commissionRate = 0;
   int _invitedCount = 0;
+  double _earnedCommission = 0;
+  double _pendingCommission = 0;
   double _withdrawable = 0;
+  int _withdrawClose = 1;
+  List<String> _withdrawMethods = const [];
+  double _minWithdrawAmount = 0;
   List<double> _dailyUsage = const [];
   List<TrafficUsagePoint> _trafficUsage = [];
   int? _aliveIp;
@@ -209,11 +218,18 @@ class AppController extends ChangeNotifier {
       _autoSelected ? (_bestNode ?? _currentNode) : _currentNode;
   List<NodeModel> get nodes => _nodes;
   List<PlanModel> get plans => _plans;
+  List<InviteCodeModel> get inviteCodes => _inviteCodes;
   String get inviteCode => _inviteCode;
   String get inviteLink => _inviteLink;
+  List<RemoteInviteRecord> get inviteRecords => _inviteRecords;
   double get commissionRate => _commissionRate;
   int get invitedCount => _invitedCount;
+  double get earnedCommission => _earnedCommission;
+  double get pendingCommission => _pendingCommission;
   double get withdrawable => _withdrawable;
+  bool get withdrawEnabled => _withdrawClose == 0;
+  List<String> get withdrawMethods => _withdrawMethods;
+  double get minWithdrawAmount => _minWithdrawAmount;
   List<double> get dailyUsage => _dailyUsage;
   List<TrafficUsagePoint> get trafficUsage => _trafficUsage;
   int? get aliveIp => _aliveIp;
@@ -405,6 +421,24 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  Future<String?> updateUserSettings({
+    required bool remindExpire,
+    required bool remindTraffic,
+    required bool autoRenewal,
+  }) async {
+    try {
+      await _api.updateUserSettings(
+        remindExpire: remindExpire,
+        remindTraffic: remindTraffic,
+        autoRenewal: autoRenewal,
+      );
+      await refreshData();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('ApiException: ', '');
+    }
+  }
+
   Future<void> _completeAuthentication(String authData) async {
     await TokenStorage.saveAuthData(authData);
     _apiClient.updateAuthData(authData);
@@ -430,9 +464,17 @@ class AppController extends ChangeNotifier {
     _plans = const [];
     _inviteCode = '';
     _inviteLink = '';
+    _inviteUrlBase = '';
+    _inviteCodes = const [];
+    _inviteRecords = const [];
     _commissionRate = 0;
     _invitedCount = 0;
+    _earnedCommission = 0;
+    _pendingCommission = 0;
     _withdrawable = 0;
+    _withdrawClose = 1;
+    _withdrawMethods = const [];
+    _minWithdrawAmount = 0;
     _dailyUsage = const [];
     _trafficUsage = [];
     _aliveIp = null;
@@ -450,9 +492,7 @@ class AppController extends ChangeNotifier {
 
   Future<String?> toggleConnection() {
     if (!supportsCoreConnection) {
-      return Future.value(
-        '当前平台暂未接入核心连接',
-      );
+      return Future.value('当前平台暂未接入核心连接');
     }
     return _core.toggleConnection(
       nodes: _nodes,
@@ -526,6 +566,63 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String?> createInviteCode() async {
+    try {
+      await _api.createInviteCode();
+      await refreshData();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('ApiException: ', '');
+    }
+  }
+
+  Future<String?> transferAllCommission() async {
+    return transferCommissionToBalance(_withdrawable);
+  }
+
+  Future<String?> transferCommissionToBalance(double amount) async {
+    if (_withdrawable <= 0) return '暂无可划转佣金';
+    if (amount <= 0) return '请输入划转金额';
+    if (amount > _withdrawable) return '划转金额不能超过可提现佣金';
+    try {
+      await _api.transferCommission((amount * 100).round());
+      await refreshData();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('ApiException: ', '');
+    }
+  }
+
+  Future<String?> withdrawCommission({
+    required double amount,
+    required String account,
+    required String method,
+  }) async {
+    if (amount <= 0) return '请输入提现金额';
+    if (!withdrawEnabled) return '提现暂未开放';
+    if (amount > _withdrawable) return '提现金额不能超过可提现佣金';
+    if (_minWithdrawAmount > 0 && amount < _minWithdrawAmount) {
+      return '最低提现金额为 $_currencySymbol${_minWithdrawAmount.toStringAsFixed(2)}';
+    }
+    if (account.trim().isEmpty) return '请输入提现账户';
+    if (method.trim().isEmpty) return '请输入提现方式';
+    if (_withdrawMethods.isNotEmpty &&
+        !_withdrawMethods.contains(method.trim())) {
+      return '请选择可用的提现方式';
+    }
+    try {
+      await _api.withdrawCommission(
+        amountCents: (amount * 100).round(),
+        account: account.trim(),
+        method: method.trim(),
+      );
+      await refreshData();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('ApiException: ', '');
+    }
+  }
+
   Future<void> refreshNodes() async {
     final snap = await _dataLoader.loadNodes(_subscribeUrl);
     if (snap.nodes != null && snap.nodes!.isNotEmpty) {
@@ -546,16 +643,59 @@ class AppController extends ChangeNotifier {
     if (snap.subscribeUrl != null) _subscribeUrl = snap.subscribeUrl!;
     if (snap.nodes != null) _nodes = snap.nodes!;
     if (snap.plans != null) _plans = snap.plans!;
+    if (snap.inviteCodes != null) {
+      _inviteCodes = snap.inviteCodes!
+          .map(
+            (item) => InviteCodeModel(
+              code: item.code,
+              link: _inviteLinkForCode(item.code, item.link),
+            ),
+          )
+          .toList();
+    }
     if (snap.inviteCode != null) _inviteCode = snap.inviteCode!;
     if (snap.inviteLink != null) _inviteLink = snap.inviteLink!;
-    // OSS override: rebuild invite link with the configured base domain.
-    if (AppConfig.inviteUrlBase.isNotEmpty && _inviteCode.isNotEmpty) {
-      final base = AppConfig.inviteUrlBase.replaceAll(RegExp(r'/+$'), '');
-      _inviteLink = '$base/register?code=$_inviteCode';
+    if (snap.inviteUrlBase != null) _inviteUrlBase = snap.inviteUrlBase!;
+    if (_inviteCode.isNotEmpty) {
+      _inviteLink = _inviteLinkForCode(_inviteCode, _inviteLink);
+    }
+    if (_inviteCodes.isEmpty && _inviteCode.isNotEmpty) {
+      _inviteCodes = [
+        InviteCodeModel(
+          code: _inviteCode,
+          link: _inviteLinkForCode(_inviteCode, _inviteLink),
+        ),
+      ];
+    } else if (_inviteCodes.isNotEmpty) {
+      _inviteCodes = _inviteCodes
+          .map(
+            (item) => InviteCodeModel(
+              code: item.code,
+              link: _inviteLinkForCode(item.code, item.link),
+            ),
+          )
+          .toList();
+      _inviteCode = _inviteCodes.first.code;
+      _inviteLink = _inviteCodes.first.link;
     }
     if (snap.commissionRate != null) _commissionRate = snap.commissionRate!;
+    if (snap.inviteRecords != null) _inviteRecords = snap.inviteRecords!;
     if (snap.invitedCount != null) _invitedCount = snap.invitedCount!;
+    if (snap.earnedCommission != null) {
+      _earnedCommission = snap.earnedCommission!;
+    }
+    if (snap.pendingCommission != null) {
+      _pendingCommission = snap.pendingCommission!;
+    }
     if (snap.withdrawable != null) _withdrawable = snap.withdrawable!;
+    if (snap.currencySymbol != null && snap.currencySymbol!.isNotEmpty) {
+      _currencySymbol = snap.currencySymbol!;
+    }
+    if (snap.withdrawClose != null) _withdrawClose = snap.withdrawClose!;
+    if (snap.withdrawMethods != null) _withdrawMethods = snap.withdrawMethods!;
+    if (snap.minWithdrawAmount != null) {
+      _minWithdrawAmount = snap.minWithdrawAmount!;
+    }
     if (snap.dailyUsage != null) _dailyUsage = snap.dailyUsage!;
     if (snap.trafficUsage != null) _trafficUsage = snap.trafficUsage!;
     if (snap.aliveIp != null) _aliveIp = snap.aliveIp;
@@ -563,6 +703,30 @@ class AppController extends ChangeNotifier {
     if (snap.resetDay != null) _resetDay = snap.resetDay;
     if (snap.expiredAt != null) _expiredAt = snap.expiredAt;
     if (snap.criticalError != null) _dataLoadError = snap.criticalError;
+  }
+
+  String _inviteLinkForCode(String code, String link) {
+    if (link.isNotEmpty) return link;
+    if (code.isEmpty) return '';
+    final configuredBase = _firstNotEmpty([
+      _inviteUrlBase,
+      AppConfig.inviteUrlBase,
+    ]);
+    if (configuredBase.isEmpty) return '';
+    final base = configuredBase.replaceAll(RegExp(r'/+$'), '');
+    if (base.contains('{code}')) return base.replaceAll('{code}', code);
+    if (base.endsWith('/register') || base.endsWith('/#/register')) {
+      return '$base?code=$code';
+    }
+    return '$base/#/register?code=$code';
+  }
+
+  String _firstNotEmpty(List<String> values) {
+    for (final value in values) {
+      final trimmed = value.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    return '';
   }
 
   // ── Node selection ────────────────────────────────────────────────────────
@@ -672,11 +836,13 @@ class AppController extends ChangeNotifier {
   /// Starts the sing-box process in background mode if needed.
   Future<void> testLatencies() async {
     if (!supportsCoreConnection) return;
-    if (Platform.isAndroid) return;
     if (_nodes.isEmpty) return;
 
     if (!coreProcessRunning) {
-      await _startCoreInBackground();
+      if (Platform.isAndroid && !coreRunning) return;
+      if (!Platform.isAndroid) {
+        await _startCoreInBackground();
+      }
       if (coreProcessRunning) {
         await Future.delayed(const Duration(milliseconds: 1000));
       }

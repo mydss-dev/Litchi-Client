@@ -15,6 +15,8 @@ class MobileNodesPage extends StatefulWidget {
 }
 
 class _MobileNodesPageState extends State<MobileNodesPage> {
+  static const _tabs = ['全部', 'VIP', '亚洲', '欧洲', '美洲', '大洋洲'];
+  int _tab = 0;
   String _query = '';
 
   @override
@@ -23,10 +25,20 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
     final c = AppColors.of(context);
     final key = _query.trim().toLowerCase();
     final nodes = ctrl.nodes.where((node) {
-      if (key.isEmpty) return true;
-      return node.name.toLowerCase().contains(key) ||
-          node.englishName.toLowerCase().contains(key) ||
-          node.code.toLowerCase().contains(key);
+      if (key.isNotEmpty) {
+        final matchesSearch = node.name.toLowerCase().contains(key) ||
+            node.englishName.toLowerCase().contains(key) ||
+            node.code.toLowerCase().contains(key);
+        if (!matchesSearch) return false;
+      }
+      return switch (_tabs[_tab]) {
+        'VIP' => node.tags.contains('Premium'),
+        '亚洲' => node.region == NodeRegion.asia,
+        '欧洲' => node.region == NodeRegion.europe,
+        '美洲' => node.region == NodeRegion.america,
+        '大洋洲' => node.region == NodeRegion.oceania,
+        _ => true,
+      };
     }).toList();
 
     return Column(
@@ -54,8 +66,9 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
               ),
             ),
             IconButton(
-              onPressed: ctrl.refreshNodes,
-              icon: Icon(LucideIcons.refreshCw, color: c.primary),
+              tooltip: '测速',
+              onPressed: ctrl.testLatencies,
+              icon: Icon(LucideIcons.gauge, color: c.primary),
             ),
           ],
         ),
@@ -76,6 +89,12 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
               borderSide: BorderSide(color: c.softBorder),
             ),
           ),
+        ),
+        const SizedBox(height: 12),
+        _RegionTabs(
+          tabs: _tabs,
+          selected: _tab,
+          onSelected: (index) => setState(() => _tab = index),
         ),
         const SizedBox(height: 12),
         _AutoSelectCard(selected: ctrl.autoSelected, onTap: ctrl.selectAuto),
@@ -104,6 +123,54 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _RegionTabs extends StatelessWidget {
+  const _RegionTabs({
+    required this.tabs,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final List<String> tabs;
+  final int selected;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: tabs.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final active = selected == index;
+          return GestureDetector(
+            onTap: () => onSelected(index),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active ? c.primary : c.cardBg,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                border: Border.all(color: active ? c.primary : c.softBorder),
+              ),
+              child: Text(
+                tabs[index],
+                style: AppTextStyles.caption.copyWith(
+                  color: active ? Colors.white : c.textSecondary,
+                  fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -10,8 +10,10 @@ import '../features/mobile/mobile_profile_page.dart';
 import '../features/mobile/mobile_settings_page.dart';
 import '../features/mobile/mobile_shop_page.dart';
 import '../features/mobile/mobile_tickets_page.dart';
+import '../features/mobile/mobile_wallet_page.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
+import '../shared/theme/app_shadows.dart';
 import '../shared/theme/app_text_styles.dart';
 import 'app_controller.dart';
 
@@ -74,6 +76,8 @@ class _MobileShell extends StatelessWidget {
         return const MobileTicketsPage();
       case AppPage.account:
         return const MobileProfilePage();
+      case AppPage.wallet:
+        return const MobileWalletPage();
     }
   }
 }
@@ -85,8 +89,8 @@ class _MobileBottomNav extends StatelessWidget {
 
   static const _items = [
     _MobileNavItem(AppPage.dashboard, LucideIcons.home, '首页'),
-    _MobileNavItem(AppPage.nodes, LucideIcons.radioTower, '节点'),
     _MobileNavItem(AppPage.shop, LucideIcons.shoppingBag, '套餐'),
+    _MobileNavItem(AppPage.invite, LucideIcons.gift, '邀请'),
     _MobileNavItem(AppPage.account, LucideIcons.user, '我的'),
   ];
 
@@ -95,23 +99,28 @@ class _MobileBottomNav extends StatelessWidget {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
 
-    return Container(
-      padding: EdgeInsets.fromLTRB(10, 8, 10, bottomPadding + 8),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        border: Border(top: BorderSide(color: c.softBorder)),
-      ),
-      child: Row(
-        children: [
-          for (final item in _items)
-            Expanded(
-              child: _MobileNavButton(
-                item: item,
-                selected: _isSelected(ctrl.page, item.page),
-                onTap: () => ctrl.goToPage(item.page),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 2, 18, bottomPadding + 8),
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: c.softBorder),
+          boxShadow: AppShadows.soft(c),
+        ),
+        child: Row(
+          children: [
+            for (final item in _items)
+              Expanded(
+                child: _MobileNavButton(
+                  item: item,
+                  selected: _isSelected(ctrl.page, item.page),
+                  onTap: () => ctrl.goToPage(item.page),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -121,13 +130,14 @@ class _MobileBottomNav extends StatelessWidget {
       return current == AppPage.dashboard || current == AppPage.traffic;
     }
     if (tab == AppPage.shop) {
-      return current == AppPage.shop || current == AppPage.orders;
+      return current == AppPage.shop;
     }
     if (tab == AppPage.account) {
       return current == AppPage.account ||
-          current == AppPage.invite ||
+          current == AppPage.orders ||
           current == AppPage.settings ||
-          current == AppPage.tickets;
+          current == AppPage.tickets ||
+          current == AppPage.wallet;
     }
     return current == tab;
   }
@@ -150,14 +160,14 @@ class _MobileNavButton extends StatelessWidget {
     final color = selected ? c.primary : c.textMuted;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Ink(
-            height: 48,
+            height: 44,
             decoration: BoxDecoration(
               color: selected ? c.primarySoft : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadius.md),

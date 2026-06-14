@@ -1,6 +1,6 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=C:\tools\flutter"
+export "FLUTTER_ROOT=D:\flutter"
 export "FLUTTER_APPLICATION_PATH=C:\Users\Administrator\Desktop\Litchi Client"
 export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=C:\Users\Administrator\Desktop\Litchi Client\ios\Flutter\ephemeral\Packages\.packages\FlutterFramework"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"

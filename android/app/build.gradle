@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         applicationId "com.litchi.client"
-        minSdkVersion 23
+        minSdkVersion flutter.minSdkVersion
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode
         versionName flutter.versionName
@@ -44,26 +44,45 @@ tasks.register("ensureOfficialLibbox") {
     def shScript = file("../../tool/build_libbox_android.sh")
     outputs.file(aar)
     doLast {
+        def requestedTasks = gradle.startParameter.taskNames.collect { it.toLowerCase() }
+        def allowMissingForDebug = requestedTasks.any {
+            it.contains("debug") || it.contains("profile")
+        }
         if (aar.exists()) {
             logger.lifecycle("Using existing official libbox: ${aar}")
             return
         }
-        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-            if (!psScript.exists()) {
-                throw new GradleException("Missing libbox build script: ${psScript}")
+        def buildLibbox = {
+            if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+                if (!psScript.exists()) {
+                    throw new GradleException("Missing libbox build script: ${psScript}")
+                }
+                providers.exec {
+                    commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
+                }.result.get().assertNormalExitValue()
+            } else {
+                if (!shScript.exists()) {
+                    throw new GradleException("Missing libbox build script: ${shScript}")
+                }
+                providers.exec {
+                    commandLine "bash", shScript.absolutePath
+                }.result.get().assertNormalExitValue()
             }
-            providers.exec {
-                commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
-            }.result.get().assertNormalExitValue()
-        } else {
-            if (!shScript.exists()) {
-                throw new GradleException("Missing libbox build script: ${shScript}")
+        }
+        try {
+            buildLibbox()
+        } catch (Exception error) {
+            if (allowMissingForDebug) {
+                logger.warn("Skipping libbox.aar for debug/profile build: ${error.message}")
+                return
             }
-            providers.exec {
-                commandLine "bash", shScript.absolutePath
-            }.result.get().assertNormalExitValue()
+            throw error
         }
         if (!aar.exists()) {
+            if (allowMissingForDebug) {
+                logger.warn("Skipping libbox.aar for debug/profile build because it was not generated")
+                return
+            }
             throw new GradleException("Official libbox.aar was not generated")
         }
     }

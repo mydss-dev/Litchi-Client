@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../shared/models/api_models.dart';
@@ -8,6 +8,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/icon_action_btn.dart';
 import 'payment_dialog.dart';
@@ -16,19 +17,22 @@ import 'payment_dialog.dart';
 
 /// Maps BillingCycle / one-time to the API period key.
 String periodKey(BillingCycle? cycle, PlanModel plan) {
-  if (plan.category == PlanCategory.oneTime || plan.category == PlanCategory.dataPack) {
+  if (plan.category == PlanCategory.oneTime ||
+      plan.category == PlanCategory.dataPack) {
     return 'onetime_price';
   }
   if (cycle != null) {
     final key = switch (cycle) {
       BillingCycle.monthly => 'month_price',
       BillingCycle.quarterly => 'quarter_price',
+      BillingCycle.halfYear => 'half_year_price',
       BillingCycle.yearly => 'year_price',
     };
     if (plan.priceForCycle(cycle) != null) return key;
   }
   if (plan.monthlyPrice != null) return 'month_price';
   if (plan.quarterlyPrice != null) return 'quarter_price';
+  if (plan.halfYearPrice != null) return 'half_year_price';
   if (plan.yearlyPrice != null) return 'year_price';
   if (plan.oneTimePrice != null) return 'onetime_price';
   return 'month_price';
@@ -52,10 +56,23 @@ Future<void> showOrderConfirmDialog({
   required BillingCycle cycle,
   required PanelApi api,
 }) {
+  final compact = MediaQuery.sizeOf(context).width < 700;
+  if (compact) {
+    return showAppBottomSheet<void>(
+      context: context,
+      builder: (_) => _OrderConfirmDialog(
+        plan: plan,
+        cycle: cycle,
+        api: api,
+        compact: true,
+      ),
+    );
+  }
   return showDialog<void>(
     context: context,
     barrierColor: Colors.black54,
-    builder: (_) => _OrderConfirmDialog(plan: plan, cycle: cycle, api: api),
+    builder: (_) =>
+        _OrderConfirmDialog(plan: plan, cycle: cycle, api: api, compact: false),
   );
 }
 
@@ -66,11 +83,13 @@ class _OrderConfirmDialog extends StatefulWidget {
     required this.plan,
     required this.cycle,
     required this.api,
+    required this.compact,
   });
 
   final PlanModel plan;
   final BillingCycle cycle;
   final PanelApi api;
+  final bool compact;
 
   @override
   State<_OrderConfirmDialog> createState() => _OrderConfirmDialogState();
@@ -90,10 +109,14 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
   List<MapEntry<String, double>> get _availablePeriods {
     final entries = <MapEntry<String, double>>[];
     void add(String key, double? price) {
-      if (price != null) entries.add(MapEntry(key, price));
+      if (price != null) {
+        entries.add(MapEntry(key, price));
+      }
     }
+
     add('month_price', widget.plan.monthlyPrice);
     add('quarter_price', widget.plan.quarterlyPrice);
+    add('half_year_price', widget.plan.halfYearPrice);
     add('year_price', widget.plan.yearlyPrice);
     add('onetime_price', widget.plan.oneTimePrice);
     return entries;
@@ -109,9 +132,15 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
   int get _originalCents => (_originalPrice * 100).round();
 
   int get _discountCents {
-    if (!_couponApplied || _coupon == null) return 0;
-    if (_coupon!.type == 1) return _coupon!.value;
-    if (_coupon!.type == 2) return (_originalCents * _coupon!.value / 100).round();
+    if (!_couponApplied || _coupon == null) {
+      return 0;
+    }
+    if (_coupon!.type == 1) {
+      return _coupon!.value;
+    }
+    if (_coupon!.type == 2) {
+      return (_originalCents * _coupon!.value / 100).round();
+    }
     return 0;
   }
 
@@ -141,7 +170,10 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
     if (code.isEmpty || _verifying) return;
     setState(() => _verifying = true);
     try {
-      final result = await widget.api.verifyCoupon(code, int.parse(widget.plan.id));
+      final result = await widget.api.verifyCoupon(
+        code,
+        int.parse(widget.plan.id),
+      );
       if (!mounted) return;
       if (result != null) {
         setState(() {
@@ -195,6 +227,22 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    if (widget.compact) {
+      return AppBottomSheet(
+        title: '确认订单',
+        subtitle: widget.plan.title,
+        maxHeightFactor: 0.92,
+        children: [
+          _buildPeriodSelector(c),
+          const SizedBox(height: 20),
+          _buildCouponRow(c),
+          const SizedBox(height: 20),
+          _buildSummary(c),
+          const SizedBox(height: 24),
+          _buildActions(c),
+        ],
+      );
+    }
     return Center(
       child: Material(
         color: Colors.transparent,
@@ -206,7 +254,11 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
             borderRadius: BorderRadius.circular(AppRadius.xl),
             border: Border.all(color: c.softBorder),
             boxShadow: [
-              BoxShadow(color: c.shadow, blurRadius: 32, offset: const Offset(0, 12))
+              BoxShadow(
+                color: c.shadow,
+                blurRadius: 32,
+                offset: const Offset(0, 12),
+              ),
             ],
           ),
           child: Column(
@@ -249,16 +301,23 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('确认订单',
-                    style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary)),
+                Text(
+                  '确认订单',
+                  style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
+                ),
                 const SizedBox(height: 4),
-                Text(widget.plan.title,
-                    style: AppTextStyles.body.copyWith(color: c.textSecondary)),
+                Text(
+                  widget.plan.title,
+                  style: AppTextStyles.body.copyWith(color: c.textSecondary),
+                ),
               ],
             ),
           ),
           IconActionBtn(
-              icon: LucideIcons.x, onTap: () => Navigator.of(context).pop(), c: c),
+            icon: LucideIcons.x,
+            onTap: () => Navigator.of(context).pop(),
+            c: c,
+          ),
         ],
       ),
     );
@@ -271,8 +330,10 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 4),
-        Text('选择周期',
-            style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary)),
+        Text(
+          '选择周期',
+          style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
+        ),
         const SizedBox(height: 12),
         Wrap(
           spacing: 10,
@@ -287,7 +348,10 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
               }),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 120),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: selected ? c.primarySoft : c.surfaceMuted,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -299,16 +363,22 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(_periodLabels[e.key] ?? e.key,
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          color: selected ? c.primary : c.textSecondary,
-                        )),
+                    Text(
+                      _periodLabels[e.key] ?? e.key,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: selected ? c.primary : c.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text('$_currencySymbol${e.value.toStringAsFixed(2)}',
-                        style: AppTextStyles.body.copyWith(
-                          color: selected ? c.primary : c.textMuted,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                        )),
+                    Text(
+                      '$_currencySymbol${e.value.toStringAsFixed(2)}',
+                      style: AppTextStyles.body.copyWith(
+                        color: selected ? c.primary : c.textMuted,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -323,8 +393,10 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('优惠码',
-            style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary)),
+        Text(
+          '优惠码',
+          style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
+        ),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -348,8 +420,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
                     hintText: '输入优惠码（可选）',
                     hintStyle: AppTextStyles.body.copyWith(color: c.textMuted),
                     border: InputBorder.none,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 14),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14),
                   ),
                 ),
               ),
@@ -357,7 +428,11 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
             const SizedBox(width: 10),
             if (_couponApplied)
               _SmallBtn(
-                  label: '移除', color: c.danger, onTap: _removeCoupon, c: c)
+                label: '移除',
+                color: c.danger,
+                onTap: _removeCoupon,
+                c: c,
+              )
             else
               _SmallBtn(
                 label: _verifying ? '验证中…' : '验证',
@@ -415,8 +490,9 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
           _SummaryRow(
             label: '应付总计',
             value: '$_currencySymbol${_finalPrice.toStringAsFixed(2)}',
-            valueStyle:
-                AppTextStyles.largeNumber(fontSize: 20).copyWith(color: c.primary),
+            valueStyle: AppTextStyles.largeNumber(
+              fontSize: 20,
+            ).copyWith(color: c.primary),
             c: c,
           ),
         ],
@@ -438,8 +514,10 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
               ),
-              child: Text('取消',
-                  style: AppTextStyles.button.copyWith(color: c.textSecondary)),
+              child: Text(
+                '取消',
+                style: AppTextStyles.button.copyWith(color: c.textSecondary),
+              ),
             ),
           ),
         ),
@@ -469,11 +547,17 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : Text('提交订单',
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          '提交订单',
                           style: AppTextStyles.button.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700)),
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -510,8 +594,10 @@ class _SmallBtn extends StatelessWidget {
           border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         alignment: Alignment.center,
-        child: Text(label,
-            style: AppTextStyles.bodyStrong.copyWith(color: color)),
+        child: Text(
+          label,
+          style: AppTextStyles.bodyStrong.copyWith(color: color),
+        ),
       ),
     );
   }
@@ -536,11 +622,14 @@ class _SummaryRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: AppTextStyles.body.copyWith(color: c.textSecondary)),
-        Text(value,
-            style: valueStyle ??
-                AppTextStyles.bodyStrong.copyWith(
-                  color: valueColor ?? c.textPrimary,
-                )),
+        Text(
+          value,
+          style:
+              valueStyle ??
+              AppTextStyles.bodyStrong.copyWith(
+                color: valueColor ?? c.textPrimary,
+              ),
+        ),
       ],
     );
   }

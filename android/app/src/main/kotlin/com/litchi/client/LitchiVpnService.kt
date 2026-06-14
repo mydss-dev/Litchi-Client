@@ -32,11 +32,16 @@ class LitchiVpnService : VpnService() {
                 }
                 isRunning = true
                 startForeground(NOTIFICATION_ID, buildNotification("Litchi 已连接"))
-                return START_STICKY
+                return START_NOT_STICKY
             }
         }
         stopSelf()
         return START_NOT_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        stopCore()
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {

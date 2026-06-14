@@ -44,7 +44,9 @@ class _TicketsPageState extends State<TicketsPage> {
       if (mounted) setState(() => _tickets = tickets);
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('ApiException: ', ''));
+        setState(
+          () => _error = e.toString().replaceFirst('ApiException: ', ''),
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -167,10 +169,8 @@ class _TicketCard extends StatelessWidget {
         child: GestureDetector(
           onTap: () => showDialog(
             context: context,
-            builder: (_) => _TicketDetailDialog(
-              ticket: ticket,
-              onRefresh: onRefresh,
-            ),
+            builder: (_) =>
+                _TicketDetailDialog(ticket: ticket, onRefresh: onRefresh),
           ),
           child: Row(
             children: [
@@ -202,11 +202,7 @@ class _TicketCard extends StatelessWidget {
               const SizedBox(width: 8),
               _StatusBadge(isOpen: ticket.isOpen),
               const SizedBox(width: 10),
-              Icon(
-                LucideIcons.chevronRight,
-                size: 14,
-                color: c.textMuted,
-              ),
+              Icon(LucideIcons.chevronRight, size: 14, color: c.textMuted),
             ],
           ),
         ),
@@ -224,8 +220,8 @@ class _LevelBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final (label, bg, fg) = switch (level) {
-      3 => ('紧急', c.dangerSoft, c.danger),
-      2 => ('中等', c.warning.withValues(alpha: 0.12), c.warning),
+      2 => ('紧急', c.dangerSoft, c.danger),
+      1 => ('中等', c.warning.withValues(alpha: 0.12), c.warning),
       _ => ('低', c.surfaceMuted, c.textMuted),
     };
     return AppBadge(
@@ -248,9 +244,7 @@ class _StatusBadge extends StatelessWidget {
     final c = AppColors.of(context);
     return AppBadge(
       text: isOpen ? '处理中' : '已关闭',
-      background: isOpen
-          ? c.primary.withValues(alpha: 0.1)
-          : c.surfaceMuted,
+      background: isOpen ? c.primary.withValues(alpha: 0.1) : c.surfaceMuted,
       textColor: isOpen ? c.primary : c.textMuted,
       fontSize: 10,
       height: 20,
@@ -308,7 +302,7 @@ class _NewTicketDialog extends StatefulWidget {
 class _NewTicketDialogState extends State<_NewTicketDialog> {
   final _subjectCtrl = TextEditingController();
   final _messageCtrl = TextEditingController();
-  int _level = 1;
+  int _level = 0;
   bool _submitting = false;
 
   @override
@@ -325,13 +319,19 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       AppToast.show(context, '请填写标题和问题描述', type: AppToastType.warning);
       return;
     }
+    if (subject.length < 5) {
+      AppToast.show(context, '问题标题至少 5 个字符', type: AppToastType.warning);
+      return;
+    }
+    if (message.length < 10) {
+      AppToast.show(context, '问题描述至少 10 个字符', type: AppToastType.warning);
+      return;
+    }
     setState(() => _submitting = true);
     try {
-      await AppScope.of(context).api.createTicket(
-            subject: subject,
-            level: _level,
-            message: message,
-          );
+      await AppScope.of(
+        context,
+      ).api.createTicket(subject: subject, level: _level, message: message);
       if (mounted) {
         Navigator.of(context).pop();
         widget.onCreated();
@@ -381,7 +381,10 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
             const SizedBox(height: 14),
             _FormLabel('优先级', c),
             const SizedBox(height: 6),
-            _LevelSelector(value: _level, onChanged: (v) => setState(() => _level = v)),
+            _LevelSelector(
+              value: _level,
+              onChanged: (v) => setState(() => _level = v),
+            ),
             const SizedBox(height: 14),
             _FormLabel('问题描述', c),
             const SizedBox(height: 6),
@@ -397,7 +400,10 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('取消', style: AppTextStyles.button.copyWith(color: c.textMuted)),
+          child: Text(
+            '取消',
+            style: AppTextStyles.button.copyWith(color: c.textMuted),
+          ),
         ),
         TextButton(
           onPressed: _submitting ? null : _submit,
@@ -460,10 +466,9 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
     if (msg.isEmpty) return;
     setState(() => _replying = true);
     try {
-      await AppScope.of(context).api.replyTicket(
-            ticketId: _ticket.id,
-            message: msg,
-          );
+      await AppScope.of(
+        context,
+      ).api.replyTicket(ticketId: _ticket.id, message: msg);
       _replyCtrl.clear();
       await _loadDetail();
       widget.onRefresh();
@@ -527,10 +532,7 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
             : Column(
                 children: [
                   Expanded(
-                    child: _MessageThread(
-                      messages: _ticket.messages,
-                      c: c,
-                    ),
+                    child: _MessageThread(messages: _ticket.messages, c: c),
                   ),
                   if (_ticket.isOpen) ...[
                     const SizedBox(height: 12),
@@ -566,7 +568,10 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
         ] else
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('关闭', style: AppTextStyles.button.copyWith(color: c.textMuted)),
+            child: Text(
+              '关闭',
+              style: AppTextStyles.button.copyWith(color: c.textMuted),
+            ),
           ),
       ],
     );
@@ -607,31 +612,42 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isAdmin = msg.isAdmin;
     return Column(
-      crossAxisAlignment:
-          isAdmin ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      crossAxisAlignment: isAdmin
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.end,
       children: [
         Row(
-          mainAxisAlignment:
-              isAdmin ? MainAxisAlignment.start : MainAxisAlignment.end,
+          mainAxisAlignment: isAdmin
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.end,
           children: [
             if (isAdmin) ...[
               Icon(LucideIcons.headphones, size: 12, color: c.primary),
               const SizedBox(width: 4),
               Text(
                 '客服',
-                style: AppTextStyles.caption.copyWith(color: c.primary, fontSize: 11),
+                style: AppTextStyles.caption.copyWith(
+                  color: c.primary,
+                  fontSize: 11,
+                ),
               ),
               const SizedBox(width: 6),
             ],
             Text(
               msg.timeDisplay,
-              style: AppTextStyles.caption.copyWith(color: c.textMuted, fontSize: 10),
+              style: AppTextStyles.caption.copyWith(
+                color: c.textMuted,
+                fontSize: 10,
+              ),
             ),
             if (!isAdmin) ...[
               const SizedBox(width: 6),
               Text(
                 '我',
-                style: AppTextStyles.caption.copyWith(color: c.textSecondary, fontSize: 11),
+                style: AppTextStyles.caption.copyWith(
+                  color: c.textSecondary,
+                  fontSize: 11,
+                ),
               ),
             ],
           ],
@@ -667,10 +683,8 @@ class _FormLabel extends StatelessWidget {
   final AppColors c;
 
   @override
-  Widget build(BuildContext context) => Text(
-        label,
-        style: AppTextStyles.caption.copyWith(color: c.textMuted),
-      );
+  Widget build(BuildContext context) =>
+      Text(label, style: AppTextStyles.caption.copyWith(color: c.textMuted));
 }
 
 class _InputField extends StatelessWidget {
@@ -694,9 +708,15 @@ class _InputField extends StatelessWidget {
       style: AppTextStyles.body.copyWith(color: c.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: AppTextStyles.body.copyWith(color: c.textMuted, fontSize: 13),
+        hintStyle: AppTextStyles.body.copyWith(
+          color: c.textMuted,
+          fontSize: 13,
+        ),
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
           borderSide: BorderSide(color: c.border),
@@ -718,11 +738,7 @@ class _LevelSelector extends StatelessWidget {
   final int value;
   final ValueChanged<int> onChanged;
 
-  static const _levels = [
-    (1, '低'),
-    (2, '中等'),
-    (3, '紧急'),
-  ];
+  static const _levels = [(0, '低'), (1, '中等'), (2, '紧急')];
 
   @override
   Widget build(BuildContext context) {

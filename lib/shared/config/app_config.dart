@@ -32,29 +32,31 @@ abstract final class AppConfig {
     defaultValue: '',
   );
 
-  static String appName          = BrandConfig.appName;
-  static String appSubtitle      = BrandConfig.appSubtitle;
-  static String logoLetter       = BrandConfig.logoLetter;
-  static Color  brandStart       = BrandConfig.brandStart;
-  static Color  brandEnd         = BrandConfig.brandEnd;
+  static String appName = BrandConfig.appName;
+  static String appSubtitle = BrandConfig.appSubtitle;
+  static String logoLetter = BrandConfig.logoLetter;
+  static Color brandStart = BrandConfig.brandStart;
+  static Color brandEnd = BrandConfig.brandEnd;
 
-  /// Invite URL domain override.
-  /// When set, the invite link is rebuilt as:
+  /// Invite URL fallback base from remote config.
+  /// Used only when the panel does not return a ready invite URL:
   ///   {inviteUrlBase}/register?code={inviteCode}
-  /// This lets you change the panel domain without touching the backend.
-  /// Empty string = use the URL returned by the API as-is.
-  static String inviteUrlBase    = '';
+  /// Empty string = wait for remote config/backend config.
+  static String inviteUrlBase = const String.fromEnvironment(
+    'FRONTEND_URL',
+    defaultValue: '',
+  );
 
   /// Customer support / community link (Telegram, WeChat, etc.).
   /// Empty string = hide support entry in settings.
-  static String supportUrl       = '';
+  static String supportUrl = '';
 
   /// Minimum required client version (e.g. "1.2.0").
   /// Empty string = no enforcement.
-  static String minVersion       = '';
+  static String minVersion = '';
 
   /// Whether new user registration is open.
-  static bool   registerEnabled  = true;
+  static bool registerEnabled = true;
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
@@ -74,6 +76,7 @@ abstract final class AppConfig {
       final parts = v.split('.');
       return i < parts.length ? (int.tryParse(parts[i]) ?? 0) : 0;
     }
+
     for (var i = 0; i < 3; i++) {
       final c = seg(current, i), m = seg(min, i);
       if (c < m) return true;
@@ -85,16 +88,22 @@ abstract final class AppConfig {
   // ── Remote override ───────────────────────────────────────────────────────
 
   static void applyRemote(Map<String, dynamic> json) {
-    _url(json, 'api_base',           (v) => apiBase          = v);
-    _url(json, 'update_check_url',   (v) => updateCheckUrl  = v);
-    _str(json, 'app_name',           (v) => appName         = v);
-    _str(json, 'app_subtitle',       (v) => appSubtitle     = v);
-    _str(json, 'logo_letter',        (v) => logoLetter      = v);
-    _str(json, 'invite_url_base',    (v) => inviteUrlBase   = v);
-    _str(json, 'support_url',        (v) => supportUrl      = v);
-    _str(json, 'min_version',        (v) => minVersion      = v);
-    _color(json, 'brand_color_start',(v) => brandStart      = v);
-    _color(json, 'brand_color_end',  (v) => brandEnd        = v);
+    _url(json, 'api_base', (v) => apiBase = v);
+    _url(json, 'update_check_url', (v) => updateCheckUrl = v);
+    _str(json, 'app_name', (v) => appName = v);
+    _str(json, 'app_subtitle', (v) => appSubtitle = v);
+    _str(json, 'logo_letter', (v) => logoLetter = v);
+    _firstStr(json, [
+      'invite_url_base',
+      'invite_base_url',
+      'invite_url',
+      'frontend_url',
+      'site_url',
+    ], (v) => inviteUrlBase = v);
+    _str(json, 'support_url', (v) => supportUrl = v);
+    _str(json, 'min_version', (v) => minVersion = v);
+    _color(json, 'brand_color_start', (v) => brandStart = v);
+    _color(json, 'brand_color_end', (v) => brandEnd = v);
     final reg = json['register_enabled'];
     if (reg is bool) registerEnabled = reg;
   }
@@ -108,6 +117,20 @@ abstract final class AppConfig {
     if (v is String && v.isNotEmpty) apply(v);
   }
 
+  static void _firstStr(
+    Map<String, dynamic> json,
+    List<String> keys,
+    void Function(String) apply,
+  ) {
+    for (final key in keys) {
+      final v = json[key];
+      if (v is String && v.isNotEmpty) {
+        apply(v);
+        return;
+      }
+    }
+  }
+
   /// Like [_str], but only accepts well-formed http(s) URLs — protects the
   /// app from a corrupted/malicious remote config redirecting all requests.
   static void _url(
@@ -118,7 +141,9 @@ abstract final class AppConfig {
     final v = json[key];
     if (v is! String || v.isEmpty) return;
     final u = Uri.tryParse(v);
-    if (u != null && (u.scheme == 'https' || u.scheme == 'http') && u.host.isNotEmpty) {
+    if (u != null &&
+        (u.scheme == 'https' || u.scheme == 'http') &&
+        u.host.isNotEmpty) {
       apply(v);
     }
   }

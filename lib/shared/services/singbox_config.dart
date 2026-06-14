@@ -163,7 +163,7 @@ abstract final class SingboxConfig {
           'stack': 'system',
           // sniff moved to route rule action (deprecated on inbound in v1.11,
           // removed in v1.13).
-          if (proxyMode == ProxyMode.rule)
+          if (proxyMode == ProxyMode.rule && _hasLocalRules)
             'route_exclude_address_set': ['geoip-cn'],
         },
     ];

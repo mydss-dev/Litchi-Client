@@ -1,9 +1,12 @@
 package com.litchi.client
 
 import android.net.VpnService
+import android.util.Log
+import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Proxy
 
 object AndroidSingboxEngine {
+    private const val TAG = "LitchiCore"
     private var lastError: String = ""
     private var boxService: Any? = null
     private val logs = ArrayDeque<String>()
@@ -62,13 +65,15 @@ object AndroidSingboxEngine {
                 it.name.equals("startOrReloadService", ignoreCase = true) &&
                     it.parameterTypes.size == 2
             } ?: error("CommandServer.startOrReloadService API not found")
-            reload.invoke(instance, configJson, null)
+            reload.invoke(instance, configJson, newOverrideOptions(reload.parameterTypes[1]))
             boxService = instance
             lastError = ""
             true
         }.getOrElse {
-            lastError = it.message ?: it.toString()
+            val error = unwrapInvocationError(it)
+            lastError = error.message ?: error.toString()
             appendLog("start failed: $lastError")
+            Log.e(TAG, "start failed", error)
             false
         }
     }
@@ -133,6 +138,18 @@ object AndroidSingboxEngine {
         setup.invoke(null, options)
     }
 
+    private fun newOverrideOptions(optionsClass: Class<*>): Any {
+        return optionsClass.getDeclaredConstructor().newInstance()
+    }
+
+    private fun unwrapInvocationError(error: Throwable): Throwable {
+        return if (error is InvocationTargetException && error.targetException != null) {
+            error.targetException
+        } else {
+            error
+        }
+    }
+
     private fun invokeSetter(target: Any, name: String, value: Any) {
         val method = target.javaClass.methods.firstOrNull {
             it.name == name && it.parameterTypes.size == 1
@@ -175,7 +192,7 @@ object AndroidSingboxEngine {
                 }
                 "openTun" -> platform.openTun(args?.getOrNull(0))
                 "useProcFS" -> platform.useProcFS()
-                "findConnectionOwner" -> null
+                "findConnectionOwner" -> newConnectionOwner(method.returnType)
                 "packageNameByUid" -> platform.packageNameByUid((args?.getOrNull(0) as? Number)?.toInt() ?: 0)
                 "uidByPackageName" -> platform.uidByPackageName(args?.getOrNull(0)?.toString())
                 "writeLog" -> {
@@ -198,6 +215,34 @@ object AndroidSingboxEngine {
             java.lang.Double.TYPE -> 0.0
             java.lang.Character.TYPE -> 0.toChar()
             else -> null
+        }
+    }
+
+    private fun newConnectionOwner(ownerClass: Class<*>): Any {
+        val owner = ownerClass.getDeclaredConstructor().newInstance()
+        invokeSetter(owner, "setUserId", 0)
+        invokeSetter(owner, "setUserName", "")
+        invokeSetter(owner, "setProcessPath", "")
+        val packageSetter = owner.javaClass.methods.firstOrNull {
+            it.name == "setAndroidPackageNames" && it.parameterTypes.size == 1
+        }
+        if (packageSetter != null) {
+            packageSetter.invoke(owner, emptyStringIterator(packageSetter.parameterTypes[0]))
+        }
+        return owner
+    }
+
+    private fun emptyStringIterator(interfaceClass: Class<*>): Any {
+        return Proxy.newProxyInstance(
+            interfaceClass.classLoader,
+            arrayOf(interfaceClass)
+        ) { _, method, _ ->
+            when (method.name) {
+                "hasNext" -> false
+                "len" -> 0
+                "next" -> ""
+                else -> defaultValue(method.returnType)
+            }
         }
     }
 }

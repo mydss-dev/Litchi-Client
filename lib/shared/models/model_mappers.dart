@@ -5,19 +5,24 @@ import 'app_models.dart';
 /// Pure static converters from remote API models to UI view models.
 abstract final class ModelMappers {
   static UserModel toUser(RemoteUser info) {
-    final name =
-        info.email.contains('@') ? info.email.split('@').first : info.email;
+    final name = info.email.contains('@')
+        ? info.email.split('@').first
+        : info.email;
     return UserModel(
       name: name,
       plan: info.planLabel,
       avatarLetter: name.isNotEmpty ? name[0].toUpperCase() : 'U',
       expiry: info.expiryDisplay,
+      balance: info.balance,
+      remindExpire: info.remindExpire,
+      remindTraffic: info.remindTraffic,
+      autoRenewal: info.autoRenewal,
     );
   }
 
   static TrafficModel toTraffic(RemoteUser info) {
-    final total  = info.transferEnable / AppConfig.bytesPerGb;
-    final used   = info.used / AppConfig.bytesPerGb;
+    final total = info.transferEnable / AppConfig.bytesPerGb;
+    final used = info.used / AppConfig.bytesPerGb;
     final remain = (total - used).clamp(0.0, double.infinity);
     return TrafficModel(totalGb: total, usedGb: used, remainGb: remain);
   }
@@ -71,10 +76,18 @@ abstract final class ModelMappers {
       title: plan.name,
       capacity: plan.capacityDisplay,
       category: category,
-      monthlyPrice:   plan.monthPrice   != null ? plan.monthPrice!   / 100.0 : null,
-      quarterlyPrice: plan.quarterPrice != null ? plan.quarterPrice! / 100.0 : null,
-      yearlyPrice:    plan.yearPrice    != null ? plan.yearPrice!    / 100.0 : null,
-      oneTimePrice:   plan.onetimePrice != null ? plan.onetimePrice! / 100.0 : null,
+      monthlyPrice: plan.monthPrice != null ? plan.monthPrice! / 100.0 : null,
+      quarterlyPrice: plan.quarterPrice != null
+          ? plan.quarterPrice! / 100.0
+          : null,
+      halfYearPrice: plan.halfYearPrice != null
+          ? plan.halfYearPrice! / 100.0
+          : null,
+      yearlyPrice: plan.yearPrice != null ? plan.yearPrice! / 100.0 : null,
+      oneTimePrice: plan.onetimePrice != null
+          ? plan.onetimePrice! / 100.0
+          : null,
+      deviceLimit: plan.deviceLimit,
       features: features,
     );
   }
@@ -91,7 +104,16 @@ abstract final class ModelMappers {
     if (_any(n, ['日本', 'japan', 'tokyo', 'osaka'])) return '🇯🇵';
     if (_any(n, ['台湾', 'taiwan'])) return '🇹🇼';
     if (_any(n, ['韩国', 'korea', 'seoul'])) return '🇰🇷';
-    if (_any(n, ['美国', 'united states', 'usa', 'los angeles', 'new york', 'chicago'])) return '🇺🇸';
+    if (_any(n, [
+      '美国',
+      'united states',
+      'usa',
+      'los angeles',
+      'new york',
+      'chicago',
+    ])) {
+      return '🇺🇸';
+    }
     if (_any(n, ['英国', 'united kingdom', 'london', 'britain'])) return '🇬🇧';
     if (_any(n, ['德国', 'germany', 'frankfurt', 'berlin'])) return '🇩🇪';
     if (_any(n, ['法国', 'france', 'paris'])) return '🇫🇷';
@@ -137,39 +159,83 @@ abstract final class ModelMappers {
     var idx = s.indexOf(code);
     while (idx != -1) {
       final before = idx == 0 || !_isAlpha(s[idx - 1]);
-      final after  = idx + code.length >= s.length || !_isAlpha(s[idx + code.length]);
+      final after =
+          idx + code.length >= s.length || !_isAlpha(s[idx + code.length]);
       if (before && after) return true;
       idx = s.indexOf(code, idx + 1);
     }
     return false;
   }
 
-  static bool _isAlpha(String ch) => ch.codeUnitAt(0) >= 97 && ch.codeUnitAt(0) <= 122;
+  static bool _isAlpha(String ch) =>
+      ch.codeUnitAt(0) >= 97 && ch.codeUnitAt(0) <= 122;
 
   static NodeRegion _regionFor(String name) {
     final n = name.toLowerCase();
     if (_any(n, [
-      '新加坡', '香港', '日本', '台湾', '韩国', '印度', '越南', '泰国', '马来', '菲律宾', '印尼',
-      'singapore', 'hong kong', 'japan', 'taiwan', 'korea', 'india',
-      'tokyo', 'seoul', 'bangkok', 'asia',
-    ])) { return NodeRegion.asia; }
+      '新加坡',
+      '香港',
+      '日本',
+      '台湾',
+      '韩国',
+      '印度',
+      '越南',
+      '泰国',
+      '马来',
+      '菲律宾',
+      '印尼',
+      'singapore',
+      'hong kong',
+      'japan',
+      'taiwan',
+      'korea',
+      'india',
+      'tokyo',
+      'seoul',
+      'bangkok',
+      'asia',
+    ])) {
+      return NodeRegion.asia;
+    }
     if (_any(n, [
-      '英国', '德国', '法国', '荷兰', '俄罗斯', '土耳其',
-      'uk', 'germany', 'france', 'netherlands', 'london',
-      'frankfurt', 'amsterdam', 'europe',
-    ])) { return NodeRegion.europe; }
+      '英国',
+      '德国',
+      '法国',
+      '荷兰',
+      '俄罗斯',
+      '土耳其',
+      'uk',
+      'germany',
+      'france',
+      'netherlands',
+      'london',
+      'frankfurt',
+      'amsterdam',
+      'europe',
+    ])) {
+      return NodeRegion.europe;
+    }
     if (_any(n, [
-      '美国', '加拿大', '巴西', 'usa', 'united states', 'canada', 'brazil',
-      'los angeles', 'new york', 'america',
-    ])) { return NodeRegion.america; }
+      '美国',
+      '加拿大',
+      '巴西',
+      'usa',
+      'united states',
+      'canada',
+      'brazil',
+      'los angeles',
+      'new york',
+      'america',
+    ])) {
+      return NodeRegion.america;
+    }
     if (_any(n, ['澳大利亚', '新西兰', 'australia', 'sydney', 'melbourne'])) {
       return NodeRegion.oceania;
     }
     return NodeRegion.asia;
   }
 
-  static bool _any(String s, List<String> keywords) =>
-      keywords.any(s.contains);
+  static bool _any(String s, List<String> keywords) => keywords.any(s.contains);
 
   static String _codeFor(String flag) {
     final runes = flag.runes.toList();
@@ -182,17 +248,28 @@ abstract final class ModelMappers {
 
   static String _englishFor(String flag) {
     const m = {
-      '🇸🇬': 'Singapore',      '🇭🇰': 'Hong Kong',
-      '🇯🇵': 'Japan',          '🇹🇼': 'Taiwan',
-      '🇰🇷': 'South Korea',    '🇺🇸': 'United States',
-      '🇬🇧': 'United Kingdom', '🇩🇪': 'Germany',
-      '🇫🇷': 'France',         '🇳🇱': 'Netherlands',
-      '🇦🇺': 'Australia',      '🇨🇦': 'Canada',
-      '🇮🇳': 'India',          '🇧🇷': 'Brazil',
-      '🇷🇺': 'Russia',         '🇹🇷': 'Turkey',
-      '🇻🇳': 'Vietnam',        '🇹🇭': 'Thailand',
-      '🇲🇾': 'Malaysia',       '🇵🇭': 'Philippines',
-      '🇮🇩': 'Indonesia',      '🇨🇳': 'China',
+      '🇸🇬': 'Singapore',
+      '🇭🇰': 'Hong Kong',
+      '🇯🇵': 'Japan',
+      '🇹🇼': 'Taiwan',
+      '🇰🇷': 'South Korea',
+      '🇺🇸': 'United States',
+      '🇬🇧': 'United Kingdom',
+      '🇩🇪': 'Germany',
+      '🇫🇷': 'France',
+      '🇳🇱': 'Netherlands',
+      '🇦🇺': 'Australia',
+      '🇨🇦': 'Canada',
+      '🇮🇳': 'India',
+      '🇧🇷': 'Brazil',
+      '🇷🇺': 'Russia',
+      '🇹🇷': 'Turkey',
+      '🇻🇳': 'Vietnam',
+      '🇹🇭': 'Thailand',
+      '🇲🇾': 'Malaysia',
+      '🇵🇭': 'Philippines',
+      '🇮🇩': 'Indonesia',
+      '🇨🇳': 'China',
     };
     return m[flag] ?? '';
   }

@@ -28,23 +28,31 @@ class _ShopPageState extends State<ShopPage> {
   BillingCycle _cycle = BillingCycle.monthly;
 
   PlanCategory get _category => switch (_categoryIndex) {
-        0 => PlanCategory.recurring,
-        1 => PlanCategory.oneTime,
-        _ => PlanCategory.dataPack,
-      };
+    0 => PlanCategory.recurring,
+    1 => PlanCategory.oneTime,
+    _ => PlanCategory.dataPack,
+  };
 
   List<PlanModel> _plansFor(BuildContext context) =>
       AppScope.of(context).plans.where((p) => p.category == _category).toList();
 
   /// Computes average savings per cycle across all recurring plans that support it.
   Map<BillingCycle, String?> _computeSavings(BuildContext context) {
-    final recurring = AppScope.of(context)
-        .plans
-        .where((p) => p.category == PlanCategory.recurring)
-        .toList();
+    final recurring = AppScope.of(
+      context,
+    ).plans.where((p) => p.category == PlanCategory.recurring).toList();
     final result = <BillingCycle, String?>{};
-    for (final cycle in [BillingCycle.quarterly, BillingCycle.yearly]) {
-      final months = cycle == BillingCycle.quarterly ? 3 : 12;
+    for (final cycle in [
+      BillingCycle.quarterly,
+      BillingCycle.halfYear,
+      BillingCycle.yearly,
+    ]) {
+      final months = switch (cycle) {
+        BillingCycle.quarterly => 3,
+        BillingCycle.halfYear => 6,
+        BillingCycle.yearly => 12,
+        BillingCycle.monthly => 1,
+      };
       final ratios = <double>[];
       for (final plan in recurring) {
         final monthly = plan.priceForCycle(BillingCycle.monthly);
@@ -131,6 +139,7 @@ class _CycleSelector extends StatelessWidget {
   static const _labels = {
     BillingCycle.monthly: '月付',
     BillingCycle.quarterly: '季付',
+    BillingCycle.halfYear: '半年',
     BillingCycle.yearly: '年付',
   };
 
@@ -188,20 +197,33 @@ class _CycleChip extends StatelessWidget {
             color: selected ? c.cardBg : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.sm),
             boxShadow: selected
-                ? [BoxShadow(color: c.shadow, blurRadius: 8, offset: const Offset(0, 2))]
+                ? [
+                    BoxShadow(
+                      color: c.shadow,
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
                 : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(label,
-                  style: AppTextStyles.menu.copyWith(
-                    color: selected ? c.primary : c.textSecondary,
-                  )),
+              Text(
+                label,
+                style: AppTextStyles.menu.copyWith(
+                  color: selected ? c.primary : c.textSecondary,
+                ),
+              ),
               if (savings != null) ...[
                 const SizedBox(width: 6),
-                Text(savings!,
-                    style: AppTextStyles.badge.copyWith(color: c.success, fontSize: 9)),
+                Text(
+                  savings!,
+                  style: AppTextStyles.badge.copyWith(
+                    color: c.success,
+                    fontSize: 9,
+                  ),
+                ),
               ],
             ],
           ),
@@ -229,15 +251,16 @@ class _PlanCard extends StatelessWidget {
     return switch (cycle) {
       BillingCycle.monthly => '/ 月',
       BillingCycle.quarterly => '/ 季',
+      BillingCycle.halfYear => '/ 半年',
       BillingCycle.yearly => '/ 年',
     };
   }
 
   IconData get _icon => switch (plan.category) {
-        PlanCategory.recurring => LucideIcons.zap,
-        PlanCategory.oneTime => LucideIcons.box,
-        PlanCategory.dataPack => LucideIcons.plus,
-      };
+    PlanCategory.recurring => LucideIcons.zap,
+    PlanCategory.oneTime => LucideIcons.box,
+    PlanCategory.dataPack => LucideIcons.plus,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -278,10 +301,18 @@ class _PlanCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(plan.title,
-                          style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary)),
-                      Text(plan.capacity,
-                          style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                      Text(
+                        plan.title,
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          color: c.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        plan.capacity,
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textMuted,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -300,13 +331,21 @@ class _PlanCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(currency,
-                    style: AppTextStyles.sectionTitle.copyWith(color: c.primary)),
-                Text(_priceLabel,
-                    style: AppTextStyles.largeNumber(fontSize: 30).copyWith(color: c.primary)),
+                Text(
+                  currency,
+                  style: AppTextStyles.sectionTitle.copyWith(color: c.primary),
+                ),
+                Text(
+                  _priceLabel,
+                  style: AppTextStyles.largeNumber(
+                    fontSize: 30,
+                  ).copyWith(color: c.primary),
+                ),
                 const SizedBox(width: 6),
-                Text(_unitLabel,
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+                Text(
+                  _unitLabel,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -316,8 +355,12 @@ class _PlanCard extends StatelessWidget {
                   Icon(LucideIcons.check, size: 15, color: c.success),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(f,
-                        style: AppTextStyles.body.copyWith(color: c.textSecondary)),
+                    child: Text(
+                      f,
+                      style: AppTextStyles.body.copyWith(
+                        color: c.textSecondary,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -367,11 +410,13 @@ class _BuyButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Center(
-              child: Text('立即购买',
-                  style: AppTextStyles.button.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  )),
+              child: Text(
+                '立即购买',
+                style: AppTextStyles.button.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
         ),

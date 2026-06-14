@@ -1,8 +1,6 @@
 // Remote API response types. Separate from app_models.dart (UI view models).
 // These types are panel-agnostic and do not reference any specific backend.
 
-import '../config/app_config.dart';
-
 class AuthResult {
   final String authData;
   final bool isAdmin;
@@ -24,9 +22,12 @@ class RemoteUser {
   final String email;
   final int? expiredAt; // unix timestamp; null = permanent
   final double balance; // cents
-  final double transferEnable; // bytes
+  final double transferEnable; // GB
   final double used; // bytes (upload + download combined)
   final int subscribeStatus; // 0=normal 1=expired 2=banned
+  final bool remindExpire;
+  final bool remindTraffic;
+  final bool autoRenewal;
 
   const RemoteUser({
     required this.id,
@@ -36,6 +37,9 @@ class RemoteUser {
     required this.transferEnable,
     required this.used,
     required this.subscribeStatus,
+    required this.remindExpire,
+    required this.remindTraffic,
+    required this.autoRenewal,
   });
 
   factory RemoteUser.fromJson(Map<String, dynamic> json) {
@@ -48,7 +52,17 @@ class RemoteUser {
       transferEnable: (json['transfer_enable'] as num?)?.toDouble() ?? 0,
       used: (usedRaw as num?)?.toDouble() ?? 0,
       subscribeStatus: (json['subscribe_status'] as num?)?.toInt() ?? 0,
+      remindExpire: _bool(json['remind_expire']),
+      remindTraffic: _bool(json['remind_traffic']),
+      autoRenewal: _bool(json['auto_renewal']),
     );
+  }
+
+  static bool _bool(Object? value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) return value == '1' || value.toLowerCase() == 'true';
+    return false;
   }
 
   String get expiryDisplay {
@@ -102,6 +116,7 @@ class RemotePlan {
   final int? halfYearPrice;
   final int? yearPrice;
   final int? onetimePrice;
+  final int? deviceLimit;
   final int show;
 
   const RemotePlan({
@@ -114,6 +129,7 @@ class RemotePlan {
     this.halfYearPrice,
     this.yearPrice,
     this.onetimePrice,
+    this.deviceLimit,
     required this.show,
   });
 
@@ -123,46 +139,296 @@ class RemotePlan {
       name: json['name']?.toString() ?? '',
       description:
           json['content']?.toString() ?? json['description']?.toString(),
-      transferEnable: (json['transfer_enable'] as num?)?.toDouble() ?? 0,
-      monthPrice: (json['month_price'] as num?)?.toInt(),
-      quarterPrice: (json['quarter_price'] as num?)?.toInt(),
-      halfYearPrice: (json['half_year_price'] as num?)?.toInt(),
-      yearPrice: (json['year_price'] as num?)?.toInt(),
-      onetimePrice: (json['onetime_price'] as num?)?.toInt(),
-      show: (json['show'] as num?)?.toInt() ?? 1,
+      transferEnable: _number(json['transfer_enable']),
+      monthPrice: _int(json, 'month_price'),
+      quarterPrice: _int(json, 'quarter_price'),
+      halfYearPrice: _int(json, 'half_year_price'),
+      yearPrice: _int(json, 'year_price'),
+      onetimePrice: _int(json, 'onetime_price'),
+      deviceLimit: _int(json, 'device_limit'),
+      show: _int(json, 'show') ?? 1,
     );
   }
 
   String get capacityDisplay {
-    final gb = transferEnable / AppConfig.bytesPerGb;
-    if (gb >= 1024) return '${(gb / 1024).toStringAsFixed(0)} TB';
-    return '${gb.toStringAsFixed(0)} GB';
+    if (transferEnable <= 0) return '';
+    if (transferEnable >= 1024) {
+      return '${(transferEnable / 1024).toStringAsFixed(0)} TB';
+    }
+    return '${transferEnable.toStringAsFixed(0)} GB';
+  }
+
+  static int? _int(Map<String, dynamic> json, String key) {
+    final value = json[key];
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static double _number(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      if (parsed != null) return parsed;
+    }
+    return 0;
   }
 }
 
 class RemoteInvite {
   final String inviteCode;
   final String inviteUrl;
+  final List<RemoteInviteCode> codes;
   final double commissionRate;
+  final double validCommission; // cents
+  final double pendingCommission; // cents
   final double balance; // cents
   final int effectCount;
 
   const RemoteInvite({
     required this.inviteCode,
     required this.inviteUrl,
+    required this.codes,
     required this.commissionRate,
+    required this.validCommission,
+    required this.pendingCommission,
     required this.balance,
     required this.effectCount,
   });
 
   factory RemoteInvite.fromJson(Map<String, dynamic> json) {
+    final codes = _codes(json);
+    final firstCode = codes.isEmpty ? null : codes.first;
+    final stat = (json['stat'] as List?) ?? const [];
     return RemoteInvite(
-      inviteCode: json['invite_code']?.toString() ?? '',
-      inviteUrl: json['invite_url']?.toString() ?? '',
-      commissionRate: (json['commission_rate'] as num?)?.toDouble() ?? 0,
-      balance: (json['balance'] as num?)?.toDouble() ?? 0,
-      effectCount: (json['effect_count'] as num?)?.toInt() ?? 0,
+      inviteCode:
+          _string(json, ['invite_code', 'code']) ?? firstCode?.code ?? '',
+      inviteUrl:
+          _string(json, ['invite_url', 'url', 'link']) ?? firstCode?.link ?? '',
+      codes: codes,
+      commissionRate:
+          _num(json, ['commission_rate', 'commissionRate', 'rate']) ??
+          _statNum(stat, 3) ??
+          0,
+      validCommission:
+          _num(json, [
+            'valid_commission',
+            'commission_amount',
+            'total_commission',
+          ]) ??
+          _statNum(stat, 1) ??
+          0,
+      pendingCommission:
+          _num(json, ['pending_commission', 'confirming_commission']) ??
+          _statNum(stat, 2) ??
+          0,
+      balance:
+          _num(json, ['balance', 'available_balance', 'pending_amount']) ??
+          _statNum(stat, 4) ??
+          0,
+      effectCount:
+          (_num(json, ['effect_count', 'effectCount', 'invite_count']) ??
+                  _statNum(stat, 0))
+              ?.toInt() ??
+          0,
     );
+  }
+
+  static List<RemoteInviteCode> _codes(Map<String, dynamic> json) {
+    final rawCodes = json['codes'] ?? json['invite_codes'] ?? json['list'];
+    if (rawCodes is! List) return const [];
+    return rawCodes
+        .map((item) {
+          if (item is Map) {
+            return RemoteInviteCode.fromJson(Map<String, dynamic>.from(item));
+          }
+          final code = item.toString();
+          return code.isEmpty ? null : RemoteInviteCode(code: code, link: '');
+        })
+        .whereType<RemoteInviteCode>()
+        .where((item) => item.code.isNotEmpty)
+        .toList();
+  }
+
+  static String? _string(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value != null && value.toString().isNotEmpty) {
+        return value.toString();
+      }
+    }
+    return null;
+  }
+
+  static double? _num(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+    }
+    return null;
+  }
+
+  static double? _statNum(List<dynamic> stat, int index) {
+    if (index >= stat.length) return null;
+    final value = stat[index];
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+}
+
+class RemoteInviteCode {
+  const RemoteInviteCode({required this.code, required this.link});
+
+  final String code;
+  final String link;
+
+  factory RemoteInviteCode.fromJson(Map<String, dynamic> json) {
+    return RemoteInviteCode(
+      code: RemoteInvite._string(json, ['invite_code', 'code']) ?? '',
+      link: RemoteInvite._string(json, ['invite_url', 'url', 'link']) ?? '',
+    );
+  }
+}
+
+class RemoteInviteRecord {
+  const RemoteInviteRecord({
+    required this.id,
+    required this.tradeNo,
+    required this.userName,
+    required this.orderAmount,
+    required this.commissionAmount,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String tradeNo;
+  final String userName;
+  final int orderAmount;
+  final int commissionAmount;
+  final int createdAt;
+
+  factory RemoteInviteRecord.fromJson(Map<String, dynamic> json) {
+    final user = json['user'];
+    return RemoteInviteRecord(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      tradeNo: json['trade_no']?.toString() ?? '',
+      userName: user is Map
+          ? (user['email'] ?? user['name'] ?? user['id'] ?? '').toString()
+          : '',
+      orderAmount: (json['order_amount'] as num?)?.toInt() ?? 0,
+      commissionAmount: (json['get_amount'] as num?)?.toInt() ?? 0,
+      createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  String amountDisplay(String symbol) =>
+      '$symbol${(orderAmount / 100).toStringAsFixed(2)}';
+
+  String commissionDisplay(String symbol) =>
+      '$symbol${(commissionAmount / 100).toStringAsFixed(2)}';
+
+  String get dateDisplay {
+    if (createdAt == 0) return '--';
+    final dt = DateTime.fromMillisecondsSinceEpoch(createdAt * 1000);
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    return '${dt.year}-$m-$d';
+  }
+}
+
+class RemoteCommConfig {
+  const RemoteCommConfig({
+    required this.inviteUrlBase,
+    required this.currencySymbol,
+    required this.withdrawClose,
+    required this.withdrawMethods,
+    required this.minWithdrawAmount,
+  });
+
+  final String inviteUrlBase;
+  final String currencySymbol;
+  final int withdrawClose;
+  final List<String> withdrawMethods;
+  final double minWithdrawAmount; // cents
+
+  factory RemoteCommConfig.fromJson(Map<String, dynamic> json) {
+    return RemoteCommConfig(
+      inviteUrlBase: _inviteUrlBase(json),
+      currencySymbol:
+          _string(json, ['currency_symbol', 'currencySymbol']) ?? '¥',
+      withdrawClose: _int(json['withdraw_close']) ?? 1,
+      withdrawMethods: _stringList(json['withdraw_methods']),
+      minWithdrawAmount:
+          _num(json, ['min_withdraw_amount', 'minWithdrawAmount']) ?? 0,
+    );
+  }
+
+  static String _inviteUrlBase(Map<String, dynamic> json) {
+    final direct = _string(json, [
+      'invite_url_base',
+      'invite_base_url',
+      'invite_url',
+      'frontend_url',
+      'site_url',
+      'custom_domain',
+      'customDomain',
+    ]);
+    if (direct != null) return direct;
+
+    final inviteLinkConfig =
+        json['inviteLinkConfig'] ?? json['invite_link_config'];
+    if (inviteLinkConfig is Map) {
+      final map = Map<String, dynamic>.from(inviteLinkConfig);
+      final mode = _string(map, ['linkMode', 'link_mode']);
+      final customDomain = _string(map, ['customDomain', 'custom_domain']);
+      if (mode == 'custom' && customDomain != null) return customDomain;
+    }
+
+    return '';
+  }
+
+  static String? _string(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value != null && value.toString().isNotEmpty) {
+        return value.toString();
+      }
+    }
+    return null;
+  }
+
+  static int? _int(Object? value) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static double? _num(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+    }
+    return null;
+  }
+
+  static List<String> _stringList(Object? value) {
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    if (value is String) {
+      return value
+          .split(',')
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const [];
   }
 }
 
@@ -463,12 +729,12 @@ class NoticeModel {
   });
 
   factory NoticeModel.fromJson(Map<String, dynamic> json) => NoticeModel(
-        id: (json['id'] as num?)?.toInt() ?? 0,
-        title: json['title']?.toString() ?? '',
-        content: json['content']?.toString() ?? '',
-        imgUrl: json['img_url']?.toString(),
-        createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
-      );
+    id: (json['id'] as num?)?.toInt() ?? 0,
+    title: json['title']?.toString() ?? '',
+    content: json['content']?.toString() ?? '',
+    imgUrl: json['img_url']?.toString(),
+    createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
+  );
 
   String get dateDisplay {
     if (createdAt == 0) return '—';
@@ -532,9 +798,9 @@ class TicketModel {
     final raw = json['message'];
     final msgs = raw is List
         ? raw
-            .whereType<Map<String, dynamic>>()
-            .map(TicketMessageModel.fromJson)
-            .toList()
+              .whereType<Map<String, dynamic>>()
+              .map(TicketMessageModel.fromJson)
+              .toList()
         : <TicketMessageModel>[];
     return TicketModel(
       id: (json['id'] as num?)?.toInt() ?? 0,
@@ -550,10 +816,10 @@ class TicketModel {
   bool get isOpen => status == 0;
 
   String get levelLabel => switch (level) {
-        3 => '紧急',
-        2 => '中等',
-        _ => '低',
-      };
+    2 => '紧急',
+    1 => '中等',
+    _ => '低',
+  };
 
   String get statusLabel => isOpen ? '处理中' : '已关闭';
 

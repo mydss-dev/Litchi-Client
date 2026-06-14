@@ -24,7 +24,8 @@ import '../shared/widgets/update_banner.dart';
 import 'app_controller.dart';
 import 'app_window_bar.dart';
 
-bool get _isDesktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+bool get _isDesktop =>
+    Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
 /// Root window shell. The whole app is clipped to an 18px rounded rectangle on
 /// a transparent window background, with a 1px border and outer shadow. Corners
@@ -36,8 +37,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell>
-    with WindowListener, TrayListener {
+class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const double _radius = 18;
   bool _maximized = false;
   bool _trayActive = false;
@@ -77,7 +77,9 @@ class _AppShellState extends State<AppShell>
     if (ctrl.isAuthenticated && !_versionChecked) {
       _versionChecked = true;
       if (AppConfig.isVersionOutdated) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _showOutdatedDialog());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _showOutdatedDialog(),
+        );
       }
     }
   }
@@ -127,13 +129,15 @@ class _AppShellState extends State<AppShell>
     if (!_isDesktop) return;
     await trayManager.setIcon('assets/images/tray_icon.ico');
     await _updateTrayTooltip();
-    await trayManager.setContextMenu(Menu(
-      items: [
-        MenuItem(key: 'show',  label: '打开 ${AppConfig.appName}'),
-        MenuItem.separator(),
-        MenuItem(key: 'quit',  label: '退出 ${AppConfig.appName}'),
-      ],
-    ));
+    await trayManager.setContextMenu(
+      Menu(
+        items: [
+          MenuItem(key: 'show', label: '打开 ${AppConfig.appName}'),
+          MenuItem.separator(),
+          MenuItem(key: 'quit', label: '退出 ${AppConfig.appName}'),
+        ],
+      ),
+    );
     trayManager.addListener(this);
   }
 
@@ -305,6 +309,8 @@ class _MainShell extends StatelessWidget {
         return const SettingsPage();
       case AppPage.account:
         return const AccountPage();
+      case AppPage.wallet:
+        return const AccountPage();
       case AppPage.orders:
         return const OrdersPage();
       case AppPage.tickets:
@@ -323,7 +329,12 @@ class _AuthShell extends StatelessWidget {
       children: [
         const Positioned.fill(child: AuthFlow()),
         if (_isDesktop)
-          const Positioned(top: 0, left: 0, right: 0, child: WindowControlsBar()),
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: WindowControlsBar(),
+          ),
       ],
     );
   }
