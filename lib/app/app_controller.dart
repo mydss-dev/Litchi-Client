@@ -144,7 +144,10 @@ class AppController extends ChangeNotifier {
   void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
   void setDevMode(bool v) => _settings.setDevMode(v);
   void setLanguage(String v) => _settings.setLanguage(v);
-  void setKillSwitch(bool v) => _settings.setKillSwitch(v);
+  void setKillSwitch(bool v) {
+    _settings.setKillSwitch(v);
+    _core.killSwitchEnabled = _settings.killSwitch;
+  }
 
   void setAllowInsecureNodes(bool v) {
     final old = _settings.allowInsecureNodes;
@@ -281,6 +284,7 @@ class AppController extends ChangeNotifier {
     await _settings.load();
     _lastSeenNoticeId = await SettingsService.loadLastSeenNoticeId();
     await _core.init();
+    _core.killSwitchEnabled = _settings.killSwitch;
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;

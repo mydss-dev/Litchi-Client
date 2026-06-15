@@ -33,6 +33,10 @@ class CoreController extends ChangeNotifier {
   ConnectionStatus _status = ConnectionStatus.disconnected;
   String _coreError = '';
 
+  /// When true, an unexpected core drop blackholes the proxy (fail-closed)
+  /// instead of reverting to a direct connection. Synced from the user setting.
+  bool killSwitchEnabled = false;
+
   // Traffic monitoring (bytes/sec, updated by Clash /traffic stream).
   final ValueNotifier<int> upBpsNotifier = ValueNotifier(0);
   final ValueNotifier<int> downBpsNotifier = ValueNotifier(0);
@@ -614,6 +618,7 @@ class CoreController extends ChangeNotifier {
     if ((state == CoreState.error || state == CoreState.stopped) &&
         (_status == ConnectionStatus.connected ||
             _status == ConnectionStatus.connecting)) {
+      final wasConnected = _status == ConnectionStatus.connected;
       _stopTrafficMonitor();
       _connectedAt = null;
       if (state == CoreState.error && _core.lastError.isNotEmpty) {
@@ -622,7 +627,13 @@ class CoreController extends ChangeNotifier {
       _status = state == CoreState.error
           ? ConnectionStatus.error
           : ConnectionStatus.disconnected;
-      unawaited(ProxySetter.disable());
+      // Fail-closed: if we were tunnelling and the kill-switch is on, blackhole
+      // the proxy so traffic can't leak directly on this unexpected drop.
+      if (killSwitchEnabled && wasConnected) {
+        unawaited(ProxySetter.engageKillSwitch());
+      } else {
+        unawaited(ProxySetter.disable());
+      }
       notifyListeners();
     }
   }
