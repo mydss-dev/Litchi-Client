@@ -196,17 +196,20 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
                   ),
                   const SizedBox(height: 12),
                   Expanded(
-                    child: ListView(
+                    child: ListView.builder(
                       controller: scrollController,
                       padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                      children: [
-                        _AutoSelectTile(
-                          selected: ctrl.autoSelected,
-                          onTap: () => _selectAuto(ctrl),
-                        ),
-                        const SizedBox(height: 10),
-                        if (nodes.isEmpty)
-                          Padding(
+                      itemCount: nodes.isEmpty ? 3 : nodes.length + 2,
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          return _AutoSelectTile(
+                            selected: ctrl.autoSelected,
+                            onTap: () => _selectAuto(ctrl),
+                          );
+                        }
+                        if (index == 1) return const SizedBox(height: 10);
+                        if (nodes.isEmpty) {
+                          return Padding(
                             padding: const EdgeInsets.only(top: 48),
                             child: Center(
                               child: Text(
@@ -216,19 +219,20 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
                                 ),
                               ),
                             ),
-                          )
-                        else
-                          for (final node in nodes) ...[
-                            _NodeTile(
-                              node: node,
-                              selected:
-                                  !ctrl.autoSelected &&
-                                  ctrl.currentNode.id == node.id,
-                              onTap: () => _selectNode(ctrl, node),
-                            ),
-                            const SizedBox(height: 10),
-                          ],
-                      ],
+                          );
+                        }
+                        final node = nodes[index - 2];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _NodeTile(
+                            node: node,
+                            selected:
+                                !ctrl.autoSelected &&
+                                ctrl.currentNode.id == node.id,
+                            onTap: () => _selectNode(ctrl, node),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

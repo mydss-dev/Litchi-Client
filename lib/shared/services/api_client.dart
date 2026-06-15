@@ -72,6 +72,8 @@ String? _firstValidationMessage(Object? value) {
 }
 
 class ApiClient {
+  static const int maxGetRetries = 2;
+
   Dio? _dio;
   String _baseUrl = '';
   String? _authData;
@@ -150,7 +152,9 @@ class ApiClient {
   }) async {
     _assertReady();
     try {
-      final res = await _dio!.get(path, queryParameters: params);
+      final res = await _getWithRetry(
+        () => _dio!.get(path, queryParameters: params),
+      );
       return _parse(res);
     } on DioException catch (e) {
       throw ApiException(_friendlyMessage(e));
@@ -166,16 +170,48 @@ class ApiClient {
       throw const ApiException('请先配置服务器地址');
     }
     try {
-      return await dio.get<String>(
-        url,
-        options: Options(
-          responseType: ResponseType.plain,
-          headers: headers,
+      return await _getWithRetry(
+        () => dio.get<String>(
+          url,
+          options: Options(responseType: ResponseType.plain, headers: headers),
         ),
       );
     } on DioException catch (e) {
       throw ApiException(_friendlyMessage(e));
     }
+  }
+
+  Future<Response<T>> _getWithRetry<T>(
+    Future<Response<T>> Function() request,
+  ) async {
+    var attempt = 0;
+    while (true) {
+      try {
+        return await request();
+      } on DioException catch (e) {
+        if (attempt >= maxGetRetries || !isRetriableGetError(e)) rethrow;
+        attempt += 1;
+        await Future.delayed(Duration(milliseconds: 250 * attempt));
+      }
+    }
+  }
+
+  static bool isRetriableGetError(DioException e) {
+    return switch (e.type) {
+      DioExceptionType.connectionTimeout ||
+      DioExceptionType.sendTimeout ||
+      DioExceptionType.receiveTimeout ||
+      DioExceptionType.connectionError => true,
+      DioExceptionType.badResponse => _isRetriableStatus(
+        e.response?.statusCode,
+      ),
+      _ => false,
+    };
+  }
+
+  static bool _isRetriableStatus(int? statusCode) {
+    if (statusCode == null) return false;
+    return statusCode == 429 || statusCode >= 500;
   }
 
   Future<Map<String, dynamic>> post(

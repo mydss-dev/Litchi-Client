@@ -16,6 +16,29 @@ void main() {
     expect(redacted, contains('[REDACTED]'));
   });
 
+  test('redacts account emails and sensitive query parameters', () {
+    final redacted = SecureLogRedactor.redact(
+      'user@example.com https://api.example.com/sub?token=abc123&uuid=node-id',
+    );
+
+    expect(redacted, isNot(contains('user@example.com')));
+    expect(redacted, isNot(contains('abc123')));
+    expect(redacted, isNot(contains('node-id')));
+    expect(redacted, contains('token=[REDACTED]'));
+    expect(redacted, contains('uuid=[REDACTED]'));
+  });
+
+  test('redacts core config style fields before log export', () {
+    final redacted = SecureLogRedactor.redact(
+      '{"server":"1.2.3.4","password":"secret"} trojan://secret@example.com',
+    );
+
+    expect(redacted, isNot(contains('1.2.3.4')));
+    expect(redacted, isNot(contains('secret@example.com')));
+    expect(redacted, contains('"server":[REDACTED]'));
+    expect(redacted, contains('"password":[REDACTED]'));
+  });
+
   test('rejects oversized subscription payloads', () {
     final body = 'a' * (SubscriptionParser.maxBodyBytes + 1);
 
@@ -28,7 +51,10 @@ void main() {
       'trojan://password@example.com:443#node',
     ).join('\n');
 
-    expect(SubscriptionParser.parse(lines), hasLength(SubscriptionParser.maxNodes));
+    expect(
+      SubscriptionParser.parse(lines),
+      hasLength(SubscriptionParser.maxNodes),
+    );
   });
 
   test('maps subscription traffic header into app traffic model', () {

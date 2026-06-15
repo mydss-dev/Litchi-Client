@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
 import '../models/app_models.dart';
+import 'api_client.dart';
+import 'secure_logger.dart';
 
 abstract final class UpdateService {
   static final _dio = Dio(
@@ -15,8 +17,14 @@ abstract final class UpdateService {
   /// is available, or null if the check is disabled / already up-to-date.
   static Future<UpdateInfo?> check() async {
     if (AppConfig.updateCheckUrl.isEmpty) return null;
+    final manifestUri = Uri.tryParse(AppConfig.updateCheckUrl);
+    if (manifestUri == null ||
+        (manifestUri.scheme != 'https' && manifestUri.scheme != 'http')) {
+      SecureLogger.debug('Skip update check: invalid manifest url');
+      return null;
+    }
     try {
-      final res = await _dio.get<Map<String, dynamic>>(AppConfig.updateCheckUrl);
+      final res = await _getWithRetry(manifestUri.toString());
       final data = res.data;
       if (data == null) return null;
       final latest = data['version']?.toString() ?? '';
@@ -26,8 +34,27 @@ abstract final class UpdateService {
         downloadUrl: data['download_url']?.toString() ?? '',
         changelog: data['changelog']?.toString() ?? '',
       );
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('Update check failed', e);
       return null;
+    }
+  }
+
+  static Future<Response<Map<String, dynamic>>> _getWithRetry(
+    String url,
+  ) async {
+    var attempt = 0;
+    while (true) {
+      try {
+        return await _dio.get<Map<String, dynamic>>(url);
+      } on DioException catch (e) {
+        if (attempt >= ApiClient.maxGetRetries ||
+            !ApiClient.isRetriableGetError(e)) {
+          rethrow;
+        }
+        attempt += 1;
+        await Future.delayed(Duration(milliseconds: 250 * attempt));
+      }
     }
   }
 

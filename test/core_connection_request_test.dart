@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:litchi_client/app/core_controller.dart';
+import 'package:litchi_client/app/core_connection_request.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 
 void main() {
@@ -50,4 +50,36 @@ void main() {
     expect(request.validNodes, hasLength(1));
     expect(request.buildConfig(), isNotNull);
   });
+
+  test(
+    'falls back to first valid node when current node is not connectable',
+    () {
+      const fallback = NodeModel(
+        id: 'fallback',
+        name: 'fallback',
+        flag: '',
+        latency: 0,
+        rawUri: 'trojan://password@example.com:443#fallback',
+      );
+      const request = CoreConnectionRequest(
+        nodes: [
+          NodeModel(id: 'display', name: 'display only', flag: '', latency: 0),
+          fallback,
+        ],
+        currentNode: NodeModel(
+          id: 'missing',
+          name: 'missing',
+          flag: '',
+          latency: 0,
+        ),
+        proxyMode: ProxyMode.rule,
+        dnsMode: 'Cloudflare',
+        proxyPort: 7890,
+      );
+
+      expect(request.selectedNode, fallback);
+      expect(request.selectedTag, 'node-fallback');
+      expect(request.buildConfig(), isNotNull);
+    },
+  );
 }

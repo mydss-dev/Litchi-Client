@@ -4,9 +4,16 @@ abstract final class SecureLogRedactor {
   static final List<RegExp> _patterns = [
     RegExp(r'Bearer\s+[A-Za-z0-9._~+/=-]+', caseSensitive: false),
     RegExp(r'(?<=Authorization:\s*)[^\s,;]+', caseSensitive: false),
+    RegExp(
+      r'''([?&](token|auth_data|password|passwd|key|uuid)=)[^&\s"'<>]+''',
+      caseSensitive: false,
+    ),
+    RegExp(r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}', caseSensitive: false),
     RegExp(r'''(vmess|vless|trojan|ss|hysteria2|hy2)://[^\s"'<>]+'''),
-    RegExp(r'''(https?://[^\s"'<>]*?(token|sub|subscribe)[^\s"'<>]*)''',
-        caseSensitive: false),
+    RegExp(
+      r'''(https?://[^\s"'<>]*?(token|sub|subscribe)[^\s"'<>]*)''',
+      caseSensitive: false,
+    ),
     RegExp(
       r'''("?(password|uuid|server|server_name|public_key|short_id)"?\s*[:=]\s*)["']?[^"',}\s]+["']?''',
       caseSensitive: false,
