@@ -9,6 +9,7 @@ class CoreConnectionRequest {
     required this.dnsMode,
     required this.proxyPort,
     this.networkMode = NetworkMode.system,
+    this.allowInsecure = true,
   });
 
   final List<NodeModel> nodes;
@@ -17,6 +18,10 @@ class CoreConnectionRequest {
   final String dnsMode;
   final int proxyPort;
   final NetworkMode networkMode;
+
+  /// When false, nodes' `insecure`/skip-cert-verify flags are stripped so TLS
+  /// certificates are always validated.
+  final bool allowInsecure;
 
   List<NodeModel> get validNodes => nodes.where(_hasCoreConfig).toList();
 
@@ -39,6 +44,7 @@ class CoreConnectionRequest {
         dnsMode: dnsMode,
         proxyPort: proxyPort,
         networkMode: mode,
+        allowInsecure: allowInsecure,
       );
 
   Map<String, dynamic>? buildConfig({NetworkMode? overrideNetworkMode}) {
@@ -54,6 +60,7 @@ class CoreConnectionRequest {
       proxyMode: proxyMode,
       dnsMode: dnsMode,
       networkMode: overrideNetworkMode ?? networkMode,
+      allowInsecure: allowInsecure,
     );
   }
 

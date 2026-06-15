@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
+import 'cert_pinning.dart';
+
 typedef SessionExpiredCallback = void Function();
 
 /// Thrown when the remote API returns a non-success response.
@@ -105,8 +107,12 @@ class ApiClient {
     // Route through the Windows system proxy when one is active (e.g. sing-box).
     // This allows API calls to reach blocked domains via the VPN tunnel.
     _dio!.httpClientAdapter = IOHttpClientAdapter(
-      createHttpClient: () =>
-          HttpClient()..findProxy = HttpClient.findProxyFromEnvironment,
+      createHttpClient: () {
+        final client = HttpClient()
+          ..findProxy = HttpClient.findProxyFromEnvironment;
+        CertPinning.apply(client);
+        return client;
+      },
     );
     _dio!.interceptors.add(
       InterceptorsWrapper(

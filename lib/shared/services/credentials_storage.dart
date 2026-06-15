@@ -4,14 +4,18 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'secure_logger.dart';
+import 'windows_dpapi.dart';
+
 /// Stores remembered login credentials.
 ///
 /// The account/email is stored as plain text for reliable autofill. The
-/// password is encrypted via Windows DPAPI (PowerShell ConvertTo-SecureString).
+/// password is encrypted via Windows DPAPI (native CryptProtectData over FFI —
+/// no PowerShell, so the secret never appears on a process command line).
 ///
-/// Fallback: on machines where PowerShell/DPAPI is blocked, credentials are
-/// stored with a base64 marker. This is weaker than DPAPI, but it keeps the
-/// app from silently losing remembered login data.
+/// The on-disk format is a hex DPAPI blob, byte-compatible with the legacy
+/// PowerShell `ConvertFrom-SecureString` output, so existing remembered logins
+/// keep working across the upgrade.
 abstract final class CredentialsStorage {
   static const _keyEmail = 'remember_email';
   static const _legacyKeyEmail = 'dpapi_email';
@@ -36,7 +40,9 @@ abstract final class CredentialsStorage {
       await prefs.setString(_keyEmail, email);
       await prefs.remove(_legacyKeyEmail);
       await prefs.setString(_keyPassword, encPass);
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warn('CredentialsStorage.save failed', e);
+    }
   }
 
   static Future<({String email, String password})?> load() async {
@@ -55,7 +61,8 @@ abstract final class CredentialsStorage {
       final password = await unprotectString(encPass);
       if (password == null) return null;
       return (email: email, password: password);
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.warn('CredentialsStorage.load failed', e);
       return null;
     }
   }
@@ -98,7 +105,9 @@ abstract final class CredentialsStorage {
       if (enc == null) return;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyAuthToken, enc);
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warn('CredentialsStorage.saveAuthToken failed', e);
+    }
   }
 
   static Future<String?> loadAuthToken() async {
@@ -110,7 +119,8 @@ abstract final class CredentialsStorage {
       final enc = prefs.getString(_keyAuthToken);
       if (enc == null || enc.isEmpty) return null;
       return await unprotectString(enc);
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.warn('CredentialsStorage.loadAuthToken failed', e);
       return null;
     }
   }
@@ -147,77 +157,11 @@ abstract final class CredentialsStorage {
     return _unprotectDpapi(encrypted);
   }
 
-  // ── DPAPI via PowerShell ──────────────────────────────────────────────────
+  // ── DPAPI via native Win32 FFI (CryptProtectData) ─────────────────────────
 
-  static Future<String?> _protectDpapi(String plaintext) async {
-    final b64in = base64.encode(utf8.encode(plaintext));
-    final outPath = _tmpPath('litchi_p_out');
+  static Future<String?> _protectDpapi(String plaintext) async =>
+      WindowsDpapi.protect(plaintext);
 
-    final script =
-        '''
-\$b=[Convert]::FromBase64String('$b64in')
-\$t=[Text.Encoding]::UTF8.GetString(\$b)
-\$s=ConvertTo-SecureString \$t -AsPlainText -Force
-ConvertFrom-SecureString \$s|Set-Content '$outPath' -Encoding ASCII -NoNewline
-''';
-
-    await Process.run('powershell', [
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      script,
-    ]);
-
-    final f = File(outPath);
-    if (!f.existsSync()) return null;
-    final result = (await f.readAsString()).trim();
-    try {
-      await f.delete();
-    } catch (_) {}
-    return result.isNotEmpty ? result : null;
-  }
-
-  static Future<String?> _unprotectDpapi(String encrypted) async {
-    final inPath = _tmpPath('litchi_u_in');
-    final outPath = _tmpPath('litchi_u_out');
-    await File(inPath).writeAsString(encrypted, flush: true);
-
-    final script =
-        '''
-\$enc=(Get-Content '$inPath' -Raw -Encoding ASCII).Trim()
-\$s=ConvertTo-SecureString \$enc
-\$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR(\$s)
-\$plain=[Runtime.InteropServices.Marshal]::PtrToStringAuto(\$ptr)
-[Runtime.InteropServices.Marshal]::ZeroFreeBSTR(\$ptr)
-[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(\$plain))|Set-Content '$outPath' -Encoding ASCII -NoNewline
-''';
-
-    await Process.run('powershell', [
-      '-NoProfile',
-      '-NonInteractive',
-      '-Command',
-      script,
-    ]);
-
-    final inF = File(inPath);
-    final outF = File(outPath);
-    try {
-      await inF.delete();
-    } catch (_) {}
-
-    if (!outF.existsSync()) return null;
-    final b64out = (await outF.readAsString()).trim();
-    try {
-      await outF.delete();
-    } catch (_) {}
-
-    try {
-      return utf8.decode(base64.decode(b64out));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static String _tmpPath(String name) =>
-      '${Directory.systemTemp.path}/$name.tmp';
+  static Future<String?> _unprotectDpapi(String encrypted) async =>
+      WindowsDpapi.unprotect(encrypted);
 }

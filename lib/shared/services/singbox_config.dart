@@ -57,18 +57,24 @@ abstract final class SingboxConfig {
     ProxyMode proxyMode       = ProxyMode.rule,
     String dnsMode            = '系统 DNS',
     NetworkMode networkMode   = NetworkMode.system,
+    bool allowInsecure        = true,
   }) {
     final outbounds = <Map<String, dynamic>>[];
     final tags      = <String>[];
 
     for (final n in nodes) {
       final ob = n.rawUri.isNotEmpty
-          ? OutboundParser.parse(n.rawUri, tag: _nodeTag(n))
+          ? OutboundParser.parse(
+              n.rawUri,
+              tag: _nodeTag(n),
+              allowInsecure: allowInsecure,
+            )
           : (n.rawOutbound == null
               ? null
               : OutboundParser.parseClashProxy(
                   n.rawOutbound!,
                   tag: _nodeTag(n),
+                  allowInsecure: allowInsecure,
                 ));
       if (ob == null) continue;
       outbounds.add(ob);

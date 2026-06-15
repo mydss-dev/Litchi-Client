@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -39,6 +40,13 @@ Future<void> main() {
 
 Future<void> _boot() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Single source of truth for the app version: the installed package metadata
+  // (pubspec `version`), not a dart-define default. Keeps the update check honest.
+  try {
+    final info = await PackageInfo.fromPlatform();
+    AppConfig.setVersion(info.version);
+  } catch (_) {}
 
   if (_isDesktop) {
     // Single-instance enforcement: bind a loopback port as a mutex.

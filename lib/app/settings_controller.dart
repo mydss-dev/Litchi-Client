@@ -21,6 +21,8 @@ class SettingsController extends ChangeNotifier {
   NetworkMode _networkMode = NetworkMode.system;
   String _dnsMode = '系统 DNS';
   int _proxyPort = 7890;
+  bool _killSwitch = false;
+  bool _allowInsecureNodes = true;
   ThemeMode _themeMode = ThemeMode.light;
 
   bool get wasConnected => _wasConnected;
@@ -33,6 +35,8 @@ class SettingsController extends ChangeNotifier {
   NetworkMode get networkMode => _networkMode;
   String get dnsMode => _dnsMode;
   int get proxyPort => _proxyPort;
+  bool get killSwitch => _killSwitch;
+  bool get allowInsecureNodes => _allowInsecureNodes;
   ThemeMode get themeMode => _themeMode;
   bool get isDark => _themeMode == ThemeMode.dark;
 
@@ -50,6 +54,8 @@ class SettingsController extends ChangeNotifier {
     _dnsMode = s.dnsMode;
     _wasConnected = s.wasConnected;
     _lastNodeId = s.lastNodeId;
+    _killSwitch = s.killSwitch;
+    _allowInsecureNodes = s.allowInsecureNodes;
     _themeMode = s.themeMode;
     // Sync registry to match the saved preference (also refreshes exe path
     // if the app was updated and moved to a new location).
@@ -140,6 +146,20 @@ class SettingsController extends ChangeNotifier {
     if (_dnsMode == v) return;
     _dnsMode = v;
     SettingsService.setDnsMode(v);
+    notifyListeners();
+  }
+
+  void setKillSwitch(bool v) {
+    if (_killSwitch == v) return;
+    _killSwitch = v;
+    SettingsService.setKillSwitch(v);
+    notifyListeners();
+  }
+
+  void setAllowInsecureNodes(bool v) {
+    if (_allowInsecureNodes == v) return;
+    _allowInsecureNodes = v;
+    SettingsService.setAllowInsecureNodes(v);
     notifyListeners();
   }
 }

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 abstract final class SecureLogRedactor {
@@ -36,9 +39,46 @@ abstract final class SecureLogRedactor {
 }
 
 abstract final class SecureLogger {
+  /// Max size of the on-disk diagnostic log before it is rotated (256 KB).
+  static const int _maxLogBytes = 256 * 1024;
+
+  /// Debug-only console log. No-op in release.
   static void debug(String message, [Object? error]) {
     if (!kDebugMode) return;
+    debugPrint(_format(message, error));
+  }
+
+  /// Records a warning that must survive release builds. The line is redacted,
+  /// echoed to the console in debug mode, and appended (best-effort, size-
+  /// bounded) to a local diagnostic log so swallowed failures stay diagnosable.
+  static void warn(String message, [Object? error]) {
+    final line = _format(message, error);
+    if (kDebugMode) debugPrint(line);
+    unawaited(_append(line));
+  }
+
+  static String _format(String message, Object? error) {
+    final ts = DateTime.now().toLocal().toString();
     final suffix = error == null ? '' : ': ${SecureLogRedactor.redact(error)}';
-    debugPrint('${SecureLogRedactor.redact(message)}$suffix');
+    return '[$ts] ${SecureLogRedactor.redact(message)}$suffix';
+  }
+
+  static Future<void> _append(String line) async {
+    try {
+      final base =
+          Platform.environment['LOCALAPPDATA'] ??
+          Platform.environment['APPDATA'] ??
+          Directory.systemTemp.path;
+      final dir = Directory('$base${Platform.pathSeparator}Litchi');
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+      final file = File('${dir.path}${Platform.pathSeparator}diagnostic.log');
+      if (file.existsSync() && file.lengthSync() > _maxLogBytes) {
+        // Rotate by truncation — keep the log self-limiting without a scheduler.
+        file.writeAsStringSync('', flush: false);
+      }
+      file.writeAsStringSync('$line\n', mode: FileMode.append, flush: false);
+    } catch (_) {
+      // Logging must never throw into the caller's path.
+    }
   }
 }

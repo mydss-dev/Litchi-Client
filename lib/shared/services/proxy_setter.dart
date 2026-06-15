@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'secure_logger.dart';
+
 /// Sets / clears the Windows system HTTP proxy via registry.
 abstract final class ProxySetter {
   static const _key =
@@ -14,6 +16,21 @@ abstract final class ProxySetter {
     await _notify();
   }
 
+  /// Kill-switch: point the system proxy at a dead local port so proxy-aware
+  /// traffic fails closed instead of leaking directly when the tunnel drops.
+  /// Cleared automatically on the next [enable] / [disable] or on app exit.
+  ///
+  /// Note: this protects proxy-aware apps in system-proxy mode. Apps that open
+  /// raw sockets without honouring the system proxy are not covered — a full
+  /// WFP/firewall kill-switch is the follow-up for that threat model.
+  static Future<void> engageKillSwitch() async {
+    if (!Platform.isWindows) return;
+    // 127.0.0.1:1 — nothing listens here, so every proxied request is refused.
+    await _reg('ProxyServer', 'REG_SZ', '127.0.0.1:1');
+    await _reg('ProxyEnable', 'REG_DWORD', '1');
+    await _notify();
+  }
+
   /// Clears the system proxy. [notify] broadcasts the change to WinInet so
   /// open browsers pick it up immediately — skip it on app exit, where the
   /// registry write already takes effect and waiting on the PowerShell helper
@@ -22,7 +39,9 @@ abstract final class ProxySetter {
     if (!Platform.isWindows) return;
     try {
       await _reg('ProxyEnable', 'REG_DWORD', '0');
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warn('ProxySetter.disable failed', e);
+    }
     if (notify) await _notify();
   }
 
@@ -44,7 +63,9 @@ abstract final class ProxySetter {
       );
       if (r2.exitCode != 0) return;
       if ('${r2.stdout}'.contains('127.0.0.1:')) await disable(notify: false);
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warn('ProxySetter.disableIfStale failed', e);
+    }
   }
 
   static Future<void> _reg(String name, String type, String value) async {

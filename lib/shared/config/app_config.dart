@@ -10,13 +10,30 @@ import '../../config/brand.dart';
 abstract final class AppConfig {
   // ── Compile-time only (never remote-overridden) ───────────────────────────
 
-  /// Semantic version of this build.
-  static const String currentVersion = String.fromEnvironment(
+  /// Semantic version of this build. Single source of truth: populated at
+  /// startup from the platform package metadata (pubspec `version`) via
+  /// [initVersion]. The dart-define value is only the pre-init fallback.
+  static String currentVersion = const String.fromEnvironment(
     'APP_VERSION',
-    defaultValue: '1.1.0',
+    defaultValue: '1.2.0',
   );
 
+  /// Overwrites [currentVersion] with the real installed version. Call once in
+  /// main() before the update check runs.
+  static void setVersion(String version) {
+    final v = version.trim();
+    if (v.isNotEmpty) currentVersion = v;
+  }
+
   static const double bytesPerGb = 1073741824.0;
+
+  /// SHA-256 fingerprints (lowercase hex, no colons) of the leaf TLS certs the
+  /// API / OSS endpoints are allowed to present. Empty = pinning disabled.
+  ///
+  /// To populate, take the leaf cert SHA-256 via `openssl s_client` piped to
+  /// `openssl x509 -outform DER | openssl dgst -sha256`.
+  /// See `CertPinning` for scope and limitations.
+  static const List<String> certPinsSha256 = [];
 
   // ── Remote-overridable fields ─────────────────────────────────────────────
   // Initial values come from dart-define; RemoteConfigService overwrites these

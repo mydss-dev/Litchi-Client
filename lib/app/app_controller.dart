@@ -114,6 +114,8 @@ class AppController extends ChangeNotifier {
   NetworkMode get networkMode => _settings.networkMode;
   String get dnsMode => _settings.dnsMode;
   int get proxyPort => _settings.proxyPort;
+  bool get killSwitch => _settings.killSwitch;
+  bool get allowInsecureNodes => _settings.allowInsecureNodes;
 
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
@@ -158,6 +160,20 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  void setKillSwitch(bool v) {
+    _settings.setKillSwitch(v);
+    _core.killSwitchEnabled = _settings.killSwitch;
+  }
+
+  void setAllowInsecureNodes(bool v) {
+    final old = _settings.allowInsecureNodes;
+    _settings.setAllowInsecureNodes(v);
+    if (_settings.allowInsecureNodes != old) {
+      // The flag changes the generated outbound config — rebuild the core.
+      unawaited(_reloadCoreConfig());
+    }
+  }
+
   // ── Core delegates ─────────────────────────────────────────────────────────
 
   ConnectionStatus get connectionStatus => _core.connectionStatus;
@@ -183,6 +199,7 @@ class AppController extends ChangeNotifier {
     dnsMode: _settings.dnsMode,
     proxyPort: _settings.proxyPort,
     networkMode: _settings.networkMode,
+    allowInsecure: _settings.allowInsecureNodes,
   );
 
   /// Graceful shutdown: kills core + disables system proxy. Call before exit.
@@ -272,6 +289,7 @@ class AppController extends ChangeNotifier {
     await _settings.load();
     _lastSeenNoticeId = await SettingsService.loadLastSeenNoticeId();
     await _core.init();
+    _core.killSwitchEnabled = _settings.killSwitch;
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;
