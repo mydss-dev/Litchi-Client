@@ -6,14 +6,12 @@ import 'package:flutter/material.dart';
 import '../shared/config/app_config.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
-import '../shared/models/node_runtime_state.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/auth_session_service.dart';
 import '../shared/services/data_load_error_service.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/network_error_classifier.dart';
 import '../shared/services/node_cache_service.dart';
-import '../shared/services/node_selection_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
 import '../shared/services/update_service.dart';
@@ -23,6 +21,7 @@ import 'core_platform_support.dart';
 import 'core_state_sync_service.dart';
 import 'account_controller.dart';
 import 'invite_controller.dart';
+import 'node_controller.dart';
 import 'notices_controller.dart';
 import 'settings_controller.dart';
 import 'subscription_controller.dart';
@@ -59,6 +58,7 @@ class AppController extends ChangeNotifier {
     _notices.addListener(notifyListeners);
     _account.addListener(notifyListeners);
     _subscription.addListener(notifyListeners);
+    _nodes.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
@@ -85,7 +85,7 @@ class AppController extends ChangeNotifier {
 
   final SubscriptionController _subscription = SubscriptionController();
   late final AccountController _account = AccountController(_api);
-  NodeRuntimeState _nodeState = const NodeRuntimeState();
+  final NodeController _nodes = NodeController();
   List<PlanModel> _plans = const [];
   late final InviteController _invite = InviteController(_api, refreshData);
   late final WalletController _wallet = WalletController(_api, refreshData);
@@ -187,7 +187,7 @@ class AppController extends ChangeNotifier {
       CorePlatformSupport.supportsCurrentPlatform;
 
   CoreConnectionRequest get _connectionRequest => CoreConnectionRequest(
-    nodes: _nodeState.nodes,
+    nodes: _nodes.nodes,
     currentNode: currentNode,
     proxyMode: _settings.proxyMode,
     dnsMode: _settings.dnsMode,
@@ -226,9 +226,9 @@ class AppController extends ChangeNotifier {
 
   UserModel get user => _account.user;
   TrafficModel get traffic => _account.traffic;
-  bool get autoSelected => _nodeState.autoSelected;
-  NodeModel get currentNode => _nodeState.displayNode;
-  List<NodeModel> get nodes => _nodeState.nodes;
+  bool get autoSelected => _nodes.autoSelected;
+  NodeModel get currentNode => _nodes.currentNode;
+  List<NodeModel> get nodes => _nodes.nodes;
   List<PlanModel> get plans => _plans;
   List<InviteCodeModel> get inviteCodes => _invite.codes;
   String get inviteCode => _invite.code;
@@ -298,7 +298,7 @@ class AppController extends ChangeNotifier {
 
     final cached = await NodeCacheService.load();
     if (cached.isNotEmpty) {
-      _nodeState = _nodeState.copyWith(nodes: cached);
+      _nodes.setNodes(cached);
       _restoreLastNode();
       if (supportsCoreConnection) {
         unawaited(_startCoreInBackground(runLatencyTest: true));
@@ -345,7 +345,7 @@ class AppController extends ChangeNotifier {
     } catch (e) {
       if (NetworkErrorClassifier.isNetworkError(e)) {
         _dataLoadError = DataLoadErrorService.offlineMessage(
-          hasCachedNodes: _nodeState.nodes.isNotEmpty,
+          hasCachedNodes: _nodes.isNotEmpty,
         );
         if (!_disposed) notifyListeners();
         return;
@@ -382,6 +382,7 @@ class AppController extends ChangeNotifier {
     _notices.removeListener(notifyListeners);
     _account.removeListener(notifyListeners);
     _subscription.removeListener(notifyListeners);
+    _nodes.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
     _wallet.dispose();
@@ -389,6 +390,7 @@ class AppController extends ChangeNotifier {
     _notices.dispose();
     _account.dispose();
     _subscription.dispose();
+    _nodes.dispose();
     super.dispose();
   }
 
@@ -407,10 +409,7 @@ class AppController extends ChangeNotifier {
       unawaited(testLatencies());
     }
     if (effect.clearLatency) {
-      _nodeState = _nodeState.copyWith(
-        nodes: NodeSelectionService.clearLatency(_nodeState.nodes),
-      );
-      notifyListeners();
+      _nodes.clearLatency();
     }
   }
 
@@ -518,7 +517,7 @@ class AppController extends ChangeNotifier {
   void _resetSessionData() {
     _subscription.reset();
     _account.reset();
-    _nodeState = const NodeRuntimeState();
+    _nodes.reset();
     _plans = const [];
     _invite.reset();
     _wallet.reset();
@@ -565,8 +564,8 @@ class AppController extends ChangeNotifier {
     try {
       _notices.setNotices(await _api.getNotices());
     } catch (_) {}
-    if (_nodeState.nodes.isNotEmpty) {
-      unawaited(NodeCacheService.save(_nodeState.nodes));
+    if (_nodes.isNotEmpty) {
+      unawaited(NodeCacheService.save(_nodes.nodes));
       _restoreLastNode();
       if (supportsCoreConnection) {
         // Start core in background so latency testing works before user connects.
@@ -585,7 +584,7 @@ class AppController extends ChangeNotifier {
     } catch (e) {
       if (NetworkErrorClassifier.isNetworkError(e)) {
         _dataLoadError = DataLoadErrorService.offlineMessage(
-          hasCachedNodes: _nodeState.nodes.isNotEmpty,
+          hasCachedNodes: _nodes.isNotEmpty,
         );
       } else {
         await _authSession.clear();
@@ -618,10 +617,10 @@ class AppController extends ChangeNotifier {
   Future<void> refreshNodes() async {
     final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
     if (snap.nodes != null && snap.nodes!.isNotEmpty) {
-      _nodeState = _nodeState.copyWith(nodes: snap.nodes!);
+      _nodes.setNodes(snap.nodes!);
       _restoreLastNode();
       _account.setTraffic(snap.traffic);
-      unawaited(NodeCacheService.save(_nodeState.nodes));
+      unawaited(NodeCacheService.save(_nodes.nodes));
       if (supportsCoreConnection) {
         await _reloadCoreConfig(startIfStopped: true);
       }
@@ -641,7 +640,7 @@ class AppController extends ChangeNotifier {
       expiredAt: snap.expiredAt,
     );
     if (snap.nodes != null) {
-      _nodeState = _nodeState.copyWith(nodes: snap.nodes!);
+      _nodes.setNodes(snap.nodes!);
     }
     if (snap.plans != null) _plans = snap.plans!;
     _invite.applySnapshot(
@@ -669,23 +668,13 @@ class AppController extends ChangeNotifier {
 
   /// Tries to restore the last manually-selected node from persistent storage.
   /// Falls back to the first node in auto-select mode if the node is not found.
-  void _restoreLastNode() {
-    final restored = NodeSelectionService.restoreLastSelection(
-      nodes: _nodeState.nodes,
-      lastNodeId: _settings.lastNodeId,
-    );
-    _nodeState = _nodeState.copyWith(
-      currentNode: restored.currentNode,
-      autoSelected: restored.autoSelected,
-    );
-  }
+  void _restoreLastNode() => _nodes.restoreLastSelection(_settings.lastNodeId);
 
   /// Switch to [node]. Returns an error string if the core rejected the
   /// switch, or null on success.
   Future<String?> setCurrentNode(NodeModel node) async {
-    _nodeState = _nodeState.copyWith(currentNode: node, autoSelected: false);
+    _nodes.selectNode(node);
     _settings.setLastNodeId(node.id);
-    notifyListeners();
     if (Platform.isAndroid && coreRunning) {
       await _reloadCoreConfig();
       return null;
@@ -698,9 +687,8 @@ class AppController extends ChangeNotifier {
   }
 
   Future<String?> selectAuto() async {
-    _nodeState = _nodeState.copyWith(autoSelected: true);
+    _nodes.selectAuto();
     _settings.setLastNodeId('');
-    notifyListeners();
     if (Platform.isAndroid && coreRunning) {
       await _reloadCoreConfig();
       return null;
@@ -726,7 +714,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> _reloadCoreConfig({bool startIfStopped = false}) async {
     if (!supportsCoreConnection) return;
-    if (_nodeState.isEmpty) return;
+    if (_nodes.isEmpty) return;
     if (!startIfStopped && !coreProcessRunning) return;
 
     final error = await _core.reloadCore(_connectionRequest);
@@ -746,7 +734,7 @@ class AppController extends ChangeNotifier {
   /// Starts the sing-box process in background mode if needed.
   Future<void> testLatencies() async {
     if (!supportsCoreConnection) return;
-    if (_nodeState.isEmpty) return;
+    if (_nodes.isEmpty) return;
 
     if (!coreProcessRunning) {
       if (Platform.isAndroid && !coreRunning) return;
@@ -761,34 +749,24 @@ class AppController extends ChangeNotifier {
     if (_disposed) return;
 
     // Mark all nodes as testing (-1) so the UI shows an in-progress state.
-    _nodeState = _nodeState.copyWith(
-      nodes: NodeSelectionService.markLatencyTesting(_nodeState.nodes),
-    );
-    notifyListeners();
+    _nodes.markLatencyTesting();
 
     if (!coreProcessRunning) {
-      _nodeState = _nodeState.copyWith(
-        nodes: NodeSelectionService.markLatencyFailed(_nodeState.nodes),
-      );
+      _nodes.markLatencyFailed();
       _startupMessage = '测速失败：核心未启动，请检查 sing-box.exe 是否存在';
       notifyListeners();
       return;
     }
 
-    final snapshot = List<NodeModel>.from(_nodeState.nodes);
+    final snapshot = List<NodeModel>.from(_nodes.nodes);
     final pending = <int, NodeModel>{};
     Timer? flushTimer;
 
     void flushLatencyResults() {
       if (_disposed) return;
       if (pending.isEmpty) return;
-      final list = NodeSelectionService.applyLatencyResults(
-        _nodeState.nodes,
-        pending,
-      );
+      _nodes.applyLatencyResults(Map<int, NodeModel>.from(pending));
       pending.clear();
-      _nodeState = _nodeState.copyWith(nodes: list);
-      notifyListeners();
     }
 
     try {
@@ -796,7 +774,7 @@ class AppController extends ChangeNotifier {
         snapshot,
         onResult: (idx, updated) {
           if (_disposed) return;
-          if (idx < _nodeState.nodes.length) {
+          if (idx < _nodes.nodes.length) {
             pending[idx] = updated;
             flushTimer ??= Timer.periodic(
               const Duration(milliseconds: 100),
