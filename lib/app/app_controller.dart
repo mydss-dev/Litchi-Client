@@ -6,14 +6,12 @@ import 'package:flutter/material.dart';
 import '../shared/config/app_config.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
-import '../shared/models/invite_data_state.dart';
 import '../shared/models/node_runtime_state.dart';
 import '../shared/models/subscription_runtime_state.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/auth_session_service.dart';
 import '../shared/services/data_load_error_service.dart';
 import '../shared/services/data_loader.dart';
-import '../shared/services/invite_link_service.dart';
 import '../shared/services/network_error_classifier.dart';
 import '../shared/services/node_cache_service.dart';
 import '../shared/services/node_selection_service.dart';
@@ -25,6 +23,7 @@ import 'core_connection_request.dart';
 import 'core_controller.dart';
 import 'core_platform_support.dart';
 import 'core_state_sync_service.dart';
+import 'invite_controller.dart';
 import 'settings_controller.dart';
 import 'wallet_controller.dart';
 
@@ -63,6 +62,7 @@ class AppController extends ChangeNotifier {
     _core.addListener(_onCoreChanged);
     _core.addListener(notifyListeners);
     _wallet.addListener(notifyListeners);
+    _invite.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
@@ -92,7 +92,7 @@ class AppController extends ChangeNotifier {
   TrafficModel _traffic = _emptyTraffic;
   NodeRuntimeState _nodeState = const NodeRuntimeState();
   List<PlanModel> _plans = const [];
-  InviteDataState _invite = const InviteDataState();
+  late final InviteController _invite = InviteController(_api, refreshData);
   late final WalletController _wallet = WalletController(_api, refreshData);
   String? _dataLoadError;
   String? _startupMessage;
@@ -390,9 +390,11 @@ class AppController extends ChangeNotifier {
     _core.removeListener(_onCoreChanged);
     _core.removeListener(notifyListeners);
     _wallet.removeListener(notifyListeners);
+    _invite.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
     _wallet.dispose();
+    _invite.dispose();
     super.dispose();
   }
 
@@ -542,7 +544,7 @@ class AppController extends ChangeNotifier {
     _traffic = _emptyTraffic;
     _nodeState = const NodeRuntimeState();
     _plans = const [];
-    _invite = const InviteDataState();
+    _invite.reset();
     _wallet.reset();
     _dataLoadError = null;
     _notices = [];
@@ -620,15 +622,7 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> createInviteCode() async {
-    try {
-      await _api.createInviteCode();
-      await refreshData();
-      return null;
-    } catch (e) {
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  Future<String?> createInviteCode() => _invite.createInviteCode();
 
   Future<String?> transferAllCommission() => _wallet.transferAllCommission();
 
@@ -675,24 +669,11 @@ class AppController extends ChangeNotifier {
       _nodeState = _nodeState.copyWith(nodes: snap.nodes!);
     }
     if (snap.plans != null) _plans = snap.plans!;
-    _invite = _invite.copyWith(
-      codes: snap.inviteCodes
-          ?.map((item) => InviteCodeModel(code: item.code, link: item.link))
-          .toList(),
+    _invite.applySnapshot(
+      codes: snap.inviteCodes,
       code: snap.inviteCode,
       link: snap.inviteLink,
       urlBase: snap.inviteUrlBase,
-    );
-    final normalizedInvites = InviteLinkService.normalize(
-      codes: _invite.codes,
-      inviteCode: _invite.code,
-      inviteLink: _invite.link,
-      inviteUrlBase: _invite.urlBase,
-    );
-    _invite = _invite.copyWith(
-      codes: normalizedInvites.codes,
-      code: normalizedInvites.inviteCode,
-      link: normalizedInvites.inviteLink,
     );
     _wallet.applySnapshot(
       inviteRecords: snap.inviteRecords,
