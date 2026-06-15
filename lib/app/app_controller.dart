@@ -904,4 +904,13 @@ class AppScope extends InheritedNotifier<AppController> {
     assert(scope?.notifier != null, 'AppScope not found in widget tree');
     return scope!.notifier!;
   }
+
+  /// Reads the controller WITHOUT subscribing to rebuilds. Use this when you
+  /// only need to call methods, or when subscribing to a specific slice via
+  /// [AppSelector] / [ValueListenableBuilder] instead of the whole controller.
+  static AppController read(BuildContext context) {
+    final scope = context.getInheritedWidgetOfExactType<AppScope>();
+    assert(scope?.notifier != null, 'AppScope not found in widget tree');
+    return scope!.notifier!;
+  }
 }
