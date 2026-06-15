@@ -3,15 +3,23 @@ import 'dart:io';
 abstract final class CorePlatformSupport {
   static bool get isAndroid => Platform.isAndroid;
   static bool get isWindows => Platform.isWindows;
+  static bool get isMacOS => Platform.isMacOS;
 
-  static bool get supportsCurrentPlatform =>
-      supportsPlatform(isWindows: isWindows, isAndroid: isAndroid);
+  /// Desktop platforms that manage a bundled sing-box subprocess + system proxy.
+  static bool get isDesktop => isWindows || isMacOS;
+
+  static bool get supportsCurrentPlatform => supportsPlatform(
+    isWindows: isWindows,
+    isMacOS: isMacOS,
+    isAndroid: isAndroid,
+  );
 
   static bool supportsPlatform({
     required bool isWindows,
+    required bool isMacOS,
     required bool isAndroid,
   }) {
-    return isWindows || isAndroid;
+    return isWindows || isMacOS || isAndroid;
   }
 
   static bool processRunningFor({

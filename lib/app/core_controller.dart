@@ -14,7 +14,7 @@ import 'core_connection_request.dart';
 import 'core_error_message_service.dart';
 import 'core_platform_support.dart';
 import 'core_runtime.dart';
-import 'windows_core_runtime.dart';
+import 'desktop_core_runtime.dart';
 
 /// High-level connection lifecycle state exposed to UI.
 enum ConnectionStatus {
@@ -30,7 +30,7 @@ enum ConnectionStatus {
 /// Settings values and the node list are passed in at call time to avoid
 /// storing references that would create circular dependencies.
 class CoreController extends ChangeNotifier {
-  final WindowsCoreRuntime _windowsRuntime = WindowsCoreRuntime();
+  final DesktopCoreRuntime _desktopRuntime = DesktopCoreRuntime();
   final AndroidCoreRuntime _androidRuntime = AndroidCoreRuntime();
   StreamSubscription<CoreState>? _sub;
   StreamSubscription<String>? _logSub;
@@ -66,12 +66,12 @@ class CoreController extends ChangeNotifier {
   bool get coreProcessRunning => CorePlatformSupport.processRunningFor(
     isAndroid: CorePlatformSupport.isAndroid,
     androidRunning: _androidRuntime.isRunning,
-    desktopRunning: _windowsRuntime.isRunning,
+    desktopRunning: _desktopRuntime.isRunning,
   );
   String get coreError => _coreError;
   int get upBps => upBpsNotifier.value;
   int get downBps => downBpsNotifier.value;
-  Stream<String> get logStream => _windowsRuntime.logStream;
+  Stream<String> get logStream => _desktopRuntime.logStream;
   List<String> get recentLogs => List.unmodifiable(_logs);
   Duration get connectedDuration => _connectedAt != null
       ? DateTime.now().difference(_connectedAt!)
@@ -88,13 +88,13 @@ class CoreController extends ChangeNotifier {
       }
       return;
     }
-    if (!Platform.isWindows) return;
+    if (!CorePlatformSupport.isDesktop) return;
     if (_sub != null || _logSub != null) return;
 
-    await _windowsRuntime.init();
+    await _desktopRuntime.init();
 
-    _sub = _windowsRuntime.stateStream.listen(_onCoreStateChanged);
-    _logSub = _windowsRuntime.logStream.listen((line) {
+    _sub = _desktopRuntime.stateStream.listen(_onCoreStateChanged);
+    _logSub = _desktopRuntime.logStream.listen((line) {
       final ts = DateTime.now().toLocal().toString().substring(11, 19);
       _logs.add('[$ts] ${SecureLogRedactor.redact(line)}');
       if (_logs.length > _maxLogs) _logs.removeAt(0);
@@ -106,7 +106,7 @@ class CoreController extends ChangeNotifier {
     _stopTrafficMonitor();
     _sub?.cancel();
     _logSub?.cancel();
-    _windowsRuntime.dispose();
+    _desktopRuntime.dispose();
     upBpsNotifier.dispose();
     downBpsNotifier.dispose();
     super.dispose();
@@ -119,13 +119,13 @@ class CoreController extends ChangeNotifier {
       await _androidRuntime.stop();
       return;
     }
-    if (!Platform.isWindows) return;
+    if (!CorePlatformSupport.isDesktop) return;
     _stopTrafficMonitor();
     await _sub?.cancel();
     await _logSub?.cancel();
     _sub = null;
     _logSub = null;
-    _windowsRuntime
+    _desktopRuntime
         .dispose(); // synchronously kills the process + deletes PID file
     try {
       // Exit path: don't wait on the WinInet broadcast — the registry write
@@ -141,12 +141,12 @@ class CoreController extends ChangeNotifier {
   /// No-ops if the process is already running.
   Future<void> startCoreOnly(CoreConnectionRequest request) async {
     if (Platform.isAndroid) return;
-    if (_windowsRuntime.isRunning) return;
+    if (_desktopRuntime.isRunning) return;
     final validNodes = request.validNodes;
     if (validNodes.isEmpty) return;
 
     try {
-      final ok = await _windowsRuntime.start(
+      final ok = await _desktopRuntime.start(
         CoreRuntimeStartPlan(
           request: request,
           overrideNetworkMode: NetworkMode.system,
@@ -173,7 +173,7 @@ class CoreController extends ChangeNotifier {
     if (coreConnecting) return null;
 
     final wasConnected = _status == ConnectionStatus.connected;
-    final hadProcess = _windowsRuntime.isRunning;
+    final hadProcess = _desktopRuntime.isRunning;
     if (!hadProcess) {
       await startCoreOnly(request);
       return null;
@@ -188,7 +188,7 @@ class CoreController extends ChangeNotifier {
     try {
       await ProxySetter.disable(notify: false);
     } catch (_) {}
-    await _windowsRuntime.stop();
+    await _desktopRuntime.stop();
     _markDisconnected();
 
     if (wasConnected) {
@@ -220,7 +220,7 @@ class CoreController extends ChangeNotifier {
       await ProxySetter.disable();
       if (request.networkMode == NetworkMode.tun) {
         // TUN requires a full restart to remove the adapter; stop the process.
-        await _windowsRuntime.stop();
+        await _desktopRuntime.stop();
       }
       // System proxy mode: keep process alive for background latency testing.
       _markDisconnected();
@@ -236,7 +236,7 @@ class CoreController extends ChangeNotifier {
     final selectedTag = request.selectedTag;
 
     // Fast path: core already running in system proxy mode — just enable proxy.
-    if (_windowsRuntime.isRunning &&
+    if (_desktopRuntime.isRunning &&
         request.networkMode == NetworkMode.system) {
       _markConnecting();
       try {
@@ -258,7 +258,7 @@ class CoreController extends ChangeNotifier {
     _markConnecting();
 
     try {
-      final ok = await _windowsRuntime.start(
+      final ok = await _desktopRuntime.start(
         CoreRuntimeStartPlan(request: request),
       );
 
@@ -271,7 +271,7 @@ class CoreController extends ChangeNotifier {
       } else {
         _markError(
           CoreErrorMessageService.processStartFailure(
-            _windowsRuntime.lastError,
+            _desktopRuntime.lastError,
           ),
           notify: false,
         );
@@ -340,8 +340,8 @@ class CoreController extends ChangeNotifier {
       _markDisconnected(notify: false);
       return;
     }
-    if (_windowsRuntime.isRunning) {
-      unawaited(_windowsRuntime.stop());
+    if (_desktopRuntime.isRunning) {
+      unawaited(_desktopRuntime.stop());
       unawaited(ProxySetter.disable());
     }
     _markDisconnected(notify: false);
@@ -367,7 +367,7 @@ class CoreController extends ChangeNotifier {
 
   /// Apply [proxyMode] to the running core via Clash API (no restart needed).
   Future<void> setMode(ProxyMode proxyMode) async {
-    if (!_windowsRuntime.isRunning) return;
+    if (!_desktopRuntime.isRunning) return;
     await SingboxApiClient.setMode(
       proxyMode.clashValue,
       apiPort: SingboxConfig.defaultApiPort,
@@ -376,10 +376,10 @@ class CoreController extends ChangeNotifier {
 
   // ── Proxy repair ──────────────────────────────────────────────────────────
 
-  /// Force-sync the Windows system proxy to match the current core state.
+  /// Force-sync the system proxy to match the current core state.
   Future<void> fixProxy(int proxyPort) async {
-    if (!Platform.isWindows) return;
-    if (_windowsRuntime.isRunning) {
+    if (!CorePlatformSupport.isDesktop) return;
+    if (_desktopRuntime.isRunning) {
       await ProxySetter.enable(port: proxyPort);
     } else {
       await ProxySetter.disable();
@@ -393,8 +393,8 @@ class CoreController extends ChangeNotifier {
     if (Platform.isAndroid) {
       return AndroidCoreRuntime().version();
     }
-    if (!Platform.isWindows) return '当前平台暂未接入核心';
-    return WindowsCoreRuntime.versionString();
+    if (!CorePlatformSupport.isDesktop) return '当前平台暂未接入核心';
+    return DesktopCoreRuntime.versionString();
   }
 
   /// Write the buffered log lines to %LOCALAPPDATA%\Litchi\ and return the path.
@@ -484,7 +484,7 @@ class CoreController extends ChangeNotifier {
     List<NodeModel> nodes, {
     required void Function(int idx, NodeModel updated) onResult,
   }) async {
-    if (nodes.isEmpty || !_windowsRuntime.isRunning) return;
+    if (nodes.isEmpty || !_desktopRuntime.isRunning) return;
 
     final tags = nodes.map(SingboxConfig.nodeTagFor).toList();
     final history = await SingboxApiClient.testAllViaUrltest(
@@ -510,7 +510,7 @@ class CoreController extends ChangeNotifier {
       final wasProtecting = _status == ConnectionStatus.connected;
       _stopTrafficMonitor();
       if (state == CoreState.error) {
-        _markError(_windowsRuntime.lastError, notify: false);
+        _markError(_desktopRuntime.lastError, notify: false);
       } else {
         _markDisconnected(notify: false);
       }

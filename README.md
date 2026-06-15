@@ -1,6 +1,19 @@
 # Litchi Client
 
-Windows desktop VPN/proxy client built with Flutter. Connects to V2Board-compatible panels, manages a local sing-box core, and handles subscriptions, orders, and traffic statistics.
+Cross-platform desktop VPN/proxy client built with Flutter (Windows + macOS).
+Connects to V2Board-compatible panels, manages a local sing-box core, and
+handles subscriptions, orders, and traffic statistics.
+
+## Platform support
+
+| Platform | Core connection | System proxy | Notes |
+|----------|-----------------|--------------|-------|
+| Windows  | ✅ | registry + WinInet | Full support |
+| macOS    | ✅ system-proxy mode | `networksetup` | Requires `sing-box` placed next to the app / in `Contents/Resources`; the App Sandbox is disabled (ships outside the Mac App Store). TUN mode is not wired yet. |
+
+On macOS, set the proxy mode to **system proxy** (TUN needs root + a network
+extension and is not implemented). The bundled `sing-box` binary must be
+executable (`chmod +x`).
 
 ## Tech Stack
 

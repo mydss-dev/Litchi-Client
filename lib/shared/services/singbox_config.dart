@@ -17,15 +17,24 @@ abstract final class SingboxConfig {
   static const int defaultPort    = 7890;
   static const int defaultApiPort = 9090;
 
-  // Rule set files are bundled next to the exe under rules\ in production.
+  static String get _sep => Platform.pathSeparator;
+
+  // Rule set files are bundled next to the executable under rules/ in production
+  // (Windows / Linux), or under Contents/Resources/rules in a macOS .app bundle.
   // During development they won't exist — _ruleSets() falls back to OSS.
-  static String get _rulesDir {
+  static String? _resolveRulesDir() {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
-    return '$exeDir\\rules';
+    final candidates = <String>[
+      '$exeDir${_sep}rules',
+      if (Platform.isMacOS) '$exeDir$_sep..${_sep}Resources${_sep}rules',
+    ];
+    for (final dir in candidates) {
+      if (File('$dir${_sep}geosite-cn.srs').existsSync()) return dir;
+    }
+    return null;
   }
 
-  static bool get _hasLocalRules =>
-      File('$_rulesDir\\geosite-cn.srs').existsSync();
+  static bool get _hasLocalRules => _resolveRulesDir() != null;
 
   /// Random secret generated once per process — required by Clash API.
   static final String apiSecret = _generateSecret();
@@ -247,16 +256,16 @@ abstract final class SingboxConfig {
   // ── Rule sets (rule mode only) ─────────────────────────────────────────────
 
   static List<Map<String, dynamic>> _ruleSets() {
-    if (_hasLocalRules) {
-      // Production: use bundled files next to the exe.
-      final dir = _rulesDir;
+    final dir = _resolveRulesDir();
+    if (dir != null) {
+      // Production: use bundled files next to the executable.
       return [
         {'tag': 'geosite-cn',  'type': 'local', 'format': 'binary',
-         'path': '$dir\\geosite-cn.srs'},
+         'path': '$dir${_sep}geosite-cn.srs'},
         {'tag': 'geoip-cn',    'type': 'local', 'format': 'binary',
-         'path': '$dir\\geoip-cn.srs'},
+         'path': '$dir${_sep}geoip-cn.srs'},
         {'tag': 'geosite-ads', 'type': 'local', 'format': 'binary',
-         'path': '$dir\\geosite-category-ads-all.srs'},
+         'path': '$dir${_sep}geosite-category-ads-all.srs'},
       ];
     }
     // No local rules — rule-sets disabled, routing falls back to global (all via PROXY).
@@ -276,17 +285,33 @@ abstract final class SingboxConfig {
       const JsonEncoder.withIndent('  ').convert(config);
 
   static Future<String> writeConfig(Map<String, dynamic> config) async {
-    final base = Platform.environment['LOCALAPPDATA'] ??
-        Platform.environment['APPDATA'] ??
-        Directory.systemTemp.path;
-    final dir = Directory('$base\\Litchi');
+    final dir = Directory(appDataDir());
     await dir.create(recursive: true);
     final nonce = List.generate(
       8,
       (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
     ).join();
-    final file = File('${dir.path}\\core-$nonce.json');
+    final file = File('${dir.path}${_sep}core-$nonce.json');
     await file.writeAsString(encodeConfig(config));
     return file.path;
+  }
+
+  /// Per-user app-data directory for transient core configs and exported logs.
+  /// Windows: %LOCALAPPDATA%\Litchi · macOS: ~/Library/Application Support/Litchi.
+  static String appDataDir() {
+    if (Platform.isWindows) {
+      final base =
+          Platform.environment['LOCALAPPDATA'] ??
+          Platform.environment['APPDATA'] ??
+          Directory.systemTemp.path;
+      return '$base\\Litchi';
+    }
+    if (Platform.isMacOS) {
+      final home = Platform.environment['HOME'];
+      if (home != null && home.isNotEmpty) {
+        return '$home/Library/Application Support/Litchi';
+      }
+    }
+    return '${Directory.systemTemp.path}${_sep}Litchi';
   }
 }

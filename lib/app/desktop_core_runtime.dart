@@ -6,8 +6,10 @@ import '../shared/services/proxy_setter.dart';
 import '../shared/services/singbox_config.dart';
 import 'core_runtime.dart';
 
-class WindowsCoreRuntime implements CoreRuntime {
-  WindowsCoreRuntime({CoreManager? core}) : _core = core ?? CoreManager();
+/// Desktop (Windows / macOS) core runtime: manages the bundled sing-box
+/// subprocess via [CoreManager] and the system proxy via [ProxySetter].
+class DesktopCoreRuntime implements CoreRuntime {
+  DesktopCoreRuntime({CoreManager? core}) : _core = core ?? CoreManager();
 
   final CoreManager _core;
   String _lastError = '';
@@ -53,7 +55,7 @@ class WindowsCoreRuntime implements CoreRuntime {
 
   static Future<String> versionString() async {
     final exe = CoreManager.findExecutable();
-    if (exe == null) return '未找到 sing-box.exe';
+    if (exe == null) return '未找到 sing-box 核心';
     try {
       final r = await Process.run(exe, ['version']).timeout(
         const Duration(seconds: 3),
