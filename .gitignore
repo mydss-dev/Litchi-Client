@@ -8,6 +8,12 @@ cache.db
 *.pid
 litchi_singbox.pid
 
+# libbox core — built fresh per-build by ensureOfficialLibbox (multi-ABI on CI).
+# Never commit a prebuilt .aar: a stale/partial-ABI copy short-circuits the
+# build and silently ships a core that won't load on real (arm64) phones.
+android/app/libs/libbox.aar
+android/app/libs/libbox-legacy.aar
+
 # Miscellaneous
 *.class
 *.log
