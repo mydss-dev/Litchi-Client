@@ -26,20 +26,29 @@ class CoreManager {
   // ── PID file ──────────────────────────────────────────────────────────────
 
   static File get _pidFile {
-    final tmp = Platform.environment['TEMP'] ??
-        Platform.environment['TMP'] ??
-        Directory.systemTemp.path;
-    return File('$tmp\\litchi_singbox.pid');
+    final tmp = Directory.systemTemp.path;
+    return File('$tmp${Platform.pathSeparator}litchi_singbox.pid');
   }
 
   // ── Executable discovery ──────────────────────────────────────────────────
 
   static String? findExecutable() {
+    final sep = Platform.pathSeparator;
     final exeDir = File(Platform.resolvedExecutable).parent.path;
-    final candidates = [
-      '$exeDir\\sing-box.exe',
-      '$exeDir\\core\\sing-box.exe',
-      '${Platform.environment['LOCALAPPDATA']}\\LitchiClient\\sing-box.exe',
+    final home = Platform.environment['HOME'];
+    final candidates = <String>[
+      if (Platform.isWindows) ...[
+        '$exeDir\\sing-box.exe',
+        '$exeDir\\core\\sing-box.exe',
+        '${Platform.environment['LOCALAPPDATA']}\\LitchiClient\\sing-box.exe',
+      ] else ...[
+        '$exeDir${sep}sing-box',
+        // macOS .app bundle ships the binary under Contents/Resources.
+        '$exeDir$sep..${sep}Resources${sep}sing-box',
+        '$exeDir${sep}core${sep}sing-box',
+        if (home != null && home.isNotEmpty)
+          '$home/Library/Application Support/LitchiClient/sing-box',
+      ],
     ];
     for (final p in candidates) {
       if (File(p).existsSync()) return p;
@@ -134,8 +143,13 @@ class CoreManager {
     } catch (e) {
       final raw = '$e';
       final String msg;
-      if (raw.contains('Access is denied') || raw.contains('access')) {
-        msg = '权限不足，请以管理员身份运行客户端';
+      if (raw.contains('Access is denied') ||
+          raw.contains('Permission denied') ||
+          raw.contains('EACCES') ||
+          raw.contains('access')) {
+        msg = Platform.isMacOS
+            ? '权限不足，请确认 sing-box 具有执行权限（chmod +x）'
+            : '权限不足，请以管理员身份运行客户端';
       } else if (raw.contains('No such file') || raw.contains('系统找不到')) {
         msg = '未找到 sing-box.exe，请检查文件是否存在';
       } else {
@@ -183,6 +197,8 @@ class CoreManager {
 
   /// Kill the specific sing-box process we previously spawned (by saved PID).
   /// This only affects our own process — not any other sing-box instances.
+  /// Uses [Process.killPid], which maps to TerminateProcess on Windows and
+  /// SIGKILL on POSIX, so it is cross-platform.
   static Future<void> _killSavedPid() async {
     try {
       if (!await _pidFile.exists()) return;
@@ -192,11 +208,7 @@ class CoreManager {
         await _pidFile.delete();
         return;
       }
-      await Process.run(
-        'taskkill',
-        ['/F', '/PID', pid.toString()],
-        runInShell: true,
-      );
+      Process.killPid(pid, ProcessSignal.sigkill);
       await _pidFile.delete();
       // Give the OS a moment to release the port.
       await Future.delayed(const Duration(milliseconds: 400));
