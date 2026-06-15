@@ -22,6 +22,7 @@ import 'core_connection_request.dart';
 import 'core_controller.dart';
 import 'core_platform_support.dart';
 import 'core_state_sync_service.dart';
+import 'account_controller.dart';
 import 'invite_controller.dart';
 import 'notices_controller.dart';
 import 'settings_controller.dart';
@@ -49,14 +50,6 @@ enum AuthScreen { login, register, changePassword, forgotPassword }
 /// and [CoreController] respectively. All public getters/setters are preserved
 /// so [AppScope] callers require no changes.
 class AppController extends ChangeNotifier {
-  static const _emptyUser = UserModel(
-    name: '',
-    plan: '',
-    avatarLetter: '',
-    expiry: '',
-  );
-  static const _emptyTraffic = TrafficModel(totalGb: 0, usedGb: 0, remainGb: 0);
-
   AppController() {
     _settings.addListener(notifyListeners);
     _core.addListener(_onCoreChanged);
@@ -64,6 +57,7 @@ class AppController extends ChangeNotifier {
     _wallet.addListener(notifyListeners);
     _invite.addListener(notifyListeners);
     _notices.addListener(notifyListeners);
+    _account.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
@@ -89,8 +83,7 @@ class AppController extends ChangeNotifier {
   // ── Data (mock defaults until API populates) ──────────────────────────────
 
   SubscriptionRuntimeState _subscription = const SubscriptionRuntimeState();
-  UserModel _user = _emptyUser;
-  TrafficModel _traffic = _emptyTraffic;
+  late final AccountController _account = AccountController(_api);
   NodeRuntimeState _nodeState = const NodeRuntimeState();
   List<PlanModel> _plans = const [];
   late final InviteController _invite = InviteController(_api, refreshData);
@@ -230,8 +223,8 @@ class AppController extends ChangeNotifier {
 
   // ── Data getters ──────────────────────────────────────────────────────────
 
-  UserModel get user => _user;
-  TrafficModel get traffic => _traffic;
+  UserModel get user => _account.user;
+  TrafficModel get traffic => _account.traffic;
   bool get autoSelected => _nodeState.autoSelected;
   NodeModel get currentNode => _nodeState.displayNode;
   List<NodeModel> get nodes => _nodeState.nodes;
@@ -386,11 +379,13 @@ class AppController extends ChangeNotifier {
     _wallet.removeListener(notifyListeners);
     _invite.removeListener(notifyListeners);
     _notices.removeListener(notifyListeners);
+    _account.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
     _wallet.dispose();
     _invite.dispose();
     _notices.dispose();
+    _account.dispose();
     super.dispose();
   }
 
@@ -475,28 +470,11 @@ class AppController extends ChangeNotifier {
     required bool remindExpire,
     required bool remindTraffic,
     required bool autoRenewal,
-  }) async {
-    final previous = _user;
-    _user = _user.copyWith(
-      remindExpire: remindExpire,
-      remindTraffic: remindTraffic,
-      autoRenewal: autoRenewal,
-    );
-    notifyListeners();
-
-    try {
-      await _api.updateUserSettings(
-        remindExpire: remindExpire,
-        remindTraffic: remindTraffic,
-        autoRenewal: autoRenewal,
-      );
-      return null;
-    } catch (e) {
-      _user = previous;
-      notifyListeners();
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  }) => _account.updateUserSettings(
+    remindExpire: remindExpire,
+    remindTraffic: remindTraffic,
+    autoRenewal: autoRenewal,
+  );
 
   Future<void> _completeAuthentication(String authData) async {
     await _authSession.applyAuthData(authData);
@@ -536,8 +514,7 @@ class AppController extends ChangeNotifier {
 
   void _resetSessionData() {
     _subscription = const SubscriptionRuntimeState();
-    _user = _emptyUser;
-    _traffic = _emptyTraffic;
+    _account.reset();
     _nodeState = const NodeRuntimeState();
     _plans = const [];
     _invite.reset();
@@ -640,7 +617,7 @@ class AppController extends ChangeNotifier {
     if (snap.nodes != null && snap.nodes!.isNotEmpty) {
       _nodeState = _nodeState.copyWith(nodes: snap.nodes!);
       _restoreLastNode();
-      if (snap.traffic != null) _traffic = snap.traffic!;
+      _account.setTraffic(snap.traffic);
       unawaited(NodeCacheService.save(_nodeState.nodes));
       if (supportsCoreConnection) {
         await _reloadCoreConfig(startIfStopped: true);
@@ -650,8 +627,7 @@ class AppController extends ChangeNotifier {
   }
 
   void _applySnapshot(DataSnapshot snap) {
-    if (snap.user != null) _user = snap.user!;
-    if (snap.traffic != null) _traffic = snap.traffic!;
+    _account.applySnapshot(user: snap.user, traffic: snap.traffic);
     _subscription = _subscription.copyWith(
       subscribeUrl: snap.subscribeUrl,
       dailyUsage: snap.dailyUsage,
