@@ -11,7 +11,13 @@ import '../shared/services/singbox_api_client.dart';
 import '../shared/services/singbox_config.dart';
 
 /// High-level connection lifecycle state exposed to UI.
-enum ConnectionStatus { disconnected, connecting, connected, disconnecting, error }
+enum ConnectionStatus {
+  disconnected,
+  connecting,
+  connected,
+  disconnecting,
+  error,
+}
 
 /// Owns the sing-box process, connection lifecycle, and latency testing.
 ///
@@ -42,6 +48,7 @@ class CoreController extends ChangeNotifier {
   bool get coreConnecting =>
       _status == ConnectionStatus.connecting ||
       _status == ConnectionStatus.disconnecting;
+
   /// True when the sing-box process is alive, regardless of proxy state.
   /// Use this to guard latency tests — the Clash API is available whenever
   /// the process is running, even before the user explicitly connects.
@@ -131,6 +138,7 @@ class CoreController extends ChangeNotifier {
     required ProxyMode proxyMode,
     required String dnsMode,
     required int proxyPort,
+    bool allowInsecure = true,
   }) async {
     if (Platform.isAndroid) return;
     if (_core.isRunning) return;
@@ -145,6 +153,7 @@ class CoreController extends ChangeNotifier {
       proxyMode: proxyMode,
       dnsMode: dnsMode,
       networkMode: NetworkMode.system, // no TUN in background mode
+      allowInsecure: allowInsecure,
     );
     if (config == null) return;
 
@@ -168,6 +177,7 @@ class CoreController extends ChangeNotifier {
     required String dnsMode,
     required int proxyPort,
     NetworkMode networkMode = NetworkMode.system,
+    bool allowInsecure = true,
   }) async {
     if (Platform.isAndroid) {
       if (coreConnecting || _status != ConnectionStatus.connected) return null;
@@ -180,6 +190,7 @@ class CoreController extends ChangeNotifier {
         proxyMode: proxyMode,
         dnsMode: dnsMode,
         proxyPort: proxyPort,
+        allowInsecure: allowInsecure,
       );
     }
 
@@ -194,6 +205,7 @@ class CoreController extends ChangeNotifier {
         proxyMode: proxyMode,
         dnsMode: dnsMode,
         proxyPort: proxyPort,
+        allowInsecure: allowInsecure,
       );
       return null;
     }
@@ -220,6 +232,7 @@ class CoreController extends ChangeNotifier {
         dnsMode: dnsMode,
         proxyPort: proxyPort,
         networkMode: networkMode,
+        allowInsecure: allowInsecure,
       );
     }
 
@@ -229,6 +242,7 @@ class CoreController extends ChangeNotifier {
       proxyMode: proxyMode,
       dnsMode: dnsMode,
       proxyPort: proxyPort,
+      allowInsecure: allowInsecure,
     );
     return null;
   }
@@ -247,6 +261,7 @@ class CoreController extends ChangeNotifier {
     required String dnsMode,
     required int proxyPort,
     NetworkMode networkMode = NetworkMode.system,
+    bool allowInsecure = true,
   }) async {
     if (Platform.isAndroid) {
       return _toggleAndroidConnection(
@@ -255,6 +270,7 @@ class CoreController extends ChangeNotifier {
         proxyMode: proxyMode,
         dnsMode: dnsMode,
         proxyPort: proxyPort,
+        allowInsecure: allowInsecure,
       );
     }
 
@@ -319,6 +335,7 @@ class CoreController extends ChangeNotifier {
       proxyMode: proxyMode,
       dnsMode: dnsMode,
       networkMode: networkMode,
+      allowInsecure: allowInsecure,
     );
 
     if (config == null) {
@@ -369,6 +386,7 @@ class CoreController extends ChangeNotifier {
     required ProxyMode proxyMode,
     required String dnsMode,
     required int proxyPort,
+    bool allowInsecure = true,
   }) async {
     if (coreConnecting) return null;
 
@@ -399,6 +417,7 @@ class CoreController extends ChangeNotifier {
       proxyMode: proxyMode,
       dnsMode: dnsMode,
       networkMode: NetworkMode.tun,
+      allowInsecure: allowInsecure,
     );
 
     if (config == null) {
@@ -456,16 +475,16 @@ class CoreController extends ChangeNotifier {
   /// Switches the active proxy at runtime without restarting the core.
   /// Returns true if the Clash API accepted the change.
   Future<bool> switchNode(NodeModel node) => SingboxApiClient.switchProxy(
-        SingboxConfig.nodeTagFor(node),
-        apiPort: SingboxConfig.defaultApiPort,
-      );
+    SingboxConfig.nodeTagFor(node),
+    apiPort: SingboxConfig.defaultApiPort,
+  );
 
   /// Switches the PROXY selector to the urltest outbound (自动选择).
   /// sing-box then picks the fastest node internally based on real latency.
   Future<bool> switchToAuto() => SingboxApiClient.switchProxy(
-        '自动选择',
-        apiPort: SingboxConfig.defaultApiPort,
-      );
+    '自动选择',
+    apiPort: SingboxConfig.defaultApiPort,
+  );
 
   // ── Mode switching ────────────────────────────────────────────────────────
 
@@ -517,7 +536,8 @@ class CoreController extends ChangeNotifier {
   Future<String?> exportLogs() async {
     if (_logs.isEmpty) return null;
     try {
-      final base = Platform.environment['LOCALAPPDATA'] ??
+      final base =
+          Platform.environment['LOCALAPPDATA'] ??
           Platform.environment['APPDATA'] ??
           Directory.systemTemp.path;
       final dir = Directory('$base\\Litchi');
@@ -540,14 +560,15 @@ class CoreController extends ChangeNotifier {
 
   void _startTrafficMonitor() {
     _stopTrafficMonitor();
-    _trafficSub = SingboxApiClient.trafficStream(
-      apiPort: SingboxConfig.defaultApiPort,
-    ).listen((t) {
-      downBpsNotifier.value = t.downBps;
-      upBpsNotifier.value = t.upBps;
-      // Intentionally no notifyListeners() — speed widgets use
-      // ValueListenableBuilder, so the global rebuild is avoided.
-    });
+    _trafficSub =
+        SingboxApiClient.trafficStream(
+          apiPort: SingboxConfig.defaultApiPort,
+        ).listen((t) {
+          downBpsNotifier.value = t.downBps;
+          upBpsNotifier.value = t.upBps;
+          // Intentionally no notifyListeners() — speed widgets use
+          // ValueListenableBuilder, so the global rebuild is avoided.
+        });
   }
 
   void _stopTrafficMonitor() {

@@ -14,8 +14,16 @@ import 'outbound_parser.dart';
 /// - Clash-compatible REST API enables runtime node switching without restart.
 /// - Rule mode uses remote rule_set files (OSS) for CN bypass + ad blocking.
 abstract final class SingboxConfig {
-  static const int defaultPort    = 7890;
+  static const int defaultPort = 7890;
   static const int defaultApiPort = 9090;
+
+  static String appDataDir() {
+    final base =
+        Platform.environment['LOCALAPPDATA'] ??
+        Platform.environment['APPDATA'] ??
+        Directory.systemTemp.path;
+    return '$base\\Litchi';
+  }
 
   // Rule set files are bundled next to the exe under rules\ in production.
   // During development they won't exist — _ruleSets() falls back to OSS.
@@ -52,18 +60,30 @@ abstract final class SingboxConfig {
   static Map<String, dynamic>? buildFullConfig(
     List<NodeModel> nodes, {
     required String selectedTag,
-    int port        = defaultPort,
-    int apiPort     = defaultApiPort,
-    ProxyMode proxyMode       = ProxyMode.rule,
-    String dnsMode            = '系统 DNS',
-    NetworkMode networkMode   = NetworkMode.system,
+    int port = defaultPort,
+    int apiPort = defaultApiPort,
+    ProxyMode proxyMode = ProxyMode.rule,
+    String dnsMode = '系统 DNS',
+    NetworkMode networkMode = NetworkMode.system,
+    bool allowInsecure = true,
   }) {
     final outbounds = <Map<String, dynamic>>[];
-    final tags      = <String>[];
+    final tags = <String>[];
 
     for (final n in nodes) {
-      if (n.rawUri.isEmpty) continue;
-      final ob = OutboundParser.parse(n.rawUri, tag: _nodeTag(n));
+      final ob = n.rawUri.isNotEmpty
+          ? OutboundParser.parse(
+              n.rawUri,
+              tag: _nodeTag(n),
+              allowInsecure: allowInsecure,
+            )
+          : (n.rawOutbound == null
+                ? null
+                : OutboundParser.parseClashProxy(
+                    n.rawOutbound!,
+                    tag: _nodeTag(n),
+                    allowInsecure: allowInsecure,
+                  ));
       if (ob == null) continue;
       outbounds.add(ob);
       tags.add(_nodeTag(n));
@@ -73,8 +93,7 @@ abstract final class SingboxConfig {
 
     // Determine the active outbound for the selector's default.
     // Empty / unknown selectedTag → start with auto-select.
-    final defaultOutbound =
-        tags.contains(selectedTag) ? selectedTag : '自动选择';
+    final defaultOutbound = tags.contains(selectedTag) ? selectedTag : '自动选择';
 
     // ── Route & rule_set ────────────────────────────────────────────────────
     final String routeFinal;
@@ -86,7 +105,10 @@ abstract final class SingboxConfig {
         routeFinal = 'PROXY';
         routeRules = [
           if (networkMode == NetworkMode.tun)
-            {'inbound': ['tun-in'], 'action': 'sniff'},
+            {
+              'inbound': ['tun-in'],
+              'action': 'sniff',
+            },
           {'protocol': 'dns', 'action': 'hijack-dns'},
           {'ip_is_private': true, 'outbound': 'direct'},
         ];
@@ -96,7 +118,10 @@ abstract final class SingboxConfig {
         routeFinal = 'direct';
         routeRules = [
           if (networkMode == NetworkMode.tun)
-            {'inbound': ['tun-in'], 'action': 'sniff'},
+            {
+              'inbound': ['tun-in'],
+              'action': 'sniff',
+            },
           {'protocol': 'dns', 'action': 'hijack-dns'},
         ];
         ruleSets = [];
@@ -105,17 +130,22 @@ abstract final class SingboxConfig {
         routeFinal = 'PROXY';
         routeRules = [
           if (networkMode == NetworkMode.tun)
-            {'inbound': ['tun-in'], 'action': 'sniff'},
+            {
+              'inbound': ['tun-in'],
+              'action': 'sniff',
+            },
           {'protocol': 'dns', 'action': 'hijack-dns'},
           if (_hasLocalRules) ...[
             {'rule_set': 'geosite-ads', 'outbound': 'block'},
-            {'rule_set': ['geosite-cn', 'geoip-cn'], 'outbound': 'direct'},
+            {
+              'rule_set': ['geosite-cn', 'geoip-cn'],
+              'outbound': 'direct',
+            },
           ],
           {'ip_is_private': true, 'outbound': 'direct'},
         ];
         ruleSets = _ruleSets();
     }
-
 
     // ── DNS servers ─────────────────────────────────────────────────────────
     // cn-dns: always present; used for CN domains and routing-engine queries.
@@ -124,10 +154,18 @@ abstract final class SingboxConfig {
     final String dohServer;
     switch (dnsMode) {
       case 'Google':
-        remoteDnsServer = {'tag': 'remote-dns', 'type': 'https', 'server': '8.8.8.8'};
+        remoteDnsServer = {
+          'tag': 'remote-dns',
+          'type': 'https',
+          'server': '8.8.8.8',
+        };
         dohServer = '8.8.8.8';
       default: // '系统 DNS' and 'Cloudflare' both use Cloudflare DoH
-        remoteDnsServer = {'tag': 'remote-dns', 'type': 'https', 'server': '1.1.1.1'};
+        remoteDnsServer = {
+          'tag': 'remote-dns',
+          'type': 'https',
+          'server': '1.1.1.1',
+        };
         dohServer = '1.1.1.1';
     }
 
@@ -138,11 +176,11 @@ abstract final class SingboxConfig {
     // rule_set that isn't defined makes sing-box exit with FATAL at startup.
     final List<Map<String, dynamic>> dnsRules =
         proxyMode == ProxyMode.rule && _hasLocalRules
-            ? [
-                // CN-domain queries stay on CN DNS (avoids proxy DNS for local sites).
-                {'rule_set': 'geosite-cn', 'server': 'cn-dns'},
-              ]
-            : [];
+        ? [
+            // CN-domain queries stay on CN DNS (avoids proxy DNS for local sites).
+            {'rule_set': 'geosite-cn', 'server': 'cn-dns'},
+          ]
+        : [];
 
     // ── Inbounds ─────────────────────────────────────────────────────────────
     final inbounds = <Map<String, dynamic>>[
@@ -216,12 +254,15 @@ abstract final class SingboxConfig {
         },
         ...outbounds,
         {'type': 'direct', 'tag': 'direct'},
-        {'type': 'block',  'tag': 'block'},
+        {'type': 'block', 'tag': 'block'},
       ],
       'route': {
         // DoH server IPs must go direct to avoid circular DNS → PROXY → DNS.
         'rules': [
-          {'ip_cidr': [dohServer, '223.5.5.5'], 'outbound': 'direct'},
+          {
+            'ip_cidr': [dohServer, '223.5.5.5'],
+            'outbound': 'direct',
+          },
           ...routeRules,
         ],
         if (ruleSets.isNotEmpty) 'rule_set': ruleSets,
@@ -239,12 +280,24 @@ abstract final class SingboxConfig {
       // Production: use bundled files next to the exe.
       final dir = _rulesDir;
       return [
-        {'tag': 'geosite-cn',  'type': 'local', 'format': 'binary',
-         'path': '$dir\\geosite-cn.srs'},
-        {'tag': 'geoip-cn',    'type': 'local', 'format': 'binary',
-         'path': '$dir\\geoip-cn.srs'},
-        {'tag': 'geosite-ads', 'type': 'local', 'format': 'binary',
-         'path': '$dir\\geosite-category-ads-all.srs'},
+        {
+          'tag': 'geosite-cn',
+          'type': 'local',
+          'format': 'binary',
+          'path': '$dir\\geosite-cn.srs',
+        },
+        {
+          'tag': 'geoip-cn',
+          'type': 'local',
+          'format': 'binary',
+          'path': '$dir\\geoip-cn.srs',
+        },
+        {
+          'tag': 'geosite-ads',
+          'type': 'local',
+          'format': 'binary',
+          'path': '$dir\\geosite-category-ads-all.srs',
+        },
       ];
     }
     // No local rules — rule-sets disabled, routing falls back to global (all via PROXY).
@@ -264,10 +317,7 @@ abstract final class SingboxConfig {
       const JsonEncoder.withIndent('  ').convert(config);
 
   static Future<String> writeConfig(Map<String, dynamic> config) async {
-    final base = Platform.environment['LOCALAPPDATA'] ??
-        Platform.environment['APPDATA'] ??
-        Directory.systemTemp.path;
-    final dir = Directory('$base\\Litchi');
+    final dir = Directory(appDataDir());
     await dir.create(recursive: true);
     final file = File('${dir.path}\\core.json');
     await file.writeAsString(encodeConfig(config));

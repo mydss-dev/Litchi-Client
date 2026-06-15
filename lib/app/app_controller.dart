@@ -14,6 +14,7 @@ import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
 import '../shared/services/settings_service.dart';
 import '../shared/services/token_storage.dart';
+import '../shared/services/tcp_ping_service.dart';
 import '../shared/services/update_service.dart';
 import 'core_controller.dart';
 import 'settings_controller.dart';
@@ -125,6 +126,8 @@ class AppController extends ChangeNotifier {
   NetworkMode get networkMode => _settings.networkMode;
   String get dnsMode => _settings.dnsMode;
   int get proxyPort => _settings.proxyPort;
+  bool get killSwitch => _settings.killSwitch;
+  bool get allowInsecureNodes => _settings.allowInsecureNodes;
 
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
@@ -141,6 +144,15 @@ class AppController extends ChangeNotifier {
   void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
   void setDevMode(bool v) => _settings.setDevMode(v);
   void setLanguage(String v) => _settings.setLanguage(v);
+  void setKillSwitch(bool v) => _settings.setKillSwitch(v);
+
+  void setAllowInsecureNodes(bool v) {
+    final old = _settings.allowInsecureNodes;
+    _settings.setAllowInsecureNodes(v);
+    if (_settings.allowInsecureNodes != old) {
+      unawaited(_reloadCoreConfig());
+    }
+  }
 
   void setProxyMode(ProxyMode v) {
     final old = _settings.proxyMode;
@@ -561,6 +573,7 @@ class AppController extends ChangeNotifier {
       dnsMode: _settings.dnsMode,
       proxyPort: _settings.proxyPort,
       networkMode: _settings.networkMode,
+      allowInsecure: _settings.allowInsecureNodes,
     );
   }
 
@@ -861,6 +874,7 @@ class AppController extends ChangeNotifier {
       proxyMode: _settings.proxyMode,
       dnsMode: _settings.dnsMode,
       proxyPort: _settings.proxyPort,
+      allowInsecure: _settings.allowInsecureNodes,
     );
     if (_core.coreProcessRunning && runLatencyTest) {
       // Small delay to let the Clash API initialise before testing.
@@ -881,6 +895,7 @@ class AppController extends ChangeNotifier {
       dnsMode: _settings.dnsMode,
       proxyPort: _settings.proxyPort,
       networkMode: _settings.networkMode,
+      allowInsecure: _settings.allowInsecureNodes,
     );
     if (error != null && error.isNotEmpty) {
       _startupMessage = error;
@@ -900,8 +915,27 @@ class AppController extends ChangeNotifier {
     if (!supportsCoreConnection) return;
     if (_nodes.isEmpty) return;
 
+    // On Android before connecting, the sing-box core cannot expose the Clash
+    // API yet, so we fall back to a direct TCP handshake ping per node.
+    if (Platform.isAndroid && !coreProcessRunning) {
+      _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
+      notifyListeners();
+
+      final snapshot = List<NodeModel>.from(_nodes);
+      for (var i = 0; i < snapshot.length; i++) {
+        final node = snapshot[i];
+        final ms = await TcpPingService.ping(node.server, node.port);
+        if (i < _nodes.length) {
+          final list = List<NodeModel>.from(_nodes);
+          list[i] = node.copyWith(latency: ms ?? 9999);
+          _nodes = list;
+          notifyListeners();
+        }
+      }
+      return;
+    }
+
     if (!coreProcessRunning) {
-      if (Platform.isAndroid && !coreRunning) return;
       if (!Platform.isAndroid) {
         await _startCoreInBackground();
       }
@@ -946,6 +980,13 @@ class AppScope extends InheritedNotifier<AppController> {
 
   static AppController of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
+    assert(scope?.notifier != null, 'AppScope not found in widget tree');
+    return scope!.notifier!;
+  }
+
+  static AppController read(BuildContext context) {
+    final element = context.getElementForInheritedWidgetOfExactType<AppScope>();
+    final scope = element?.widget as AppScope?;
     assert(scope?.notifier != null, 'AppScope not found in widget tree');
     return scope!.notifier!;
   }

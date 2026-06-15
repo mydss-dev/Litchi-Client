@@ -71,12 +71,13 @@ class _AuthArea extends StatelessWidget {
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final availableHeight = constraints.hasBoundedHeight
+                ? (constraints.maxHeight - 44).clamp(0.0, double.infinity)
+                : 0.0;
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
               child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 44,
-                ),
+                constraints: BoxConstraints(minHeight: availableHeight),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 400),
