@@ -2,7 +2,6 @@ import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../app/app_controller.dart';
 import '../../../app/core_controller.dart' show ConnectionStatus;
 import '../../../shared/models/app_models.dart';
 import '../../../shared/theme/app_colors.dart';
@@ -11,6 +10,7 @@ import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_shadows.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_selector.dart';
 import 'desktop_node_picker_dialog.dart';
 
 class ConnectionHeroCard extends StatelessWidget {
@@ -28,112 +28,125 @@ class ConnectionHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final ctrl = AppScope.of(context);
-    final node = ctrl.currentNode;
-    final hasNode = node.name.isNotEmpty;
+    // Rebuild on node / proxy-mode / selection changes only (latency updates
+    // land here via currentNode). status + elapsed are prop-driven by the page.
+    return AppSelector<(NodeModel, bool, ProxyMode, bool)>(
+      selector: (ctrl) => (
+        ctrl.currentNode,
+        ctrl.nodes.isNotEmpty,
+        ctrl.proxyMode,
+        ctrl.autoSelected,
+      ),
+      builder: (context, slice, _) {
+        final (node, hasNodes, proxyMode, autoSelected) = slice;
+        final hasNode = node.name.isNotEmpty;
 
-    return AppCard(
-      radius: AppRadius.xl,
-      height: 228,
-      padding: const EdgeInsets.fromLTRB(22, 22, 20, 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        return AppCard(
+          radius: AppRadius.xl,
+          height: 228,
+          padding: const EdgeInsets.fromLTRB(22, 22, 20, 20),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 6,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        hasNode ? '当前节点' : '节点状态',
-                        style: AppTextStyles.heroTitle.copyWith(
-                          color: c.textPrimary,
-                          fontSize: 21,
-                        ),
-                      ),
-                    ),
-                    _NodeInlineAction(
-                      hasNodes: ctrl.nodes.isNotEmpty,
-                      onTap: () => showDesktopNodePicker(context),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                _ConnectionStateLabel(status: status),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _HeroNodeIcon(node: node),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            hasNode ? node.name : '暂无可用节点',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            hasNode ? '当前节点' : '节点状态',
                             style: AppTextStyles.heroTitle.copyWith(
                               color: c.textPrimary,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
+                              fontSize: 21,
                             ),
                           ),
-                          if (!hasNode) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              '登录后会自动拉取订阅节点',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.caption.copyWith(
-                                color: c.textMuted,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                        ),
+                        _NodeInlineAction(
+                          hasNodes: hasNodes,
+                          onTap: () => showDesktopNodePicker(context),
+                        ),
+                      ],
                     ),
+                    const Spacer(),
+                    _ConnectionStateLabel(status: status),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _HeroNodeIcon(node: node),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                hasNode ? node.name : '暂无可用节点',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.heroTitle.copyWith(
+                                  color: c.textPrimary,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              if (!hasNode) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  '登录后会自动拉取订阅节点',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: c.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _NodeMetaRow(
+                      node: node,
+                      proxyMode: proxyMode,
+                      automatic: autoSelected,
+                    ),
+                    const Spacer(),
                   ],
                 ),
-                const SizedBox(height: 14),
-                _NodeMetaRow(
-                  node: node,
-                  proxyMode: ctrl.proxyMode,
-                  automatic: ctrl.autoSelected,
+              ),
+              Container(
+                width: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+                color: c.softBorder,
+              ),
+              Expanded(
+                flex: 4,
+                child: Column(
+                  children: [
+                    const Spacer(),
+                    _PowerButton(status: status, onTap: onToggle),
+                    const SizedBox(height: 12),
+                    _ConnectionActionText(status: status),
+                    if (status == ConnectionStatus.connected) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        elapsedLabel,
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textMuted,
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                  ],
                 ),
-                const Spacer(),
-              ],
-            ),
+              ),
+            ],
           ),
-          Container(
-            width: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-            color: c.softBorder,
-          ),
-          Expanded(
-            flex: 4,
-            child: Column(
-              children: [
-                const Spacer(),
-                _PowerButton(status: status, onTap: onToggle),
-                const SizedBox(height: 12),
-                _ConnectionActionText(status: status),
-                if (status == ConnectionStatus.connected) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    elapsedLabel,
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                  ),
-                ],
-                const Spacer(),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

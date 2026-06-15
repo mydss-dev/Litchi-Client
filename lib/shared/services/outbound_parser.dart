@@ -6,15 +6,25 @@ import 'dart:convert';
 /// All methods are stateless — no I/O, no side effects.
 abstract final class OutboundParser {
   /// Returns a sing-box outbound map for [uri], or null if unsupported.
-  static Map<String, dynamic>? parse(String uri, {required String tag}) {
+  ///
+  /// When [allowInsecure] is false, any `tls.insecure` flag the node requested
+  /// is stripped so certificate validation is always enforced.
+  static Map<String, dynamic>? parse(
+    String uri, {
+    required String tag,
+    bool allowInsecure = true,
+  }) {
     try {
-      if (uri.startsWith('vmess://'))    return _vmess(uri, tag: tag);
-      if (uri.startsWith('vless://'))    return _vless(uri, tag: tag);
-      if (uri.startsWith('trojan://'))   return _trojan(uri, tag: tag);
-      if (uri.startsWith('ss://'))       return _ss(uri, tag: tag);
-      if (uri.startsWith('hysteria2://') || uri.startsWith('hy2://')) {
-        return _hysteria2(uri, tag: tag);
-      }
+      final out = switch (true) {
+        _ when uri.startsWith('vmess://') => _vmess(uri, tag: tag),
+        _ when uri.startsWith('vless://') => _vless(uri, tag: tag),
+        _ when uri.startsWith('trojan://') => _trojan(uri, tag: tag),
+        _ when uri.startsWith('ss://') => _ss(uri, tag: tag),
+        _ when uri.startsWith('hysteria2://') || uri.startsWith('hy2://') =>
+          _hysteria2(uri, tag: tag),
+        _ => null,
+      };
+      return _applyTlsPolicy(out, allowInsecure);
     } catch (_) {}
     return null;
   }
@@ -23,10 +33,11 @@ abstract final class OutboundParser {
   static Map<String, dynamic>? parseClashProxy(
     Map<String, dynamic> proxy, {
     required String tag,
+    bool allowInsecure = true,
   }) {
     try {
       final type = proxy['type']?.toString().toLowerCase() ?? '';
-      return switch (type) {
+      final out = switch (type) {
         'vmess' => _vmessClash(proxy, tag: tag),
         'vless' => _vlessClash(proxy, tag: tag),
         'trojan' => _trojanClash(proxy, tag: tag),
@@ -34,9 +45,22 @@ abstract final class OutboundParser {
         'hysteria2' || 'hy2' => _hysteria2Clash(proxy, tag: tag),
         _ => null,
       };
+      return _applyTlsPolicy(out, allowInsecure);
     } catch (_) {
       return null;
     }
+  }
+
+  /// Enforces the certificate-validation policy: drops `tls.insecure` when
+  /// insecure nodes are disallowed.
+  static Map<String, dynamic>? _applyTlsPolicy(
+    Map<String, dynamic>? out,
+    bool allowInsecure,
+  ) {
+    if (out == null || allowInsecure) return out;
+    final tls = out['tls'];
+    if (tls is Map) tls.remove('insecure');
+    return out;
   }
 
   // ── VMess ─────────────────────────────────────────────────────────────────

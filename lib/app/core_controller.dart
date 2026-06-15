@@ -48,6 +48,11 @@ class CoreController extends ChangeNotifier {
   final _logs = <String>[];
   static const _maxLogs = 500;
 
+  /// When true, an unexpected core termination engages the proxy kill-switch
+  /// (fail-closed) instead of reverting to a direct connection. Kept in sync by
+  /// [AppController] from the persisted user setting.
+  bool killSwitchEnabled = false;
+
   ConnectionStatus get connectionStatus => _status;
   bool get isRunning => _status == ConnectionStatus.connected;
   bool get coreRunning => _status == ConnectionStatus.connected;
@@ -502,13 +507,20 @@ class CoreController extends ChangeNotifier {
     if ((state == CoreState.error || state == CoreState.stopped) &&
         (_status == ConnectionStatus.connected ||
             _status == ConnectionStatus.connecting)) {
+      final wasProtecting = _status == ConnectionStatus.connected;
       _stopTrafficMonitor();
       if (state == CoreState.error) {
         _markError(_windowsRuntime.lastError, notify: false);
       } else {
         _markDisconnected(notify: false);
       }
-      unawaited(ProxySetter.disable());
+      // Fail-closed: if we were actively tunnelling and the user enabled the
+      // kill-switch, blackhole the proxy so traffic can't leak directly.
+      if (killSwitchEnabled && wasProtecting) {
+        unawaited(ProxySetter.engageKillSwitch());
+      } else {
+        unawaited(ProxySetter.disable());
+      }
       notifyListeners();
     }
   }

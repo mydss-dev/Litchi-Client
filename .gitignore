@@ -3,6 +3,11 @@ installer_output/
 # OSS config (contains api_base, keep off git)
 oss_config.json
 
+# sing-box runtime cache (BoltDB) — leaks DNS/fakeip history, never commit
+cache.db
+*.pid
+litchi_singbox.pid
+
 # Miscellaneous
 *.class
 *.log

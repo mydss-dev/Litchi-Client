@@ -49,6 +49,8 @@ dependencies:
   shared_preferences: ^2.3.3
   # Platform secure storage for tokens and remembered credentials
   flutter_secure_storage: ^10.3.1
+  # FFI for native Win32 DPAPI (CryptProtectData) — no PowerShell shell-out
+  ffi: ^2.1.0
   # Ed25519 signature verification for remote OSS config
   cryptography: ^2.7.0
   # Robust YAML parser for Clash subscription format

@@ -6,28 +6,26 @@ import 'package:flutter/material.dart';
 import '../shared/config/app_config.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
-import '../shared/models/invite_data_state.dart';
-import '../shared/models/node_runtime_state.dart';
-import '../shared/models/subscription_runtime_state.dart';
-import '../shared/models/wallet_data_state.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/auth_session_service.dart';
-import '../shared/services/commission_validation_service.dart';
 import '../shared/services/data_load_error_service.dart';
 import '../shared/services/data_loader.dart';
-import '../shared/services/invite_link_service.dart';
 import '../shared/services/network_error_classifier.dart';
 import '../shared/services/node_cache_service.dart';
-import '../shared/services/node_selection_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
-import '../shared/services/settings_service.dart';
 import '../shared/services/update_service.dart';
 import 'core_connection_request.dart';
 import 'core_controller.dart';
 import 'core_platform_support.dart';
 import 'core_state_sync_service.dart';
+import 'account_controller.dart';
+import 'invite_controller.dart';
+import 'node_controller.dart';
+import 'notices_controller.dart';
 import 'settings_controller.dart';
+import 'subscription_controller.dart';
+import 'wallet_controller.dart';
 
 /// Top-level navigation destinations shown in the sidebar.
 enum AppPage {
@@ -51,18 +49,16 @@ enum AuthScreen { login, register, changePassword, forgotPassword }
 /// and [CoreController] respectively. All public getters/setters are preserved
 /// so [AppScope] callers require no changes.
 class AppController extends ChangeNotifier {
-  static const _emptyUser = UserModel(
-    name: '',
-    plan: '',
-    avatarLetter: '',
-    expiry: '',
-  );
-  static const _emptyTraffic = TrafficModel(totalGb: 0, usedGb: 0, remainGb: 0);
-
   AppController() {
     _settings.addListener(notifyListeners);
     _core.addListener(_onCoreChanged);
     _core.addListener(notifyListeners);
+    _wallet.addListener(notifyListeners);
+    _invite.addListener(notifyListeners);
+    _notices.addListener(notifyListeners);
+    _account.addListener(notifyListeners);
+    _subscription.addListener(notifyListeners);
+    _nodes.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
@@ -87,17 +83,15 @@ class AppController extends ChangeNotifier {
 
   // ── Data (mock defaults until API populates) ──────────────────────────────
 
-  SubscriptionRuntimeState _subscription = const SubscriptionRuntimeState();
-  UserModel _user = _emptyUser;
-  TrafficModel _traffic = _emptyTraffic;
-  NodeRuntimeState _nodeState = const NodeRuntimeState();
+  final SubscriptionController _subscription = SubscriptionController();
+  late final AccountController _account = AccountController(_api);
+  final NodeController _nodes = NodeController();
   List<PlanModel> _plans = const [];
-  InviteDataState _invite = const InviteDataState();
-  WalletDataState _wallet = const WalletDataState();
+  late final InviteController _invite = InviteController(_api, refreshData);
+  late final WalletController _wallet = WalletController(_api, refreshData);
   String? _dataLoadError;
   String? _startupMessage;
-  List<NoticeModel> _notices = [];
-  int _lastSeenNoticeId = 0;
+  final NoticesController _notices = NoticesController();
   UpdateInfo? _updateInfo;
   RegisterConfig _registerConfig = const RegisterConfig();
   bool _disposed = false;
@@ -114,6 +108,8 @@ class AppController extends ChangeNotifier {
   NetworkMode get networkMode => _settings.networkMode;
   String get dnsMode => _settings.dnsMode;
   int get proxyPort => _settings.proxyPort;
+  bool get killSwitch => _settings.killSwitch;
+  bool get allowInsecureNodes => _settings.allowInsecureNodes;
 
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
@@ -158,6 +154,20 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  void setKillSwitch(bool v) {
+    _settings.setKillSwitch(v);
+    _core.killSwitchEnabled = _settings.killSwitch;
+  }
+
+  void setAllowInsecureNodes(bool v) {
+    final old = _settings.allowInsecureNodes;
+    _settings.setAllowInsecureNodes(v);
+    if (_settings.allowInsecureNodes != old) {
+      // The flag changes the generated outbound config — rebuild the core.
+      unawaited(_reloadCoreConfig());
+    }
+  }
+
   // ── Core delegates ─────────────────────────────────────────────────────────
 
   ConnectionStatus get connectionStatus => _core.connectionStatus;
@@ -177,12 +187,13 @@ class AppController extends ChangeNotifier {
       CorePlatformSupport.supportsCurrentPlatform;
 
   CoreConnectionRequest get _connectionRequest => CoreConnectionRequest(
-    nodes: _nodeState.nodes,
+    nodes: _nodes.nodes,
     currentNode: currentNode,
     proxyMode: _settings.proxyMode,
     dnsMode: _settings.dnsMode,
     proxyPort: _settings.proxyPort,
     networkMode: _settings.networkMode,
+    allowInsecure: _settings.allowInsecureNodes,
   );
 
   /// Graceful shutdown: kills core + disables system proxy. Call before exit.
@@ -213,11 +224,11 @@ class AppController extends ChangeNotifier {
 
   // ── Data getters ──────────────────────────────────────────────────────────
 
-  UserModel get user => _user;
-  TrafficModel get traffic => _traffic;
-  bool get autoSelected => _nodeState.autoSelected;
-  NodeModel get currentNode => _nodeState.displayNode;
-  List<NodeModel> get nodes => _nodeState.nodes;
+  UserModel get user => _account.user;
+  TrafficModel get traffic => _account.traffic;
+  bool get autoSelected => _nodes.autoSelected;
+  NodeModel get currentNode => _nodes.currentNode;
+  List<NodeModel> get nodes => _nodes.nodes;
   List<PlanModel> get plans => _plans;
   List<InviteCodeModel> get inviteCodes => _invite.codes;
   String get inviteCode => _invite.code;
@@ -255,23 +266,18 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<NoticeModel> get notices => _notices;
-  bool get hasUnreadNotice =>
-      _notices.isNotEmpty && _notices.first.id > _lastSeenNoticeId;
+  List<NoticeModel> get notices => _notices.notices;
+  bool get hasUnreadNotice => _notices.hasUnreadNotice;
 
-  void markNoticeRead() {
-    if (_notices.isEmpty) return;
-    _lastSeenNoticeId = _notices.first.id;
-    SettingsService.setLastSeenNoticeId(_lastSeenNoticeId);
-    notifyListeners();
-  }
+  void markNoticeRead() => _notices.markRead();
 
   // ── Initialization ────────────────────────────────────────────────────────
 
   Future<void> init() async {
     await _settings.load();
-    _lastSeenNoticeId = await SettingsService.loadLastSeenNoticeId();
+    await _notices.loadLastSeen();
     await _core.init();
+    _core.killSwitchEnabled = _settings.killSwitch;
 
     _apiClient.configure(AppConfig.apiBase);
     _apiClient.onSessionExpired = logout;
@@ -292,7 +298,7 @@ class AppController extends ChangeNotifier {
 
     final cached = await NodeCacheService.load();
     if (cached.isNotEmpty) {
-      _nodeState = _nodeState.copyWith(nodes: cached);
+      _nodes.setNodes(cached);
       _restoreLastNode();
       if (supportsCoreConnection) {
         unawaited(_startCoreInBackground(runLatencyTest: true));
@@ -339,7 +345,7 @@ class AppController extends ChangeNotifier {
     } catch (e) {
       if (NetworkErrorClassifier.isNetworkError(e)) {
         _dataLoadError = DataLoadErrorService.offlineMessage(
-          hasCachedNodes: _nodeState.nodes.isNotEmpty,
+          hasCachedNodes: _nodes.isNotEmpty,
         );
         if (!_disposed) notifyListeners();
         return;
@@ -371,8 +377,20 @@ class AppController extends ChangeNotifier {
     _settings.removeListener(notifyListeners);
     _core.removeListener(_onCoreChanged);
     _core.removeListener(notifyListeners);
+    _wallet.removeListener(notifyListeners);
+    _invite.removeListener(notifyListeners);
+    _notices.removeListener(notifyListeners);
+    _account.removeListener(notifyListeners);
+    _subscription.removeListener(notifyListeners);
+    _nodes.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
+    _wallet.dispose();
+    _invite.dispose();
+    _notices.dispose();
+    _account.dispose();
+    _subscription.dispose();
+    _nodes.dispose();
     super.dispose();
   }
 
@@ -391,10 +409,7 @@ class AppController extends ChangeNotifier {
       unawaited(testLatencies());
     }
     if (effect.clearLatency) {
-      _nodeState = _nodeState.copyWith(
-        nodes: NodeSelectionService.clearLatency(_nodeState.nodes),
-      );
-      notifyListeners();
+      _nodes.clearLatency();
     }
   }
 
@@ -457,28 +472,11 @@ class AppController extends ChangeNotifier {
     required bool remindExpire,
     required bool remindTraffic,
     required bool autoRenewal,
-  }) async {
-    final previous = _user;
-    _user = _user.copyWith(
-      remindExpire: remindExpire,
-      remindTraffic: remindTraffic,
-      autoRenewal: autoRenewal,
-    );
-    notifyListeners();
-
-    try {
-      await _api.updateUserSettings(
-        remindExpire: remindExpire,
-        remindTraffic: remindTraffic,
-        autoRenewal: autoRenewal,
-      );
-      return null;
-    } catch (e) {
-      _user = previous;
-      notifyListeners();
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  }) => _account.updateUserSettings(
+    remindExpire: remindExpire,
+    remindTraffic: remindTraffic,
+    autoRenewal: autoRenewal,
+  );
 
   Future<void> _completeAuthentication(String authData) async {
     await _authSession.applyAuthData(authData);
@@ -517,15 +515,14 @@ class AppController extends ChangeNotifier {
   }
 
   void _resetSessionData() {
-    _subscription = const SubscriptionRuntimeState();
-    _user = _emptyUser;
-    _traffic = _emptyTraffic;
-    _nodeState = const NodeRuntimeState();
+    _subscription.reset();
+    _account.reset();
+    _nodes.reset();
     _plans = const [];
-    _invite = const InviteDataState();
-    _wallet = const WalletDataState();
+    _invite.reset();
+    _wallet.reset();
     _dataLoadError = null;
-    _notices = [];
+    _notices.reset();
   }
 
   // ── Connection ────────────────────────────────────────────────────────────
@@ -562,15 +559,13 @@ class AppController extends ChangeNotifier {
     // Non-critical extras — must never abort node restore / core startup.
     try {
       final currencySymbol = await _api.getCommCurrencySymbol();
-      if (currencySymbol.isNotEmpty) {
-        _wallet = _wallet.copyWith(currencySymbol: currencySymbol);
-      }
+      _wallet.setCurrencySymbol(currencySymbol);
     } catch (_) {}
     try {
-      _notices = await _api.getNotices();
+      _notices.setNotices(await _api.getNotices());
     } catch (_) {}
-    if (_nodeState.nodes.isNotEmpty) {
-      unawaited(NodeCacheService.save(_nodeState.nodes));
+    if (_nodes.isNotEmpty) {
+      unawaited(NodeCacheService.save(_nodes.nodes));
       _restoreLastNode();
       if (supportsCoreConnection) {
         // Start core in background so latency testing works before user connects.
@@ -589,7 +584,7 @@ class AppController extends ChangeNotifier {
     } catch (e) {
       if (NetworkErrorClassifier.isNetworkError(e)) {
         _dataLoadError = DataLoadErrorService.offlineMessage(
-          hasCachedNodes: _nodeState.nodes.isNotEmpty,
+          hasCachedNodes: _nodes.isNotEmpty,
         );
       } else {
         await _authSession.clear();
@@ -602,71 +597,30 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> createInviteCode() async {
-    try {
-      await _api.createInviteCode();
-      await refreshData();
-      return null;
-    } catch (e) {
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  Future<String?> createInviteCode() => _invite.createInviteCode();
 
-  Future<String?> transferAllCommission() async {
-    return transferCommissionToBalance(_wallet.withdrawable);
-  }
+  Future<String?> transferAllCommission() => _wallet.transferAllCommission();
 
-  Future<String?> transferCommissionToBalance(double amount) async {
-    final validationError = CommissionValidationService.validateTransfer(
-      amount: amount,
-      withdrawable: _wallet.withdrawable,
-    );
-    if (validationError != null) return validationError;
-    try {
-      await _api.transferCommission((amount * 100).round());
-      await refreshData();
-      return null;
-    } catch (e) {
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  Future<String?> transferCommissionToBalance(double amount) =>
+      _wallet.transferCommissionToBalance(amount);
 
   Future<String?> withdrawCommission({
     required double amount,
     required String account,
     required String method,
-  }) async {
-    final validationError = CommissionValidationService.validateWithdraw(
-      amount: amount,
-      withdrawable: _wallet.withdrawable,
-      withdrawEnabled: _wallet.withdrawEnabled,
-      minWithdrawAmount: _wallet.minWithdrawAmount,
-      currencySymbol: _wallet.currencySymbol,
-      account: account,
-      method: method,
-      withdrawMethods: _wallet.withdrawMethods,
-    );
-    if (validationError != null) return validationError;
-    try {
-      await _api.withdrawCommission(
-        amountCents: (amount * 100).round(),
-        account: account.trim(),
-        method: method.trim(),
-      );
-      await refreshData();
-      return null;
-    } catch (e) {
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  }) => _wallet.withdrawCommission(
+    amount: amount,
+    account: account,
+    method: method,
+  );
 
   Future<void> refreshNodes() async {
     final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
     if (snap.nodes != null && snap.nodes!.isNotEmpty) {
-      _nodeState = _nodeState.copyWith(nodes: snap.nodes!);
+      _nodes.setNodes(snap.nodes!);
       _restoreLastNode();
-      if (snap.traffic != null) _traffic = snap.traffic!;
-      unawaited(NodeCacheService.save(_nodeState.nodes));
+      _account.setTraffic(snap.traffic);
+      unawaited(NodeCacheService.save(_nodes.nodes));
       if (supportsCoreConnection) {
         await _reloadCoreConfig(startIfStopped: true);
       }
@@ -675,9 +629,8 @@ class AppController extends ChangeNotifier {
   }
 
   void _applySnapshot(DataSnapshot snap) {
-    if (snap.user != null) _user = snap.user!;
-    if (snap.traffic != null) _traffic = snap.traffic!;
-    _subscription = _subscription.copyWith(
+    _account.applySnapshot(user: snap.user, traffic: snap.traffic);
+    _subscription.applySnapshot(
       subscribeUrl: snap.subscribeUrl,
       dailyUsage: snap.dailyUsage,
       trafficUsage: snap.trafficUsage,
@@ -687,41 +640,26 @@ class AppController extends ChangeNotifier {
       expiredAt: snap.expiredAt,
     );
     if (snap.nodes != null) {
-      _nodeState = _nodeState.copyWith(nodes: snap.nodes!);
+      _nodes.setNodes(snap.nodes!);
     }
     if (snap.plans != null) _plans = snap.plans!;
-    _invite = _invite.copyWith(
-      codes: snap.inviteCodes
-          ?.map((item) => InviteCodeModel(code: item.code, link: item.link))
-          .toList(),
+    _invite.applySnapshot(
+      codes: snap.inviteCodes,
       code: snap.inviteCode,
       link: snap.inviteLink,
       urlBase: snap.inviteUrlBase,
     );
-    final normalizedInvites = InviteLinkService.normalize(
-      codes: _invite.codes,
-      inviteCode: _invite.code,
-      inviteLink: _invite.link,
-      inviteUrlBase: _invite.urlBase,
-    );
-    _invite = _invite.copyWith(
-      codes: normalizedInvites.codes,
-      code: normalizedInvites.inviteCode,
-      link: normalizedInvites.inviteLink,
-    );
-    _wallet = _wallet.copyWith(
+    _wallet.applySnapshot(
       inviteRecords: snap.inviteRecords,
       commissionRate: snap.commissionRate,
       invitedCount: snap.invitedCount,
       earnedCommission: snap.earnedCommission,
       pendingCommission: snap.pendingCommission,
       withdrawable: snap.withdrawable,
-      currencySymbol: snap.currencySymbol?.isNotEmpty == true
-          ? snap.currencySymbol
-          : null,
       withdrawClose: snap.withdrawClose,
       withdrawMethods: snap.withdrawMethods,
       minWithdrawAmount: snap.minWithdrawAmount,
+      currencySymbol: snap.currencySymbol,
     );
     if (snap.criticalError != null) _dataLoadError = snap.criticalError;
   }
@@ -730,23 +668,13 @@ class AppController extends ChangeNotifier {
 
   /// Tries to restore the last manually-selected node from persistent storage.
   /// Falls back to the first node in auto-select mode if the node is not found.
-  void _restoreLastNode() {
-    final restored = NodeSelectionService.restoreLastSelection(
-      nodes: _nodeState.nodes,
-      lastNodeId: _settings.lastNodeId,
-    );
-    _nodeState = _nodeState.copyWith(
-      currentNode: restored.currentNode,
-      autoSelected: restored.autoSelected,
-    );
-  }
+  void _restoreLastNode() => _nodes.restoreLastSelection(_settings.lastNodeId);
 
   /// Switch to [node]. Returns an error string if the core rejected the
   /// switch, or null on success.
   Future<String?> setCurrentNode(NodeModel node) async {
-    _nodeState = _nodeState.copyWith(currentNode: node, autoSelected: false);
+    _nodes.selectNode(node);
     _settings.setLastNodeId(node.id);
-    notifyListeners();
     if (Platform.isAndroid && coreRunning) {
       await _reloadCoreConfig();
       return null;
@@ -759,9 +687,8 @@ class AppController extends ChangeNotifier {
   }
 
   Future<String?> selectAuto() async {
-    _nodeState = _nodeState.copyWith(autoSelected: true);
+    _nodes.selectAuto();
     _settings.setLastNodeId('');
-    notifyListeners();
     if (Platform.isAndroid && coreRunning) {
       await _reloadCoreConfig();
       return null;
@@ -787,7 +714,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> _reloadCoreConfig({bool startIfStopped = false}) async {
     if (!supportsCoreConnection) return;
-    if (_nodeState.isEmpty) return;
+    if (_nodes.isEmpty) return;
     if (!startIfStopped && !coreProcessRunning) return;
 
     final error = await _core.reloadCore(_connectionRequest);
@@ -807,7 +734,7 @@ class AppController extends ChangeNotifier {
   /// Starts the sing-box process in background mode if needed.
   Future<void> testLatencies() async {
     if (!supportsCoreConnection) return;
-    if (_nodeState.isEmpty) return;
+    if (_nodes.isEmpty) return;
 
     if (!coreProcessRunning) {
       if (Platform.isAndroid && !coreRunning) return;
@@ -822,34 +749,24 @@ class AppController extends ChangeNotifier {
     if (_disposed) return;
 
     // Mark all nodes as testing (-1) so the UI shows an in-progress state.
-    _nodeState = _nodeState.copyWith(
-      nodes: NodeSelectionService.markLatencyTesting(_nodeState.nodes),
-    );
-    notifyListeners();
+    _nodes.markLatencyTesting();
 
     if (!coreProcessRunning) {
-      _nodeState = _nodeState.copyWith(
-        nodes: NodeSelectionService.markLatencyFailed(_nodeState.nodes),
-      );
+      _nodes.markLatencyFailed();
       _startupMessage = '测速失败：核心未启动，请检查 sing-box.exe 是否存在';
       notifyListeners();
       return;
     }
 
-    final snapshot = List<NodeModel>.from(_nodeState.nodes);
+    final snapshot = List<NodeModel>.from(_nodes.nodes);
     final pending = <int, NodeModel>{};
     Timer? flushTimer;
 
     void flushLatencyResults() {
       if (_disposed) return;
       if (pending.isEmpty) return;
-      final list = NodeSelectionService.applyLatencyResults(
-        _nodeState.nodes,
-        pending,
-      );
+      _nodes.applyLatencyResults(Map<int, NodeModel>.from(pending));
       pending.clear();
-      _nodeState = _nodeState.copyWith(nodes: list);
-      notifyListeners();
     }
 
     try {
@@ -857,7 +774,7 @@ class AppController extends ChangeNotifier {
         snapshot,
         onResult: (idx, updated) {
           if (_disposed) return;
-          if (idx < _nodeState.nodes.length) {
+          if (idx < _nodes.nodes.length) {
             pending[idx] = updated;
             flushTimer ??= Timer.periodic(
               const Duration(milliseconds: 100),
@@ -883,6 +800,15 @@ class AppScope extends InheritedNotifier<AppController> {
 
   static AppController of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
+    assert(scope?.notifier != null, 'AppScope not found in widget tree');
+    return scope!.notifier!;
+  }
+
+  /// Reads the controller WITHOUT subscribing to rebuilds. Use this when you
+  /// only need to call methods, or when subscribing to a specific slice via
+  /// [AppSelector] / [ValueListenableBuilder] instead of the whole controller.
+  static AppController read(BuildContext context) {
+    final scope = context.getInheritedWidgetOfExactType<AppScope>();
     assert(scope?.notifier != null, 'AppScope not found in widget tree');
     return scope!.notifier!;
   }

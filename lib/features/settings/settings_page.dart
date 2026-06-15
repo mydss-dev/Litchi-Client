@@ -151,6 +151,20 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               _PortSettingRow(controller: ctrl),
+              _SettingRow(
+                label: '断网保护 (Kill Switch)',
+                trailing: AppSwitch(
+                  value: ctrl.killSwitch,
+                  onChanged: ctrl.setKillSwitch,
+                ),
+              ),
+              _SettingRow(
+                label: '允许不安全节点',
+                trailing: AppSwitch(
+                  value: ctrl.allowInsecureNodes,
+                  onChanged: ctrl.setAllowInsecureNodes,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),

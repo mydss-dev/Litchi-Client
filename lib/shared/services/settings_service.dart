@@ -16,6 +16,8 @@ class SettingsSnapshot {
     required this.themeMode,
     required this.wasConnected,
     required this.lastNodeId,
+    required this.killSwitch,
+    required this.allowInsecureNodes,
   });
 
   final int proxyPort;
@@ -28,6 +30,14 @@ class SettingsSnapshot {
   final String dnsMode;
   final ThemeMode themeMode;
   final bool wasConnected;
+
+  /// When true, an unexpected core drop blackholes the system proxy instead of
+  /// reverting to a direct (unprotected) connection — fail-closed.
+  final bool killSwitch;
+
+  /// When false, nodes that request `insecure` / skip-cert-verify have that flag
+  /// stripped, forcing TLS certificate validation (rejects MITM-prone nodes).
+  final bool allowInsecureNodes;
 
   /// ID of the node the user last manually selected.
   /// Empty string means "use auto-select".
@@ -54,8 +64,17 @@ abstract final class SettingsService {
       },
       wasConnected: p.getBool('was_connected') ?? false,
       lastNodeId: p.getString('last_node_id') ?? '',
+      killSwitch: p.getBool('kill_switch') ?? false,
+      allowInsecureNodes: p.getBool('allow_insecure_nodes') ?? true,
     );
   }
+
+  static void setKillSwitch(bool v) =>
+      SharedPreferences.getInstance().then((p) => p.setBool('kill_switch', v));
+
+  static void setAllowInsecureNodes(bool v) =>
+      SharedPreferences.getInstance()
+          .then((p) => p.setBool('allow_insecure_nodes', v));
 
   static void setProxyPort(int v) =>
       SharedPreferences.getInstance().then((p) => p.setInt('proxy_port', v));

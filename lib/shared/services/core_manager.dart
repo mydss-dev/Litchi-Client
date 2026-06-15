@@ -61,8 +61,10 @@ class CoreManager {
     // Kill any previously owned sing-box process (by saved PID).
     await _killSavedPid();
 
-    // Verify the API port is actually free before we try to start.
-    if (!await _isPortFree(apiPort)) {
+    // Wait (briefly) for the API port to become free instead of failing on the
+    // first check. This makes restarts robust without callers having to insert
+    // fixed "settle" delays before calling start().
+    if (!await _waitForPortFree(apiPort)) {
       _setError('端口 $apiPort 已被占用，请关闭其他代理软件后重试');
       return;
     }
@@ -207,6 +209,16 @@ class CoreManager {
 
   static void _deleteConfigFile(String path) {
     try { File(path).deleteSync(); } catch (_) {}
+  }
+
+  /// Polls until [port] is free, up to ~2 s. Handles the common race where a
+  /// just-killed sing-box process has not yet released the API port.
+  static Future<bool> _waitForPortFree(int port) async {
+    for (var i = 0; i < 10; i++) {
+      if (await _isPortFree(port)) return true;
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+    return false;
   }
 
   /// Returns true when [port] can be bound — i.e. nothing else is using it.

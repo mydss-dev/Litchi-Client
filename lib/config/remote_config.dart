@@ -6,6 +6,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../shared/config/app_config.dart';
+import '../shared/services/secure_logger.dart';
 
 /// Fetches brand/API config from OSS and applies it to [AppConfig].
 ///
@@ -78,8 +79,10 @@ abstract final class RemoteConfigService {
 
       // Also apply to current session (colors/text update live if widgets rebuild).
       AppConfig.applyRemote(config);
-    } catch (_) {
-      // Network unavailable, JSON malformed, or signature invalid — ignore.
+    } catch (e) {
+      // Network unavailable, JSON malformed, or signature invalid — non-fatal,
+      // but record it so a persistently broken remote config is diagnosable.
+      SecureLogger.warn('RemoteConfig refresh failed', e);
     } finally {
       client?.close(force: true);
     }

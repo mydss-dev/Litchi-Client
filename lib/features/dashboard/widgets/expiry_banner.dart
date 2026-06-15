@@ -26,13 +26,15 @@ class ExpiryBanner extends StatelessWidget {
     if (daysLeft > 7) return const SizedBox.shrink();
 
     final c = AppColors.of(context);
-    final ctrl = AppScope.of(context);
+    // Banner content derives from the [user] prop — no need to subscribe to the
+    // controller; read it only to navigate on tap.
+    final ctrl = AppScope.read(context);
     final color = daysLeft <= 0 ? c.danger : c.warning;
     final message = daysLeft < 0
         ? '订阅已过期，连接将无法使用'
         : daysLeft == 0
-            ? '订阅今日到期，请及时续费'
-            : '订阅将在 $daysLeft 天后到期';
+        ? '订阅今日到期，请及时续费'
+        : '订阅将在 $daysLeft 天后到期';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
