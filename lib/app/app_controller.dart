@@ -17,13 +17,13 @@ import '../shared/services/node_cache_service.dart';
 import '../shared/services/node_selection_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
-import '../shared/services/settings_service.dart';
 import '../shared/services/update_service.dart';
 import 'core_connection_request.dart';
 import 'core_controller.dart';
 import 'core_platform_support.dart';
 import 'core_state_sync_service.dart';
 import 'invite_controller.dart';
+import 'notices_controller.dart';
 import 'settings_controller.dart';
 import 'wallet_controller.dart';
 
@@ -63,6 +63,7 @@ class AppController extends ChangeNotifier {
     _core.addListener(notifyListeners);
     _wallet.addListener(notifyListeners);
     _invite.addListener(notifyListeners);
+    _notices.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
@@ -96,8 +97,7 @@ class AppController extends ChangeNotifier {
   late final WalletController _wallet = WalletController(_api, refreshData);
   String? _dataLoadError;
   String? _startupMessage;
-  List<NoticeModel> _notices = [];
-  int _lastSeenNoticeId = 0;
+  final NoticesController _notices = NoticesController();
   UpdateInfo? _updateInfo;
   RegisterConfig _registerConfig = const RegisterConfig();
   bool _disposed = false;
@@ -272,22 +272,16 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<NoticeModel> get notices => _notices;
-  bool get hasUnreadNotice =>
-      _notices.isNotEmpty && _notices.first.id > _lastSeenNoticeId;
+  List<NoticeModel> get notices => _notices.notices;
+  bool get hasUnreadNotice => _notices.hasUnreadNotice;
 
-  void markNoticeRead() {
-    if (_notices.isEmpty) return;
-    _lastSeenNoticeId = _notices.first.id;
-    SettingsService.setLastSeenNoticeId(_lastSeenNoticeId);
-    notifyListeners();
-  }
+  void markNoticeRead() => _notices.markRead();
 
   // ── Initialization ────────────────────────────────────────────────────────
 
   Future<void> init() async {
     await _settings.load();
-    _lastSeenNoticeId = await SettingsService.loadLastSeenNoticeId();
+    await _notices.loadLastSeen();
     await _core.init();
     _core.killSwitchEnabled = _settings.killSwitch;
 
@@ -391,10 +385,12 @@ class AppController extends ChangeNotifier {
     _core.removeListener(notifyListeners);
     _wallet.removeListener(notifyListeners);
     _invite.removeListener(notifyListeners);
+    _notices.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
     _wallet.dispose();
     _invite.dispose();
+    _notices.dispose();
     super.dispose();
   }
 
@@ -547,7 +543,7 @@ class AppController extends ChangeNotifier {
     _invite.reset();
     _wallet.reset();
     _dataLoadError = null;
-    _notices = [];
+    _notices.reset();
   }
 
   // ── Connection ────────────────────────────────────────────────────────────
@@ -587,7 +583,7 @@ class AppController extends ChangeNotifier {
       _wallet.setCurrencySymbol(currencySymbol);
     } catch (_) {}
     try {
-      _notices = await _api.getNotices();
+      _notices.setNotices(await _api.getNotices());
     } catch (_) {}
     if (_nodeState.nodes.isNotEmpty) {
       unawaited(NodeCacheService.save(_nodeState.nodes));
