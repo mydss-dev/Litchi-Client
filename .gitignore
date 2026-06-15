@@ -59,3 +59,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android/Flutter generated caches and local machine config
+/android/.gradle/
+/android/local.properties
+**/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/linux/flutter/ephemeral/
+
+# Accidental nested project / build output
+/litchi_client/
