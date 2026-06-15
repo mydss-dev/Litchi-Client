@@ -78,6 +78,15 @@ class NodeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void applyLatencyResult(NodeModel updated) {
+    final index = _state.nodes.indexWhere((node) => node.id == updated.id);
+    if (index < 0) return;
+    final nodes = List<NodeModel>.from(_state.nodes);
+    nodes[index] = updated;
+    _state = _state.copyWith(nodes: nodes);
+    notifyListeners();
+  }
+
   void reset() {
     _state = const NodeRuntimeState();
     notifyListeners();

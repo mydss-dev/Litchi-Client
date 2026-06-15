@@ -408,7 +408,7 @@ class AppController extends ChangeNotifier {
       _settings.setWasConnected(wasConnected);
     }
     if (effect.runLatencyTest) {
-      unawaited(testLatencies());
+      unawaited(testLatencies(showTestingState: false));
     }
     if (effect.clearLatency) {
       _nodes.clearLatency();
@@ -569,7 +569,9 @@ class AppController extends ChangeNotifier {
     if (_nodes.isNotEmpty) {
       unawaited(NodeCacheService.save(_nodes.nodes));
       _restoreLastNode();
-      if (supportsCoreConnection) {
+      if (Platform.isAndroid && !coreRunning) {
+        unawaited(_tcpPingInitialAndroidLatencies());
+      } else if (supportsCoreConnection) {
         // Start core in background so latency testing works before user connects.
         unawaited(_startCoreInBackground(runLatencyTest: true));
       }
@@ -623,7 +625,9 @@ class AppController extends ChangeNotifier {
       _restoreLastNode();
       _account.setTraffic(snap.traffic);
       unawaited(NodeCacheService.save(_nodes.nodes));
-      if (supportsCoreConnection) {
+      if (Platform.isAndroid && !coreRunning) {
+        unawaited(_tcpPingInitialAndroidLatencies());
+      } else if (supportsCoreConnection) {
         await _reloadCoreConfig(startIfStopped: true);
       }
     }
@@ -677,8 +681,12 @@ class AppController extends ChangeNotifier {
   Future<String?> setCurrentNode(NodeModel node) async {
     _nodes.selectNode(node);
     _settings.setLastNodeId(node.id);
+    if (Platform.isAndroid && !coreRunning) {
+      unawaited(_tcpPingNodeLatency(node));
+    }
     if (Platform.isAndroid && coreRunning) {
-      await _reloadCoreConfig();
+      final ok = await _core.switchNode(node);
+      if (!ok) await _reloadCoreConfig();
       return null;
     }
     if (supportsCoreConnection && _core.coreProcessRunning) {
@@ -691,8 +699,12 @@ class AppController extends ChangeNotifier {
   Future<String?> selectAuto() async {
     _nodes.selectAuto();
     _settings.setLastNodeId('');
+    if (Platform.isAndroid && !coreRunning) {
+      unawaited(_tcpPingLatencies(showTestingState: false));
+    }
     if (Platform.isAndroid && coreRunning) {
-      await _reloadCoreConfig();
+      final ok = await _core.switchToAuto();
+      if (!ok) await _reloadCoreConfig();
       return null;
     }
     if (supportsCoreConnection && _core.coreProcessRunning) {
@@ -710,7 +722,7 @@ class AppController extends ChangeNotifier {
     if (_core.coreProcessRunning && runLatencyTest) {
       // Small delay to let the Clash API initialise before testing.
       await Future.delayed(const Duration(milliseconds: 1000));
-      await testLatencies();
+      await testLatencies(showTestingState: false);
     }
   }
 
@@ -728,13 +740,13 @@ class AppController extends ChangeNotifier {
 
     if (coreProcessRunning) {
       await Future.delayed(const Duration(milliseconds: 1000));
-      unawaited(testLatencies());
+      unawaited(testLatencies(showTestingState: false));
     }
   }
 
   /// Tests latencies for all nodes via the Clash API.
   /// Starts the sing-box process in background mode if needed.
-  Future<void> testLatencies() async {
+  Future<void> testLatencies({bool showTestingState = true}) async {
     if (!supportsCoreConnection) return;
     if (_nodes.isEmpty) return;
 
@@ -743,7 +755,7 @@ class AppController extends ChangeNotifier {
         // Android can't run the core without establishing the VPN tunnel, so the
         // Clash API delay test is unavailable pre-connect. Fall back to a TCP
         // handshake probe so the user can still rank nodes before connecting.
-        await _tcpPingLatencies();
+        await _tcpPingLatencies(showTestingState: showTestingState);
         return;
       }
       if (!Platform.isAndroid) {
@@ -756,8 +768,9 @@ class AppController extends ChangeNotifier {
     }
     if (_disposed) return;
 
-    // Mark all nodes as testing (-1) so the UI shows an in-progress state.
-    _nodes.markLatencyTesting();
+    // Manual tests show an in-progress state; automatic background refreshes
+    // keep the previous latency visible until fresh results arrive.
+    if (showTestingState) _nodes.markLatencyTesting();
 
     if (!coreProcessRunning) {
       _nodes.markLatencyFailed();
@@ -799,8 +812,8 @@ class AppController extends ChangeNotifier {
 
   /// Pre-connect latency via a TCP handshake to each node's server:port.
   /// Used when the sing-box core isn't running (notably Android before connect).
-  Future<void> _tcpPingLatencies() async {
-    _nodes.markLatencyTesting();
+  Future<void> _tcpPingLatencies({bool showTestingState = true}) async {
+    if (showTestingState) _nodes.markLatencyTesting();
     final nodes = List<NodeModel>.from(_nodes.nodes);
     final results = <int, NodeModel>{};
     const concurrency = 8;
@@ -823,6 +836,29 @@ class AppController extends ChangeNotifier {
 
     if (_disposed) return;
     _nodes.applyLatencyResults(results);
+  }
+
+  Future<void> _tcpPingInitialAndroidLatencies() async {
+    if (_nodes.autoSelected) {
+      await _tcpPingLatencies(showTestingState: false);
+    } else {
+      await _tcpPingCurrentNodeLatency();
+    }
+  }
+
+  Future<void> _tcpPingCurrentNodeLatency() async {
+    final node = currentNode;
+    if (node.id.isEmpty) return;
+    await _tcpPingNodeLatency(node);
+  }
+
+  Future<void> _tcpPingNodeLatency(NodeModel node) async {
+    final endpoint = _endpointOf(node);
+    final ms = endpoint == null
+        ? null
+        : await TcpPingService.ping(endpoint.host, endpoint.port);
+    if (_disposed) return;
+    _nodes.applyLatencyResult(node.copyWith(latency: ms ?? 9999));
   }
 
   /// Resolves a node's server host + port by reusing the outbound parser.
