@@ -12,7 +12,9 @@ import '../shared/services/data_load_error_service.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/network_error_classifier.dart';
 import '../shared/services/node_cache_service.dart';
+import '../shared/services/outbound_parser.dart';
 import '../shared/services/panel_api.dart';
+import '../shared/services/tcp_ping_service.dart';
 import '../shared/services/register_config_cache.dart';
 import '../shared/services/update_service.dart';
 import 'core_connection_request.dart';
@@ -737,7 +739,13 @@ class AppController extends ChangeNotifier {
     if (_nodes.isEmpty) return;
 
     if (!coreProcessRunning) {
-      if (Platform.isAndroid && !coreRunning) return;
+      if (Platform.isAndroid && !coreRunning) {
+        // Android can't run the core without establishing the VPN tunnel, so the
+        // Clash API delay test is unavailable pre-connect. Fall back to a TCP
+        // handshake probe so the user can still rank nodes before connecting.
+        await _tcpPingLatencies();
+        return;
+      }
       if (!Platform.isAndroid) {
         await _startCoreInBackground();
       }
@@ -787,6 +795,47 @@ class AppController extends ChangeNotifier {
       flushTimer?.cancel();
       flushLatencyResults();
     }
+  }
+
+  /// Pre-connect latency via a TCP handshake to each node's server:port.
+  /// Used when the sing-box core isn't running (notably Android before connect).
+  Future<void> _tcpPingLatencies() async {
+    _nodes.markLatencyTesting();
+    final nodes = List<NodeModel>.from(_nodes.nodes);
+    final results = <int, NodeModel>{};
+    const concurrency = 8;
+
+    for (var i = 0; i < nodes.length; i += concurrency) {
+      final batch = <int>[
+        for (var j = i; j < i + concurrency && j < nodes.length; j++) j,
+      ];
+      await Future.wait(
+        batch.map((idx) async {
+          final endpoint = _endpointOf(nodes[idx]);
+          final ms = endpoint == null
+              ? null
+              : await TcpPingService.ping(endpoint.host, endpoint.port);
+          results[idx] = nodes[idx].copyWith(latency: ms ?? 9999);
+        }),
+      );
+      if (_disposed) return;
+    }
+
+    if (_disposed) return;
+    _nodes.applyLatencyResults(results);
+  }
+
+  /// Resolves a node's server host + port by reusing the outbound parser.
+  ({String host, int port})? _endpointOf(NodeModel node) {
+    final outbound = node.rawUri.isNotEmpty
+        ? OutboundParser.parse(node.rawUri, tag: 'ping')
+        : (node.rawOutbound == null
+              ? null
+              : OutboundParser.parseClashProxy(node.rawOutbound!, tag: 'ping'));
+    final host = outbound?['server']?.toString() ?? '';
+    final port = outbound?['server_port'];
+    if (host.isEmpty || port is! int || port <= 0) return null;
+    return (host: host, port: port);
   }
 }
 
