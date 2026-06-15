@@ -345,7 +345,7 @@ class _MobileConnectionCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${proxyMode.label} · ${automatic ? '自动选择' : '手动选择'}',
+                          '节点模式：${automatic ? '自动选择' : '手动选择'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.caption.copyWith(
@@ -355,12 +355,49 @@ class _MobileConnectionCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 10),
+                  _LatencyBadge(latency: node.latency),
+                  const SizedBox(width: 2),
                   Icon(LucideIcons.chevronRight, size: 18, color: c.iconMuted),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LatencyBadge extends StatelessWidget {
+  const _LatencyBadge({required this.latency});
+
+  final int latency;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final (label, color) = switch (latency) {
+      > 0 && < 150 => ('$latency ms', c.success),
+      > 0 && < 9999 => ('$latency ms', c.warning),
+      >= 9999 => ('超时', c.danger),
+      _ => ('', c.textMuted),
+    };
+    if (label.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.caption.copyWith(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

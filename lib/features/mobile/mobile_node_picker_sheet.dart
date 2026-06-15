@@ -74,10 +74,12 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
   }
 
   void _testLatencies(AppController ctrl) {
-    if (ctrl.supportsCoreConnection && !ctrl.coreProcessRunning) {
-      AppToast.show(context, '请先连接后测速', type: AppToastType.warning);
+    if (ctrl.nodes.isEmpty) {
+      AppToast.show(context, '暂无可测速节点', type: AppToastType.warning);
       return;
     }
+    // No connect-first gate: testLatencies handles the not-running case itself
+    // (desktop starts the core in background; Android falls back to TCP ping).
     ctrl.testLatencies();
   }
 

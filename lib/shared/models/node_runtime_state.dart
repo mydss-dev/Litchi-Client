@@ -12,8 +12,13 @@ class NodeRuntimeState {
   final List<NodeModel> nodes;
   final bool autoSelected;
 
-  NodeModel get displayNode =>
-      autoSelected ? (bestLatencyNode ?? currentNode) : currentNode;
+  NodeModel get displayNode {
+    final latestCurrent =
+        nodes.where((node) => node.id == currentNode.id).firstOrNull ??
+        currentNode;
+    if (autoSelected) return bestLatencyNode ?? latestCurrent;
+    return latestCurrent;
+  }
 
   NodeModel? get bestLatencyNode => NodeSelectionService.bestLatencyNode(nodes);
 
