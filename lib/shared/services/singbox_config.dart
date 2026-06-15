@@ -17,24 +17,15 @@ abstract final class SingboxConfig {
   static const int defaultPort    = 7890;
   static const int defaultApiPort = 9090;
 
-  static String get _sep => Platform.pathSeparator;
-
-  // Rule set files are bundled next to the executable under rules/ in production
-  // (Windows / Linux), or under Contents/Resources/rules in a macOS .app bundle.
+  // Rule set files are bundled next to the exe under rules\ in production.
   // During development they won't exist — _ruleSets() falls back to OSS.
-  static String? _resolveRulesDir() {
+  static String get _rulesDir {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
-    final candidates = <String>[
-      '$exeDir${_sep}rules',
-      if (Platform.isMacOS) '$exeDir$_sep..${_sep}Resources${_sep}rules',
-    ];
-    for (final dir in candidates) {
-      if (File('$dir${_sep}geosite-cn.srs').existsSync()) return dir;
-    }
-    return null;
+    return '$exeDir\\rules';
   }
 
-  static bool get _hasLocalRules => _resolveRulesDir() != null;
+  static bool get _hasLocalRules =>
+      File('$_rulesDir\\geosite-cn.srs').existsSync();
 
   /// Random secret generated once per process — required by Clash API.
   static final String apiSecret = _generateSecret();
@@ -66,25 +57,13 @@ abstract final class SingboxConfig {
     ProxyMode proxyMode       = ProxyMode.rule,
     String dnsMode            = '系统 DNS',
     NetworkMode networkMode   = NetworkMode.system,
-    bool allowInsecure        = true,
   }) {
     final outbounds = <Map<String, dynamic>>[];
     final tags      = <String>[];
 
     for (final n in nodes) {
-      final ob = n.rawUri.isNotEmpty
-          ? OutboundParser.parse(
-              n.rawUri,
-              tag: _nodeTag(n),
-              allowInsecure: allowInsecure,
-            )
-          : (n.rawOutbound == null
-              ? null
-              : OutboundParser.parseClashProxy(
-                  n.rawOutbound!,
-                  tag: _nodeTag(n),
-                  allowInsecure: allowInsecure,
-                ));
+      if (n.rawUri.isEmpty) continue;
+      final ob = OutboundParser.parse(n.rawUri, tag: _nodeTag(n));
       if (ob == null) continue;
       outbounds.add(ob);
       tags.add(_nodeTag(n));
@@ -256,16 +235,16 @@ abstract final class SingboxConfig {
   // ── Rule sets (rule mode only) ─────────────────────────────────────────────
 
   static List<Map<String, dynamic>> _ruleSets() {
-    final dir = _resolveRulesDir();
-    if (dir != null) {
-      // Production: use bundled files next to the executable.
+    if (_hasLocalRules) {
+      // Production: use bundled files next to the exe.
+      final dir = _rulesDir;
       return [
         {'tag': 'geosite-cn',  'type': 'local', 'format': 'binary',
-         'path': '$dir${_sep}geosite-cn.srs'},
+         'path': '$dir\\geosite-cn.srs'},
         {'tag': 'geoip-cn',    'type': 'local', 'format': 'binary',
-         'path': '$dir${_sep}geoip-cn.srs'},
+         'path': '$dir\\geoip-cn.srs'},
         {'tag': 'geosite-ads', 'type': 'local', 'format': 'binary',
-         'path': '$dir${_sep}geosite-category-ads-all.srs'},
+         'path': '$dir\\geosite-category-ads-all.srs'},
       ];
     }
     // No local rules — rule-sets disabled, routing falls back to global (all via PROXY).
@@ -285,33 +264,13 @@ abstract final class SingboxConfig {
       const JsonEncoder.withIndent('  ').convert(config);
 
   static Future<String> writeConfig(Map<String, dynamic> config) async {
-    final dir = Directory(appDataDir());
+    final base = Platform.environment['LOCALAPPDATA'] ??
+        Platform.environment['APPDATA'] ??
+        Directory.systemTemp.path;
+    final dir = Directory('$base\\Litchi');
     await dir.create(recursive: true);
-    final nonce = List.generate(
-      8,
-      (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
-    ).join();
-    final file = File('${dir.path}${_sep}core-$nonce.json');
+    final file = File('${dir.path}\\core.json');
     await file.writeAsString(encodeConfig(config));
     return file.path;
-  }
-
-  /// Per-user app-data directory for transient core configs and exported logs.
-  /// Windows: %LOCALAPPDATA%\Litchi · macOS: ~/Library/Application Support/Litchi.
-  static String appDataDir() {
-    if (Platform.isWindows) {
-      final base =
-          Platform.environment['LOCALAPPDATA'] ??
-          Platform.environment['APPDATA'] ??
-          Directory.systemTemp.path;
-      return '$base\\Litchi';
-    }
-    if (Platform.isMacOS) {
-      final home = Platform.environment['HOME'];
-      if (home != null && home.isNotEmpty) {
-        return '$home/Library/Application Support/Litchi';
-      }
-    }
-    return '${Directory.systemTemp.path}${_sep}Litchi';
   }
 }

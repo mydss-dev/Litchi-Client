@@ -4,34 +4,22 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../shared/models/app_models.dart';
-import '../shared/services/core_manager.dart' show CoreState;
+import '../shared/services/android_core_manager.dart';
+import '../shared/services/core_manager.dart';
 import '../shared/services/proxy_setter.dart';
-import '../shared/services/secure_logger.dart';
 import '../shared/services/singbox_api_client.dart';
 import '../shared/services/singbox_config.dart';
-import 'android_core_runtime.dart';
-import 'core_connection_request.dart';
-import 'core_error_message_service.dart';
-import 'core_platform_support.dart';
-import 'core_runtime.dart';
-import 'desktop_core_runtime.dart';
 
 /// High-level connection lifecycle state exposed to UI.
-enum ConnectionStatus {
-  disconnected,
-  connecting,
-  connected,
-  disconnecting,
-  error,
-}
+enum ConnectionStatus { disconnected, connecting, connected, disconnecting, error }
 
 /// Owns the sing-box process, connection lifecycle, and latency testing.
 ///
 /// Settings values and the node list are passed in at call time to avoid
 /// storing references that would create circular dependencies.
 class CoreController extends ChangeNotifier {
-  final DesktopCoreRuntime _desktopRuntime = DesktopCoreRuntime();
-  final AndroidCoreRuntime _androidRuntime = AndroidCoreRuntime();
+  final CoreManager _core = CoreManager();
+  final AndroidCoreManager _androidCore = AndroidCoreManager();
   StreamSubscription<CoreState>? _sub;
   StreamSubscription<String>? _logSub;
 
@@ -48,30 +36,21 @@ class CoreController extends ChangeNotifier {
   final _logs = <String>[];
   static const _maxLogs = 500;
 
-  /// When true, an unexpected core termination engages the proxy kill-switch
-  /// (fail-closed) instead of reverting to a direct connection. Kept in sync by
-  /// [AppController] from the persisted user setting.
-  bool killSwitchEnabled = false;
-
   ConnectionStatus get connectionStatus => _status;
   bool get isRunning => _status == ConnectionStatus.connected;
   bool get coreRunning => _status == ConnectionStatus.connected;
   bool get coreConnecting =>
       _status == ConnectionStatus.connecting ||
       _status == ConnectionStatus.disconnecting;
-
   /// True when the sing-box process is alive, regardless of proxy state.
   /// Use this to guard latency tests — the Clash API is available whenever
   /// the process is running, even before the user explicitly connects.
-  bool get coreProcessRunning => CorePlatformSupport.processRunningFor(
-    isAndroid: CorePlatformSupport.isAndroid,
-    androidRunning: _androidRuntime.isRunning,
-    desktopRunning: _desktopRuntime.isRunning,
-  );
+  bool get coreProcessRunning =>
+      Platform.isAndroid ? _androidCore.isRunning : _core.isRunning;
   String get coreError => _coreError;
   int get upBps => upBpsNotifier.value;
   int get downBps => downBpsNotifier.value;
-  Stream<String> get logStream => _desktopRuntime.logStream;
+  Stream<String> get logStream => _core.logStream;
   List<String> get recentLogs => List.unmodifiable(_logs);
   Duration get connectedDuration => _connectedAt != null
       ? DateTime.now().difference(_connectedAt!)
@@ -82,21 +61,29 @@ class CoreController extends ChangeNotifier {
   /// before subscribing to the core state stream.
   Future<void> init() async {
     if (Platform.isAndroid) {
-      await _androidRuntime.init();
-      if (_androidRuntime.isRunning) {
-        _markConnected(notify: false);
+      await _androidCore.init();
+      if (_androidCore.isRunning) {
+        _status = ConnectionStatus.connected;
+        _connectedAt = DateTime.now();
       }
       return;
     }
-    if (!CorePlatformSupport.isDesktop) return;
+    if (!Platform.isWindows) return;
     if (_sub != null || _logSub != null) return;
 
-    await _desktopRuntime.init();
+    // If callers started the core before init() finished, do not run startup
+    // cleanup because it would kill the freshly spawned process through the
+    // PID file. This makes the lifecycle tolerant while AppController ordering
+    // is being kept backward-compatible.
+    if (!_core.isRunning) {
+      await CoreManager.cleanupOnStartup();
+      await ProxySetter.disableIfStale();
+    }
 
-    _sub = _desktopRuntime.stateStream.listen(_onCoreStateChanged);
-    _logSub = _desktopRuntime.logStream.listen((line) {
+    _sub = _core.stateStream.listen(_onCoreStateChanged);
+    _logSub = _core.logStream.listen((line) {
       final ts = DateTime.now().toLocal().toString().substring(11, 19);
-      _logs.add('[$ts] ${SecureLogRedactor.redact(line)}');
+      _logs.add('[$ts] $line');
       if (_logs.length > _maxLogs) _logs.removeAt(0);
     });
   }
@@ -106,7 +93,7 @@ class CoreController extends ChangeNotifier {
     _stopTrafficMonitor();
     _sub?.cancel();
     _logSub?.cancel();
-    _desktopRuntime.dispose();
+    _core.dispose();
     upBpsNotifier.dispose();
     downBpsNotifier.dispose();
     super.dispose();
@@ -116,17 +103,16 @@ class CoreController extends ChangeNotifier {
   /// Called from the window-close handler before [windowManager.destroy()].
   Future<void> shutdown() async {
     if (Platform.isAndroid) {
-      await _androidRuntime.stop();
+      await _androidCore.stop();
       return;
     }
-    if (!CorePlatformSupport.isDesktop) return;
+    if (!Platform.isWindows) return;
     _stopTrafficMonitor();
     await _sub?.cancel();
     await _logSub?.cancel();
     _sub = null;
     _logSub = null;
-    _desktopRuntime
-        .dispose(); // synchronously kills the process + deletes PID file
+    _core.dispose(); // synchronously kills the process + deletes PID file
     try {
       // Exit path: don't wait on the WinInet broadcast — the registry write
       // alone disables the proxy and keeps shutdown snappy.
@@ -139,21 +125,34 @@ class CoreController extends ChangeNotifier {
   /// Starts sing-box in the background WITHOUT enabling system proxy or TUN.
   /// Called after login so latency testing works before the user connects.
   /// No-ops if the process is already running.
-  Future<void> startCoreOnly(CoreConnectionRequest request) async {
+  Future<void> startCoreOnly({
+    required List<NodeModel> nodes,
+    required NodeModel currentNode,
+    required ProxyMode proxyMode,
+    required String dnsMode,
+    required int proxyPort,
+  }) async {
     if (Platform.isAndroid) return;
-    if (_desktopRuntime.isRunning) return;
-    final validNodes = request.validNodes;
+    if (_core.isRunning) return;
+    final validNodes = nodes.where((n) => n.rawUri.isNotEmpty).toList();
     if (validNodes.isEmpty) return;
 
+    final config = SingboxConfig.buildFullConfig(
+      validNodes,
+      selectedTag: SingboxConfig.nodeTagFor(currentNode),
+      port: proxyPort,
+      apiPort: SingboxConfig.defaultApiPort,
+      proxyMode: proxyMode,
+      dnsMode: dnsMode,
+      networkMode: NetworkMode.system, // no TUN in background mode
+    );
+    if (config == null) return;
+
     try {
-      final ok = await _desktopRuntime.start(
-        CoreRuntimeStartPlan(
-          request: request,
-          overrideNetworkMode: NetworkMode.system,
-        ),
-      );
+      final configPath = await SingboxConfig.writeConfig(config);
+      await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
       // _status stays disconnected — proxy is NOT enabled yet.
-      if (ok) notifyListeners();
+      if (_core.isRunning) notifyListeners();
     } catch (_) {
       // Background start failure is non-fatal; user can still connect manually.
     }
@@ -162,40 +161,75 @@ class CoreController extends ChangeNotifier {
   /// Rebuilds the sing-box config and restarts the core when it is already
   /// running. If the user was connected, it reconnects with the new config;
   /// otherwise it keeps the core alive in background mode for latency testing.
-  Future<String?> reloadCore(CoreConnectionRequest request) async {
+  Future<String?> reloadCore({
+    required List<NodeModel> nodes,
+    required NodeModel currentNode,
+    required ProxyMode proxyMode,
+    required String dnsMode,
+    required int proxyPort,
+    NetworkMode networkMode = NetworkMode.system,
+  }) async {
     if (Platform.isAndroid) {
       if (coreConnecting || _status != ConnectionStatus.connected) return null;
-      await _androidRuntime.stop();
-      _markDisconnected(notify: false);
-      return _toggleAndroidConnection(request);
+      await _androidCore.stop();
+      _connectedAt = null;
+      _status = ConnectionStatus.disconnected;
+      return _toggleAndroidConnection(
+        nodes: nodes,
+        currentNode: currentNode,
+        proxyMode: proxyMode,
+        dnsMode: dnsMode,
+        proxyPort: proxyPort,
+      );
     }
 
     if (coreConnecting) return null;
 
     final wasConnected = _status == ConnectionStatus.connected;
-    final hadProcess = _desktopRuntime.isRunning;
+    final hadProcess = _core.isRunning;
     if (!hadProcess) {
-      await startCoreOnly(request);
+      await startCoreOnly(
+        nodes: nodes,
+        currentNode: currentNode,
+        proxyMode: proxyMode,
+        dnsMode: dnsMode,
+        proxyPort: proxyPort,
+      );
       return null;
     }
 
-    _setStatus(
-      wasConnected
-          ? ConnectionStatus.disconnecting
-          : ConnectionStatus.disconnected,
-    );
+    _status = wasConnected
+        ? ConnectionStatus.disconnecting
+        : ConnectionStatus.disconnected;
+    notifyListeners();
     _stopTrafficMonitor();
     try {
       await ProxySetter.disable(notify: false);
     } catch (_) {}
-    await _desktopRuntime.stop();
-    _markDisconnected();
+    await _core.stop();
+    _connectedAt = null;
+    _coreError = '';
+    _status = ConnectionStatus.disconnected;
+    notifyListeners();
 
     if (wasConnected) {
-      return toggleConnection(request);
+      return toggleConnection(
+        nodes: nodes,
+        currentNode: currentNode,
+        proxyMode: proxyMode,
+        dnsMode: dnsMode,
+        proxyPort: proxyPort,
+        networkMode: networkMode,
+      );
     }
 
-    await startCoreOnly(request);
+    await startCoreOnly(
+      nodes: nodes,
+      currentNode: currentNode,
+      proxyMode: proxyMode,
+      dnsMode: dnsMode,
+      proxyPort: proxyPort,
+    );
     return null;
   }
 
@@ -206,126 +240,192 @@ class CoreController extends ChangeNotifier {
   ///
   /// TUN mode always performs a full restart since the TUN adapter cannot be
   /// toggled without reloading the config.
-  Future<String?> toggleConnection(CoreConnectionRequest request) async {
+  Future<String?> toggleConnection({
+    required List<NodeModel> nodes,
+    required NodeModel currentNode,
+    required ProxyMode proxyMode,
+    required String dnsMode,
+    required int proxyPort,
+    NetworkMode networkMode = NetworkMode.system,
+  }) async {
     if (Platform.isAndroid) {
-      return _toggleAndroidConnection(request);
+      return _toggleAndroidConnection(
+        nodes: nodes,
+        currentNode: currentNode,
+        proxyMode: proxyMode,
+        dnsMode: dnsMode,
+        proxyPort: proxyPort,
+      );
     }
 
     if (coreConnecting) return null;
 
     // ── DISCONNECT ──────────────────────────────────────────────────────────
     if (_status == ConnectionStatus.connected) {
-      _setStatus(ConnectionStatus.disconnecting);
+      _status = ConnectionStatus.disconnecting;
+      notifyListeners();
       _stopTrafficMonitor();
       await ProxySetter.disable();
-      if (request.networkMode == NetworkMode.tun) {
+      if (networkMode == NetworkMode.tun) {
         // TUN requires a full restart to remove the adapter; stop the process.
-        await _desktopRuntime.stop();
+        await _core.stop();
       }
       // System proxy mode: keep process alive for background latency testing.
-      _markDisconnected();
+      _connectedAt = null;
+      _coreError = '';
+      _status = ConnectionStatus.disconnected;
+      notifyListeners();
       return null;
     }
 
     // ── CONNECT ─────────────────────────────────────────────────────────────
-    final validNodes = request.validNodes;
+    final validNodes = nodes.where((n) => n.rawUri.isNotEmpty).toList();
     if (validNodes.isEmpty) {
-      return _markError(CoreErrorMessageService.noAvailableNodes);
+      _coreError = '没有可用节点，请刷新节点列表后重试';
+      notifyListeners();
+      return _coreError;
     }
 
-    final selectedTag = request.selectedTag;
+    final selectedTag = SingboxConfig.nodeTagFor(currentNode);
 
     // Fast path: core already running in system proxy mode — just enable proxy.
-    if (_desktopRuntime.isRunning &&
-        request.networkMode == NetworkMode.system) {
-      _markConnecting();
+    if (_core.isRunning && networkMode == NetworkMode.system) {
+      _status = ConnectionStatus.connecting;
+      _coreError = '';
+      notifyListeners();
       try {
         await SingboxApiClient.switchProxy(
           selectedTag,
           apiPort: SingboxConfig.defaultApiPort,
         );
-        await ProxySetter.enable(port: request.proxyPort);
-        _markConnected(notify: false);
+        await ProxySetter.enable(port: proxyPort);
+        _connectedAt = DateTime.now();
+        _status = ConnectionStatus.connected;
         _startTrafficMonitor();
       } catch (_) {
-        _markError(CoreErrorMessageService.restartClient, notify: false);
+        _coreError = '连接失败，请重启客户端后重试';
+        _status = ConnectionStatus.error;
       }
       notifyListeners();
       return _coreError.isNotEmpty ? _coreError : null;
     }
 
-    // Full start: runtime owns config generation and process launch.
-    _markConnecting();
+    // Full start: build config, (re)start process, enable proxy.
+    final config = SingboxConfig.buildFullConfig(
+      validNodes,
+      selectedTag: selectedTag,
+      port: proxyPort,
+      apiPort: SingboxConfig.defaultApiPort,
+      proxyMode: proxyMode,
+      dnsMode: dnsMode,
+      networkMode: networkMode,
+    );
+
+    if (config == null) {
+      _coreError = '生成配置失败，请选择其他节点后重试';
+      notifyListeners();
+      return _coreError;
+    }
+
+    _status = ConnectionStatus.connecting;
+    _coreError = '';
+    notifyListeners();
 
     try {
-      final ok = await _desktopRuntime.start(
-        CoreRuntimeStartPlan(request: request),
-      );
+      final configPath = await SingboxConfig.writeConfig(config);
+      await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
 
-      if (ok) {
-        if (request.networkMode == NetworkMode.system) {
-          await ProxySetter.enable(port: request.proxyPort);
+      if (_core.isRunning) {
+        if (networkMode == NetworkMode.system) {
+          await ProxySetter.enable(port: proxyPort);
         }
-        _markConnected(notify: false);
+        _connectedAt = DateTime.now();
+        _coreError = '';
+        _status = ConnectionStatus.connected;
         _startTrafficMonitor();
       } else {
-        _markError(
-          CoreErrorMessageService.processStartFailure(
-            _desktopRuntime.lastError,
-          ),
-          notify: false,
-        );
+        _coreError = _core.lastError.isNotEmpty
+            ? _core.lastError
+            : '连接失败，请检查 sing-box.exe 是否存在';
+        _status = ConnectionStatus.error;
       }
     } catch (e) {
-      _markError(
-        CoreErrorMessageService.windowsStartException(e),
-        notify: false,
-      );
+      final raw = '$e';
+      if (raw.contains('Access') || raw.contains('denied')) {
+        _coreError = '权限不足，请以管理员身份运行客户端';
+      } else {
+        _coreError = '连接失败，请重启客户端后重试';
+      }
+      _status = ConnectionStatus.error;
     } finally {
       notifyListeners();
     }
     return _coreError.isNotEmpty ? _coreError : null;
   }
 
-  Future<String?> _toggleAndroidConnection(
-    CoreConnectionRequest request,
-  ) async {
+  Future<String?> _toggleAndroidConnection({
+    required List<NodeModel> nodes,
+    required NodeModel currentNode,
+    required ProxyMode proxyMode,
+    required String dnsMode,
+    required int proxyPort,
+  }) async {
     if (coreConnecting) return null;
 
     if (_status == ConnectionStatus.connected) {
-      _setStatus(ConnectionStatus.disconnecting);
-      await _androidRuntime.stop();
+      _status = ConnectionStatus.disconnecting;
+      notifyListeners();
+      await _androidCore.stop();
       _stopTrafficMonitor();
-      _markDisconnected();
+      _connectedAt = null;
+      _coreError = '';
+      _status = ConnectionStatus.disconnected;
+      notifyListeners();
       return null;
     }
 
-    final validNodes = request.validNodes;
+    final validNodes = nodes.where((n) => n.rawUri.isNotEmpty).toList();
     if (validNodes.isEmpty) {
-      return _markError(CoreErrorMessageService.noAvailableNodes);
+      _coreError = '没有可用节点，请刷新节点列表后重试';
+      notifyListeners();
+      return _coreError;
     }
 
-    _markConnecting();
+    final config = SingboxConfig.buildFullConfig(
+      validNodes,
+      selectedTag: SingboxConfig.nodeTagFor(currentNode),
+      port: proxyPort,
+      apiPort: SingboxConfig.defaultApiPort,
+      proxyMode: proxyMode,
+      dnsMode: dnsMode,
+      networkMode: NetworkMode.tun,
+    );
+
+    if (config == null) {
+      _coreError = '生成配置失败，请选择其他节点后重试';
+      notifyListeners();
+      return _coreError;
+    }
+
+    _status = ConnectionStatus.connecting;
+    _coreError = '';
+    notifyListeners();
 
     try {
-      final ok = await _androidRuntime.start(
-        CoreRuntimeStartPlan(
-          request: request,
-          overrideNetworkMode: NetworkMode.tun,
-        ),
-      );
+      final configJson = SingboxConfig.encodeConfig(config);
+      final ok = await _androidCore.start(configJson);
       if (ok) {
-        _markConnected(notify: false);
+        _connectedAt = DateTime.now();
+        _status = ConnectionStatus.connected;
       } else {
-        _markError(
-          CoreErrorMessageService.androidStartFailure(
-            _androidRuntime.lastError,
-          ),
-          notify: false,
-        );
+        _coreError = _androidCore.lastError.isNotEmpty
+            ? _androidCore.lastError
+            : 'Android 核心启动失败';
+        _status = ConnectionStatus.error;
       }
     } catch (e) {
-      _markError('$e', notify: false);
+      _coreError = '$e';
+      _status = ConnectionStatus.error;
     } finally {
       notifyListeners();
     }
@@ -336,15 +436,19 @@ class CoreController extends ChangeNotifier {
   /// Stops the core and clears connection state. Called by [AppController.logout].
   void stopAndReset() {
     if (Platform.isAndroid) {
-      unawaited(_androidRuntime.stop());
-      _markDisconnected(notify: false);
+      unawaited(_androidCore.stop());
+      _connectedAt = null;
+      _coreError = '';
+      _status = ConnectionStatus.disconnected;
       return;
     }
-    if (_desktopRuntime.isRunning) {
-      unawaited(_desktopRuntime.stop());
+    if (_core.isRunning) {
+      unawaited(_core.stop());
       unawaited(ProxySetter.disable());
+      _connectedAt = null;
     }
-    _markDisconnected(notify: false);
+    _coreError = '';
+    _status = ConnectionStatus.disconnected;
   }
 
   // ── Node switching ────────────────────────────────────────────────────────
@@ -352,22 +456,22 @@ class CoreController extends ChangeNotifier {
   /// Switches the active proxy at runtime without restarting the core.
   /// Returns true if the Clash API accepted the change.
   Future<bool> switchNode(NodeModel node) => SingboxApiClient.switchProxy(
-    SingboxConfig.nodeTagFor(node),
-    apiPort: SingboxConfig.defaultApiPort,
-  );
+        SingboxConfig.nodeTagFor(node),
+        apiPort: SingboxConfig.defaultApiPort,
+      );
 
   /// Switches the PROXY selector to the urltest outbound (自动选择).
   /// sing-box then picks the fastest node internally based on real latency.
   Future<bool> switchToAuto() => SingboxApiClient.switchProxy(
-    '自动选择',
-    apiPort: SingboxConfig.defaultApiPort,
-  );
+        '自动选择',
+        apiPort: SingboxConfig.defaultApiPort,
+      );
 
   // ── Mode switching ────────────────────────────────────────────────────────
 
   /// Apply [proxyMode] to the running core via Clash API (no restart needed).
   Future<void> setMode(ProxyMode proxyMode) async {
-    if (!_desktopRuntime.isRunning) return;
+    if (!_core.isRunning) return;
     await SingboxApiClient.setMode(
       proxyMode.clashValue,
       apiPort: SingboxConfig.defaultApiPort,
@@ -376,10 +480,10 @@ class CoreController extends ChangeNotifier {
 
   // ── Proxy repair ──────────────────────────────────────────────────────────
 
-  /// Force-sync the system proxy to match the current core state.
+  /// Force-sync the Windows system proxy to match the current core state.
   Future<void> fixProxy(int proxyPort) async {
-    if (!CorePlatformSupport.isDesktop) return;
-    if (_desktopRuntime.isRunning) {
+    if (!Platform.isWindows) return;
+    if (_core.isRunning) {
       await ProxySetter.enable(port: proxyPort);
     } else {
       await ProxySetter.disable();
@@ -391,18 +495,29 @@ class CoreController extends ChangeNotifier {
   /// Run `sing-box version` and return the version string.
   static Future<String> getCoreVersion() async {
     if (Platform.isAndroid) {
-      return AndroidCoreRuntime().version();
+      return AndroidCoreManager().version();
     }
-    if (!CorePlatformSupport.isDesktop) return '当前平台暂未接入核心';
-    return DesktopCoreRuntime.versionString();
+    if (!Platform.isWindows) return '当前平台暂未接入核心';
+    final exe = CoreManager.findExecutable();
+    if (exe == null) return '未找到 sing-box.exe';
+    try {
+      final r = await Process.run(exe, ['version']).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => ProcessResult(0, 1, '', ''),
+      );
+      final out = '${r.stdout}'.trim();
+      final m = RegExp(r'sing-box version ([\d.]+\S*)').firstMatch(out);
+      return m?.group(1) ?? out.split('\n').first.trim();
+    } catch (_) {
+      return '获取失败';
+    }
   }
 
   /// Write the buffered log lines to %LOCALAPPDATA%\Litchi\ and return the path.
   Future<String?> exportLogs() async {
     if (_logs.isEmpty) return null;
     try {
-      final base =
-          Platform.environment['LOCALAPPDATA'] ??
+      final base = Platform.environment['LOCALAPPDATA'] ??
           Platform.environment['APPDATA'] ??
           Directory.systemTemp.path;
       final dir = Directory('$base\\Litchi');
@@ -425,15 +540,14 @@ class CoreController extends ChangeNotifier {
 
   void _startTrafficMonitor() {
     _stopTrafficMonitor();
-    _trafficSub =
-        SingboxApiClient.trafficStream(
-          apiPort: SingboxConfig.defaultApiPort,
-        ).listen((t) {
-          downBpsNotifier.value = t.downBps;
-          upBpsNotifier.value = t.upBps;
-          // Intentionally no notifyListeners() — speed widgets use
-          // ValueListenableBuilder, so the global rebuild is avoided.
-        });
+    _trafficSub = SingboxApiClient.trafficStream(
+      apiPort: SingboxConfig.defaultApiPort,
+    ).listen((t) {
+      downBpsNotifier.value = t.downBps;
+      upBpsNotifier.value = t.upBps;
+      // Intentionally no notifyListeners() — speed widgets use
+      // ValueListenableBuilder, so the global rebuild is avoided.
+    });
   }
 
   void _stopTrafficMonitor() {
@@ -443,34 +557,6 @@ class CoreController extends ChangeNotifier {
     }
     downBpsNotifier.value = 0;
     upBpsNotifier.value = 0;
-  }
-
-  void _setStatus(ConnectionStatus status, {bool notify = true}) {
-    _status = status;
-    if (notify) notifyListeners();
-  }
-
-  void _markConnecting({bool notify = true}) {
-    _coreError = '';
-    _setStatus(ConnectionStatus.connecting, notify: notify);
-  }
-
-  void _markConnected({bool notify = true}) {
-    _connectedAt = DateTime.now();
-    _coreError = '';
-    _setStatus(ConnectionStatus.connected, notify: notify);
-  }
-
-  void _markDisconnected({bool notify = true}) {
-    _connectedAt = null;
-    _coreError = '';
-    _setStatus(ConnectionStatus.disconnected, notify: notify);
-  }
-
-  String _markError(String message, {bool notify = true}) {
-    _coreError = message;
-    _setStatus(ConnectionStatus.error, notify: notify);
-    return _coreError;
   }
 
   // ── Latency testing ───────────────────────────────────────────────────────
@@ -484,7 +570,7 @@ class CoreController extends ChangeNotifier {
     List<NodeModel> nodes, {
     required void Function(int idx, NodeModel updated) onResult,
   }) async {
-    if (nodes.isEmpty || !_desktopRuntime.isRunning) return;
+    if (nodes.isEmpty || !_core.isRunning) return;
 
     final tags = nodes.map(SingboxConfig.nodeTagFor).toList();
     final history = await SingboxApiClient.testAllViaUrltest(
@@ -507,20 +593,15 @@ class CoreController extends ChangeNotifier {
     if ((state == CoreState.error || state == CoreState.stopped) &&
         (_status == ConnectionStatus.connected ||
             _status == ConnectionStatus.connecting)) {
-      final wasProtecting = _status == ConnectionStatus.connected;
       _stopTrafficMonitor();
-      if (state == CoreState.error) {
-        _markError(_desktopRuntime.lastError, notify: false);
-      } else {
-        _markDisconnected(notify: false);
+      _connectedAt = null;
+      if (state == CoreState.error && _core.lastError.isNotEmpty) {
+        _coreError = _core.lastError;
       }
-      // Fail-closed: if we were actively tunnelling and the user enabled the
-      // kill-switch, blackhole the proxy so traffic can't leak directly.
-      if (killSwitchEnabled && wasProtecting) {
-        unawaited(ProxySetter.engageKillSwitch());
-      } else {
-        unawaited(ProxySetter.disable());
-      }
+      _status = state == CoreState.error
+          ? ConnectionStatus.error
+          : ConnectionStatus.disconnected;
+      unawaited(ProxySetter.disable());
       notifyListeners();
     }
   }

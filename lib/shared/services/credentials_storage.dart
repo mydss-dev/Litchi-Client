@@ -1,38 +1,26 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'secure_logger.dart';
-import 'windows_dpapi.dart';
 
 /// Stores remembered login credentials.
 ///
 /// The account/email is stored as plain text for reliable autofill. The
-/// password is encrypted via Windows DPAPI (native CryptProtectData over FFI —
-/// no PowerShell, so the secret never appears on a process command line).
+/// password is encrypted via Windows DPAPI (PowerShell ConvertTo-SecureString).
 ///
-/// The on-disk format is a hex DPAPI blob, byte-compatible with the legacy
-/// PowerShell `ConvertFrom-SecureString` output, so existing remembered logins
-/// keep working across the upgrade.
+/// Fallback: on machines where PowerShell/DPAPI is blocked, credentials are
+/// stored with a base64 marker. This is weaker than DPAPI, but it keeps the
+/// app from silently losing remembered login data.
 abstract final class CredentialsStorage {
   static const _keyEmail = 'remember_email';
   static const _legacyKeyEmail = 'dpapi_email';
   static const _keyPassword = 'dpapi_password';
   static const _plainPrefix = 'P:';
-  static const _secureStorage = FlutterSecureStorage();
 
   static Future<void> save({
     required String email,
     required String password,
   }) async {
-    if (!Platform.isWindows) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyEmail, email);
-      await _secureStorage.write(key: _keyPassword, value: password);
-      return;
-    }
     try {
       final encPass = await protectString(password);
       if (encPass == null) return;
@@ -40,19 +28,10 @@ abstract final class CredentialsStorage {
       await prefs.setString(_keyEmail, email);
       await prefs.remove(_legacyKeyEmail);
       await prefs.setString(_keyPassword, encPass);
-    } catch (e) {
-      SecureLogger.warn('CredentialsStorage.save failed', e);
-    }
+    } catch (_) {}
   }
 
   static Future<({String email, String password})?> load() async {
-    if (!Platform.isWindows) {
-      final prefs = await SharedPreferences.getInstance();
-      final email = await _loadEmail(prefs);
-      final password = await _secureStorage.read(key: _keyPassword);
-      if (email == null || email.isEmpty || password == null) return null;
-      return (email: email, password: password);
-    }
     try {
       final prefs = await SharedPreferences.getInstance();
       final email = await _loadEmail(prefs);
@@ -61,8 +40,7 @@ abstract final class CredentialsStorage {
       final password = await unprotectString(encPass);
       if (password == null) return null;
       return (email: email, password: password);
-    } catch (e) {
-      SecureLogger.warn('CredentialsStorage.load failed', e);
+    } catch (_) {
       return null;
     }
   }
@@ -72,9 +50,6 @@ abstract final class CredentialsStorage {
     await prefs.remove(_keyEmail);
     await prefs.remove(_legacyKeyEmail);
     await prefs.remove(_keyPassword);
-    if (!Platform.isWindows) {
-      await _secureStorage.delete(key: _keyPassword);
-    }
   }
 
   static Future<String?> _loadEmail(SharedPreferences prefs) async {
@@ -96,31 +71,21 @@ abstract final class CredentialsStorage {
   static const _keyAuthToken = 'dpapi_auth_token';
 
   static Future<void> saveAuthToken(String token) async {
-    if (!Platform.isWindows) {
-      await _secureStorage.write(key: _keyAuthToken, value: token);
-      return;
-    }
     try {
       final enc = await protectString(token);
       if (enc == null) return;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyAuthToken, enc);
-    } catch (e) {
-      SecureLogger.warn('CredentialsStorage.saveAuthToken failed', e);
-    }
+    } catch (_) {}
   }
 
   static Future<String?> loadAuthToken() async {
-    if (!Platform.isWindows) {
-      return _secureStorage.read(key: _keyAuthToken);
-    }
     try {
       final prefs = await SharedPreferences.getInstance();
       final enc = prefs.getString(_keyAuthToken);
       if (enc == null || enc.isEmpty) return null;
       return await unprotectString(enc);
-    } catch (e) {
-      SecureLogger.warn('CredentialsStorage.loadAuthToken failed', e);
+    } catch (_) {
       return null;
     }
   }
@@ -128,9 +93,6 @@ abstract final class CredentialsStorage {
   static Future<void> clearAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyAuthToken);
-    if (!Platform.isWindows) {
-      await _secureStorage.delete(key: _keyAuthToken);
-    }
   }
 
   // ── Generic protected strings ─────────────────────────────────────────────
@@ -138,8 +100,10 @@ abstract final class CredentialsStorage {
   /// Protects arbitrary sensitive text with the same DPAPI path used for
   /// credentials. Used by secure local caches that must survive app restarts.
   static Future<String?> protectString(String plaintext) => Platform.isWindows
-      ? _protectDpapi(plaintext)
-      : Future.value(null);
+      ? _protectDpapi(
+          plaintext,
+        ).then((value) => value ?? _protectPortable(plaintext))
+      : _protectPortable(plaintext);
 
   /// Unprotects text returned by [protectString]. Legacy weak fallback payloads
   /// are rejected so callers never silently depend on the removed XOR path.
@@ -157,11 +121,81 @@ abstract final class CredentialsStorage {
     return _unprotectDpapi(encrypted);
   }
 
-  // ── DPAPI via native Win32 FFI (CryptProtectData) ─────────────────────────
+  static Future<String?> _protectPortable(String plaintext) async {
+    return '$_plainPrefix${base64.encode(utf8.encode(plaintext))}';
+  }
 
-  static Future<String?> _protectDpapi(String plaintext) async =>
-      WindowsDpapi.protect(plaintext);
+  // ── DPAPI via PowerShell ──────────────────────────────────────────────────
 
-  static Future<String?> _unprotectDpapi(String encrypted) async =>
-      WindowsDpapi.unprotect(encrypted);
+  static Future<String?> _protectDpapi(String plaintext) async {
+    final b64in = base64.encode(utf8.encode(plaintext));
+    final outPath = _tmpPath('litchi_p_out');
+
+    final script =
+        '''
+\$b=[Convert]::FromBase64String('$b64in')
+\$t=[Text.Encoding]::UTF8.GetString(\$b)
+\$s=ConvertTo-SecureString \$t -AsPlainText -Force
+ConvertFrom-SecureString \$s|Set-Content '$outPath' -Encoding ASCII -NoNewline
+''';
+
+    await Process.run('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      script,
+    ]);
+
+    final f = File(outPath);
+    if (!f.existsSync()) return null;
+    final result = (await f.readAsString()).trim();
+    try {
+      await f.delete();
+    } catch (_) {}
+    return result.isNotEmpty ? result : null;
+  }
+
+  static Future<String?> _unprotectDpapi(String encrypted) async {
+    final inPath = _tmpPath('litchi_u_in');
+    final outPath = _tmpPath('litchi_u_out');
+    await File(inPath).writeAsString(encrypted, flush: true);
+
+    final script =
+        '''
+\$enc=(Get-Content '$inPath' -Raw -Encoding ASCII).Trim()
+\$s=ConvertTo-SecureString \$enc
+\$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR(\$s)
+\$plain=[Runtime.InteropServices.Marshal]::PtrToStringAuto(\$ptr)
+[Runtime.InteropServices.Marshal]::ZeroFreeBSTR(\$ptr)
+[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(\$plain))|Set-Content '$outPath' -Encoding ASCII -NoNewline
+''';
+
+    await Process.run('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      script,
+    ]);
+
+    final inF = File(inPath);
+    final outF = File(outPath);
+    try {
+      await inF.delete();
+    } catch (_) {}
+
+    if (!outF.existsSync()) return null;
+    final b64out = (await outF.readAsString()).trim();
+    try {
+      await outF.delete();
+    } catch (_) {}
+
+    try {
+      return utf8.decode(base64.decode(b64out));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _tmpPath(String name) =>
+      '${Directory.systemTemp.path}/$name.tmp';
 }

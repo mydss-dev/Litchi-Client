@@ -74,12 +74,10 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
   }
 
   void _testLatencies(AppController ctrl) {
-    if (ctrl.nodes.isEmpty) {
-      AppToast.show(context, '暂无可测速节点', type: AppToastType.warning);
+    if (ctrl.supportsCoreConnection && !ctrl.coreProcessRunning) {
+      AppToast.show(context, '请先连接后测速', type: AppToastType.warning);
       return;
     }
-    // No connect-first gate: testLatencies handles the not-running case itself
-    // (desktop starts the core in background; Android falls back to TCP ping).
     ctrl.testLatencies();
   }
 
@@ -198,20 +196,17 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
                   ),
                   const SizedBox(height: 12),
                   Expanded(
-                    child: ListView.builder(
+                    child: ListView(
                       controller: scrollController,
                       padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                      itemCount: nodes.isEmpty ? 3 : nodes.length + 2,
-                      itemBuilder: (context, index) {
-                        if (index == 0) {
-                          return _AutoSelectTile(
-                            selected: ctrl.autoSelected,
-                            onTap: () => _selectAuto(ctrl),
-                          );
-                        }
-                        if (index == 1) return const SizedBox(height: 10);
-                        if (nodes.isEmpty) {
-                          return Padding(
+                      children: [
+                        _AutoSelectTile(
+                          selected: ctrl.autoSelected,
+                          onTap: () => _selectAuto(ctrl),
+                        ),
+                        const SizedBox(height: 10),
+                        if (nodes.isEmpty)
+                          Padding(
                             padding: const EdgeInsets.only(top: 48),
                             child: Center(
                               child: Text(
@@ -221,20 +216,19 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
                                 ),
                               ),
                             ),
-                          );
-                        }
-                        final node = nodes[index - 2];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _NodeTile(
-                            node: node,
-                            selected:
-                                !ctrl.autoSelected &&
-                                ctrl.currentNode.id == node.id,
-                            onTap: () => _selectNode(ctrl, node),
-                          ),
-                        );
-                      },
+                          )
+                        else
+                          for (final node in nodes) ...[
+                            _NodeTile(
+                              node: node,
+                              selected:
+                                  !ctrl.autoSelected &&
+                                  ctrl.currentNode.id == node.id,
+                              onTap: () => _selectNode(ctrl, node),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                      ],
                     ),
                   ),
                 ],

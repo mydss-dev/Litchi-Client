@@ -1,12 +1,10 @@
+import 'package:flutter/foundation.dart';
+
+import '../config/app_config.dart';
 import '../models/api_models.dart';
 import '../models/app_models.dart';
-import 'invite_data_service.dart';
+import '../models/model_mappers.dart';
 import 'panel_api.dart';
-import 'plan_data_service.dart';
-import 'secure_logger.dart';
-import 'subscription_data_service.dart';
-import 'traffic_data_service.dart';
-import 'user_data_service.dart';
 
 /// Mutable bag populated by [DataLoader] with best-effort API results.
 /// Null fields indicate the corresponding load was skipped or failed.
@@ -47,17 +45,9 @@ class DataSnapshot {
 /// All individual loads are best-effort — failures are swallowed and the
 /// corresponding field is left null. [AppController] applies non-null fields.
 class DataLoader {
-  DataLoader(PanelApi api)
-    : _inviteData = InviteDataService(api),
-      _planData = PlanDataService(api),
-      _subscriptionData = SubscriptionDataService(api),
-      _trafficData = TrafficDataService(api),
-      _userData = UserDataService(api);
-  final InviteDataService _inviteData;
-  final PlanDataService _planData;
-  final SubscriptionDataService _subscriptionData;
-  final TrafficDataService _trafficData;
-  final UserDataService _userData;
+  const DataLoader(this._api);
+
+  final PanelApi _api;
 
   /// Full load: user-info first (sequential), then all others in parallel.
   Future<DataSnapshot> loadAll() async {
@@ -83,126 +73,151 @@ class DataLoader {
 
   Future<void> _fillUserInfo(DataSnapshot snap) async {
     try {
-      final result = await _userData.loadUser();
-      snap.user = result.user;
-      snap.currentPlanId = result.currentPlanId;
-      snap.traffic = result.traffic;
+      final info = await _api.getUserInfo();
+      snap.user = ModelMappers.toUser(info);
+      snap.currentPlanId = info.planId;
+      snap.traffic = ModelMappers.toTraffic(info);
     } catch (e) {
-      SecureLogger.debug('[Litchi] getUserInfo error', e);
+      debugPrint('[Litchi] getUserInfo error: $e');
       snap.criticalError = '用户信息加载失败，请检查网络后重试';
     }
     try {
-      final result = await _userData.loadSubscribe();
-      snap.subscribeUrl = result.subscribeUrl;
-      snap.aliveIp = result.aliveIp;
-      snap.deviceLimit = result.deviceLimit;
-      snap.resetDay = result.resetDay;
-      snap.expiredAt = result.expiredAt;
-      if (result.traffic != null) {
-        snap.traffic = result.traffic;
+      final subscribe = await _api.getSubscribeInfo();
+      snap.subscribeUrl = subscribe.subscribeUrl;
+      snap.aliveIp = subscribe.aliveIp;
+      snap.deviceLimit = subscribe.deviceLimit;
+      snap.resetDay = subscribe.resetDay;
+      snap.expiredAt = subscribe.expiredAt;
+      if (subscribe.transferEnable > 0) {
+        final total = subscribe.transferEnable / AppConfig.bytesPerGb;
+        final used =
+            (subscribe.upload + subscribe.download) / AppConfig.bytesPerGb;
+        final remain = (total - used).clamp(0.0, double.infinity);
+        snap.traffic = TrafficModel(
+          totalGb: total,
+          usedGb: used,
+          remainGb: remain,
+        );
       }
     } catch (e) {
-      SecureLogger.debug('[Litchi] getSubscribeInfo error', e);
+      debugPrint('[Litchi] getSubscribeInfo error: $e');
     }
   }
 
   Future<void> _fillNodes(DataSnapshot snap) async {
     final url = snap.subscribeUrl;
     if (url == null || url.isEmpty) {
-      SecureLogger.debug('[Litchi] _fillNodes: no subscribe URL, skipping');
+      debugPrint('[Litchi] _fillNodes: no subscribe URL, skipping');
       return;
     }
     try {
-      final result = await _subscriptionData.loadNodes(url);
+      final result = await _api.fetchSubscription(url);
       if (result.nodes.isNotEmpty) {
-        snap.nodes = result.nodes;
+        snap.nodes = result.nodes.map(ModelMappers.toNode).toList();
       }
-      if (result.traffic != null) {
-        snap.traffic = result.traffic;
+      final st = result.traffic;
+      if (st != null && st.total > 0) {
+        final total = st.total / AppConfig.bytesPerGb;
+        final used = (st.upload + st.download) / AppConfig.bytesPerGb;
+        final remain = (total - used).clamp(0.0, double.infinity);
+        snap.traffic = TrafficModel(
+          totalGb: total,
+          usedGb: used,
+          remainGb: remain,
+        );
       }
     } catch (e) {
-      SecureLogger.debug('[Litchi] _fillNodes error', e);
+      debugPrint('[Litchi] _fillNodes error: $e');
     }
   }
 
   Future<void> _fillPlans(DataSnapshot snap) async {
     try {
-      final result = await _planData.loadPlans(
-        currentPlanId: snap.currentPlanId,
-        currentUser: snap.user,
-      );
-      if (result.plans.isNotEmpty) {
-        snap.plans = result.plans;
-      }
-      if (result.user != null) {
-        snap.user = result.user;
+      final plans = await _api.getPlans();
+      if (plans.isNotEmpty) {
+        final mapped = plans.map(ModelMappers.toPlan).toList();
+        snap.plans = mapped;
+        final currentPlan = _planById(mapped, snap.currentPlanId);
+        final user = snap.user;
+        if (user != null && user.plan.trim().isEmpty && currentPlan != null) {
+          snap.user = user.copyWith(plan: currentPlan.title);
+        }
       }
     } catch (e) {
-      SecureLogger.debug('[Litchi] getPlans error', e);
+      debugPrint('[Litchi] getPlans error: $e');
     }
+  }
+
+  PlanModel? _planById(List<PlanModel> plans, int? id) {
+    if (id == null || id <= 0) return null;
+    for (final plan in plans) {
+      if (int.tryParse(plan.id) == id) return plan;
+    }
+    return null;
   }
 
   Future<void> _fillInvite(DataSnapshot snap) async {
     try {
-      final result = await _inviteData.loadInvite();
-      if (result.inviteCodes != null) {
-        snap.inviteCodes = result.inviteCodes;
+      final info = await _api.getInviteInfo();
+      if (info.codes.isNotEmpty) {
+        snap.inviteCodes = info.codes
+            .map((item) => InviteCodeModel(code: item.code, link: item.link))
+            .toList();
       }
-      if (result.inviteCode != null) {
-        snap.inviteCode = result.inviteCode;
+      if (info.inviteCode.isNotEmpty) snap.inviteCode = info.inviteCode;
+      if (info.inviteUrl.isNotEmpty) snap.inviteLink = info.inviteUrl;
+      snap.commissionRate = info.commissionRate;
+      snap.invitedCount = info.effectCount;
+      snap.earnedCommission = info.validCommission / 100;
+      snap.pendingCommission = info.pendingCommission / 100;
+      snap.withdrawable = info.balance / 100; // balance stored in cents
+      final commConfig = await _api.getCommConfig();
+      if (commConfig.inviteUrlBase.isNotEmpty) {
+        snap.inviteUrlBase = commConfig.inviteUrlBase;
       }
-      if (result.inviteLink != null) {
-        snap.inviteLink = result.inviteLink;
-      }
-      if (result.inviteUrlBase != null) {
-        snap.inviteUrlBase = result.inviteUrlBase;
-      }
-      if (result.commissionRate != null) {
-        snap.commissionRate = result.commissionRate;
-      }
-      if (result.invitedCount != null) {
-        snap.invitedCount = result.invitedCount;
-      }
-      if (result.earnedCommission != null) {
-        snap.earnedCommission = result.earnedCommission;
-      }
-      if (result.pendingCommission != null) {
-        snap.pendingCommission = result.pendingCommission;
-      }
-      if (result.withdrawable != null) {
-        snap.withdrawable = result.withdrawable;
-      }
-      if (result.currencySymbol != null) {
-        snap.currencySymbol = result.currencySymbol;
-      }
-      if (result.withdrawClose != null) {
-        snap.withdrawClose = result.withdrawClose;
-      }
-      if (result.withdrawMethods != null) {
-        snap.withdrawMethods = result.withdrawMethods;
-      }
-      if (result.minWithdrawAmount != null) {
-        snap.minWithdrawAmount = result.minWithdrawAmount;
-      }
-      if (result.inviteRecords != null) {
-        snap.inviteRecords = result.inviteRecords;
-      }
+      snap.currencySymbol = commConfig.currencySymbol;
+      snap.withdrawClose = commConfig.withdrawClose;
+      snap.withdrawMethods = commConfig.withdrawMethods;
+      snap.minWithdrawAmount = commConfig.minWithdrawAmount / 100;
+      snap.inviteRecords = await _api.getInviteDetails(pageSize: 10);
     } catch (e) {
-      SecureLogger.debug('[Litchi] getInviteInfo error', e);
+      debugPrint('[Litchi] getInviteInfo error: $e');
     }
   }
 
   Future<void> _fillTrafficLog(DataSnapshot snap) async {
     try {
-      final result = await _trafficData.loadTrafficLog();
-      if (result.trafficUsage.isNotEmpty) {
-        snap.trafficUsage = result.trafficUsage;
-      }
-      if (result.dailyUsage.isNotEmpty) {
-        snap.dailyUsage = result.dailyUsage;
+      final logs = await _api.getTrafficLog();
+      if (logs.isNotEmpty) {
+        final totalDaily = <DateTime, double>{};
+        final uploadDaily = <DateTime, double>{};
+        final downloadDaily = <DateTime, double>{};
+        for (final log in logs) {
+          final date = DateTime(log.date.year, log.date.month, log.date.day);
+          totalDaily[date] =
+              (totalDaily[date] ?? 0) + log.traffic / AppConfig.bytesPerGb;
+          uploadDaily[date] =
+              (uploadDaily[date] ?? 0) + log.upload / AppConfig.bytesPerGb;
+          downloadDaily[date] =
+              (downloadDaily[date] ?? 0) + log.download / AppConfig.bytesPerGb;
+        }
+        final points =
+            totalDaily.entries
+                .map(
+                  (e) => TrafficUsagePoint(
+                    date: e.key,
+                    totalGb: e.value,
+                    uploadGb: uploadDaily[e.key] ?? 0,
+                    downloadGb: downloadDaily[e.key] ?? 0,
+                  ),
+                )
+                .toList()
+              ..sort((a, b) => a.date.compareTo(b.date));
+        snap.trafficUsage = points;
+        snap.dailyUsage = points.map((p) => p.totalGb).toList();
       }
     } catch (e) {
-      SecureLogger.debug('[Litchi] getTrafficLog error', e);
+      debugPrint('[Litchi] getTrafficLog error: $e');
     }
   }
 }

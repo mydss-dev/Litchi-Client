@@ -6,7 +6,6 @@ import '../config/app_config.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_text_styles.dart';
-import 'app_selector.dart';
 import 'brand_logo.dart';
 
 /// Left navigation rail (§8). Fixed 160px wide.
@@ -24,10 +23,7 @@ class AppSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    // Read-only: callbacks call into the controller, but selection highlight is
-    // the only reactive bit — scoped to an AppSelector below so the sidebar no
-    // longer rebuilds on every unrelated controller notify.
-    final controller = AppScope.read(context);
+    final controller = AppScope.of(context);
 
     return Container(
       width: 176,
@@ -44,20 +40,17 @@ class AppSidebar extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.zero,
-              child: AppSelector<AppPage>(
-                selector: (c) => c.page,
-                builder: (context, page, _) => Column(
-                  children: [
-                    for (final item in _items) ...[
-                      _SidebarMenuItem(
-                        item: item,
-                        selected: _isSelected(page, item.page),
-                        onTap: () => controller.goToPage(item.page),
-                      ),
-                      const SizedBox(height: 6),
-                    ],
+              child: Column(
+                children: [
+                  for (final item in _items) ...[
+                    _SidebarMenuItem(
+                      item: item,
+                      selected: _isSelected(controller.page, item.page),
+                      onTap: () => controller.goToPage(item.page),
+                    ),
+                    const SizedBox(height: 6),
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -219,120 +212,115 @@ class _PlanStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    // Rebuild only when plan name or traffic totals change.
-    return AppSelector<(String, double, double)>(
-      selector: (ctrl) =>
-          (ctrl.user.plan, ctrl.traffic.totalGb, ctrl.traffic.remainGb),
-      builder: (context, slice, _) {
-        final (plan, totalGb, remainGb) = slice;
-        final remainRatio = totalGb <= 0
-            ? 0.0
-            : (remainGb / totalGb).clamp(0.0, 1.0);
-        final progressColor = remainRatio <= 0.1
-            ? c.danger
-            : remainRatio <= 0.3
-            ? c.warning
-            : c.primary;
-        final planName = plan.isEmpty ? '--' : plan;
+    final ctrl = AppScope.of(context);
+    final user = ctrl.user;
+    final traffic = ctrl.traffic;
+    final remainRatio = traffic.totalGb <= 0
+        ? 0.0
+        : (traffic.remainGb / traffic.totalGb).clamp(0.0, 1.0);
+    final progressColor = remainRatio <= 0.1
+        ? c.danger
+        : remainRatio <= 0.3
+        ? c.warning
+        : c.primary;
+    final planName = user.plan.isEmpty ? '--' : user.plan;
 
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: c.surfaceMuted.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: c.softBorder.withValues(alpha: 0.75)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: c.surfaceMuted.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.softBorder.withValues(alpha: 0.75)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      planName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyStrong.copyWith(
-                        color: c.textPrimary,
-                        fontSize: 13,
-                      ),
-                    ),
+              Expanded(
+                child: Text(
+                  planName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 13,
                   ),
-                  Container(
-                    height: 22,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: c.primarySoft,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      'Active',
-                      style: AppTextStyles.badge.copyWith(
-                        color: c.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '剩余 ${remainGb.toStringAsFixed(0)} GB',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(
-                        color: c.textSecondary,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${(remainRatio * 100).round()}%',
-                    style: AppTextStyles.caption.copyWith(
-                      color: progressColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 7),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: Stack(
-                  children: [
-                    Container(height: 7, color: c.cardBg),
-                    FractionallySizedBox(
-                      widthFactor: remainRatio,
-                      child: Container(
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: progressColor,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
-              const SizedBox(height: 7),
-              Text(
-                '总量 ${totalGb.toStringAsFixed(0)} GB',
-                style: AppTextStyles.caption.copyWith(
-                  color: c.textMuted,
-                  fontSize: 11,
+              Container(
+                height: 22,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.primarySoft,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'Active',
+                  style: AppTextStyles.badge.copyWith(
+                    color: c.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '剩余 ${traffic.remainGb.toStringAsFixed(0)} GB',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+              Text(
+                '${(remainRatio * 100).round()}%',
+                style: AppTextStyles.caption.copyWith(
+                  color: progressColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: Stack(
+              children: [
+                Container(height: 7, color: c.cardBg),
+                FractionallySizedBox(
+                  widthFactor: remainRatio,
+                  child: Container(
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: progressColor,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            '总量 ${traffic.totalGb.toStringAsFixed(0)} GB',
+            style: AppTextStyles.caption.copyWith(
+              color: c.textMuted,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

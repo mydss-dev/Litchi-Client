@@ -5,7 +5,6 @@ import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/app_selector.dart';
 
 /// Formats bytes-per-second into a human-readable (value, unit) pair.
 (String, String) formatSpeed(int bps) {
@@ -20,74 +19,68 @@ class ConnectionStatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Only rebuild this row when the displayed latency changes — not on every
-    // controller notify. Speeds stay isolated via the ValueListenableBuilders.
-    return AppSelector<int>(
-      selector: (c) => c.currentNode.latency,
-      builder: (context, latency, _) {
-        final ctrl = AppScope.read(context);
-        final latencyValue = latency > 0 && latency < 9999
-            ? latency.toString()
-            : '--';
-        final latencyCard = _ConnectionStatCard(
-          label: '当前延迟',
-          value: latencyValue,
-          unit: 'ms',
-        );
+    final ctrl = AppScope.of(context);
+    final latency = ctrl.currentNode.latency;
+    final latencyValue = latency > 0 && latency < 9999
+        ? latency.toString()
+        : '--';
+    final latencyCard = _ConnectionStatCard(
+      label: '当前延迟',
+      value: latencyValue,
+      unit: 'ms',
+    );
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final threeCols = constraints.maxWidth >= 560;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final threeCols = constraints.maxWidth >= 560;
 
-            // Speed values update every second via ValueNotifier — isolated from
-            // the global AppScope rebuild to avoid per-second tree-wide diffs.
-            return ValueListenableBuilder<int>(
-              valueListenable: ctrl.downBpsNotifier,
-              builder: (context, downBps, _) => ValueListenableBuilder<int>(
-                valueListenable: ctrl.upBpsNotifier,
-                builder: (context, upBps, _) {
-                  final (downValue, downUnit) = formatSpeed(downBps);
-                  final (upValue, upUnit) = formatSpeed(upBps);
-                  final cards = [
-                    latencyCard,
-                    _ConnectionStatCard(
-                      label: '下载速度',
-                      value: downValue,
-                      unit: downUnit,
-                    ),
-                    _ConnectionStatCard(
-                      label: '上传速度',
-                      value: upValue,
-                      unit: upUnit,
-                    ),
-                  ];
+        // Speed values update every second via ValueNotifier — isolated from
+        // the global AppScope rebuild to avoid per-second tree-wide diffs.
+        return ValueListenableBuilder<int>(
+          valueListenable: ctrl.downBpsNotifier,
+          builder: (context, downBps, _) => ValueListenableBuilder<int>(
+            valueListenable: ctrl.upBpsNotifier,
+            builder: (context, upBps, _) {
+              final (downValue, downUnit) = formatSpeed(downBps);
+              final (upValue, upUnit) = formatSpeed(upBps);
+              final cards = [
+                latencyCard,
+                _ConnectionStatCard(
+                  label: '下载速度',
+                  value: downValue,
+                  unit: downUnit,
+                ),
+                _ConnectionStatCard(
+                  label: '上传速度',
+                  value: upValue,
+                  unit: upUnit,
+                ),
+              ];
 
-                  if (threeCols) {
-                    return IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (int i = 0; i < cards.length; i++) ...[
-                            if (i > 0) const SizedBox(width: 14),
-                            Expanded(child: cards[i]),
-                          ],
-                        ],
-                      ),
-                    );
-                  }
-
-                  return Column(
+              if (threeCols) {
+                return IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       for (int i = 0; i < cards.length; i++) ...[
-                        if (i > 0) const SizedBox(height: 14),
-                        cards[i],
+                        if (i > 0) const SizedBox(width: 14),
+                        Expanded(child: cards[i]),
                       ],
                     ],
-                  );
-                },
-              ),
-            );
-          },
+                  ),
+                );
+              }
+
+              return Column(
+                children: [
+                  for (int i = 0; i < cards.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 14),
+                    cards[i],
+                  ],
+                ],
+              );
+            },
+          ),
         );
       },
     );
