@@ -6,7 +6,6 @@ import 'package:cryptography/cryptography.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../shared/config/app_config.dart';
-import '../shared/services/cert_pinning.dart';
 import '../shared/services/secure_logger.dart';
 
 /// Fetches brand/API config from OSS and applies it to [AppConfig].
@@ -60,7 +59,6 @@ abstract final class RemoteConfigService {
     HttpClient? client;
     try {
       client = HttpClient()..connectionTimeout = _timeout;
-      CertPinning.apply(client);
       final request = await client.getUrl(Uri.parse(configUrl)).timeout(_timeout);
       request.headers.set('Accept', 'application/json');
 

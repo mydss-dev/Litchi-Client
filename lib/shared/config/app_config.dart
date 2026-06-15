@@ -27,14 +27,6 @@ abstract final class AppConfig {
 
   static const double bytesPerGb = 1073741824.0;
 
-  /// SHA-256 fingerprints (lowercase hex, no colons) of the leaf TLS certs the
-  /// API / OSS endpoints are allowed to present. Empty = pinning disabled.
-  ///
-  /// To populate, take the leaf cert SHA-256 via `openssl s_client` piped to
-  /// `openssl x509 -outform DER | openssl dgst -sha256`.
-  /// See `CertPinning` for scope and limitations.
-  static const List<String> certPinsSha256 = [];
-
   // ── Remote-overridable fields ─────────────────────────────────────────────
   // Initial values come from dart-define; RemoteConfigService overwrites these
   // before runApp() so the first frame already has the correct values.

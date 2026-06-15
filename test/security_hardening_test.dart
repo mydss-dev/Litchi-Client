@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/shared/config/app_config.dart';
-import 'package:litchi_client/shared/services/cert_pinning.dart';
 import 'package:litchi_client/shared/services/outbound_parser.dart';
 import 'package:litchi_client/shared/services/windows_dpapi.dart';
 
@@ -48,12 +47,6 @@ void main() {
       AppConfig.setVersion('   ');
       expect(AppConfig.currentVersion, '9.9.9');
       AppConfig.setVersion(original);
-    });
-  });
-
-  group('CertPinning', () {
-    test('is disabled by default and rejects bad certificates', () {
-      expect(CertPinning.enabled, isFalse);
     });
   });
 
