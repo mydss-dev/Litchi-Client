@@ -9,10 +9,8 @@ import '../shared/models/app_models.dart';
 import '../shared/models/invite_data_state.dart';
 import '../shared/models/node_runtime_state.dart';
 import '../shared/models/subscription_runtime_state.dart';
-import '../shared/models/wallet_data_state.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/auth_session_service.dart';
-import '../shared/services/commission_validation_service.dart';
 import '../shared/services/data_load_error_service.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/invite_link_service.dart';
@@ -28,6 +26,7 @@ import 'core_controller.dart';
 import 'core_platform_support.dart';
 import 'core_state_sync_service.dart';
 import 'settings_controller.dart';
+import 'wallet_controller.dart';
 
 /// Top-level navigation destinations shown in the sidebar.
 enum AppPage {
@@ -63,6 +62,7 @@ class AppController extends ChangeNotifier {
     _settings.addListener(notifyListeners);
     _core.addListener(_onCoreChanged);
     _core.addListener(notifyListeners);
+    _wallet.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
@@ -93,7 +93,7 @@ class AppController extends ChangeNotifier {
   NodeRuntimeState _nodeState = const NodeRuntimeState();
   List<PlanModel> _plans = const [];
   InviteDataState _invite = const InviteDataState();
-  WalletDataState _wallet = const WalletDataState();
+  late final WalletController _wallet = WalletController(_api, refreshData);
   String? _dataLoadError;
   String? _startupMessage;
   List<NoticeModel> _notices = [];
@@ -389,8 +389,10 @@ class AppController extends ChangeNotifier {
     _settings.removeListener(notifyListeners);
     _core.removeListener(_onCoreChanged);
     _core.removeListener(notifyListeners);
+    _wallet.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
+    _wallet.dispose();
     super.dispose();
   }
 
@@ -541,7 +543,7 @@ class AppController extends ChangeNotifier {
     _nodeState = const NodeRuntimeState();
     _plans = const [];
     _invite = const InviteDataState();
-    _wallet = const WalletDataState();
+    _wallet.reset();
     _dataLoadError = null;
     _notices = [];
   }
@@ -580,9 +582,7 @@ class AppController extends ChangeNotifier {
     // Non-critical extras — must never abort node restore / core startup.
     try {
       final currencySymbol = await _api.getCommCurrencySymbol();
-      if (currencySymbol.isNotEmpty) {
-        _wallet = _wallet.copyWith(currencySymbol: currencySymbol);
-      }
+      _wallet.setCurrencySymbol(currencySymbol);
     } catch (_) {}
     try {
       _notices = await _api.getNotices();
@@ -630,53 +630,20 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<String?> transferAllCommission() async {
-    return transferCommissionToBalance(_wallet.withdrawable);
-  }
+  Future<String?> transferAllCommission() => _wallet.transferAllCommission();
 
-  Future<String?> transferCommissionToBalance(double amount) async {
-    final validationError = CommissionValidationService.validateTransfer(
-      amount: amount,
-      withdrawable: _wallet.withdrawable,
-    );
-    if (validationError != null) return validationError;
-    try {
-      await _api.transferCommission((amount * 100).round());
-      await refreshData();
-      return null;
-    } catch (e) {
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  Future<String?> transferCommissionToBalance(double amount) =>
+      _wallet.transferCommissionToBalance(amount);
 
   Future<String?> withdrawCommission({
     required double amount,
     required String account,
     required String method,
-  }) async {
-    final validationError = CommissionValidationService.validateWithdraw(
-      amount: amount,
-      withdrawable: _wallet.withdrawable,
-      withdrawEnabled: _wallet.withdrawEnabled,
-      minWithdrawAmount: _wallet.minWithdrawAmount,
-      currencySymbol: _wallet.currencySymbol,
-      account: account,
-      method: method,
-      withdrawMethods: _wallet.withdrawMethods,
-    );
-    if (validationError != null) return validationError;
-    try {
-      await _api.withdrawCommission(
-        amountCents: (amount * 100).round(),
-        account: account.trim(),
-        method: method.trim(),
-      );
-      await refreshData();
-      return null;
-    } catch (e) {
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  }) => _wallet.withdrawCommission(
+    amount: amount,
+    account: account,
+    method: method,
+  );
 
   Future<void> refreshNodes() async {
     final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
@@ -727,19 +694,17 @@ class AppController extends ChangeNotifier {
       code: normalizedInvites.inviteCode,
       link: normalizedInvites.inviteLink,
     );
-    _wallet = _wallet.copyWith(
+    _wallet.applySnapshot(
       inviteRecords: snap.inviteRecords,
       commissionRate: snap.commissionRate,
       invitedCount: snap.invitedCount,
       earnedCommission: snap.earnedCommission,
       pendingCommission: snap.pendingCommission,
       withdrawable: snap.withdrawable,
-      currencySymbol: snap.currencySymbol?.isNotEmpty == true
-          ? snap.currencySymbol
-          : null,
       withdrawClose: snap.withdrawClose,
       withdrawMethods: snap.withdrawMethods,
       minWithdrawAmount: snap.minWithdrawAmount,
+      currencySymbol: snap.currencySymbol,
     );
     if (snap.criticalError != null) _dataLoadError = snap.criticalError;
   }
