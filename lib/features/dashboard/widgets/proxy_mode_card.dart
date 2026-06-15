@@ -6,6 +6,7 @@ import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/app_selector.dart';
 import '../../../shared/widgets/app_toast.dart';
 
 class ProxyModeCard extends StatelessWidget {
@@ -14,50 +15,56 @@ class ProxyModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final ctrl = AppScope.of(context);
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '代理模式',
-            style: AppTextStyles.sectionTitle.copyWith(
-              color: c.textPrimary,
-              fontSize: 15,
-            ),
+    // Rebuild only when the proxy mode or core-running state changes.
+    return AppSelector<(ProxyMode, bool)>(
+      selector: (ctrl) => (ctrl.proxyMode, ctrl.coreRunning),
+      builder: (context, slice, _) {
+        final (proxyMode, coreRunning) = slice;
+        return AppCard(
+          radius: AppRadius.card,
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '代理模式',
+                style: AppTextStyles.sectionTitle.copyWith(
+                  color: c.textPrimary,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '${proxyMode.label} · ${coreRunning ? '系统代理已开启' : '系统代理未开启'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body.copyWith(color: c.textMuted),
+              ),
+              const SizedBox(height: 16),
+              _ProxyModeSegment(
+                value: proxyMode,
+                onChanged: (mode) {
+                  final ctrl = AppScope.read(context);
+                  if (mode == ctrl.proxyMode) return;
+                  final wasRunning = ctrl.coreRunning;
+                  ctrl.setProxyMode(mode);
+                  if (wasRunning) {
+                    AppToast.show(
+                      context,
+                      '已切换至 ${mode.label}',
+                      type: AppToastType.success,
+                    );
+                  } else {
+                    AppToast.show(context, '代理模式将在下次连接后生效');
+                  }
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            '${ctrl.proxyMode.label} · ${ctrl.coreRunning ? '系统代理已开启' : '系统代理未开启'}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.body.copyWith(color: c.textMuted),
-          ),
-          const SizedBox(height: 16),
-          _ProxyModeSegment(
-            value: ctrl.proxyMode,
-            onChanged: (mode) {
-              if (mode == ctrl.proxyMode) return;
-              final wasRunning = ctrl.coreRunning;
-              ctrl.setProxyMode(mode);
-              if (wasRunning) {
-                AppToast.show(
-                  context,
-                  '已切换至 ${mode.label}',
-                  type: AppToastType.success,
-                );
-              } else {
-                AppToast.show(context, '代理模式将在下次连接后生效');
-              }
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
-
 }
 
 class _ProxyModeSegment extends StatelessWidget {
