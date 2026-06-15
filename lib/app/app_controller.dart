@@ -868,6 +868,13 @@ class AppController extends ChangeNotifier {
 
   Future<void> _startCoreInBackground({bool runLatencyTest = false}) async {
     if (!supportsCoreConnection) return;
+    if (Platform.isAndroid) {
+      // Android can't run a background core (the core needs the VpnService
+      // tunnel), so there is nothing to pre-start. Do a TCP-ping pass instead
+      // so node latencies show up automatically before the user connects.
+      if (runLatencyTest) await testLatencies();
+      return;
+    }
     await _core.startCoreOnly(
       nodes: _nodes,
       currentNode: currentNode,
@@ -918,19 +925,34 @@ class AppController extends ChangeNotifier {
     // On Android before connecting, the sing-box core cannot expose the Clash
     // API yet, so we fall back to a direct TCP handshake ping per node.
     if (Platform.isAndroid && !coreProcessRunning) {
+      // Mark all nodes as testing (-1).
       _nodes = _nodes.map((n) => n.copyWith(latency: -1)).toList();
       notifyListeners();
 
+      // Ping in concurrent batches so a long list (and slow/timing-out nodes)
+      // finishes in seconds instead of sequentially adding up every timeout.
       final snapshot = List<NodeModel>.from(_nodes);
-      for (var i = 0; i < snapshot.length; i++) {
-        final node = snapshot[i];
-        final ms = await TcpPingService.ping(node.server, node.port);
-        if (i < _nodes.length) {
-          final list = List<NodeModel>.from(_nodes);
-          list[i] = node.copyWith(latency: ms ?? 9999);
-          _nodes = list;
-          notifyListeners();
-        }
+      const concurrency = 8;
+      for (var i = 0; i < snapshot.length; i += concurrency) {
+        if (_disposed) return;
+        final batch = snapshot.skip(i).take(concurrency).toList();
+        final results = await Future.wait(
+          batch.map((node) async {
+            final ms = await TcpPingService.ping(node.server, node.port);
+            return (id: node.id, latency: ms ?? 9999);
+          }),
+        );
+        if (_disposed) return;
+        // Apply by node id so a concurrent node-list refresh can't misalign rows.
+        final latencyById = {for (final r in results) r.id: r.latency};
+        _nodes = _nodes
+            .map(
+              (n) => latencyById.containsKey(n.id)
+                  ? n.copyWith(latency: latencyById[n.id])
+                  : n,
+            )
+            .toList();
+        notifyListeners();
       }
       return;
     }
