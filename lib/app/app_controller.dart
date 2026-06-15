@@ -7,7 +7,6 @@ import '../shared/config/app_config.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
 import '../shared/models/node_runtime_state.dart';
-import '../shared/models/subscription_runtime_state.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/auth_session_service.dart';
 import '../shared/services/data_load_error_service.dart';
@@ -26,6 +25,7 @@ import 'account_controller.dart';
 import 'invite_controller.dart';
 import 'notices_controller.dart';
 import 'settings_controller.dart';
+import 'subscription_controller.dart';
 import 'wallet_controller.dart';
 
 /// Top-level navigation destinations shown in the sidebar.
@@ -58,6 +58,7 @@ class AppController extends ChangeNotifier {
     _invite.addListener(notifyListeners);
     _notices.addListener(notifyListeners);
     _account.addListener(notifyListeners);
+    _subscription.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
@@ -82,7 +83,7 @@ class AppController extends ChangeNotifier {
 
   // ── Data (mock defaults until API populates) ──────────────────────────────
 
-  SubscriptionRuntimeState _subscription = const SubscriptionRuntimeState();
+  final SubscriptionController _subscription = SubscriptionController();
   late final AccountController _account = AccountController(_api);
   NodeRuntimeState _nodeState = const NodeRuntimeState();
   List<PlanModel> _plans = const [];
@@ -380,12 +381,14 @@ class AppController extends ChangeNotifier {
     _invite.removeListener(notifyListeners);
     _notices.removeListener(notifyListeners);
     _account.removeListener(notifyListeners);
+    _subscription.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
     _wallet.dispose();
     _invite.dispose();
     _notices.dispose();
     _account.dispose();
+    _subscription.dispose();
     super.dispose();
   }
 
@@ -513,7 +516,7 @@ class AppController extends ChangeNotifier {
   }
 
   void _resetSessionData() {
-    _subscription = const SubscriptionRuntimeState();
+    _subscription.reset();
     _account.reset();
     _nodeState = const NodeRuntimeState();
     _plans = const [];
@@ -628,7 +631,7 @@ class AppController extends ChangeNotifier {
 
   void _applySnapshot(DataSnapshot snap) {
     _account.applySnapshot(user: snap.user, traffic: snap.traffic);
-    _subscription = _subscription.copyWith(
+    _subscription.applySnapshot(
       subscribeUrl: snap.subscribeUrl,
       dailyUsage: snap.dailyUsage,
       trafficUsage: snap.trafficUsage,
