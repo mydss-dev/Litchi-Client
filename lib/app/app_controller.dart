@@ -16,6 +16,7 @@ import '../shared/services/token_storage.dart';
 import '../shared/services/tcp_ping_service.dart';
 import '../shared/services/update_service.dart';
 import 'core_controller.dart';
+import 'invite_controller.dart';
 import 'notices_controller.dart';
 import 'settings_controller.dart';
 import 'subscription_controller.dart';
@@ -50,6 +51,7 @@ class AppController extends ChangeNotifier {
     _notices.addListener(notifyListeners);
     _subscription.addListener(notifyListeners);
     _wallet.addListener(notifyListeners);
+    _invite.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
@@ -57,6 +59,7 @@ class AppController extends ChangeNotifier {
   final NoticesController _notices = NoticesController();
   final SubscriptionController _subscription = SubscriptionController();
   late final WalletController _wallet = WalletController(_api, refreshData);
+  late final InviteController _invite = InviteController(_api, refreshData);
 
   // ── Navigation / auth state ───────────────────────────────────────────────
 
@@ -93,10 +96,6 @@ class AppController extends ChangeNotifier {
   List<NodeModel> _nodes = const [];
   List<PlanModel> _plans = const [];
   bool _autoSelected = false;
-  List<InviteCodeModel> _inviteCodes = const [];
-  String _inviteCode = '';
-  String _inviteLink = '';
-  String _inviteUrlBase = '';
   String? _dataLoadError;
   String? _startupMessage;
   UpdateInfo? _updateInfo;
@@ -225,9 +224,9 @@ class AppController extends ChangeNotifier {
       _autoSelected ? (_bestNode ?? _currentNode) : _currentNode;
   List<NodeModel> get nodes => _nodes;
   List<PlanModel> get plans => _plans;
-  List<InviteCodeModel> get inviteCodes => _inviteCodes;
-  String get inviteCode => _inviteCode;
-  String get inviteLink => _inviteLink;
+  List<InviteCodeModel> get inviteCodes => _invite.inviteCodes;
+  String get inviteCode => _invite.inviteCode;
+  String get inviteLink => _invite.inviteLink;
   List<RemoteInviteRecord> get inviteRecords => _wallet.inviteRecords;
   double get commissionRate => _wallet.commissionRate;
   int get invitedCount => _wallet.invitedCount;
@@ -383,11 +382,13 @@ class AppController extends ChangeNotifier {
     _notices.removeListener(notifyListeners);
     _subscription.removeListener(notifyListeners);
     _wallet.removeListener(notifyListeners);
+    _invite.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
     _notices.dispose();
     _subscription.dispose();
     _wallet.dispose();
+    _invite.dispose();
     super.dispose();
   }
 
@@ -526,10 +527,7 @@ class AppController extends ChangeNotifier {
     _currentNode = const NodeModel(id: '', name: '', flag: '', latency: 0);
     _nodes = const [];
     _plans = const [];
-    _inviteCode = '';
-    _inviteLink = '';
-    _inviteUrlBase = '';
-    _inviteCodes = const [];
+    _invite.reset();
     _wallet.reset();
     _subscription.reset();
     _dataLoadError = null;
@@ -617,15 +615,7 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> createInviteCode() async {
-    try {
-      await _api.createInviteCode();
-      await refreshData();
-      return null;
-    } catch (e) {
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  Future<String?> createInviteCode() => _invite.createInviteCode();
 
   Future<String?> transferAllCommission() => _wallet.transferAllCommission();
 
@@ -662,41 +652,12 @@ class AppController extends ChangeNotifier {
     _subscription.applySnapshot(subscribeUrl: snap.subscribeUrl);
     if (snap.nodes != null) _nodes = snap.nodes!;
     if (snap.plans != null) _plans = snap.plans!;
-    if (snap.inviteCodes != null) {
-      _inviteCodes = snap.inviteCodes!
-          .map(
-            (item) => InviteCodeModel(
-              code: item.code,
-              link: _inviteLinkForCode(item.code, item.link),
-            ),
-          )
-          .toList();
-    }
-    if (snap.inviteCode != null) _inviteCode = snap.inviteCode!;
-    if (snap.inviteLink != null) _inviteLink = snap.inviteLink!;
-    if (snap.inviteUrlBase != null) _inviteUrlBase = snap.inviteUrlBase!;
-    if (_inviteCode.isNotEmpty) {
-      _inviteLink = _inviteLinkForCode(_inviteCode, _inviteLink);
-    }
-    if (_inviteCodes.isEmpty && _inviteCode.isNotEmpty) {
-      _inviteCodes = [
-        InviteCodeModel(
-          code: _inviteCode,
-          link: _inviteLinkForCode(_inviteCode, _inviteLink),
-        ),
-      ];
-    } else if (_inviteCodes.isNotEmpty) {
-      _inviteCodes = _inviteCodes
-          .map(
-            (item) => InviteCodeModel(
-              code: item.code,
-              link: _inviteLinkForCode(item.code, item.link),
-            ),
-          )
-          .toList();
-      _inviteCode = _inviteCodes.first.code;
-      _inviteLink = _inviteCodes.first.link;
-    }
+    _invite.applySnapshot(
+      codes: snap.inviteCodes,
+      code: snap.inviteCode,
+      link: snap.inviteLink,
+      urlBase: snap.inviteUrlBase,
+    );
     _wallet.applySnapshot(
       inviteRecords: snap.inviteRecords,
       commissionRate: snap.commissionRate,
@@ -718,30 +679,6 @@ class AppController extends ChangeNotifier {
       expiredAt: snap.expiredAt,
     );
     if (snap.criticalError != null) _dataLoadError = snap.criticalError;
-  }
-
-  String _inviteLinkForCode(String code, String link) {
-    if (link.isNotEmpty) return link;
-    if (code.isEmpty) return '';
-    final configuredBase = _firstNotEmpty([
-      _inviteUrlBase,
-      AppConfig.inviteUrlBase,
-    ]);
-    if (configuredBase.isEmpty) return '';
-    final base = configuredBase.replaceAll(RegExp(r'/+$'), '');
-    if (base.contains('{code}')) return base.replaceAll('{code}', code);
-    if (base.endsWith('/register') || base.endsWith('/#/register')) {
-      return '$base?code=$code';
-    }
-    return '$base/#/register?code=$code';
-  }
-
-  String _firstNotEmpty(List<String> values) {
-    for (final value in values) {
-      final trimmed = value.trim();
-      if (trimmed.isNotEmpty) return trimmed;
-    }
-    return '';
   }
 
   // ── Node selection ────────────────────────────────────────────────────────
