@@ -19,6 +19,7 @@ import 'core_controller.dart';
 import 'notices_controller.dart';
 import 'settings_controller.dart';
 import 'subscription_controller.dart';
+import 'wallet_controller.dart';
 
 /// Top-level navigation destinations shown in the sidebar.
 enum AppPage {
@@ -48,12 +49,14 @@ class AppController extends ChangeNotifier {
     _core.addListener(notifyListeners);
     _notices.addListener(notifyListeners);
     _subscription.addListener(notifyListeners);
+    _wallet.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
   final CoreController _core = CoreController();
   final NoticesController _notices = NoticesController();
   final SubscriptionController _subscription = SubscriptionController();
+  late final WalletController _wallet = WalletController(_api, refreshData);
 
   // ── Navigation / auth state ───────────────────────────────────────────────
 
@@ -94,17 +97,7 @@ class AppController extends ChangeNotifier {
   String _inviteCode = '';
   String _inviteLink = '';
   String _inviteUrlBase = '';
-  List<RemoteInviteRecord> _inviteRecords = const [];
-  double _commissionRate = 0;
-  int _invitedCount = 0;
-  double _earnedCommission = 0;
-  double _pendingCommission = 0;
-  double _withdrawable = 0;
-  int _withdrawClose = 1;
-  List<String> _withdrawMethods = const [];
-  double _minWithdrawAmount = 0;
   String? _dataLoadError;
-  String _currencySymbol = '¥';
   String? _startupMessage;
   UpdateInfo? _updateInfo;
   RegisterConfig _registerConfig = const RegisterConfig();
@@ -235,15 +228,15 @@ class AppController extends ChangeNotifier {
   List<InviteCodeModel> get inviteCodes => _inviteCodes;
   String get inviteCode => _inviteCode;
   String get inviteLink => _inviteLink;
-  List<RemoteInviteRecord> get inviteRecords => _inviteRecords;
-  double get commissionRate => _commissionRate;
-  int get invitedCount => _invitedCount;
-  double get earnedCommission => _earnedCommission;
-  double get pendingCommission => _pendingCommission;
-  double get withdrawable => _withdrawable;
-  bool get withdrawEnabled => _withdrawClose == 0;
-  List<String> get withdrawMethods => _withdrawMethods;
-  double get minWithdrawAmount => _minWithdrawAmount;
+  List<RemoteInviteRecord> get inviteRecords => _wallet.inviteRecords;
+  double get commissionRate => _wallet.commissionRate;
+  int get invitedCount => _wallet.invitedCount;
+  double get earnedCommission => _wallet.earnedCommission;
+  double get pendingCommission => _wallet.pendingCommission;
+  double get withdrawable => _wallet.withdrawable;
+  bool get withdrawEnabled => _wallet.withdrawEnabled;
+  List<String> get withdrawMethods => _wallet.withdrawMethods;
+  double get minWithdrawAmount => _wallet.minWithdrawAmount;
   List<double> get dailyUsage => _subscription.dailyUsage;
   List<TrafficUsagePoint> get trafficUsage => _subscription.trafficUsage;
   int? get aliveIp => _subscription.aliveIp;
@@ -251,7 +244,7 @@ class AppController extends ChangeNotifier {
   int? get resetDay => _subscription.resetDay;
   int? get expiredAt => _subscription.expiredAt;
   String? get dataLoadError => _dataLoadError;
-  String get currencySymbol => _currencySymbol;
+  String get currencySymbol => _wallet.currencySymbol;
   String? get startupMessage => _startupMessage;
   void clearStartupMessage() => _startupMessage = null;
   PanelApi get api => _api;
@@ -389,10 +382,12 @@ class AppController extends ChangeNotifier {
     _core.removeListener(notifyListeners);
     _notices.removeListener(notifyListeners);
     _subscription.removeListener(notifyListeners);
+    _wallet.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
     _notices.dispose();
     _subscription.dispose();
+    _wallet.dispose();
     super.dispose();
   }
 
@@ -535,18 +530,9 @@ class AppController extends ChangeNotifier {
     _inviteLink = '';
     _inviteUrlBase = '';
     _inviteCodes = const [];
-    _inviteRecords = const [];
-    _commissionRate = 0;
-    _invitedCount = 0;
-    _earnedCommission = 0;
-    _pendingCommission = 0;
-    _withdrawable = 0;
-    _withdrawClose = 1;
-    _withdrawMethods = const [];
-    _minWithdrawAmount = 0;
+    _wallet.reset();
     _subscription.reset();
     _dataLoadError = null;
-    _currencySymbol = '¥';
     _notices.reset();
     unawaited(NodeCacheService.clear());
     notifyListeners();
@@ -593,7 +579,7 @@ class AppController extends ChangeNotifier {
     _applySnapshot(snap);
     // Non-critical extras — must never abort node restore / core startup.
     try {
-      _currencySymbol = await _api.getCommCurrencySymbol();
+      _wallet.setCurrencySymbol(await _api.getCommCurrencySymbol());
     } catch (_) {}
     try {
       _notices.setNotices(await _api.getNotices());
@@ -641,52 +627,20 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<String?> transferAllCommission() async {
-    return transferCommissionToBalance(_withdrawable);
-  }
+  Future<String?> transferAllCommission() => _wallet.transferAllCommission();
 
-  Future<String?> transferCommissionToBalance(double amount) async {
-    if (_withdrawable <= 0) return '暂无可划转佣金';
-    if (amount <= 0) return '请输入划转金额';
-    if (amount > _withdrawable) return '划转金额不能超过可提现佣金';
-    try {
-      await _api.transferCommission((amount * 100).round());
-      await refreshData();
-      return null;
-    } catch (e) {
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  Future<String?> transferCommissionToBalance(double amount) =>
+      _wallet.transferCommissionToBalance(amount);
 
   Future<String?> withdrawCommission({
     required double amount,
     required String account,
     required String method,
-  }) async {
-    if (amount <= 0) return '请输入提现金额';
-    if (!withdrawEnabled) return '提现暂未开放';
-    if (amount > _withdrawable) return '提现金额不能超过可提现佣金';
-    if (_minWithdrawAmount > 0 && amount < _minWithdrawAmount) {
-      return '最低提现金额为 $_currencySymbol${_minWithdrawAmount.toStringAsFixed(2)}';
-    }
-    if (account.trim().isEmpty) return '请输入提现账户';
-    if (method.trim().isEmpty) return '请输入提现方式';
-    if (_withdrawMethods.isNotEmpty &&
-        !_withdrawMethods.contains(method.trim())) {
-      return '请选择可用的提现方式';
-    }
-    try {
-      await _api.withdrawCommission(
-        amountCents: (amount * 100).round(),
-        account: account.trim(),
-        method: method.trim(),
-      );
-      await refreshData();
-      return null;
-    } catch (e) {
-      return e.toString().replaceFirst('ApiException: ', '');
-    }
-  }
+  }) => _wallet.withdrawCommission(
+    amount: amount,
+    account: account,
+    method: method,
+  );
 
   Future<void> refreshNodes() async {
     final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
@@ -743,24 +697,18 @@ class AppController extends ChangeNotifier {
       _inviteCode = _inviteCodes.first.code;
       _inviteLink = _inviteCodes.first.link;
     }
-    if (snap.commissionRate != null) _commissionRate = snap.commissionRate!;
-    if (snap.inviteRecords != null) _inviteRecords = snap.inviteRecords!;
-    if (snap.invitedCount != null) _invitedCount = snap.invitedCount!;
-    if (snap.earnedCommission != null) {
-      _earnedCommission = snap.earnedCommission!;
-    }
-    if (snap.pendingCommission != null) {
-      _pendingCommission = snap.pendingCommission!;
-    }
-    if (snap.withdrawable != null) _withdrawable = snap.withdrawable!;
-    if (snap.currencySymbol != null && snap.currencySymbol!.isNotEmpty) {
-      _currencySymbol = snap.currencySymbol!;
-    }
-    if (snap.withdrawClose != null) _withdrawClose = snap.withdrawClose!;
-    if (snap.withdrawMethods != null) _withdrawMethods = snap.withdrawMethods!;
-    if (snap.minWithdrawAmount != null) {
-      _minWithdrawAmount = snap.minWithdrawAmount!;
-    }
+    _wallet.applySnapshot(
+      inviteRecords: snap.inviteRecords,
+      commissionRate: snap.commissionRate,
+      invitedCount: snap.invitedCount,
+      earnedCommission: snap.earnedCommission,
+      pendingCommission: snap.pendingCommission,
+      withdrawable: snap.withdrawable,
+      withdrawClose: snap.withdrawClose,
+      withdrawMethods: snap.withdrawMethods,
+      minWithdrawAmount: snap.minWithdrawAmount,
+      currencySymbol: snap.currencySymbol,
+    );
     _subscription.applySnapshot(
       dailyUsage: snap.dailyUsage,
       trafficUsage: snap.trafficUsage,
