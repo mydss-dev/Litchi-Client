@@ -18,6 +18,7 @@ import '../shared/services/update_service.dart';
 import 'core_controller.dart';
 import 'notices_controller.dart';
 import 'settings_controller.dart';
+import 'subscription_controller.dart';
 
 /// Top-level navigation destinations shown in the sidebar.
 enum AppPage {
@@ -46,11 +47,13 @@ class AppController extends ChangeNotifier {
     _core.addListener(_onCoreChanged);
     _core.addListener(notifyListeners);
     _notices.addListener(notifyListeners);
+    _subscription.addListener(notifyListeners);
   }
 
   final SettingsController _settings = SettingsController();
   final CoreController _core = CoreController();
   final NoticesController _notices = NoticesController();
+  final SubscriptionController _subscription = SubscriptionController();
 
   // ── Navigation / auth state ───────────────────────────────────────────────
 
@@ -67,7 +70,6 @@ class AppController extends ChangeNotifier {
 
   // ── Data (mock defaults until API populates) ──────────────────────────────
 
-  String _subscribeUrl = '';
   UserModel _user = const UserModel(
     name: '',
     plan: '',
@@ -101,12 +103,6 @@ class AppController extends ChangeNotifier {
   int _withdrawClose = 1;
   List<String> _withdrawMethods = const [];
   double _minWithdrawAmount = 0;
-  List<double> _dailyUsage = const [];
-  List<TrafficUsagePoint> _trafficUsage = [];
-  int? _aliveIp;
-  int? _deviceLimit;
-  int? _resetDay;
-  int? _expiredAt;
   String? _dataLoadError;
   String _currencySymbol = '¥';
   String? _startupMessage;
@@ -248,12 +244,12 @@ class AppController extends ChangeNotifier {
   bool get withdrawEnabled => _withdrawClose == 0;
   List<String> get withdrawMethods => _withdrawMethods;
   double get minWithdrawAmount => _minWithdrawAmount;
-  List<double> get dailyUsage => _dailyUsage;
-  List<TrafficUsagePoint> get trafficUsage => _trafficUsage;
-  int? get aliveIp => _aliveIp;
-  int? get deviceLimit => _deviceLimit;
-  int? get resetDay => _resetDay;
-  int? get expiredAt => _expiredAt;
+  List<double> get dailyUsage => _subscription.dailyUsage;
+  List<TrafficUsagePoint> get trafficUsage => _subscription.trafficUsage;
+  int? get aliveIp => _subscription.aliveIp;
+  int? get deviceLimit => _subscription.deviceLimit;
+  int? get resetDay => _subscription.resetDay;
+  int? get expiredAt => _subscription.expiredAt;
   String? get dataLoadError => _dataLoadError;
   String get currencySymbol => _currencySymbol;
   String? get startupMessage => _startupMessage;
@@ -392,9 +388,11 @@ class AppController extends ChangeNotifier {
     _core.removeListener(_onCoreChanged);
     _core.removeListener(notifyListeners);
     _notices.removeListener(notifyListeners);
+    _subscription.removeListener(notifyListeners);
     _settings.dispose();
     _core.dispose();
     _notices.dispose();
+    _subscription.dispose();
     super.dispose();
   }
 
@@ -525,7 +523,6 @@ class AppController extends ChangeNotifier {
     _core.stopAndReset();
     _isAuthenticated = false;
     _authScreen = AuthScreen.login;
-    _subscribeUrl = '';
     _autoSelected = false;
     TokenStorage.clearAuthData();
     _apiClient.updateAuthData(null);
@@ -547,12 +544,7 @@ class AppController extends ChangeNotifier {
     _withdrawClose = 1;
     _withdrawMethods = const [];
     _minWithdrawAmount = 0;
-    _dailyUsage = const [];
-    _trafficUsage = [];
-    _aliveIp = null;
-    _deviceLimit = null;
-    _resetDay = null;
-    _expiredAt = null;
+    _subscription.reset();
     _dataLoadError = null;
     _currencySymbol = '¥';
     _notices.reset();
@@ -697,7 +689,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> refreshNodes() async {
-    final snap = await _dataLoader.loadNodes(_subscribeUrl);
+    final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
     if (snap.nodes != null && snap.nodes!.isNotEmpty) {
       _nodes = snap.nodes!;
       _restoreLastNode();
@@ -713,7 +705,7 @@ class AppController extends ChangeNotifier {
   void _applySnapshot(DataSnapshot snap) {
     if (snap.user != null) _user = snap.user!;
     if (snap.traffic != null) _traffic = snap.traffic!;
-    if (snap.subscribeUrl != null) _subscribeUrl = snap.subscribeUrl!;
+    _subscription.applySnapshot(subscribeUrl: snap.subscribeUrl);
     if (snap.nodes != null) _nodes = snap.nodes!;
     if (snap.plans != null) _plans = snap.plans!;
     if (snap.inviteCodes != null) {
@@ -769,12 +761,14 @@ class AppController extends ChangeNotifier {
     if (snap.minWithdrawAmount != null) {
       _minWithdrawAmount = snap.minWithdrawAmount!;
     }
-    if (snap.dailyUsage != null) _dailyUsage = snap.dailyUsage!;
-    if (snap.trafficUsage != null) _trafficUsage = snap.trafficUsage!;
-    if (snap.aliveIp != null) _aliveIp = snap.aliveIp;
-    if (snap.deviceLimit != null) _deviceLimit = snap.deviceLimit;
-    if (snap.resetDay != null) _resetDay = snap.resetDay;
-    if (snap.expiredAt != null) _expiredAt = snap.expiredAt;
+    _subscription.applySnapshot(
+      dailyUsage: snap.dailyUsage,
+      trafficUsage: snap.trafficUsage,
+      aliveIp: snap.aliveIp,
+      deviceLimit: snap.deviceLimit,
+      resetDay: snap.resetDay,
+      expiredAt: snap.expiredAt,
+    );
     if (snap.criticalError != null) _dataLoadError = snap.criticalError;
   }
 
