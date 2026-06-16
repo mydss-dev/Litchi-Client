@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'secure_logger.dart';
 import 'windows_dpapi.dart';
 
 /// Stores remembered login credentials.
@@ -21,10 +23,20 @@ abstract final class CredentialsStorage {
   static const _keyPassword = 'dpapi_password';
   static const _plainPrefix = 'P:';
 
+  /// Non-Windows secure store (Android Keystore / macOS Keychain). Windows uses
+  /// DPAPI via [WindowsDpapi] instead.
+  static const _secureStorage = FlutterSecureStorage();
+
   static Future<void> save({
     required String email,
     required String password,
   }) async {
+    if (!Platform.isWindows) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyEmail, email);
+      await _secureStorage.write(key: _keyPassword, value: password);
+      return;
+    }
     try {
       final encPass = await protectString(password);
       if (encPass == null) return;
@@ -32,19 +44,28 @@ abstract final class CredentialsStorage {
       await prefs.setString(_keyEmail, email);
       await prefs.remove(_legacyKeyEmail);
       await prefs.setString(_keyPassword, encPass);
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warn('CredentialsStorage.save failed', e);
+    }
   }
 
   static Future<({String email, String password})?> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!Platform.isWindows) {
+      final email = await _loadEmail(prefs);
+      final password = await _secureStorage.read(key: _keyPassword);
+      if (email == null || email.isEmpty || password == null) return null;
+      return (email: email, password: password);
+    }
     try {
-      final prefs = await SharedPreferences.getInstance();
       final email = await _loadEmail(prefs);
       final encPass = prefs.getString(_keyPassword);
       if (email == null || email.isEmpty || encPass == null) return null;
       final password = await unprotectString(encPass);
       if (password == null) return null;
       return (email: email, password: password);
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.warn('CredentialsStorage.load failed', e);
       return null;
     }
   }
@@ -54,6 +75,9 @@ abstract final class CredentialsStorage {
     await prefs.remove(_keyEmail);
     await prefs.remove(_legacyKeyEmail);
     await prefs.remove(_keyPassword);
+    if (!Platform.isWindows) {
+      await _secureStorage.delete(key: _keyPassword);
+    }
   }
 
   static Future<String?> _loadEmail(SharedPreferences prefs) async {
@@ -75,21 +99,31 @@ abstract final class CredentialsStorage {
   static const _keyAuthToken = 'dpapi_auth_token';
 
   static Future<void> saveAuthToken(String token) async {
+    if (!Platform.isWindows) {
+      await _secureStorage.write(key: _keyAuthToken, value: token);
+      return;
+    }
     try {
       final enc = await protectString(token);
       if (enc == null) return;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyAuthToken, enc);
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warn('CredentialsStorage.saveAuthToken failed', e);
+    }
   }
 
   static Future<String?> loadAuthToken() async {
+    if (!Platform.isWindows) {
+      return _secureStorage.read(key: _keyAuthToken);
+    }
     try {
       final prefs = await SharedPreferences.getInstance();
       final enc = prefs.getString(_keyAuthToken);
       if (enc == null || enc.isEmpty) return null;
       return await unprotectString(enc);
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.warn('CredentialsStorage.loadAuthToken failed', e);
       return null;
     }
   }
@@ -97,6 +131,9 @@ abstract final class CredentialsStorage {
   static Future<void> clearAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyAuthToken);
+    if (!Platform.isWindows) {
+      await _secureStorage.delete(key: _keyAuthToken);
+    }
   }
 
   // ── Generic protected strings ─────────────────────────────────────────────
