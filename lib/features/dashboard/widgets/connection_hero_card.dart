@@ -13,6 +13,9 @@ import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_card.dart';
 import 'desktop_node_picker_dialog.dart';
 
+/// Vertical "connect hero" — the connection is the focal point: a status pill,
+/// a large power button, the action label, then a tappable node row. Mirrors the
+/// mobile home layout (the established VPN-client pattern).
 class ConnectionHeroCard extends StatelessWidget {
   const ConnectionHeroCard({
     super.key,
@@ -30,109 +33,166 @@ class ConnectionHeroCard extends StatelessWidget {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final node = ctrl.currentNode;
-    final hasNode = node.name.isNotEmpty;
 
     return AppCard(
       radius: AppRadius.xl,
-      height: 228,
-      padding: const EdgeInsets.fromLTRB(22, 22, 20, 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
+      child: Column(
         children: [
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        hasNode ? '当前节点' : '节点状态',
-                        style: AppTextStyles.heroTitle.copyWith(
-                          color: c.textPrimary,
-                          fontSize: 21,
-                        ),
-                      ),
-                    ),
-                    _NodeInlineAction(
-                      hasNodes: ctrl.nodes.isNotEmpty,
-                      onTap: () => showDesktopNodePicker(context),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                _ConnectionStateLabel(status: status),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _HeroNodeIcon(node: node),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            hasNode ? node.name : '暂无可用节点',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.heroTitle.copyWith(
-                              color: c.textPrimary,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          if (!hasNode) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              '登录后会自动拉取订阅节点',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.caption.copyWith(
-                                color: c.textMuted,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                _NodeMetaRow(
-                  node: node,
-                  proxyMode: ctrl.proxyMode,
-                  automatic: ctrl.autoSelected,
-                ),
-                const Spacer(),
-              ],
-            ),
-          ),
-          Container(
-            width: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-            color: c.softBorder,
-          ),
-          Expanded(
-            flex: 4,
-            child: Column(
-              children: [
-                const Spacer(),
-                _PowerButton(status: status, onTap: onToggle),
-                const SizedBox(height: 12),
-                _ConnectionActionText(status: status),
-                if (status == ConnectionStatus.connected) ...[
-                  const SizedBox(height: 6),
-                  Text(
+          _StatusPill(status: status),
+          const SizedBox(height: 22),
+          _PowerButton(status: status, onTap: onToggle),
+          const SizedBox(height: 16),
+          _ConnectionActionText(status: status),
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 18,
+            child: status == ConnectionStatus.connected
+                ? Text(
                     elapsedLabel,
                     style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                  ),
-                ],
-                const Spacer(),
-              ],
+                  )
+                : null,
+          ),
+          const SizedBox(height: 20),
+          _NodeSelectorRow(
+            node: node,
+            proxyMode: ctrl.proxyMode,
+            automatic: ctrl.autoSelected,
+            hasNodes: ctrl.nodes.isNotEmpty,
+            onTap: () => showDesktopNodePicker(context),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final ConnectionStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final (label, color) = switch (status) {
+      ConnectionStatus.connected => ('保护中', c.success),
+      ConnectionStatus.connecting => ('连接中', c.primary),
+      ConnectionStatus.disconnecting => ('断开中', c.textMuted),
+      ConnectionStatus.error => ('连接失败', c.danger),
+      ConnectionStatus.disconnected => ('未连接', c.textMuted),
+    };
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 7),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NodeSelectorRow extends StatefulWidget {
+  const _NodeSelectorRow({
+    required this.node,
+    required this.proxyMode,
+    required this.automatic,
+    required this.hasNodes,
+    required this.onTap,
+  });
+
+  final NodeModel node;
+  final ProxyMode proxyMode;
+  final bool automatic;
+  final bool hasNodes;
+  final VoidCallback onTap;
+
+  @override
+  State<_NodeSelectorRow> createState() => _NodeSelectorRowState();
+}
+
+class _NodeSelectorRowState extends State<_NodeSelectorRow> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final node = widget.node;
+    final hasNode = node.name.isNotEmpty;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _hover ? c.primarySoft.withValues(alpha: 0.5) : c.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: c.softBorder),
+          ),
+          child: Row(
+            children: [
+              _HeroNodeIcon(node: node),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasNode ? node.name : '请选择节点',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: c.textPrimary,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    _NodeMetaRow(
+                      node: node,
+                      proxyMode: widget.proxyMode,
+                      automatic: widget.automatic,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                widget.hasNodes ? '切换' : '查看',
+                style: AppTextStyles.button.copyWith(
+                  color: c.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Icon(LucideIcons.chevronRight, size: 18, color: c.iconMuted),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -150,62 +210,22 @@ class _HeroNodeIcon extends StatelessWidget {
       return CountryFlag.fromCountryCode(
         node.code,
         theme: const ImageTheme(
-          width: 36,
-          height: 26,
-          shape: RoundedRectangle(4),
+          width: 40,
+          height: 30,
+          shape: RoundedRectangle(6),
         ),
       );
     }
     return Container(
-      width: 36,
-      height: 36,
+      width: 40,
+      height: 40,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: c.surfaceMuted,
+        color: c.cardBg,
         borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: c.softBorder),
       ),
-      child: Icon(LucideIcons.globe2, size: 19, color: c.primary),
-    );
-  }
-}
-
-class _ConnectionStateLabel extends StatelessWidget {
-  const _ConnectionStateLabel({required this.status});
-
-  final ConnectionStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final (label, color) = switch (status) {
-      ConnectionStatus.connected => ('已连接', c.success),
-      ConnectionStatus.connecting => ('连接中', c.primary),
-      ConnectionStatus.disconnecting => ('断开中', c.textMuted),
-      ConnectionStatus.error => ('连接失败', c.danger),
-      ConnectionStatus.disconnected => ('未连接', c.textMuted),
-    };
-    return Container(
-      height: 24,
-      alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: AppTextStyles.button.copyWith(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
+      child: Icon(LucideIcons.globe2, size: 20, color: c.primary),
     );
   }
 }
@@ -231,56 +251,10 @@ class _NodeMetaRow extends StatelessWidget {
       _ => '未测速',
     };
     return Text(
-      '${proxyMode.label} · ${automatic ? '自动选择' : '手动选择'} · $latency',
+      '${automatic ? '自动选择' : '手动选择'} · $latency',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: AppTextStyles.body.copyWith(
-        color: c.textMuted,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-      ),
-    );
-  }
-}
-
-class _NodeInlineAction extends StatelessWidget {
-  const _NodeInlineAction({required this.hasNodes, required this.onTap});
-
-  final bool hasNodes;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Ink(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: c.primarySoft,
-            borderRadius: BorderRadius.circular(999),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(LucideIcons.chevronsUpDown, size: 14, color: c.primary),
-              const SizedBox(width: 6),
-              Text(
-                hasNodes ? '切换节点' : '查看节点',
-                style: AppTextStyles.button.copyWith(
-                  color: c.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      style: AppTextStyles.caption.copyWith(color: c.textMuted),
     );
   }
 }
@@ -304,8 +278,8 @@ class _PowerButton extends StatelessWidget {
       child: GestureDetector(
         onTap: isTransitioning ? null : onTap,
         child: Container(
-          width: 104,
-          height: 104,
+          width: 128,
+          height: 128,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: isConnected ? AppPalette.brandGradient : null,
@@ -326,7 +300,7 @@ class _PowerButton extends StatelessWidget {
                   ],
           ),
           child: Container(
-            margin: const EdgeInsets.all(6),
+            margin: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
@@ -338,7 +312,7 @@ class _PowerButton extends StatelessWidget {
             ),
             child: isTransitioning
                 ? Padding(
-                    padding: const EdgeInsets.all(28),
+                    padding: const EdgeInsets.all(34),
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
                       color: c.primary,
@@ -346,7 +320,7 @@ class _PowerButton extends StatelessWidget {
                   )
                 : Icon(
                     LucideIcons.power,
-                    size: 40,
+                    size: 48,
                     color: isConnected ? Colors.white : c.primary,
                   ),
           ),
@@ -372,23 +346,9 @@ class _ConnectionActionText extends StatelessWidget {
       ConnectionStatus.error => ('重新连接', c.danger),
     };
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: AppTextStyles.sectionTitle.copyWith(
-            color: color,
-            fontSize: 18,
-          ),
-        ),
-      ],
+    return Text(
+      text,
+      style: AppTextStyles.sectionTitle.copyWith(color: color, fontSize: 20),
     );
   }
 }

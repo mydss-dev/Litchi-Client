@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
 import '../../shared/widgets/app_toast.dart';
-import '../../shared/widgets/page_header.dart';
 import 'widgets/connection_hero_card.dart';
 import 'widgets/connection_stats_row.dart';
 import 'widgets/error_banner.dart';
@@ -80,67 +79,41 @@ class _DashboardPageState extends State<DashboardPage> {
     final elapsed = _formatDuration(ctrl.connectedDuration);
 
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const PageHeader(title: '首页', subtitle: '查看当前连接、节点与流量状态'),
-          const SizedBox(height: 12),
-          ExpiryBanner(user: ctrl.user),
-          if (ctrl.dataLoadError != null) ...[
-            ErrorBanner(
-              message: ctrl.dataLoadError!,
-              onRetry: _onRefreshData,
-              warning: true,
-            ),
-            const SizedBox(height: 12),
-          ],
-          ConnectionHeroCard(
-            status: status,
-            elapsedLabel: elapsed,
-            onToggle: _onToggle,
-          ),
-          if (status == ConnectionStatus.error &&
-              ctrl.coreError.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ErrorBanner(message: ctrl.coreError, onRetry: _onToggle),
-          ],
-          const SizedBox(height: 12),
-          const _InfoMiniCardsRow(),
-          const SizedBox(height: 12),
-          const ConnectionStatsRow(),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoMiniCardsRow extends StatelessWidget {
-  const _InfoMiniCardsRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 380) {
-          return const IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: ProxyModeCard()),
-                SizedBox(width: 14),
-                Expanded(child: NetworkSettingsCard()),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ExpiryBanner(user: ctrl.user),
+              if (ctrl.dataLoadError != null) ...[
+                ErrorBanner(
+                  message: ctrl.dataLoadError!,
+                  onRetry: _onRefreshData,
+                  warning: true,
+                ),
+                const SizedBox(height: 12),
               ],
-            ),
-          );
-        }
-        return const Column(
-          children: [
-            ProxyModeCard(),
-            SizedBox(height: 14),
-            NetworkSettingsCard(),
-          ],
-        );
-      },
+              ConnectionHeroCard(
+                status: status,
+                elapsedLabel: elapsed,
+                onToggle: _onToggle,
+              ),
+              if (status == ConnectionStatus.error &&
+                  ctrl.coreError.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ErrorBanner(message: ctrl.coreError, onRetry: _onToggle),
+              ],
+              const SizedBox(height: 14),
+              const ProxyModeCard(),
+              const SizedBox(height: 14),
+              const NetworkSettingsCard(),
+              const SizedBox(height: 14),
+              const ConnectionStatsRow(),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
