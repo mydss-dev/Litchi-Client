@@ -86,7 +86,11 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final ctrl = AppScope.of(context);
     _ctrl = ctrl;
 
-    unawaited(_syncWindowSize(ctrl));
+    // Run after the frame so the new shell (narrow auth vs wide main) is laid
+    // out before we resize — otherwise macOS won't shrink past the old layout.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_syncWindowSize(ctrl));
+    });
 
     final shouldHaveTray = _isDesktop && ctrl.isAuthenticated;
     if (shouldHaveTray && !_trayActive) {
@@ -163,12 +167,23 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     await _applyWindowSize(Size(_authWindowWidth, height), center: firstCompact);
   }
 
-  /// Applies a programmatic window size. macOS ignores setSize while the window
-  /// is non-resizable, so we briefly re-enable resizing around the call.
+  /// Applies a programmatic window size. macOS ignores a plain setSize while the
+  /// window is non-resizable and won't shrink below the currently laid-out
+  /// content, so we re-enable resizing and pin min == max == target to force it,
+  /// then relax the constraints again.
   Future<void> _applyWindowSize(Size size, {required bool center}) async {
     await windowManager.setResizable(true);
-    await windowManager.setSize(size);
-    if (center) await windowManager.center();
+    if (Platform.isMacOS) {
+      await windowManager.setMinimumSize(size);
+      await windowManager.setMaximumSize(size);
+      await windowManager.setSize(size);
+      if (center) await windowManager.center();
+      await windowManager.setMinimumSize(const Size(380, 480));
+      await windowManager.setMaximumSize(const Size(10000, 10000));
+    } else {
+      await windowManager.setSize(size);
+      if (center) await windowManager.center();
+    }
     await windowManager.setResizable(false);
   }
 
