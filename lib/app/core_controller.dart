@@ -79,7 +79,7 @@ class CoreController extends ChangeNotifier {
       }
       return;
     }
-    if (!Platform.isWindows) return;
+    if (!Platform.isWindows && !Platform.isMacOS) return;
     if (_sub != null || _logSub != null) return;
 
     // If callers started the core before init() finished, do not run startup
@@ -117,7 +117,7 @@ class CoreController extends ChangeNotifier {
       await _androidCore.stop();
       return;
     }
-    if (!Platform.isWindows) return;
+    if (!Platform.isWindows && !Platform.isMacOS) return;
     _stopTrafficMonitor();
     await _sub?.cancel();
     await _logSub?.cancel();
@@ -367,7 +367,7 @@ class CoreController extends ChangeNotifier {
       } else {
         _coreError = _core.lastError.isNotEmpty
             ? _core.lastError
-            : '连接失败，请检查 sing-box.exe 是否存在';
+            : '连接失败，请检查 sing-box 核心是否存在';
         _status = ConnectionStatus.error;
       }
     } catch (e) {
@@ -505,7 +505,7 @@ class CoreController extends ChangeNotifier {
 
   /// Force-sync the Windows system proxy to match the current core state.
   Future<void> fixProxy(int proxyPort) async {
-    if (!Platform.isWindows) return;
+    if (!Platform.isWindows && !Platform.isMacOS) return;
     if (_core.isRunning) {
       await ProxySetter.enable(port: proxyPort);
     } else {
@@ -520,9 +520,11 @@ class CoreController extends ChangeNotifier {
     if (Platform.isAndroid) {
       return AndroidCoreManager().version();
     }
-    if (!Platform.isWindows) return '当前平台暂未接入核心';
+    if (!Platform.isWindows && !Platform.isMacOS) {
+      return '当前平台暂未接入核心';
+    }
     final exe = CoreManager.findExecutable();
-    if (exe == null) return '未找到 sing-box.exe';
+    if (exe == null) return '未找到 sing-box 核心';
     try {
       final r = await Process.run(exe, ['version']).timeout(
         const Duration(seconds: 3),

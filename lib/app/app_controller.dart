@@ -174,7 +174,8 @@ class AppController extends ChangeNotifier {
   Duration get connectedDuration => _core.connectedDuration;
 
   bool get coreProcessRunning => _core.coreProcessRunning;
-  bool get supportsCoreConnection => Platform.isWindows || Platform.isAndroid;
+  bool get supportsCoreConnection =>
+      Platform.isWindows || Platform.isMacOS || Platform.isAndroid;
 
   /// Graceful shutdown: kills core + disables system proxy. Call before exit.
   Future<void> shutdown() => _core.shutdown();
