@@ -16,7 +16,7 @@ abstract final class RemoteConfigService {
   // ── Editable settings ─────────────────────────────────────────────────────
 
   /// OSS URL for the remote config wrapper or legacy JSON config.
-  static const configUrl = 'https://oss.qingniaojiasu.top/config.json';
+  static const configUrl = 'https://oss.litchi.cfd/config.json';
 
   /// Ed25519 public key, encoded with base64url without padding.
   ///
@@ -26,7 +26,10 @@ abstract final class RemoteConfigService {
   /// Put PUBLIC_KEY here. Keep PRIVATE_KEY offline and never commit it.
   /// While this is left as the placeholder value, unsigned legacy config is
   /// still accepted for rollout compatibility.
-  static const publicKeyBase64Url = '4wHDNFW_Nnrtk9wBH3gKxSMRRC56F7ykvTwFvgM7QSU';
+  // NOTE: test key — its private key was exposed during setup. Regenerate and
+  // swap this (paste only the PUBLIC key) before distributing to real users.
+  static const publicKeyBase64Url =
+      '9jhPpqIDzEnISGjvkETwYz_apdH-sNBD-4SsuH0_TU8';
 
   // ── Internal settings ─────────────────────────────────────────────────────
 
@@ -59,7 +62,9 @@ abstract final class RemoteConfigService {
     HttpClient? client;
     try {
       client = HttpClient()..connectionTimeout = _timeout;
-      final request = await client.getUrl(Uri.parse(configUrl)).timeout(_timeout);
+      final request = await client
+          .getUrl(Uri.parse(configUrl))
+          .timeout(_timeout);
       request.headers.set('Accept', 'application/json');
 
       final response = await request.close().timeout(_timeout);
