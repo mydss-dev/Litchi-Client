@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
@@ -10,6 +12,9 @@ import 'forgot_password_page.dart';
 import 'login_page.dart';
 import 'register_page.dart';
 import '../../shared/widgets/brand_logo.dart';
+
+bool get _isDesktop =>
+    Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
 class AuthFlow extends StatelessWidget {
   const AuthFlow({super.key});
@@ -85,7 +90,13 @@ class _AuthArea extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: c.cardBg,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: c.softBorder),
+                        // On desktop the window already draws its own rounded
+                        // 1px frame; a second card border nested inside it reads
+                        // as a double frame, so drop it there (kept on mobile,
+                        // which has no window chrome).
+                        border: _isDesktop
+                            ? null
+                            : Border.all(color: c.softBorder),
                         boxShadow: AppShadows.card(c),
                       ),
                       child: Padding(
