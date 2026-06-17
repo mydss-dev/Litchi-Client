@@ -255,7 +255,7 @@ class AppController extends ChangeNotifier {
     await _core.init();
     _core.killSwitchEnabled = _settings.killSwitch;
 
-    _apiClient.configure(AppConfig.apiBase);
+    _apiClient.configure(AppConfig.effectiveApiBases);
     _apiClient.onSessionExpired = logout;
     await _loadCachedRegisterConfig();
     unawaited(refreshRegisterConfigCache());

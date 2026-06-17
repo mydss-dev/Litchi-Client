@@ -36,6 +36,16 @@ abstract final class AppConfig {
     defaultValue: 'https://api-xiao.top',
   );
 
+  /// Optional failover list of API base URLs (remote key 'api_base_list'). The
+  /// client tries them in order and sticks to the first that responds, so a
+  /// blocked domain auto-falls back to the next without user action. Empty ⇒
+  /// just [apiBase].
+  static List<String> apiBaseList = const [];
+
+  /// The effective ordered list of API bases to try.
+  static List<String> get effectiveApiBases =>
+      apiBaseList.isNotEmpty ? apiBaseList : [apiBase];
+
   static String updateCheckUrl = const String.fromEnvironment(
     'UPDATE_CHECK_URL',
     defaultValue: '',
@@ -119,6 +129,15 @@ abstract final class AppConfig {
     _url(json, 'update_check_url', (v) => updateCheckUrl = v);
     _str(json, 'api_user_agent', (v) => apiUserAgent = v);
     _str(json, 'api_path_prefix', (v) => apiPathPrefix = v);
+    final bases = json['api_base_list'];
+    if (bases is List) {
+      final urls = bases
+          .whereType<String>()
+          .map((e) => e.trim().replaceAll(RegExp(r'/+$'), ''))
+          .where((e) => e.startsWith('http'))
+          .toList();
+      if (urls.isNotEmpty) apiBaseList = urls;
+    }
     _str(json, 'app_name', (v) => appName = v);
     _str(json, 'app_subtitle', (v) => appSubtitle = v);
     _str(json, 'logo_letter', (v) => logoLetter = v);

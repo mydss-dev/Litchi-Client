@@ -77,22 +77,32 @@ class ApiClient {
   static const int maxGetRetries = 2;
 
   Dio? _dio;
-  String _baseUrl = '';
+  List<String> _bases = const [];
+  int _index = 0;
   String? _authData;
 
   SessionExpiredCallback? onSessionExpired;
 
-  bool get isConfigured => _baseUrl.isNotEmpty;
+  bool get isConfigured => _bases.isNotEmpty;
 
-  void configure(String serverUrl, {String? authData}) {
-    _baseUrl = serverUrl.trim().replaceAll(RegExp(r'/+$'), '');
+  String get _baseUrl => _bases.isEmpty ? '' : _bases[_index];
+
+  /// Configures one or more API base URLs. The client tries them in order and
+  /// sticks to the first that responds (see [_withFailover]); a blocked domain
+  /// auto-falls back to the next.
+  void configure(List<String> serverUrls, {String? authData}) {
+    _bases = serverUrls
+        .map((s) => s.trim().replaceAll(RegExp(r'/+$'), ''))
+        .where((s) => s.isNotEmpty)
+        .toList();
+    _index = 0;
     _authData = authData;
-    _rebuild();
+    if (_bases.isNotEmpty) _rebuild();
   }
 
   void updateAuthData(String? authData) {
     _authData = authData;
-    if (_baseUrl.isNotEmpty) _rebuild();
+    if (_bases.isNotEmpty) _rebuild();
   }
 
   /// Normalised API path prefix: guaranteed single leading slash, no trailing
@@ -171,8 +181,8 @@ class ApiClient {
   }) async {
     _assertReady();
     try {
-      final res = await _getWithRetry(
-        () => _dio!.get(path, queryParameters: params),
+      final res = await _withFailover(
+        () => _getWithRetry(() => _dio!.get(path, queryParameters: params)),
       );
       return _parse(res);
     } on DioException catch (e) {
@@ -184,21 +194,51 @@ class ApiClient {
     String url, {
     Map<String, dynamic>? headers,
   }) async {
-    final dio = _dio;
-    if (dio == null) {
-      throw const ApiException('请先配置服务器地址');
-    }
+    _assertReady();
     try {
-      return await _getWithRetry(
-        () => dio.get<String>(
-          url,
-          options: Options(responseType: ResponseType.plain, headers: headers),
+      return await _withFailover(
+        () => _getWithRetry(
+          () => _dio!.get<String>(
+            url,
+            options: Options(
+              responseType: ResponseType.plain,
+              headers: headers,
+            ),
+          ),
         ),
       );
     } on DioException catch (e) {
       throw ApiException(_friendlyMessage(e));
     }
   }
+
+  /// Runs [request] against the current base; on a connection-level failure
+  /// (domain unreachable / blocked) rotates to the next base and retries,
+  /// cycling through every base once. Sticks to whichever base succeeds.
+  Future<T> _withFailover<T>(Future<T> Function() request) async {
+    var tried = 0;
+    while (true) {
+      try {
+        return await request();
+      } on DioException catch (e) {
+        tried += 1;
+        if (!_isConnLevel(e) || tried >= _bases.length) rethrow;
+        _index = (_index + 1) % _bases.length;
+        _rebuild();
+      }
+    }
+  }
+
+  /// Connection-level error = the base itself is unreachable (timeout / refused
+  /// / blocked), so failing over to another domain may help. A bad HTTP status
+  /// means the server WAS reached, so we do not switch bases.
+  static bool _isConnLevel(DioException e) => switch (e.type) {
+    DioExceptionType.connectionTimeout ||
+    DioExceptionType.sendTimeout ||
+    DioExceptionType.receiveTimeout ||
+    DioExceptionType.connectionError => true,
+    _ => false,
+  };
 
   Future<Response<T>> _getWithRetry<T>(
     Future<Response<T>> Function() request,
@@ -239,7 +279,10 @@ class ApiClient {
   }) async {
     _assertReady();
     try {
-      final res = await _dio!.post(path, data: data);
+      // Failover only triggers on connection-level errors (request never
+      // reached the server), so retrying a POST on another base can't
+      // double-submit.
+      final res = await _withFailover(() => _dio!.post(path, data: data));
       return _parse(res);
     } on DioException catch (e) {
       throw ApiException(_friendlyMessage(e));
