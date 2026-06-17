@@ -143,8 +143,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       if (_compactWindow == false) return;
       _compactWindow = false;
       _authHeight = null;
-      await windowManager.setSize(_appWindowSize);
-      await windowManager.center();
+      await _applyWindowSize(_appWindowSize, center: true);
       return;
     }
 
@@ -156,8 +155,16 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final firstCompact = _compactWindow != true;
     _compactWindow = true;
     _authHeight = height;
-    await windowManager.setSize(Size(_authWindowWidth, height));
-    if (firstCompact) await windowManager.center();
+    await _applyWindowSize(Size(_authWindowWidth, height), center: firstCompact);
+  }
+
+  /// Applies a programmatic window size. macOS ignores setSize while the window
+  /// is non-resizable, so we briefly re-enable resizing around the call.
+  Future<void> _applyWindowSize(Size size, {required bool center}) async {
+    await windowManager.setResizable(true);
+    await windowManager.setSize(size);
+    if (center) await windowManager.center();
+    await windowManager.setResizable(false);
   }
 
   // ── Tray ─────────────────────────────────────────────────────────────────
