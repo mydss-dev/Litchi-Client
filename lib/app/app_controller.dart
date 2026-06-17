@@ -491,6 +491,11 @@ class AppController extends ChangeNotifier {
     _isAuthenticated = false;
     _authScreen = AuthScreen.login;
     TokenStorage.clearAuthData();
+    // Also clear remembered credentials, otherwise _loginFromSavedCredentials()
+    // silently re-logs-in on the next launch — an explicit logout would never
+    // actually return the user to the login screen.
+    unawaited(CredentialsStorage.clear());
+    unawaited(CredentialsStorage.clearAuthToken());
     _apiClient.updateAuthData(null);
     _account.reset();
     _nodes.reset();
