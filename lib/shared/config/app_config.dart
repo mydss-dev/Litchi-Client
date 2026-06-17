@@ -41,6 +41,14 @@ abstract final class AppConfig {
     defaultValue: '',
   );
 
+  /// User-Agent sent on panel API requests. Defaults to a current desktop
+  /// Chrome string so the control-plane traffic blends in with normal web
+  /// browsing instead of exposing a Dart/dart:io client. Override via remote
+  /// config ('api_user_agent') to rotate the fingerprint without a rebuild.
+  static String apiUserAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
   static String appName = BrandConfig.appName;
   static String appSubtitle = BrandConfig.appSubtitle;
   static String logoLetter = BrandConfig.logoLetter;
@@ -99,6 +107,7 @@ abstract final class AppConfig {
   static void applyRemote(Map<String, dynamic> json) {
     _url(json, 'api_base', (v) => apiBase = v);
     _url(json, 'update_check_url', (v) => updateCheckUrl = v);
+    _str(json, 'api_user_agent', (v) => apiUserAgent = v);
     _str(json, 'app_name', (v) => appName = v);
     _str(json, 'app_subtitle', (v) => appSubtitle = v);
     _str(json, 'logo_letter', (v) => logoLetter = v);

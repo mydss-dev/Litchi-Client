@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
+import '../config/app_config.dart';
+
 typedef SessionExpiredCallback = void Function();
 
 /// Thrown when the remote API returns a non-success response.
@@ -100,6 +102,14 @@ class ApiClient {
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
         contentType: 'application/json',
+        // Browser-like headers so the control-plane traffic blends in with
+        // normal web browsing instead of exposing a Dart/dart:io client.
+        // The User-Agent is remote-configurable (AppConfig.apiUserAgent).
+        headers: {
+          'User-Agent': AppConfig.apiUserAgent,
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        },
       ),
     );
     // Route through the Windows system proxy when one is active (e.g. sing-box).
