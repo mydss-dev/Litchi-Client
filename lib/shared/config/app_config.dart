@@ -51,6 +51,14 @@ abstract final class AppConfig {
     defaultValue: '',
   );
 
+  /// Update info carried directly in the (signed) remote config — no separate
+  /// manifest fetch. When [latestVersion] is newer than [currentVersion] the
+  /// client shows the update banner; [downloadUrl] is also used by the
+  /// force-update dialog. Empty [latestVersion] ⇒ fall back to [updateCheckUrl].
+  static String latestVersion = '';
+  static String downloadUrl = '';
+  static String changelog = '';
+
   /// User-Agent sent on panel API requests. Defaults to a current desktop
   /// Chrome string so the control-plane traffic blends in with normal web
   /// browsing instead of exposing a Dart/dart:io client. Override via remote
@@ -129,6 +137,9 @@ abstract final class AppConfig {
     _url(json, 'update_check_url', (v) => updateCheckUrl = v);
     _str(json, 'api_user_agent', (v) => apiUserAgent = v);
     _str(json, 'api_path_prefix', (v) => apiPathPrefix = v);
+    _str(json, 'latest_version', (v) => latestVersion = v);
+    _str(json, 'download_url', (v) => downloadUrl = v);
+    _str(json, 'changelog', (v) => changelog = v);
     final bases = json['api_base_list'];
     if (bases is List) {
       final urls = bases

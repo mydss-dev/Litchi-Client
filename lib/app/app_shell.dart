@@ -22,6 +22,7 @@ import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
 import '../shared/theme/app_text_styles.dart';
 import '../shared/widgets/app_sidebar.dart';
+import '../shared/services/url_opener.dart';
 import '../shared/widgets/notice_banner.dart';
 import '../shared/widgets/update_banner.dart';
 import 'app_controller.dart';
@@ -544,23 +545,39 @@ class _OutdatedVersionDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: SizedBox(
-                  height: 38,
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: c.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (AppConfig.downloadUrl.isNotEmpty) ...[
+                    SizedBox(
+                      height: 38,
+                      child: TextButton(
+                        onPressed: () =>
+                            unawaited(UrlOpener.open(AppConfig.downloadUrl)),
+                        child: Text(
+                          '去下载',
+                          style: TextStyle(color: c.primary),
+                        ),
                       ),
                     ),
-                    child: const Text('知道了'),
+                    const SizedBox(width: 8),
+                  ],
+                  SizedBox(
+                    height: 38,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: c.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                      ),
+                      child: const Text('知道了'),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),

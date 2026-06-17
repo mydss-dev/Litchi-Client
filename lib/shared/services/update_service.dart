@@ -16,6 +16,20 @@ abstract final class UpdateService {
   /// Fetches the version manifest and returns [UpdateInfo] if a newer version
   /// is available, or null if the check is disabled / already up-to-date.
   static Future<UpdateInfo?> check() async {
+    // Preferred: update info embedded in the (signed) remote config — no extra
+    // network fetch, one source of truth.
+    if (AppConfig.latestVersion.isNotEmpty) {
+      if (!_isNewer(AppConfig.latestVersion, AppConfig.currentVersion)) {
+        return null;
+      }
+      return UpdateInfo(
+        version: AppConfig.latestVersion,
+        downloadUrl: AppConfig.downloadUrl,
+        changelog: AppConfig.changelog,
+      );
+    }
+
+    // Fallback: legacy separate manifest at updateCheckUrl.
     if (AppConfig.updateCheckUrl.isEmpty) return null;
     final manifestUri = Uri.tryParse(AppConfig.updateCheckUrl);
     if (manifestUri == null ||
