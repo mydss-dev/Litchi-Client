@@ -12,5 +12,11 @@
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
+	<!-- Keychain access for flutter_secure_storage (login credentials); without
+	     it SecItem* calls fail with -34018. Mirrors Release.entitlements. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.litchi.litchiClient</string>
+	</array>
 </dict>
 </plist>

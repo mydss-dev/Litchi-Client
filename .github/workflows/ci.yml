@@ -295,12 +295,25 @@ jobs:
           cp sing-box "$app/Contents/Resources/sing-box"
           lipo -info "$app/Contents/Resources/sing-box" || true
 
-      - name: Ad-hoc codesign
+      - name: Ad-hoc codesign (preserve entitlements)
         run: |
           app="build/macos/Build/Products/Release/litchi_client.app"
+          # Capture the entitlements Xcode baked in at build time (keychain access,
+          # network, sandbox=off). Adding sing-box below breaks the seal, and a
+          # plain re-sign would DROP these entitlements -> Keychain -34018.
+          codesign -d --entitlements :ent.plist "$app" 2>/dev/null || true
+          # Sign the embedded core binary first.
           codesign --force --sign - "$app/Contents/Resources/sing-box"
-          codesign --force --deep --sign - "$app"
-          codesign --verify --deep --strict "$app" && echo "codesign ok"
+          # Re-seal the app, restoring its entitlements.
+          if [ -s ent.plist ]; then
+            codesign --force --sign - --entitlements ent.plist "$app"
+          else
+            echo "::warning::no entitlements extracted; signing without them"
+            codesign --force --sign - "$app"
+          fi
+          codesign --verify --strict "$app" && echo "codesign ok"
+          echo "── effective entitlements ──"
+          codesign -d --entitlements - "$app" 2>/dev/null | tr -d '\0' || true
 
       - name: Build DMG
         run: |
