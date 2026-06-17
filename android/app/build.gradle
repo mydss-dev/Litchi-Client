@@ -93,5 +93,13 @@ tasks.named("preBuild") {
 }
 
 dependencies {
-    implementation fileTree(dir: "libs", include: ["*.jar", "*.aar"])
+    // Exclude libbox-legacy.aar: it ships the same io.nekohasekai.libbox classes
+    // and lib/arm64-v8a/libbox.so as libbox.aar, which collides at
+    // mergeReleaseNativeLibs / causes duplicate-class errors. The modern
+    // libbox.aar covers our arm64/arm targets.
+    implementation fileTree(
+        dir: "libs",
+        include: ["*.jar", "*.aar"],
+        exclude: ["libbox-legacy.aar"],
+    )
 }

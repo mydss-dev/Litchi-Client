@@ -50,10 +50,8 @@ if (-not $aar) {
 New-Item -ItemType Directory -Force -Path $libs | Out-Null
 Copy-Item $aar.FullName (Join-Path $libs "libbox.aar") -Force
 
-$legacy = Get-ChildItem -Path $WorkDir -Recurse -Filter "libbox-legacy.aar" |
-  Select-Object -First 1
-if ($legacy) {
-  Copy-Item $legacy.FullName (Join-Path $libs "libbox-legacy.aar") -Force
-}
+# Deliberately NOT copying libbox-legacy.aar: it duplicates libbox.aar's
+# io.nekohasekai.libbox classes and arm64-v8a/libbox.so, which breaks
+# mergeReleaseNativeLibs. The modern libbox.aar covers our targets.
 
 Write-Host "Copied libbox.aar to android/app/libs"

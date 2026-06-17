@@ -34,9 +34,8 @@ fi
 mkdir -p "$LIBS"
 cp "$aar" "$LIBS/libbox.aar"
 
-legacy="$(find "$WORK_DIR" -name libbox-legacy.aar -print -quit)"
-if [[ -n "$legacy" ]]; then
-  cp "$legacy" "$LIBS/libbox-legacy.aar"
-fi
+# Deliberately NOT copying libbox-legacy.aar: it duplicates libbox.aar's
+# io.nekohasekai.libbox classes and arm64-v8a/libbox.so, which breaks
+# mergeReleaseNativeLibs. The modern libbox.aar covers our targets.
 
 echo "Copied libbox.aar to android/app/libs"
