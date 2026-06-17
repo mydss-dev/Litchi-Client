@@ -95,10 +95,19 @@ class ApiClient {
     if (_baseUrl.isNotEmpty) _rebuild();
   }
 
+  /// Normalised API path prefix: guaranteed single leading slash, no trailing
+  /// slash (so `$base$prefix/passport/...` is always well-formed).
+  static String get _pathPrefix {
+    var p = AppConfig.apiPathPrefix.trim();
+    if (p.isEmpty) return '';
+    if (!p.startsWith('/')) p = '/$p';
+    return p.replaceAll(RegExp(r'/+$'), '');
+  }
+
   void _rebuild() {
     _dio = Dio(
       BaseOptions(
-        baseUrl: '$_baseUrl/api/v1',
+        baseUrl: '$_baseUrl$_pathPrefix',
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
         contentType: 'application/json',

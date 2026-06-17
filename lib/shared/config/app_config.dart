@@ -49,6 +49,16 @@ abstract final class AppConfig {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
+  /// Path prefix for the panel API. Defaults to the V2board-standard '/api/v1'.
+  /// Set this (remote key 'api_path_prefix') to a secret prefix that a reverse
+  /// proxy maps back to '/api/v1' — so active probes of '/api/v1/...' find
+  /// nothing and the panel's path signature is hidden. Sub-paths
+  /// ('/passport/...', '/user/...') are unchanged; only the prefix moves.
+  static String apiPathPrefix = const String.fromEnvironment(
+    'API_PATH_PREFIX',
+    defaultValue: '/api/v1',
+  );
+
   static String appName = BrandConfig.appName;
   static String appSubtitle = BrandConfig.appSubtitle;
   static String logoLetter = BrandConfig.logoLetter;
@@ -108,6 +118,7 @@ abstract final class AppConfig {
     _url(json, 'api_base', (v) => apiBase = v);
     _url(json, 'update_check_url', (v) => updateCheckUrl = v);
     _str(json, 'api_user_agent', (v) => apiUserAgent = v);
+    _str(json, 'api_path_prefix', (v) => apiPathPrefix = v);
     _str(json, 'app_name', (v) => appName = v);
     _str(json, 'app_subtitle', (v) => appSubtitle = v);
     _str(json, 'logo_letter', (v) => logoLetter = v);
