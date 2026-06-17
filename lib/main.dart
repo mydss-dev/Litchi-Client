@@ -93,7 +93,10 @@ Future<void> _boot() async {
 
   final windowOptions = WindowOptions(
     size: const Size(900, 700),
-    minimumSize: const Size(900, 700),
+    // Small floor so the shell can shrink the window to a compact card-sized
+    // login window (see _AppShellState._syncWindowSize). User resize stays off
+    // via setResizable(false); this only gates programmatic setSize.
+    minimumSize: const Size(380, 480),
     center: true,
     backgroundColor: Colors.transparent,
     titleBarStyle: TitleBarStyle.hidden,

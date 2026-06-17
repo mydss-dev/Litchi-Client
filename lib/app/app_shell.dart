@@ -42,9 +42,25 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const double _radius = 18;
+  // Compact card-sized window for the logged-out (auth) screens; the full app
+  // window once authenticated. Each auth screen gets a fixed height that hugs
+  // its content, applied in didChangeDependencies the moment the screen changes
+  // so the window and the new content land together (no measure-then-resize
+  // stutter, no wasted whitespace).
+  static const double _authWindowWidth = 400;
+  static const Size _appWindowSize = Size(900, 700);
   bool _maximized = false;
   bool _trayActive = false;
   bool _versionChecked = false;
+  bool? _compactWindow;
+  double? _authHeight;
+
+  static double _authHeightFor(AuthScreen screen) => switch (screen) {
+    AuthScreen.login => 540,
+    AuthScreen.register => 720,
+    AuthScreen.changePassword => 620,
+    AuthScreen.forgotPassword => 700,
+  };
 
   // Cached so onWindowClose / tray callbacks can act without a context lookup.
   AppController? _ctrl;
@@ -64,6 +80,8 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     super.didChangeDependencies();
     final ctrl = AppScope.of(context);
     _ctrl = ctrl;
+
+    unawaited(_syncWindowSize(ctrl));
 
     final shouldHaveTray = _isDesktop && ctrl.isAuthenticated;
     if (shouldHaveTray && !_trayActive) {
@@ -113,6 +131,33 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (!_isDesktop) return;
     final m = await windowManager.isMaximized();
     if (mounted) setState(() => _maximized = m);
+  }
+
+  /// Sizes the window to hug the current auth screen while logged out, and
+  /// restores the full app window once authenticated. No-op while maximized.
+  Future<void> _syncWindowSize(AppController ctrl) async {
+    if (!_isDesktop) return;
+    if (await windowManager.isMaximized()) return;
+
+    if (ctrl.isAuthenticated) {
+      if (_compactWindow == false) return;
+      _compactWindow = false;
+      _authHeight = null;
+      await windowManager.setSize(_appWindowSize);
+      await windowManager.center();
+      return;
+    }
+
+    final height = _authHeightFor(ctrl.authScreen);
+    if (_compactWindow == true && _authHeight == height) return;
+    // Centre only when first entering the auth flow; switching between auth
+    // screens just changes the height in place so a window the user has moved
+    // stays where they put it.
+    final firstCompact = _compactWindow != true;
+    _compactWindow = true;
+    _authHeight = height;
+    await windowManager.setSize(Size(_authWindowWidth, height));
+    if (firstCompact) await windowManager.center();
   }
 
   // ── Tray ─────────────────────────────────────────────────────────────────
@@ -265,14 +310,18 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final c = AppColors.of(context);
     final controller = AppScope.of(context);
     final radius = _isDesktop && !_maximized ? _radius : 0.0;
+    // On desktop, the compact logged-out window IS the login card: give it the
+    // card surface + border so there's a single frame (no nested card inside).
+    final asCard = _isDesktop && !controller.isAuthenticated && !_maximized;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       clipBehavior: Clip.antiAlias,
       child: Container(
         decoration: BoxDecoration(
-          color: c.appBg,
+          color: asCard ? c.cardBg : c.appBg,
           borderRadius: BorderRadius.circular(radius),
+          border: asCard ? Border.all(color: c.softBorder) : null,
           boxShadow: _isDesktop && !_maximized ? AppShadows.window : null,
         ),
         child: controller.isAuthenticated

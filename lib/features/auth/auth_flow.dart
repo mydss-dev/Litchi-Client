@@ -72,7 +72,9 @@ class _AuthArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Container(
-      color: c.appBg,
+      // On desktop the window itself is the card (see AppShell), so don't fill
+      // a background or draw an inner card here — that would nest a second frame.
+      color: _isDesktop ? Colors.transparent : c.appBg,
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -87,18 +89,14 @@ class _AuthArea extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 400),
                     child: Container(
-                      decoration: BoxDecoration(
-                        color: c.cardBg,
-                        borderRadius: BorderRadius.circular(20),
-                        // On desktop the window already draws its own rounded
-                        // 1px frame; a second card border nested inside it reads
-                        // as a double frame, so drop it there (kept on mobile,
-                        // which has no window chrome).
-                        border: _isDesktop
-                            ? null
-                            : Border.all(color: c.softBorder),
-                        boxShadow: AppShadows.card(c),
-                      ),
+                      decoration: _isDesktop
+                          ? null
+                          : BoxDecoration(
+                              color: c.cardBg,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: c.softBorder),
+                              boxShadow: AppShadows.card(c),
+                            ),
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
                         child: Column(
