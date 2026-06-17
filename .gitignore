@@ -72,3 +72,6 @@ app.*.map.json
 
 # Local remote-config payload (contains secret API prefix/domains) — never commit
 payload.json
+
+# Local update manifest — upload to OSS, do not commit
+version.json
