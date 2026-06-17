@@ -23,15 +23,22 @@ abstract final class CredentialsStorage {
   static const _keyPassword = 'dpapi_password';
   static const _plainPrefix = 'P:';
 
-  /// Non-Windows secure store (Android Keystore / macOS Keychain). Windows uses
-  /// DPAPI via [WindowsDpapi] instead.
+  /// Mobile secure store (Android Keystore / iOS Keychain). Desktop does NOT
+  /// use this: Windows uses DPAPI via [WindowsDpapi], and macOS/Linux use the
+  /// portable [protectString] path. macOS Keychain needs a signed app with a
+  /// keychain-access-groups entitlement; ad-hoc / unsigned builds fail with
+  /// -34018 (errSecMissingEntitlement), so we avoid it there.
   static const _secureStorage = FlutterSecureStorage();
+
+  /// Only mobile platforms use the OS secure store; desktop uses prefs +
+  /// [protectString] (DPAPI on Windows, portable encoding elsewhere).
+  static bool get _useSecureStorage => Platform.isAndroid || Platform.isIOS;
 
   static Future<void> save({
     required String email,
     required String password,
   }) async {
-    if (!Platform.isWindows) {
+    if (_useSecureStorage) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyEmail, email);
       await _secureStorage.write(key: _keyPassword, value: password);
@@ -51,7 +58,7 @@ abstract final class CredentialsStorage {
 
   static Future<({String email, String password})?> load() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!Platform.isWindows) {
+    if (_useSecureStorage) {
       final email = await _loadEmail(prefs);
       final password = await _secureStorage.read(key: _keyPassword);
       if (email == null || email.isEmpty || password == null) return null;
@@ -75,7 +82,7 @@ abstract final class CredentialsStorage {
     await prefs.remove(_keyEmail);
     await prefs.remove(_legacyKeyEmail);
     await prefs.remove(_keyPassword);
-    if (!Platform.isWindows) {
+    if (_useSecureStorage) {
       await _secureStorage.delete(key: _keyPassword);
     }
   }
@@ -99,7 +106,7 @@ abstract final class CredentialsStorage {
   static const _keyAuthToken = 'dpapi_auth_token';
 
   static Future<void> saveAuthToken(String token) async {
-    if (!Platform.isWindows) {
+    if (_useSecureStorage) {
       await _secureStorage.write(key: _keyAuthToken, value: token);
       return;
     }
@@ -114,7 +121,7 @@ abstract final class CredentialsStorage {
   }
 
   static Future<String?> loadAuthToken() async {
-    if (!Platform.isWindows) {
+    if (_useSecureStorage) {
       return _secureStorage.read(key: _keyAuthToken);
     }
     try {
@@ -131,7 +138,7 @@ abstract final class CredentialsStorage {
   static Future<void> clearAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyAuthToken);
-    if (!Platform.isWindows) {
+    if (_useSecureStorage) {
       await _secureStorage.delete(key: _keyAuthToken);
     }
   }
