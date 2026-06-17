@@ -901,6 +901,7 @@ class RegisterConfig {
   const RegisterConfig({
     this.emailSuffixes = const [],
     this.emailVerifyRequired = false,
+    this.registerOpen = true,
   });
 
   /// Allowed email suffixes; empty means no restriction.
@@ -908,4 +909,8 @@ class RegisterConfig {
 
   /// Whether the panel requires an emailed verification code to register.
   final bool emailVerifyRequired;
+
+  /// Whether new-user registration is open (from the panel's comm config).
+  /// Defaults to open when the panel does not report it.
+  final bool registerOpen;
 }

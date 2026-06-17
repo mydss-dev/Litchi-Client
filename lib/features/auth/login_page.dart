@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../shared/config/app_config.dart';
 import '../../shared/services/credentials_storage.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'widgets/auth_form_parts.dart';
@@ -146,7 +145,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 24),
         AuthPrimaryButton(label: '登录', isLoading: _loading, onPressed: _submit),
-        if (AppConfig.registerEnabled) ...[
+        if (controller.registerConfig.registerOpen) ...[
           const SizedBox(height: 20),
           AuthBottomJump(
             leadingText: '还没有账号？',

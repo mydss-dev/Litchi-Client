@@ -135,6 +135,7 @@ class PanelApi {
               map['email_verify'] ??
               map['emailVerifyRequired'],
         ),
+        registerOpen: _registerOpenFrom(map),
       );
     }
     return const RegisterConfig();
@@ -146,6 +147,21 @@ class PanelApi {
     } catch (_) {
       return const RegisterConfig();
     }
+  }
+
+  /// Derives "registration open" from the panel's comm config. Different panels
+  /// expose this differently: a "closed/stop" flag (truthy ⇒ closed) or an
+  /// "open/enabled" flag (truthy ⇒ open). Defaults to open when none present.
+  static bool _registerOpenFrom(Map<String, dynamic> map) {
+    final closed = map['stop_register'] ?? map['stopRegister'];
+    if (closed != null) return !_truthy(closed);
+    final open =
+        map['is_register'] ??
+        map['isRegister'] ??
+        map['register_enabled'] ??
+        map['registerEnabled'];
+    if (open != null) return _truthy(open);
+    return true;
   }
 
   static bool _truthy(Object? value) {

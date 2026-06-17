@@ -100,9 +100,6 @@ abstract final class AppConfig {
   /// Empty string = no enforcement.
   static String minVersion = '';
 
-  /// Whether new user registration is open.
-  static bool registerEnabled = true;
-
   // ── Derived ───────────────────────────────────────────────────────────────
 
   static bool get isSecureServer => apiBase.startsWith('https://');
@@ -163,8 +160,6 @@ abstract final class AppConfig {
     _str(json, 'min_version', (v) => minVersion = v);
     _color(json, 'brand_color_start', (v) => brandStart = v);
     _color(json, 'brand_color_end', (v) => brandEnd = v);
-    final reg = json['register_enabled'];
-    if (reg is bool) registerEnabled = reg;
   }
 
   static void _str(
