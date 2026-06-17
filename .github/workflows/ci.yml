@@ -297,22 +297,26 @@ jobs:
           codesign --force --deep --sign - "$app"
           codesign --verify --deep --strict "$app" && echo "codesign ok"
 
-      - name: Zip app
+      - name: Build DMG
         run: |
           app="build/macos/Build/Products/Release/litchi_client.app"
-          ditto -c -k --sequesterRsrc --keepParent "$app" litchi-macos.zip
-          ls -lh litchi-macos.zip
+          rm -rf dmg-stage && mkdir -p dmg-stage
+          cp -R "$app" dmg-stage/
+          ln -s /Applications dmg-stage/Applications
+          hdiutil create -volname "Litchi Client" -srcfolder dmg-stage \
+            -ov -format UDZO litchi-macos.dmg
+          ls -lh litchi-macos.dmg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: litchi-macos-${{ github.sha }}
-          path: litchi-macos.zip
+          path: litchi-macos.dmg
           retention-days: 30
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: litchi-macos.zip
+          files: litchi-macos.dmg
           generate_release_notes: true
