@@ -47,15 +47,27 @@ abstract final class RemoteConfigService {
   static Future<void> initialize(SharedPreferences prefs) async {
     // 1. Apply trusted cache immediately so the first frame is correct.
     final cached = prefs.getString(_cacheKey);
+    var applied = false;
     if (cached != null) {
       try {
         final config = await _parseTrustedConfig(cached);
-        if (config != null) AppConfig.applyRemote(config);
+        if (config != null) {
+          AppConfig.applyRemote(config);
+          applied = true;
+        }
       } catch (_) {}
     }
 
-    // 2. Refresh in background — intentionally not awaited.
-    unawaited(_refresh(prefs));
+    if (applied) {
+      // Have a trusted config already — refresh in the background.
+      unawaited(_refresh(prefs));
+    } else {
+      // First launch / no trusted cache: AWAIT the first fetch (bounded by
+      // _timeout) so the real API base is set before the app configures its
+      // HTTP client. Otherwise it falls back to the compiled default domain,
+      // which may be blocked — leaving login stuck until a restart.
+      await _refresh(prefs);
+    }
   }
 
   static Future<void> _refresh(SharedPreferences prefs) async {
