@@ -30,6 +30,11 @@ import 'app_window_bar.dart';
 bool get _isDesktop =>
     Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
+/// Windows/Linux draw a custom frameless window (rounded clip, custom controls).
+/// macOS uses its native window (traffic lights + native corners/shadow), so it
+/// gets neither the custom controls nor the rounded clip.
+bool get _usesCustomChrome => Platform.isWindows || Platform.isLinux;
+
 /// Root window shell. The whole app is clipped to an 18px rounded rectangle on
 /// a transparent window background, with a 1px border and outer shadow. Corners
 /// go square while maximized.
@@ -316,10 +321,13 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final controller = AppScope.of(context);
-    final radius = _isDesktop && !_maximized ? _radius : 0.0;
-    // On desktop, the compact logged-out window IS the login card: give it the
-    // card surface + border so there's a single frame (no nested card inside).
-    final asCard = _isDesktop && !controller.isAuthenticated && !_maximized;
+    // Only the custom (Windows/Linux) chrome draws the rounded clip, border and
+    // window shadow — macOS gets those from its native window.
+    final radius = _usesCustomChrome && !_maximized ? _radius : 0.0;
+    // On the custom chrome the compact logged-out window IS the login card:
+    // give it the card surface + border so there's a single frame.
+    final asCard =
+        _usesCustomChrome && !controller.isAuthenticated && !_maximized;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
@@ -329,7 +337,9 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
           color: asCard ? c.cardBg : c.appBg,
           borderRadius: BorderRadius.circular(radius),
           border: asCard ? Border.all(color: c.softBorder) : null,
-          boxShadow: _isDesktop && !_maximized ? AppShadows.window : null,
+          boxShadow: _usesCustomChrome && !_maximized
+              ? AppShadows.window
+              : null,
         ),
         child: controller.isAuthenticated
             ? const _MainShell()
@@ -348,13 +358,13 @@ class _MainShell extends StatelessWidget {
     final c = AppColors.of(context);
     final controller = AppScope.of(context);
 
-    return Row(
+    final body = Row(
       children: [
         const AppSidebar(),
         Expanded(
           child: Column(
             children: [
-              if (_isDesktop) const WindowControlsBar(),
+              if (_usesCustomChrome) const WindowControlsBar(),
               Expanded(
                 child: Container(
                   color: c.appBg,
@@ -389,6 +399,13 @@ class _MainShell extends StatelessWidget {
           ),
         ),
       ],
+    );
+
+    if (!Platform.isMacOS) return body;
+    // Reserve a full-width top strip on macOS so the native traffic lights and
+    // window dragging have room above the sidebar and content.
+    return Column(
+      children: [const _MacTitleBarSpacer(), Expanded(child: body)],
     );
   }
 
@@ -547,14 +564,43 @@ class _AuthShell extends StatelessWidget {
     return Stack(
       children: [
         const Positioned.fill(child: AuthFlow()),
-        if (_isDesktop)
+        if (_usesCustomChrome)
           const Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: WindowControlsBar(),
           ),
+        // macOS: a small draggable strip up top; the native traffic lights sit
+        // in its left corner.
+        if (Platform.isMacOS)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: _MacTitleBarSpacer(),
+          ),
       ],
+    );
+  }
+}
+
+/// A slim, transparent, draggable strip used on macOS in place of the custom
+/// window controls — it reserves room for the native traffic lights and lets
+/// the user drag the window from the top.
+class _MacTitleBarSpacer extends StatelessWidget {
+  const _MacTitleBarSpacer();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 30,
+      width: double.infinity,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onPanStart: (_) => windowManager.startDragging(),
+        child: const SizedBox.expand(),
+      ),
     );
   }
 }
