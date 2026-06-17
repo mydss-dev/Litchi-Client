@@ -227,3 +227,92 @@ jobs:
         with:
           files: build/app/outputs/flutter-apk/app-release.apk
           generate_release_notes: true
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+
+      - name: Build release
+        run: |
+          api_base="${{ secrets.API_BASE }}"
+          update_url="${{ secrets.UPDATE_CHECK_URL }}"
+          app_name="${{ secrets.APP_NAME }}"
+          app_subtitle="${{ secrets.APP_SUBTITLE }}"
+          logo_letter="${{ secrets.LOGO_LETTER }}"
+          color_start="${{ secrets.BRAND_COLOR_START }}"
+          color_end="${{ secrets.BRAND_COLOR_END }}"
+          api_base="${api_base:-https://placeholder.example.com}"
+          app_name="${app_name:-Litchi}"
+          app_subtitle="${app_subtitle:-Network Client}"
+          logo_letter="${logo_letter:-L}"
+          color_start="${color_start:-2563EB}"
+          color_end="${color_end:-7C3AED}"
+          flutter build macos --release \
+            "--dart-define=API_BASE=$api_base" \
+            "--dart-define=APP_VERSION=1.2.0" \
+            "--dart-define=UPDATE_CHECK_URL=$update_url" \
+            "--dart-define=APP_NAME=$app_name" \
+            "--dart-define=APP_SUBTITLE=$app_subtitle" \
+            "--dart-define=LOGO_LETTER=$logo_letter" \
+            "--dart-define=BRAND_COLOR_START=$color_start" \
+            "--dart-define=BRAND_COLOR_END=$color_end"
+
+      - name: Bundle sing-box core (universal)
+        run: |
+          app="build/macos/Build/Products/Release/litchi_client.app"
+          if [ ! -d "$app" ]; then echo "::error::app bundle not found at $app"; ls -la build/macos/Build/Products/Release || true; exit 1; fi
+          release=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "User-Agent: litchi-ci" \
+            https://api.github.com/repos/SagerNet/sing-box/releases/latest)
+          amd_url=$(echo "$release" | grep -o 'https://[^"]*darwin-amd64\.tar\.gz' | head -1)
+          arm_url=$(echo "$release" | grep -o 'https://[^"]*darwin-arm64\.tar\.gz' | head -1)
+          if [ -z "$amd_url" ] || [ -z "$arm_url" ]; then echo "::error::sing-box darwin assets not found"; exit 1; fi
+          echo "amd64: $amd_url"; echo "arm64: $arm_url"
+          curl -sSL "$amd_url" -o amd.tar.gz && tar -xzf amd.tar.gz
+          curl -sSL "$arm_url" -o arm.tar.gz && tar -xzf arm.tar.gz
+          amd_bin=$(find . -maxdepth 2 -type f -name sing-box -path '*amd64*' | head -1)
+          arm_bin=$(find . -maxdepth 2 -type f -name sing-box -path '*arm64*' | head -1)
+          echo "amd_bin=$amd_bin  arm_bin=$arm_bin"
+          # Combine into a universal binary so the build runs on both Intel and Apple Silicon Macs.
+          lipo -create "$amd_bin" "$arm_bin" -output sing-box || cp "$arm_bin" sing-box
+          chmod +x sing-box
+          mkdir -p "$app/Contents/Resources"
+          cp sing-box "$app/Contents/Resources/sing-box"
+          lipo -info "$app/Contents/Resources/sing-box" || true
+
+      - name: Ad-hoc codesign
+        run: |
+          app="build/macos/Build/Products/Release/litchi_client.app"
+          codesign --force --sign - "$app/Contents/Resources/sing-box"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict "$app" && echo "codesign ok"
+
+      - name: Zip app
+        run: |
+          app="build/macos/Build/Products/Release/litchi_client.app"
+          ditto -c -k --sequesterRsrc --keepParent "$app" litchi-macos.zip
+          ls -lh litchi-macos.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: litchi-macos-${{ github.sha }}
+          path: litchi-macos.zip
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: litchi-macos.zip
+          generate_release_notes: true
