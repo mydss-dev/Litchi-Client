@@ -7,7 +7,6 @@ import '../shared/config/app_config.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/api_client.dart';
-import '../shared/services/credentials_storage.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/node_cache_service.dart';
 import '../shared/services/panel_api.dart';
@@ -262,10 +261,8 @@ class AppController extends ChangeNotifier {
 
     final authData = await TokenStorage.getAuthData();
     if (authData == null || authData.isEmpty) {
-      if (await _loginFromSavedCredentials()) {
-        unawaited(_checkForUpdate());
-        return;
-      }
+      // No saved session token → show the login screen. Auto-login is
+      // token-only; remembered credentials just prefill the form.
       _isInitializing = false;
       notifyListeners();
       unawaited(_checkForUpdate());
@@ -331,9 +328,6 @@ class AppController extends ChangeNotifier {
 
       await TokenStorage.clearAuthData();
       _apiClient.updateAuthData(null);
-      if (await _loginFromSavedCredentials()) {
-        return;
-      }
       _isAuthenticated = false;
       _authScreen = AuthScreen.login;
       _startupMessage = '登录已过期，请重新登录';
@@ -471,31 +465,14 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> _loginFromSavedCredentials() async {
-    final saved = await CredentialsStorage.load();
-    if (saved == null) return false;
-    try {
-      final result = await _api.login(saved.email, saved.password);
-      await _completeAuthentication(result.authData);
-      return true;
-    } catch (_) {
-      _startupMessage = '自动登录失败，请手动登录';
-      await TokenStorage.clearAuthData();
-      _apiClient.updateAuthData(null);
-      return false;
-    }
-  }
-
   void logout() {
     _core.stopAndReset();
     _isAuthenticated = false;
     _authScreen = AuthScreen.login;
     TokenStorage.clearAuthData();
-    // Also clear remembered credentials, otherwise _loginFromSavedCredentials()
-    // silently re-logs-in on the next launch — an explicit logout would never
-    // actually return the user to the login screen.
-    unawaited(CredentialsStorage.clear());
-    unawaited(CredentialsStorage.clearAuthToken());
+    // Note: the remembered email/password are intentionally KEPT so the login
+    // form stays prefilled. Auto-login is token-only, so clearing the token
+    // above is enough to return to the login screen on next launch.
     _apiClient.updateAuthData(null);
     _account.reset();
     _nodes.reset();
