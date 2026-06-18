@@ -3,7 +3,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
-import '../../shared/config/app_config.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
@@ -143,30 +142,6 @@ class _AuthBrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const BrandLogo(size: 32, radius: 10),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              AppConfig.appName,
-              style: AppTextStyles.bodyStrong.copyWith(
-                color: c.textPrimary,
-                fontSize: 15,
-              ),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              AppConfig.appSubtitle,
-              style: AppTextStyles.caption.copyWith(color: c.textMuted),
-            ),
-          ],
-        ),
-      ],
-    );
+    return const BrandLogo(size: 52, radius: 16);
   }
 }

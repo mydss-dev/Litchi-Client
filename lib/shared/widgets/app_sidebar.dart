@@ -97,28 +97,12 @@ class _BrandArea extends StatelessWidget {
         children: [
           const BrandLogo(size: 40, radius: 12),
           const SizedBox(width: 10),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppConfig.appName,
-                style: AppTextStyles.bodyStrong.copyWith(
-                  color: c.textPrimary,
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                AppConfig.appSubtitle,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w400,
-                  color: c.textMuted,
-                  fontFamilyFallback: AppTextStyles.fontFamilyFallback,
-                ),
-              ),
-            ],
+          Text(
+            AppConfig.appName,
+            style: AppTextStyles.bodyStrong.copyWith(
+              color: c.textPrimary,
+              fontSize: 15,
+            ),
           ),
         ],
       ),
