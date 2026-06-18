@@ -87,6 +87,16 @@ abstract final class CredentialsStorage {
     }
   }
 
+  /// Clears only the remembered password while keeping the email available for
+  /// autofill. Used when a legacy/corrupt password blob is detected.
+  static Future<void> clearPassword() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyPassword);
+    if (_useSecureStorage) {
+      await _secureStorage.delete(key: _keyPassword);
+    }
+  }
+
   static Future<String?> _loadEmail(SharedPreferences prefs) async {
     final email = prefs.getString(_keyEmail);
     if (email != null && email.isNotEmpty) return email;

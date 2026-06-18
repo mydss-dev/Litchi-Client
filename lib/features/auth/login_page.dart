@@ -33,7 +33,13 @@ class _LoginPageState extends State<LoginPage> {
     final saved = await CredentialsStorage.load();
     if (saved != null && mounted) {
       if (_looksLikeJwt(saved.password)) {
-        await CredentialsStorage.clear();
+        await CredentialsStorage.clearPassword();
+        if (!mounted) return;
+        setState(() {
+          _emailCtrl.text = saved.email;
+          _passwordCtrl.clear();
+          _remember = true;
+        });
         return;
       }
       setState(() {
@@ -94,7 +100,8 @@ class _LoginPageState extends State<LoginPage> {
       AppToast.showInOverlay(overlay, '登录成功，欢迎回来！', type: AppToastType.success);
     } catch (e) {
       if (mounted) {
-        AppToast.show(context, e.toString(), type: AppToastType.error);
+        final message = e.toString().replaceFirst('ApiException: ', '');
+        AppToast.show(context, message, type: AppToastType.error);
       }
     } finally {
       if (mounted) setState(() => _loading = false);

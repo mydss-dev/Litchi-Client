@@ -118,8 +118,8 @@ class ApiClient {
     _dio = Dio(
       BaseOptions(
         baseUrl: '$_baseUrl$_pathPrefix',
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 30),
+        connectTimeout: const Duration(seconds: 8),
+        receiveTimeout: const Duration(seconds: 15),
         contentType: 'application/json',
         // Browser-like headers so the control-plane traffic blends in with
         // normal web browsing instead of exposing a Dart/dart:io client.
@@ -285,6 +285,9 @@ class ApiClient {
       final res = await _withFailover(() => _dio!.post(path, data: data));
       return _parse(res);
     } on DioException catch (e) {
+      if (_isConnLevel(e)) {
+        throw ApiException(_connectionFailureMessage());
+      }
       throw ApiException(_friendlyMessage(e));
     }
   }
@@ -312,6 +315,14 @@ class ApiClient {
         _serverMessage(e) ?? '服务器响应异常（${e.response?.statusCode ?? '未知'}）',
       _ => '网络请求失败，请重试',
     };
+  }
+
+  String _connectionFailureMessage() {
+    final count = _bases.length;
+    if (count <= 1) {
+      return '无法连接服务器，请检查网络后重试；如果持续失败，请联系管理员';
+    }
+    return '已尝试 $count 个服务器仍无法连接，请检查网络后重试；如果持续失败，请联系管理员';
   }
 
   /// V2Board panels put the human-readable reason (wrong password, account

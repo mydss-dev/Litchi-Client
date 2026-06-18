@@ -173,11 +173,8 @@ class _RegisterPageState extends State<RegisterPage> {
       );
     } catch (e) {
       if (mounted) {
-        AppToast.show(
-          context,
-          e.toString().replaceFirst('ApiException: ', ''),
-          type: AppToastType.error,
-        );
+        final message = e.toString().replaceFirst('ApiException: ', '');
+        AppToast.show(context, message, type: AppToastType.error);
       }
     } finally {
       if (mounted) setState(() => _loading = false);

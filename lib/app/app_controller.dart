@@ -634,8 +634,7 @@ class AppController extends ChangeNotifier {
 
   /// Tries to restore the last manually-selected node from persistent storage.
   /// Falls back to the first node in auto-select mode if the node is not found.
-  void _restoreLastNode() =>
-      _nodes.restoreLastSelection(_settings.lastNodeId);
+  void _restoreLastNode() => _nodes.restoreLastSelection(_settings.lastNodeId);
 
   /// Switch to [node]. Returns an error string if the core rejected the
   /// switch, or null on success.
