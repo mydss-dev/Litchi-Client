@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
 import '../config/app_config.dart';
+import 'secure_logger.dart';
 
 typedef SessionExpiredCallback = void Function();
 
@@ -195,8 +196,10 @@ class ApiClient {
     Map<String, dynamic>? headers,
   }) async {
     _assertReady();
+    final sw = Stopwatch()..start();
+    SecureLogger.warn('ApiClient getPlainUrl start');
     try {
-      return await _withFailover(
+      final res = await _withFailover(
         () => _getWithRetry(
           () => _dio!.get<String>(
             url,
@@ -207,7 +210,15 @@ class ApiClient {
           ),
         ),
       );
+      SecureLogger.warn(
+        'ApiClient getPlainUrl success after ${sw.elapsedMilliseconds}ms',
+      );
+      return res;
     } on DioException catch (e) {
+      SecureLogger.warn(
+        'ApiClient getPlainUrl DioException after ${sw.elapsedMilliseconds}ms',
+        e,
+      );
       throw ApiException(_friendlyMessage(e));
     }
   }
@@ -223,6 +234,7 @@ class ApiClient {
       } on DioException catch (e) {
         tried += 1;
         if (!_isConnLevel(e) || tried >= _bases.length) rethrow;
+        SecureLogger.warn('ApiClient failover rotating base attempt=$tried', e);
         _index = (_index + 1) % _bases.length;
         _rebuild();
       }

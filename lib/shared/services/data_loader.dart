@@ -6,6 +6,7 @@ import '../models/app_models.dart';
 import '../models/model_mappers.dart';
 import 'network_error_classifier.dart';
 import 'panel_api.dart';
+import 'secure_logger.dart';
 
 /// Mutable bag populated by [DataLoader] with best-effort API results.
 /// Null fields indicate the corresponding load was skipped or failed.
@@ -55,14 +56,22 @@ class DataLoader {
 
   /// Full load: user-info first (sequential), then all others in parallel.
   Future<DataSnapshot> loadAll() async {
+    final sw = Stopwatch()..start();
+    SecureLogger.warn('DataLoader loadAll start');
     final snap = DataSnapshot();
     await _fillUserInfo(snap);
+    SecureLogger.warn(
+      'DataLoader user info phase complete after ${sw.elapsedMilliseconds}ms',
+    );
     await Future.wait([
       _fillNodes(snap),
       _fillPlans(snap),
       _fillInvite(snap),
       _fillTrafficLog(snap),
     ]);
+    SecureLogger.warn(
+      'DataLoader parallel phase complete after ${sw.elapsedMilliseconds}ms',
+    );
     return snap;
   }
 
@@ -76,15 +85,25 @@ class DataLoader {
   // ── Private fill methods ─────────────────────────────────────────────────
 
   Future<void> _fillUserInfo(DataSnapshot snap) async {
+    final sw = Stopwatch()..start();
+    SecureLogger.warn('DataLoader getUserInfo start');
     try {
       final info = await _api.getUserInfo();
       snap.user = ModelMappers.toUser(info);
       snap.currentPlanId = info.planId;
       snap.traffic = ModelMappers.toTraffic(info);
+      SecureLogger.warn(
+        'DataLoader getUserInfo success after ${sw.elapsedMilliseconds}ms',
+      );
     } catch (e) {
       debugPrint('[Litchi] getUserInfo error: $e');
+      SecureLogger.warn(
+        'DataLoader getUserInfo failed after ${sw.elapsedMilliseconds}ms',
+        e,
+      );
       snap.criticalError = '用户信息加载失败，请检查网络后重试';
     }
+    SecureLogger.warn('DataLoader getSubscribeInfo start');
     try {
       final subscribe = await _api.getSubscribeInfo();
       snap.subscribeUrl = subscribe.subscribeUrl;
@@ -103,17 +122,27 @@ class DataLoader {
           remainGb: remain,
         );
       }
+      SecureLogger.warn(
+        'DataLoader getSubscribeInfo success after ${sw.elapsedMilliseconds}ms',
+      );
     } catch (e) {
       debugPrint('[Litchi] getSubscribeInfo error: $e');
+      SecureLogger.warn(
+        'DataLoader getSubscribeInfo failed after ${sw.elapsedMilliseconds}ms',
+        e,
+      );
     }
   }
 
   Future<void> _fillNodes(DataSnapshot snap) async {
+    final sw = Stopwatch()..start();
     final url = snap.subscribeUrl;
     if (url == null || url.isEmpty) {
       debugPrint('[Litchi] _fillNodes: no subscribe URL, skipping');
+      SecureLogger.warn('DataLoader fillNodes skipped: no subscribe URL');
       return;
     }
+    SecureLogger.warn('DataLoader fetchSubscription start');
     try {
       final result = await _api.fetchSubscription(url);
       if (result.nodes.isNotEmpty) {
@@ -130,8 +159,16 @@ class DataLoader {
           remainGb: remain,
         );
       }
+      SecureLogger.warn(
+        'DataLoader fetchSubscription success after ${sw.elapsedMilliseconds}ms '
+        'nodes=${result.nodes.length}',
+      );
     } catch (e) {
       debugPrint('[Litchi] _fillNodes error: $e');
+      SecureLogger.warn(
+        'DataLoader fetchSubscription failed after ${sw.elapsedMilliseconds}ms',
+        e,
+      );
       snap.nodesError = NetworkErrorClassifier.isNetworkError(e)
           ? '节点加载失败，请检查网络后重试'
           : '节点数据解析失败，请刷新后重试';
@@ -139,6 +176,8 @@ class DataLoader {
   }
 
   Future<void> _fillPlans(DataSnapshot snap) async {
+    final sw = Stopwatch()..start();
+    SecureLogger.warn('DataLoader getPlans start');
     try {
       final plans = await _api.getPlans();
       if (plans.isNotEmpty) {
@@ -150,8 +189,16 @@ class DataLoader {
           snap.user = user.copyWith(plan: currentPlan.title);
         }
       }
+      SecureLogger.warn(
+        'DataLoader getPlans success after ${sw.elapsedMilliseconds}ms '
+        'plans=${plans.length}',
+      );
     } catch (e) {
       debugPrint('[Litchi] getPlans error: $e');
+      SecureLogger.warn(
+        'DataLoader getPlans failed after ${sw.elapsedMilliseconds}ms',
+        e,
+      );
     }
   }
 
@@ -164,6 +211,8 @@ class DataLoader {
   }
 
   Future<void> _fillInvite(DataSnapshot snap) async {
+    final sw = Stopwatch()..start();
+    SecureLogger.warn('DataLoader getInvite start');
     try {
       final info = await _api.getInviteInfo();
       if (info.codes.isNotEmpty) {
@@ -187,12 +236,21 @@ class DataLoader {
       snap.withdrawMethods = commConfig.withdrawMethods;
       snap.minWithdrawAmount = commConfig.minWithdrawAmount / 100;
       snap.inviteRecords = await _api.getInviteDetails(pageSize: 10);
+      SecureLogger.warn(
+        'DataLoader getInvite success after ${sw.elapsedMilliseconds}ms',
+      );
     } catch (e) {
       debugPrint('[Litchi] getInviteInfo error: $e');
+      SecureLogger.warn(
+        'DataLoader getInvite failed after ${sw.elapsedMilliseconds}ms',
+        e,
+      );
     }
   }
 
   Future<void> _fillTrafficLog(DataSnapshot snap) async {
+    final sw = Stopwatch()..start();
+    SecureLogger.warn('DataLoader getTrafficLog start');
     try {
       final logs = await _api.getTrafficLog();
       if (logs.isNotEmpty) {
@@ -223,8 +281,16 @@ class DataLoader {
         snap.trafficUsage = points;
         snap.dailyUsage = points.map((p) => p.totalGb).toList();
       }
+      SecureLogger.warn(
+        'DataLoader getTrafficLog success after ${sw.elapsedMilliseconds}ms '
+        'logs=${logs.length}',
+      );
     } catch (e) {
       debugPrint('[Litchi] getTrafficLog error: $e');
+      SecureLogger.warn(
+        'DataLoader getTrafficLog failed after ${sw.elapsedMilliseconds}ms',
+        e,
+      );
     }
   }
 }
