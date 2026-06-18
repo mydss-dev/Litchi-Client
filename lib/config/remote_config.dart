@@ -27,7 +27,7 @@ abstract final class RemoteConfigService {
   /// While this is left as the placeholder value, unsigned legacy config is
   /// still accepted for rollout compatibility.
   static const publicKeyBase64Url =
-      'czOhtYixrTNEZF0sqhVKoggOtRgmrZNThJryRaJBTBk';
+      'NNaWU3z7FC2O4y6a6VSeJ4uRrb5M0OaR7A_scJJmZko';
 
   // ── Internal settings ─────────────────────────────────────────────────────
 
