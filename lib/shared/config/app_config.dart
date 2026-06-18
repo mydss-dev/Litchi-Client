@@ -142,7 +142,7 @@ abstract final class AppConfig {
       final urls = bases
           .whereType<String>()
           .map((e) => e.trim().replaceAll(RegExp(r'/+$'), ''))
-          .where((e) => e.startsWith('http'))
+          .where((e) => e.startsWith('https://'))
           .toList();
       if (urls.isNotEmpty) apiBaseList = urls;
     }
@@ -195,9 +195,7 @@ abstract final class AppConfig {
     final v = json[key];
     if (v is! String || v.isEmpty) return;
     final u = Uri.tryParse(v);
-    if (u != null &&
-        (u.scheme == 'https' || u.scheme == 'http') &&
-        u.host.isNotEmpty) {
+    if (u != null && u.scheme == 'https' && u.host.isNotEmpty) {
       apply(v);
     }
   }

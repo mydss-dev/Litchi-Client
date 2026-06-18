@@ -90,6 +90,8 @@ class NodeModel {
   /// Original Clash proxy object for YAML subscriptions.
   final Map<String, dynamic>? rawOutbound;
 
+  bool get hasConfig => rawUri.isNotEmpty || rawOutbound != null;
+
   NodeModel copyWith({int? latency}) => NodeModel(
     id: id,
     name: name,

@@ -19,6 +19,13 @@ void main() {
     );
   });
 
+  test('detects Chinese network error messages', () {
+    expect(NetworkErrorClassifier.isNetworkError('超时，请重试'), isTrue);
+    expect(NetworkErrorClassifier.isNetworkError('无法连接到服务器'), isTrue);
+    expect(NetworkErrorClassifier.isNetworkError('网络请求失败'), isTrue);
+    expect(NetworkErrorClassifier.isNetworkError('服务器响应异常'), isTrue);
+  });
+
   test('does not classify authentication failures as network errors', () {
     expect(
       NetworkErrorClassifier.isNetworkError('ApiException: unauthenticated'),

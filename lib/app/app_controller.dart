@@ -15,6 +15,8 @@ import '../shared/services/token_storage.dart';
 import '../shared/services/tcp_ping_service.dart';
 import '../shared/services/update_service.dart';
 import 'account_controller.dart';
+import '../shared/services/network_error_classifier.dart';
+import 'core_connection_request.dart';
 import 'core_controller.dart';
 import 'invite_controller.dart';
 import 'node_controller.dart';
@@ -318,7 +320,7 @@ class AppController extends ChangeNotifier {
       _dataLoadError = null;
       if (!_disposed) notifyListeners();
     } catch (e) {
-      if (_isNetworkError(e)) {
+      if (NetworkErrorClassifier.isNetworkError(e)) {
         _dataLoadError = _nodes.isNotEmpty
             ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
             : '当前无法连接服务器，且暂无本地节点缓存，请检查网络或联系客服。';
@@ -334,14 +336,6 @@ class AppController extends ChangeNotifier {
       _nodes.reset();
       if (!_disposed) notifyListeners();
     }
-  }
-
-  static bool _isNetworkError(Object e) {
-    final msg = e.toString();
-    return msg.contains('超时') ||
-        msg.contains('无法连接') ||
-        msg.contains('网络请求失败') ||
-        msg.contains('服务器响应异常');
   }
 
   Future<void> _checkForUpdate() async {
@@ -488,19 +482,21 @@ class AppController extends ChangeNotifier {
 
   // ── Connection ────────────────────────────────────────────────────────────
 
+  CoreConnectionRequest _buildConnectionRequest() => CoreConnectionRequest(
+    nodes: _nodes.nodes,
+    currentNode: currentNode,
+    proxyMode: _settings.proxyMode,
+    dnsMode: _settings.dnsMode,
+    proxyPort: _settings.proxyPort,
+    networkMode: _settings.networkMode,
+    allowInsecure: _settings.allowInsecureNodes,
+  );
+
   Future<String?> toggleConnection() {
     if (!supportsCoreConnection) {
       return Future.value('当前平台暂未接入核心连接');
     }
-    return _core.toggleConnection(
-      nodes: _nodes.nodes,
-      currentNode: currentNode,
-      proxyMode: _settings.proxyMode,
-      dnsMode: _settings.dnsMode,
-      proxyPort: _settings.proxyPort,
-      networkMode: _settings.networkMode,
-      allowInsecure: _settings.allowInsecureNodes,
-    );
+    return _core.toggleConnection(_buildConnectionRequest());
   }
 
   /// Checks whether the current process is running with elevated (admin) privileges.
@@ -550,7 +546,7 @@ class AppController extends ChangeNotifier {
       await _loadAllData();
       _dataLoadError = null;
     } catch (e) {
-      if (_isNetworkError(e)) {
+      if (NetworkErrorClassifier.isNetworkError(e)) {
         _dataLoadError = _nodes.isNotEmpty
             ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
             : '当前无法连接服务器，且暂无本地节点缓存，请检查网络或联系客服。';
@@ -627,7 +623,11 @@ class AppController extends ChangeNotifier {
       resetDay: snap.resetDay,
       expiredAt: snap.expiredAt,
     );
-    if (snap.criticalError != null) _dataLoadError = snap.criticalError;
+    if (snap.criticalError != null) {
+      _dataLoadError = snap.criticalError;
+    } else if (snap.nodesError != null && _nodes.isEmpty) {
+      _dataLoadError = snap.nodesError;
+    }
   }
 
   // ── Node selection ────────────────────────────────────────────────────────
@@ -677,14 +677,7 @@ class AppController extends ChangeNotifier {
       if (runLatencyTest) await testLatencies();
       return;
     }
-    await _core.startCoreOnly(
-      nodes: _nodes.nodes,
-      currentNode: currentNode,
-      proxyMode: _settings.proxyMode,
-      dnsMode: _settings.dnsMode,
-      proxyPort: _settings.proxyPort,
-      allowInsecure: _settings.allowInsecureNodes,
-    );
+    await _core.startCoreOnly(_buildConnectionRequest());
     if (_core.coreProcessRunning && runLatencyTest) {
       // Small delay to let the Clash API initialise before testing.
       await Future.delayed(const Duration(milliseconds: 1000));
@@ -697,15 +690,7 @@ class AppController extends ChangeNotifier {
     if (_nodes.isEmpty) return;
     if (!startIfStopped && !coreProcessRunning) return;
 
-    final error = await _core.reloadCore(
-      nodes: _nodes.nodes,
-      currentNode: currentNode,
-      proxyMode: _settings.proxyMode,
-      dnsMode: _settings.dnsMode,
-      proxyPort: _settings.proxyPort,
-      networkMode: _settings.networkMode,
-      allowInsecure: _settings.allowInsecureNodes,
-    );
+    final error = await _core.reloadCore(_buildConnectionRequest());
     if (error != null && error.isNotEmpty) {
       _startupMessage = error;
       notifyListeners();

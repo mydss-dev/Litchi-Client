@@ -2,6 +2,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/core_error_message_service.dart';
 
 void main() {
+  test('constants contain expected Chinese keywords', () {
+    expect(CoreErrorMessageService.noAvailableNodes, contains('没有可用节点'));
+    expect(CoreErrorMessageService.configBuildFailed, contains('生成配置失败'));
+    expect(CoreErrorMessageService.restartClient, contains('连接失败'));
+    expect(CoreErrorMessageService.missingSingBox, contains('sing-box'));
+    expect(CoreErrorMessageService.permissionDenied, contains('管理员'));
+    expect(CoreErrorMessageService.androidStartFailed, contains('Android'));
+  });
+
   test('maps Windows permission failures to admin hint', () {
     expect(
       CoreErrorMessageService.windowsStartException('Access is denied'),

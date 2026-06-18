@@ -4,6 +4,7 @@ import '../config/app_config.dart';
 import '../models/api_models.dart';
 import '../models/app_models.dart';
 import '../models/model_mappers.dart';
+import 'network_error_classifier.dart';
 import 'panel_api.dart';
 
 /// Mutable bag populated by [DataLoader] with best-effort API results.
@@ -38,6 +39,9 @@ class DataSnapshot {
 
   /// Non-null when a critical load (user info) failed.
   String? criticalError;
+
+  /// Non-null when the node subscription fetch failed.
+  String? nodesError;
 }
 
 /// Fetches all remote data and returns a [DataSnapshot].
@@ -128,6 +132,9 @@ class DataLoader {
       }
     } catch (e) {
       debugPrint('[Litchi] _fillNodes error: $e');
+      snap.nodesError = NetworkErrorClassifier.isNetworkError(e)
+          ? '节点加载失败，请检查网络后重试'
+          : '节点数据解析失败，请刷新后重试';
     }
   }
 

@@ -160,6 +160,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               _SettingRow(
                 label: '允许不安全节点',
+                subtitle: '节点 TLS 证书验证失败时可尝试开启',
                 trailing: AppSwitch(
                   value: ctrl.allowInsecureNodes,
                   onChanged: ctrl.setAllowInsecureNodes,
@@ -492,22 +493,40 @@ class _SettingsGroup extends StatelessWidget {
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow({required this.label, required this.trailing});
+  const _SettingRow({
+    required this.label,
+    required this.trailing,
+    this.subtitle,
+  });
 
   final String label;
+  final String? subtitle;
   final Widget trailing;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return SizedBox(
-      height: 46,
+      height: subtitle != null ? 58 : 46,
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: AppTextStyles.body.copyWith(color: c.textPrimary),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: AppTextStyles.caption.copyWith(
+                      color: c.textSecondary,
+                    ),
+                  ),
+              ],
             ),
           ),
           trailing,

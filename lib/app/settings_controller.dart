@@ -22,7 +22,7 @@ class SettingsController extends ChangeNotifier {
   String _dnsMode = '系统 DNS';
   int _proxyPort = 7890;
   bool _killSwitch = false;
-  bool _allowInsecureNodes = true;
+  bool _allowInsecureNodes = false;
   ThemeMode _themeMode = ThemeMode.light;
 
   bool get wasConnected => _wasConnected;

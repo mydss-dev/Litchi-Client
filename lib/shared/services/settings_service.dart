@@ -65,7 +65,7 @@ abstract final class SettingsService {
       wasConnected: p.getBool('was_connected') ?? false,
       lastNodeId: p.getString('last_node_id') ?? '',
       killSwitch: p.getBool('kill_switch') ?? false,
-      allowInsecureNodes: p.getBool('allow_insecure_nodes') ?? true,
+      allowInsecureNodes: p.getBool('allow_insecure_nodes') ?? false,
     );
   }
 

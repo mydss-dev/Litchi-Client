@@ -9,7 +9,7 @@ class CoreConnectionRequest {
     required this.dnsMode,
     required this.proxyPort,
     this.networkMode = NetworkMode.system,
-    this.allowInsecure = true,
+    this.allowInsecure = false,
   });
 
   final List<NodeModel> nodes;
@@ -23,10 +23,10 @@ class CoreConnectionRequest {
   /// certificates are always validated.
   final bool allowInsecure;
 
-  List<NodeModel> get validNodes => nodes.where(_hasCoreConfig).toList();
+  List<NodeModel> get validNodes => nodes.where((n) => n.hasConfig).toList();
 
   NodeModel? get selectedNode {
-    if (_hasCoreConfig(currentNode)) return currentNode;
+    if (currentNode.hasConfig) return currentNode;
     final availableNodes = validNodes;
     return availableNodes.isEmpty ? null : availableNodes.first;
   }
@@ -64,6 +64,4 @@ class CoreConnectionRequest {
     );
   }
 
-  static bool _hasCoreConfig(NodeModel node) =>
-      node.rawUri.isNotEmpty || node.rawOutbound != null;
 }

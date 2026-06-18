@@ -69,8 +69,11 @@ class LitchiVpnService : VpnService() {
             .setSession("Litchi")
             .setMtu(9000)
             .addAddress("172.19.0.1", 30)
+            .addAddress("fdfe:dcba:9876::1", 126)
             .addDnsServer("1.1.1.1")
+            .addDnsServer("2606:4700:4700::1111")
             .addRoute("0.0.0.0", 0)
+            .addRoute("::", 0)
         tunFd = builder.establish()
         return tunFd?.fd ?: -1
     }
