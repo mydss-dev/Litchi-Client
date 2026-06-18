@@ -274,14 +274,7 @@ class AppController extends ChangeNotifier {
 
     _apiClient.updateAuthData(authData);
 
-    final cached = await NodeCacheService.load();
-    if (cached.isNotEmpty) {
-      _nodes.setNodes(cached);
-      _restoreLastNode();
-      if (supportsCoreConnection) {
-        unawaited(_startCoreInBackground(runLatencyTest: true));
-      }
-    }
+    await _restoreCachedNodes();
 
     // Saved token auto-login should never block the UI. Enter the main shell
     // first, then validate / refresh server data in the background.
@@ -303,6 +296,16 @@ class AppController extends ChangeNotifier {
     _registerConfig = cached;
   }
 
+  Future<void> _restoreCachedNodes() async {
+    final cached = await NodeCacheService.load();
+    if (cached.isEmpty) return;
+    _nodes.setNodes(cached);
+    _restoreLastNode();
+    if (supportsCoreConnection) {
+      unawaited(_startCoreInBackground(runLatencyTest: true));
+    }
+  }
+
   Future<void> refreshRegisterConfigCache() async {
     try {
       final config = await _api.fetchRegisterConfig();
@@ -316,11 +319,20 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _refreshAfterAutoLogin() async {
+    final sw = Stopwatch()..start();
+    SecureLogger.warn('Auth background refresh start');
     try {
       await _loadAllData();
       _dataLoadError = null;
+      SecureLogger.warn(
+        'Auth background refresh success after ${sw.elapsedMilliseconds}ms',
+      );
       if (!_disposed) notifyListeners();
     } catch (e) {
+      SecureLogger.warn(
+        'Auth background refresh failed after ${sw.elapsedMilliseconds}ms',
+        e,
+      );
       if (NetworkErrorClassifier.isNetworkError(e)) {
         _dataLoadError = _nodes.isNotEmpty
             ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
@@ -478,14 +490,19 @@ class AppController extends ChangeNotifier {
     SecureLogger.warn(
       'Auth API token applied after ${sw.elapsedMilliseconds}ms',
     );
-    await _loadAllData();
+    await _restoreCachedNodes();
     SecureLogger.warn(
-      'Auth loadAllData complete after ${sw.elapsedMilliseconds}ms',
+      'Auth cached nodes restored after ${sw.elapsedMilliseconds}ms',
     );
     _isAuthenticated = true;
     _dataLoadError = null;
     _page = AppPage.dashboard;
     notifyListeners();
+
+    unawaited(_refreshAfterAutoLogin());
+    SecureLogger.warn(
+      'Auth background data refresh started after ${sw.elapsedMilliseconds}ms',
+    );
   }
 
   void logout() {
