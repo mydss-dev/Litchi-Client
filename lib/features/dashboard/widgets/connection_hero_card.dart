@@ -42,62 +42,42 @@ class ConnectionHeroCard extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    _HeroNodeIcon(node: node),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        hasNode ? '当前节点' : '节点状态',
+                        hasNode ? node.name : '暂无可用节点',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.heroTitle.copyWith(
                           color: c.textPrimary,
-                          fontSize: 21,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 10),
                     _NodeInlineAction(
                       hasNodes: ctrl.nodes.isNotEmpty,
                       onTap: () => showDesktopNodePicker(context),
                     ),
                   ],
                 ),
-                const Spacer(),
-                Row(
-                  children: [
-                    _HeroNodeIcon(node: node),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            hasNode ? node.name : '暂无可用节点',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.heroTitle.copyWith(
-                              color: c.textPrimary,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          if (!hasNode) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              '登录后会自动拉取订阅节点',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.caption.copyWith(
-                                color: c.textMuted,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                _NodeMetaRow(node: node, automatic: ctrl.autoSelected),
-                const Spacer(),
+                const SizedBox(height: 10),
+                if (!hasNode)
+                  Text(
+                    '登录后会自动拉取订阅节点',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                  )
+                else
+                  _NodeMetaRow(node: node, automatic: ctrl.autoSelected),
               ],
             ),
           ),
