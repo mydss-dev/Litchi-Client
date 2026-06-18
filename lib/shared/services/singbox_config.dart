@@ -110,7 +110,25 @@ abstract final class SingboxConfig {
               'action': 'sniff',
             },
           {'protocol': 'dns', 'action': 'hijack-dns'},
-          {'ip_is_private': true, 'outbound': 'direct'},
+          {
+            // Explicit CIDR list instead of ip_is_private: Go's IsPrivate() omits
+            // 198.18.0.0/15 (RFC 2544 benchmark range), which many proxy servers
+            // use.  Without this, node-1's VLESS connection to 198.18.x.x enters
+            // TUN and loops back through PROXY → routing loop / TLS failure.
+            'ip_cidr': [
+              '10.0.0.0/8',
+              '172.16.0.0/12',
+              '192.168.0.0/16',
+              '127.0.0.0/8',
+              '169.254.0.0/16',
+              '100.64.0.0/10',
+              '198.18.0.0/15',
+              'fc00::/7',
+              '::1/128',
+              'fe80::/10',
+            ],
+            'outbound': 'direct',
+          },
         ];
         ruleSets = [];
 
@@ -142,7 +160,21 @@ abstract final class SingboxConfig {
               'outbound': 'direct',
             },
           ],
-          {'ip_is_private': true, 'outbound': 'direct'},
+          {
+            'ip_cidr': [
+              '10.0.0.0/8',
+              '172.16.0.0/12',
+              '192.168.0.0/16',
+              '127.0.0.0/8',
+              '169.254.0.0/16',
+              '100.64.0.0/10',
+              '198.18.0.0/15',
+              'fc00::/7',
+              '::1/128',
+              'fe80::/10',
+            ],
+            'outbound': 'direct',
+          },
         ];
         ruleSets = _ruleSets();
     }
@@ -198,7 +230,7 @@ abstract final class SingboxConfig {
           'mtu': 9000,
           'auto_route': true,
           'strict_route': true,
-          'stack': 'system',
+          'stack': 'mixed',
           // sniff moved to route rule action (deprecated on inbound in v1.11,
           // removed in v1.13).
           if (proxyMode == ProxyMode.rule && _hasLocalRules)
