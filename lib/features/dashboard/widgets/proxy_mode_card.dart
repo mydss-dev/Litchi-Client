@@ -16,10 +16,13 @@ class ProxyModeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     // Rebuild only when the proxy mode or core-running state changes.
-    return AppSelector<(ProxyMode, bool)>(
-      selector: (ctrl) => (ctrl.proxyMode, ctrl.coreRunning),
+    return AppSelector<(ProxyMode, NetworkMode, bool)>(
+      selector: (ctrl) => (ctrl.proxyMode, ctrl.networkMode, ctrl.coreRunning),
       builder: (context, slice, _) {
-        final (proxyMode, coreRunning) = slice;
+        final (proxyMode, networkMode, coreRunning) = slice;
+        final subtitle = coreRunning
+            ? '${proxyMode.label} · ${networkMode == NetworkMode.tun ? '虚拟网卡' : '系统代理'}'
+            : proxyMode.label;
         return AppCard(
           radius: AppRadius.card,
           padding: const EdgeInsets.all(18),
@@ -35,7 +38,7 @@ class ProxyModeCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                '${proxyMode.label} · ${coreRunning ? '系统代理已开启' : '系统代理未开启'}',
+                subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.body.copyWith(color: c.textMuted),
