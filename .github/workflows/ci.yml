@@ -50,9 +50,11 @@ jobs:
           $logoLetter  = if ("${{ secrets.LOGO_LETTER }}")       { "${{ secrets.LOGO_LETTER }}" }       else { "L" }
           $colorStart  = if ("${{ secrets.BRAND_COLOR_START }}") { "${{ secrets.BRAND_COLOR_START }}" } else { "2563EB" }
           $colorEnd    = if ("${{ secrets.BRAND_COLOR_END }}")   { "${{ secrets.BRAND_COLOR_END }}" }   else { "7C3AED" }
+          $version     = "${{ github.ref_name }}" -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "0.0.0" }
           flutter build windows --release `
             "--dart-define=API_BASE=$apiBase" `
-            "--dart-define=APP_VERSION=1.2.0" `
+            "--dart-define=APP_VERSION=$version" `
             "--dart-define=UPDATE_CHECK_URL=$updateUrl" `
             "--dart-define=APP_NAME=$appName" `
             "--dart-define=APP_SUBTITLE=$appSubtitle" `
@@ -197,11 +199,13 @@ jobs:
           logo_letter="${logo_letter:-L}"
           color_start="${color_start:-2563EB}"
           color_end="${color_end:-7C3AED}"
+          version="${GITHUB_REF_NAME#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           # ensureOfficialLibbox builds the official multi-ABI libbox.aar here
           # (Go + NDK + gomobile are installed above), so the core works on arm64.
           flutter build apk --release \
             "--dart-define=API_BASE=$api_base" \
-            "--dart-define=APP_VERSION=1.2.0" \
+            "--dart-define=APP_VERSION=$version" \
             "--dart-define=UPDATE_CHECK_URL=$update_url" \
             "--dart-define=APP_NAME=$app_name" \
             "--dart-define=APP_SUBTITLE=$app_subtitle" \
@@ -263,9 +267,11 @@ jobs:
           logo_letter="${logo_letter:-L}"
           color_start="${color_start:-2563EB}"
           color_end="${color_end:-7C3AED}"
+          version="${GITHUB_REF_NAME#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           flutter build macos --release \
             "--dart-define=API_BASE=$api_base" \
-            "--dart-define=APP_VERSION=1.2.0" \
+            "--dart-define=APP_VERSION=$version" \
             "--dart-define=UPDATE_CHECK_URL=$update_url" \
             "--dart-define=APP_NAME=$app_name" \
             "--dart-define=APP_SUBTITLE=$app_subtitle" \
