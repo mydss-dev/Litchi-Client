@@ -241,11 +241,11 @@ abstract final class SingboxConfig {
             // DoH over the raw IP: encrypted on port 443, so transparent-proxy
             // gateways (e.g. router OpenClash) can't hijack it and return
             // fake-ip for node server domains — plain UDP 53 gets intercepted.
-            // Must be direct so it can bootstrap before PROXY outbound is up.
+            // No detour: sing-box routes via ip_cidr ['223.5.5.5']→direct rule.
+            // detour:'direct' is rejected by sing-box (DNS server limitation).
             'tag': 'cn-dns',
             'type': 'https',
             'server': '223.5.5.5',
-            'detour': 'direct',
           },
         ],
         'rules': dnsRules,
