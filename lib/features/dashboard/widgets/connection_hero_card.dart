@@ -42,8 +42,10 @@ class ConnectionHeroCard extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const Spacer(),
+                _SecurityBadge(status: status),
+                const Spacer(),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -78,6 +80,7 @@ class ConnectionHeroCard extends StatelessWidget {
                   )
                 else
                   _NodeMetaRow(node: node, automatic: ctrl.autoSelected),
+                const Spacer(),
               ],
             ),
           ),
@@ -137,6 +140,53 @@ class _HeroNodeIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Icon(LucideIcons.globe2, size: 19, color: c.primary),
+    );
+  }
+}
+
+class _SecurityBadge extends StatelessWidget {
+  const _SecurityBadge({required this.status});
+
+  final ConnectionStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final (icon, text, color) = switch (status) {
+      ConnectionStatus.connected => (
+          LucideIcons.shieldCheck,
+          '军事级加密保护已开启',
+          c.success,
+        ),
+      ConnectionStatus.connecting => (
+          LucideIcons.shield,
+          '正在建立加密通道...',
+          c.primary,
+        ),
+      ConnectionStatus.disconnecting => (
+          LucideIcons.shield,
+          '正在关闭加密通道...',
+          c.textMuted,
+        ),
+      _ => (
+          LucideIcons.shieldOff,
+          '网络暂未受到加密保护',
+          c.textMuted,
+        ),
+    };
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: color),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: AppTextStyles.caption.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
