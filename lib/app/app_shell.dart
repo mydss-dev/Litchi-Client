@@ -25,6 +25,7 @@ import '../shared/widgets/app_sidebar.dart';
 import '../shared/services/url_opener.dart';
 import '../shared/widgets/notice_banner.dart';
 import '../shared/widgets/update_banner.dart';
+import '../shared/models/app_models.dart';
 import 'app_controller.dart';
 import 'app_window_bar.dart';
 
@@ -225,28 +226,34 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (!_isDesktop) return;
     final ctrl = _ctrl;
     if (ctrl == null) return;
-    final nodeName = ctrl.currentNode.name.isEmpty
-        ? '暂无节点'
-        : ctrl.currentNode.name;
+
+    final nodeName = ctrl.currentNode.name.isEmpty ? '暂无节点' : ctrl.currentNode.name;
     final canToggle = ctrl.nodes.isNotEmpty && !ctrl.coreConnecting;
+    final isTun = ctrl.networkMode == NetworkMode.tun;
+
+    final statusLabel = switch ((ctrl.coreRunning, ctrl.coreConnecting)) {
+      (_, true) => '连接中...',
+      (true, _)  => isTun ? '已连接 · 虚拟网卡' : '已连接 · 系统代理',
+      _          => '未连接',
+    };
+
     await trayManager.setContextMenu(
       Menu(
         items: [
           MenuItem(key: 'show', label: '打开 ${AppConfig.appName}'),
+          MenuItem.separator(),
+          MenuItem(key: '_status', label: statusLabel, disabled: true),
+          MenuItem(key: '_node',   label: '节点：$nodeName', disabled: true),
           MenuItem.separator(),
           MenuItem(
             key: 'toggle_connection',
             label: ctrl.coreRunning ? '断开连接' : '立即连接',
             disabled: !canToggle,
           ),
-          MenuItem(
-            key: 'current_node',
-            label: '当前节点：$nodeName',
-            disabled: true,
-          ),
-          MenuItem(key: 'fix_proxy', label: '修复系统代理'),
+          if (!isTun)
+            MenuItem(key: 'fix_proxy', label: '修复系统代理'),
           MenuItem.separator(),
-          MenuItem(key: 'quit', label: '退出 ${AppConfig.appName}'),
+          MenuItem(key: 'quit', label: '退出'),
         ],
       ),
     );
