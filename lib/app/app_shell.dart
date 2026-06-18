@@ -562,40 +562,47 @@ class _OutdatedVersionDialog extends StatelessWidget {
                   height: 1.55,
                 ),
               ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (AppConfig.downloadUrl.isNotEmpty) ...[
-                    SizedBox(
-                      height: 38,
-                      child: TextButton(
-                        onPressed: () =>
-                            unawaited(UrlOpener.open(AppConfig.downloadUrl)),
-                        child: Text(
-                          '去下载',
-                          style: TextStyle(color: c.primary),
-                        ),
+              const SizedBox(height: 24),
+              if (AppConfig.downloadUrl.isNotEmpty)
+                SizedBox(
+                  width: double.infinity,
+                  height: 42,
+                  child: FilledButton(
+                    onPressed: () =>
+                        unawaited(UrlOpener.open(AppConfig.downloadUrl)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: c.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                  ],
-                  SizedBox(
-                    height: 38,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: c.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                        ),
+                    child: Text(
+                      '立即下载最新版本',
+                      style: AppTextStyles.button.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
                       ),
-                      child: const Text('知道了'),
                     ),
                   ),
-                ],
+                ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 38,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: c.textMuted,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  child: Text(
+                    '稍后再说',
+                    style: AppTextStyles.body.copyWith(color: c.textMuted),
+                  ),
+                ),
               ),
             ],
           ),

@@ -281,6 +281,7 @@ class AppController extends ChangeNotifier {
     // Saved token auto-login should never block the UI. Enter the main shell
     // first, then validate / refresh server data in the background.
     _isAuthenticated = true;
+    _isInitialLoading = true;
     _isInitializing = false;
     notifyListeners();
 
@@ -477,7 +478,7 @@ class AppController extends ChangeNotifier {
     await _restoreCachedNodes();
     _isAuthenticated = true;
     _dataLoadError = null;
-    _isInitialLoading = _nodes.isEmpty;
+    _isInitialLoading = true;
     _page = AppPage.dashboard;
     notifyListeners();
 

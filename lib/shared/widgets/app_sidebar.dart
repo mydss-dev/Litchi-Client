@@ -197,6 +197,63 @@ class _PlanStatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
+
+    if (ctrl.isInitialLoading) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: c.surfaceMuted.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: c.softBorder.withValues(alpha: 0.75)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: c.softBorder,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 44,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: c.softBorder,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 7,
+              decoration: BoxDecoration(
+                color: c.softBorder,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: 60,
+              height: 10,
+              decoration: BoxDecoration(
+                color: c.softBorder,
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final user = ctrl.user;
     final traffic = ctrl.traffic;
     final remainRatio = traffic.totalGb <= 0
