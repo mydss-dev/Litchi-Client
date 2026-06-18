@@ -197,7 +197,6 @@ class ApiClient {
   }) async {
     _assertReady();
     final sw = Stopwatch()..start();
-    SecureLogger.warn('ApiClient getPlainUrl start');
     try {
       final res = await _withFailover(
         () => _getWithRetry(
@@ -209,9 +208,6 @@ class ApiClient {
             ),
           ),
         ),
-      );
-      SecureLogger.warn(
-        'ApiClient getPlainUrl success after ${sw.elapsedMilliseconds}ms',
       );
       return res;
     } on DioException catch (e) {

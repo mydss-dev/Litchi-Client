@@ -1,6 +1,5 @@
 import '../models/api_models.dart';
 import 'api_client.dart';
-import 'secure_logger.dart';
 import 'subscription_parser.dart';
 
 /// Generic subscription panel API client.
@@ -15,21 +14,12 @@ class PanelApi {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   Future<AuthResult> login(String email, String password) async {
-    final sw = Stopwatch()..start();
-    SecureLogger.warn('PanelApi login request start');
     final res = await _client.post(
       '/passport/auth/login',
       data: {'email': email, 'password': password},
     );
-    SecureLogger.warn(
-      'PanelApi login response after ${sw.elapsedMilliseconds}ms',
-    );
     _check(res);
-    final result = AuthResult.fromJson(_dataMap(res));
-    SecureLogger.warn(
-      'PanelApi login parsed after ${sw.elapsedMilliseconds}ms',
-    );
-    return result;
+    return AuthResult.fromJson(_dataMap(res));
   }
 
   Future<AuthResult> register({
@@ -245,8 +235,6 @@ class PanelApi {
   /// Fetches [subscribeUrl] and parses the returned node list.
   /// Returns nodes plus optional updated traffic from the subscription-userinfo header.
   Future<SubscriptionResult> fetchSubscription(String subscribeUrl) async {
-    final sw = Stopwatch()..start();
-    SecureLogger.warn('PanelApi fetchSubscription request start');
     final res = await _client.getPlainUrl(
       subscribeUrl,
       headers: {
@@ -254,9 +242,6 @@ class PanelApi {
         // UA containing "clash" often returns Clash YAML.
         'User-Agent': 'LitchiClient/1.0',
       },
-    );
-    SecureLogger.warn(
-      'PanelApi fetchSubscription response after ${sw.elapsedMilliseconds}ms',
     );
     final body = (res.data ?? '').trim();
 
@@ -267,10 +252,6 @@ class PanelApi {
     if (body.isEmpty) return SubscriptionResult(nodes: [], traffic: traffic);
 
     final nodes = SubscriptionParser.parse(body);
-    SecureLogger.warn(
-      'PanelApi fetchSubscription parsed after ${sw.elapsedMilliseconds}ms '
-      'nodes=${nodes.length}',
-    );
     return SubscriptionResult(nodes: nodes, traffic: traffic);
   }
 

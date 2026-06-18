@@ -320,13 +320,9 @@ class AppController extends ChangeNotifier {
 
   Future<void> _refreshAfterAutoLogin() async {
     final sw = Stopwatch()..start();
-    SecureLogger.warn('Auth background refresh start');
     try {
       await _loadAllData();
       _dataLoadError = null;
-      SecureLogger.warn(
-        'Auth background refresh success after ${sw.elapsedMilliseconds}ms',
-      );
       if (!_disposed) notifyListeners();
     } catch (e) {
       SecureLogger.warn(
@@ -419,20 +415,10 @@ class AppController extends ChangeNotifier {
     Future<void> Function(String authData)? onAuthenticated,
   }) async {
     final sw = Stopwatch()..start();
-    SecureLogger.warn('Auth loginWithCredentials start');
     try {
       final result = await _api.login(email, password);
-      SecureLogger.warn(
-        'Auth login API success after ${sw.elapsedMilliseconds}ms',
-      );
       await onAuthenticated?.call(result.authData);
-      SecureLogger.warn(
-        'Auth onAuthenticated callback complete after ${sw.elapsedMilliseconds}ms',
-      );
       await _completeAuthentication(result.authData);
-      SecureLogger.warn(
-        'Auth loginWithCredentials complete after ${sw.elapsedMilliseconds}ms',
-      );
     } catch (e) {
       SecureLogger.warn(
         'Auth loginWithCredentials failed after ${sw.elapsedMilliseconds}ms',
@@ -482,27 +468,15 @@ class AppController extends ChangeNotifier {
   );
 
   Future<void> _completeAuthentication(String authData) async {
-    final sw = Stopwatch()..start();
-    SecureLogger.warn('Auth completeAuthentication start');
     await TokenStorage.saveAuthData(authData);
-    SecureLogger.warn('Auth token saved after ${sw.elapsedMilliseconds}ms');
     _apiClient.updateAuthData(authData);
-    SecureLogger.warn(
-      'Auth API token applied after ${sw.elapsedMilliseconds}ms',
-    );
     await _restoreCachedNodes();
-    SecureLogger.warn(
-      'Auth cached nodes restored after ${sw.elapsedMilliseconds}ms',
-    );
     _isAuthenticated = true;
     _dataLoadError = null;
     _page = AppPage.dashboard;
     notifyListeners();
 
     unawaited(_refreshAfterAutoLogin());
-    SecureLogger.warn(
-      'Auth background data refresh started after ${sw.elapsedMilliseconds}ms',
-    );
   }
 
   void logout() {
@@ -565,30 +539,16 @@ class AppController extends ChangeNotifier {
   // ── Data loading ──────────────────────────────────────────────────────────
 
   Future<void> _loadAllData() async {
-    final sw = Stopwatch()..start();
-    SecureLogger.warn('AppController loadAllData start');
     final snap = await _dataLoader.loadAll();
-    SecureLogger.warn(
-      'AppController dataLoader.loadAll complete after ${sw.elapsedMilliseconds}ms',
-    );
     _applySnapshot(snap);
-    SecureLogger.warn(
-      'AppController snapshot applied after ${sw.elapsedMilliseconds}ms',
-    );
     // Non-critical extras — must never abort node restore / core startup.
     try {
       _wallet.setCurrencySymbol(await _api.getCommCurrencySymbol());
-      SecureLogger.warn(
-        'AppController currency loaded after ${sw.elapsedMilliseconds}ms',
-      );
     } catch (e) {
       SecureLogger.warn('AppController currency load failed', e);
     }
     try {
       _notices.setNotices(await _api.getNotices());
-      SecureLogger.warn(
-        'AppController notices loaded after ${sw.elapsedMilliseconds}ms',
-      );
     } catch (e) {
       SecureLogger.warn('AppController notices load failed', e);
     }
