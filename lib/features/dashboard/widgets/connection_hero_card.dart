@@ -61,8 +61,6 @@ class ConnectionHeroCard extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                _ConnectionStateLabel(status: status),
-                const SizedBox(height: 16),
                 Row(
                   children: [
                     _HeroNodeIcon(node: node),
@@ -159,47 +157,6 @@ class _HeroNodeIcon extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Icon(LucideIcons.globe2, size: 19, color: c.primary),
-    );
-  }
-}
-
-class _ConnectionStateLabel extends StatelessWidget {
-  const _ConnectionStateLabel({required this.status});
-
-  final ConnectionStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final (label, color) = switch (status) {
-      ConnectionStatus.connected => ('已连接', c.success),
-      ConnectionStatus.connecting => ('连接中', c.primary),
-      ConnectionStatus.disconnecting => ('断开中', c.textMuted),
-      ConnectionStatus.error => ('连接失败', c.danger),
-      ConnectionStatus.disconnected => ('未连接', c.textMuted),
-    };
-    return Container(
-      height: 24,
-      alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 9,
-            height: 9,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: AppTextStyles.button.copyWith(
-              color: color,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
