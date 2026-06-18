@@ -170,18 +170,17 @@ abstract final class SingboxConfig {
           'tag': 'remote-dns',
           'type': 'https',
           'server': '8.8.8.8',
-          // Route through proxy: 8.8.8.8:443 is unreachable directly in CN.
-          'detour': 'PROXY',
+          // Use auto-select group so DNS always uses the fastest working node.
+          // Avoids DNS failure when the user's manually-selected node is down.
+          // URLTest doesn't need local DNS (proxy server resolves on its side).
+          'detour': '自动选择',
         };
       default: // '系统 DNS' and 'Cloudflare' both use Cloudflare DoH
         remoteDnsServer = {
           'tag': 'remote-dns',
           'type': 'https',
           'server': '1.1.1.1',
-          // Route through proxy: 1.1.1.1:443 is blocked by GFW in CN.
-          // cn-dns (223.5.5.5, direct) bootstraps the proxy server's domain so
-          // the PROXY outbound is ready before remote-dns is first queried.
-          'detour': 'PROXY',
+          'detour': '自动选择',
         };
     }
 
