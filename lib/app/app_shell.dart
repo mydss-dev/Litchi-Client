@@ -192,14 +192,25 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
 
   Future<void> _initTray() async {
     if (!_isDesktop) return;
-    await trayManager.setIcon('assets/images/tray_icon.ico');
+    await _updateTrayIcon();
     await _syncTrayState();
     trayManager.addListener(this);
   }
 
   Future<void> _syncTrayState() async {
+    await _updateTrayIcon();
     await _updateTrayTooltip();
     await _updateTrayMenu();
+  }
+
+  Future<void> _updateTrayIcon() async {
+    if (!_isDesktop) return;
+    final connected = _ctrl?.coreRunning ?? false;
+    await trayManager.setIcon(
+      connected
+          ? 'assets/images/tray_icon.ico'
+          : 'assets/images/tray_icon_gray.ico',
+    );
   }
 
   Future<void> _updateTrayTooltip() async {
