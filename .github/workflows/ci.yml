@@ -322,23 +322,26 @@ jobs:
       - name: Build DMG
         run: |
           app="build/macos/Build/Products/Release/litchi_client.app"
+          version="${GITHUB_REF_NAME#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
+          dmg="Litchi Client $version.dmg"
           rm -rf dmg-stage && mkdir -p dmg-stage
           cp -R "$app" dmg-stage/
           ln -s /Applications dmg-stage/Applications
           hdiutil create -volname "Litchi Client" -srcfolder dmg-stage \
-            -ov -format UDZO "Litchi Client.dmg"
-          ls -lh "Litchi Client.dmg"
+            -ov -format UDZO "$dmg"
+          ls -lh "$dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: litchi-client-macos-${{ github.sha }}
-          path: Litchi Client.dmg
+          path: Litchi Client *.dmg
           retention-days: 30
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: Litchi Client.dmg
+          files: Litchi Client *.dmg
           generate_release_notes: true
