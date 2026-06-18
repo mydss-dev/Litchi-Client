@@ -90,6 +90,7 @@ class AppController extends ChangeNotifier {
   UpdateInfo? _updateInfo;
   RegisterConfig _registerConfig = const RegisterConfig();
   bool _disposed = false;
+  bool _isInitialLoading = false;
 
   // ── Settings delegates ────────────────────────────────────────────────────
 
@@ -232,6 +233,7 @@ class AppController extends ChangeNotifier {
   int? get resetDay => _subscription.resetDay;
   int? get expiredAt => _subscription.expiredAt;
   String? get dataLoadError => _dataLoadError;
+  bool get isInitialLoading => _isInitialLoading;
   String get currencySymbol => _wallet.currencySymbol;
   String? get startupMessage => _startupMessage;
   void clearStartupMessage() => _startupMessage = null;
@@ -323,6 +325,7 @@ class AppController extends ChangeNotifier {
     try {
       await _loadAllData();
       _dataLoadError = null;
+      _isInitialLoading = false;
       if (!_disposed) notifyListeners();
     } catch (e) {
       SecureLogger.warn(
@@ -342,6 +345,7 @@ class AppController extends ChangeNotifier {
       _isAuthenticated = false;
       _authScreen = AuthScreen.login;
       _startupMessage = '登录已过期，请重新登录';
+      _isInitialLoading = false;
       _nodes.reset();
       if (!_disposed) notifyListeners();
     }
@@ -473,6 +477,7 @@ class AppController extends ChangeNotifier {
     await _restoreCachedNodes();
     _isAuthenticated = true;
     _dataLoadError = null;
+    _isInitialLoading = _nodes.isEmpty;
     _page = AppPage.dashboard;
     notifyListeners();
 

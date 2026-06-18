@@ -31,6 +31,7 @@ class ConnectionHeroCard extends StatelessWidget {
     final ctrl = AppScope.of(context);
     final node = ctrl.currentNode;
     final hasNode = node.name.isNotEmpty;
+    final isLoading = ctrl.isInitialLoading;
 
     return AppCard(
       radius: AppRadius.xl,
@@ -47,7 +48,7 @@ class ConnectionHeroCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        hasNode ? '当前节点' : '节点状态',
+                        hasNode ? '当前节点' : (isLoading ? '节点加载中' : '节点状态'),
                         style: AppTextStyles.heroTitle.copyWith(
                           color: c.textPrimary,
                           fontSize: 21,
@@ -63,28 +64,51 @@ class ConnectionHeroCard extends StatelessWidget {
                 const Spacer(),
                 _SecurityBadge(status: status),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _HeroNodeIcon(node: node),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        hasNode ? node.name : '暂无可用节点',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.heroTitle.copyWith(
-                          color: c.textPrimary,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
+                if (isLoading && !hasNode)
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: c.primary,
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '正在获取节点...',
+                        style: AppTextStyles.heroTitle.copyWith(
+                          color: c.textMuted,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      _HeroNodeIcon(node: node),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          hasNode ? node.name : '暂无可用节点',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.heroTitle.copyWith(
+                            color: c.textPrimary,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 const SizedBox(height: 10),
                 if (!hasNode)
                   Text(
-                    '登录后会自动拉取订阅节点',
+                    isLoading ? '正在同步订阅数据...' : '登录后会自动拉取订阅节点',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.caption.copyWith(color: c.textMuted),
