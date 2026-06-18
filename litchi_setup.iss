@@ -11,7 +11,7 @@
   #define MyAppVersion "0.0.0"
 #endif
 
-#define MyAppExeName "litchi_client.exe"
+#define MyAppExeName "Litchi Client.exe"
 #define BuildDir     "build\windows\x64\runner\Release"
 #define AppIcon      "windows\runner\resources\app_icon.ico"
 
@@ -21,13 +21,13 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppVerName={#MyAppName} {#MyAppVersion}
-DefaultDirName={autopf}\LitchiClient
+DefaultDirName={autopf}\Litchi Client
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 SetupIconFile={#AppIcon}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir=installer_output
-OutputBaseFilename=LitchiClient-Setup-{#MyAppVersion}
+OutputBaseFilename=Litchi Client Setup {#MyAppVersion}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

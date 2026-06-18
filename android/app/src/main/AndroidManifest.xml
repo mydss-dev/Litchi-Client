@@ -7,8 +7,8 @@
 
     <application
         android:name="${applicationName}"
-        android:label="Litchi"
-        android:icon="@drawable/ic_launcher"
+        android:label="Litchi Client"
+        android:icon="@mipmap/launcher_icon"
         android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
