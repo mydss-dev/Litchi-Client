@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../config/app_config.dart';
 
 /// Renders the brand mark. Priority order:
 /// 1. Remote image URL in AppConfig.logoLetter (http/https)
-/// 2. Local SVG at assets/images/brand_logo.svg
+/// 2. Local PNG at assets/images/logo.png
 /// 3. Gradient square with AppConfig.logoLetter as a letter
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.size = 30, this.radius});
@@ -13,7 +12,7 @@ class BrandLogo extends StatelessWidget {
   final double size;
   final double? radius;
 
-  static const String _svgAsset = 'assets/images/brand_logo.svg';
+  static const String _pngAsset = 'assets/images/logo.png';
 
   bool get _isUrl {
     final v = AppConfig.logoLetter;
@@ -24,6 +23,7 @@ class BrandLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = radius ?? size / 2;
 
+    // Priority 1: remote URL in config
     if (_isUrl) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(r),
@@ -32,20 +32,26 @@ class BrandLogo extends StatelessWidget {
           width: size,
           height: size,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _letterFallback(r),
+          errorBuilder: (_, _, _) => _localPng(r),
           loadingBuilder: (_, child, progress) =>
-              progress == null ? child : _letterFallback(r),
+              progress == null ? child : _localPng(r),
         ),
       );
     }
 
+    // Priority 2: local PNG (logo.png)
+    return _localPng(r);
+  }
+
+  Widget _localPng(double r) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(r),
-      child: SvgPicture.asset(
-        _svgAsset,
+      child: Image.asset(
+        _pngAsset,
         width: size,
         height: size,
-        placeholderBuilder: (_) => _letterFallback(r),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _letterFallback(r),
       ),
     );
   }
