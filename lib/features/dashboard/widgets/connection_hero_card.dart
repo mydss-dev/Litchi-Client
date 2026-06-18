@@ -40,7 +40,6 @@ class ConnectionHeroCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            flex: 6,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -110,7 +109,6 @@ class ConnectionHeroCard extends StatelessWidget {
             color: c.softBorder,
           ),
           Expanded(
-            flex: 4,
             child: Column(
               children: [
                 const Spacer(),
@@ -215,14 +213,8 @@ class _NodeMetaRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final latency = switch (node.latency) {
-      -1 => '测速中',
-      > 0 && < 9999 => '${node.latency} ms',
-      >= 9999 => '超时',
-      _ => '未测速',
-    };
     return Text(
-      '节点模式 · ${automatic ? '自动选择' : '手动选择'} · $latency',
+      '节点模式 · ${automatic ? '自动选择' : '手动选择'}',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: AppTextStyles.body.copyWith(

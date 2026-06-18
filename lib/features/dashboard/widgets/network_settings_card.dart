@@ -31,19 +31,74 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
       if (!isAdmin) {
         await showDialog<void>(
           context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('需要管理员权限'),
-            content: const Text(
-              'TUN 虚拟网卡模式需要管理员权限才能创建虚拟网络接口。\n\n'
-              '请右键点击客户端图标，选择「以管理员身份运行」后重新启动，再切换至此模式。',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('知道了'),
+          barrierColor: Colors.black.withValues(alpha: 0.42),
+          builder: (ctx) {
+            final c = AppColors.of(ctx);
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                width: 360,
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: c.cardBg,
+                  borderRadius: BorderRadius.circular(AppRadius.xl),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 40,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '需要管理员权限',
+                      style: AppTextStyles.heroTitle.copyWith(
+                        color: c.textPrimary,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'TUN 虚拟网卡模式需要管理员权限才能创建虚拟网络接口。\n\n'
+                      '请右键点击客户端图标，选择「以管理员身份运行」后重新启动，再切换至此模式。',
+                      style: AppTextStyles.body.copyWith(
+                        color: c.textSecondary,
+                        height: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: c.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                        ),
+                        child: Text(
+                          '知道了',
+                          style: AppTextStyles.button.copyWith(
+                            color: c.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
+            );
+          },
         );
         return;
       }
