@@ -276,6 +276,11 @@ class CoreController extends ChangeNotifier {
     if (_core.isRunning) {
       await _core.stop();
     }
+    // TUN captures all traffic — system proxy must be off before TUN starts,
+    // or a stale proxy setting from the background core will conflict.
+    if (req.networkMode == NetworkMode.tun) {
+      await ProxySetter.disable();
+    }
 
     _status = ConnectionStatus.connecting;
     _coreError = '';

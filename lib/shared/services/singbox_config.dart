@@ -109,7 +109,6 @@ abstract final class SingboxConfig {
               'inbound': ['tun-in'],
               'action': 'sniff',
             },
-          {'protocol': 'dns', 'action': 'hijack-dns'},
           {
             // Explicit CIDR list instead of ip_is_private: Go's IsPrivate() omits
             // 198.18.0.0/15 (RFC 2544 benchmark range), which many proxy servers
@@ -140,7 +139,6 @@ abstract final class SingboxConfig {
               'inbound': ['tun-in'],
               'action': 'sniff',
             },
-          {'protocol': 'dns', 'action': 'hijack-dns'},
         ];
         ruleSets = [];
 
@@ -152,7 +150,6 @@ abstract final class SingboxConfig {
               'inbound': ['tun-in'],
               'action': 'sniff',
             },
-          {'protocol': 'dns', 'action': 'hijack-dns'},
           if (_hasLocalRules) ...[
             {'rule_set': 'geosite-ads', 'outbound': 'block'},
             {
@@ -289,8 +286,13 @@ abstract final class SingboxConfig {
         {'type': 'block', 'tag': 'block'},
       ],
       'route': {
-        // DoH server IPs must go direct to avoid circular DNS → PROXY → DNS.
         'rules': [
+          // hijack-dns MUST come first — before the ip_cidr direct rule for DoH IPs.
+          // If ip_cidr [1.1.1.1] fires first, plain UDP DNS to 1.1.1.1:53 goes direct
+          // via Ethernet where GFW poisons responses for blocked domains.
+          {'protocol': 'dns', 'action': 'hijack-dns'},
+          // DoH server IPs go direct (non-DNS port-443 traffic) to avoid
+          // circular DNS → PROXY → DNS dependency.
           {
             'ip_cidr': [dohServer, '223.5.5.5'],
             'outbound': 'direct',
