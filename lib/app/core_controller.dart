@@ -269,6 +269,14 @@ class CoreController extends ChangeNotifier {
       return _coreError;
     }
 
+    // Stop any existing background process before restarting with the new
+    // config.  The background core always runs in system-proxy mode (for
+    // latency testing); TUN mode cannot be activated by hot-swapping the
+    // config into a running process — a full restart is required.
+    if (_core.isRunning) {
+      await _core.stop();
+    }
+
     _status = ConnectionStatus.connecting;
     _coreError = '';
     notifyListeners();
@@ -402,10 +410,11 @@ class CoreController extends ChangeNotifier {
 
   // ── Proxy repair ──────────────────────────────────────────────────────────
 
-  /// Force-sync the Windows system proxy to match the current core state.
-  Future<void> fixProxy(int proxyPort) async {
+  /// Force-sync the system proxy to match the current core state.
+  /// In TUN mode the system proxy should be off; this clears any stale setting.
+  Future<void> fixProxy(int proxyPort, {NetworkMode networkMode = NetworkMode.system}) async {
     if (!Platform.isWindows && !Platform.isMacOS) return;
-    if (_core.isRunning) {
+    if (_core.isRunning && networkMode == NetworkMode.system) {
       await ProxySetter.enable(port: proxyPort);
     } else {
       await ProxySetter.disable();

@@ -191,7 +191,7 @@ class AppController extends ChangeNotifier {
   }
 
   /// Force-sync the system proxy to match current core state.
-  Future<void> fixProxy() => _core.fixProxy(_settings.proxyPort);
+  Future<void> fixProxy() => _core.fixProxy(_settings.proxyPort, networkMode: _settings.networkMode);
 
   /// Export buffered log lines to %LOCALAPPDATA%\Litchi\. Returns the path.
   Future<String?> exportLogs() => _core.exportLogs();
