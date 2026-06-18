@@ -104,11 +104,6 @@ abstract final class SingboxConfig {
       case ProxyMode.global:
         routeFinal = 'PROXY';
         routeRules = [
-          if (networkMode == NetworkMode.tun)
-            {
-              'inbound': ['tun-in'],
-              'action': 'sniff',
-            },
           {
             // Explicit CIDR list instead of ip_is_private: Go's IsPrivate() omits
             // 198.18.0.0/15 (RFC 2544 benchmark range), which many proxy servers
@@ -133,23 +128,12 @@ abstract final class SingboxConfig {
 
       case ProxyMode.direct:
         routeFinal = 'direct';
-        routeRules = [
-          if (networkMode == NetworkMode.tun)
-            {
-              'inbound': ['tun-in'],
-              'action': 'sniff',
-            },
-        ];
+        routeRules = [];
         ruleSets = [];
 
       case ProxyMode.rule:
         routeFinal = 'PROXY';
         routeRules = [
-          if (networkMode == NetworkMode.tun)
-            {
-              'inbound': ['tun-in'],
-              'action': 'sniff',
-            },
           if (_hasLocalRules) ...[
             {'rule_set': 'geosite-ads', 'outbound': 'block'},
             {
@@ -180,22 +164,25 @@ abstract final class SingboxConfig {
     // cn-dns: always present; used for CN domains and routing-engine queries.
     // remote-dns: foreign / encrypted resolver (choice depends on dnsMode).
     final Map<String, dynamic> remoteDnsServer;
-    final String dohServer;
     switch (dnsMode) {
       case 'Google':
         remoteDnsServer = {
           'tag': 'remote-dns',
           'type': 'https',
           'server': '8.8.8.8',
+          // Route through proxy: 8.8.8.8:443 is unreachable directly in CN.
+          'detour': 'PROXY',
         };
-        dohServer = '8.8.8.8';
       default: // '系统 DNS' and 'Cloudflare' both use Cloudflare DoH
         remoteDnsServer = {
           'tag': 'remote-dns',
           'type': 'https',
           'server': '1.1.1.1',
+          // Route through proxy: 1.1.1.1:443 is blocked by GFW in CN.
+          // cn-dns (223.5.5.5, direct) bootstraps the proxy server's domain so
+          // the PROXY outbound is ready before remote-dns is first queried.
+          'detour': 'PROXY',
         };
-        dohServer = '1.1.1.1';
     }
 
     // DNS rules only matter in rule mode; global/direct uses the final server.
@@ -254,9 +241,11 @@ abstract final class SingboxConfig {
             // DoH over the raw IP: encrypted on port 443, so transparent-proxy
             // gateways (e.g. router OpenClash) can't hijack it and return
             // fake-ip for node server domains — plain UDP 53 gets intercepted.
+            // Must be direct so it can bootstrap before PROXY outbound is up.
             'tag': 'cn-dns',
             'type': 'https',
             'server': '223.5.5.5',
+            'detour': 'direct',
           },
         ],
         'rules': dnsRules,
@@ -287,14 +276,18 @@ abstract final class SingboxConfig {
       ],
       'route': {
         'rules': [
-          // hijack-dns MUST come first — before the ip_cidr direct rule for DoH IPs.
-          // If ip_cidr [1.1.1.1] fires first, plain UDP DNS to 1.1.1.1:53 goes direct
-          // via Ethernet where GFW poisons responses for blocked domains.
+          // sniff MUST be first: it sets protocol metadata (e.g. marks a UDP
+          // port-53 packet as "dns") so that the hijack-dns rule below can match.
+          // Without sniff running first, protocol: dns never matches and DNS
+          // queries fall through to the ip_cidr private rule → direct → lost.
+          if (networkMode == NetworkMode.tun)
+            {'inbound': ['tun-in'], 'action': 'sniff'},
+          // hijack-dns intercepts ALL DNS now that sniff has set the metadata.
           {'protocol': 'dns', 'action': 'hijack-dns'},
-          // DoH server IPs go direct (non-DNS port-443 traffic) to avoid
-          // circular DNS → PROXY → DNS dependency.
+          // CN DoH stays direct so it can bootstrap proxy server domains.
+          // remote-dns uses detour: PROXY for public DoH endpoints.
           {
-            'ip_cidr': [dohServer, '223.5.5.5'],
+            'ip_cidr': ['223.5.5.5'],
             'outbound': 'direct',
           },
           ...routeRules,
