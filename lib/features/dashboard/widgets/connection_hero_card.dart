@@ -99,11 +99,7 @@ class ConnectionHeroCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
-                _NodeMetaRow(
-                  node: node,
-                  proxyMode: ctrl.proxyMode,
-                  automatic: ctrl.autoSelected,
-                ),
+                _NodeMetaRow(node: node, automatic: ctrl.autoSelected),
                 const Spacer(),
               ],
             ),
@@ -211,14 +207,9 @@ class _ConnectionStateLabel extends StatelessWidget {
 }
 
 class _NodeMetaRow extends StatelessWidget {
-  const _NodeMetaRow({
-    required this.node,
-    required this.proxyMode,
-    required this.automatic,
-  });
+  const _NodeMetaRow({required this.node, required this.automatic});
 
   final NodeModel node;
-  final ProxyMode proxyMode;
   final bool automatic;
 
   @override
@@ -231,7 +222,7 @@ class _NodeMetaRow extends StatelessWidget {
       _ => '未测速',
     };
     return Text(
-      '${proxyMode.label} · ${automatic ? '自动选择' : '手动选择'} · $latency',
+      '节点模式 · ${automatic ? '自动选择' : '手动选择'} · $latency',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: AppTextStyles.body.copyWith(

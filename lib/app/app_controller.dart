@@ -302,7 +302,7 @@ class AppController extends ChangeNotifier {
     _nodes.setNodes(cached);
     _restoreLastNode();
     if (supportsCoreConnection) {
-      unawaited(_startCoreInBackground(runLatencyTest: true));
+      unawaited(_testStartupLatencies());
     }
   }
 
@@ -382,7 +382,7 @@ class AppController extends ChangeNotifier {
     final status = _core.connectionStatus;
     if (status == ConnectionStatus.connected) {
       _settings.setWasConnected(true);
-      unawaited(testLatencies());
+      unawaited(_testLatenciesInBackground());
     } else if (status == ConnectionStatus.disconnected) {
       _settings.setWasConnected(false);
       // Core process may still be alive (system proxy mode) — keep latency data.
@@ -556,8 +556,7 @@ class AppController extends ChangeNotifier {
       unawaited(NodeCacheService.save(_nodes.nodes));
       _restoreLastNode();
       if (supportsCoreConnection) {
-        // Start core in background so latency testing works before user connects.
-        unawaited(_startCoreInBackground(runLatencyTest: true));
+        unawaited(_testStartupLatencies());
       }
     }
   }
@@ -692,21 +691,13 @@ class AppController extends ChangeNotifier {
     return null;
   }
 
-  Future<void> _startCoreInBackground({bool runLatencyTest = false}) async {
+  Future<void> _testStartupLatencies() async {
     if (!supportsCoreConnection) return;
     if (Platform.isAndroid) {
-      // Android can't run a background core (the core needs the VpnService
-      // tunnel), so there is nothing to pre-start. Do a TCP-ping pass instead
-      // so node latencies show up automatically before the user connects.
-      if (runLatencyTest) await testLatencies();
+      await testLatencies();
       return;
     }
-    await _core.startCoreOnly(_buildConnectionRequest());
-    if (_core.coreProcessRunning && runLatencyTest) {
-      // Small delay to let the Clash API initialise before testing.
-      await Future.delayed(const Duration(milliseconds: 1000));
-      await testLatencies();
-    }
+    await _testTcpLatencies(showProgress: false);
   }
 
   Future<void> _reloadCoreConfig({bool startIfStopped = false}) async {
@@ -723,58 +714,38 @@ class AppController extends ChangeNotifier {
 
     if (coreProcessRunning) {
       await Future.delayed(const Duration(milliseconds: 1000));
-      unawaited(testLatencies());
+      if (Platform.isAndroid) {
+        unawaited(testLatencies());
+      } else {
+        unawaited(_testLatenciesInBackground());
+      }
     }
   }
 
-  /// Tests latencies for all nodes via the Clash API.
-  /// Starts the sing-box process in background mode if needed.
+  /// Tests latencies for all nodes.
   Future<void> testLatencies() async {
     if (!supportsCoreConnection) return;
     if (_nodes.isEmpty) return;
 
-    // On Android before connecting, the sing-box core cannot expose the Clash
-    // API yet, so we fall back to a direct TCP handshake ping per node.
-    if (Platform.isAndroid && !coreProcessRunning) {
-      // Mark all nodes as testing (-1).
-      _nodes.markAllLatency(-1);
-
-      // Ping in concurrent batches so a long list (and slow/timing-out nodes)
-      // finishes in seconds instead of sequentially adding up every timeout.
-      final snapshot = List<NodeModel>.from(_nodes.nodes);
-      const concurrency = 8;
-      for (var i = 0; i < snapshot.length; i += concurrency) {
-        if (_disposed) return;
-        final batch = snapshot.skip(i).take(concurrency).toList();
-        final results = await Future.wait(
-          batch.map((node) async {
-            final ms = await TcpPingService.ping(node.server, node.port);
-            return (id: node.id, latency: ms ?? 9999);
-          }),
-        );
-        if (_disposed) return;
-        // Apply by node id so a concurrent node-list refresh can't misalign rows.
-        _nodes.applyLatencyById({for (final r in results) r.id: r.latency});
-      }
-      return;
-    }
-
     if (!coreProcessRunning) {
-      if (!Platform.isAndroid) {
-        await _startCoreInBackground();
-      }
-      if (coreProcessRunning) {
-        await Future.delayed(const Duration(milliseconds: 1000));
-      }
+      await _testTcpLatencies(showProgress: true);
+      return;
     }
 
     // Mark all nodes as testing (-1) so the UI shows an in-progress state.
     _nodes.markAllLatency(-1);
 
+    final snapshot = List<NodeModel>.from(_nodes.nodes);
+    await _core.testLatencies(
+      snapshot,
+      onResult: (idx, updated) => _nodes.applyLatencyAt(idx, updated),
+    );
+  }
+
+  Future<void> _testLatenciesInBackground() async {
+    if (!supportsCoreConnection || _nodes.isEmpty) return;
     if (!coreProcessRunning) {
-      _nodes.markAllLatency(9999);
-      _startupMessage = '测速失败：核心未启动，请检查 sing-box.exe 是否存在';
-      notifyListeners();
+      await _testTcpLatencies(showProgress: false);
       return;
     }
 
@@ -783,6 +754,25 @@ class AppController extends ChangeNotifier {
       snapshot,
       onResult: (idx, updated) => _nodes.applyLatencyAt(idx, updated),
     );
+  }
+
+  Future<void> _testTcpLatencies({required bool showProgress}) async {
+    if (showProgress) _nodes.markAllLatency(-1);
+
+    final snapshot = List<NodeModel>.from(_nodes.nodes);
+    const concurrency = 8;
+    for (var i = 0; i < snapshot.length; i += concurrency) {
+      if (_disposed) return;
+      final batch = snapshot.skip(i).take(concurrency).toList();
+      final results = await Future.wait(
+        batch.map((node) async {
+          final ms = await TcpPingService.ping(node.server, node.port);
+          return (id: node.id, latency: ms ?? 9999);
+        }),
+      );
+      if (_disposed) return;
+      _nodes.applyLatencyById({for (final r in results) r.id: r.latency});
+    }
   }
 }
 

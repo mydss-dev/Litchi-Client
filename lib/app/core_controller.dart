@@ -136,7 +136,7 @@ class CoreController extends ChangeNotifier {
   // ── Connection ────────────────────────────────────────────────────────────
 
   /// Starts sing-box in the background WITHOUT enabling system proxy or TUN.
-  /// Called after login so latency testing works before the user connects.
+  /// Used only by explicit desktop background-core flows.
   /// No-ops if the process is already running.
   Future<void> startCoreOnly(CoreConnectionRequest req) async {
     if (Platform.isAndroid) return;
@@ -286,7 +286,9 @@ class CoreController extends ChangeNotifier {
         _status = ConnectionStatus.connected;
         _startTrafficMonitor();
       } else {
-        _coreError = CoreErrorMessageService.processStartFailure(_core.lastError);
+        _coreError = CoreErrorMessageService.processStartFailure(
+          _core.lastError,
+        );
         _status = ConnectionStatus.error;
       }
     } catch (e) {
@@ -338,7 +340,9 @@ class CoreController extends ChangeNotifier {
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
       } else {
-        _coreError = CoreErrorMessageService.androidStartFailure(_androidCore.lastError);
+        _coreError = CoreErrorMessageService.androidStartFailure(
+          _androidCore.lastError,
+        );
         _status = ConnectionStatus.error;
       }
     } catch (e) {

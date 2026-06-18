@@ -88,71 +88,103 @@ class _DesktopNodePickerDialogState extends State<_DesktopNodePickerDialog> {
     final ctrl = AppScope.of(context);
     final c = AppColors.of(context);
     final nodes = _filteredNodes(ctrl);
+    final screen = MediaQuery.sizeOf(context);
+    final dialogWidth = (screen.width - 48).clamp(360.0, 620.0).toDouble();
+    final dialogHeight = (screen.height - 64).clamp(460.0, 540.0).toDouble();
 
     return Center(
       child: Material(
         color: Colors.transparent,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 620, maxHeight: 720),
-          child: Container(
-            decoration: BoxDecoration(
-              color: c.cardBg,
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              border: Border.all(color: c.softBorder),
-              boxShadow: AppShadows.card(c),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _DialogHeader(
-                  nodeCount: ctrl.nodes.length,
-                  onTest: () => _testLatencies(ctrl),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _SearchField(
-                    onChanged: (value) => setState(() => _query = value),
+          constraints: BoxConstraints(maxWidth: dialogWidth),
+          child: SizedBox(
+            height: dialogHeight,
+            child: Container(
+              decoration: BoxDecoration(
+                color: c.cardBg,
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+                border: Border.all(color: c.softBorder),
+                boxShadow: AppShadows.card(c),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _DialogHeader(
+                    nodeCount: ctrl.nodes.length,
+                    onTest: () => _testLatencies(ctrl),
                   ),
-                ),
-                const SizedBox(height: 12),
-                _RegionTabs(
-                  tabs: _tabs,
-                  selected: _tab,
-                  onSelected: (index) => setState(() => _tab = index),
-                ),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    shrinkWrap: true,
-                    children: [
-                      _AutoSelectTile(
-                        selected: ctrl.autoSelected,
-                        onTap: () => _selectAuto(ctrl),
-                      ),
-                      const SizedBox(height: 10),
-                      if (nodes.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 22, bottom: 22),
-                          child: _NodeEmptyState(
-                            searching: _query.trim().isNotEmpty || _tab != 0,
-                          ),
-                        )
-                      else
-                        for (final node in nodes) ...[
-                          _NodeTile(
-                            node: node,
-                            selected:
-                                !ctrl.autoSelected &&
-                                ctrl.currentNode.id == node.id,
-                            onTap: () => _selectNode(ctrl, node),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                    ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: _SearchField(
+                      onChanged: (value) => setState(() => _query = value),
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  _RegionTabs(
+                    tabs: _tabs,
+                    selected: _tab,
+                    onSelected: (index) => setState(() => _tab = index),
+                  ),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: CustomScrollView(
+                      shrinkWrap: true,
+                      slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                          sliver: SliverToBoxAdapter(
+                            child: _AutoSelectTile(
+                              selected: ctrl.autoSelected,
+                              onTap: () => _selectAuto(ctrl),
+                            ),
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                        if (nodes.isEmpty)
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                            sliver: SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 22,
+                                  bottom: 22,
+                                ),
+                                child: _NodeEmptyState(
+                                  searching:
+                                      _query.trim().isNotEmpty || _tab != 0,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                            sliver: SliverGrid.builder(
+                              itemCount: nodes.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 290,
+                                    mainAxisExtent: 78,
+                                    mainAxisSpacing: 10,
+                                    crossAxisSpacing: 10,
+                                  ),
+                              itemBuilder: (context, index) {
+                                final node = nodes[index];
+                                return _NodeTile(
+                                  node: node,
+                                  selected:
+                                      !ctrl.autoSelected &&
+                                      ctrl.currentNode.id == node.id,
+                                  onTap: () => _selectNode(ctrl, node),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
