@@ -32,8 +32,7 @@ abstract final class UpdateService {
     // Fallback: legacy separate manifest at updateCheckUrl.
     if (AppConfig.updateCheckUrl.isEmpty) return null;
     final manifestUri = Uri.tryParse(AppConfig.updateCheckUrl);
-    if (manifestUri == null ||
-        (manifestUri.scheme != 'https' && manifestUri.scheme != 'http')) {
+    if (manifestUri == null || manifestUri.scheme != 'https') {
       SecureLogger.debug('Skip update check: invalid manifest url');
       return null;
     }
