@@ -43,11 +43,27 @@ class ConnectionHeroCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        hasNode ? '当前节点' : '节点状态',
+                        style: AppTextStyles.heroTitle.copyWith(
+                          color: c.textPrimary,
+                          fontSize: 21,
+                        ),
+                      ),
+                    ),
+                    _NodeInlineAction(
+                      hasNodes: ctrl.nodes.isNotEmpty,
+                      onTap: () => showDesktopNodePicker(context),
+                    ),
+                  ],
+                ),
                 const Spacer(),
                 _SecurityBadge(status: status),
-                const Spacer(),
+                const SizedBox(height: 16),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     _HeroNodeIcon(node: node),
                     const SizedBox(width: 12),
@@ -62,11 +78,6 @@ class ConnectionHeroCard extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    _NodeInlineAction(
-                      hasNodes: ctrl.nodes.isNotEmpty,
-                      onTap: () => showDesktopNodePicker(context),
                     ),
                   ],
                 ),
