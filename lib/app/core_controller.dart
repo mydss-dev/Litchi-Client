@@ -163,6 +163,7 @@ class CoreController extends ChangeNotifier {
     if (Platform.isAndroid) {
       if (coreConnecting || _status != ConnectionStatus.connected) return null;
       await _androidCore.stop();
+      _stopTrafficMonitor();
       _connectedAt = null;
       _status = ConnectionStatus.disconnected;
       return _toggleAndroidConnection(req);
@@ -352,6 +353,7 @@ class CoreController extends ChangeNotifier {
       if (ok) {
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
+        _startTrafficMonitor();
       } else {
         _coreError = CoreErrorMessageService.androidStartFailure(
           _androidCore.lastError,
@@ -510,7 +512,7 @@ class CoreController extends ChangeNotifier {
     List<NodeModel> nodes, {
     required void Function(int idx, NodeModel updated) onResult,
   }) async {
-    if (nodes.isEmpty || !_core.isRunning) return;
+    if (nodes.isEmpty || !coreProcessRunning) return;
 
     final tags = nodes.map(SingboxConfig.nodeTagFor).toList();
     final history = await SingboxApiClient.testAllViaUrltest(

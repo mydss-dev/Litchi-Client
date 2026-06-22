@@ -3,7 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../app/app_controller.dart';
-import '../../shared/models/app_models.dart';
+import '../../shared/models/app_models.dart' show ProxyMode;
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -82,14 +82,6 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
             ),
             _Divider(color: c.softBorder),
             _OptionRow(
-              icon: LucideIcons.network,
-              title: '网络模式',
-              subtitle: '选择系统代理或虚拟网卡',
-              value: _networkModeLabel(ctrl.networkMode),
-              onTap: () => _pickNetworkMode(context),
-            ),
-            _Divider(color: c.softBorder),
-            _OptionRow(
               icon: LucideIcons.globe,
               title: 'DNS',
               subtitle: '解析异常时可切换',
@@ -138,22 +130,6 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
       ),
     );
     if (mode != null) ctrl.setProxyMode(mode);
-  }
-
-  Future<void> _pickNetworkMode(BuildContext context) async {
-    final ctrl = AppScope.of(context);
-    final mode = await showAppBottomSheet<NetworkMode>(
-      context: context,
-      builder: (context) => _PickerSheet<NetworkMode>(
-        title: '网络模式',
-        selected: ctrl.networkMode,
-        items: const [
-          _PickerItem(NetworkMode.system, '系统代理', '轻量连接，适合浏览器和常规应用'),
-          _PickerItem(NetworkMode.tun, '虚拟网卡', '接管更多应用流量'),
-        ],
-      ),
-    );
-    if (mode != null) ctrl.setNetworkMode(mode);
   }
 
   Future<void> _pickDnsMode(BuildContext context) async {
@@ -249,11 +225,6 @@ String _proxyModeLabel(ProxyMode mode) => switch (mode) {
   ProxyMode.rule => '规则',
   ProxyMode.global => '全局',
   ProxyMode.direct => '直连',
-};
-
-String _networkModeLabel(NetworkMode mode) => switch (mode) {
-  NetworkMode.system => '系统代理',
-  NetworkMode.tun => '虚拟网卡',
 };
 
 String _dnsModeLabel(String mode) => switch (mode) {
