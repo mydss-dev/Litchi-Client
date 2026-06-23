@@ -15,7 +15,9 @@ Future<void> main(List<String> args) async {
       return;
     case 'sign':
       if (args.length != 4) {
-        stderr.writeln('sign requires: <payload.json> <private_key> <public_key>');
+        stderr.writeln(
+          'sign requires: <config.js|payload.json> <private_key> <public_key>',
+        );
         _usage();
         exitCode = 64;
         return;
@@ -42,7 +44,9 @@ Future<void> _generate() async {
   stdout.writeln('PRIVATE_KEY=${_b64(privateKeyBytes)}');
   stdout.writeln('PUBLIC_KEY=${_b64(publicKey.bytes)}');
   stdout.writeln('');
-  stdout.writeln('Put PUBLIC_KEY into RemoteConfigVerifier._publicKeyBase64Url.');
+  stdout.writeln(
+    'Put PUBLIC_KEY into RemoteConfigVerifier._publicKeyBase64Url.',
+  );
   stdout.writeln('Keep PRIVATE_KEY offline. Never commit it.');
 }
 
@@ -51,8 +55,7 @@ Future<void> _sign({
   required String privateKeyB64,
   required String publicKeyB64,
 }) async {
-  final raw = await File(payloadPath).readAsString();
-  final decoded = jsonDecode(raw);
+  final decoded = await _loadPayload(payloadPath);
   if (decoded is! Map<String, dynamic>) {
     stderr.writeln('payload must be a JSON object');
     exitCode = 65;
@@ -74,25 +77,36 @@ Future<void> _sign({
 
   final signature = await Ed25519().sign(payloadBytes, keyPair: keyPair);
   const encoder = JsonEncoder.withIndent('  ');
-  stdout.writeln(encoder.convert({
-    'payload_b64': _b64(payloadBytes),
-    'signature': _b64(signature.bytes),
-  }));
+  stdout.writeln(
+    encoder.convert({
+      'payload_b64': _b64(payloadBytes),
+      'signature': _b64(signature.bytes),
+    }),
+  );
+}
+
+Future<Object?> _loadPayload(String payloadPath) async {
+  if (payloadPath.toLowerCase().endsWith('.js')) {
+    final result = await Process.run('node', [payloadPath]);
+    if (result.exitCode != 0) {
+      stderr.writeln(result.stderr);
+      exitCode = result.exitCode;
+      return null;
+    }
+    return jsonDecode('${result.stdout}');
+  }
+
+  final raw = await File(payloadPath).readAsString();
+  return jsonDecode(raw);
 }
 
 void _usage() {
   stdout.writeln('''
 Usage:
   dart run tool/sign_remote_config.dart generate
-  dart run tool/sign_remote_config.dart sign <payload.json> <private_key> <public_key>
+  dart run tool/sign_remote_config.dart sign <config.js|payload.json> <private_key> <public_key>
 
-Example payload.json:
-  {
-    "api_base": "https://api.example.com",
-    "update_check_url": "https://oss.example.com/update.json",
-    "invite_url_base": "https://example.com",
-    "min_version": "1.2.0"
-  }
+config.js can contain comments as long as it prints JSON to stdout.
 ''');
 }
 

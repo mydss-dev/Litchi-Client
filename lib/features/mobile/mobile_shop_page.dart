@@ -9,6 +9,8 @@ import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../shop/order_confirm_dialog.dart';
+import 'mobile_back_button.dart';
+import 'mobile_page_header.dart';
 
 class MobileShopPage extends StatefulWidget {
   const MobileShopPage({super.key});
@@ -44,6 +46,7 @@ class _MobileShopPageState extends State<MobileShopPage> {
     final ctrl = AppScope.of(context);
     final c = AppColors.of(context);
     final plans = _filtered(ctrl.plans);
+    final asChild = ctrl.mobileProfileChildPage;
 
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
@@ -51,7 +54,21 @@ class _MobileShopPageState extends State<MobileShopPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          Text('购买套餐', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
+          if (asChild)
+            Row(
+              children: [
+                MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '套餐购买',
+                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                  ),
+                ),
+              ],
+            )
+          else
+            const MobilePageHeader(title: '套餐', subtitle: '选择适合你的流量方案'),
           const SizedBox(height: 14),
           _ShopTabs(
             tabs: _tabs,
@@ -192,8 +209,11 @@ class _PlanCardState extends State<_PlanCard> {
         plan.yearlyPrice;
   }
 
-  String get _unit =>
-      plan.category == PlanCategory.recurring ? _cycleUnit(_cycle) : '';
+  String get _unit => switch (plan.category) {
+    PlanCategory.recurring => _cycleUnit(_cycle),
+    PlanCategory.oneTime => '/ 不限时',
+    PlanCategory.dataPack => '',
+  };
 
   String get _categoryLabel => switch (plan.category) {
     PlanCategory.recurring => '周期套餐',
@@ -383,37 +403,42 @@ class _CycleChip extends StatelessWidget {
         ? c.primary
         : enabled
         ? c.textMuted
-        : c.iconMuted;
+        : c.textMuted.withValues(alpha: 0.38);
+    final bg = selected
+        ? c.primarySoft
+        : enabled
+        ? c.surfaceMuted
+        : c.surfaceMuted.withValues(alpha: 0.22);
+    final borderColor = selected
+        ? c.primarySoft
+        : enabled
+        ? c.softBorder
+        : c.softBorder.withValues(alpha: 0.35);
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? c.primarySoft : c.surfaceMuted,
+          color: bg,
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          border: Border.all(color: selected ? c.primarySoft : c.softBorder),
+          border: Border.all(color: borderColor),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              enabled ? LucideIcons.check : LucideIcons.x,
-              color: fg,
-              size: 12,
-            ),
-            const SizedBox(width: 3),
-            Text(
-              _cycleLabel(cycle),
-              style: AppTextStyles.caption.copyWith(
-                fontSize: 12,
-                color: fg,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-              ),
-            ),
-          ],
+        child: Text(
+          _cycleLabel(cycle),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.caption.copyWith(
+            fontSize: 12,
+            color: fg,
+            fontWeight: selected
+                ? FontWeight.w800
+                : enabled
+                ? FontWeight.w600
+                : FontWeight.w500,
+          ),
         ),
       ),
     );

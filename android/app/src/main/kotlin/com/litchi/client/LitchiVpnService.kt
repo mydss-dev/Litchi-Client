@@ -3,14 +3,66 @@ package com.litchi.client
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 
 class LitchiVpnService : VpnService() {
     private var tunFd: ParcelFileDescriptor? = null
+    private var currentConfig: String = ""
+    private var stopReceiverRegistered: Boolean = false
+    private var networkCallbackRegistered: Boolean = false
+    private val underlyingNetworks = linkedSetOf<Network>()
+    private val connectivityManager: ConnectivityManager?
+        get() = getSystemService(ConnectivityManager::class.java)
+    private val stopReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ACTION_STOP) stopCore()
+        }
+    }
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            synchronized(underlyingNetworks) {
+                underlyingNetworks.add(network)
+            }
+            updateUnderlyingNetworks()
+        }
+
+        override fun onLost(network: Network) {
+            synchronized(underlyingNetworks) {
+                underlyingNetworks.remove(network)
+            }
+            updateUnderlyingNetworks()
+        }
+
+        override fun onCapabilitiesChanged(
+            network: Network,
+            networkCapabilities: NetworkCapabilities
+        ) {
+            if (!networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) ||
+                !networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            ) {
+                synchronized(underlyingNetworks) {
+                    underlyingNetworks.remove(network)
+                }
+            } else {
+                synchronized(underlyingNetworks) {
+                    underlyingNetworks.add(network)
+                }
+            }
+            updateUnderlyingNetworks()
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -18,20 +70,29 @@ class LitchiVpnService : VpnService() {
                 stopCore()
                 return START_NOT_STICKY
             }
+
             ACTION_START -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG).orEmpty()
                 if (config.isBlank()) {
                     stopCore()
                     return START_NOT_STICKY
                 }
-                startForeground(NOTIFICATION_ID, buildNotification("Litchi 正在连接"))
+                if (isRunning && currentConfig == config) {
+                    registerStopReceiver()
+                    startCoreForeground("Litchi connected")
+                    return START_NOT_STICKY
+                }
+                currentConfig = config
+                registerStopReceiver()
+                registerNetworkCallback()
+                startCoreForeground("Litchi connecting")
                 val ok = AndroidSingboxEngine.start(config, this)
                 if (!ok) {
                     stopCore()
                     return START_NOT_STICKY
                 }
                 isRunning = true
-                startForeground(NOTIFICATION_ID, buildNotification("Litchi 已连接"))
+                startCoreForeground("Litchi connected")
                 return START_NOT_STICKY
             }
         }
@@ -50,9 +111,13 @@ class LitchiVpnService : VpnService() {
     }
 
     private fun stopCore() {
+        unregisterNetworkCallback()
+        unregisterStopReceiver()
         AndroidSingboxEngine.stop()
         runCatching { tunFd?.close() }
         tunFd = null
+        runCatching { setUnderlyingNetworks(null) }
+        currentConfig = ""
         isRunning = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -65,27 +130,52 @@ class LitchiVpnService : VpnService() {
 
     fun openTun(options: Any?): Int {
         runCatching { tunFd?.close() }
+        val mtu = intOption(options, "getMTU", "getMtu")
+            .takeIf { it in 1280..DEFAULT_MTU }
+            ?: DEFAULT_MTU
+        val enableIpv6 = boolOption(
+            options,
+            "isIPv6Enabled",
+            "isIpv6Enabled",
+            "getIPv6Enabled",
+            default = true
+        )
+
         val builder = Builder()
             .setSession("Litchi")
-            .setMtu(9000)
+            .setMtu(mtu)
             .addAddress("172.19.0.1", 30)
-            .addAddress("fdfe:dcba:9876::1", 126)
+            .addDnsServer("223.5.5.5")
             .addDnsServer("1.1.1.1")
-            .addDnsServer("2606:4700:4700::1111")
             .addRoute("0.0.0.0", 0)
-            .addRoute("::", 0)
+
+        if (enableIpv6) {
+            builder
+                .addAddress("fdfe:dcba:9876::1", 126)
+                .addDnsServer("2606:4700:4700::1111")
+                .addRoute("::", 0)
+        }
+
         tunFd = builder.establish()
+        updateUnderlyingNetworks()
         return tunFd?.fd ?: -1
     }
 
     private fun buildNotification(text: String): Notification {
         ensureNotificationChannel()
+        val stopIntent = PendingIntent.getBroadcast(
+            this,
+            0,
+            Intent(ACTION_STOP).setPackage(packageName),
+            PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag()
+        )
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Litchi")
                 .setContentText(text)
                 .setOngoing(true)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Disconnect", stopIntent)
                 .build()
         } else {
             @Suppress("DEPRECATION")
@@ -94,7 +184,21 @@ class LitchiVpnService : VpnService() {
                 .setContentTitle("Litchi")
                 .setContentText(text)
                 .setOngoing(true)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Disconnect", stopIntent)
                 .build()
+        }
+    }
+
+    private fun startCoreForeground(text: String) {
+        val notification = buildNotification(text)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
         }
     }
 
@@ -109,12 +213,117 @@ class LitchiVpnService : VpnService() {
         manager.createNotificationChannel(channel)
     }
 
+    private fun registerStopReceiver() {
+        if (stopReceiverRegistered) return
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(
+                    stopReceiver,
+                    IntentFilter(ACTION_STOP),
+                    Context.RECEIVER_NOT_EXPORTED
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                registerReceiver(stopReceiver, IntentFilter(ACTION_STOP))
+            }
+        }.onSuccess { stopReceiverRegistered = true }
+    }
+
+    private fun unregisterStopReceiver() {
+        if (!stopReceiverRegistered) return
+        stopReceiverRegistered = false
+        runCatching { unregisterReceiver(stopReceiver) }
+    }
+
+    private fun registerNetworkCallback() {
+        if (networkCallbackRegistered) return
+        val manager = connectivityManager ?: return
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            .build()
+        runCatching {
+            manager.registerNetworkCallback(request, networkCallback)
+            synchronized(underlyingNetworks) {
+                underlyingNetworks.clear()
+                manager.allNetworks.forEach { network ->
+                    val capabilities = manager.getNetworkCapabilities(network)
+                    if (capabilities != null &&
+                        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                    ) {
+                        underlyingNetworks.add(network)
+                    }
+                }
+            }
+            updateUnderlyingNetworks()
+        }.onSuccess {
+            networkCallbackRegistered = true
+        }
+    }
+
+    private fun unregisterNetworkCallback() {
+        if (!networkCallbackRegistered) return
+        networkCallbackRegistered = false
+        runCatching { connectivityManager?.unregisterNetworkCallback(networkCallback) }
+        synchronized(underlyingNetworks) {
+            underlyingNetworks.clear()
+        }
+    }
+
+    private fun updateUnderlyingNetworks() {
+        if (tunFd == null) return
+        val networks = synchronized(underlyingNetworks) {
+            underlyingNetworks.toTypedArray().takeIf { it.isNotEmpty() }
+        }
+        runCatching { setUnderlyingNetworks(networks) }
+    }
+
+    private fun intOption(target: Any?, vararg names: String): Int {
+        if (target == null) return DEFAULT_MTU
+        for (name in names) {
+            val value = runCatching {
+                target.javaClass.methods.firstOrNull {
+                    it.name == name && it.parameterTypes.isEmpty()
+                }?.invoke(target)
+            }.getOrNull()
+            if (value is Number) return value.toInt()
+        }
+        return DEFAULT_MTU
+    }
+
+    private fun boolOption(
+        target: Any?,
+        vararg names: String,
+        default: Boolean
+    ): Boolean {
+        if (target == null) return default
+        for (name in names) {
+            val value = runCatching {
+                target.javaClass.methods.firstOrNull {
+                    it.name == name && it.parameterTypes.isEmpty()
+                }?.invoke(target)
+            }.getOrNull()
+            if (value is Boolean) return value
+        }
+        return default
+    }
+
+    private fun immutableFlag(): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.FLAG_IMMUTABLE
+        } else {
+            0
+        }
+    }
+
     companion object {
         private const val ACTION_START = "com.litchi.client.START_VPN"
         private const val ACTION_STOP = "com.litchi.client.STOP_VPN"
         private const val EXTRA_CONFIG = "config"
         private const val CHANNEL_ID = "litchi_core"
         private const val NOTIFICATION_ID = 1001
+        private const val DEFAULT_MTU = 1500
 
         @Volatile
         var isRunning: Boolean = false

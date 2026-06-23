@@ -2,6 +2,102 @@ import 'package:flutter/widgets.dart';
 
 import '../../config/brand.dart';
 
+class MobileHomeCardConfig {
+  const MobileHomeCardConfig({
+    required this.type,
+    required this.title,
+    required this.icon,
+    this.visible = true,
+  });
+
+  final String type;
+  final String title;
+  final String icon;
+  final bool visible;
+
+  factory MobileHomeCardConfig.fromJson(Map<String, dynamic> json) {
+    String read(String key) {
+      final v = json[key];
+      return v is String ? v.trim() : '';
+    }
+
+    return MobileHomeCardConfig(
+      type: read('type'),
+      title: read('title'),
+      icon: read('icon'),
+      visible: json['visible'] is bool ? json['visible'] as bool : true,
+    );
+  }
+}
+
+class MobileTabConfig {
+  const MobileTabConfig({
+    required this.type,
+    required this.label,
+    required this.icon,
+  });
+
+  final String type;
+  final String label;
+  final String icon;
+
+  factory MobileTabConfig.fromJson(dynamic raw) {
+    if (raw is String) {
+      final type = raw.trim();
+      return MobileTabConfig(
+        type: type,
+        label: '',
+        icon: '',
+      );
+    }
+    if (raw is Map) {
+      final json = Map<String, dynamic>.from(raw);
+      String read(String key) {
+        final v = json[key];
+        return v is String ? v.trim() : '';
+      }
+
+      return MobileTabConfig(
+        type: read('type'),
+        label: read('label').isNotEmpty ? read('label') : read('title'),
+        icon: read('icon'),
+      );
+    }
+    return const MobileTabConfig(type: '', label: '', icon: '');
+  }
+}
+
+class MobileProfileMenuConfig {
+  const MobileProfileMenuConfig({
+    required this.type,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    this.visible = true,
+  });
+
+  final String type;
+  final String title;
+  final String subtitle;
+  final String icon;
+  final bool visible;
+
+  factory MobileProfileMenuConfig.fromJson(Map<String, dynamic> json) {
+    String read(String key) {
+      final v = json[key];
+      return v is String ? v.trim() : '';
+    }
+
+    return MobileProfileMenuConfig(
+      type: read('type'),
+      title: read('title').isNotEmpty ? read('title') : read('label'),
+      subtitle: read('subtitle'),
+      icon: read('icon'),
+      visible: json['visible'] is bool ? json['visible'] as bool : true,
+    );
+  }
+}
+
 /// Runtime app configuration.
 ///
 /// Fields start with compiled dart-define defaults and are overridden by
@@ -80,6 +176,45 @@ abstract final class AppConfig {
   static String appName = BrandConfig.appName;
   static String appSubtitle = BrandConfig.appSubtitle;
   static String logoLetter = BrandConfig.logoLetter;
+  static String userAvatarUrl = '';
+  static List<MobileHomeCardConfig> mobileHomeCards = const [
+    MobileHomeCardConfig(
+      type: 'downSpeed',
+      title: '下行速率',
+      icon: 'download',
+    ),
+    MobileHomeCardConfig(
+      type: 'upSpeed',
+      title: '上行速率',
+      icon: 'upload',
+    ),
+  ];
+  static List<MobileTabConfig> mobileTabs = const [
+    MobileTabConfig(type: 'shop', label: '套餐', icon: 'shoppingBag'),
+    MobileTabConfig(type: 'invite', label: '邀请', icon: 'gift'),
+  ];
+  static String mobileProfileSummaryCard = 'traffic';
+  static String mobileProfileMenuLayout = 'grid';
+  static List<MobileProfileMenuConfig> mobileProfileMenu = const [
+    MobileProfileMenuConfig(
+      type: 'wallet',
+      title: '我的钱包',
+      subtitle: '余额、佣金与账户充值',
+      icon: 'wallet',
+    ),
+    MobileProfileMenuConfig(
+      type: 'orders',
+      title: '订单记录',
+      subtitle: '查看购买记录与支付状态',
+      icon: 'clipboardList',
+    ),
+    MobileProfileMenuConfig(
+      type: 'tickets',
+      title: '工单支持',
+      subtitle: '联系在线客服',
+      icon: 'messageSquare',
+    ),
+  ];
   static Color brandStart = BrandConfig.brandStart;
   static Color brandEnd = BrandConfig.brandEnd;
 
@@ -149,6 +284,10 @@ abstract final class AppConfig {
     _str(json, 'app_name', (v) => appName = v);
     _str(json, 'app_subtitle', (v) => appSubtitle = v);
     _str(json, 'logo_letter', (v) => logoLetter = v);
+    _url(json, 'user_avatar_url', (v) => userAvatarUrl = v);
+    _mobileHomeCards(json);
+    _mobileTabs(json);
+    _mobileProfile(json);
     _firstStr(json, [
       'invite_url_base',
       'invite_base_url',
@@ -183,6 +322,109 @@ abstract final class AppConfig {
         return;
       }
     }
+  }
+
+  static void _mobileHomeCards(Map<String, dynamic> json) {
+    final mobile = json['mobile'];
+    final rawCards = mobile is Map ? mobile['home_cards'] : json['mobile_home_cards'];
+    if (rawCards is! List) return;
+
+    const supportedTypes = {
+      'currentPlan',
+      'remainTraffic',
+      'todayTraffic',
+      'downSpeed',
+      'upSpeed',
+      'resetDay',
+      'deviceLimit',
+      'expireDate',
+    };
+
+    final cards = <MobileHomeCardConfig>[];
+    for (final item in rawCards) {
+      if (item is! Map) continue;
+      final card = MobileHomeCardConfig.fromJson(
+        Map<String, dynamic>.from(item),
+      );
+      if (!card.visible) continue;
+      if (!supportedTypes.contains(card.type)) continue;
+      cards.add(card);
+    }
+
+    if (cards.isNotEmpty) mobileHomeCards = cards.take(4).toList();
+  }
+
+  static void _mobileTabs(Map<String, dynamic> json) {
+    final mobile = json['mobile'];
+    final rawTabs = mobile is Map ? mobile['tabs'] : json['mobile_tabs'];
+    if (rawTabs is! List) return;
+
+    const supportedTypes = {
+      'shop',
+      'invite',
+      'tickets',
+      'wallet',
+      'orders',
+      'traffic',
+    };
+
+    final tabs = <MobileTabConfig>[];
+    for (final item in rawTabs) {
+      final tab = MobileTabConfig.fromJson(item);
+      if (!supportedTypes.contains(tab.type)) continue;
+      if (tabs.any((e) => e.type == tab.type)) continue;
+      tabs.add(tab);
+      if (tabs.length == 3) break;
+    }
+
+    mobileTabs = tabs;
+  }
+
+  static void _mobileProfile(Map<String, dynamic> json) {
+    final mobile = json['mobile'];
+    if (mobile is! Map) return;
+
+    const supportedSummary = {
+      'traffic',
+      'expire',
+      'expireDate',
+      'plan',
+      'currentPlan',
+    };
+    final summary = mobile['profile_summary_card'];
+    if (summary is String && supportedSummary.contains(summary.trim())) {
+      mobileProfileSummaryCard = summary.trim();
+    }
+
+    final layout = mobile['profile_menu_layout'];
+    if (layout == 'list' || layout == 'grid') {
+      mobileProfileMenuLayout = layout as String;
+    }
+
+    final rawMenu = mobile['profile_menu'];
+    if (rawMenu is! List) return;
+
+    const supportedMenu = {
+      'wallet',
+      'orders',
+      'tickets',
+      'traffic',
+      'invite',
+      'shop',
+    };
+    final menu = <MobileProfileMenuConfig>[];
+    for (final item in rawMenu) {
+      if (item is! Map) continue;
+      final entry = MobileProfileMenuConfig.fromJson(
+        Map<String, dynamic>.from(item),
+      );
+      if (!entry.visible) continue;
+      if (!supportedMenu.contains(entry.type)) continue;
+      if (menu.any((e) => e.type == entry.type)) continue;
+      menu.add(entry);
+    }
+
+    if (menu.isNotEmpty) mobileProfileMenu = menu;
   }
 
   /// Like [_str], but only accepts well-formed http(s) URLs — protects the

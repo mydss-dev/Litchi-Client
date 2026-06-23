@@ -75,6 +75,7 @@ class AppController extends ChangeNotifier {
   bool _isInitializing = false;
   AppPage _page = AppPage.dashboard;
   AuthScreen _authScreen = AuthScreen.login;
+  bool _mobileProfileChildPage = false;
 
   // ── Services ──────────────────────────────────────────────────────────────
 
@@ -139,9 +140,7 @@ class AppController extends ChangeNotifier {
     final old = _settings.proxyMode;
     _settings.setProxyMode(v);
     if (_settings.proxyMode == old) return;
-    if (Platform.isAndroid && coreRunning) {
-      unawaited(_reloadCoreConfig());
-    } else if (_core.coreProcessRunning) {
+    if (_core.coreProcessRunning) {
       unawaited(_core.setMode(v));
     }
   }
@@ -192,7 +191,8 @@ class AppController extends ChangeNotifier {
   }
 
   /// Force-sync the system proxy to match current core state.
-  Future<void> fixProxy() => _core.fixProxy(_settings.proxyPort, networkMode: _settings.networkMode);
+  Future<void> fixProxy() =>
+      _core.fixProxy(_settings.proxyPort, networkMode: _settings.networkMode);
 
   /// Export buffered log lines to %LOCALAPPDATA%\Litchi\. Returns the path.
   Future<String?> exportLogs() => _core.exportLogs();
@@ -205,6 +205,7 @@ class AppController extends ChangeNotifier {
   bool get isInitializing => _isInitializing;
   AppPage get page => _page;
   AuthScreen get authScreen => _authScreen;
+  bool get mobileProfileChildPage => _mobileProfileChildPage;
 
   // ── Data getters ──────────────────────────────────────────────────────────
 
@@ -228,6 +229,20 @@ class AppController extends ChangeNotifier {
   double get minWithdrawAmount => _wallet.minWithdrawAmount;
   List<double> get dailyUsage => _subscription.dailyUsage;
   List<TrafficUsagePoint> get trafficUsage => _subscription.trafficUsage;
+  double get todayTrafficGb {
+    final now = DateTime.now();
+    var total = 0.0;
+    for (final point in _subscription.trafficUsage) {
+      final date = point.date;
+      if (date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day) {
+        total += point.totalGb;
+      }
+    }
+    return total;
+  }
+
   int? get aliveIp => _subscription.aliveIp;
   int? get deviceLimit => _subscription.deviceLimit;
   int? get resetDay => _subscription.resetDay;
@@ -401,7 +416,18 @@ class AppController extends ChangeNotifier {
   // ── Navigation ────────────────────────────────────────────────────────────
 
   void goToPage(AppPage page) {
+    _mobileProfileChildPage = false;
     if (_page == page) return;
+    _page = page;
+    notifyListeners();
+  }
+
+  void goToProfileChildPage(AppPage page) {
+    _mobileProfileChildPage = page != AppPage.account;
+    if (_page == page) {
+      notifyListeners();
+      return;
+    }
     _page = page;
     notifyListeners();
   }
@@ -670,10 +696,6 @@ class AppController extends ChangeNotifier {
   Future<String?> setCurrentNode(NodeModel node) async {
     _nodes.selectNode(node);
     _settings.setLastNodeId(node.id);
-    if (Platform.isAndroid && coreRunning) {
-      await _reloadCoreConfig();
-      return null;
-    }
     if (supportsCoreConnection && _core.coreProcessRunning) {
       final ok = await _core.switchNode(node);
       if (!ok) return '节点切换失败，核心未响应，请重试';
@@ -684,10 +706,6 @@ class AppController extends ChangeNotifier {
   Future<String?> selectAuto() async {
     _nodes.selectAuto();
     _settings.setLastNodeId('');
-    if (Platform.isAndroid && coreRunning) {
-      await _reloadCoreConfig();
-      return null;
-    }
     if (supportsCoreConnection && _core.coreProcessRunning) {
       // Hand off to sing-box's urltest outbound — it picks the fastest node
       // automatically based on real proxy latency, no Flutter involvement.

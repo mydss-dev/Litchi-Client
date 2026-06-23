@@ -10,6 +10,8 @@ import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
+import 'mobile_back_button.dart';
+import 'mobile_page_header.dart';
 
 class MobileInvitePage extends StatefulWidget {
   const MobileInvitePage({super.key});
@@ -67,6 +69,7 @@ class _MobileInvitePageState extends State<MobileInvitePage> {
           ]
         : ctrl.inviteCodes;
     final safeSelected = _selected.clamp(0, invites.length - 1);
+    final asChild = ctrl.mobileProfileChildPage;
 
     void switchTo(int index) {
       final next = index % invites.length;
@@ -84,7 +87,21 @@ class _MobileInvitePageState extends State<MobileInvitePage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          Text('邀请好友', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
+          if (asChild)
+            Row(
+              children: [
+                MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '邀请返佣',
+                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                  ),
+                ),
+              ],
+            )
+          else
+            const MobilePageHeader(title: '邀请', subtitle: '邀请好友获得返佣奖励'),
           const SizedBox(height: 16),
           _InviteLinkPanel(
             invites: invites,

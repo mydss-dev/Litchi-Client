@@ -57,6 +57,27 @@ void main() {
     );
   });
 
+  test('skips unsupported uri protocols instead of showing dead nodes', () {
+    final nodes = SubscriptionParser.parse(
+      'shadowtls://password@example.com:443#unsupported\n'
+      'VLESS://uuid@example.com:443?security=tls#ok',
+    );
+
+    expect(nodes, hasLength(1));
+    expect(nodes.single.name, 'ok');
+    expect(nodes.single.rawUri.toLowerCase(), startsWith('vless://'));
+  });
+
+  test('parses IPv6 host and case-insensitive schemes', () {
+    final nodes = SubscriptionParser.parse(
+      'Trojan://password@[2001:db8::1]:443#ipv6',
+    );
+
+    expect(nodes, hasLength(1));
+    expect(nodes.single.server, '2001:db8::1');
+    expect(nodes.single.port, 443);
+  });
+
   test('maps subscription traffic header into app traffic model', () {
     final traffic = SubscriptionDataService.trafficFromSubTraffic(
       const SubTraffic(

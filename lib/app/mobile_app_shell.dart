@@ -10,7 +10,9 @@ import '../features/mobile/mobile_profile_page.dart';
 import '../features/mobile/mobile_settings_page.dart';
 import '../features/mobile/mobile_shop_page.dart';
 import '../features/mobile/mobile_tickets_page.dart';
+import '../features/mobile/mobile_traffic_page.dart';
 import '../features/mobile/mobile_wallet_page.dart';
+import '../shared/config/app_config.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
@@ -60,8 +62,9 @@ class _MobileShell extends StatelessWidget {
   Widget _pageFor(AppPage page) {
     switch (page) {
       case AppPage.dashboard:
-      case AppPage.traffic:
         return const MobileHomePage();
+      case AppPage.traffic:
+        return const MobileTrafficPage();
       case AppPage.nodes:
         return const MobileNodesPage();
       case AppPage.shop:
@@ -87,17 +90,11 @@ class _MobileBottomNav extends StatelessWidget {
 
   final double bottomPadding;
 
-  static const _items = [
-    _MobileNavItem(AppPage.dashboard, LucideIcons.home, '首页'),
-    _MobileNavItem(AppPage.shop, LucideIcons.shoppingBag, '套餐'),
-    _MobileNavItem(AppPage.invite, LucideIcons.gift, '邀请'),
-    _MobileNavItem(AppPage.account, LucideIcons.user, '我的'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
+    final items = _mobileNavItems();
 
     return Padding(
       padding: EdgeInsets.fromLTRB(18, 2, 18, bottomPadding + 8),
@@ -111,11 +108,15 @@ class _MobileBottomNav extends StatelessWidget {
         ),
         child: Row(
           children: [
-            for (final item in _items)
+            for (final item in items)
               Expanded(
                 child: _MobileNavButton(
                   item: item,
-                  selected: _isSelected(ctrl.page, item.page),
+                  selected: _isSelected(
+                    ctrl.page,
+                    item.page,
+                    ctrl.mobileProfileChildPage,
+                  ),
                   onTap: () => ctrl.goToPage(item.page),
                 ),
               ),
@@ -125,9 +126,12 @@ class _MobileBottomNav extends StatelessWidget {
     );
   }
 
-  bool _isSelected(AppPage current, AppPage tab) {
+  bool _isSelected(AppPage current, AppPage tab, bool profileChild) {
+    if (profileChild) {
+      return tab == AppPage.account;
+    }
     if (tab == AppPage.dashboard) {
-      return current == AppPage.dashboard || current == AppPage.traffic;
+      return current == AppPage.dashboard;
     }
     if (tab == AppPage.shop) {
       return current == AppPage.shop;
@@ -141,6 +145,56 @@ class _MobileBottomNav extends StatelessWidget {
     }
     return current == tab;
   }
+}
+
+List<_MobileNavItem> _mobileNavItems() {
+  return [
+    const _MobileNavItem(AppPage.dashboard, LucideIcons.home, '首页'),
+    for (final tab in AppConfig.mobileTabs.take(3)) _mobileNavItemFor(tab),
+    const _MobileNavItem(AppPage.account, LucideIcons.user, '我的'),
+  ];
+}
+
+_MobileNavItem _mobileNavItemFor(MobileTabConfig tab) {
+  final page = switch (tab.type) {
+    'shop' => AppPage.shop,
+    'invite' => AppPage.invite,
+    'tickets' => AppPage.tickets,
+    'wallet' => AppPage.wallet,
+    'orders' => AppPage.orders,
+    'traffic' => AppPage.traffic,
+    _ => AppPage.shop,
+  };
+  return _MobileNavItem(
+    page,
+    _mobileNavIcon(tab.icon, tab.type),
+    tab.label.isEmpty ? _mobileNavLabel(tab.type) : tab.label,
+  );
+}
+
+String _mobileNavLabel(String type) {
+  return switch (type) {
+    'shop' => '套餐',
+    'invite' => '邀请',
+    'tickets' => '工单',
+    'wallet' => '钱包',
+    'orders' => '订单',
+    'traffic' => '用量',
+    _ => '套餐',
+  };
+}
+
+IconData _mobileNavIcon(String icon, String type) {
+  final name = icon.isEmpty ? type : icon;
+  return switch (name) {
+    'shoppingBag' || 'shop' => LucideIcons.shoppingBag,
+    'gift' || 'invite' => LucideIcons.gift,
+    'messageSquare' || 'tickets' => LucideIcons.messageSquare,
+    'wallet' => LucideIcons.wallet,
+    'clipboardList' || 'orders' => LucideIcons.clipboardList,
+    'gauge' || 'traffic' => LucideIcons.gauge,
+    _ => LucideIcons.circle,
+  };
 }
 
 class _MobileNavButton extends StatelessWidget {

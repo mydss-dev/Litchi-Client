@@ -10,6 +10,7 @@ import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_switch.dart';
+import '../../shared/widgets/app_toast.dart';
 import 'mobile_back_button.dart';
 
 class MobileSettingsPage extends StatefulWidget {
@@ -105,7 +106,7 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
             _OptionRow(
               icon: LucideIcons.settings2,
               title: '高级设置',
-              subtitle: '本地端口、调试信息',
+              subtitle: '调试信息',
               value: '配置',
               onTap: () => _showAdvancedSettings(context),
             ),
@@ -129,7 +130,11 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
         ],
       ),
     );
-    if (mode != null) ctrl.setProxyMode(mode);
+    if (mode != null && mode != ctrl.proxyMode) {
+      ctrl.setProxyMode(mode);
+      if (!context.mounted) return;
+      AppToast.show(context, mode.switchToast, type: AppToastType.success);
+    }
   }
 
   Future<void> _pickDnsMode(BuildContext context) async {
@@ -159,14 +164,6 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
           title: '高级设置',
           subtitle: '一般不用改，连接异常或调试时再调整',
           children: [
-            _OptionRow(
-              icon: LucideIcons.server,
-              title: '本地端口',
-              subtitle: 'HTTP / SOCKS 混合入口',
-              value: ctrl.proxyPort.toString(),
-              onTap: () => _editPort(context),
-            ),
-            _Divider(color: AppColors.of(context).softBorder),
             _SwitchRow(
               icon: LucideIcons.code2,
               title: '开发者模式',
@@ -178,46 +175,6 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
         ),
       ),
     );
-  }
-
-  Future<void> _editPort(BuildContext context) async {
-    final ctrl = AppScope.of(context);
-    final textCtrl = TextEditingController(text: ctrl.proxyPort.toString());
-    final port = await showAppBottomSheet<int>(
-      context: context,
-      builder: (context) {
-        final c = AppColors.of(context);
-        return AppBottomSheet(
-          title: '本地端口',
-          subtitle: '建议保留默认值，除非端口被占用',
-          children: [
-            TextField(
-              controller: textCtrl,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              decoration: const InputDecoration(hintText: '7890'),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  final value = int.tryParse(textCtrl.text.trim());
-                  if (value == null || value < 1024 || value > 65535) {
-                    return;
-                  }
-                  Navigator.of(context).pop(value);
-                },
-                style: FilledButton.styleFrom(backgroundColor: c.primary),
-                child: const Text('保存'),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-    textCtrl.dispose();
-    if (port != null) await ctrl.setProxyPort(port);
   }
 }
 

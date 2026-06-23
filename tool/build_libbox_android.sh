@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REF="${1:-testing}"
+REF="${1:-${LIBBOX_REF:-v1.13.13}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WORK_DIR="${LIBBOX_WORK_DIR:-$ROOT/build/sing-box-src}"
@@ -21,6 +21,8 @@ else
   git -C "$WORK_DIR" fetch --depth 1 origin "$REF"
   git -C "$WORK_DIR" checkout FETCH_HEAD
 fi
+
+echo "Building sing-box libbox from ref $REF ($(git -C "$WORK_DIR" rev-parse HEAD))"
 
 make -C "$WORK_DIR" lib_install
 make -C "$WORK_DIR" lib_android

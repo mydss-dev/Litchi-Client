@@ -47,7 +47,10 @@ class CoreConnectionRequest {
         allowInsecure: allowInsecure,
       );
 
-  Map<String, dynamic>? buildConfig({NetworkMode? overrideNetworkMode}) {
+  Map<String, dynamic>? buildConfig({
+    NetworkMode? overrideNetworkMode,
+    int apiPort = SingboxConfig.defaultApiPort,
+  }) {
     final availableNodes = validNodes;
     if (availableNodes.isEmpty) return null;
     final tag = selectedTag;
@@ -56,12 +59,11 @@ class CoreConnectionRequest {
       availableNodes,
       selectedTag: tag,
       port: proxyPort,
-      apiPort: SingboxConfig.defaultApiPort,
+      apiPort: apiPort,
       proxyMode: proxyMode,
       dnsMode: dnsMode,
       networkMode: overrideNetworkMode ?? networkMode,
       allowInsecure: allowInsecure,
     );
   }
-
 }

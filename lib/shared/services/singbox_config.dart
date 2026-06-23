@@ -16,6 +16,9 @@ import 'outbound_parser.dart';
 abstract final class SingboxConfig {
   static const int defaultPort = 7890;
   static const int defaultApiPort = 9090;
+  static const String selectorTag = 'PROXY';
+  static const String autoSelectTag = 'AUTO';
+  static const String delayTestUrl = 'https://cp.cloudflare.com/generate_204';
 
   static String appDataDir() {
     final base =
@@ -93,7 +96,9 @@ abstract final class SingboxConfig {
 
     // Determine the active outbound for the selector's default.
     // Empty / unknown selectedTag → start with auto-select.
-    final defaultOutbound = tags.contains(selectedTag) ? selectedTag : '自动选择';
+    final defaultOutbound = tags.contains(selectedTag)
+        ? selectedTag
+        : autoSelectTag;
 
     // ── Route & rule_set ────────────────────────────────────────────────────
     final String routeFinal;
@@ -102,7 +107,7 @@ abstract final class SingboxConfig {
 
     switch (proxyMode) {
       case ProxyMode.global:
-        routeFinal = 'PROXY';
+        routeFinal = selectorTag;
         routeRules = [
           {
             // Explicit CIDR list instead of ip_is_private: Go's IsPrivate() omits
@@ -132,7 +137,7 @@ abstract final class SingboxConfig {
         ruleSets = [];
 
       case ProxyMode.rule:
-        routeFinal = 'PROXY';
+        routeFinal = selectorTag;
         routeRules = [
           if (_hasLocalRules) ...[
             {'rule_set': 'geosite-ads', 'outbound': 'block'},
@@ -173,14 +178,14 @@ abstract final class SingboxConfig {
           // Use auto-select group so DNS always uses the fastest working node.
           // Avoids DNS failure when the user's manually-selected node is down.
           // URLTest doesn't need local DNS (proxy server resolves on its side).
-          'detour': '自动选择',
+          'detour': autoSelectTag,
         };
       default: // '系统 DNS' and 'Cloudflare' both use Cloudflare DoH
         remoteDnsServer = {
           'tag': 'remote-dns',
           'type': 'https',
           'server': '1.1.1.1',
-          'detour': '自动选择',
+          'detour': autoSelectTag,
         };
     }
 
@@ -209,8 +214,8 @@ abstract final class SingboxConfig {
         {
           'type': 'tun',
           'tag': 'tun-in',
-          'address': ['172.19.0.1/30'],
-          'mtu': 9000,
+          'address': ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'],
+          'mtu': 1500,
           'auto_route': true,
           'strict_route': true,
           'stack': 'mixed',
@@ -256,16 +261,16 @@ abstract final class SingboxConfig {
         // Selector — the single exit; switched at runtime via Clash API.
         {
           'type': 'selector',
-          'tag': 'PROXY',
-          'outbounds': ['自动选择', ...tags],
+          'tag': selectorTag,
+          'outbounds': [autoSelectTag, ...tags],
           'default': defaultOutbound,
         },
         // Auto-select: tests all nodes every 10 min and picks the fastest.
         {
           'type': 'urltest',
-          'tag': '自动选择',
+          'tag': autoSelectTag,
           'outbounds': tags,
-          'url': 'https://www.gstatic.com/generate_204',
+          'url': delayTestUrl,
           'interval': '10m',
           'tolerance': 50,
         },
@@ -280,7 +285,10 @@ abstract final class SingboxConfig {
           // Without sniff running first, protocol: dns never matches and DNS
           // queries fall through to the ip_cidr private rule → direct → lost.
           if (networkMode == NetworkMode.tun)
-            {'inbound': ['tun-in'], 'action': 'sniff'},
+            {
+              'inbound': ['tun-in'],
+              'action': 'sniff',
+            },
           // hijack-dns intercepts ALL DNS now that sniff has set the metadata.
           {'protocol': 'dns', 'action': 'hijack-dns'},
           // CN DoH stays direct so it can bootstrap proxy server domains.

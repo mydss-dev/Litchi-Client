@@ -10,14 +10,21 @@ void main() {
     const insecureHy2 = 'hysteria2://pass@example.com:443?insecure=1#node';
 
     test('keeps tls.insecure when insecure nodes are allowed', () {
-      final out = OutboundParser.parse(insecureHy2, tag: 'n', allowInsecure: true);
+      final out = OutboundParser.parse(
+        insecureHy2,
+        tag: 'n',
+        allowInsecure: true,
+      );
       expect(out, isNotNull);
       expect((out!['tls'] as Map)['insecure'], isTrue);
     });
 
     test('strips tls.insecure when insecure nodes are disallowed', () {
-      final out =
-          OutboundParser.parse(insecureHy2, tag: 'n', allowInsecure: false);
+      final out = OutboundParser.parse(
+        insecureHy2,
+        tag: 'n',
+        allowInsecure: false,
+      );
       expect(out, isNotNull);
       expect((out!['tls'] as Map).containsKey('insecure'), isFalse);
     });
@@ -36,6 +43,57 @@ void main() {
       );
       expect(out, isNotNull);
       expect((out!['tls'] as Map).containsKey('insecure'), isFalse);
+    });
+
+    test('accepts Clash ws-opts and grpc-opts transport fields', () {
+      final ws = OutboundParser.parseClashProxy({
+        'type': 'vless',
+        'server': 'example.com',
+        'port': 443,
+        'uuid': '00000000-0000-0000-0000-000000000000',
+        'tls': true,
+        'network': 'ws',
+        'ws-opts': {
+          'path': '/edge',
+          'headers': {'Host': 'cdn.example.com'},
+        },
+      }, tag: 'ws');
+      expect((ws!['transport'] as Map)['path'], '/edge');
+      expect(
+        ((ws['transport'] as Map)['headers'] as Map)['Host'],
+        'cdn.example.com',
+      );
+
+      final grpc = OutboundParser.parseClashProxy({
+        'type': 'trojan',
+        'server': 'example.com',
+        'port': 443,
+        'password': 'pw',
+        'network': 'grpc',
+        'grpc-opts': {'grpc-service-name': 'svc'},
+      }, tag: 'grpc');
+      expect((grpc!['transport'] as Map)['service_name'], 'svc');
+    });
+
+    test('accepts common Clash Reality fields', () {
+      final out = OutboundParser.parseClashProxy({
+        'type': 'vless',
+        'server': 'example.com',
+        'port': 443,
+        'uuid': '00000000-0000-0000-0000-000000000000',
+        'servername': 'www.microsoft.com',
+        'client-fingerprint': 'chrome',
+        'reality-opts': {
+          'public-key': 'abc',
+          'short-id': 'def',
+          'spider-x': '/',
+        },
+      }, tag: 'reality');
+
+      final tls = out!['tls'] as Map;
+      expect((tls['reality'] as Map)['public_key'], 'abc');
+      expect((tls['reality'] as Map)['short_id'], 'def');
+      expect((tls['utls'] as Map)['fingerprint'], 'chrome');
     });
   });
 

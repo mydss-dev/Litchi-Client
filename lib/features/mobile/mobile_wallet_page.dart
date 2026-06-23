@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../shared/config/app_config.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -11,6 +12,7 @@ import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../shop/payment_dialog.dart';
 import 'mobile_back_button.dart';
+import 'mobile_page_header.dart';
 
 class MobileWalletPage extends StatefulWidget {
   const MobileWalletPage({super.key});
@@ -142,24 +144,31 @@ class _MobileWalletPageState extends State<MobileWalletPage> {
     final balance = ctrl.user.balance / 100;
     final commission = ctrl.withdrawable;
     final total = balance + commission;
+    final asPrimary = _isPrimaryMobileTab('wallet');
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          Row(
-            children: [
-              MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '我的钱包',
-                  style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+          if (asPrimary)
+            const MobilePageHeader(
+              title: '钱包',
+              subtitle: '余额、佣金与账户充值',
+            )
+          else
+            Row(
+              children: [
+                MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '我的钱包',
+                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 16),
           _WalletHero(
             total: '${ctrl.currencySymbol}${total.toStringAsFixed(2)}',
@@ -190,6 +199,10 @@ class _MobileWalletPageState extends State<MobileWalletPage> {
       ),
     );
   }
+}
+
+bool _isPrimaryMobileTab(String type) {
+  return AppConfig.mobileTabs.any((tab) => tab.type == type);
 }
 
 class _WalletHero extends StatelessWidget {

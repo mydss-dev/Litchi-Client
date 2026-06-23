@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../shared/config/app_config.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -13,6 +14,7 @@ import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../shop/payment_dialog.dart';
 import 'mobile_back_button.dart';
+import 'mobile_page_header.dart';
 
 class MobileOrdersPage extends StatefulWidget {
   const MobileOrdersPage({super.key});
@@ -110,26 +112,33 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final asPrimary = _isPrimaryMobileTab('orders');
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          Row(
-            children: [
-              MobileBackButton(
-                onTap: () => AppScope.of(context).goToPage(AppPage.account),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '订单记录',
-                  style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+          if (asPrimary)
+            const MobilePageHeader(
+              title: '订单',
+              subtitle: '查看购买记录与支付状态',
+            )
+          else
+            Row(
+              children: [
+                MobileBackButton(
+                  onTap: () => AppScope.of(context).goToPage(AppPage.account),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '订单记录',
+                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: 16),
           if (_loading)
             Padding(
@@ -162,6 +171,10 @@ class _MobileOrdersPageState extends State<MobileOrdersPage> {
       ),
     );
   }
+}
+
+bool _isPrimaryMobileTab(String type) {
+  return AppConfig.mobileTabs.any((tab) => tab.type == type);
 }
 
 class _OrderCard extends StatelessWidget {

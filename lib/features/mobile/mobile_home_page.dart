@@ -13,6 +13,7 @@ import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'mobile_node_picker_sheet.dart';
+import 'mobile_page_header.dart';
 
 class MobileHomePage extends StatefulWidget {
   const MobileHomePage({super.key});
@@ -77,6 +78,11 @@ class _MobileHomePageState extends State<MobileHomePage> {
     return '$h:$m:$s';
   }
 
+  String _formatTrafficGb(double gb) {
+    if (gb <= 0) return '0.0 GB';
+    return '${gb.toStringAsFixed(1)} GB';
+  }
+
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
@@ -118,28 +124,22 @@ class _MobileHomePageState extends State<MobileHomePage> {
             ),
           ],
           const SizedBox(height: 14),
-          _ModeStrip(selected: ctrl.proxyMode, onChanged: ctrl.setProxyMode),
+          _ModeStrip(
+            selected: ctrl.proxyMode,
+            onChanged: (mode) {
+              if (mode == ctrl.proxyMode) return;
+              ctrl.setProxyMode(mode);
+              AppToast.show(
+                context,
+                mode.switchToast,
+                type: AppToastType.success,
+              );
+            },
+          ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricCard(
-                  icon: LucideIcons.package,
-                  label: '当前套餐',
-                  value: ctrl.user.plan.isEmpty ? '--' : ctrl.user.plan,
-                  color: c.primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetricCard(
-                  icon: LucideIcons.gauge,
-                  label: '剩余流量',
-                  value: '${ctrl.traffic.remainGb.toStringAsFixed(1)} GB',
-                  color: c.primary,
-                ),
-              ),
-            ],
+          _HomeCardGrid(
+            ctrl: ctrl,
+            formatTrafficGb: _formatTrafficGb,
           ),
         ],
       ),
@@ -159,35 +159,26 @@ class _MobileHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppConfig.appName,
-                style: AppTextStyles.pageTitle.copyWith(
-                  color: c.textPrimary,
-                  fontSize: 28,
-                  letterSpacing: 0,
-                ),
+          child: MobilePageHeader(
+            title: '首页',
+            subtitle: '网络状态与节点连接',
+            trailing: Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: connected
+                    ? c.success.withValues(alpha: 0.12)
+                    : c.surfaceMuted,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: c.softBorder),
               ),
-            ],
-          ),
-        ),
-        Container(
-          width: 38,
-          height: 38,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: connected
-                ? c.success.withValues(alpha: 0.12)
-                : c.surfaceMuted,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: c.softBorder),
-          ),
-          child: Icon(
-            connected ? LucideIcons.shieldCheck : LucideIcons.shield,
-            color: connected ? c.success : c.iconMuted,
-            size: 19,
+              child: Icon(
+                connected ? LucideIcons.shieldCheck : LucideIcons.shield,
+                color: connected ? c.success : c.iconMuted,
+                size: 19,
+              ),
+            ),
           ),
         ),
       ],
@@ -403,6 +394,15 @@ class _LatencyBadge extends StatelessWidget {
   }
 }
 
+String _formatRate(int bps) {
+  if (bps <= 0) return '0 KB/s';
+  const kb = 1024;
+  const mb = 1024 * 1024;
+  if (bps >= mb) return '${(bps / mb).toStringAsFixed(1)} MB/s';
+  if (bps >= kb) return '${(bps / kb).toStringAsFixed(0)} KB/s';
+  return '$bps B/s';
+}
+
 class _ModeStrip extends StatelessWidget {
   const _ModeStrip({required this.selected, required this.onChanged});
 
@@ -479,6 +479,166 @@ class _ModeButton extends StatelessWidget {
   }
 }
 
+class _HomeCardGrid extends StatelessWidget {
+  const _HomeCardGrid({
+    required this.ctrl,
+    required this.formatTrafficGb,
+  });
+
+  final AppController ctrl;
+  final String Function(double) formatTrafficGb;
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = AppConfig.mobileHomeCards.take(4).toList();
+    final rows = <Widget>[];
+    for (var i = 0; i < cards.length; i += 2) {
+      rows.add(
+        Row(
+          children: [
+            Expanded(
+              child: _HomeConfigCard(
+                config: cards[i],
+                ctrl: ctrl,
+                formatTrafficGb: formatTrafficGb,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: i + 1 < cards.length
+                  ? _HomeConfigCard(
+                      config: cards[i + 1],
+                      ctrl: ctrl,
+                      formatTrafficGb: formatTrafficGb,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      );
+      if (i + 2 < cards.length) rows.add(const SizedBox(height: 10));
+    }
+
+    return Column(children: rows);
+  }
+}
+
+class _HomeConfigCard extends StatelessWidget {
+  const _HomeConfigCard({
+    required this.config,
+    required this.ctrl,
+    required this.formatTrafficGb,
+  });
+
+  final MobileHomeCardConfig config;
+  final AppController ctrl;
+  final String Function(double) formatTrafficGb;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final icon = _homeCardIcon(config.icon, config.type);
+    final title = config.title.isEmpty ? _homeCardTitle(config.type) : config.title;
+
+    if (config.type == 'downSpeed') {
+      return ValueListenableBuilder<int>(
+        valueListenable: ctrl.downBpsNotifier,
+        builder: (context, value, _) => _MetricCard(
+          icon: icon,
+          label: title,
+          value: _formatRate(value),
+          color: c.primary,
+        ),
+      );
+    }
+
+    if (config.type == 'upSpeed') {
+      return ValueListenableBuilder<int>(
+        valueListenable: ctrl.upBpsNotifier,
+        builder: (context, value, _) => _MetricCard(
+          icon: icon,
+          label: title,
+          value: _formatRate(value),
+          color: c.primary,
+        ),
+      );
+    }
+
+    return _MetricCard(
+      icon: icon,
+      label: title,
+      value: _homeCardValue(config.type, ctrl, formatTrafficGb),
+      color: c.primary,
+    );
+  }
+}
+
+String _homeCardValue(
+  String type,
+  AppController ctrl,
+  String Function(double) formatTrafficGb,
+) {
+  return switch (type) {
+    'currentPlan' => ctrl.user.plan.isEmpty ? '--' : ctrl.user.plan,
+    'remainTraffic' => formatTrafficGb(ctrl.traffic.remainGb),
+    'todayTraffic' => formatTrafficGb(ctrl.todayTrafficGb),
+    'resetDay' => _formatResetDay(ctrl.resetDay),
+    'deviceLimit' => _formatDeviceLimit(ctrl.deviceLimit),
+    'expireDate' => ctrl.user.expiry.isEmpty ? '--' : ctrl.user.expiry,
+    _ => '--',
+  };
+}
+
+String _homeCardTitle(String type) {
+  return switch (type) {
+    'currentPlan' => '当前套餐',
+    'remainTraffic' => '剩余流量',
+    'todayTraffic' => '今日流量',
+    'downSpeed' => '下行速率',
+    'upSpeed' => '上行速率',
+    'resetDay' => '流量重置',
+    'deviceLimit' => '设备数',
+    'expireDate' => '到期时间',
+    _ => '信息',
+  };
+}
+
+String _formatResetDay(int? resetDay) {
+  if (resetDay == null || resetDay == 0) return '--';
+  return '每月 $resetDay 日';
+}
+
+String _formatDeviceLimit(int? deviceLimit) {
+  if (deviceLimit == null) return '--';
+  return deviceLimit > 0 ? '$deviceLimit 台' : '不限';
+}
+
+IconData _homeCardIcon(String icon, String type) {
+  final name = icon.isEmpty ? type : icon;
+  return switch (name) {
+    'package' => LucideIcons.package,
+    'gauge' => LucideIcons.gauge,
+    'calendarDays' => LucideIcons.calendarDays,
+    'calendarClock' => LucideIcons.calendarClock,
+    'refreshCw' => LucideIcons.refreshCw,
+    'download' => LucideIcons.download,
+    'upload' => LucideIcons.upload,
+    'smartphone' => LucideIcons.smartphone,
+    'timer' => LucideIcons.timer,
+    'activity' => LucideIcons.activity,
+    'zap' => LucideIcons.zap,
+    'currentPlan' => LucideIcons.package,
+    'remainTraffic' => LucideIcons.gauge,
+    'todayTraffic' => LucideIcons.calendarDays,
+    'downSpeed' => LucideIcons.download,
+    'upSpeed' => LucideIcons.upload,
+    'resetDay' => LucideIcons.refreshCw,
+    'deviceLimit' => LucideIcons.smartphone,
+    'expireDate' => LucideIcons.calendarClock,
+    _ => LucideIcons.gauge,
+  };
+}
+
 class _MetricCard extends StatelessWidget {
   const _MetricCard({
     required this.icon,
@@ -496,6 +656,7 @@ class _MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Container(
+      height: 78,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: c.cardBg,

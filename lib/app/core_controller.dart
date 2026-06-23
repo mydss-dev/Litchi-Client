@@ -34,6 +34,7 @@ class CoreController extends ChangeNotifier {
   DateTime? _connectedAt;
   ConnectionStatus _status = ConnectionStatus.disconnected;
   String _coreError = '';
+  int _apiPort = SingboxConfig.defaultApiPort;
 
   /// When true, an unexpected core drop blackholes the proxy (fail-closed)
   /// instead of reverting to a direct connection. Synced from the user setting.
@@ -143,12 +144,16 @@ class CoreController extends ChangeNotifier {
     if (_core.isRunning) return;
     if (req.validNodes.isEmpty) return;
 
-    final config = req.buildConfig(overrideNetworkMode: NetworkMode.system);
+    _apiPort = await _allocateApiPort();
+    final config = req.buildConfig(
+      overrideNetworkMode: NetworkMode.system,
+      apiPort: _apiPort,
+    );
     if (config == null) return;
 
     try {
       final configPath = await SingboxConfig.writeConfig(config);
-      await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
+      await _core.start(configPath, apiPort: _apiPort);
       // _status stays disconnected — proxy is NOT enabled yet.
       if (_core.isRunning) notifyListeners();
     } catch (_) {
@@ -245,10 +250,7 @@ class CoreController extends ChangeNotifier {
       _coreError = '';
       notifyListeners();
       try {
-        await SingboxApiClient.switchProxy(
-          req.selectedTag,
-          apiPort: SingboxConfig.defaultApiPort,
-        );
+        await SingboxApiClient.switchProxy(req.selectedTag, apiPort: _apiPort);
         await ProxySetter.enable(port: req.proxyPort);
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
@@ -262,7 +264,8 @@ class CoreController extends ChangeNotifier {
     }
 
     // Full start: build config, (re)start process, enable proxy.
-    final config = req.buildConfig();
+    _apiPort = await _allocateApiPort();
+    final config = req.buildConfig(apiPort: _apiPort);
 
     if (config == null) {
       _coreError = CoreErrorMessageService.configBuildFailed;
@@ -289,7 +292,7 @@ class CoreController extends ChangeNotifier {
 
     try {
       final configPath = await SingboxConfig.writeConfig(config);
-      await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
+      await _core.start(configPath, apiPort: _apiPort);
 
       if (_core.isRunning) {
         if (req.networkMode == NetworkMode.system) {
@@ -335,7 +338,11 @@ class CoreController extends ChangeNotifier {
       return _coreError;
     }
 
-    final config = req.buildConfig(overrideNetworkMode: NetworkMode.tun);
+    _apiPort = await _allocateApiPort();
+    final config = req.buildConfig(
+      overrideNetworkMode: NetworkMode.tun,
+      apiPort: _apiPort,
+    );
 
     if (config == null) {
       _coreError = CoreErrorMessageService.configBuildFailed;
@@ -394,32 +401,32 @@ class CoreController extends ChangeNotifier {
   /// Returns true if the Clash API accepted the change.
   Future<bool> switchNode(NodeModel node) => SingboxApiClient.switchProxy(
     SingboxConfig.nodeTagFor(node),
-    apiPort: SingboxConfig.defaultApiPort,
+    apiPort: _apiPort,
   );
 
   /// Switches the PROXY selector to the urltest outbound (自动选择).
   /// sing-box then picks the fastest node internally based on real latency.
   Future<bool> switchToAuto() => SingboxApiClient.switchProxy(
-    '自动选择',
-    apiPort: SingboxConfig.defaultApiPort,
+    SingboxConfig.autoSelectTag,
+    apiPort: _apiPort,
   );
 
   // ── Mode switching ────────────────────────────────────────────────────────
 
   /// Apply [proxyMode] to the running core via Clash API (no restart needed).
   Future<void> setMode(ProxyMode proxyMode) async {
-    if (!_core.isRunning) return;
-    await SingboxApiClient.setMode(
-      proxyMode.clashValue,
-      apiPort: SingboxConfig.defaultApiPort,
-    );
+    if (!coreProcessRunning) return;
+    await SingboxApiClient.setMode(proxyMode.clashValue, apiPort: _apiPort);
   }
 
   // ── Proxy repair ──────────────────────────────────────────────────────────
 
   /// Force-sync the system proxy to match the current core state.
   /// In TUN mode the system proxy should be off; this clears any stale setting.
-  Future<void> fixProxy(int proxyPort, {NetworkMode networkMode = NetworkMode.system}) async {
+  Future<void> fixProxy(
+    int proxyPort, {
+    NetworkMode networkMode = NetworkMode.system,
+  }) async {
     if (!Platform.isWindows && !Platform.isMacOS) return;
     if (_core.isRunning && networkMode == NetworkMode.system) {
       await ProxySetter.enable(port: proxyPort);
@@ -481,15 +488,12 @@ class CoreController extends ChangeNotifier {
 
   void _startTrafficMonitor() {
     _stopTrafficMonitor();
-    _trafficSub =
-        SingboxApiClient.trafficStream(
-          apiPort: SingboxConfig.defaultApiPort,
-        ).listen((t) {
-          downBpsNotifier.value = t.downBps;
-          upBpsNotifier.value = t.upBps;
-          // Intentionally no notifyListeners() — speed widgets use
-          // ValueListenableBuilder, so the global rebuild is avoided.
-        });
+    _trafficSub = SingboxApiClient.trafficStream(apiPort: _apiPort).listen((t) {
+      downBpsNotifier.value = t.downBps;
+      upBpsNotifier.value = t.upBps;
+      // Intentionally no notifyListeners() — speed widgets use
+      // ValueListenableBuilder, so the global rebuild is avoided.
+    });
   }
 
   void _stopTrafficMonitor() {
@@ -517,7 +521,7 @@ class CoreController extends ChangeNotifier {
     final tags = nodes.map(SingboxConfig.nodeTagFor).toList();
     final history = await SingboxApiClient.testAllViaUrltest(
       tags: tags,
-      apiPort: SingboxConfig.defaultApiPort,
+      apiPort: _apiPort,
     );
 
     for (var i = 0; i < nodes.length; i++) {
@@ -528,6 +532,22 @@ class CoreController extends ChangeNotifier {
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────
+
+  Future<int> _allocateApiPort() async {
+    ServerSocket? socket;
+    try {
+      socket = await ServerSocket.bind(
+        InternetAddress.loopbackIPv4,
+        0,
+        shared: false,
+      );
+      return socket.port;
+    } catch (_) {
+      return SingboxConfig.defaultApiPort;
+    } finally {
+      await socket?.close();
+    }
+  }
 
   void _onCoreStateChanged(CoreState state) {
     // React only to unexpected terminations — a deliberate disconnect sets

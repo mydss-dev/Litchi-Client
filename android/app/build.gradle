@@ -4,6 +4,17 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def keyProperties = new Properties()
+def keyPropertiesFile = rootProject.file("key.properties")
+if (keyPropertiesFile.exists()) {
+    keyProperties.load(new FileInputStream(keyPropertiesFile))
+}
+def hasReleaseSigning =
+    keyProperties["storeFile"] &&
+    keyProperties["storePassword"] &&
+    keyProperties["keyAlias"] &&
+    keyProperties["keyPassword"]
+
 android {
     namespace "com.litchi.client"
     compileSdk flutter.compileSdkVersion
@@ -26,10 +37,22 @@ android {
         versionName flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(keyProperties["storeFile"])
+                storePassword keyProperties["storePassword"]
+                keyAlias keyProperties["keyAlias"]
+                keyPassword keyProperties["keyPassword"]
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Replace debug signing before production release.
-            signingConfig signingConfigs.debug
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
@@ -40,6 +63,7 @@ flutter {
 
 tasks.register("ensureOfficialLibbox") {
     def aar = file("libs/libbox.aar")
+    def libboxRef = providers.environmentVariable("LIBBOX_REF").orElse("v1.13.13").get()
     def psScript = file("../../tool/build_libbox_android.ps1")
     def shScript = file("../../tool/build_libbox_android.sh")
     outputs.file(aar)
@@ -58,14 +82,14 @@ tasks.register("ensureOfficialLibbox") {
                     throw new GradleException("Missing libbox build script: ${psScript}")
                 }
                 providers.exec {
-                    commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
+                    commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath, "-Ref", libboxRef
                 }.result.get().assertNormalExitValue()
             } else {
                 if (!shScript.exists()) {
                     throw new GradleException("Missing libbox build script: ${shScript}")
                 }
                 providers.exec {
-                    commandLine "bash", shScript.absolutePath
+                    commandLine "bash", shScript.absolutePath, libboxRef
                 }.result.get().assertNormalExitValue()
             }
         }

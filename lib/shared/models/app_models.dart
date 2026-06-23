@@ -218,6 +218,12 @@ enum ProxyMode {
     ProxyMode.direct => '直连模式',
   };
 
+  String get switchToast => switch (this) {
+    ProxyMode.rule => '\u5df2\u5207\u6362\u5230\u89c4\u5219\u6a21\u5f0f',
+    ProxyMode.global => '\u5df2\u5207\u6362\u5230\u5168\u5c40\u6a21\u5f0f',
+    ProxyMode.direct => '\u5df2\u5207\u6362\u5230\u76f4\u8fde\u6a21\u5f0f',
+  };
+
   /// Value sent to the Clash-compatible API (sing-box `/configs` endpoint).
   String get clashValue => switch (this) {
     ProxyMode.rule => 'rule',

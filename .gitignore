@@ -63,6 +63,9 @@ app.*.map.json
 # Android/Flutter generated caches and local machine config
 /android/.gradle/
 /android/local.properties
+/android/key.properties
+/android/app/upload-keystore.jks
+/android/app/*.jks
 **/Flutter/ephemeral/
 **/ios/Flutter/Generated.xcconfig
 **/linux/flutter/ephemeral/
@@ -72,6 +75,8 @@ app.*.map.json
 
 # Local remote-config payload (contains secret API prefix/domains) — never commit
 payload.json
+payload.js
+config.js
 
 # Local update manifest — upload to OSS, do not commit
 version.json

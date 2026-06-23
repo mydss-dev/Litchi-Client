@@ -153,6 +153,8 @@ jobs:
     name: Build Android
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    env:
+      LIBBOX_REF: v1.13.13
     steps:
       - uses: actions/checkout@v4
 
@@ -184,6 +186,37 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Configure Android signing
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+            cat > android/key.properties <<'EOF'
+          storeFile=app/upload-keystore.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "::error::Tagged Android releases require ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD secrets"
+            exit 1
+          else
+            keytool -genkeypair -v \
+              -keystore android/app/upload-keystore.jks \
+              -storepass android-ci-password \
+              -keypass android-ci-password \
+              -alias android-ci \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 3650 \
+              -dname "CN=Litchi CI,O=Litchi,C=US"
+            cat > android/key.properties <<'EOF'
+          storeFile=app/upload-keystore.jks
+          storePassword=android-ci-password
+          keyAlias=android-ci
+          keyPassword=android-ci-password
+          EOF
+          fi
+
       - name: Build release APK (multi-ABI)
         run: |
           api_base="${{ secrets.API_BASE }}"
@@ -201,9 +234,16 @@ jobs:
           color_end="${color_end:-7C3AED}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
+          IFS='.' read -r major minor patch_extra <<< "$version"
+          patch="${patch_extra%%[^0-9]*}"
+          major="${major:-0}"; minor="${minor:-0}"; patch="${patch:-0}"
+          version_code=$((10#$major * 10000 + 10#$minor * 100 + 10#$patch))
+          if [ "$version_code" -le 0 ]; then version_code="${{ github.run_number }}"; fi
           # ensureOfficialLibbox builds the official multi-ABI libbox.aar here
           # (Go + NDK + gomobile are installed above), so the core works on arm64.
           flutter build apk --release \
+            "--build-name=$version" \
+            "--build-number=$version_code" \
             "--dart-define=API_BASE=$api_base" \
             "--dart-define=APP_VERSION=$version" \
             "--dart-define=UPDATE_CHECK_URL=$update_url" \

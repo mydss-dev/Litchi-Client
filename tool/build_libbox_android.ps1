@@ -1,5 +1,5 @@
 param(
-  [string]$Ref = "testing",
+  [string]$Ref = $(if ($env:LIBBOX_REF) { $env:LIBBOX_REF } else { "v1.13.13" }),
   [string]$WorkDir = "$PSScriptRoot\..\build\sing-box-src"
 )
 
@@ -29,6 +29,14 @@ if (-not (Test-Path $WorkDir)) {
   Push-Location $WorkDir
   git fetch --depth 1 origin $Ref
   git checkout FETCH_HEAD
+  Pop-Location
+}
+
+Push-Location $WorkDir
+try {
+  $resolved = (git rev-parse HEAD).Trim()
+  Write-Host "Building sing-box libbox from ref $Ref ($resolved)"
+} finally {
   Pop-Location
 }
 

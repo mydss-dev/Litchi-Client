@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../shared/config/app_config.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -9,6 +10,7 @@ import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_switch.dart';
 import '../../shared/widgets/app_toast.dart';
+import 'mobile_page_header.dart';
 
 class MobileProfilePage extends StatefulWidget {
   const MobileProfilePage({super.key});
@@ -95,6 +97,7 @@ class _MobileProfilePageState extends State<MobileProfilePage> {
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
     final user = ctrl.user;
+    final summaryType = AppConfig.mobileProfileSummaryCard;
 
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
@@ -102,42 +105,287 @@ class _MobileProfilePageState extends State<MobileProfilePage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          Text('用户中心', style: AppTextStyles.pageTitle.copyWith(fontSize: 26)),
+          const MobilePageHeader(title: '我的', subtitle: '账号信息与套餐状态'),
           const SizedBox(height: 14),
           _ProfileHeader(
             userName: user.name,
             plan: user.plan,
             expiry: user.expiry,
             avatar: user.avatarLetter,
+            hidePlan: _isPlanSummary(summaryType),
+            hideExpiry: _isExpireSummary(summaryType),
             onManage: _showAccountSheet,
           ),
+          const SizedBox(height: 12),
+          _ProfileSummaryCard(type: summaryType, ctrl: ctrl),
           const SizedBox(height: 14),
-          _MenuTile(
-            icon: LucideIcons.walletCards,
-            title: '我的钱包',
-            subtitle: '余额、佣金与账户充值',
-            onTap: () => ctrl.goToPage(AppPage.wallet),
-          ),
-          _MenuTile(
-            icon: LucideIcons.clipboardList,
-            title: '订单记录',
-            subtitle: '查看购买记录与支付状态',
-            onTap: () => ctrl.goToPage(AppPage.orders),
-          ),
-          _MenuTile(
-            icon: LucideIcons.messageSquare,
-            title: '工单支持',
-            subtitle: '联系在线客服',
-            onTap: () => ctrl.goToPage(AppPage.tickets),
-          ),
-          _MenuTile(
-            icon: LucideIcons.settings,
-            title: '系统设置',
-            subtitle: '网络、代理与应用外观',
-            onTap: () => ctrl.goToPage(AppPage.settings),
+          _ProfileMenuSection(ctrl: ctrl),
+          if (DateTime.now().millisecondsSinceEpoch < 0)
+            GridView.count(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.58,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            children: [
+              _MenuTile(
+                icon: LucideIcons.walletCards,
+                title: '我的钱包',
+                subtitle: '余额、佣金与充值',
+                onTap: () => ctrl.goToPage(AppPage.wallet),
+              ),
+              _MenuTile(
+                icon: LucideIcons.clipboardList,
+                title: '订单记录',
+                subtitle: '购买与支付状态',
+                onTap: () => ctrl.goToPage(AppPage.orders),
+              ),
+              _MenuTile(
+                icon: LucideIcons.messageSquare,
+                title: '工单支持',
+                subtitle: '联系在线客服',
+                onTap: () => ctrl.goToPage(AppPage.tickets),
+              ),
+              _MenuTile(
+                icon: LucideIcons.settings,
+                title: '系统设置',
+                subtitle: '网络、代理与外观',
+                onTap: () => ctrl.goToPage(AppPage.settings),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TrafficOverviewCard extends StatelessWidget {
+  const _TrafficOverviewCard({
+    required this.usedGb,
+    required this.totalGb,
+    required this.remainGb,
+    required this.resetDay,
+    required this.onTap,
+  });
+
+  final double usedGb;
+  final double totalGb;
+  final double remainGb;
+  final int? resetDay;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final progress = totalGb <= 0 ? 0.0 : (usedGb / totalGb).clamp(0.0, 1.0);
+    final percent = (progress * 100).toStringAsFixed(0);
+    final reset = resetDay == null || resetDay == 0
+        ? '重置日 --'
+        : '每月 $resetDay 日重置';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: c.softBorder),
+          boxShadow: AppShadows.soft(c),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _SmallIcon(icon: LucideIcons.gauge, color: c.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '流量概览',
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: c.textPrimary,
+                    ),
+                  ),
+                ),
+                Text(
+                  '$percent%',
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textMuted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${remainGb.toStringAsFixed(1)} GB',
+                  style: AppTextStyles.largeNumber(
+                    fontSize: 24,
+                  ).copyWith(color: c.textPrimary),
+                ),
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    '剩余',
+                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 7,
+                backgroundColor: c.surfaceMuted,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  progress > 0.85 ? c.warning : c.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '已用 ${usedGb.toStringAsFixed(1)} / ${totalGb.toStringAsFixed(1)} GB',
+                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                  ),
+                ),
+                Text(
+                  reset,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileSummaryCard extends StatelessWidget {
+  const _ProfileSummaryCard({required this.type, required this.ctrl});
+
+  final String type;
+  final AppController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isPlanSummary(type)) {
+      return _InfoSummaryCard(
+        icon: LucideIcons.package,
+        title: '当前套餐',
+        value: ctrl.user.plan.isEmpty ? '暂无套餐' : ctrl.user.plan,
+      );
+    }
+
+    if (_isExpireSummary(type)) {
+      return _InfoSummaryCard(
+        icon: LucideIcons.calendarClock,
+        title: '到期时间',
+        value: ctrl.user.expiry.isEmpty ? '--' : ctrl.user.expiry,
+      );
+    }
+
+    return _TrafficOverviewCard(
+      usedGb: ctrl.traffic.usedGb,
+      totalGb: ctrl.traffic.totalGb,
+      remainGb: ctrl.traffic.remainGb,
+      resetDay: ctrl.resetDay,
+      onTap: () => ctrl.goToPage(AppPage.traffic),
+    );
+  }
+}
+
+class _InfoSummaryCard extends StatelessWidget {
+  const _InfoSummaryCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.softBorder),
+        boxShadow: AppShadows.soft(c),
+      ),
+      child: Row(
+        children: [
+          _SmallIcon(icon: icon, color: c.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+bool _isPlanSummary(String type) {
+  return type == 'plan' || type == 'currentPlan';
+}
+
+bool _isExpireSummary(String type) {
+  return type == 'expire' || type == 'expireDate';
+}
+
+class _SmallIcon extends StatelessWidget {
+  const _SmallIcon({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Icon(icon, color: color, size: 17),
     );
   }
 }
@@ -211,6 +459,8 @@ class _ProfileHeader extends StatelessWidget {
     required this.plan,
     required this.expiry,
     required this.avatar,
+    required this.hidePlan,
+    required this.hideExpiry,
     required this.onManage,
   });
 
@@ -218,6 +468,8 @@ class _ProfileHeader extends StatelessWidget {
   final String plan;
   final String expiry;
   final String avatar;
+  final bool hidePlan;
+  final bool hideExpiry;
   final VoidCallback onManage;
 
   @override
@@ -233,14 +485,7 @@ class _ProfileHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: c.primarySoft,
-            child: Text(
-              avatar.isEmpty ? 'L' : avatar,
-              style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
-            ),
-          ),
+          _ProfileAvatar(avatar: avatar),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -251,11 +496,12 @@ class _ProfileHeader extends StatelessWidget {
                   style: AppTextStyles.bodyStrong.copyWith(fontSize: 16),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  plan.isEmpty ? '暂无套餐' : plan,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
-                if (expiry.isNotEmpty)
+                if (!hidePlan)
+                  Text(
+                    '当前套餐：${plan.isEmpty ? '暂无套餐' : plan}',
+                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                  ),
+                if (!hideExpiry && expiry.isNotEmpty)
                   Text(
                     '到期：$expiry',
                     style: AppTextStyles.caption.copyWith(color: c.textMuted),
@@ -300,6 +546,227 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.avatar});
+
+  final String avatar;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final url = AppConfig.userAvatarUrl.trim();
+    final fallback = Text(
+      avatar.isEmpty ? 'L' : avatar,
+      style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
+    );
+
+    if (url.isEmpty) {
+      return CircleAvatar(
+        radius: 25,
+        backgroundColor: c.primarySoft,
+        child: fallback,
+      );
+    }
+
+    return CircleAvatar(
+      radius: 25,
+      backgroundColor: c.primarySoft,
+      foregroundImage: NetworkImage(url),
+      onForegroundImageError: (_, _) {},
+      child: fallback,
+    );
+  }
+}
+
+class _ProfileMenuSection extends StatelessWidget {
+  const _ProfileMenuSection({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      for (final item in AppConfig.mobileProfileMenu)
+        _MenuEntry(
+          icon: _profileMenuIcon(item.icon, item.type),
+          title: item.title.isEmpty ? _profileMenuTitle(item.type) : item.title,
+          subtitle: item.subtitle.isEmpty
+              ? _profileMenuSubtitle(item.type)
+              : item.subtitle,
+          page: _profileMenuPage(item.type),
+        ),
+      const _MenuEntry(
+        icon: LucideIcons.settings,
+        title: '系统设置',
+        subtitle: '网络、代理与外观',
+        page: AppPage.settings,
+      ),
+    ];
+
+    if (AppConfig.mobileProfileMenuLayout == 'list') {
+      return Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            _MenuListTile(
+              icon: items[i].icon,
+              title: items[i].title,
+              subtitle: items[i].subtitle,
+              onTap: () => ctrl.goToProfileChildPage(items[i].page),
+            ),
+            if (i + 1 < items.length) const SizedBox(height: 10),
+          ],
+        ],
+      );
+    }
+
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.58,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      children: [
+        for (final item in items)
+          _MenuTile(
+            icon: item.icon,
+            title: item.title,
+            subtitle: item.subtitle,
+            onTap: () => ctrl.goToProfileChildPage(item.page),
+          ),
+      ],
+    );
+  }
+}
+
+class _MenuEntry {
+  const _MenuEntry({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.page,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final AppPage page;
+}
+
+class _MenuListTile extends StatelessWidget {
+  const _MenuListTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: c.softBorder),
+          boxShadow: AppShadows.soft(c),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: c.primarySoft,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, color: c.primary, size: 19),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTextStyles.bodyStrong),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Icon(LucideIcons.chevronRight, size: 18, color: c.iconMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+AppPage _profileMenuPage(String type) {
+  return switch (type) {
+    'wallet' => AppPage.wallet,
+    'orders' => AppPage.orders,
+    'tickets' => AppPage.tickets,
+    'traffic' => AppPage.traffic,
+    'invite' => AppPage.invite,
+    'shop' => AppPage.shop,
+    _ => AppPage.settings,
+  };
+}
+
+String _profileMenuTitle(String type) {
+  return switch (type) {
+    'wallet' => '我的钱包',
+    'orders' => '订单记录',
+    'tickets' => '工单支持',
+    'traffic' => '用量统计',
+    'invite' => '邀请返佣',
+    'shop' => '套餐购买',
+    _ => '功能',
+  };
+}
+
+String _profileMenuSubtitle(String type) {
+  return switch (type) {
+    'wallet' => '余额、佣金与账户充值',
+    'orders' => '查看购买记录与支付状态',
+    'tickets' => '联系在线客服',
+    'traffic' => '查看流量与近期记录',
+    'invite' => '邀请好友获得返佣奖励',
+    'shop' => '选择适合你的流量方案',
+    _ => '',
+  };
+}
+
+IconData _profileMenuIcon(String icon, String type) {
+  final name = icon.isEmpty ? type : icon;
+  return switch (name) {
+    'wallet' => LucideIcons.wallet,
+    'walletCards' => LucideIcons.walletCards,
+    'orders' || 'clipboardList' => LucideIcons.clipboardList,
+    'tickets' || 'messageSquare' => LucideIcons.messageSquare,
+    'traffic' || 'gauge' => LucideIcons.gauge,
+    'invite' || 'gift' => LucideIcons.gift,
+    'shop' || 'shoppingBag' => LucideIcons.shoppingBag,
+    _ => LucideIcons.circle,
+  };
+}
+
 class _MenuTile extends StatelessWidget {
   const _MenuTile({
     required this.icon,
@@ -316,49 +783,44 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: c.softBorder),
-            boxShadow: AppShadows.soft(c),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: c.primarySoft,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(icon, color: c.primary, size: 19),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: c.softBorder),
+          boxShadow: AppShadows.soft(c),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: c.primarySoft,
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.bodyStrong),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(LucideIcons.chevronRight, color: c.iconMuted, size: 18),
-            ],
-          ),
+              child: Icon(icon, color: c.primary, size: 19),
+            ),
+            const Spacer(),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyStrong,
+            ),
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption.copyWith(color: c.textMuted),
+            ),
+          ],
         ),
       ),
     );

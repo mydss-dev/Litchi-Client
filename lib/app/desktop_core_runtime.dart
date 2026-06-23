@@ -40,7 +40,10 @@ class DesktopCoreRuntime implements CoreRuntime {
       return false;
     }
     final configPath = await SingboxConfig.writeConfig(config);
-    await _core.start(configPath, apiPort: SingboxConfig.defaultApiPort);
+    await _core.start(
+      configPath,
+      apiPort: plan.apiPort ?? SingboxConfig.defaultApiPort,
+    );
     if (!_core.isRunning) _lastError = _core.lastError;
     return _core.isRunning;
   }
