@@ -24,7 +24,7 @@ void main() {
     expect(config!['outbounds'], isA<List>());
   });
 
-  test('rule mode requires bundled rule files', () {
+  test('rule mode still builds when bundled rule files are absent', () {
     const node = NodeModel(
       id: 'n1',
       name: 'hk',
@@ -32,17 +32,13 @@ void main() {
       latency: 0,
       rawUri: 'trojan://password@example.com:443#hk',
     );
-    final missing = SingboxConfig.missingRuleFiles();
     final config = SingboxConfig.buildFullConfig(
       [node],
       selectedTag: SingboxConfig.nodeTagFor(node),
       proxyMode: ProxyMode.rule,
     );
 
-    if (missing.isEmpty) {
-      expect(config, isNotNull);
-    } else {
-      expect(config, isNull);
-    }
+    expect(config, isNotNull);
+    expect(config!['route'], isA<Map>());
   });
 }
