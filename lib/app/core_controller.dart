@@ -37,6 +37,10 @@ class CoreController extends ChangeNotifier {
   String _coreError = '';
   int _apiPort = SingboxConfig.defaultApiPort;
 
+  bool _connectionToggleInFlight = false;
+  DateTime? _lastConnectionToggleAt;
+  static const Duration _connectionToggleCooldown = Duration(milliseconds: 800);
+
   /// When true, an unexpected core drop blackholes the proxy (fail-closed)
   /// instead of reverting to a direct connection. Synced from the user setting.
   bool killSwitchEnabled = false;
@@ -56,6 +60,12 @@ class CoreController extends ChangeNotifier {
   bool get coreConnecting =>
       _status == ConnectionStatus.connecting ||
       _status == ConnectionStatus.disconnecting;
+
+  /// Locks connection controls while an action is in-flight or briefly after it
+  /// completes. This prevents rapid enable/disable clicks from racing system
+  /// proxy writes, core restarts, and Android VPN lifecycle calls.
+  bool get connectionActionLocked =>
+      coreConnecting || _connectionToggleInFlight || _isConnectionToggleCoolingDown;
 
   /// True when the sing-box process is alive, regardless of proxy state.
   /// Use this to guard latency tests — the Clash API is available whenever
@@ -223,6 +233,15 @@ class CoreController extends ChangeNotifier {
   /// TUN mode always performs a full restart since the TUN adapter cannot be
   /// toggled without reloading the config.
   Future<String?> toggleConnection(CoreConnectionRequest req) async {
+    if (!_beginConnectionToggle()) return null;
+    try {
+      return await _toggleConnection(req);
+    } finally {
+      _endConnectionToggle();
+    }
+  }
+
+  Future<String?> _toggleConnection(CoreConnectionRequest req) async {
     if (Platform.isAndroid) {
       return _toggleAndroidConnection(req);
     }
@@ -260,7 +279,11 @@ class CoreController extends ChangeNotifier {
       _coreError = '';
       notifyListeners();
       try {
-        await SingboxApiClient.switchProxy(req.selectedTag, apiPort: _apiPort);
+        final switched = await SingboxApiClient.switchProxy(
+          req.selectedTag,
+          apiPort: _apiPort,
+        );
+        if (!switched) throw StateError('switch proxy failed');
         await ProxySetter.enable(port: req.proxyPort);
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
@@ -541,6 +564,25 @@ class CoreController extends ChangeNotifier {
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────
+
+  bool get _isConnectionToggleCoolingDown {
+    final last = _lastConnectionToggleAt;
+    if (last == null) return false;
+    return DateTime.now().difference(last) < _connectionToggleCooldown;
+  }
+
+  bool _beginConnectionToggle() {
+    if (connectionActionLocked) return false;
+    _connectionToggleInFlight = true;
+    notifyListeners();
+    return true;
+  }
+
+  void _endConnectionToggle() {
+    _lastConnectionToggleAt = DateTime.now();
+    _connectionToggleInFlight = false;
+    notifyListeners();
+  }
 
   Future<int> _allocateApiPort() async {
     ServerSocket? socket;
