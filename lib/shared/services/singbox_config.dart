@@ -43,11 +43,15 @@ abstract final class SingboxConfig {
   ];
 
   static String appDataDir() {
-    final base =
-        Platform.environment['LOCALAPPDATA'] ??
-        Platform.environment['APPDATA'] ??
-        Directory.systemTemp.path;
-    return '$base\\Litchi';
+    final sep = Platform.pathSeparator;
+    final base = Platform.isWindows
+        ? (Platform.environment['LOCALAPPDATA'] ??
+              Platform.environment['APPDATA'] ??
+              Directory.systemTemp.path)
+        : (Platform.environment['HOME'] != null
+              ? '${Platform.environment['HOME']}/Library/Application Support'
+              : Directory.systemTemp.path);
+    return '$base${sep}Litchi';
   }
 
   // Rule set files are bundled next to the exe under rules\ in production.
@@ -276,7 +280,7 @@ abstract final class SingboxConfig {
         'clash_api': {
           'external_controller': '127.0.0.1:$apiPort',
           'secret': apiSecret,
-          'default_mode': 'rule',
+          'default_mode': proxyMode.clashValue,
         },
         // Cache DNS results and rule-set lookups across restarts.
         'cache_file': {'enabled': true},
@@ -397,7 +401,7 @@ abstract final class SingboxConfig {
   static Future<String> writeConfig(Map<String, dynamic> config) async {
     final dir = Directory(appDataDir());
     await dir.create(recursive: true);
-    final file = File('${dir.path}\\core.json');
+    final file = File('${dir.path}${Platform.pathSeparator}core.json');
     await file.writeAsString(encodeConfig(config));
     return file.path;
   }
