@@ -6,11 +6,11 @@ import '../../app/app_controller.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/widgets/brand_logo.dart';
 import 'change_password_page.dart';
 import 'forgot_password_page.dart';
 import 'login_page.dart';
 import 'register_page.dart';
-import '../../shared/widgets/brand_logo.dart';
 
 bool get _isDesktop =>
     Platform.isWindows || Platform.isMacOS || Platform.isLinux;
@@ -20,7 +20,7 @@ class AuthFlow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screen = AppScope.of(context).authScreen;
+    final AuthScreen screen = AppScope.of(context).authScreen;
 
     final spec = switch (screen) {
       AuthScreen.login => const _AuthSpec(
@@ -71,8 +71,6 @@ class _AuthArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Container(
-      // On desktop the window itself is the card (see AppShell), so don't fill
-      // a background or draw an inner card here — that would nest a second frame.
       color: _isDesktop ? Colors.transparent : c.appBg,
       child: SafeArea(
         child: LayoutBuilder(
@@ -120,8 +118,16 @@ class _AuthArea extends StatelessWidget {
                                 fontSize: 14,
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            spec.child,
+                            const SizedBox(height: 18),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 220),
+                              switchInCurve: Curves.easeOutCubic,
+                              switchOutCurve: Curves.easeInCubic,
+                              child: KeyedSubtree(
+                                key: ValueKey(screen),
+                                child: spec.child,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -142,6 +148,6 @@ class _AuthBrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const BrandLogo(size: 52, radius: 16);
+    return const BrandLogo(size: 54);
   }
 }
