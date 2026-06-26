@@ -6,7 +6,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../shared/config/app_config.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/services/singbox_config.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -71,7 +70,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
-    final ruleStatus = SingboxConfig.ruleStatus(ctrl.proxyMode);
 
     return SingleChildScrollView(
       child: Column(
@@ -182,12 +180,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-              if (!ruleStatus.isNormal)
-                _SettingRow(
-                  label: '规则文件',
-                  subtitle: _ruleStatusSubtitle(ruleStatus),
-                  trailing: _RuleStatusBadge(status: ruleStatus),
-                ),
               _SettingRow(
                 label: '重启核心',
                 trailing: _DiagnosticButton(
@@ -248,13 +240,6 @@ void _openUrl(String url) {
   }
 }
 
-String _ruleStatusSubtitle(RuleSetStatus status) {
-  if (status.isNormal) return '规则文件完整，规则模式可正常分流';
-  final missing = status.missingFiles.join(', ');
-  if (status.isDegraded) return '缺失 $missing，规则模式已降级';
-  return '缺失 $missing';
-}
-
 class _HttpsWarningCard extends StatelessWidget {
   const _HttpsWarningCard();
 
@@ -304,11 +289,15 @@ class _SettingsGroup extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary)),
+          Text(
+            title,
+            style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
+          ),
           const SizedBox(height: 6),
           for (int i = 0; i < children.length; i++) ...[
             children[i],
-            if (i != children.length - 1) Divider(color: c.softBorder, height: 1),
+            if (i != children.length - 1)
+              Divider(color: c.softBorder, height: 1),
           ],
         ],
       ),
@@ -317,7 +306,11 @@ class _SettingsGroup extends StatelessWidget {
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow({required this.label, required this.trailing, this.subtitle});
+  const _SettingRow({
+    required this.label,
+    required this.trailing,
+    this.subtitle,
+  });
 
   final String label;
   final String? subtitle;
@@ -335,11 +328,16 @@ class _SettingRow extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: AppTextStyles.body.copyWith(color: c.textPrimary)),
+                Text(
+                  label,
+                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
+                ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: AppTextStyles.caption.copyWith(color: c.textSecondary),
+                    style: AppTextStyles.caption.copyWith(
+                      color: c.textSecondary,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -353,42 +351,12 @@ class _SettingRow extends StatelessWidget {
   }
 }
 
-class _RuleStatusBadge extends StatelessWidget {
-  const _RuleStatusBadge({required this.status});
-
-  final RuleSetStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final (label, color) = switch (status.state) {
-      RuleSetState.normal => ('正常', c.success),
-      RuleSetState.missing => ('缺失', c.warning),
-      RuleSetState.degraded => ('已降级', c.danger),
-    };
-
-    return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.caption.copyWith(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
 class _DiagnosticButton extends StatelessWidget {
-  const _DiagnosticButton({required this.label, required this.onTap, this.enabled = true});
+  const _DiagnosticButton({
+    required this.label,
+    required this.onTap,
+    this.enabled = true,
+  });
 
   final String label;
   final VoidCallback onTap;
@@ -516,7 +484,10 @@ class _LogoutConfirmDialog extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 '退出后会断开当前代理连接，并清除本次登录状态。',
-                style: AppTextStyles.body.copyWith(color: c.textSecondary, height: 1.55),
+                style: AppTextStyles.body.copyWith(
+                  color: c.textSecondary,
+                  height: 1.55,
+                ),
               ),
               const SizedBox(height: 22),
               Row(
@@ -543,7 +514,11 @@ class _LogoutConfirmDialog extends StatelessWidget {
 }
 
 class _DialogButton extends StatelessWidget {
-  const _DialogButton({required this.label, required this.onTap, this.danger = false});
+  const _DialogButton({
+    required this.label,
+    required this.onTap,
+    this.danger = false,
+  });
 
   final String label;
   final VoidCallback onTap;
@@ -628,10 +603,16 @@ class _PortSettingRowState extends State<_PortSettingRow> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('代理端口', style: AppTextStyles.body.copyWith(color: c.textPrimary)),
+                Text(
+                  '代理端口',
+                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
+                ),
                 Text(
                   'HTTP + SOCKS5  127.0.0.1:${widget.controller.proxyPort}',
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted, fontSize: 10),
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textMuted,
+                    fontSize: 10,
+                  ),
                 ),
               ],
             ),
@@ -650,10 +631,15 @@ class _PortSettingRowState extends State<_PortSettingRow> {
               ),
               decoration: InputDecoration(
                 isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.sm),
-                  borderSide: BorderSide(color: _hasError ? c.danger : c.border),
+                  borderSide: BorderSide(
+                    color: _hasError ? c.danger : c.border,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.sm),
