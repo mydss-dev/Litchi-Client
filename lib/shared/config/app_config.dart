@@ -44,11 +44,7 @@ class MobileTabConfig {
   factory MobileTabConfig.fromJson(dynamic raw) {
     if (raw is String) {
       final type = raw.trim();
-      return MobileTabConfig(
-        type: type,
-        label: '',
-        icon: '',
-      );
+      return MobileTabConfig(type: type, label: '', icon: '');
     }
     if (raw is Map) {
       final json = Map<String, dynamic>.from(raw);
@@ -178,16 +174,8 @@ abstract final class AppConfig {
   static String logoLetter = BrandConfig.logoLetter;
   static String userAvatarUrl = '';
   static List<MobileHomeCardConfig> mobileHomeCards = const [
-    MobileHomeCardConfig(
-      type: 'downSpeed',
-      title: '下行速率',
-      icon: 'download',
-    ),
-    MobileHomeCardConfig(
-      type: 'upSpeed',
-      title: '上行速率',
-      icon: 'upload',
-    ),
+    MobileHomeCardConfig(type: 'downSpeed', title: '下行速率', icon: 'download'),
+    MobileHomeCardConfig(type: 'upSpeed', title: '上行速率', icon: 'upload'),
   ];
   static List<MobileTabConfig> mobileTabs = const [
     MobileTabConfig(type: 'shop', label: '套餐', icon: 'shoppingBag'),
@@ -270,7 +258,7 @@ abstract final class AppConfig {
     _str(json, 'api_user_agent', (v) => apiUserAgent = v);
     _str(json, 'api_path_prefix', (v) => apiPathPrefix = v);
     _str(json, 'latest_version', (v) => latestVersion = v);
-    _str(json, 'download_url', (v) => downloadUrl = v);
+    _url(json, 'download_url', (v) => downloadUrl = v);
     _str(json, 'changelog', (v) => changelog = v);
     final bases = json['api_base_list'];
     if (bases is List) {
@@ -288,14 +276,14 @@ abstract final class AppConfig {
     _mobileHomeCards(json);
     _mobileTabs(json);
     _mobileProfile(json);
-    _firstStr(json, [
+    _firstUrl(json, [
       'invite_url_base',
       'invite_base_url',
       'invite_url',
       'frontend_url',
       'site_url',
     ], (v) => inviteUrlBase = v);
-    _str(json, 'support_url', (v) => supportUrl = v);
+    _url(json, 'support_url', (v) => supportUrl = v);
     _str(json, 'min_version', (v) => minVersion = v);
     _color(json, 'brand_color_start', (v) => brandStart = v);
     _color(json, 'brand_color_end', (v) => brandEnd = v);
@@ -310,15 +298,17 @@ abstract final class AppConfig {
     if (v is String && v.isNotEmpty) apply(v);
   }
 
-  static void _firstStr(
+  static void _firstUrl(
     Map<String, dynamic> json,
     List<String> keys,
     void Function(String) apply,
   ) {
     for (final key in keys) {
       final v = json[key];
-      if (v is String && v.isNotEmpty) {
-        apply(v);
+      if (v is! String || v.isEmpty) continue;
+      final normalized = _trustedHttpsUrl(v);
+      if (normalized != null) {
+        apply(normalized);
         return;
       }
     }
@@ -326,7 +316,9 @@ abstract final class AppConfig {
 
   static void _mobileHomeCards(Map<String, dynamic> json) {
     final mobile = json['mobile'];
-    final rawCards = mobile is Map ? mobile['home_cards'] : json['mobile_home_cards'];
+    final rawCards = mobile is Map
+        ? mobile['home_cards']
+        : json['mobile_home_cards'];
     if (rawCards is! List) return;
 
     const supportedTypes = {
@@ -436,10 +428,15 @@ abstract final class AppConfig {
   ) {
     final v = json[key];
     if (v is! String || v.isEmpty) return;
-    final u = Uri.tryParse(v);
-    if (u != null && u.scheme == 'https' && u.host.isNotEmpty) {
-      apply(v);
-    }
+    final normalized = _trustedHttpsUrl(v);
+    if (normalized != null) apply(normalized);
+  }
+
+  static String? _trustedHttpsUrl(String value) {
+    final trimmed = value.trim();
+    final u = Uri.tryParse(trimmed);
+    if (u != null && u.scheme == 'https' && u.host.isNotEmpty) return trimmed;
+    return null;
   }
 
   static void _color(

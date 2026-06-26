@@ -13,6 +13,13 @@ import 'singbox_config.dart';
 abstract final class SingboxApiClient {
   static const String _selectorGroup = SingboxConfig.selectorTag;
 
+  /// Returns true only when the Clash-compatible API responds with the
+  /// expected authenticated `/proxies` payload.
+  static Future<bool> isReady({int apiPort = 9090}) async {
+    final data = await getProxies(apiPort: apiPort);
+    return data != null && data['proxies'] is Map;
+  }
+
   /// Switch the active outbound inside the running sing-box process.
   ///
   /// [tag]     — the outbound tag to activate (must exist in the running config).

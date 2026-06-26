@@ -90,7 +90,7 @@ class _MobileProfilePageState extends State<MobileProfilePage> {
       builder: (_) => const _LogoutSheet(),
     );
     if (confirmed != true || !mounted) return;
-    AppScope.of(context).logout();
+    await AppScope.of(context).logout();
   }
 
   @override
@@ -122,40 +122,40 @@ class _MobileProfilePageState extends State<MobileProfilePage> {
           _ProfileMenuSection(ctrl: ctrl),
           if (DateTime.now().millisecondsSinceEpoch < 0)
             GridView.count(
-            crossAxisCount: 2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 1.58,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            children: [
-              _MenuTile(
-                icon: LucideIcons.walletCards,
-                title: '我的钱包',
-                subtitle: '余额、佣金与充值',
-                onTap: () => ctrl.goToPage(AppPage.wallet),
-              ),
-              _MenuTile(
-                icon: LucideIcons.clipboardList,
-                title: '订单记录',
-                subtitle: '购买与支付状态',
-                onTap: () => ctrl.goToPage(AppPage.orders),
-              ),
-              _MenuTile(
-                icon: LucideIcons.messageSquare,
-                title: '工单支持',
-                subtitle: '联系在线客服',
-                onTap: () => ctrl.goToPage(AppPage.tickets),
-              ),
-              _MenuTile(
-                icon: LucideIcons.settings,
-                title: '系统设置',
-                subtitle: '网络、代理与外观',
-                onTap: () => ctrl.goToPage(AppPage.settings),
-              ),
-            ],
-          ),
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.58,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              children: [
+                _MenuTile(
+                  icon: LucideIcons.walletCards,
+                  title: '我的钱包',
+                  subtitle: '余额、佣金与充值',
+                  onTap: () => ctrl.goToPage(AppPage.wallet),
+                ),
+                _MenuTile(
+                  icon: LucideIcons.clipboardList,
+                  title: '订单记录',
+                  subtitle: '购买与支付状态',
+                  onTap: () => ctrl.goToPage(AppPage.orders),
+                ),
+                _MenuTile(
+                  icon: LucideIcons.messageSquare,
+                  title: '工单支持',
+                  subtitle: '联系在线客服',
+                  onTap: () => ctrl.goToPage(AppPage.tickets),
+                ),
+                _MenuTile(
+                  icon: LucideIcons.settings,
+                  title: '系统设置',
+                  subtitle: '网络、代理与外观',
+                  onTap: () => ctrl.goToPage(AppPage.settings),
+                ),
+              ],
+            ),
         ],
       ),
     );

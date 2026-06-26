@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -6,7 +7,7 @@ import 'package:dio/io.dart';
 import '../config/app_config.dart';
 import 'secure_logger.dart';
 
-typedef SessionExpiredCallback = void Function();
+typedef SessionExpiredCallback = FutureOr<void> Function();
 
 /// Thrown when the remote API returns a non-success response.
 class ApiException implements Exception {
@@ -160,7 +161,8 @@ class ApiClient {
                 msg.toLowerCase().contains('unauthorized') ||
                 msg.toLowerCase().contains('unauthenticated');
             if (isExpired && !_isPublicAuthPath(response.requestOptions.path)) {
-              onSessionExpired?.call();
+              final callback = onSessionExpired;
+              if (callback != null) unawaited(Future<void>.sync(callback));
             }
           }
           handler.next(response);

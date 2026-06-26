@@ -92,6 +92,8 @@ class AppController extends ChangeNotifier {
   RegisterConfig _registerConfig = const RegisterConfig();
   bool _disposed = false;
   bool _isInitialLoading = false;
+  bool _logoutInFlight = false;
+  int _latencyRunId = 0;
 
   // ── Settings delegates ────────────────────────────────────────────────────
 
@@ -317,6 +319,7 @@ class AppController extends ChangeNotifier {
   Future<void> _restoreCachedNodes() async {
     final cached = await NodeCacheService.load();
     if (cached.isEmpty) return;
+    _invalidateLatencyRuns();
     _nodes.setNodes(cached);
     _restoreLastNode();
     if (supportsCoreConnection) {
@@ -511,25 +514,31 @@ class AppController extends ChangeNotifier {
     unawaited(_refreshAfterAutoLogin());
   }
 
-  void logout() {
-    _core.stopAndReset();
-    _isAuthenticated = false;
-    _authScreen = AuthScreen.login;
-    TokenStorage.clearAuthData();
-    // Note: the remembered email/password are intentionally KEPT so the login
-    // form stays prefilled. Auto-login is token-only, so clearing the token
-    // above is enough to return to the login screen on next launch.
-    _apiClient.updateAuthData(null);
-    _account.reset();
-    _nodes.reset();
-    _plans = const [];
-    _invite.reset();
-    _wallet.reset();
-    _subscription.reset();
-    _dataLoadError = null;
-    _notices.reset();
-    unawaited(NodeCacheService.clear());
-    notifyListeners();
+  Future<void> logout() async {
+    if (_logoutInFlight) return;
+    _logoutInFlight = true;
+    try {
+      await _core.stopAndReset();
+      _isAuthenticated = false;
+      _authScreen = AuthScreen.login;
+      await TokenStorage.clearAuthData();
+      // Note: the remembered email/password are intentionally KEPT so the login
+      // form stays prefilled. Auto-login is token-only, so clearing the token
+      // above is enough to return to the login screen on next launch.
+      _apiClient.updateAuthData(null);
+      _account.reset();
+      _nodes.reset();
+      _plans = const [];
+      _invite.reset();
+      _wallet.reset();
+      _subscription.reset();
+      _dataLoadError = null;
+      _notices.reset();
+      await NodeCacheService.clear();
+      notifyListeners();
+    } finally {
+      _logoutInFlight = false;
+    }
   }
 
   // ── Connection ────────────────────────────────────────────────────────────
@@ -636,6 +645,7 @@ class AppController extends ChangeNotifier {
   Future<void> refreshNodes() async {
     final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
     if (snap.nodes != null && snap.nodes!.isNotEmpty) {
+      _invalidateLatencyRuns();
       _nodes.setNodes(snap.nodes!);
       _restoreLastNode();
       _account.setTraffic(snap.traffic);
@@ -650,7 +660,10 @@ class AppController extends ChangeNotifier {
   void _applySnapshot(DataSnapshot snap) {
     _account.applySnapshot(user: snap.user, traffic: snap.traffic);
     _subscription.applySnapshot(subscribeUrl: snap.subscribeUrl);
-    if (snap.nodes != null) _nodes.setNodes(snap.nodes!);
+    if (snap.nodes != null) {
+      _invalidateLatencyRuns();
+      _nodes.setNodes(snap.nodes!);
+    }
     if (snap.plans != null) _plans = snap.plans!;
     _invite.applySnapshot(
       codes: snap.inviteCodes,
@@ -694,24 +707,24 @@ class AppController extends ChangeNotifier {
   /// Switch to [node]. Returns an error string if the core rejected the
   /// switch, or null on success.
   Future<String?> setCurrentNode(NodeModel node) async {
-    _nodes.selectNode(node);
-    _settings.setLastNodeId(node.id);
     if (supportsCoreConnection && _core.coreProcessRunning) {
       final ok = await _core.switchNode(node);
       if (!ok) return '节点切换失败，核心未响应，请重试';
     }
+    _nodes.selectNode(node);
+    _settings.setLastNodeId(node.id);
     return null;
   }
 
   Future<String?> selectAuto() async {
-    _nodes.selectAuto();
-    _settings.setLastNodeId('');
     if (supportsCoreConnection && _core.coreProcessRunning) {
       // Hand off to sing-box's urltest outbound — it picks the fastest node
       // automatically based on real proxy latency, no Flutter involvement.
       final ok = await _core.switchToAuto();
       if (!ok) return '自动选择切换失败，核心未响应，请重试';
     }
+    _nodes.selectAuto();
+    _settings.setLastNodeId('');
     return null;
   }
 
@@ -757,12 +770,15 @@ class AppController extends ChangeNotifier {
     }
 
     // Mark all nodes as testing (-1) so the UI shows an in-progress state.
+    final runId = _nextLatencyRunId();
     _nodes.markAllLatency(-1);
 
     final snapshot = List<NodeModel>.from(_nodes.nodes);
     await _core.testLatencies(
       snapshot,
-      onResult: (idx, updated) => _nodes.applyLatencyAt(idx, updated),
+      onResult: (idx, updated) {
+        if (_isCurrentLatencyRun(runId)) _nodes.applyLatencyAt(idx, updated);
+      },
     );
   }
 
@@ -773,14 +789,18 @@ class AppController extends ChangeNotifier {
       return;
     }
 
+    final runId = _nextLatencyRunId();
     final snapshot = List<NodeModel>.from(_nodes.nodes);
     await _core.testLatencies(
       snapshot,
-      onResult: (idx, updated) => _nodes.applyLatencyAt(idx, updated),
+      onResult: (idx, updated) {
+        if (_isCurrentLatencyRun(runId)) _nodes.applyLatencyAt(idx, updated);
+      },
     );
   }
 
   Future<void> _testTcpLatencies({required bool showProgress}) async {
+    final runId = _nextLatencyRunId();
     if (showProgress) _nodes.markAllLatency(-1);
 
     final snapshot = List<NodeModel>.from(_nodes.nodes);
@@ -795,9 +815,19 @@ class AppController extends ChangeNotifier {
         }),
       );
       if (_disposed) return;
-      _nodes.applyLatencyById({for (final r in results) r.id: r.latency});
+      if (_isCurrentLatencyRun(runId)) {
+        _nodes.applyLatencyById({for (final r in results) r.id: r.latency});
+      }
     }
   }
+
+  int _nextLatencyRunId() => ++_latencyRunId;
+
+  void _invalidateLatencyRuns() {
+    _latencyRunId++;
+  }
+
+  bool _isCurrentLatencyRun(int runId) => !_disposed && runId == _latencyRunId;
 }
 
 /// Exposes [AppController] to descendants and rebuilds them on change.

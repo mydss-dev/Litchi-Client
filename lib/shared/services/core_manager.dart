@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'secure_logger.dart';
+import 'singbox_api_client.dart';
 
 enum CoreState { stopped, starting, running, error }
 
@@ -13,11 +14,11 @@ class CoreManager {
   String _lastError = '';
 
   final _stateCtrl = StreamController<CoreState>.broadcast();
-  final _logCtrl   = StreamController<String>.broadcast();
+  final _logCtrl = StreamController<String>.broadcast();
 
-  CoreState get state      => _state;
-  String get lastError     => _lastError;
-  bool get isRunning       => _state == CoreState.running;
+  CoreState get state => _state;
+  String get lastError => _lastError;
+  bool get isRunning => _state == CoreState.running;
   Stream<CoreState> get stateStream => _stateCtrl.stream;
 
   /// Emits stripped log lines from sing-box stdout + stderr.
@@ -26,8 +27,17 @@ class CoreManager {
   // ── PID file ──────────────────────────────────────────────────────────────
 
   static File get _pidFile {
-    final tmp = Directory.systemTemp.path;
-    return File('$tmp${Platform.pathSeparator}litchi_singbox.pid');
+    final base = Platform.isWindows
+        ? (Platform.environment['LOCALAPPDATA'] ??
+              Platform.environment['APPDATA'] ??
+              Directory.systemTemp.path)
+        : (Platform.environment['HOME'] != null
+              ? '${Platform.environment['HOME']}/Library/Application Support'
+              : Directory.systemTemp.path);
+    final dir = Platform.isWindows
+        ? '$base\\Litchi'
+        : '$base${Platform.pathSeparator}Litchi';
+    return File('$dir${Platform.pathSeparator}singbox.pid.json');
   }
 
   // ── Executable discovery ──────────────────────────────────────────────────
@@ -68,7 +78,7 @@ class CoreManager {
     }
 
     // Kill any previously owned sing-box process (by saved PID).
-    await _killSavedPid();
+    await _killSavedPid(expectedExePath: exe);
 
     // Wait (briefly) for the API port to become free instead of failing on the
     // first check. This makes restarts robust without callers having to insert
@@ -86,7 +96,7 @@ class CoreManager {
       _process = await Process.start(exe, ['run', '-c', configPath]);
 
       // Save PID so the next startup can clean this process up if we crash.
-      await _pidFile.writeAsString(_process!.pid.toString());
+      await _writePidFile(_process!.pid, exe);
 
       _process!.stdout
           .transform(utf8.decoder)
@@ -98,30 +108,32 @@ class CoreManager {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        stderrLines.add(line);
-        _emitLog(line);
-        if (_state == CoreState.starting) {
-          final lower = line.toLowerCase();
-          if (lower.contains('fatal') || lower.contains('error')) {
-            _lastError = _stripAnsi(line);
-          }
-        }
-      });
+            stderrLines.add(line);
+            _emitLog(line);
+            if (_state == CoreState.starting) {
+              final lower = line.toLowerCase();
+              if (lower.contains('fatal') || lower.contains('error')) {
+                _lastError = _stripAnsi(line);
+              }
+            }
+          });
 
-      unawaited(_process!.exitCode.then((code) {
-        if (_state == CoreState.running || _state == CoreState.starting) {
-          if (_lastError.isEmpty && stderrLines.isNotEmpty) {
-            _lastError = _stripAnsi(stderrLines.last);
+      unawaited(
+        _process!.exitCode.then((code) {
+          if (_state == CoreState.running || _state == CoreState.starting) {
+            if (_lastError.isEmpty && stderrLines.isNotEmpty) {
+              _lastError = _stripAnsi(stderrLines.last);
+            }
+            if (_lastError.isEmpty) _lastError = '核心进程退出 (code: $code)';
+            _setState(CoreState.error);
+            _process = null;
+            _deletePidFile();
           }
-          if (_lastError.isEmpty) _lastError = '核心进程退出 (code: $code)';
-          _setState(CoreState.error);
-          _process = null;
-          _deletePidFile();
-        }
-      }));
+        }),
+      );
 
       // Poll the Clash API port to confirm sing-box is actually ready.
-      final ready = await _waitForPort(apiPort);
+      final ready = await _waitForApi(apiPort);
 
       if (_process != null && _state != CoreState.error) {
         if (ready) {
@@ -193,18 +205,33 @@ class CoreManager {
 
   /// Called at app startup to kill any orphaned sing-box process left by a
   /// previous crash and remove the stale PID file.
-  static Future<void> cleanupOnStartup() => _killSavedPid();
+  static Future<void> cleanupOnStartup() async {
+    await _killSavedPid(expectedExePath: findExecutable());
+  }
 
   /// Kill the specific sing-box process we previously spawned (by saved PID).
   /// This only affects our own process — not any other sing-box instances.
   /// Uses [Process.killPid], which maps to TerminateProcess on Windows and
   /// SIGKILL on POSIX, so it is cross-platform.
-  static Future<void> _killSavedPid() async {
+  static Future<void> _killSavedPid({String? expectedExePath}) async {
     try {
       if (!await _pidFile.exists()) return;
-      final pidStr = (await _pidFile.readAsString()).trim();
-      final pid = int.tryParse(pidStr);
+      final raw = await _pidFile.readAsString();
+      Object? decoded;
+      try {
+        decoded = jsonDecode(raw);
+      } catch (_) {}
+      final pid = decoded is Map
+          ? int.tryParse('${decoded['pid'] ?? ''}')
+          : int.tryParse(raw.trim());
       if (pid == null) {
+        await _pidFile.delete();
+        return;
+      }
+      final savedExe = decoded is Map ? decoded['exePath']?.toString() : null;
+      final expected = expectedExePath ?? savedExe;
+      if (expected == null ||
+          !await _pidLooksLikeOurCore(pid, expectedExePath: expected)) {
         await _pidFile.delete();
         return;
       }
@@ -216,11 +243,72 @@ class CoreManager {
   }
 
   static void _deletePidFile() {
-    try { _pidFile.deleteSync(); } catch (_) {}
+    try {
+      _pidFile.deleteSync();
+    } catch (_) {}
+  }
+
+  static Future<void> _writePidFile(int pid, String exePath) async {
+    await _pidFile.parent.create(recursive: true);
+    await _pidFile.writeAsString(
+      jsonEncode({
+        'pid': pid,
+        'exePath': File(exePath).absolute.path,
+        'savedAt': DateTime.now().toIso8601String(),
+      }),
+    );
+  }
+
+  static Future<bool> _pidLooksLikeOurCore(
+    int pid, {
+    required String expectedExePath,
+  }) async {
+    final actual = await _processPath(pid);
+    if (actual == null || actual.isEmpty) return false;
+    return _samePath(actual, expectedExePath);
+  }
+
+  static Future<String?> _processPath(int pid) async {
+    try {
+      if (Platform.isWindows) {
+        final result = await Process.run('powershell', [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          '(Get-CimInstance Win32_Process -Filter "ProcessId=$pid").ExecutablePath',
+        ]).timeout(const Duration(seconds: 3));
+        if (result.exitCode != 0) return null;
+        final path = '${result.stdout}'.trim();
+        return path.isEmpty ? null : path;
+      }
+      final result = await Process.run('ps', [
+        '-p',
+        '$pid',
+        '-o',
+        'comm=',
+      ]).timeout(const Duration(seconds: 3));
+      if (result.exitCode != 0) return null;
+      final path = '${result.stdout}'.trim();
+      return path.isEmpty ? null : path;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static bool _samePath(String a, String b) {
+    String normalize(String path) =>
+        File(path).absolute.path.replaceAll('/', Platform.pathSeparator);
+    final left = normalize(a);
+    final right = normalize(b);
+    return Platform.isWindows
+        ? left.toLowerCase() == right.toLowerCase()
+        : left == right;
   }
 
   static void _deleteConfigFile(String path) {
-    try { File(path).deleteSync(); } catch (_) {}
+    try {
+      File(path).deleteSync();
+    } catch (_) {}
   }
 
   /// Polls until [port] is free, up to ~2 s. Handles the common race where a
@@ -237,7 +325,8 @@ class CoreManager {
   static Future<bool> _isPortFree(int port) async {
     try {
       final s = await ServerSocket.bind(
-        InternetAddress.loopbackIPv4, port,
+        InternetAddress.loopbackIPv4,
+        port,
         shared: false,
       );
       await s.close();
@@ -250,7 +339,7 @@ class CoreManager {
   /// Poll [port] on 127.0.0.1 until it accepts connections (core is ready).
   /// Aborts early if the process already died (state == error/stopped).
   /// Tries up to 20 times × 200 ms = max 4 seconds.
-  Future<bool> _waitForPort(int port) async {
+  Future<bool> _waitForApi(int port) async {
     for (int i = 0; i < 20; i++) {
       if (_state == CoreState.error || _state == CoreState.stopped) {
         return false;
@@ -259,14 +348,7 @@ class CoreManager {
       if (_state == CoreState.error || _state == CoreState.stopped) {
         return false;
       }
-      try {
-        final socket = await Socket.connect(
-          '127.0.0.1', port,
-          timeout: const Duration(milliseconds: 300),
-        );
-        socket.destroy();
-        return true;
-      } catch (_) {}
+      if (await SingboxApiClient.isReady(apiPort: port)) return true;
     }
     return false;
   }

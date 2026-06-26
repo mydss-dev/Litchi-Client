@@ -71,7 +71,7 @@ void main() {
 
       await c.setCurrentNode(node);
       c.goToPage(AppPage.nodes);
-      c.logout();
+      await c.logout();
 
       expect(c.isAuthenticated, isFalse);
       expect(c.page, AppPage.nodes);

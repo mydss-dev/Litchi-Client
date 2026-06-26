@@ -166,7 +166,10 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final firstCompact = _compactWindow != true;
     _compactWindow = true;
     _authHeight = height;
-    await _applyWindowSize(Size(_authWindowWidth, height), center: firstCompact);
+    await _applyWindowSize(
+      Size(_authWindowWidth, height),
+      center: firstCompact,
+    );
   }
 
   /// Applies a programmatic window size. macOS ignores a plain setSize while the
@@ -227,14 +230,16 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final ctrl = _ctrl;
     if (ctrl == null) return;
 
-    final nodeName = ctrl.currentNode.name.isEmpty ? '暂无节点' : ctrl.currentNode.name;
+    final nodeName = ctrl.currentNode.name.isEmpty
+        ? '暂无节点'
+        : ctrl.currentNode.name;
     final canToggle = ctrl.nodes.isNotEmpty && !ctrl.coreConnecting;
     final isTun = ctrl.networkMode == NetworkMode.tun;
 
     final statusLabel = switch ((ctrl.coreRunning, ctrl.coreConnecting)) {
       (_, true) => '连接中...',
-      (true, _)  => isTun ? '已连接 · 虚拟网卡' : '已连接 · 系统代理',
-      _          => '未连接',
+      (true, _) => isTun ? '已连接 · 虚拟网卡' : '已连接 · 系统代理',
+      _ => '未连接',
     };
 
     await trayManager.setContextMenu(
@@ -243,15 +248,14 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
           MenuItem(key: 'show', label: '打开 ${AppConfig.appName}'),
           MenuItem.separator(),
           MenuItem(key: '_status', label: statusLabel, disabled: true),
-          MenuItem(key: '_node',   label: '节点：$nodeName', disabled: true),
+          MenuItem(key: '_node', label: '节点：$nodeName', disabled: true),
           MenuItem.separator(),
           MenuItem(
             key: 'toggle_connection',
             label: ctrl.coreRunning ? '断开连接' : '立即连接',
             disabled: !canToggle,
           ),
-          if (!isTun)
-            MenuItem(key: 'fix_proxy', label: '修复系统代理'),
+          if (!isTun) MenuItem(key: 'fix_proxy', label: '修复系统代理'),
           MenuItem.separator(),
           MenuItem(key: 'quit', label: '退出'),
         ],
@@ -284,7 +288,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     // Clean up core + system proxy, but never let a slow cleanup hang the
     // exit — cap it and then terminate the process hard.
     try {
-      await _ctrl?.shutdown().timeout(const Duration(seconds: 2));
+      await _ctrl?.shutdown().timeout(const Duration(seconds: 5));
     } catch (_) {}
     exit(0);
   }
@@ -345,9 +349,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (_ctrl?.isAuthenticated == true) {
       await windowManager.hide();
     } else {
-      // Logged out: no core or system proxy to clean up. Exit hard so a
-      // pending login / remote-config request can't stall the close.
-      exit(0);
+      await _quit();
     }
   }
 
@@ -439,7 +441,10 @@ class _MainShell extends StatelessWidget {
     // Reserve a full-width top strip on macOS so the native traffic lights and
     // window dragging have room above the sidebar and content.
     return Column(
-      children: [const _MacTitleBarSpacer(), Expanded(child: body)],
+      children: [
+        const _MacTitleBarSpacer(),
+        Expanded(child: body),
+      ],
     );
   }
 

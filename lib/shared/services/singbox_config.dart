@@ -5,6 +5,23 @@ import 'dart:math';
 import '../models/app_models.dart';
 import 'outbound_parser.dart';
 
+enum RuleSetState { normal, missing, degraded }
+
+class RuleSetStatus {
+  const RuleSetStatus(
+    this.state, {
+    this.missingFiles = const [],
+    this.directory = '',
+  });
+
+  final RuleSetState state;
+  final List<String> missingFiles;
+  final String directory;
+
+  bool get isNormal => state == RuleSetState.normal;
+  bool get isDegraded => state == RuleSetState.degraded;
+}
+
 /// Generates sing-box JSON configs from parsed node lists.
 ///
 /// Architecture:
@@ -19,6 +36,11 @@ abstract final class SingboxConfig {
   static const String selectorTag = 'PROXY';
   static const String autoSelectTag = 'AUTO';
   static const String delayTestUrl = 'https://cp.cloudflare.com/generate_204';
+  static const List<String> requiredRuleFiles = [
+    'geosite-cn.srs',
+    'geoip-cn.srs',
+    'geosite-category-ads-all.srs',
+  ];
 
   static String appDataDir() {
     final base =
@@ -31,12 +53,33 @@ abstract final class SingboxConfig {
   // Rule set files are bundled next to the exe under rules\ in production.
   // During development they won't exist — _ruleSets() falls back to OSS.
   static String get _rulesDir {
+    final sep = Platform.pathSeparator;
     final exeDir = File(Platform.resolvedExecutable).parent.path;
-    return '$exeDir\\rules';
+    return '$exeDir${sep}rules';
   }
 
-  static bool get _hasLocalRules =>
-      File('$_rulesDir\\geosite-cn.srs').existsSync();
+  static String get ruleDirectory => _rulesDir;
+
+  static List<String> missingRuleFiles() => [
+    for (final file in requiredRuleFiles)
+      if (!File('$_rulesDir${Platform.pathSeparator}$file').existsSync()) file,
+  ];
+
+  static RuleSetStatus ruleStatus(ProxyMode proxyMode) {
+    final missing = missingRuleFiles();
+    if (missing.isEmpty) {
+      return const RuleSetStatus(RuleSetState.normal);
+    }
+    return RuleSetStatus(
+      proxyMode == ProxyMode.rule
+          ? RuleSetState.degraded
+          : RuleSetState.missing,
+      missingFiles: missing,
+      directory: _rulesDir,
+    );
+  }
+
+  static bool get _hasLocalRules => missingRuleFiles().isEmpty;
 
   /// Random secret generated once per process — required by Clash API.
   static final String apiSecret = _generateSecret();
@@ -313,24 +356,25 @@ abstract final class SingboxConfig {
     if (_hasLocalRules) {
       // Production: use bundled files next to the exe.
       final dir = _rulesDir;
+      final sep = Platform.pathSeparator;
       return [
         {
           'tag': 'geosite-cn',
           'type': 'local',
           'format': 'binary',
-          'path': '$dir\\geosite-cn.srs',
+          'path': '$dir${sep}geosite-cn.srs',
         },
         {
           'tag': 'geoip-cn',
           'type': 'local',
           'format': 'binary',
-          'path': '$dir\\geoip-cn.srs',
+          'path': '$dir${sep}geoip-cn.srs',
         },
         {
           'tag': 'geosite-ads',
           'type': 'local',
           'format': 'binary',
-          'path': '$dir\\geosite-category-ads-all.srs',
+          'path': '$dir${sep}geosite-category-ads-all.srs',
         },
       ];
     }

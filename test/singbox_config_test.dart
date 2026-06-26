@@ -15,11 +15,21 @@ void main() {
       latency: 0,
       rawUri: 'trojan://password@example.com:443#hk',
     );
-    final config = SingboxConfig.buildFullConfig(
-      [node],
-      selectedTag: SingboxConfig.nodeTagFor(node),
-    );
+    final config = SingboxConfig.buildFullConfig([
+      node,
+    ], selectedTag: SingboxConfig.nodeTagFor(node));
     expect(config, isNotNull);
     expect(config!['outbounds'], isA<List>());
+  });
+
+  test('ruleStatus reflects bundled rule file availability', () {
+    final missing = SingboxConfig.missingRuleFiles();
+    final status = SingboxConfig.ruleStatus(ProxyMode.rule);
+
+    expect(missing.every(SingboxConfig.requiredRuleFiles.contains), isTrue);
+    expect(
+      status.state,
+      missing.isEmpty ? RuleSetState.normal : RuleSetState.degraded,
+    );
   });
 }

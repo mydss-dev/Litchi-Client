@@ -30,6 +30,7 @@ class CoreController extends ChangeNotifier {
   final AndroidCoreManager _androidCore = AndroidCoreManager();
   StreamSubscription<CoreState>? _sub;
   StreamSubscription<String>? _logSub;
+  StreamSubscription<AndroidCoreStatusEvent>? _androidStatusSub;
 
   DateTime? _connectedAt;
   ConnectionStatus _status = ConnectionStatus.disconnected;
@@ -75,6 +76,9 @@ class CoreController extends ChangeNotifier {
   /// before subscribing to the core state stream.
   Future<void> init() async {
     if (Platform.isAndroid) {
+      _androidStatusSub ??= _androidCore.statusStream.listen(
+        _onAndroidCoreStatusChanged,
+      );
       await _androidCore.init();
       if (_androidCore.isRunning) {
         _status = ConnectionStatus.connected;
@@ -105,8 +109,10 @@ class CoreController extends ChangeNotifier {
   @override
   void dispose() {
     _stopTrafficMonitor();
-    _sub?.cancel();
-    _logSub?.cancel();
+    unawaited(_androidStatusSub?.cancel());
+    unawaited(_androidCore.dispose());
+    unawaited(_sub?.cancel());
+    unawaited(_logSub?.cancel());
     _core.dispose();
     upBpsNotifier.dispose();
     downBpsNotifier.dispose();
@@ -118,10 +124,14 @@ class CoreController extends ChangeNotifier {
   Future<void> shutdown() async {
     if (Platform.isAndroid) {
       await _androidCore.stop();
+      await _androidStatusSub?.cancel();
+      _androidStatusSub = null;
       return;
     }
     if (!Platform.isWindows && !Platform.isMacOS) return;
     _stopTrafficMonitor();
+    await _androidStatusSub?.cancel();
+    await _androidCore.dispose();
     await _sub?.cancel();
     await _logSub?.cancel();
     _sub = null;
@@ -378,19 +388,18 @@ class CoreController extends ChangeNotifier {
   }
 
   /// Stops the core and clears connection state. Called by [AppController.logout].
-  void stopAndReset() {
+  Future<void> stopAndReset() async {
     if (Platform.isAndroid) {
-      unawaited(_androidCore.stop());
+      await _androidCore.stop();
       _connectedAt = null;
       _coreError = '';
       _status = ConnectionStatus.disconnected;
       return;
     }
-    if (_core.isRunning) {
-      unawaited(_core.stop());
-      unawaited(ProxySetter.disable());
-      _connectedAt = null;
-    }
+    _stopTrafficMonitor();
+    if (_core.isRunning) await _core.stop();
+    await ProxySetter.disable();
+    _connectedAt = null;
     _coreError = '';
     _status = ConnectionStatus.disconnected;
   }
@@ -573,5 +582,34 @@ class CoreController extends ChangeNotifier {
       }
       notifyListeners();
     }
+  }
+
+  void _onAndroidCoreStatusChanged(AndroidCoreStatusEvent event) {
+    switch (event.status) {
+      case AndroidCoreNativeStatus.starting:
+        _coreError = '';
+        _status = ConnectionStatus.connecting;
+      case AndroidCoreNativeStatus.running:
+        _coreError = '';
+        _connectedAt ??= DateTime.now();
+        _status = ConnectionStatus.connected;
+        _startTrafficMonitor();
+      case AndroidCoreNativeStatus.stopping:
+        _status = ConnectionStatus.disconnecting;
+      case AndroidCoreNativeStatus.stopped:
+        _stopTrafficMonitor();
+        _connectedAt = null;
+        if (_status != ConnectionStatus.error) {
+          _status = ConnectionStatus.disconnected;
+        }
+      case AndroidCoreNativeStatus.error:
+        _stopTrafficMonitor();
+        _connectedAt = null;
+        _coreError = event.error.isNotEmpty
+            ? event.error
+            : CoreErrorMessageService.androidStartFailed;
+        _status = ConnectionStatus.error;
+    }
+    notifyListeners();
   }
 }

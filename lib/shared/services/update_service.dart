@@ -42,9 +42,10 @@ abstract final class UpdateService {
       if (data == null) return null;
       final latest = data['version']?.toString() ?? '';
       if (!_isNewer(latest, AppConfig.currentVersion)) return null;
+      final downloadUrl = _trustedHttpsUrl(data['download_url']?.toString());
       return UpdateInfo(
         version: latest,
-        downloadUrl: data['download_url']?.toString() ?? '',
+        downloadUrl: downloadUrl ?? '',
         changelog: data['changelog']?.toString() ?? '',
       );
     } catch (e) {
@@ -81,5 +82,13 @@ abstract final class UpdateService {
       if (lv < cv) return false;
     }
     return false;
+  }
+
+  static String? _trustedHttpsUrl(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final trimmed = value.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return null;
+    return trimmed;
   }
 }

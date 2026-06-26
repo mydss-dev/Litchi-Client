@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../shared/config/app_config.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/services/singbox_config.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -70,6 +71,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
+    final ruleStatus = SingboxConfig.ruleStatus(ctrl.proxyMode);
 
     return SingleChildScrollView(
       child: Column(
@@ -174,13 +176,6 @@ class _SettingsPageState extends State<SettingsPage> {
             title: '核心与诊断',
             children: [
               _SettingRow(
-                label: '开发者模式',
-                trailing: AppSwitch(
-                  value: ctrl.devMode,
-                  onChanged: ctrl.setDevMode,
-                ),
-              ),
-              _SettingRow(
                 label: '核心版本',
                 trailing: Text(
                   _coreVersion,
@@ -189,6 +184,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
+              if (!ruleStatus.isNormal)
+                _SettingRow(
+                  label: '瑙勫垯鏂囦欢',
+                  subtitle: _ruleStatusSubtitle(ruleStatus),
+                  trailing: _RuleStatusBadge(status: ruleStatus),
+                ),
               _SettingRow(
                 label: '重启核心',
                 trailing: _DiagnosticButton(
@@ -280,10 +281,53 @@ class _HttpsWarningCard extends StatelessWidget {
   }
 }
 
+String _ruleStatusSubtitle(RuleSetStatus status) {
+  if (status.isNormal) return '规则文件完整，规则模式可正常分流';
+  final missing = status.missingFiles.join(', ');
+  if (status.isDegraded) {
+    return '缺失 $missing，规则模式已降级';
+  }
+  return '缺失 $missing';
+}
+
+class _RuleStatusBadge extends StatelessWidget {
+  const _RuleStatusBadge({required this.status});
+
+  final RuleSetStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final (label, color) = switch (status.state) {
+      RuleSetState.normal => ('正常', c.success),
+      RuleSetState.missing => ('缺失', c.warning),
+      RuleSetState.degraded => ('已降级', c.danger),
+    };
+
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.caption.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
 class _LogoutRow extends StatelessWidget {
   const _LogoutRow({required this.onLogout});
 
-  final VoidCallback onLogout;
+  final Future<void> Function() onLogout;
 
   Future<void> _confirmLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -291,7 +335,7 @@ class _LogoutRow extends StatelessWidget {
       barrierColor: Colors.black.withValues(alpha: 0.42),
       builder: (_) => const _LogoutConfirmDialog(),
     );
-    if (confirmed == true) onLogout();
+    if (confirmed == true) await onLogout();
   }
 
   @override

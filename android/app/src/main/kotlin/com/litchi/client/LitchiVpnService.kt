@@ -67,6 +67,7 @@ class LitchiVpnService : VpnService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                AndroidCoreStatus.emit("stopping")
                 stopCore()
                 return START_NOT_STICKY
             }
@@ -74,25 +75,30 @@ class LitchiVpnService : VpnService() {
             ACTION_START -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG).orEmpty()
                 if (config.isBlank()) {
-                    stopCore()
+                    AndroidCoreStatus.emit("error", "Android core config is empty")
+                    stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
                 if (isRunning && currentConfig == config) {
                     registerStopReceiver()
                     startCoreForeground("Litchi connected")
+                    AndroidCoreStatus.emit("running")
                     return START_NOT_STICKY
                 }
                 currentConfig = config
                 registerStopReceiver()
                 registerNetworkCallback()
                 startCoreForeground("Litchi connecting")
+                AndroidCoreStatus.emit("starting")
                 val ok = AndroidSingboxEngine.start(config, this)
                 if (!ok) {
-                    stopCore()
+                    AndroidCoreStatus.emit("error", AndroidSingboxEngine.lastError())
+                    stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
                 isRunning = true
                 startCoreForeground("Litchi connected")
+                AndroidCoreStatus.emit("running")
                 return START_NOT_STICKY
             }
         }
@@ -110,7 +116,7 @@ class LitchiVpnService : VpnService() {
         super.onDestroy()
     }
 
-    private fun stopCore() {
+    private fun stopCore(emitStopped: Boolean = true) {
         unregisterNetworkCallback()
         unregisterStopReceiver()
         AndroidSingboxEngine.stop()
@@ -119,6 +125,7 @@ class LitchiVpnService : VpnService() {
         runCatching { setUnderlyingNetworks(null) }
         currentConfig = ""
         isRunning = false
+        if (emitStopped) AndroidCoreStatus.emit("stopped")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {

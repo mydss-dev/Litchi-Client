@@ -9,6 +9,7 @@ import android.net.VpnService
 import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
@@ -62,6 +63,18 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "litchi/android_core/status"
+        ).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                AndroidCoreStatus.setEventSink(events)
+            }
+
+            override fun onCancel(arguments: Any?) {
+                AndroidCoreStatus.setEventSink(null)
+            }
+        })
     }
 
     @Deprecated("Deprecated in Android API")
