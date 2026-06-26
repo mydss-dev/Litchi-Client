@@ -39,8 +39,9 @@ abstract final class ProxySetter {
     if (Platform.isMacOS) return _macDisable();
   }
 
-  /// On startup: if the system proxy still points to 127.0.0.1 but no sing-box
-  /// is alive, it was left behind by a crash. Clear it silently.
+  /// On startup: if the system proxy still points to our previous Litchi
+  /// snapshot and no sing-box is alive, restore the user's old proxy silently.
+  /// Without a valid snapshot, do nothing — another proxy app may own 127.0.0.1.
   static Future<void> disableIfStale() async {
     if (Platform.isWindows) return _winDisableIfStale();
     if (Platform.isMacOS) return _macDisableIfStale();
@@ -86,9 +87,7 @@ abstract final class ProxySetter {
       final r2 = await Process.run('reg', ['query', _key, '/v', 'ProxyServer']);
       if (r2.exitCode != 0) return;
       if ('${r2.stdout}'.contains('127.0.0.1:')) {
-        if (!await _winRestoreSnapshotIfOwned()) {
-          await _winDisable(notify: false);
-        }
+        await _winRestoreSnapshotIfOwned();
       }
     } catch (e) {
       SecureLogger.warn('ProxySetter.disableIfStale failed', e);
@@ -336,10 +335,7 @@ foreach ($opt in 39, 37) {
         final r = await Process.run('networksetup', ['-getwebproxy', service]);
         final out = '${r.stdout}';
         if (out.contains('Enabled: Yes') && out.contains('127.0.0.1')) {
-          if (!await _macRestoreSnapshotIfOwned()) {
-            await _macRun(['-setwebproxystate', service, 'off']);
-            await _macRun(['-setsecurewebproxystate', service, 'off']);
-          }
+          await _macRestoreSnapshotIfOwned();
         }
       } catch (e) {
         SecureLogger.warn('networksetup getwebproxy failed', e);
