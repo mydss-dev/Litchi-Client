@@ -29,8 +29,9 @@ class RuleSetStatus {
 /// - A `urltest` outbound (自动选择) tests real proxy latency every 10 min.
 /// - A `selector` outbound (PROXY) lets the user pick a node or auto-select.
 /// - Clash-compatible REST API enables runtime node switching without restart.
-/// - Rule mode requires bundled local rule_set files. If they are missing, the
-///   app treats the installation as incomplete instead of silently degrading.
+/// - Rule mode uses bundled local rule_set files when available; if they are
+///   absent in a dev/custom package, routing falls back to the default proxy path
+///   instead of blocking the connection.
 abstract final class SingboxConfig {
   static const int defaultPort = 7890;
   static const int defaultApiPort = 9090;
@@ -73,7 +74,7 @@ abstract final class SingboxConfig {
     final missing = missingRuleFiles();
     if (missing.isEmpty) return const RuleSetStatus(RuleSetState.normal);
     return RuleSetStatus(
-      RuleSetState.missing,
+      proxyMode == ProxyMode.rule ? RuleSetState.degraded : RuleSetState.missing,
       missingFiles: missing,
       directory: _rulesDir,
     );
@@ -102,8 +103,7 @@ abstract final class SingboxConfig {
   /// [dnsMode]     — '系统 DNS' | 'Cloudflare' | 'Google'
   /// [networkMode] — system | tun
   ///
-  /// Returns null when there are no parseable nodes, or when rule mode is
-  /// selected but the bundled rule files are missing.
+  /// Returns null only when [nodes] is empty or all URIs are unparseable.
   static Map<String, dynamic>? buildFullConfig(
     List<NodeModel> nodes, {
     required String selectedTag,
@@ -137,11 +137,6 @@ abstract final class SingboxConfig {
     }
 
     if (tags.isEmpty) return null;
-
-    // Production packages must contain the rule files. If they are missing, the
-    // installation is incomplete; do not silently turn rule mode into global-ish
-    // routing because that makes the UI lie about the active mode.
-    if (proxyMode == ProxyMode.rule && !_hasLocalRules) return null;
 
     final defaultOutbound = tags.contains(selectedTag)
         ? selectedTag
@@ -181,11 +176,13 @@ abstract final class SingboxConfig {
       case ProxyMode.rule:
         routeFinal = selectorTag;
         routeRules = [
-          {'rule_set': 'geosite-ads', 'outbound': 'block'},
-          {
-            'rule_set': ['geosite-cn', 'geoip-cn'],
-            'outbound': 'direct',
-          },
+          if (_hasLocalRules) ...[
+            {'rule_set': 'geosite-ads', 'outbound': 'block'},
+            {
+              'rule_set': ['geosite-cn', 'geoip-cn'],
+              'outbound': 'direct',
+            },
+          ],
           {
             'ip_cidr': [
               '10.0.0.0/8',
@@ -223,7 +220,10 @@ abstract final class SingboxConfig {
         };
     }
 
-    final List<Map<String, dynamic>> dnsRules = proxyMode == ProxyMode.rule
+    // Must mirror the _hasLocalRules guard on route rules — referencing a
+    // rule_set that isn't defined makes sing-box exit with FATAL at startup.
+    final List<Map<String, dynamic>> dnsRules =
+        proxyMode == ProxyMode.rule && _hasLocalRules
         ? [
             {'rule_set': 'geosite-cn', 'server': 'cn-dns'},
           ]
@@ -245,7 +245,7 @@ abstract final class SingboxConfig {
           'auto_route': true,
           'strict_route': true,
           'stack': 'mixed',
-          if (proxyMode == ProxyMode.rule)
+          if (proxyMode == ProxyMode.rule && _hasLocalRules)
             'route_exclude_address_set': ['geoip-cn'],
         },
     ];
@@ -316,6 +316,7 @@ abstract final class SingboxConfig {
   }
 
   static List<Map<String, dynamic>> _ruleSets() {
+    if (!_hasLocalRules) return [];
     final dir = _rulesDir;
     final sep = Platform.pathSeparator;
     return [
