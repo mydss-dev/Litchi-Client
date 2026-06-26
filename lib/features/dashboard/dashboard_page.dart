@@ -50,7 +50,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _onToggle() async {
     final ctrl = AppScope.of(context);
-    if (ctrl.coreConnecting) return;
+    if (ctrl.connectionActionLocked) return;
 
     final error = await ctrl.toggleConnection();
     _syncTimer();
