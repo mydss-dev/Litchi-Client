@@ -129,8 +129,9 @@ abstract final class ProxySetter {
       return false;
     }
 
+    final ownerPort = _ownerPort(snapshot);
     final currentServer = await _regReadString('ProxyServer') ?? '';
-    if (!_isLocalProxyServer(currentServer)) {
+    if (!_isOwnedLocalProxyServer(currentServer, ownerPort)) {
       // The user or another app changed the proxy while Litchi was running.
       // Do not overwrite that newer choice.
       await _deleteSnapshot();
@@ -154,6 +155,24 @@ abstract final class ProxySetter {
     await _reg('ProxyEnable', 'REG_DWORD', oldEnable == 0 ? '0' : '1');
     await _deleteSnapshot();
     return true;
+  }
+
+  static int _ownerPort(Map<String, dynamic> snapshot) {
+    final value = snapshot['owner_port'];
+    if (value is int && value > 0) return value;
+    if (value is num && value > 0) return value.toInt();
+    return 0;
+  }
+
+  static bool _isOwnedLocalProxyServer(String value, int ownerPort) {
+    final lower = value.toLowerCase();
+    if (!_isLocalProxyServer(lower)) return false;
+    if (ownerPort <= 0) return true;
+    return lower.contains('127.0.0.1:$ownerPort') ||
+        lower.contains('localhost:$ownerPort') ||
+        // Kill-switch is also ours; it intentionally rewrites the proxy port to 1.
+        lower.contains('127.0.0.1:1') ||
+        lower.contains('localhost:1');
   }
 
   static bool _isLocalProxyServer(String value) {
@@ -379,6 +398,7 @@ foreach ($opt in 39, 37) {
       return false;
     }
 
+    final ownerPort = _ownerPort(snapshot);
     for (final item in services) {
       if (item is! Map) continue;
       final service = item['name']?.toString();
@@ -387,7 +407,7 @@ foreach ($opt in 39, 37) {
         await _macGetProxy('-getwebproxy', service),
       );
       if (current['enabled'] == true &&
-          !_isLocalProxyServer(current['server']?.toString() ?? '')) {
+          !_isOwnedLocalProxyServer(current['server']?.toString() ?? '', ownerPort)) {
         await _deleteSnapshot();
         return true;
       }
