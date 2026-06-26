@@ -128,14 +128,22 @@ class ConnectionHeroCard extends StatelessWidget {
             child: Column(
               children: [
                 const Spacer(),
-                _PowerButton(status: status, onTap: onToggle),
+                _PowerButton(
+                  status: status,
+                  locked: ctrl.connectionActionLocked,
+                  onTap: onToggle,
+                ),
                 const SizedBox(height: 12),
                 _ConnectionActionText(status: status),
                 if (status == ConnectionStatus.connected) ...[
                   const SizedBox(height: 6),
-                  Text(
-                    elapsedLabel,
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    child: Text(
+                      elapsedLabel,
+                      key: ValueKey(elapsedLabel),
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                    ),
                   ),
                 ],
                 const Spacer(),
@@ -209,19 +217,23 @@ class _SecurityBadge extends StatelessWidget {
           c.textMuted,
         ),
     };
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 15, color: color),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: AppTextStyles.caption.copyWith(
-            color: color,
-            fontWeight: FontWeight.w600,
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      child: Row(
+        key: ValueKey(text),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: AppTextStyles.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -290,70 +302,179 @@ class _NodeInlineAction extends StatelessWidget {
   }
 }
 
-class _PowerButton extends StatelessWidget {
-  const _PowerButton({required this.status, required this.onTap});
+class _PowerButton extends StatefulWidget {
+  const _PowerButton({
+    required this.status,
+    required this.locked,
+    required this.onTap,
+  });
 
   final ConnectionStatus status;
+  final bool locked;
   final VoidCallback onTap;
+
+  @override
+  State<_PowerButton> createState() => _PowerButtonState();
+}
+
+class _PowerButtonState extends State<_PowerButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  bool _pressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1150),
+    );
+    _syncPulse();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PowerButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncPulse();
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  void _syncPulse() {
+    final shouldPulse = _shouldPulse;
+    if (shouldPulse && !_pulseController.isAnimating) {
+      _pulseController.repeat();
+    } else if (!shouldPulse && _pulseController.isAnimating) {
+      _pulseController.stop();
+      _pulseController.value = 0;
+    }
+  }
+
+  bool get _isConnected => widget.status == ConnectionStatus.connected;
+  bool get _isConnecting => widget.status == ConnectionStatus.connecting;
+  bool get _isDisconnecting => widget.status == ConnectionStatus.disconnecting;
+  bool get _isTransitioning => _isConnecting || _isDisconnecting;
+  bool get _isDisabled => widget.locked || _isTransitioning;
+  bool get _shouldPulse => widget.locked || _isTransitioning;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final isConnected = status == ConnectionStatus.connected;
-    final isTransitioning =
-        status == ConnectionStatus.connecting ||
-        status == ConnectionStatus.disconnecting;
+    final pulseColor = _isDisconnecting ? c.textMuted : c.primary;
+    final progressColor = _isDisconnecting ? c.textMuted : c.primary;
 
     return MouseRegion(
-      cursor: isTransitioning ? MouseCursor.defer : SystemMouseCursors.click,
+      cursor: _isDisabled ? MouseCursor.defer : SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: isTransitioning ? null : onTap,
-        child: Container(
-          width: 104,
-          height: 104,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: isConnected ? AppPalette.brandGradient : null,
-            color: isTransitioning
-                ? c.surfaceMuted
-                : (isConnected ? null : c.surfaceMuted),
-            border: isConnected || isTransitioning
-                ? null
-                : Border.all(color: c.primary.withValues(alpha: 0.14)),
-            boxShadow: isConnected
-                ? AppShadows.powerButton
-                : [
-                    BoxShadow(
-                      color: c.primary.withValues(alpha: 0.08),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-          ),
-          child: Container(
-            margin: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isConnected
-                    ? Colors.white.withValues(alpha: 0.72)
-                    : c.cardBg.withValues(alpha: 0.72),
-                width: 3,
-              ),
-            ),
-            child: isTransitioning
-                ? Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: c.primary,
-                    ),
-                  )
-                : Icon(
-                    LucideIcons.power,
-                    size: 40,
-                    color: isConnected ? Colors.white : c.primary,
+        onTap: _isDisabled ? null : widget.onTap,
+        onTapDown: _isDisabled ? null : (_) => setState(() => _pressed = true),
+        onTapUp: _isDisabled ? null : (_) => setState(() => _pressed = false),
+        onTapCancel: _isDisabled ? null : () => setState(() => _pressed = false),
+        child: SizedBox(
+          width: 126,
+          height: 126,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (_shouldPulse)
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, _) {
+                    final t = Curves.easeOut.transform(_pulseController.value);
+                    return Container(
+                      width: 108 + 26 * t,
+                      height: 108 + 26 * t,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: pulseColor.withValues(alpha: 0.18 * (1 - t)),
+                        border: Border.all(
+                          color: pulseColor.withValues(alpha: 0.24 * (1 - t)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              AnimatedScale(
+                duration: const Duration(milliseconds: 170),
+                curve: Curves.easeOutCubic,
+                scale: _isDisabled ? 0.96 : (_pressed ? 0.92 : 1.0),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                  width: 104,
+                  height: 104,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: _isConnected ? AppPalette.brandGradient : null,
+                    color: _isConnected ? null : c.surfaceMuted,
+                    border: _isConnected || _isTransitioning
+                        ? null
+                        : Border.all(color: c.primary.withValues(alpha: 0.14)),
+                    boxShadow: _isConnected
+                        ? AppShadows.powerButton
+                        : [
+                            BoxShadow(
+                              color: c.primary.withValues(
+                                alpha: _isTransitioning ? 0.16 : 0.08,
+                              ),
+                              blurRadius: _isTransitioning ? 26 : 18,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                   ),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    margin: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _isConnected
+                            ? Colors.white.withValues(alpha: 0.72)
+                            : c.cardBg.withValues(alpha: 0.72),
+                        width: 3,
+                      ),
+                    ),
+                    child: Center(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 240),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: ScaleTransition(
+                              scale: Tween<double>(begin: 0.88, end: 1).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: _isTransitioning
+                            ? SizedBox(
+                                key: ValueKey(widget.status),
+                                width: 42,
+                                height: 42,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  color: progressColor,
+                                ),
+                              )
+                            : Icon(
+                                LucideIcons.power,
+                                key: ValueKey(widget.status),
+                                size: 40,
+                                color: _isConnected ? Colors.white : c.primary,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -377,23 +498,39 @@ class _ConnectionActionText extends StatelessWidget {
       ConnectionStatus.error => ('重新连接', c.danger),
     };
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: AppTextStyles.sectionTitle.copyWith(
-            color: color,
-            fontSize: 18,
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.10),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
           ),
-        ),
-      ],
+        );
+      },
+      child: Row(
+        key: ValueKey(text),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: color,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
