@@ -8,15 +8,15 @@ import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/data_loader.dart';
+import '../shared/services/network_error_classifier.dart';
 import '../shared/services/node_cache_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
 import '../shared/services/secure_logger.dart';
-import '../shared/services/token_storage.dart';
 import '../shared/services/tcp_ping_service.dart';
+import '../shared/services/token_storage.dart';
 import '../shared/services/update_service.dart';
 import 'account_controller.dart';
-import '../shared/services/network_error_classifier.dart';
 import 'core_connection_request.dart';
 import 'core_controller.dart';
 import 'invite_controller.dart';
@@ -26,7 +26,6 @@ import 'settings_controller.dart';
 import 'subscription_controller.dart';
 import 'wallet_controller.dart';
 
-/// Top-level navigation destinations shown in the sidebar.
 enum AppPage {
   dashboard,
   nodes,
@@ -40,13 +39,8 @@ enum AppPage {
   tickets,
 }
 
-/// Which authentication screen is visible while logged out.
 enum AuthScreen { login, register, changePassword, forgotPassword }
 
-/// Coordinator: owns navigation, auth, and subscription data.
-/// Settings and core-process concerns are delegated to [SettingsController]
-/// and [CoreController] respectively. All public getters/setters are preserved
-/// so [AppScope] callers require no changes.
 class AppController extends ChangeNotifier {
   AppController() {
     _settings.addListener(notifyListeners);
@@ -69,21 +63,15 @@ class AppController extends ChangeNotifier {
   late final InviteController _invite = InviteController(_api, refreshData);
   late final AccountController _account = AccountController(_api);
 
-  // ── Navigation / auth state ───────────────────────────────────────────────
+  final ApiClient _apiClient = ApiClient();
+  late final PanelApi _api = PanelApi(_apiClient);
+  late final DataLoader _dataLoader = DataLoader(_api);
 
   bool _isAuthenticated = false;
   bool _isInitializing = false;
   AppPage _page = AppPage.dashboard;
   AuthScreen _authScreen = AuthScreen.login;
   bool _mobileProfileChildPage = false;
-
-  // ── Services ──────────────────────────────────────────────────────────────
-
-  final ApiClient _apiClient = ApiClient();
-  late final PanelApi _api = PanelApi(_apiClient);
-  late final DataLoader _dataLoader = DataLoader(_api);
-
-  // ── Data (mock defaults until API populates) ──────────────────────────────
 
   List<PlanModel> _plans = const [];
   String? _dataLoadError;
@@ -94,8 +82,6 @@ class AppController extends ChangeNotifier {
   bool _isInitialLoading = false;
   bool _logoutInFlight = false;
   int _latencyRunId = 0;
-
-  // ── Settings delegates ────────────────────────────────────────────────────
 
   ThemeMode get themeMode => _settings.themeMode;
   bool get isDark => _settings.isDark;
@@ -112,19 +98,17 @@ class AppController extends ChangeNotifier {
 
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
-
-  Future<void> setProxyPort(int port) async {
-    final old = _settings.proxyPort;
-    await _settings.setProxyPort(port);
-    if (_settings.proxyPort != old) {
-      unawaited(_reloadCoreConfig());
-    }
-  }
-
   void setAutoStart(bool v) => _settings.setAutoStart(v);
   void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
   void setDevMode(bool v) => _settings.setDevMode(v);
   void setLanguage(String v) => _settings.setLanguage(v);
+
+  Future<void> setProxyPort(int port) async {
+    final old = _settings.proxyPort;
+    await _settings.setProxyPort(port);
+    if (_settings.proxyPort != old) unawaited(_reloadCoreConfig());
+  }
+
   void setKillSwitch(bool v) {
     _settings.setKillSwitch(v);
     _core.killSwitchEnabled = _settings.killSwitch;
@@ -133,37 +117,27 @@ class AppController extends ChangeNotifier {
   void setAllowInsecureNodes(bool v) {
     final old = _settings.allowInsecureNodes;
     _settings.setAllowInsecureNodes(v);
-    if (_settings.allowInsecureNodes != old) {
-      unawaited(_reloadCoreConfig());
-    }
+    if (_settings.allowInsecureNodes != old) unawaited(_reloadCoreConfig());
   }
 
   void setProxyMode(ProxyMode v) {
     final old = _settings.proxyMode;
     _settings.setProxyMode(v);
     if (_settings.proxyMode == old) return;
-    if (_core.coreProcessRunning) {
-      unawaited(_core.setMode(v));
-    }
+    if (_core.coreProcessRunning) unawaited(_core.setMode(v));
   }
 
   void setNetworkMode(NetworkMode v) {
     final old = _settings.networkMode;
     _settings.setNetworkMode(v);
-    if (_settings.networkMode != old) {
-      unawaited(_reloadCoreConfig());
-    }
+    if (_settings.networkMode != old) unawaited(_reloadCoreConfig());
   }
 
   void setDnsMode(String v) {
     final old = _settings.dnsMode;
     _settings.setDnsMode(v);
-    if (_settings.dnsMode != old) {
-      unawaited(_reloadCoreConfig());
-    }
+    if (_settings.dnsMode != old) unawaited(_reloadCoreConfig());
   }
-
-  // ── Core delegates ─────────────────────────────────────────────────────────
 
   ConnectionStatus get connectionStatus => _core.connectionStatus;
   bool get coreRunning => _core.coreRunning;
@@ -177,40 +151,29 @@ class AppController extends ChangeNotifier {
   Stream<String> get coreLogStream => _core.logStream;
   List<String> get coreLogs => _core.recentLogs;
   Duration get connectedDuration => _core.connectedDuration;
-
   bool get coreProcessRunning => _core.coreProcessRunning;
   bool get supportsCoreConnection =>
       Platform.isWindows || Platform.isMacOS || Platform.isAndroid;
 
-  /// Graceful shutdown: kills core + disables system proxy. Call before exit.
   Future<void> shutdown() => _core.shutdown();
 
-  /// Restart the running core (stop → 800 ms pause → reconnect).
   Future<String?> restartCore() async {
     if (!coreRunning) return null;
-    await toggleConnection(); // stop
+    await toggleConnection();
     await Future.delayed(const Duration(milliseconds: 800));
-    return toggleConnection(); // start
+    return toggleConnection();
   }
 
-  /// Force-sync the system proxy to match current core state.
   Future<void> fixProxy() =>
       _core.fixProxy(_settings.proxyPort, networkMode: _settings.networkMode);
-
-  /// Export buffered log lines to %LOCALAPPDATA%\Litchi\. Returns the path.
   Future<String?> exportLogs() => _core.exportLogs();
-
   static Future<String> getCoreVersion() => CoreController.getCoreVersion();
-
-  // ── Navigation / auth getters ─────────────────────────────────────────────
 
   bool get isAuthenticated => _isAuthenticated;
   bool get isInitializing => _isInitializing;
   AppPage get page => _page;
   AuthScreen get authScreen => _authScreen;
   bool get mobileProfileChildPage => _mobileProfileChildPage;
-
-  // ── Data getters ──────────────────────────────────────────────────────────
 
   UserModel get user => _account.user;
   TrafficModel get traffic => _account.traffic;
@@ -232,6 +195,7 @@ class AppController extends ChangeNotifier {
   double get minWithdrawAmount => _wallet.minWithdrawAmount;
   List<double> get dailyUsage => _subscription.dailyUsage;
   List<TrafficUsagePoint> get trafficUsage => _subscription.trafficUsage;
+
   double get todayTrafficGb {
     final now = DateTime.now();
     var total = 0.0;
@@ -258,18 +222,15 @@ class AppController extends ChangeNotifier {
   PanelApi get api => _api;
   UpdateInfo? get updateInfo => _updateInfo;
   RegisterConfig get registerConfig => _registerConfig;
+  List<NoticeModel> get notices => _notices.notices;
+  bool get hasUnreadNotice => _notices.hasUnreadNotice;
 
   void dismissUpdate() {
     _updateInfo = null;
     notifyListeners();
   }
 
-  List<NoticeModel> get notices => _notices.notices;
-  bool get hasUnreadNotice => _notices.hasUnreadNotice;
-
   void markNoticeRead() => _notices.markRead();
-
-  // ── Initialization ────────────────────────────────────────────────────────
 
   Future<void> init() async {
     await _settings.load();
@@ -284,8 +245,6 @@ class AppController extends ChangeNotifier {
 
     final authData = await TokenStorage.getAuthData();
     if (authData == null || authData.isEmpty) {
-      // No saved session token → show the login screen. Auto-login is
-      // token-only; remembered credentials just prefill the form.
       _isInitializing = false;
       notifyListeners();
       unawaited(_checkForUpdate());
@@ -293,11 +252,8 @@ class AppController extends ChangeNotifier {
     }
 
     _apiClient.updateAuthData(authData);
-
     await _restoreCachedNodes();
 
-    // Saved token auto-login should never block the UI. Enter the main shell
-    // first, then validate / refresh server data in the background.
     _isAuthenticated = true;
     _isInitialLoading = true;
     _isInitializing = false;
@@ -323,9 +279,7 @@ class AppController extends ChangeNotifier {
     _invalidateLatencyRuns();
     _nodes.setNodes(cached);
     _restoreLastNode();
-    if (supportsCoreConnection) {
-      unawaited(_testStartupLatencies());
-    }
+    if (supportsCoreConnection) unawaited(_testStartupLatencies());
   }
 
   Future<void> refreshRegisterConfigCache() async {
@@ -334,10 +288,7 @@ class AppController extends ChangeNotifier {
       await RegisterConfigCache.save(AppConfig.apiBase, config);
       _registerConfig = config;
       if (!_disposed) notifyListeners();
-    } catch (_) {
-      // Keep the cached/default registration config. The register API remains
-      // the final authority when the user submits the form.
-    }
+    } catch (_) {}
   }
 
   Future<void> _refreshAfterAutoLogin() async {
@@ -397,6 +348,7 @@ class AppController extends ChangeNotifier {
     _subscription.dispose();
     _wallet.dispose();
     _invite.dispose();
+    _account.dispose();
     _nodes.dispose();
     super.dispose();
   }
@@ -408,15 +360,9 @@ class AppController extends ChangeNotifier {
       unawaited(_testLatenciesInBackground());
     } else if (status == ConnectionStatus.disconnected) {
       _settings.setWasConnected(false);
-      // Core process may still be alive (system proxy mode) — keep latency data.
-      // Only clear when process actually stopped (e.g. TUN disconnect / logout).
-      if (!_core.coreProcessRunning) {
-        _nodes.markAllLatency(0);
-      }
+      if (!_core.coreProcessRunning) _nodes.markAllLatency(0);
     }
   }
-
-  // ── Navigation ────────────────────────────────────────────────────────────
 
   void goToPage(AppPage page) {
     _mobileProfileChildPage = false;
@@ -440,8 +386,6 @@ class AppController extends ChangeNotifier {
     _authScreen = screen;
     notifyListeners();
   }
-
-  // ── Auth ─────────────────────────────────────────────────────────────────
 
   Future<void> loginWithCredentials(
     String email,
@@ -510,7 +454,6 @@ class AppController extends ChangeNotifier {
     _isInitialLoading = true;
     _page = AppPage.dashboard;
     notifyListeners();
-
     unawaited(_refreshAfterAutoLogin());
   }
 
@@ -522,9 +465,6 @@ class AppController extends ChangeNotifier {
       _isAuthenticated = false;
       _authScreen = AuthScreen.login;
       await TokenStorage.clearAuthData();
-      // Note: the remembered email/password are intentionally KEPT so the login
-      // form stays prefilled. Auto-login is token-only, so clearing the token
-      // above is enough to return to the login screen on next launch.
       _apiClient.updateAuthData(null);
       _account.reset();
       _nodes.reset();
@@ -540,8 +480,6 @@ class AppController extends ChangeNotifier {
       _logoutInFlight = false;
     }
   }
-
-  // ── Connection ────────────────────────────────────────────────────────────
 
   CoreConnectionRequest _buildConnectionRequest() => CoreConnectionRequest(
     nodes: _nodes.nodes,
@@ -560,8 +498,6 @@ class AppController extends ChangeNotifier {
     return _core.toggleConnection(_buildConnectionRequest());
   }
 
-  /// Checks whether the current process is running with elevated (admin) privileges.
-  /// Returns true on non-Windows platforms (no-op).
   static Future<bool> checkAdminPrivileges() async {
     if (!Platform.isWindows) return true;
     try {
@@ -577,12 +513,9 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  // ── Data loading ──────────────────────────────────────────────────────────
-
   Future<void> _loadAllData() async {
     final snap = await _dataLoader.loadAll();
     _applySnapshot(snap);
-    // Non-critical extras — must never abort node restore / core startup.
     try {
       _wallet.setCurrencySymbol(await _api.getCommCurrencySymbol());
     } catch (e) {
@@ -596,13 +529,10 @@ class AppController extends ChangeNotifier {
     if (_nodes.isNotEmpty) {
       unawaited(NodeCacheService.save(_nodes.nodes));
       _restoreLastNode();
-      if (supportsCoreConnection) {
-        unawaited(_testStartupLatencies());
-      }
+      if (supportsCoreConnection) unawaited(_testStartupLatencies());
     }
   }
 
-  /// Re-fetches all remote data. Clears any prior load error.
   Future<void> refreshData() async {
     _dataLoadError = null;
     notifyListeners();
@@ -626,9 +556,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<String?> createInviteCode() => _invite.createInviteCode();
-
   Future<String?> transferAllCommission() => _wallet.transferAllCommission();
-
   Future<String?> transferCommissionToBalance(double amount) =>
       _wallet.transferCommissionToBalance(amount);
 
@@ -650,9 +578,7 @@ class AppController extends ChangeNotifier {
       _restoreLastNode();
       _account.setTraffic(snap.traffic);
       unawaited(NodeCacheService.save(_nodes.nodes));
-      if (supportsCoreConnection) {
-        await _reloadCoreConfig(startIfStopped: true);
-      }
+      if (supportsCoreConnection) await _reloadCoreConfig(startIfStopped: true);
     }
     notifyListeners();
   }
@@ -698,14 +624,8 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  // ── Node selection ────────────────────────────────────────────────────────
-
-  /// Tries to restore the last manually-selected node from persistent storage.
-  /// Falls back to the first node in auto-select mode if the node is not found.
   void _restoreLastNode() => _nodes.restoreLastSelection(_settings.lastNodeId);
 
-  /// Switch to [node]. Returns an error string if the core rejected the
-  /// switch, or null on success.
   Future<String?> setCurrentNode(NodeModel node) async {
     if (supportsCoreConnection && _core.coreProcessRunning) {
       final ok = await _core.switchNode(node);
@@ -718,8 +638,6 @@ class AppController extends ChangeNotifier {
 
   Future<String?> selectAuto() async {
     if (supportsCoreConnection && _core.coreProcessRunning) {
-      // Hand off to sing-box's urltest outbound — it picks the fastest node
-      // automatically based on real proxy latency, no Flutter involvement.
       final ok = await _core.switchToAuto();
       if (!ok) return '自动选择切换失败，核心未响应，请重试';
     }
@@ -759,20 +677,15 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  /// Tests latencies for all nodes.
   Future<void> testLatencies() async {
-    if (!supportsCoreConnection) return;
-    if (_nodes.isEmpty) return;
-
+    if (!supportsCoreConnection || _nodes.isEmpty) return;
     if (!coreProcessRunning) {
       await _testTcpLatencies(showProgress: true);
       return;
     }
 
-    // Mark all nodes as testing (-1) so the UI shows an in-progress state.
     final runId = _nextLatencyRunId();
     _nodes.markAllLatency(-1);
-
     final snapshot = List<NodeModel>.from(_nodes.nodes);
     await _core.testLatencies(
       snapshot,
@@ -829,4 +742,27 @@ class AppController extends ChangeNotifier {
   }
 
   bool _isCurrentLatencyRun(int id) => !_disposed && id == _latencyRunId;
+}
+
+class AppScope extends InheritedNotifier<AppController> {
+  const AppScope({
+    super.key,
+    required AppController controller,
+    required super.child,
+  }) : super(notifier: controller);
+
+  AppController get controller => notifier!;
+
+  static AppController of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
+    assert(scope != null, 'No AppScope found in context');
+    return scope!.controller;
+  }
+
+  static AppController read(BuildContext context) {
+    final element = context.getElementForInheritedWidgetOfExactType<AppScope>();
+    final scope = element?.widget as AppScope?;
+    assert(scope != null, 'No AppScope found in context');
+    return scope!.controller;
+  }
 }
