@@ -4,12 +4,22 @@ import 'package:flutter/widgets.dart';
 ///
 /// Build a white-label version:
 ///   flutter build windows --release
+///     --dart-define=APP_ID="client_10001"
 ///     --dart-define=APP_NAME="MyVPN"
 ///     --dart-define=APP_SUBTITLE="Fast & Secure"
 ///     --dart-define=LOGO_LETTER="M"
 ///     --dart-define=BRAND_COLOR_START="0F766E"
 ///     --dart-define=BRAND_COLOR_END="7C3AED"
 abstract final class BrandConfig {
+  // ── Identity ───────────────────────────────────────────────────────────────
+
+  /// Stable white-label build/client id used by the central update service.
+  /// This is owned by the SaaS/build platform, not the airport owner's OSS config.
+  static const appId = String.fromEnvironment(
+    'APP_ID',
+    defaultValue: 'litchi',
+  );
+
   // ── Text ──────────────────────────────────────────────────────────────────
 
   /// Primary brand name shown in sidebar, tray tooltip, window title, etc.
@@ -45,12 +55,12 @@ abstract final class BrandConfig {
   );
 
   static Color get brandStart => _hex(_startHex);
-  static Color get brandEnd   => _hex(_endHex);
+  static Color get brandEnd => _hex(_endHex);
 
   static LinearGradient get brandGradient => LinearGradient(
     colors: [brandStart, brandEnd],
   );
 
   static Color _hex(String h) =>
-    Color(int.parse('FF${h.replaceAll('#', '')}', radix: 16));
+      Color(int.parse('FF${h.replaceAll('#', '')}', radix: 16));
 }
