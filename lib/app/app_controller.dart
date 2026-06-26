@@ -168,6 +168,7 @@ class AppController extends ChangeNotifier {
   ConnectionStatus get connectionStatus => _core.connectionStatus;
   bool get coreRunning => _core.coreRunning;
   bool get coreConnecting => _core.coreConnecting;
+  bool get connectionActionLocked => _core.connectionActionLocked;
   String get coreError => _core.coreError;
   int get upBps => _core.upBps;
   int get downBps => _core.downBps;
@@ -396,7 +397,6 @@ class AppController extends ChangeNotifier {
     _subscription.dispose();
     _wallet.dispose();
     _invite.dispose();
-    _account.dispose();
     _nodes.dispose();
     super.dispose();
   }
@@ -825,29 +825,8 @@ class AppController extends ChangeNotifier {
 
   void _invalidateLatencyRuns() {
     _latencyRunId++;
+    _nodes.markAllLatency(0);
   }
 
-  bool _isCurrentLatencyRun(int runId) => !_disposed && runId == _latencyRunId;
-}
-
-/// Exposes [AppController] to descendants and rebuilds them on change.
-class AppScope extends InheritedNotifier<AppController> {
-  const AppScope({
-    super.key,
-    required AppController controller,
-    required super.child,
-  }) : super(notifier: controller);
-
-  static AppController of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
-    assert(scope?.notifier != null, 'AppScope not found in widget tree');
-    return scope!.notifier!;
-  }
-
-  static AppController read(BuildContext context) {
-    final element = context.getElementForInheritedWidgetOfExactType<AppScope>();
-    final scope = element?.widget as AppScope?;
-    assert(scope?.notifier != null, 'AppScope not found in widget tree');
-    return scope!.notifier!;
-  }
+  bool _isCurrentLatencyRun(int id) => !_disposed && id == _latencyRunId;
 }
