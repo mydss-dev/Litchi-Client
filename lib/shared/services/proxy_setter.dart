@@ -165,14 +165,22 @@ abstract final class ProxySetter {
   }
 
   static bool _isOwnedLocalProxyServer(String value, int ownerPort) {
-    final lower = value.toLowerCase();
+    final lower = value.toLowerCase().trim();
     if (!_isLocalProxyServer(lower)) return false;
     if (ownerPort <= 0) return true;
-    return lower.contains('127.0.0.1:$ownerPort') ||
-        lower.contains('localhost:$ownerPort') ||
+    return _containsLocalEndpoint(lower, ownerPort) ||
         // Kill-switch is also ours; it intentionally rewrites the proxy port to 1.
-        lower.contains('127.0.0.1:1') ||
-        lower.contains('localhost:1');
+        _containsLocalEndpoint(lower, 1);
+  }
+
+  static bool _containsLocalEndpoint(String lower, int port) {
+    for (final token in lower.split(RegExp(r'[;\s]+'))) {
+      final endpoint = token.contains('=') ? token.split('=').last : token;
+      if (endpoint == '127.0.0.1:$port' || endpoint == 'localhost:$port') {
+        return true;
+      }
+    }
+    return false;
   }
 
   static bool _isLocalProxyServer(String value) {
@@ -406,8 +414,11 @@ foreach ($opt in 39, 37) {
       final current = _parseMacProxy(
         await _macGetProxy('-getwebproxy', service),
       );
+      final server = current['server']?.toString() ?? '';
+      final port = current['port'];
+      final currentServer = port is int && port > 0 ? '$server:$port' : server;
       if (current['enabled'] == true &&
-          !_isOwnedLocalProxyServer(current['server']?.toString() ?? '', ownerPort)) {
+          !_isOwnedLocalProxyServer(currentServer, ownerPort)) {
         await _deleteSnapshot();
         return true;
       }
