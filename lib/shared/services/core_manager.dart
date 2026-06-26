@@ -263,6 +263,16 @@ class CoreManager {
     int pid, {
     required String expectedExePath,
   }) async {
+    // On macOS, `ps -o comm=` often returns only the command name. Use the full
+    // command line first so paths inside `.app` bundles (including spaces) still
+    // match the executable path saved in the PID file.
+    if (Platform.isMacOS) {
+      final command = await _processCommand(pid);
+      if (command != null && _commandStartsWithPath(command, expectedExePath)) {
+        return true;
+      }
+    }
+
     final actual = await _processPath(pid);
     if (actual == null || actual.isEmpty) return false;
     return _samePath(actual, expectedExePath);
@@ -293,6 +303,33 @@ class CoreManager {
     } catch (_) {
       return null;
     }
+  }
+
+  static Future<String?> _processCommand(int pid) async {
+    try {
+      final result = await Process.run('ps', [
+        '-p',
+        '$pid',
+        '-o',
+        'command=',
+      ]).timeout(const Duration(seconds: 3));
+      if (result.exitCode != 0) return null;
+      final command = '${result.stdout}'.trim();
+      return command.isEmpty ? null : command;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static bool _commandStartsWithPath(String command, String expectedExePath) {
+    final trimmed = command.trim();
+    final expected = File(expectedExePath).absolute.path;
+    final normalized = expected.replaceAll('/', Platform.pathSeparator);
+    final quoted = '"$normalized"';
+    return trimmed == normalized ||
+        trimmed.startsWith('$normalized ') ||
+        trimmed == quoted ||
+        trimmed.startsWith('$quoted ');
   }
 
   static bool _samePath(String a, String b) {
