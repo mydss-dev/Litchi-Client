@@ -35,6 +35,11 @@ void _writeCrashLog(String message) {
   } catch (_) {}
 }
 
+Stream<String> _socketLines(Socket socket) => socket
+    .map<List<int>>((chunk) => chunk)
+    .transform(utf8.decoder)
+    .transform(const LineSplitter());
+
 Future<bool> _focusExistingInstance() async {
   Socket? socket;
   try {
@@ -45,9 +50,7 @@ Future<bool> _focusExistingInstance() async {
     );
     socket.writeln(_instancePing);
     await socket.flush();
-    final response = await socket
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
+    final response = await _socketLines(socket)
         .first
         .timeout(const Duration(seconds: 1), onTimeout: () => '');
     return response.trim() == _instancePong;
@@ -102,9 +105,7 @@ Future<void> _boot() async {
     // Any later instance that pings the lock port asks us to show ourselves.
     _instanceLock!.listen((client) async {
       try {
-        final line = await client
-            .transform(utf8.decoder)
-            .transform(const LineSplitter())
+        final line = await _socketLines(client)
             .first
             .timeout(const Duration(seconds: 1), onTimeout: () => '');
         if (line.trim() == _instancePing) {
