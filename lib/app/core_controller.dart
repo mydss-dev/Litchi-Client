@@ -12,19 +12,8 @@ import '../shared/services/singbox_config.dart';
 import 'core_connection_request.dart';
 import 'core_error_message_service.dart';
 
-/// High-level connection lifecycle state exposed to UI.
-enum ConnectionStatus {
-  disconnected,
-  connecting,
-  connected,
-  disconnecting,
-  error,
-}
+enum ConnectionStatus { disconnected, connecting, connected, disconnecting, error }
 
-/// Owns the sing-box process, connection lifecycle, and latency testing.
-///
-/// Settings values and the node list are passed in at call time to avoid
-/// storing references that would create circular dependencies.
 class CoreController extends ChangeNotifier {
   final CoreManager _core = CoreManager();
   final AndroidCoreManager _androidCore = AndroidCoreManager();
@@ -37,20 +26,17 @@ class CoreController extends ChangeNotifier {
   String _coreError = '';
   int _apiPort = SingboxConfig.defaultApiPort;
 
+  bool _disposed = false;
   bool _connectionToggleInFlight = false;
   DateTime? _lastConnectionToggleAt;
   static const Duration _connectionToggleCooldown = Duration(milliseconds: 800);
 
-  /// When true, an unexpected core drop blackholes the proxy (fail-closed)
-  /// instead of reverting to a direct connection. Synced from the user setting.
   bool killSwitchEnabled = false;
 
-  // Traffic monitoring (bytes/sec, updated by Clash /traffic stream).
   final ValueNotifier<int> upBpsNotifier = ValueNotifier(0);
   final ValueNotifier<int> downBpsNotifier = ValueNotifier(0);
   StreamSubscription<({int upBps, int downBps})>? _trafficSub;
 
-  // Rolling log buffer — last 500 lines, timestamped.
   final _logs = <String>[];
   static const _maxLogs = 500;
 
@@ -61,15 +47,9 @@ class CoreController extends ChangeNotifier {
       _status == ConnectionStatus.connecting ||
       _status == ConnectionStatus.disconnecting;
 
-  /// Locks connection controls while an action is in-flight or briefly after it
-  /// completes. This prevents rapid enable/disable clicks from racing system
-  /// proxy writes, core restarts, and Android VPN lifecycle calls.
   bool get connectionActionLocked =>
       coreConnecting || _connectionToggleInFlight || _isConnectionToggleCoolingDown;
 
-  /// True when the sing-box process is alive, regardless of proxy state.
-  /// Use this to guard latency tests — the Clash API is available whenever
-  /// the process is running, even before the user explicitly connects.
   bool get coreProcessRunning =>
       Platform.isAndroid ? _androidCore.isRunning : _core.isRunning;
   String get coreError => _coreError;
@@ -81,9 +61,6 @@ class CoreController extends ChangeNotifier {
       ? DateTime.now().difference(_connectedAt!)
       : Duration.zero;
 
-  /// Must be called once after construction (inside [AppController.init]).
-  /// Kills any orphaned sing-box process and clears a stale system proxy
-  /// before subscribing to the core state stream.
   Future<void> init() async {
     if (Platform.isAndroid) {
       _androidStatusSub ??= _androidCore.statusStream.listen(
@@ -99,10 +76,6 @@ class CoreController extends ChangeNotifier {
     if (!Platform.isWindows && !Platform.isMacOS) return;
     if (_sub != null || _logSub != null) return;
 
-    // If callers started the core before init() finished, do not run startup
-    // cleanup because it would kill the freshly spawned process through the
-    // PID file. This makes the lifecycle tolerant while AppController ordering
-    // is being kept backward-compatible.
     if (!_core.isRunning) {
       await CoreManager.cleanupOnStartup();
       await ProxySetter.disableIfStale();
@@ -118,6 +91,7 @@ class CoreController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _stopTrafficMonitor();
     unawaited(_androidStatusSub?.cancel());
     unawaited(_androidCore.dispose());
@@ -129,8 +103,6 @@ class CoreController extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Graceful shutdown: kill core process + disable system proxy.
-  /// Called from the window-close handler before [windowManager.destroy()].
   Future<void> shutdown() async {
     if (Platform.isAndroid) {
       await _androidCore.stop();
@@ -146,19 +118,12 @@ class CoreController extends ChangeNotifier {
     await _logSub?.cancel();
     _sub = null;
     _logSub = null;
-    _core.dispose(); // synchronously kills the process + deletes PID file
+    _core.dispose();
     try {
-      // Exit path: don't wait on the WinInet broadcast — the registry write
-      // alone disables the proxy and keeps shutdown snappy.
       await ProxySetter.disable(notify: false);
     } catch (_) {}
   }
 
-  // ── Connection ────────────────────────────────────────────────────────────
-
-  /// Starts sing-box in the background WITHOUT enabling system proxy or TUN.
-  /// Used only by explicit desktop background-core flows.
-  /// No-ops if the process is already running.
   Future<void> startCoreOnly(CoreConnectionRequest req) async {
     if (Platform.isAndroid) return;
     if (_core.isRunning) return;
@@ -174,16 +139,10 @@ class CoreController extends ChangeNotifier {
     try {
       final configPath = await SingboxConfig.writeConfig(config);
       await _core.start(configPath, apiPort: _apiPort);
-      // _status stays disconnected — proxy is NOT enabled yet.
       if (_core.isRunning) notifyListeners();
-    } catch (_) {
-      // Background start failure is non-fatal; user can still connect manually.
-    }
+    } catch (_) {}
   }
 
-  /// Rebuilds the sing-box config and restarts the core when it is already
-  /// running. If the user was connected, it reconnects with the new config;
-  /// otherwise it keeps the core alive in background mode for latency testing.
   Future<String?> reloadCore(CoreConnectionRequest req) async {
     if (Platform.isAndroid) {
       if (coreConnecting || _status != ConnectionStatus.connected) return null;
@@ -217,21 +176,11 @@ class CoreController extends ChangeNotifier {
     _status = ConnectionStatus.disconnected;
     notifyListeners();
 
-    if (wasConnected) {
-      return toggleConnection(req);
-    }
-
+    if (wasConnected) return toggleConnection(req);
     await startCoreOnly(req);
     return null;
   }
 
-  /// Toggles proxy on/off. When the sing-box process is already running
-  /// (started via [startCoreOnly]), connecting only enables the system proxy —
-  /// no process restart needed. Disconnecting keeps the process alive so
-  /// latency testing continues in the background.
-  ///
-  /// TUN mode always performs a full restart since the TUN adapter cannot be
-  /// toggled without reloading the config.
   Future<String?> toggleConnection(CoreConnectionRequest req) async {
     if (!_beginConnectionToggle()) return null;
     try {
@@ -242,23 +191,15 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<String?> _toggleConnection(CoreConnectionRequest req) async {
-    if (Platform.isAndroid) {
-      return _toggleAndroidConnection(req);
-    }
-
+    if (Platform.isAndroid) return _toggleAndroidConnection(req);
     if (coreConnecting) return null;
 
-    // ── DISCONNECT ──────────────────────────────────────────────────────────
     if (_status == ConnectionStatus.connected) {
       _status = ConnectionStatus.disconnecting;
       notifyListeners();
       _stopTrafficMonitor();
       await ProxySetter.disable();
-      if (req.networkMode == NetworkMode.tun) {
-        // TUN requires a full restart to remove the adapter; stop the process.
-        await _core.stop();
-      }
-      // System proxy mode: keep process alive for background latency testing.
+      if (req.networkMode == NetworkMode.tun) await _core.stop();
       _connectedAt = null;
       _coreError = '';
       _status = ConnectionStatus.disconnected;
@@ -266,14 +207,12 @@ class CoreController extends ChangeNotifier {
       return null;
     }
 
-    // ── CONNECT ─────────────────────────────────────────────────────────────
     if (req.validNodes.isEmpty) {
       _coreError = CoreErrorMessageService.noAvailableNodes;
       notifyListeners();
       return _coreError;
     }
 
-    // Fast path: core already running in system proxy mode — just enable proxy.
     if (_core.isRunning && req.networkMode == NetworkMode.system) {
       _status = ConnectionStatus.connecting;
       _coreError = '';
@@ -296,28 +235,16 @@ class CoreController extends ChangeNotifier {
       return _coreError.isNotEmpty ? _coreError : null;
     }
 
-    // Full start: build config, (re)start process, enable proxy.
     _apiPort = await _allocateApiPort();
     final config = req.buildConfig(apiPort: _apiPort);
-
     if (config == null) {
       _coreError = CoreErrorMessageService.configBuildFailed;
       notifyListeners();
       return _coreError;
     }
 
-    // Stop any existing background process before restarting with the new
-    // config.  The background core always runs in system-proxy mode (for
-    // latency testing); TUN mode cannot be activated by hot-swapping the
-    // config into a running process — a full restart is required.
-    if (_core.isRunning) {
-      await _core.stop();
-    }
-    // TUN captures all traffic — system proxy must be off before TUN starts,
-    // or a stale proxy setting from the background core will conflict.
-    if (req.networkMode == NetworkMode.tun) {
-      await ProxySetter.disable();
-    }
+    if (_core.isRunning) await _core.stop();
+    if (req.networkMode == NetworkMode.tun) await ProxySetter.disable();
 
     _status = ConnectionStatus.connecting;
     _coreError = '';
@@ -410,7 +337,6 @@ class CoreController extends ChangeNotifier {
     return _coreError.isNotEmpty ? _coreError : null;
   }
 
-  /// Stops the core and clears connection state. Called by [AppController.logout].
   Future<void> stopAndReset() async {
     if (Platform.isAndroid) {
       await _androidCore.stop();
@@ -427,34 +353,21 @@ class CoreController extends ChangeNotifier {
     _status = ConnectionStatus.disconnected;
   }
 
-  // ── Node switching ────────────────────────────────────────────────────────
-
-  /// Switches the active proxy at runtime without restarting the core.
-  /// Returns true if the Clash API accepted the change.
   Future<bool> switchNode(NodeModel node) => SingboxApiClient.switchProxy(
     SingboxConfig.nodeTagFor(node),
     apiPort: _apiPort,
   );
 
-  /// Switches the PROXY selector to the urltest outbound (自动选择).
-  /// sing-box then picks the fastest node internally based on real latency.
   Future<bool> switchToAuto() => SingboxApiClient.switchProxy(
     SingboxConfig.autoSelectTag,
     apiPort: _apiPort,
   );
 
-  // ── Mode switching ────────────────────────────────────────────────────────
-
-  /// Apply [proxyMode] to the running core via Clash API (no restart needed).
   Future<void> setMode(ProxyMode proxyMode) async {
     if (!coreProcessRunning) return;
     await SingboxApiClient.setMode(proxyMode.clashValue, apiPort: _apiPort);
   }
 
-  // ── Proxy repair ──────────────────────────────────────────────────────────
-
-  /// Force-sync the system proxy to match the current core state.
-  /// In TUN mode the system proxy should be off; this clears any stale setting.
   Future<void> fixProxy(
     int proxyPort, {
     NetworkMode networkMode = NetworkMode.system,
@@ -467,16 +380,9 @@ class CoreController extends ChangeNotifier {
     }
   }
 
-  // ── Diagnostics ───────────────────────────────────────────────────────────
-
-  /// Run `sing-box version` and return the version string.
   static Future<String> getCoreVersion() async {
-    if (Platform.isAndroid) {
-      return AndroidCoreManager().version();
-    }
-    if (!Platform.isWindows && !Platform.isMacOS) {
-      return '当前平台暂未接入核心';
-    }
+    if (Platform.isAndroid) return AndroidCoreManager().version();
+    if (!Platform.isWindows && !Platform.isMacOS) return '当前平台暂未接入核心';
     final exe = CoreManager.findExecutable();
     if (exe == null) return '未找到 sing-box 核心';
     try {
@@ -492,7 +398,6 @@ class CoreController extends ChangeNotifier {
     }
   }
 
-  /// Write the buffered log lines to %LOCALAPPDATA%\Litchi\ and return the path.
   Future<String?> exportLogs() async {
     if (_logs.isEmpty) return null;
     try {
@@ -516,15 +421,11 @@ class CoreController extends ChangeNotifier {
     }
   }
 
-  // ── Traffic monitoring ────────────────────────────────────────────────────
-
   void _startTrafficMonitor() {
     _stopTrafficMonitor();
     _trafficSub = SingboxApiClient.trafficStream(apiPort: _apiPort).listen((t) {
       downBpsNotifier.value = t.downBps;
       upBpsNotifier.value = t.upBps;
-      // Intentionally no notifyListeners() — speed widgets use
-      // ValueListenableBuilder, so the global rebuild is avoided.
     });
   }
 
@@ -537,13 +438,6 @@ class CoreController extends ChangeNotifier {
     upBpsNotifier.value = 0;
   }
 
-  // ── Latency testing ───────────────────────────────────────────────────────
-
-  /// Tests latency for every node in [nodes].
-  /// Requires the core to be running — no-ops otherwise.
-  ///
-  /// Triggers sing-box's urltest group to re-test all nodes concurrently,
-  /// then falls back to direct per-node tests if urltest history is empty.
   Future<void> testLatencies(
     List<NodeModel> nodes, {
     required void Function(int idx, NodeModel updated) onResult,
@@ -563,8 +457,6 @@ class CoreController extends ChangeNotifier {
     }
   }
 
-  // ── Internal ──────────────────────────────────────────────────────────────
-
   bool get _isConnectionToggleCoolingDown {
     final last = _lastConnectionToggleAt;
     if (last == null) return false;
@@ -582,6 +474,11 @@ class CoreController extends ChangeNotifier {
     _lastConnectionToggleAt = DateTime.now();
     _connectionToggleInFlight = false;
     notifyListeners();
+    unawaited(
+      Future<void>.delayed(_connectionToggleCooldown, () {
+        if (!_disposed && !_connectionToggleInFlight) notifyListeners();
+      }),
+    );
   }
 
   Future<int> _allocateApiPort() async {
@@ -601,8 +498,6 @@ class CoreController extends ChangeNotifier {
   }
 
   void _onCoreStateChanged(CoreState state) {
-    // React only to unexpected terminations — a deliberate disconnect sets
-    // status to disconnecting before stop(), so those are excluded here.
     if ((state == CoreState.error || state == CoreState.stopped) &&
         (_status == ConnectionStatus.connected ||
             _status == ConnectionStatus.connecting)) {
@@ -615,8 +510,6 @@ class CoreController extends ChangeNotifier {
       _status = state == CoreState.error
           ? ConnectionStatus.error
           : ConnectionStatus.disconnected;
-      // Fail-closed: if we were tunnelling and the kill-switch is on, blackhole
-      // the proxy so traffic can't leak directly on this unexpected drop.
       if (killSwitchEnabled && wasConnected) {
         unawaited(ProxySetter.engageKillSwitch());
       } else {
@@ -641,9 +534,7 @@ class CoreController extends ChangeNotifier {
       case AndroidCoreNativeStatus.stopped:
         _stopTrafficMonitor();
         _connectedAt = null;
-        if (_status != ConnectionStatus.error) {
-          _status = ConnectionStatus.disconnected;
-        }
+        if (_status != ConnectionStatus.error) _status = ConnectionStatus.disconnected;
       case AndroidCoreNativeStatus.error:
         _stopTrafficMonitor();
         _connectedAt = null;
