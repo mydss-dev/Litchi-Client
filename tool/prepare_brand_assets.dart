@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as image;
@@ -16,21 +17,18 @@ Future<void> main(List<String> args) async {
   if (decoded == null) {
     throw StateError('logo_url is not a supported image');
   }
-  if (decoded.width != decoded.height) {
+
+  final minSide = math.min(decoded.width, decoded.height);
+  if (minSide < 512) {
     throw StateError(
-      'Logo must be square; received ${decoded.width}x${decoded.height}. '
-      'Upload a 1024x1024 PNG.',
-    );
-  }
-  if (decoded.width < 512) {
-    throw StateError(
-      'Logo is too small (${decoded.width}x${decoded.height}); minimum is '
-      '512x512, recommended is 1024x1024 PNG.',
+      'Logo is too small (${decoded.width}x${decoded.height}); shortest side '
+      'must be at least 512px, recommended is 1024x1024 PNG.',
     );
   }
 
+  final squared = _centerCropSquare(decoded);
   final canonical = image.copyResize(
-    decoded.convert(numChannels: 4),
+    squared,
     width: _canvasSize,
     height: _canvasSize,
     interpolation: image.Interpolation.cubic,
@@ -87,6 +85,22 @@ Future<Uint8List> _download(Uri uri) async {
   } finally {
     client.close(force: true);
   }
+}
+
+image.Image _centerCropSquare(image.Image source) {
+  final rgba = source.convert(numChannels: 4);
+  if (rgba.width == rgba.height) {
+    return rgba;
+  }
+
+  final size = math.min(rgba.width, rgba.height);
+  final x = ((rgba.width - size) / 2).round();
+  final y = ((rgba.height - size) / 2).round();
+  stdout.writeln(
+    'Logo is not square (${rgba.width}x${rgba.height}); center-cropping to '
+    '${size}x$size for app icons.',
+  );
+  return image.copyCrop(rgba, x: x, y: y, width: size, height: size);
 }
 
 Future<void> _saveAssets(image.Image logo, Directory assets) async {
