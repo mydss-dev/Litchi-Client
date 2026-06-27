@@ -191,24 +191,52 @@ abstract final class CredentialsStorage {
 
   // ── Generic protected strings ─────────────────────────────────────────────
 
+  /// Sentinel prefix stored on disk as a pointer into platform secure storage.
+  /// The actual payload lives in FlutterSecureStorage (Android Keystore /
+  /// iOS Keychain / macOS Keychain). Only used when caller writes the returned
+  /// string to a file and later passes it back to [unprotectString].
+  static const _secureStorageRef = '__SECURE_STORAGE_REF__';
+
   /// Protects arbitrary sensitive text.
   ///
-  /// Windows uses DPAPI. macOS / Linux return `null` because no generic
-  /// secure blob backend is available on those platforms (macOS uses
-  /// Keychain for password/token but not for arbitrary payloads).
-  /// Callers must handle `null` gracefully — e.g. NodeCacheService will
-  /// skip writing a secure cache and fall back to the redacted UI cache.
-  static Future<String?> protectString(String plaintext) {
-    if (Platform.isLinux || Platform.isMacOS) return Future.value(null);
+  /// | Platform  | Backend                                  |
+  /// |-----------|------------------------------------------|
+  /// | Windows   | DPAPI (CryptProtectData)                 |
+  /// | Android   | FlutterSecureStorage (Keystore)          |
+  /// | iOS       | FlutterSecureStorage (Keychain)          |
+  /// | macOS     | FlutterSecureStorage (Keychain)          |
+  /// | Linux     | No secure backend — returns `null`       |
+  ///
+  /// Android / iOS / macOS return a `__SECURE_STORAGE_REF__:<key>` sentinel
+  /// that callers persist as-is; [unprotectString] resolves it back to the
+  /// plaintext from the platform store. Windows returns a DPAPI blob.
+  /// Callers must handle `null` (Linux) gracefully.
+  static Future<String?> protectString(String plaintext) async {
     if (Platform.isWindows) {
       return _protectDpapi(plaintext);
     }
-    return _protectPortable(plaintext);
+    if (_useSecureStorage) {
+      await _secureStorage.write(
+        key: 'secure_nodes_cache',
+        value: plaintext,
+      );
+      return '$_secureStorageRef:secure_nodes_cache';
+    }
+    // Linux — no secure backend.
+    return null;
   }
 
-  /// Unprotects text returned by [protectString]. Legacy weak fallback payloads
-  /// are rejected so callers never silently depend on the removed XOR path.
+  /// Unprotects text returned by [protectString].
+  ///
+  /// Resolves `__SECURE_STORAGE_REF__:<key>` sentinels from platform secure
+  /// storage. Legacy `P:` (base64) payloads are still readable for migration
+  /// but new writes never produce them. The removed `FB:` XOR path is
+  /// rejected so callers never silently depend on it.
   static Future<String?> unprotectString(String encrypted) async {
+    if (encrypted.startsWith(_secureStorageRef)) {
+      final key = encrypted.substring(_secureStorageRef.length + 1);
+      return _secureStorage.read(key: key);
+    }
     if (encrypted.startsWith('FB:')) return null;
     if (encrypted.startsWith(_plainPrefix)) {
       try {
@@ -220,15 +248,6 @@ abstract final class CredentialsStorage {
       }
     }
     return _unprotectDpapi(encrypted);
-  }
-
-  /// Legacy encoding used ONLY for reading old P:base64 payloads during
-  /// migration. Must never be called from any new save path — callers that
-  /// need protection must use DPAPI (Windows) or Keychain/Keystore
-  /// (Android/iOS/macOS). On platforms with no secure backend, save must
-  /// be skipped rather than falling back here.
-  static Future<String?> _protectPortable(String plaintext) async {
-    return '$_plainPrefix${base64.encode(utf8.encode(plaintext))}';
   }
 
   // ── DPAPI via native Win32 FFI (CryptProtectData) ─────────────────────────
