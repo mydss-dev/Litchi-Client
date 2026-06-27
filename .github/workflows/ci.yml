@@ -13,14 +13,6 @@ on:
 permissions:
   contents: write
 
-env:
-  MIHOMO_VERSION: v1.19.27
-  MIHOMO_WINDOWS_AMD64_SHA256: "34b4c5bc0c176eebd298f6624aa23ea41985a2c54efb04eb0e9c4542e45190ee"
-  MIHOMO_DARWIN_AMD64_SHA256:  "5392bea435a1c4b0a496571daafa977f744207cfafac18fb78a9b7d0747585c2"
-  MIHOMO_DARWIN_ARM64_SHA256:  "3617c9d8a5a55aecfe1ebd0f55ff59f2706c8ad68fd65c6c4e5f7cf2b74263f1"
-  WINTUN_VERSION: "0.14.1"
-  WINTUN_SHA256: "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51"
-
 jobs:
   analyze:
     name: Analyze
@@ -60,41 +52,9 @@ jobs:
             "--dart-define=APP_NAME=$appName" `
             "--dart-define=LOGO_URL=$logoUrl"
 
-      - name: Download mihomo
+      - name: Bundle Windows runtime
         shell: pwsh
-        run: |
-          $version = $env:MIHOMO_VERSION
-          $name = "mihomo-windows-amd64-$version.zip"
-          $url = "https://github.com/MetaCubeX/mihomo/releases/download/$version/$name"
-          Write-Host "Downloading $name"
-          Invoke-WebRequest -Uri $url -OutFile mihomo.zip
-          $actual = (Get-FileHash mihomo.zip -Algorithm SHA256).Hash.ToLower()
-          $expected = $env:MIHOMO_WINDOWS_AMD64_SHA256.ToLower()
-          if ($actual -ne $expected) {
-            throw "mihomo windows sha256 mismatch: actual=$actual expected=$expected"
-          }
-          Write-Host "mihomo windows sha256 verified"
-          Expand-Archive mihomo.zip -DestinationPath mihomo-tmp
-          $exe = Get-ChildItem -Recurse -Filter "mihomo*.exe" mihomo-tmp | Select-Object -First 1
-          Copy-Item $exe.FullName "build\windows\x64\runner\Release\mihomo.exe"
-          Write-Host "mihomo.exe ready"
-
-      - name: Download wintun
-        shell: pwsh
-        run: |
-          $wintunVersion = $env:WINTUN_VERSION
-          $url = "https://www.wintun.net/builds/wintun-$wintunVersion.zip"
-          Write-Host "Downloading wintun $wintunVersion"
-          Invoke-WebRequest -Uri $url -OutFile wintun.zip
-          $actual = (Get-FileHash wintun.zip -Algorithm SHA256).Hash.ToLower()
-          $expected = $env:WINTUN_SHA256.ToLower()
-          if ($actual -ne $expected) {
-            throw "wintun sha256 mismatch: actual=$actual expected=$expected"
-          }
-          Write-Host "wintun sha256 verified"
-          Expand-Archive wintun.zip -DestinationPath wintun-tmp
-          Copy-Item "wintun-tmp\wintun\bin\amd64\wintun.dll" "build\windows\x64\runner\Release\wintun.dll"
-          Write-Host "wintun.dll ready"
+        run: .\tool\bundle_windows_runtime.ps1 -ReleaseDir "build\windows\x64\runner\Release"
 
       - name: Install Inno Setup
         shell: pwsh
@@ -289,38 +249,7 @@ jobs:
             "--dart-define=LOGO_URL=$logo_url"
 
       - name: Bundle mihomo core (universal)
-        run: |
-          app="build/macos/Build/Products/Release/litchi_client.app"
-          if [ ! -d "$app" ]; then echo "::error::app bundle not found at $app"; ls -la build/macos/Build/Products/Release || true; exit 1; fi
-          version="$MIHOMO_VERSION"
-          amd_name="mihomo-darwin-amd64-$version.gz"
-          arm_name="mihomo-darwin-arm64-$version.gz"
-          amd_url="https://github.com/MetaCubeX/mihomo/releases/download/$version/$amd_name"
-          arm_url="https://github.com/MetaCubeX/mihomo/releases/download/$version/$arm_name"
-          echo "mihomo version: $version"
-          echo "amd64: $amd_url"
-          echo "arm64: $arm_url"
-          curl -sSL "$amd_url" -o mihomo-amd64.gz
-          curl -sSL "$arm_url" -o mihomo-arm64.gz
-          actual_amd=$(shasum -a 256 mihomo-amd64.gz | awk '{print $1}')
-          if [ "$actual_amd" != "$MIHOMO_DARWIN_AMD64_SHA256" ]; then
-            echo "::error::mihomo darwin amd64 sha256 mismatch: actual=$actual_amd expected=$MIHOMO_DARWIN_AMD64_SHA256"
-            exit 1
-          fi
-          actual_arm=$(shasum -a 256 mihomo-arm64.gz | awk '{print $1}')
-          if [ "$actual_arm" != "$MIHOMO_DARWIN_ARM64_SHA256" ]; then
-            echo "::error::mihomo darwin arm64 sha256 mismatch: actual=$actual_arm expected=$MIHOMO_DARWIN_ARM64_SHA256"
-            exit 1
-          fi
-          echo "mihomo darwin sha256 verified"
-          gunzip mihomo-amd64.gz
-          gunzip mihomo-arm64.gz
-          # Combine into a universal binary so the build runs on both Intel and Apple Silicon Macs.
-          lipo -create mihomo-amd64 mihomo-arm64 -output mihomo
-          chmod +x mihomo
-          mkdir -p "$app/Contents/Resources"
-          cp mihomo "$app/Contents/Resources/mihomo"
-          lipo -info "$app/Contents/Resources/mihomo" || true
+        run: tool/bundle_macos_core.sh "build/macos/Build/Products/Release/litchi_client.app"
 
       - name: Ad-hoc codesign
         run: |
