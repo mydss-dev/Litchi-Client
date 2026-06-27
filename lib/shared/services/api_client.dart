@@ -229,6 +229,7 @@ class ApiClient {
         responseType: ResponseType.plain,
         headers: {
           'Accept': '*/*',
+          // ignore: use_null_aware_elements
           if (headers != null) ...headers,
         },
       ),
