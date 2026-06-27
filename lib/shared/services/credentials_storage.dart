@@ -201,8 +201,7 @@ abstract final class CredentialsStorage {
   static Future<String?> protectString(String plaintext) {
     if (Platform.isLinux || Platform.isMacOS) return Future.value(null);
     if (Platform.isWindows) {
-      return _protectDpapi(plaintext)
-          .then((value) => value ?? _protectPortable(plaintext));
+      return _protectDpapi(plaintext);
     }
     return _protectPortable(plaintext);
   }
@@ -223,8 +222,11 @@ abstract final class CredentialsStorage {
     return _unprotectDpapi(encrypted);
   }
 
-  /// Only used as a Windows DPAPI fallback and for reading legacy payloads.
-  /// Must never be the primary storage strategy for sensitive data.
+  /// Legacy encoding used ONLY for reading old P:base64 payloads during
+  /// migration. Must never be called from any new save path — callers that
+  /// need protection must use DPAPI (Windows) or Keychain/Keystore
+  /// (Android/iOS/macOS). On platforms with no secure backend, save must
+  /// be skipped rather than falling back here.
   static Future<String?> _protectPortable(String plaintext) async {
     return '$_plainPrefix${base64.encode(utf8.encode(plaintext))}';
   }
