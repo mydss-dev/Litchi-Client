@@ -13,6 +13,14 @@ on:
 permissions:
   contents: write
 
+env:
+  MIHOMO_VERSION: v1.19.27
+  MIHOMO_WINDOWS_AMD64_SHA256: "34b4c5bc0c176eebd298f6624aa23ea41985a2c54efb04eb0e9c4542e45190ee"
+  MIHOMO_DARWIN_AMD64_SHA256:  "5392bea435a1c4b0a496571daafa977f744207cfafac18fb78a9b7d0747585c2"
+  MIHOMO_DARWIN_ARM64_SHA256:  "3617c9d8a5a55aecfe1ebd0f55ff59f2706c8ad68fd65c6c4e5f7cf2b74263f1"
+  WINTUN_VERSION: "0.14.1"
+  WINTUN_SHA256: "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51"
+
 jobs:
   analyze:
     name: Analyze
@@ -29,8 +37,6 @@ jobs:
     name: Build Windows
     runs-on: windows-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -57,12 +63,17 @@ jobs:
       - name: Download mihomo
         shell: pwsh
         run: |
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" `
-            -Headers @{ "User-Agent" = "litchi-ci"; "Authorization" = "Bearer $env:GITHUB_TOKEN" }
-          $asset = $release.assets | Where-Object { $_.name -match "^mihomo-windows-amd64-v[0-9.]+\.zip$" } | Select-Object -First 1
-          if (-not $asset) { Write-Error "mihomo Windows asset not found"; exit 1 }
-          Write-Host "Downloading $($asset.name)"
-          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile mihomo.zip
+          $version = $env:MIHOMO_VERSION
+          $name = "mihomo-windows-amd64-$version.zip"
+          $url = "https://github.com/MetaCubeX/mihomo/releases/download/$version/$name"
+          Write-Host "Downloading $name"
+          Invoke-WebRequest -Uri $url -OutFile mihomo.zip
+          $actual = (Get-FileHash mihomo.zip -Algorithm SHA256).Hash.ToLower()
+          $expected = $env:MIHOMO_WINDOWS_AMD64_SHA256.ToLower()
+          if ($actual -ne $expected) {
+            throw "mihomo windows sha256 mismatch: actual=$actual expected=$expected"
+          }
+          Write-Host "mihomo windows sha256 verified"
           Expand-Archive mihomo.zip -DestinationPath mihomo-tmp
           $exe = Get-ChildItem -Recurse -Filter "mihomo*.exe" mihomo-tmp | Select-Object -First 1
           Copy-Item $exe.FullName "build\windows\x64\runner\Release\mihomo.exe"
@@ -71,7 +82,16 @@ jobs:
       - name: Download wintun
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://www.wintun.net/builds/wintun-0.14.1.zip" -OutFile wintun.zip
+          $wintunVersion = $env:WINTUN_VERSION
+          $url = "https://www.wintun.net/builds/wintun-$wintunVersion.zip"
+          Write-Host "Downloading wintun $wintunVersion"
+          Invoke-WebRequest -Uri $url -OutFile wintun.zip
+          $actual = (Get-FileHash wintun.zip -Algorithm SHA256).Hash.ToLower()
+          $expected = $env:WINTUN_SHA256.ToLower()
+          if ($actual -ne $expected) {
+            throw "wintun sha256 mismatch: actual=$actual expected=$expected"
+          }
+          Write-Host "wintun sha256 verified"
           Expand-Archive wintun.zip -DestinationPath wintun-tmp
           Copy-Item "wintun-tmp\wintun\bin\amd64\wintun.dll" "build\windows\x64\runner\Release\wintun.dll"
           Write-Host "wintun.dll ready"
@@ -243,8 +263,6 @@ jobs:
     name: Build macOS
     runs-on: macos-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -274,14 +292,27 @@ jobs:
         run: |
           app="build/macos/Build/Products/Release/litchi_client.app"
           if [ ! -d "$app" ]; then echo "::error::app bundle not found at $app"; ls -la build/macos/Build/Products/Release || true; exit 1; fi
-          release=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "User-Agent: litchi-ci" \
-            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest)
-          amd_url=$(echo "$release" | grep -o 'https://[^"]*/mihomo-darwin-amd64-v[0-9.]*\.gz' | head -1)
-          arm_url=$(echo "$release" | grep -o 'https://[^"]*/mihomo-darwin-arm64-v[0-9.]*\.gz' | head -1)
-          if [ -z "$amd_url" ] || [ -z "$arm_url" ]; then echo "::error::mihomo darwin assets not found"; exit 1; fi
-          echo "amd64: $amd_url"; echo "arm64: $arm_url"
+          version="$MIHOMO_VERSION"
+          amd_name="mihomo-darwin-amd64-$version.gz"
+          arm_name="mihomo-darwin-arm64-$version.gz"
+          amd_url="https://github.com/MetaCubeX/mihomo/releases/download/$version/$amd_name"
+          arm_url="https://github.com/MetaCubeX/mihomo/releases/download/$version/$arm_name"
+          echo "mihomo version: $version"
+          echo "amd64: $amd_url"
+          echo "arm64: $arm_url"
           curl -sSL "$amd_url" -o mihomo-amd64.gz
           curl -sSL "$arm_url" -o mihomo-arm64.gz
+          actual_amd=$(shasum -a 256 mihomo-amd64.gz | awk '{print $1}')
+          if [ "$actual_amd" != "$MIHOMO_DARWIN_AMD64_SHA256" ]; then
+            echo "::error::mihomo darwin amd64 sha256 mismatch: actual=$actual_amd expected=$MIHOMO_DARWIN_AMD64_SHA256"
+            exit 1
+          fi
+          actual_arm=$(shasum -a 256 mihomo-arm64.gz | awk '{print $1}')
+          if [ "$actual_arm" != "$MIHOMO_DARWIN_ARM64_SHA256" ]; then
+            echo "::error::mihomo darwin arm64 sha256 mismatch: actual=$actual_arm expected=$MIHOMO_DARWIN_ARM64_SHA256"
+            exit 1
+          fi
+          echo "mihomo darwin sha256 verified"
           gunzip mihomo-amd64.gz
           gunzip mihomo-arm64.gz
           # Combine into a universal binary so the build runs on both Intel and Apple Silicon Macs.
