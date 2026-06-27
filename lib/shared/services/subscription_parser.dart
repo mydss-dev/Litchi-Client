@@ -155,8 +155,17 @@ abstract final class SubscriptionParser {
   }
 
   /// Maps custom policy group names in server-side rules to the client's
-  /// canonical PROXY group. Built-in actions (DIRECT, REJECT, etc.) pass
-  /// through unchanged. Rule options such as `no-resolve` must remain untouched.
+  /// canonical PROXY group.
+  ///
+  /// Clash rules have the policy at index 2 (the third comma-separated
+  /// field).  Extra modifiers such as `no-resolve` may appear after it:
+  ///
+  ///     IP-CIDR,1.1.1.1/32,DIRECT,no-resolve
+  ///     DOMAIN-SUFFIX,google.com,PROXY
+  ///
+  /// This method reads the field at index 2 and leaves the rest alone.
+  /// Built-in actions (DIRECT, REJECT, REJECT-DROP, PASS, GLOBAL, PROXY)
+  /// pass through unchanged; unrecognised values are mapped to PROXY.
   static String _normalizeRulePolicy(String rule) {
     final parts = rule.split(',').map((e) => e.trim()).toList();
     if (parts.length < 3) return rule;
@@ -172,7 +181,10 @@ abstract final class SubscriptionParser {
 
     const policyIndex = 2;
     final policy = parts[policyIndex].toUpperCase();
-    if (!builtin.contains(policy)) parts[policyIndex] = 'PROXY';
+
+    if (!builtin.contains(policy)) {
+      parts[policyIndex] = 'PROXY';
+    }
 
     return parts.join(',');
   }

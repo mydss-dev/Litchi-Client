@@ -259,10 +259,9 @@ class AppController extends ChangeNotifier {
     _isInitializing = false;
     notifyListeners();
 
-    if (supportsCoreConnection && _settings.wasConnected) {
-      unawaited(toggleConnection().then((_) {}));
-    }
-
+    // Deferred: _refreshAfterAutoLogin() will verify the account with the
+    // API before auto-reconnecting — never connect before we know the
+    // session is still valid.
     unawaited(_refreshAfterAutoLogin());
     unawaited(_checkForUpdate());
   }
@@ -298,6 +297,11 @@ class AppController extends ChangeNotifier {
       _dataLoadError = null;
       _isInitialLoading = false;
       if (!_disposed) notifyListeners();
+
+      // API confirmed the account is still valid — safe to auto-reconnect.
+      if (_settings.wasConnected) {
+        unawaited(_tryAutoReconnectSafely());
+      }
     } catch (e) {
       SecureLogger.warn(
         'Auth background refresh failed after ${sw.elapsedMilliseconds}ms',
@@ -308,9 +312,34 @@ class AppController extends ChangeNotifier {
             ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
             : '当前无法连接服务器，且暂无本地节点缓存，请检查网络或联系客服。';
         if (!_disposed) notifyListeners();
+
+        // Network error with cached nodes — cached-mode connection is safe.
+        if (_settings.wasConnected && _nodes.isNotEmpty) {
+          unawaited(toggleConnection().then((_) {}));
+        }
         return;
       }
 
+      await _expireSessionAndStopCore('登录已过期，请重新登录');
+    }
+  }
+
+  /// Quick API check before auto-reconnecting so we never bring up the core
+  /// on an expired / banned / out-of-traffic account.  Only a genuine network
+  /// error permits cached-mode connection; any other failure expires the
+  /// session and stops the core (if running).
+  Future<void> _tryAutoReconnectSafely() async {
+    try {
+      await _api.getSubscribeInfo();
+      // Backend confirmed account status is valid.
+      await toggleConnection();
+    } catch (e) {
+      if (NetworkErrorClassifier.isNetworkError(e)) {
+        // Only a confirmed network blip allows cached-mode connection.
+        await toggleConnection();
+        return;
+      }
+      // Token expired, account banned, plan exhausted, etc.
       await _expireSessionAndStopCore('登录已过期，请重新登录');
     }
   }
