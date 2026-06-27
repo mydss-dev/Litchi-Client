@@ -31,8 +31,40 @@ void _writeCrashLog(String message) {
     );
     file.parent.createSync(recursive: true);
     final ts = DateTime.now().toLocal().toString().substring(0, 19);
-    file.writeAsStringSync('[$ts] $message\n\n', mode: FileMode.append);
+    final sanitized = _sanitizeCrashMessage(message);
+    file.writeAsStringSync('[$ts] $sanitized\n\n', mode: FileMode.append);
   } catch (_) {}
+}
+
+/// Best-effort redaction of secrets that may appear in exception messages,
+/// stack traces, or error objects written to the local crash log.
+String _sanitizeCrashMessage(String message) {
+  var m = message;
+  // Proxy / VPN protocol URIs — the entire URI is the credential.
+  m = m.replaceAll(
+    RegExp(r'(vmess|vless|trojan|ss|hysteria2?|tuic|juicity|socks5?)://\S+',
+        caseSensitive: false),
+    '<\$1://***>',
+  );
+  // URL query parameters that carry secrets or tokens.
+  m = m.replaceAll(
+    RegExp(
+      r'([?&](?:token|key|secret|password|auth|api[_-]?key|access[_-]?token|sign|signature))=[^&\s]+',
+      caseSensitive: false,
+    ),
+    r'\1=***',
+  );
+  // JWT-style tokens (at least two base64url segments separated by dots).
+  m = m.replaceAll(
+    RegExp(r'eyJ[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{20,}'),
+    '<JWT***>',
+  );
+  // Email addresses.
+  m = m.replaceAll(
+    RegExp(r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}'),
+    '<email>',
+  );
+  return m;
 }
 
 Stream<String> _socketLines(Socket socket) => socket
