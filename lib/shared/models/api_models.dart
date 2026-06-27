@@ -621,8 +621,28 @@ class SubTraffic {
 class SubscriptionResult {
   final List<RemoteNode> nodes;
   final SubTraffic? traffic; // null if header absent
+  final List<String> rules;
+  final Map<String, dynamic> ruleProviders; // rule-provider name → {type, url, …}
 
-  const SubscriptionResult({required this.nodes, this.traffic});
+  const SubscriptionResult({
+    required this.nodes,
+    this.traffic,
+    this.rules = const [],
+    this.ruleProviders = const {},
+  });
+}
+
+/// Full profile parsed from a subscription (Clash YAML or URI list).
+class ParsedSubscriptionProfile {
+  const ParsedSubscriptionProfile({
+    required this.nodes,
+    this.rules = const [],
+    this.ruleProviders = const {},
+  });
+
+  final List<RemoteNode> nodes;
+  final List<String> rules;
+  final Map<String, dynamic> ruleProviders;
 }
 
 class RemotePaymentMethod {

@@ -489,6 +489,8 @@ class AppController extends ChangeNotifier {
     proxyPort: _settings.proxyPort,
     networkMode: _settings.networkMode,
     allowInsecure: _settings.allowInsecureNodes,
+    rules: _subscription.rules,
+    ruleProviders: _subscription.ruleProviders,
   );
 
   Future<String?> toggleConnection() {
@@ -616,6 +618,8 @@ class AppController extends ChangeNotifier {
       deviceLimit: snap.deviceLimit,
       resetDay: snap.resetDay,
       expiredAt: snap.expiredAt,
+      rules: snap.rules,
+      ruleProviders: snap.ruleProviders,
     );
     if (snap.criticalError != null) {
       _dataLoadError = snap.criticalError;

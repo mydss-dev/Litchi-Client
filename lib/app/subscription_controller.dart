@@ -3,7 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../shared/models/app_models.dart';
 
 /// Owns the subscription domain: subscribe URL + usage/quota metadata
-/// (daily usage, traffic series, alive IP, device limit, reset day, expiry).
+/// (daily usage, traffic series, alive IP, device limit, reset day, expiry)
+/// plus server-supplied rules and rule-providers from Clash YAML.
 /// Pure data, no actions. Extracted from [AppController].
 class SubscriptionController extends ChangeNotifier {
   String _subscribeUrl = '';
@@ -13,6 +14,8 @@ class SubscriptionController extends ChangeNotifier {
   int? _deviceLimit;
   int? _resetDay;
   int? _expiredAt;
+  List<String> _rules = const [];
+  Map<String, dynamic> _ruleProviders = const {};
 
   String get subscribeUrl => _subscribeUrl;
   List<double> get dailyUsage => _dailyUsage;
@@ -21,6 +24,8 @@ class SubscriptionController extends ChangeNotifier {
   int? get deviceLimit => _deviceLimit;
   int? get resetDay => _resetDay;
   int? get expiredAt => _expiredAt;
+  List<String> get rules => _rules;
+  Map<String, dynamic> get ruleProviders => _ruleProviders;
 
   /// Applies subscription fields from a snapshot. Null fields are skipped,
   /// matching the previous `if (snap.x != null) _x = ...` semantics.
@@ -32,6 +37,8 @@ class SubscriptionController extends ChangeNotifier {
     int? deviceLimit,
     int? resetDay,
     int? expiredAt,
+    List<String>? rules,
+    Map<String, dynamic>? ruleProviders,
   }) {
     if (subscribeUrl != null) _subscribeUrl = subscribeUrl;
     if (dailyUsage != null) _dailyUsage = dailyUsage;
@@ -40,6 +47,8 @@ class SubscriptionController extends ChangeNotifier {
     if (deviceLimit != null) _deviceLimit = deviceLimit;
     if (resetDay != null) _resetDay = resetDay;
     if (expiredAt != null) _expiredAt = expiredAt;
+    if (rules != null) _rules = rules;
+    if (ruleProviders != null) _ruleProviders = ruleProviders;
     notifyListeners();
   }
 
@@ -51,6 +60,8 @@ class SubscriptionController extends ChangeNotifier {
     _deviceLimit = null;
     _resetDay = null;
     _expiredAt = null;
+    _rules = const [];
+    _ruleProviders = const {};
     notifyListeners();
   }
 }

@@ -251,8 +251,13 @@ class PanelApi {
 
     if (body.isEmpty) return SubscriptionResult(nodes: [], traffic: traffic);
 
-    final nodes = SubscriptionParser.parse(body);
-    return SubscriptionResult(nodes: nodes, traffic: traffic);
+    final profile = SubscriptionParser.parseProfile(body);
+    return SubscriptionResult(
+      nodes: profile.nodes,
+      traffic: traffic,
+      rules: profile.rules,
+      ruleProviders: profile.ruleProviders,
+    );
   }
 
   // ── Plans ─────────────────────────────────────────────────────────────────

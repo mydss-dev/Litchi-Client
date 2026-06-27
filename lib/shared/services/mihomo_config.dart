@@ -40,6 +40,8 @@ abstract final class MihomoConfig {
     String dnsMode = '系统 DNS',
     NetworkMode networkMode = NetworkMode.system,
     bool allowInsecure = true,
+    List<String> rules = const [],
+    Map<String, dynamic> ruleProviders = const {},
   }) {
     final proxies = <Map<String, dynamic>>[];
     final names = <String>[];
@@ -54,7 +56,7 @@ abstract final class MihomoConfig {
     if (names.isEmpty) return null;
 
     final selected = names.contains(selectedTag) ? selectedTag : autoSelectTag;
-    final rules = <String>[
+    final fallbackRules = <String>[
       'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve',
       'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
       'IP-CIDR,172.16.0.0/12,DIRECT,no-resolve',
@@ -124,7 +126,8 @@ abstract final class MihomoConfig {
           'lazy': true,
         },
       ],
-      'rules': rules,
+      if (ruleProviders.isNotEmpty) 'rule-providers': ruleProviders,
+      'rules': rules.isNotEmpty ? rules : fallbackRules,
       'litchi-selected-proxy': selected,
     };
   }

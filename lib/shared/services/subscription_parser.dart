@@ -14,19 +14,34 @@ abstract final class SubscriptionParser {
   static const int maxNodes = 5000;
 
   static List<RemoteNode> parse(String body) {
-    if (utf8.encode(body).length > maxBodyBytes) return [];
-    if (body.contains('\nproxies:') || body.startsWith('proxies:')) {
-      return _parseClashYaml(body);
+    return parseProfile(body).nodes;
+  }
+
+  /// Parses subscription text and returns the full profile including rules and
+  /// rule-providers when the server responds with Clash YAML.
+  static ParsedSubscriptionProfile parseProfile(String body) {
+    if (utf8.encode(body).length > maxBodyBytes) {
+      return const ParsedSubscriptionProfile(nodes: []);
     }
-    try {
-      final decoded = utf8.decode(base64.decode(_pad(body)));
-      if (decoded.contains('\nproxies:') || decoded.startsWith('proxies:')) {
-        return _parseClashYaml(decoded);
-      }
-      if (decoded.contains('://')) return _parseUriList(decoded);
-    } catch (_) {}
-    if (body.contains('://')) return _parseUriList(body);
-    return [];
+
+    String content = body;
+    // Try base64 decode first — subscription providers often wrap Clash YAML.
+    if (!body.contains('\nproxies:') && !body.startsWith('proxies:')) {
+      try {
+        final decoded = utf8.decode(base64.decode(_pad(body)));
+        if (decoded.contains('\nproxies:') || decoded.startsWith('proxies:')) {
+          content = decoded;
+        }
+      } catch (_) {}
+    }
+
+    if (content.contains('\nproxies:') || content.startsWith('proxies:')) {
+      return _parseFullClashProfile(content);
+    }
+    if (content.contains('://')) {
+      return ParsedSubscriptionProfile(nodes: _parseUriList(content));
+    }
+    return const ParsedSubscriptionProfile(nodes: []);
   }
 
   // ── Clash YAML ────────────────────────────────────────────────────────────
@@ -66,43 +81,96 @@ abstract final class SubscriptionParser {
     return true;
   }
 
-  static List<RemoteNode> _parseClashYaml(String content) {
+  /// Parses a full Clash YAML subscription into proxy nodes, rules, and
+  /// rule-providers. The server returns this when the request UA contains
+  /// "clash" (e.g. ClashMetaForLitchi/1.0).
+  static ParsedSubscriptionProfile _parseFullClashProfile(String content) {
     final nodes = <RemoteNode>[];
+    final rules = <String>[];
+    final ruleProviders = <String, dynamic>{};
     int id = 1;
     try {
       final doc = loadYaml(content);
-      if (doc is! YamlMap) return nodes;
+      if (doc is! YamlMap) {
+        return const ParsedSubscriptionProfile(nodes: []);
+      }
+
+      // ── proxies ──────────────────────────────────────────────────────────
       final proxies = doc['proxies'];
-      if (proxies is! YamlList) return nodes;
-      for (final proxy in proxies) {
-        if (nodes.length >= maxNodes) break;
-        if (proxy is! YamlMap) continue;
-        final rawOutbound = <String, dynamic>{};
-        for (final entry in proxy.entries) {
-          rawOutbound[entry.key.toString()] = _plainYamlValue(entry.value);
+      if (proxies is YamlList) {
+        for (final proxy in proxies) {
+          if (nodes.length >= maxNodes) break;
+          if (proxy is! YamlMap) continue;
+          final rawOutbound = <String, dynamic>{};
+          for (final entry in proxy.entries) {
+            rawOutbound[entry.key.toString()] = _plainYamlValue(entry.value);
+          }
+          if (!_isSupportedClashProxy(rawOutbound)) continue;
+          final name = proxy['name']?.toString() ?? 'Node $id';
+          final server = proxy['server']?.toString() ?? '';
+          final port = int.tryParse(proxy['port']?.toString() ?? '') ?? 0;
+          final rate = double.tryParse(proxy['rate']?.toString() ?? '') ?? 1.0;
+          if (name.isNotEmpty) {
+            nodes.add(
+              RemoteNode(
+                id: id++,
+                name: name,
+                server: server,
+                port: port,
+                rate: rate,
+                rawOutbound: rawOutbound,
+              ),
+            );
+          }
         }
-        if (!_isSupportedClashProxy(rawOutbound)) {
-          continue;
+      }
+
+      // ── rules ────────────────────────────────────────────────────────────
+      final rawRules = doc['rules'];
+      if (rawRules is YamlList) {
+        for (final rule in rawRules) {
+          final text = rule?.toString().trim() ?? '';
+          if (text.isNotEmpty) rules.add(_normalizeRulePolicy(text));
         }
-        final name = proxy['name']?.toString() ?? 'Node $id';
-        final server = proxy['server']?.toString() ?? '';
-        final port = int.tryParse(proxy['port']?.toString() ?? '') ?? 0;
-        final rate = double.tryParse(proxy['rate']?.toString() ?? '') ?? 1.0;
-        if (name.isNotEmpty) {
-          nodes.add(
-            RemoteNode(
-              id: id++,
-              name: name,
-              server: server,
-              port: port,
-              rate: rate,
-              rawOutbound: rawOutbound,
-            ),
-          );
+      }
+
+      // ── rule-providers ───────────────────────────────────────────────────
+      final rawProviders = doc['rule-providers'];
+      if (rawProviders is YamlMap) {
+        for (final entry in rawProviders.entries) {
+          final key = entry.key.toString();
+          final value = entry.value;
+          if (value is YamlMap) {
+            ruleProviders[key] = _plainYamlValue(value);
+          }
         }
       }
     } catch (_) {}
-    return nodes;
+
+    return ParsedSubscriptionProfile(
+      nodes: nodes,
+      rules: rules,
+      ruleProviders: ruleProviders,
+    );
+  }
+
+  /// Maps custom policy group names in server-side rules to the client's
+  /// canonical PROXY group. Built-in actions (DIRECT, REJECT, etc.) pass
+  /// through unchanged.
+  static String _normalizeRulePolicy(String rule) {
+    final parts = rule.split(',');
+    if (parts.length < 2) return rule;
+    final policy = parts.last.trim().toUpperCase();
+    const builtin = {
+      'DIRECT',
+      'REJECT',
+      'REJECT-DROP',
+      'PASS',
+      'GLOBAL',
+    };
+    if (builtin.contains(policy)) return rule;
+    parts[parts.length - 1] = 'PROXY';
+    return parts.join(',');
   }
 
   // ── URI list ──────────────────────────────────────────────────────────────
