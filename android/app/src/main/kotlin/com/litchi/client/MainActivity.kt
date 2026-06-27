@@ -40,7 +40,27 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "prepareVpn" -> prepareVpn(result)
-                "start" -> {
+                // ── Core-only ────────────────────────────────────────────
+                "startCoreOnly" -> {
+                    val config = (call.arguments as? Map<*, *>)?.get("config") as? String
+                    if (config.isNullOrBlank()) {
+                        result.error("invalid_config", "核心配置为空", null)
+                        return@setMethodCallHandler
+                    }
+                    if (!AndroidMihomoEngine.isAvailable()) {
+                        result.error(
+                            "missing_core",
+                            AndroidMihomoEngine.lastError(),
+                            null
+                        )
+                        return@setMethodCallHandler
+                    }
+                    result.success(LitchiCoreService.start(this, config))
+                }
+                "stopCore" -> result.success(LitchiCoreService.stop(this))
+                "isCoreRunning" -> result.success(LitchiCoreService.isRunning)
+                // ── VPN ──────────────────────────────────────────────────
+                "startVpn" -> {
                     val config = (call.arguments as? Map<*, *>)?.get("config") as? String
                     if (config.isNullOrBlank()) {
                         result.error("invalid_config", "核心配置为空", null)
@@ -56,8 +76,38 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(LitchiVpnService.start(this, config))
                 }
-                "stop" -> result.success(LitchiVpnService.stop(this))
-                "isRunning" -> result.success(LitchiVpnService.isRunning)
+                "stopVpn" -> result.success(LitchiVpnService.stop(this))
+                "isVpnRunning" -> result.success(LitchiVpnService.isRunning)
+                // ── Legacy / shared ──────────────────────────────────────
+                "start" -> {
+                    val config = (call.arguments as? Map<*, *>)?.get("config") as? String
+                    if (config.isNullOrBlank()) {
+                        result.error("invalid_config", "核心配置为空", null)
+                        return@setMethodCallHandler
+                    }
+                    if (!AndroidMihomoEngine.isAvailable()) {
+                        result.error(
+                            "missing_core",
+                            AndroidMihomoEngine.lastError(),
+                            null
+                        )
+                        return@setMethodCallHandler
+                    }
+                    // Legacy: start core-only first, then VPN.
+                    val coreOk = LitchiCoreService.start(this, config)
+                    if (!coreOk) {
+                        result.success(false)
+                        return@setMethodCallHandler
+                    }
+                    result.success(LitchiVpnService.start(this, config))
+                }
+                "stop" -> {
+                    LitchiVpnService.stop(this)
+                    result.success(LitchiCoreService.stop(this))
+                }
+                "isRunning" -> result.success(
+                    LitchiCoreService.isRunning || LitchiVpnService.isRunning
+                )
                 "lastError" -> result.success(AndroidMihomoEngine.lastError())
                 "version" -> result.success(AndroidMihomoEngine.version())
                 else -> result.notImplemented()

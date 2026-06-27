@@ -113,7 +113,7 @@ class CoreController extends ChangeNotifier {
 
   Future<void> shutdown() async {
     if (Platform.isAndroid) {
-      await _androidCore.stop();
+      await _androidCore.stopCore();
       await _androidStatusSub?.cancel();
       _androidStatusSub = null;
       return;
@@ -133,7 +133,28 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<void> startCoreOnly(CoreConnectionRequest req) async {
-    if (Platform.isAndroid) return;
+    if (Platform.isAndroid) {
+      if (_androidCore.isCoreRunning) return;
+      if (req.validNodes.isEmpty) return;
+
+      _apiPort = await _allocateApiPort();
+      final config = req.buildConfig(
+        overrideNetworkMode: NetworkMode.system,
+        apiPort: _apiPort,
+      );
+      if (config == null) return;
+      (config['tun'] as Map<String, dynamic>)['enable'] = false;
+
+      final configJson = MihomoConfig.encodeConfig(config);
+      final ok = await _androidCore.startCoreOnly(configJson);
+      if (ok) {
+        await _waitForController();
+        await _applyInitialSelection(req);
+        _connectedAt = null; // core-only is not "connected"
+        notifyListeners();
+      }
+      return;
+    }
     if (_core.isRunning) return;
     if (req.validNodes.isEmpty) return;
 
@@ -156,12 +177,47 @@ class CoreController extends ChangeNotifier {
 
   Future<String?> reloadCore(CoreConnectionRequest req) async {
     if (Platform.isAndroid) {
-      if (coreConnecting || _status != ConnectionStatus.connected) return null;
-      await _androidCore.stop();
-      _stopTrafficMonitor();
-      _connectedAt = null;
-      _status = ConnectionStatus.disconnected;
-      return _toggleAndroidConnection(req);
+      if (coreConnecting) return null;
+
+      final wasVpnConnected = _status == ConnectionStatus.connected;
+
+      // If core isn't running at all, start it core-only.
+      if (!_androidCore.isCoreRunning) {
+        await startCoreOnly(req);
+        if (wasVpnConnected) return _toggleAndroidConnection(req);
+        return null;
+      }
+
+      // Core is running — reload config via API to avoid full restart.
+      final config = req.buildConfig(
+        overrideNetworkMode: NetworkMode.tun,
+        apiPort: _apiPort,
+      );
+      if (config == null) return null;
+      (config['tun'] as Map<String, dynamic>)['enable'] = false;
+
+      final configJson = MihomoConfig.encodeConfig(config);
+      final ok = await MihomoApiClient.reloadConfig(
+        configJson,
+        apiPort: _apiPort,
+      );
+      if (ok) {
+        await _applyInitialSelection(req);
+        // If VPN was connected, restart it with the new config.
+        if (wasVpnConnected) {
+          await _androidCore.stopVpn();
+          final vpnOk = await _androidCore.startVpn(configJson);
+          if (!vpnOk) {
+            _coreError = CoreErrorMessageService.androidStartFailure(
+              _androidCore.lastError,
+            );
+            _status = ConnectionStatus.error;
+            notifyListeners();
+            return _coreError;
+          }
+        }
+      }
+      return null;
     }
 
     if (coreConnecting) return null;
@@ -292,14 +348,17 @@ class CoreController extends ChangeNotifier {
   Future<String?> _toggleAndroidConnection(CoreConnectionRequest req) async {
     if (coreConnecting) return null;
 
+    // ── Disconnect: stop VPN, keep core running ──────────────────────────
     if (_status == ConnectionStatus.connected) {
       _status = ConnectionStatus.disconnecting;
       notifyListeners();
-      await _androidCore.stop();
+      await _androidCore.stopVpn();
       _stopTrafficMonitor();
       _connectedAt = null;
       _coreError = '';
-      _status = ConnectionStatus.disconnected;
+      _status = _androidCore.isCoreRunning
+          ? ConnectionStatus.disconnected
+          : ConnectionStatus.disconnected;
       notifyListeners();
       return null;
     }
@@ -321,18 +380,35 @@ class CoreController extends ChangeNotifier {
       notifyListeners();
       return _coreError;
     }
-    (config['tun'] as Map<String, dynamic>)['enable'] = false;
 
     _status = ConnectionStatus.connecting;
     _coreError = '';
     notifyListeners();
 
     try {
-      final configJson = MihomoConfig.encodeConfig(config);
-      final ok = await _androidCore.start(configJson);
-      if (ok) {
+      // Step 1: start (or reuse) core-only so external-controller is up.
+      if (!_androidCore.isCoreRunning) {
+        final coreConfig = Map<String, dynamic>.from(config);
+        coreConfig['tun'] = {'enable': false};
+        final coreOk = await _androidCore.startCoreOnly(
+          MihomoConfig.encodeConfig(coreConfig),
+        );
+        if (!coreOk) {
+          _coreError = CoreErrorMessageService.androidStartFailure(
+            _androidCore.lastError,
+          );
+          _status = ConnectionStatus.error;
+          notifyListeners();
+          return _coreError;
+        }
         await _waitForController();
         await _applyInitialSelection(req);
+      }
+
+      // Step 2: start VPN layer on top.
+      final configJson = MihomoConfig.encodeConfig(config);
+      final ok = await _androidCore.startVpn(configJson);
+      if (ok) {
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
         _startTrafficMonitor();
@@ -354,7 +430,8 @@ class CoreController extends ChangeNotifier {
 
   Future<void> stopAndReset() async {
     if (Platform.isAndroid) {
-      await _androidCore.stop();
+      await _androidCore.stopCore();
+      _stopTrafficMonitor();
       _connectedAt = null;
       _coreError = '';
       _status = ConnectionStatus.disconnected;

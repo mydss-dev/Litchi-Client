@@ -20,10 +20,34 @@ object AndroidMihomoEngine {
         service: LitchiVpnService,
     ): String
 
+    private external fun nativeStartCoreOnly(
+        config: String,
+        home: String,
+    ): String
+
     private external fun nativeStop()
     private external fun nativeVersion(): String
 
     fun isAvailable(): Boolean = loaded
+
+    fun startCoreOnly(config: String, home: String): Boolean {
+        if (!loaded) {
+            lastError = lastError.ifBlank { "mihomo Android library could not be loaded" }
+            return false
+        }
+
+        val ok = runCatching {
+            val error = nativeStartCoreOnly(config, home)
+            lastError = error
+            error.isBlank()
+        }.getOrElse {
+            lastError = it.message ?: it.toString()
+            Log.e(TAG, "startCoreOnly failed", it)
+            false
+        }
+
+        return ok
+    }
 
     fun start(config: String, service: LitchiVpnService, tunFd: Int): Boolean {
         if (tunFd < 0) {

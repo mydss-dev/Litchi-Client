@@ -89,6 +89,33 @@ func litchiMihomoStart(
 	return C.CString("")
 }
 
+//export litchiMihomoStartCoreOnly
+func litchiMihomoStartCoreOnly(
+	configJSON *C.char,
+	homePath *C.char,
+) *C.char {
+	coreLock.Lock()
+	defer coreLock.Unlock()
+
+	stopLocked()
+	constant.SetHomeDir(C.GoString(homePath))
+
+	cfg, err := executor.ParseWithBytes([]byte(C.GoString(configJSON)))
+	if err != nil {
+		stopLocked()
+		return C.CString(fmt.Sprintf("invalid mihomo config: %v", err))
+	}
+	// Core-only: no socket protection, no TUN.
+	cfg.General.Tun.Enable = false
+	hub.ApplyConfig(cfg)
+
+	listener.SetAllowLan(cfg.General.AllowLan)
+	listener.SetBindAddress(cfg.General.BindAddress)
+	listener.ReCreateMixed(cfg.General.MixedPort, tunnel.Tunnel)
+
+	return C.CString("")
+}
+
 //export litchiMihomoStop
 func litchiMihomoStop() {
 	coreLock.Lock()

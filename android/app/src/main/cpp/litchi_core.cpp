@@ -95,6 +95,33 @@ Java_com_litchi_client_AndroidMihomoEngine_nativeStart(
 }
 
 extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_litchi_client_AndroidMihomoEngine_nativeStartCoreOnly(
+    JNIEnv *env,
+    jobject,
+    jstring config,
+    jstring home
+) {
+    const char *config_chars = env->GetStringUTFChars(config, nullptr);
+    const char *home_chars = env->GetStringUTFChars(home, nullptr);
+    char *error = litchiMihomoStartCoreOnly(
+        const_cast<char *>(config_chars),
+        const_cast<char *>(home_chars)
+    );
+
+    bool ok = error == nullptr || error[0] == '\0';
+
+    env->ReleaseStringUTFChars(config, config_chars);
+    env->ReleaseStringUTFChars(home, home_chars);
+
+    jstring result = env->NewStringUTF(ok ? "" : error);
+
+    if (error != nullptr) litchiMihomoFree(error);
+
+    return result;
+}
+
+extern "C"
 JNIEXPORT void JNICALL
 Java_com_litchi_client_AndroidMihomoEngine_nativeStop(JNIEnv *env, jobject) {
     litchiMihomoStop();

@@ -21,19 +21,62 @@ class AndroidCoreManager {
       .asBroadcastStream();
 
   bool _isRunning = false;
+  bool _isCoreRunning = false;
+  bool _isVpnRunning = false;
   String _lastError = '';
   StreamSubscription<AndroidCoreStatusEvent>? _statusSub;
 
   bool get isRunning => _isRunning;
+  bool get isCoreRunning => _isCoreRunning;
+  bool get isVpnRunning => _isVpnRunning;
   String get lastError => _lastError;
 
   Future<void> init() async {
     _statusSub ??= statusStream.listen(_applyStatus);
-    _isRunning = await _invokeBool('isRunning');
+    _isCoreRunning = await _invokeBool('isCoreRunning');
+    _isVpnRunning = await _invokeBool('isVpnRunning');
+    _isRunning = _isCoreRunning || _isVpnRunning;
   }
 
   Future<bool> prepareVpn() => _invokeBool('prepareVpn');
 
+  /// Starts the mihomo core without VPN — no permission prompt, no TUN.
+  /// Used for latency tests, node switching, and mode changes before
+  /// the user explicitly connects.
+  Future<bool> startCoreOnly(String configJson) async {
+    final launched = await _invokeBool('startCoreOnly', {'config': configJson});
+    if (!launched) {
+      _lastError = await _invokeString('lastError');
+      return false;
+    }
+
+    _isCoreRunning = true;
+    _isRunning = true;
+    return true;
+  }
+
+  /// Starts the VPN layer on top of an already-running core.  Only call
+  /// after [startCoreOnly] succeeded.  Triggers the VPN permission prompt
+  /// if needed.
+  Future<bool> startVpn(String configJson) async {
+    final prepared = await prepareVpn();
+    if (!prepared) {
+      _lastError = '需要允许 VPN 权限后才能连接，请重新点击连接并授权';
+      return false;
+    }
+    final launched = await _invokeBool('startVpn', {'config': configJson});
+    if (!launched) {
+      _lastError = await _invokeString('lastError');
+      return false;
+    }
+
+    _isVpnRunning = true;
+    _isRunning = true;
+    return true;
+  }
+
+  /// Legacy start that does both core-only + VPN in one call.
+  /// Prefer [startCoreOnly] + [startVpn] for new code.
   Future<bool> start(String configJson) async {
     final prepared = await prepareVpn();
     if (!prepared) {
@@ -55,13 +98,29 @@ class AndroidCoreManager {
 
     _lastError = await _invokeString('lastError');
     if (_lastError.isEmpty) _lastError = 'Android 核心启动超时，请稍后重试';
-    await stop();
+    await stopCore();
     return false;
   }
 
-  Future<void> stop() async {
-    await _invokeBool('stop');
+  /// Stops the VPN layer only.  The core keeps running so latency tests
+  /// and node switching remain available.
+  Future<void> stopVpn() async {
+    await _invokeBool('stopVpn');
+    _isVpnRunning = false;
+    _isRunning = _isCoreRunning;
+  }
+
+  /// Stops everything — core + VPN.
+  Future<void> stopCore() async {
+    await _invokeBool('stopCore');
+    _isCoreRunning = false;
+    _isVpnRunning = false;
     _isRunning = false;
+  }
+
+  /// Legacy stop (stops everything). Prefer [stopVpn] or [stopCore].
+  Future<void> stop() async {
+    await stopCore();
   }
 
   Future<String> version() => _invokeString('version');

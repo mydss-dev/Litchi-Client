@@ -32,6 +32,15 @@
             android:value="2" />
 
         <service
+            android:name=".LitchiCoreService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="core_daemon" />
+        </service>
+
+        <service
             android:name=".LitchiVpnService"
             android:exported="false"
             android:foregroundServiceType="specialUse"

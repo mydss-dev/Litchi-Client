@@ -75,6 +75,21 @@ abstract final class MihomoApiClient {
     };
   }
 
+  /// Reloads the full configuration without restarting the process.
+  /// Returns true when the API responds 204 (no content).
+  static Future<bool> reloadConfig(
+    String configJson, {
+    int apiPort = 9090,
+  }) async {
+    final response = await _request(
+      'PUT',
+      '/configs',
+      apiPort: apiPort,
+      body: {'path': '', 'payload': configJson},
+    );
+    return response?.statusCode == 204;
+  }
+
   static Future<bool> setMode(String mode, {int apiPort = 9090}) async {
     final response = await _request(
       'PATCH',
