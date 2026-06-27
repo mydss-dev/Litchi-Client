@@ -92,6 +92,7 @@ class LitchiVpnService : VpnService() {
                 val fd = openTun()
                 val ok = AndroidMihomoEngine.start(config, this, fd)
                 if (!ok) {
+                    tunFd = -1
                     AndroidCoreStatus.emit("error", AndroidMihomoEngine.lastError())
                     stopCore(emitStopped = false)
                     return START_NOT_STICKY

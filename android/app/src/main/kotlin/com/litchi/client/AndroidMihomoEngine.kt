@@ -1,5 +1,6 @@
 package com.litchi.client
 
+import android.os.ParcelFileDescriptor
 import android.util.Log
 
 object AndroidMihomoEngine {
@@ -25,12 +26,18 @@ object AndroidMihomoEngine {
     fun isAvailable(): Boolean = loaded
 
     fun start(config: String, service: LitchiVpnService, tunFd: Int): Boolean {
-        if (!loaded) return false
         if (tunFd < 0) {
             lastError = "Android VPN interface could not be created"
             return false
         }
-        return runCatching {
+
+        if (!loaded) {
+            lastError = lastError.ifBlank { "mihomo Android library could not be loaded" }
+            closeDetachedFd(tunFd)
+            return false
+        }
+
+        val ok = runCatching {
             val error = nativeStart(config, service.filesDir.absolutePath, tunFd, service)
             lastError = error
             error.isBlank()
@@ -38,6 +45,21 @@ object AndroidMihomoEngine {
             lastError = it.message ?: it.toString()
             Log.e(TAG, "start failed", it)
             false
+        }
+
+        if (!ok) {
+            closeDetachedFd(tunFd)
+        }
+
+        return ok
+    }
+
+    private fun closeDetachedFd(fd: Int) {
+        if (fd < 0) return
+        runCatching {
+            ParcelFileDescriptor.adoptFd(fd).close()
+        }.onFailure {
+            Log.w(TAG, "close detached tun fd failed", it)
         }
     }
 
