@@ -19,20 +19,16 @@ if (-not (Test-Path $configPath)) {
 
 $config = Get-Content $configPath -Raw | ConvertFrom-Json
 
-$appName     = if ($config.app_name)     { $config.app_name }     else { "" }
-$logoUrl  = if ($config.logo_url)  { $config.logo_url }  else { "" }
-$apiBase     = if ($config.api_base_list -and $config.api_base_list[0]) { $config.api_base_list[0] } else { "" }
-$brandStart  = if ($config.brand_color_start) { $config.brand_color_start } else { "" }
-$brandEnd    = if ($config.brand_color_end)   { $config.brand_color_end }   else { "" }
-$version     = if ($config.update_version)    { $config.update_version }    else { "" }
+$appName = if ($config.app_name) { $config.app_name } else { "" }
+$logoUrl = if ($config.logo_url) { $config.logo_url } else { "" }
+$apiBase = if ($config.api_base_list -and $config.api_base_list[0]) { $config.api_base_list[0] } else { "" }
+$version = if ($config.update_version) { $config.update_version } else { "" }
 
 $flags = @()
-if ($appName)    { $flags += "--dart-define=APP_NAME=$appName" }
+if ($appName) { $flags += "--dart-define=APP_NAME=$appName" }
 if ($logoUrl) { $flags += "--dart-define=LOGO_URL=$logoUrl" }
-if ($apiBase)    { $flags += "--dart-define=API_BASE=$apiBase" }
-if ($brandStart) { $flags += "--dart-define=BRAND_COLOR_START=$brandStart" }
-if ($brandEnd)   { $flags += "--dart-define=BRAND_COLOR_END=$brandEnd" }
-if ($version)    { $flags += "--dart-define=APP_VERSION=$version" }
+if ($apiBase) { $flags += "--dart-define=API_BASE=$apiBase" }
+if ($version) { $flags += "--dart-define=APP_VERSION=$version" }
 
 Write-Host "==> Building for $Platform" -ForegroundColor Cyan
 Write-Host "    Name:    $appName"

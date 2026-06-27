@@ -4,8 +4,8 @@
 # Usage:
 #   ./tool/build_from_config.sh windows   (or macos, android)
 #
-# Reads app_name, logo_url, brand colors from config.json and passes them
-# as --dart-define flags automatically. No more manual dart-define typing.
+# Reads app_name, logo_url from config.json and passes them as --dart-define
+# flags automatically. No more manual dart-define typing.
 
 set -euo pipefail
 
@@ -21,18 +21,14 @@ fi
 APP_NAME=$(jq -r '.app_name // empty' "$CONFIG")
 LOGO_URL=$(jq -r '.logo_url // empty' "$CONFIG")
 API_BASE=$(jq -r '.api_base_list[0] // empty' "$CONFIG")
-BRAND_START=$(jq -r '.brand_color_start // empty' "$CONFIG")
-BRAND_END=$(jq -r '.brand_color_end // empty' "$CONFIG")
 VERSION=$(jq -r '.update_version // empty' "$CONFIG")
 
 # Build the dart-define flags
 FLAGS=()
-[ -n "$APP_NAME" ]    && FLAGS+=("--dart-define=APP_NAME=$APP_NAME")
+[ -n "$APP_NAME" ] && FLAGS+=("--dart-define=APP_NAME=$APP_NAME")
 [ -n "$LOGO_URL" ] && FLAGS+=("--dart-define=LOGO_URL=$LOGO_URL")
-[ -n "$API_BASE" ]    && FLAGS+=("--dart-define=API_BASE=$API_BASE")
-[ -n "$BRAND_START" ] && FLAGS+=("--dart-define=BRAND_COLOR_START=$BRAND_START")
-[ -n "$BRAND_END" ]   && FLAGS+=("--dart-define=BRAND_COLOR_END=$BRAND_END")
-[ -n "$VERSION" ]     && FLAGS+=("--dart-define=APP_VERSION=$VERSION")
+[ -n "$API_BASE" ] && FLAGS+=("--dart-define=API_BASE=$API_BASE")
+[ -n "$VERSION" ]  && FLAGS+=("--dart-define=APP_VERSION=$VERSION")
 
 echo "==> Building for $PLATFORM"
 echo "    Name:   ${APP_NAME:-'(not set)'}"

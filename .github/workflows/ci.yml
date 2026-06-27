@@ -43,24 +43,16 @@ jobs:
       - name: Build release
         shell: pwsh
         run: |
-          $apiBase     = if ("${{ secrets.API_BASE }}")          { "${{ secrets.API_BASE }}" }          else { "https://placeholder.example.com" }
-          $updateUrl   = if ("${{ secrets.UPDATE_CHECK_URL }}")  { "${{ secrets.UPDATE_CHECK_URL }}" }  else { "" }
-          $appName     = if ("${{ secrets.APP_NAME }}")          { "${{ secrets.APP_NAME }}" }          else { "Litchi" }
-          $appSubtitle = if ("${{ secrets.APP_SUBTITLE }}")      { "${{ secrets.APP_SUBTITLE }}" }      else { "Network Client" }
-          $logoLetter  = if ("${{ secrets.LOGO_LETTER }}")       { "${{ secrets.LOGO_LETTER }}" }       else { "L" }
-          $colorStart  = if ("${{ secrets.BRAND_COLOR_START }}") { "${{ secrets.BRAND_COLOR_START }}" } else { "2563EB" }
-          $colorEnd    = if ("${{ secrets.BRAND_COLOR_END }}")   { "${{ secrets.BRAND_COLOR_END }}" }   else { "7C3AED" }
-          $version     = "${{ github.ref_name }}" -replace '^v', ''
+          $apiBase   = if ("${{ secrets.API_BASE }}")  { "${{ secrets.API_BASE }}" }  else { "" }
+          $appName   = if ("${{ secrets.APP_NAME }}")  { "${{ secrets.APP_NAME }}" }  else { "Litchi" }
+          $logoUrl   = if ("${{ secrets.LOGO_URL }}")  { "${{ secrets.LOGO_URL }}" }  else { "" }
+          $version   = "${{ github.ref_name }}" -replace '^v', ''
           if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "0.0.0" }
           flutter build windows --release `
             "--dart-define=API_BASE=$apiBase" `
             "--dart-define=APP_VERSION=$version" `
-            "--dart-define=UPDATE_CHECK_URL=$updateUrl" `
             "--dart-define=APP_NAME=$appName" `
-            "--dart-define=APP_SUBTITLE=$appSubtitle" `
-            "--dart-define=LOGO_LETTER=$logoLetter" `
-            "--dart-define=BRAND_COLOR_START=$colorStart" `
-            "--dart-define=BRAND_COLOR_END=$colorEnd"
+            "--dart-define=LOGO_URL=$logoUrl"
 
       - name: Download sing-box
         shell: pwsh
@@ -123,8 +115,9 @@ jobs:
           # 从 tag 提取版本号（v1.2.0 → 1.2.0），非 tag 构建用 0.0.0
           $version = "${{ github.ref_name }}" -replace '^v', ''
           if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "0.0.0" }
-          $appName = if ("${{ secrets.APP_NAME }}") { "${{ secrets.APP_NAME }} Client" } else { "Litchi Client" }
-          $publisher = if ("${{ secrets.APP_NAME }}") { "${{ secrets.APP_NAME }}" } else { "Litchi" }
+          $appName   = if ("${{ secrets.APP_NAME }}")  { "${{ secrets.APP_NAME }}" }  else { "Litchi" }
+          $publisher = $appName
+          $setupName = "$appName-Setup-$version.exe"
           Write-Host "Building installer: $appName $version"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             /DMyAppVersion=$version `
@@ -132,7 +125,7 @@ jobs:
             "/DMyAppPublisher=$publisher" `
             litchi_setup.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Write-Host "Installer ready: installer_output\LitchiClient-Setup-$version.exe"
+          Write-Host "Installer ready: installer_output\$setupName"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -220,18 +213,11 @@ jobs:
       - name: Build release APK (multi-ABI)
         run: |
           api_base="${{ secrets.API_BASE }}"
-          update_url="${{ secrets.UPDATE_CHECK_URL }}"
           app_name="${{ secrets.APP_NAME }}"
-          app_subtitle="${{ secrets.APP_SUBTITLE }}"
-          logo_letter="${{ secrets.LOGO_LETTER }}"
-          color_start="${{ secrets.BRAND_COLOR_START }}"
-          color_end="${{ secrets.BRAND_COLOR_END }}"
-          api_base="${api_base:-https://placeholder.example.com}"
+          logo_url="${{ secrets.LOGO_URL }}"
+          api_base="${api_base:-}"
           app_name="${app_name:-Litchi}"
-          app_subtitle="${app_subtitle:-Network Client}"
-          logo_letter="${logo_letter:-L}"
-          color_start="${color_start:-2563EB}"
-          color_end="${color_end:-7C3AED}"
+          logo_url="${logo_url:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           IFS='.' read -r major minor patch_extra <<< "$version"
@@ -246,12 +232,8 @@ jobs:
             "--build-number=$version_code" \
             "--dart-define=API_BASE=$api_base" \
             "--dart-define=APP_VERSION=$version" \
-            "--dart-define=UPDATE_CHECK_URL=$update_url" \
             "--dart-define=APP_NAME=$app_name" \
-            "--dart-define=APP_SUBTITLE=$app_subtitle" \
-            "--dart-define=LOGO_LETTER=$logo_letter" \
-            "--dart-define=BRAND_COLOR_START=$color_start" \
-            "--dart-define=BRAND_COLOR_END=$color_end"
+            "--dart-define=LOGO_URL=$logo_url"
 
       - name: Verify the core includes arm64
         run: |
@@ -265,23 +247,25 @@ jobs:
 
       - name: Rename APK
         run: |
+          app_name="${{ secrets.APP_NAME }}"
+          app_name="${app_name:-Litchi}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           mv build/app/outputs/flutter-apk/app-release.apk \
-             "build/app/outputs/flutter-apk/Litchi Client $version.apk"
+             "build/app/outputs/flutter-apk/$app_name $version.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: litchi-client-android-${{ github.sha }}
-          path: build/app/outputs/flutter-apk/Litchi Client *.apk
+          path: build/app/outputs/flutter-apk/*.apk
           retention-days: 30
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/Litchi Client *.apk
+          files: build/app/outputs/flutter-apk/*.apk
           generate_release_notes: true
 
   build-macos:
@@ -302,29 +286,18 @@ jobs:
       - name: Build release
         run: |
           api_base="${{ secrets.API_BASE }}"
-          update_url="${{ secrets.UPDATE_CHECK_URL }}"
           app_name="${{ secrets.APP_NAME }}"
-          app_subtitle="${{ secrets.APP_SUBTITLE }}"
-          logo_letter="${{ secrets.LOGO_LETTER }}"
-          color_start="${{ secrets.BRAND_COLOR_START }}"
-          color_end="${{ secrets.BRAND_COLOR_END }}"
-          api_base="${api_base:-https://placeholder.example.com}"
+          logo_url="${{ secrets.LOGO_URL }}"
+          api_base="${api_base:-}"
           app_name="${app_name:-Litchi}"
-          app_subtitle="${app_subtitle:-Network Client}"
-          logo_letter="${logo_letter:-L}"
-          color_start="${color_start:-2563EB}"
-          color_end="${color_end:-7C3AED}"
+          logo_url="${logo_url:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           flutter build macos --release \
             "--dart-define=API_BASE=$api_base" \
             "--dart-define=APP_VERSION=$version" \
-            "--dart-define=UPDATE_CHECK_URL=$update_url" \
             "--dart-define=APP_NAME=$app_name" \
-            "--dart-define=APP_SUBTITLE=$app_subtitle" \
-            "--dart-define=LOGO_LETTER=$logo_letter" \
-            "--dart-define=BRAND_COLOR_START=$color_start" \
-            "--dart-define=BRAND_COLOR_END=$color_end"
+            "--dart-define=LOGO_URL=$logo_url"
 
       - name: Bundle sing-box core (universal)
         run: |
@@ -362,13 +335,15 @@ jobs:
       - name: Build DMG
         run: |
           app="build/macos/Build/Products/Release/litchi_client.app"
+          app_name="${{ secrets.APP_NAME }}"
+          app_name="${app_name:-Litchi}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
-          dmg="Litchi Client $version.dmg"
+          dmg="$app_name $version.dmg"
           rm -rf dmg-stage && mkdir -p dmg-stage
           cp -R "$app" dmg-stage/
           ln -s /Applications dmg-stage/Applications
-          hdiutil create -volname "Litchi Client" -srcfolder dmg-stage \
+          hdiutil create -volname "$app_name" -srcfolder dmg-stage \
             -ov -format UDZO "$dmg"
           ls -lh "$dmg"
 
@@ -376,12 +351,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: litchi-client-macos-${{ github.sha }}
-          path: Litchi Client *.dmg
+          path: "*.dmg"
           retention-days: 30
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: Litchi Client *.dmg
+          files: "*.dmg"
           generate_release_notes: true
