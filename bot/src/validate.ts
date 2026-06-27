@@ -41,7 +41,7 @@ export function parseAndValidateConfig(raw: string): Record<string, unknown> {
 
   requireString(payload, 'app_name', 1, 40);
   requireHttpsUrlList(payload);
-  optionalString(payload, 'logo_url', 0, 500);
+  requireHttpsUrl(payload, 'logo_url');
   optionalPath(payload, 'api_prefix');
   optionalHttpsUrl(payload, 'invite_url_base');
   optionalHttpsUrl(payload, 'invite_base_url');
@@ -209,6 +209,14 @@ function requireHttpsUrlList(obj: Record<string, unknown>): void {
   }
   const urls = list.map((value) => assertHttpsUrl(String(value)));
   obj.api_base_list = urls;
+}
+
+function requireHttpsUrl(obj: Record<string, unknown>, key: string): void {
+  const value = obj[key];
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`${key} 必须填写 https URL。`);
+  }
+  obj[key] = assertHttpsUrl(value);
 }
 
 function optionalHttpsUrl(obj: Record<string, unknown>, key: string): void {

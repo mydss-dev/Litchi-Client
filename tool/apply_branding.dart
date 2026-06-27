@@ -9,6 +9,7 @@ Future<void> main(List<String> args) async {
 
   final source = args.first;
   final generateIcons = !args.contains('--no-generate-icons');
+  final metadataOnly = args.contains('--metadata-only');
   final payload = await _loadPayload(source);
   if (payload == null) {
     exitCode = 65;
@@ -25,12 +26,16 @@ Future<void> main(List<String> args) async {
   await _writeAndroidName(appName);
   await _writeWindowsName(appName);
 
-  final downloadedIcon = await _downloadLogoIfUrl(logo);
-  if (downloadedIcon) {
-    await _patchLauncherIconPaths();
-    if (generateIcons) await _generateLauncherIcons();
-  } else {
-    stdout.writeln('Logo is not an http(s) image URL, keep existing launcher icons.');
+  if (!metadataOnly) {
+    final downloadedIcon = await _downloadLogoIfUrl(logo);
+    if (downloadedIcon) {
+      await _patchLauncherIconPaths();
+      if (generateIcons) await _generateLauncherIcons();
+    } else {
+      stdout.writeln(
+        'Logo is not an http(s) image URL, keep existing launcher icons.',
+      );
+    }
   }
 
   stdout.writeln('Branding applied.');
@@ -39,7 +44,7 @@ Future<void> main(List<String> args) async {
 void _usage() {
   stdout.writeln('''
 Usage:
-  dart run tool/apply_branding.dart <config.js|payload.json|oss_config.json|https_url> [--no-generate-icons]
+  dart run tool/apply_branding.dart <config.js|payload.json|oss_config.json|https_url> [--no-generate-icons] [--metadata-only]
 
 The tool reads existing remote config fields:
   app_name     -> Android label + Windows product metadata
@@ -151,7 +156,10 @@ Future<bool> _downloadLogoIfUrl(String logo) async {
     await dir.create(recursive: true);
     await File('${dir.path}/logo.png').writeAsBytes(bytes);
     await File('${dir.path}/app_icon.png').writeAsBytes(bytes);
-    stdout.writeln('Downloaded logo to assets/images/logo.png and app_icon.png.');
+    await File('${dir.path}/app_icon_foreground.png').writeAsBytes(bytes);
+    stdout.writeln(
+      'Downloaded logo to assets/images/logo.png, app_icon.png and app_icon_foreground.png.',
+    );
     return true;
   } catch (e) {
     stderr.writeln('Failed to download logo image: $e');
@@ -169,7 +177,7 @@ Future<void> _patchLauncherIconPaths() async {
   );
   text = text.replaceAll(
     RegExp(r'adaptive_icon_foreground:\s*"assets/images/[^"]+"'),
-    'adaptive_icon_foreground: "assets/images/app_icon.png"',
+    'adaptive_icon_foreground: "assets/images/app_icon_foreground.png"',
   );
   await file.writeAsString(text);
   stdout.writeln('Launcher icon paths updated in pubspec.yaml.');
@@ -220,7 +228,8 @@ String _xmlEscape(String value) => value
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;');
 
-String _rcEscape(String value) => value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+String _rcEscape(String value) =>
+    value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 
 Future<String> _httpGetText(String url) async {
   final bytes = await _httpGetBytes(Uri.parse(url));
@@ -237,7 +246,10 @@ Future<List<int>> _httpGetBytes(Uri uri) async {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpException('HTTP ${response.statusCode}', uri: uri);
     }
-    return response.fold<List<int>>(<int>[], (prev, chunk) => prev..addAll(chunk));
+    return response.fold<List<int>>(
+      <int>[],
+      (prev, chunk) => prev..addAll(chunk),
+    );
   } finally {
     client.close(force: true);
   }

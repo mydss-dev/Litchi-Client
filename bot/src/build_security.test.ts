@@ -45,3 +45,16 @@ test('config validation accepts a normal signed-config payload', () => {
     },
   );
 });
+
+test('config validation requires a logo URL', () => {
+  assert.throws(
+    () =>
+      parseAndValidateConfig(
+        JSON.stringify({
+          app_name: 'Customer Client',
+          api_base_list: ['https://api.example.com'],
+        }),
+      ),
+    /logo_url/,
+  );
+});

@@ -73,7 +73,10 @@ jobs:
         if: inputs.platform == 'android'
         shell: bash
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          # sdkmanager closes stdin after accepting all licenses, so `yes`
+          # normally exits with SIGPIPE. The following NDK install is the
+          # authoritative success check.
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;28.0.13004108"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
@@ -113,6 +116,16 @@ jobs:
 
       - name: Resolve Flutter dependencies
         run: flutter pub get
+
+      - name: Generate tenant branding and platform icons
+        shell: bash
+        env:
+          CONFIG_PATH: ${{ steps.config.outputs.config_path }}
+          LOGO_URL: ${{ steps.config.outputs.logo_url }}
+        run: |
+          dart run tool/prepare_brand_assets.dart
+          dart run tool/apply_branding.dart "$CONFIG_PATH" --metadata-only
+          dart run flutter_launcher_icons
 
       - name: Build tenant package
         shell: bash
@@ -214,16 +227,27 @@ jobs:
             exit 1
           }
 
-      - name: Package Windows artifact
+      - name: Build Windows installer
         if: inputs.platform == 'windows'
         shell: pwsh
         env:
           PACKAGE_NAME: ${{ steps.config.outputs.package_name }}
+          INSTALLER_APP_ID: ${{ steps.config.outputs.android_application_id }}
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
-          $archive = "release\$env:PACKAGE_NAME $env:BUILD_VERSION Windows.zip"
-          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath $archive
-          if (-not (Test-Path $archive)) { throw "Windows archive was not created" }
+          choco install innosetup --no-progress -y
+          $outputName = "$env:PACKAGE_NAME $env:BUILD_VERSION Windows Setup"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
+            "/DMyAppId=$env:INSTALLER_APP_ID" `
+            "/DMyAppName=$env:PACKAGE_NAME" `
+            "/DMyAppPublisher=$env:PACKAGE_NAME" `
+            "/DMyAppVersion=$env:BUILD_VERSION" `
+            "/DMyOutputDir=release" `
+            "/DMyOutputBaseFilename=$outputName" `
+            litchi_setup.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installer = "release\$outputName.exe"
+          if (-not (Test-Path $installer)) { throw "Windows installer was not created" }
 
       - name: Package macOS artifact
         if: inputs.platform == 'macos'

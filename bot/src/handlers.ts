@@ -261,14 +261,12 @@ export function normalizeOssDomain(raw: string): string {
 }
 
 function formatProfile(profile: {
-  tg_user_id: number;
   app_id: string;
   oss_domain: string;
   remote_config_url: string;
   public_key: string;
 }): string {
   return [
-    `TG_USER_ID=${profile.tg_user_id}`,
     `APP_ID=${profile.app_id}`,
     `OSS_DOMAIN=${profile.oss_domain || '-'}`,
     `REMOTE_CONFIG_URL=${profile.remote_config_url || '-'}`,

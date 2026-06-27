@@ -357,6 +357,9 @@ function startBuildTracking(
   },
 ): void {
   stopBuildTracking(input.buildId);
+  // The submission reply already tells the user this build is queued. Seed
+  // the tracker so the first poll does not send the same queued state again.
+  trackingStates.set(input.buildId, 'queued');
   scheduleBuildTracking(bot, input, 20000, 0);
 }
 
