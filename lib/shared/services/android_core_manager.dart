@@ -102,12 +102,14 @@ class AndroidCoreManager {
     return false;
   }
 
-  /// Stops the VPN layer only.  The core keeps running so latency tests
-  /// and node switching remain available.
+  /// Stops the VPN layer only.  Short-term approach: sets _isCoreRunning
+  /// to false so callers restart core-only for a clean slate.  Long-term
+  /// the native stopVpn will keep the core fully intact.
   Future<void> stopVpn() async {
     await _invokeBool('stopVpn');
     _isVpnRunning = false;
-    _isRunning = _isCoreRunning;
+    _isCoreRunning = false;
+    _isRunning = false;
   }
 
   /// Stops everything — core + VPN.
@@ -131,33 +133,28 @@ class AndroidCoreManager {
   }
 
   void _applyStatus(AndroidCoreStatusEvent event) {
-    final layer = event.layer;
+    final isVpn = event.layer == AndroidCoreLayer.vpn;
     switch (event.status) {
       case AndroidCoreNativeStatus.starting:
         _lastError = '';
       case AndroidCoreNativeStatus.running:
-        if (layer == 'core') {
-          _isCoreRunning = true;
-        } else {
-          // 'vpn' or legacy (no layer): treat as VPN-level connected.
+        if (isVpn) {
           _isVpnRunning = true;
           _isCoreRunning = true; // VPN implies core is also running.
+        } else {
+          _isCoreRunning = true;
         }
         _isRunning = _isCoreRunning || _isVpnRunning;
         _lastError = '';
       case AndroidCoreNativeStatus.stopping:
+        _lastError = '';
       case AndroidCoreNativeStatus.stopped:
-        if (layer == 'core') {
-          _isCoreRunning = false;
-        } else if (layer == 'vpn') {
+        if (isVpn) {
           _isVpnRunning = false;
         } else {
-          // Legacy: stop everything.
           _isCoreRunning = false;
-          _isVpnRunning = false;
         }
         _isRunning = _isCoreRunning || _isVpnRunning;
-        _lastError = '';
       case AndroidCoreNativeStatus.error:
         _lastError = event.error;
     }
@@ -184,34 +181,41 @@ class AndroidCoreManager {
 
 enum AndroidCoreNativeStatus { starting, running, stopping, stopped, error }
 
+enum AndroidCoreLayer { core, vpn }
+
 class AndroidCoreStatusEvent {
   const AndroidCoreStatusEvent({
     required this.status,
+    required this.layer,
     this.error = '',
-    this.layer = '',
   });
 
   final AndroidCoreNativeStatus status;
+  final AndroidCoreLayer layer;
   final String error;
-
-  /// "core" or "vpn" — which layer emitted this event.
-  /// Empty string means legacy (no layer field); treated as VPN.
-  final String layer;
 
   static AndroidCoreStatusEvent fromEvent(Object? event) {
     final data = event is Map ? event : const <Object?, Object?>{};
-    final raw = data['status']?.toString() ?? 'stopped';
-    final status = switch (raw) {
+    final rawStatus = data['status']?.toString() ?? 'stopped';
+    final rawLayer = data['layer']?.toString() ?? 'core';
+
+    final status = switch (rawStatus) {
       'starting' => AndroidCoreNativeStatus.starting,
       'running' => AndroidCoreNativeStatus.running,
       'stopping' => AndroidCoreNativeStatus.stopping,
       'error' => AndroidCoreNativeStatus.error,
       _ => AndroidCoreNativeStatus.stopped,
     };
+
+    final layer = switch (rawLayer) {
+      'vpn' => AndroidCoreLayer.vpn,
+      _ => AndroidCoreLayer.core,
+    };
+
     return AndroidCoreStatusEvent(
       status: status,
+      layer: layer,
       error: data['error']?.toString() ?? '',
-      layer: data['layer']?.toString() ?? '',
     );
   }
 }

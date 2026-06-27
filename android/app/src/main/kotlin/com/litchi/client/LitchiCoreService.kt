@@ -25,7 +25,7 @@ class LitchiCoreService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                AndroidCoreStatus.emit(layer = "core", status = "stopping")
+                AndroidCoreStatus.emit("stopping", "core")
                 stopCore()
                 return START_NOT_STICKY
             }
@@ -33,27 +33,27 @@ class LitchiCoreService : Service() {
             ACTION_START -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG).orEmpty()
                 if (config.isBlank()) {
-                    AndroidCoreStatus.emit(layer = "core", status = "error", "Android core config is empty")
+                    AndroidCoreStatus.emit("error", "core", "Android core config is empty")
                     stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
                 if (isRunning && currentConfig == config) {
                     startCoreForeground()
-                    AndroidCoreStatus.emit(layer = "core", status = "running")
+                    AndroidCoreStatus.emit("running", "core")
                     return START_NOT_STICKY
                 }
                 currentConfig = config
                 startCoreForeground()
-                AndroidCoreStatus.emit(layer = "core", status = "starting")
+                AndroidCoreStatus.emit("starting", "core")
                 val ok = AndroidMihomoEngine.startCoreOnly(config, filesDir.absolutePath)
                 if (!ok) {
-                    AndroidCoreStatus.emit(layer = "core", status = "error", AndroidMihomoEngine.lastError())
+                    AndroidCoreStatus.emit("error", "core", AndroidMihomoEngine.lastError())
                     stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
                 isRunning = true
                 startCoreForeground()
-                AndroidCoreStatus.emit(layer = "core", status = "running")
+                AndroidCoreStatus.emit("running", "core")
                 return START_NOT_STICKY
             }
         }
@@ -75,7 +75,7 @@ class LitchiCoreService : Service() {
         AndroidMihomoEngine.stop()
         currentConfig = ""
         isRunning = false
-        if (emitStopped) AndroidCoreStatus.emit(layer = "core", status = "stopped")
+        if (emitStopped) AndroidCoreStatus.emit("stopped", "core")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {

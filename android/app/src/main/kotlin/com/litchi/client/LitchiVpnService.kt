@@ -15,6 +15,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
+import android.os.ParcelFileDescriptor
 
 class LitchiVpnService : VpnService() {
     private var tunFd: Int = -1
@@ -26,7 +27,7 @@ class LitchiVpnService : VpnService() {
         get() = getSystemService(ConnectivityManager::class.java)
     private val stopReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ACTION_STOP) stopCore()
+            if (intent?.action == ACTION_STOP) stopVpnLayer()
         }
     }
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -66,40 +67,40 @@ class LitchiVpnService : VpnService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                AndroidCoreStatus.emit(layer = "vpn", status = "stopping")
-                stopCore()
+                AndroidCoreStatus.emit("stopping", "vpn")
+                stopVpnLayer()
                 return START_NOT_STICKY
             }
 
             ACTION_START -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG).orEmpty()
                 if (config.isBlank()) {
-                    AndroidCoreStatus.emit(layer = "vpn", status = "error", "Android core config is empty")
+                    AndroidCoreStatus.emit("error", "vpn", "Android core config is empty")
                     stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
                 if (isRunning && currentConfig == config) {
                     registerStopReceiver()
                     startCoreForeground("Litchi connected")
-                    AndroidCoreStatus.emit(layer = "vpn", status = "running")
+                    AndroidCoreStatus.emit("running", "vpn")
                     return START_NOT_STICKY
                 }
                 currentConfig = config
                 registerStopReceiver()
                 registerNetworkCallback()
                 startCoreForeground("Litchi connecting")
-                AndroidCoreStatus.emit(layer = "vpn", status = "starting")
+                AndroidCoreStatus.emit("starting", "vpn")
                 val fd = openTun()
                 val ok = AndroidMihomoEngine.start(config, this, fd)
                 if (!ok) {
                     tunFd = -1
-                    AndroidCoreStatus.emit(layer = "vpn", status = "error", AndroidMihomoEngine.lastError())
+                    AndroidCoreStatus.emit("error", "vpn", AndroidMihomoEngine.lastError())
                     stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
                 isRunning = true
                 startCoreForeground("Litchi connected")
-                AndroidCoreStatus.emit(layer = "vpn", status = "running")
+                AndroidCoreStatus.emit("running", "vpn")
                 return START_NOT_STICKY
             }
         }
@@ -117,15 +118,19 @@ class LitchiVpnService : VpnService() {
         super.onDestroy()
     }
 
-    private fun stopCore(emitStopped: Boolean = true) {
+    /// Tears down only the VPN layer (TUN + foreground notification).
+    /// Does NOT call native stop — the core keeps running.
+    private fun stopVpnLayer(emitStopped: Boolean = true) {
         unregisterNetworkCallback()
         unregisterStopReceiver()
-        AndroidMihomoEngine.stopVpn()
-        tunFd = -1
+        if (tunFd >= 0) {
+            runCatching { ParcelFileDescriptor.adoptFd(tunFd).close() }
+            tunFd = -1
+        }
         runCatching { setUnderlyingNetworks(null) }
         currentConfig = ""
         isRunning = false
-        if (emitStopped) AndroidCoreStatus.emit(layer = "vpn", status = "stopped")
+        if (emitStopped) AndroidCoreStatus.emit("stopped", "vpn")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {
@@ -133,6 +138,13 @@ class LitchiVpnService : VpnService() {
             stopForeground(true)
         }
         stopSelf()
+    }
+
+    /// Full shutdown — also stops the native core.
+    private fun stopCore(emitStopped: Boolean = true) {
+        stopVpnLayer(emitStopped = false)
+        AndroidMihomoEngine.stop()
+        if (emitStopped) AndroidCoreStatus.emit("stopped", "core")
     }
 
     private fun openTun(): Int {

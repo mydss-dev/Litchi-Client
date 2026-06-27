@@ -356,7 +356,7 @@ class CoreController extends ChangeNotifier {
   Future<String?> _toggleAndroidConnection(CoreConnectionRequest req) async {
     if (coreConnecting) return null;
 
-    // ── Disconnect: stop VPN, keep core running ──────────────────────────
+    // ── Disconnect: stop VPN, restart core-only ──────────────────────────
     if (_status == ConnectionStatus.connected) {
       _status = ConnectionStatus.disconnecting;
       notifyListeners();
@@ -364,9 +364,15 @@ class CoreController extends ChangeNotifier {
       _stopTrafficMonitor();
       _connectedAt = null;
       _coreError = '';
-      _status = _androidCore.isCoreRunning
-          ? ConnectionStatus.disconnected
-          : ConnectionStatus.disconnected;
+
+      // Short-term: restart core-only so URLTest is available immediately.
+      if (req.validNodes.isNotEmpty) {
+        unawaited(startCoreOnly(req).then((_) {
+          if (!_disposed) notifyListeners();
+        }));
+      }
+
+      _status = ConnectionStatus.disconnected;
       notifyListeners();
       return null;
     }
@@ -640,22 +646,33 @@ class CoreController extends ChangeNotifier {
   }
 
   void _onAndroidCoreStatusChanged(AndroidCoreStatusEvent event) {
-    final isVpn = event.layer == 'vpn' || event.layer.isEmpty;
+    final isVpn = event.layer == AndroidCoreLayer.vpn;
     switch (event.status) {
       case AndroidCoreNativeStatus.starting:
         _coreError = '';
         if (isVpn) _status = ConnectionStatus.connecting;
+        break;
+
       case AndroidCoreNativeStatus.running:
         _coreError = '';
         if (isVpn) {
-          _connectedAt ??= DateTime.now();
+          _connectedAt = DateTime.now();
           _status = ConnectionStatus.connected;
           _startTrafficMonitor();
+        } else {
+          // core-only running: core is ready for URLTest, NOT connected.
+          if (_status != ConnectionStatus.connected &&
+              _status != ConnectionStatus.connecting) {
+            _status = ConnectionStatus.disconnected;
+            _connectedAt = null;
+          }
         }
-        // core-only running: core is ready for latency tests, etc.
-        // Do NOT set connected status.
+        break;
+
       case AndroidCoreNativeStatus.stopping:
         if (isVpn) _status = ConnectionStatus.disconnecting;
+        break;
+
       case AndroidCoreNativeStatus.stopped:
         if (isVpn) {
           _stopTrafficMonitor();
@@ -664,15 +681,18 @@ class CoreController extends ChangeNotifier {
             _status = ConnectionStatus.disconnected;
           }
         }
+        break;
+
       case AndroidCoreNativeStatus.error:
-        if (isVpn) {
-          _stopTrafficMonitor();
-          _connectedAt = null;
-        }
         _coreError = event.error.isNotEmpty
             ? event.error
             : CoreErrorMessageService.androidStartFailed;
-        if (isVpn) _status = ConnectionStatus.error;
+        if (isVpn) {
+          _stopTrafficMonitor();
+          _connectedAt = null;
+          _status = ConnectionStatus.error;
+        }
+        break;
     }
     notifyListeners();
   }

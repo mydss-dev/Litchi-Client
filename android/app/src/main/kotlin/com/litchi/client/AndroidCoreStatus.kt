@@ -9,6 +9,7 @@ object AndroidCoreStatus {
     private var sink: EventChannel.EventSink? = null
     private var lastStatus: Map<String, Any?> = mapOf(
         "status" to "stopped",
+        "layer" to "core",
         "error" to ""
     )
 
@@ -17,11 +18,11 @@ object AndroidCoreStatus {
         eventSink?.success(lastStatus)
     }
 
-    fun emit(status: String, error: String = "", layer: String = "") {
+    fun emit(status: String, layer: String, error: String = "") {
         val payload = mapOf(
             "status" to status,
-            "error" to error,
-            "layer" to layer
+            "layer" to layer,
+            "error" to error
         )
         lastStatus = payload
         mainHandler.post {
