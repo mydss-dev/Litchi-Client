@@ -30,8 +30,19 @@ const terminalStatuses = new Set([
   'skipped',
   'neutral',
 ]);
-const trackingTimers = new Map<number, ReturnType<typeof setTimeout>>();
-const trackingStates = new Map<number, string>();
+/// Each build group (one /build command) gets one entry here.  Status updates
+/// edit the same Telegram message instead of sending a new one every time.
+type BuildGroup = {
+  chatId: number;
+  messageId: number;
+  builds: Map<
+    number,
+    { platform: string; version: string; requestId: string; status: string; downloadUrl: string }
+  >;
+};
+
+const groupMessages = new Map<string, BuildGroup>();
+const groupTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function wireBuildCommands(bot: Telegraf): void {
   bot.command('build', async (ctx) => {
@@ -206,8 +217,11 @@ async function startBuildFromInput(
   ctx: {
     from?: { id?: number };
     chat?: { id?: number };
-    message: { text?: string };
-    reply(text: string): Promise<unknown>;
+    message: { text?: string; message_id?: number };
+    reply(
+      text: string,
+      extra?: { link_preview_options?: { is_disabled?: boolean } },
+    ): Promise<{ message_id: number }>;
   },
   platformRaw: string,
 ): Promise<void> {
@@ -231,9 +245,21 @@ async function startBuildFromInput(
     return;
   }
 
+  // Clean up any previous group for this chat.
+  for (const [key, group] of groupMessages) {
+    if (group.chatId === chatId) {
+      const timer = groupTimers.get(key);
+      if (timer) clearTimeout(timer);
+      groupTimers.delete(key);
+      groupMessages.delete(key);
+    }
+  }
+
   try {
     const version = getCurrentBuildVersion();
-    const results: string[] = [];
+    const groupKey = `${chatId}_${Date.now()}`;
+    const group: BuildGroup = { chatId, messageId: 0, builds: new Map() };
+    groupMessages.set(groupKey, group);
 
     for (const platform of platforms) {
       const dispatched = await dispatchBuild({
@@ -253,25 +279,26 @@ async function startBuildFromInput(
         githubRunUrl: dispatched.workflowUrl,
       });
 
-      results.push(`#${id} ${platform} 已进入构建队列`);
-      startBuildTracking(bot, {
-        buildId: id,
-        chatId,
-        appId: profile.app_id,
+      group.builds.set(id, {
         platform,
         version,
         requestId: dispatched.requestId,
+        status: 'queued',
+        downloadUrl: '',
       });
     }
 
-    await ctx.reply(
-      [
-        `已提交 ${platforms.length} 个打包任务，当前版本 ${version}`,
-        ...results,
-        '',
-        '机器人会自动跟进状态变化，排队中、构建中、成功、失败都会继续通知你。',
-      ].join('\n\n'),
-    );
+    const sent = await ctx.reply(formatGroupMessage(group), {
+      link_preview_options: { is_disabled: true },
+    });
+    group.messageId = sent.message_id;
+
+    scheduleGroupPoll(bot, {
+      groupKey,
+      appId: profile.app_id,
+      delayMs: 20000,
+      attempt: 0,
+    });
   } catch (error) {
     await ctx.reply(error instanceof Error ? error.message : String(error));
   }
@@ -345,118 +372,107 @@ async function refreshBuildRows(rows: BuildRow[]): Promise<BuildRow[]> {
   return nextRows;
 }
 
-function startBuildTracking(
+function scheduleGroupPoll(
   bot: Telegraf,
   input: {
-    buildId: number;
-    chatId: number;
+    groupKey: string;
     appId: string;
-    platform: string;
-    version: string;
-    requestId: string;
+    delayMs: number;
+    attempt: number;
   },
-): void {
-  stopBuildTracking(input.buildId);
-  // The submission reply already tells the user this build is queued. Seed
-  // the tracker so the first poll does not send the same queued state again.
-  trackingStates.set(input.buildId, 'queued');
-  scheduleBuildTracking(bot, input, 20000, 0);
-}
-
-function scheduleBuildTracking(
-  bot: Telegraf,
-  input: {
-    buildId: number;
-    chatId: number;
-    appId: string;
-    platform: string;
-    version: string;
-    requestId: string;
-  },
-  delayMs: number,
-  attempt: number,
 ): void {
   const timer = setTimeout(async () => {
     try {
-      const snapshot = await readBuildStatus({
-        appId: input.appId,
-        platform: input.platform,
-        version: input.version,
-        requestId: input.requestId,
-      });
+      const group = groupMessages.get(input.groupKey);
+      if (!group) return;
 
-      if (!snapshot) {
-        if (attempt < 60) {
-          scheduleBuildTracking(bot, input, 30000, attempt + 1);
-        } else {
-          stopBuildTracking(input.buildId);
+      let changed = false;
+      let allTerminal = true;
+
+      for (const [buildId, build] of group.builds) {
+        if (terminalStatuses.has(build.status)) continue;
+        allTerminal = false;
+
+        try {
+          const snapshot = await readBuildStatus({
+            appId: input.appId,
+            platform: build.platform,
+            version: build.version,
+            requestId: build.requestId,
+          });
+
+          if (snapshot) {
+            updateBuildStatus({
+              id: buildId,
+              status: snapshot.status,
+              githubRunUrl: snapshot.githubRunUrl,
+              downloadUrl: snapshot.downloadUrl,
+            });
+
+            if (snapshot.status !== build.status) {
+              build.status = snapshot.status;
+              build.downloadUrl = snapshot.downloadUrl;
+              changed = true;
+            }
+          }
+        } catch {
+          // Keep last known state for this build.
         }
+      }
+
+      if (changed) {
+        try {
+          await bot.telegram.editMessageText(
+            group.chatId,
+            group.messageId,
+            undefined,
+            formatGroupMessage(group),
+            { link_preview_options: { is_disabled: true } },
+          );
+        } catch {
+          // Message may have been deleted — stop tracking.
+          groupTimers.delete(input.groupKey);
+          groupMessages.delete(input.groupKey);
+          return;
+        }
+      }
+
+      if (allTerminal) {
+        groupTimers.delete(input.groupKey);
+        groupMessages.delete(input.groupKey);
         return;
       }
 
-      updateBuildStatus({
-        id: input.buildId,
-        status: snapshot.status,
-        githubRunUrl: snapshot.githubRunUrl,
-        downloadUrl: snapshot.downloadUrl,
-      });
-
-      const lastStatus = trackingStates.get(input.buildId);
-      if (lastStatus !== snapshot.status) {
-        trackingStates.set(input.buildId, snapshot.status);
-        await bot.telegram.sendMessage(
-          input.chatId,
-          formatTrackingMessage(input, snapshot.status, snapshot.downloadUrl),
-          {
-            link_preview_options: { is_disabled: true },
-          },
-        );
-      }
-
-      if (terminalStatuses.has(snapshot.status)) {
-        stopBuildTracking(input.buildId);
-        return;
-      }
-
-      scheduleBuildTracking(bot, input, 30000, attempt + 1);
-    } catch {
-      if (attempt < 60) {
-        scheduleBuildTracking(bot, input, 30000, attempt + 1);
+      if (input.attempt < 60) {
+        scheduleGroupPoll(bot, { ...input, delayMs: 30000, attempt: input.attempt + 1 });
       } else {
-        stopBuildTracking(input.buildId);
+        groupTimers.delete(input.groupKey);
+        groupMessages.delete(input.groupKey);
+      }
+    } catch {
+      if (input.attempt < 60) {
+        scheduleGroupPoll(bot, { ...input, delayMs: 30000, attempt: input.attempt + 1 });
+      } else {
+        groupTimers.delete(input.groupKey);
+        groupMessages.delete(input.groupKey);
       }
     }
-  }, delayMs);
+  }, input.delayMs);
 
-  trackingTimers.set(input.buildId, timer);
+  groupTimers.set(input.groupKey, timer);
 }
 
-function stopBuildTracking(buildId: number): void {
-  const timer = trackingTimers.get(buildId);
-  if (timer) clearTimeout(timer);
-  trackingTimers.delete(buildId);
-  trackingStates.delete(buildId);
-}
-
-function formatTrackingMessage(
-  input: {
-    buildId: number;
-    platform: string;
-    version: string;
-  },
-  status: string,
-  downloadUrl: string,
-): string {
-  const statusText = mapStatusText(status);
-  const lines = [
-    `打包状态更新 #${input.buildId}`,
-    `平台: ${input.platform}`,
-    `版本: ${input.version}`,
-    `状态: ${statusText}`,
-  ];
-  if (downloadUrl) {
-    lines.push(`下载: ${downloadUrl}`);
+function formatGroupMessage(group: BuildGroup): string {
+  const lines: string[] = [];
+  for (const [id, build] of group.builds) {
+    const statusText = mapStatusText(build.status);
+    let line = `#${id} ${build.platform} ${build.version} ${statusText}`;
+    if (build.downloadUrl) {
+      line += `\n${build.downloadUrl}`;
+    }
+    lines.push(line);
   }
+  lines.push('', '状态持续更新中，本条消息会自动刷新。');
   return lines.join('\n');
 }
 
