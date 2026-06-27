@@ -197,24 +197,28 @@ class CoreController extends ChangeNotifier {
       }
 
       // Core is running — reload config via API to avoid full restart.
-      final config = req.buildConfig(
+      final vpnConfig = req.buildConfig(
         overrideNetworkMode: NetworkMode.tun,
         apiPort: _apiPort,
       );
-      if (config == null) return null;
-      (config['tun'] as Map<String, dynamic>)['enable'] = false;
+      if (vpnConfig == null) return null;
 
-      final configJson = MihomoConfig.encodeConfig(config);
+      // Core-only config: same as VPN but with TUN disabled.
+      final coreConfig = Map<String, dynamic>.from(vpnConfig);
+      coreConfig['tun'] = {'enable': false};
+
       final ok = await MihomoApiClient.reloadConfig(
-        configJson,
+        MihomoConfig.encodeConfig(coreConfig),
         apiPort: _apiPort,
       );
       if (ok) {
         await _applyInitialSelection(req);
-        // If VPN was connected, restart it with the new config.
+        // If VPN was connected, restart it with the full TUN config.
         if (wasVpnConnected) {
           await _androidCore.stopVpn();
-          final vpnOk = await _androidCore.startVpn(configJson);
+          final vpnOk = await _androidCore.startVpn(
+            MihomoConfig.encodeConfig(vpnConfig),
+          );
           if (!vpnOk) {
             _coreError = CoreErrorMessageService.androidStartFailure(
               _androidCore.lastError,

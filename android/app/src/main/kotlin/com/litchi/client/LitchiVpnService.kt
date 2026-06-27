@@ -109,12 +109,12 @@ class LitchiVpnService : VpnService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        stopCore()
+        stopVpnLayer(emitStopped = false)
         super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
-        stopCore()
+        stopVpnLayer(emitStopped = false)
         super.onDestroy()
     }
 
