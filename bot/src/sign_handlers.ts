@@ -25,6 +25,7 @@ export function wireSignCommands(bot: Telegraf): void {
           '支持两种方式:',
           '1. 直接粘贴 JSON 或 config.js 内容',
           '2. 直接上传 config.js / config.json 文件',
+          'logo_url 请使用 1024×1024 的 HTTPS PNG 图片。',
           '退出请输入 /cancel',
         ].join('\n'),
       );
@@ -149,4 +150,3 @@ function extractConfigFromCommandText(text: string): string {
   const lines = text.split('\n');
   return lines.slice(1).join('\n').trim();
 }
-

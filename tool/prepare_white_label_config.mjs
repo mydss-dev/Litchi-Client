@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const MAX_CONFIG_BYTES = 1024 * 1024;
@@ -120,10 +122,7 @@ async function main() {
     throw new Error('api_base_list must contain at least one URL');
   }
   const apiBase = httpsUrl(payload.api_base_list[0], 'api_base_list[0]');
-  const logoUrl =
-    payload.logo_url === undefined || payload.logo_url === ''
-      ? ''
-      : httpsUrl(payload.logo_url, 'logo_url');
+  const logoUrl = httpsUrl(payload.logo_url, 'logo_url');
 
   const segment = tenantSegment(appId);
   const [major, minor, patch] = version.split(/[.+-]/, 3).map(Number);
@@ -132,7 +131,11 @@ async function main() {
     throw new Error('Version is outside the supported Android versionCode range');
   }
 
+  const configPath = path.join(process.env.RUNNER_TEMP || os.tmpdir(), 'litchi-tenant-config.json');
+  fs.writeFileSync(configPath, JSON.stringify(payload, null, 2), 'utf8');
+
   writeOutput('app_name', appName);
+  writeOutput('config_path', configPath);
   writeOutput('package_name', packageFileName(appName, appId));
   writeOutput('logo_url', logoUrl);
   writeOutput('api_base', apiBase);

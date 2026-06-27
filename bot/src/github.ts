@@ -86,11 +86,27 @@ export async function readBuildStatus(input: {
 
   if (!run?.html_url) return undefined;
 
+  let r2UploadSucceeded = false;
+  if (run.conclusion === 'success' && env.downloadBaseUrl) {
+    const jobs = await octokit.actions.listJobsForWorkflowRun({
+      owner,
+      repo,
+      run_id: run.id,
+      per_page: 100,
+    });
+    r2UploadSucceeded = jobs.data.jobs.some((job) =>
+      job.steps?.some(
+        (step) =>
+          step.name === 'Upload package to Cloudflare R2' &&
+          step.conclusion === 'success',
+      ),
+    );
+  }
+
   return {
     githubRunUrl: run.html_url,
     status: normalizeRunStatus(run.status, run.conclusion),
-    downloadUrl:
-      run.conclusion === 'success'
+    downloadUrl: r2UploadSucceeded
         ? buildDownloadUrl({
             appId: input.appId,
             platform: input.platform,
@@ -110,7 +126,7 @@ export function buildDownloadUrl(input: {
   if (!env.downloadBaseUrl) return '';
   const extension =
     input.platform === 'windows'
-      ? 'zip'
+      ? 'exe'
       : input.platform === 'macos'
         ? 'dmg'
         : input.platform === 'android'
