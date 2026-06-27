@@ -14,9 +14,13 @@ abstract final class SecureLogRedactor {
       caseSensitive: false,
     ),
     RegExp(r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}', caseSensitive: false),
-    RegExp(r'''(vmess|vless|trojan|ss|hysteria2|hy2)://[^\s"'<>]+'''),
+    RegExp(r'''(vmess|vless|trojan|ss|hysteria2|hy2|tuic|juicity)://[^\s"'<>]+'''),
     RegExp(
-      r'''(https?://[^\s"'<>]*?(token|sub|subscribe)[^\s"'<>]*)''',
+      r'''(https?://[^\s"'<>]*?(token|sub|subscribe|subscription|auth|secret)[^\s"'<>]*)''',
+      caseSensitive: false,
+    ),
+    RegExp(
+      r'''([?&](token|auth_token|access_token|password|passwd|secret|key|api_key|apikey|sign|signature)=)[^&\s"'<>]+''',
       caseSensitive: false,
     ),
     RegExp(
