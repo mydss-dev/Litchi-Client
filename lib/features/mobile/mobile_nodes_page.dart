@@ -6,6 +6,7 @@ import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/widgets/app_toast.dart';
 
 class MobileNodesPage extends StatefulWidget {
   const MobileNodesPage({super.key});
@@ -97,7 +98,22 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
           onSelected: (index) => setState(() => _tab = index),
         ),
         const SizedBox(height: 12),
-        _AutoSelectCard(selected: ctrl.autoSelected, onTap: ctrl.selectAuto),
+        _AutoSelectCard(
+          selected: ctrl.autoSelected,
+          onTap: () async {
+            final error = await ctrl.selectAuto();
+            if (!context.mounted) return;
+            if (error != null) {
+              AppToast.show(context, error, type: AppToastType.error);
+              return;
+            }
+            AppToast.show(
+              context,
+              '已开启自动选择，将使用最优节点',
+              type: AppToastType.success,
+            );
+          },
+        ),
         const SizedBox(height: 12),
         Expanded(
           child: nodes.isEmpty
@@ -117,7 +133,23 @@ class _MobileNodesPageState extends State<MobileNodesPage> {
                       node: node,
                       selected:
                           !ctrl.autoSelected && ctrl.currentNode.id == node.id,
-                      onTap: () => ctrl.setCurrentNode(node),
+                      onTap: () async {
+                        final error = await ctrl.setCurrentNode(node);
+                        if (!context.mounted) return;
+                        if (error != null) {
+                          AppToast.show(
+                            context,
+                            error,
+                            type: AppToastType.error,
+                          );
+                          return;
+                        }
+                        AppToast.show(
+                          context,
+                          '已切换至 ${node.name}',
+                          type: AppToastType.success,
+                        );
+                      },
                     );
                   },
                 ),

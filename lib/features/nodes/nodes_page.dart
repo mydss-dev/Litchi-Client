@@ -143,9 +143,14 @@ class _NodesPageState extends State<NodesPage> {
         _AutoCard(
           ctrl: ctrl,
           selected: isAuto,
-          onTap: () {
+          onTap: () async {
+            final error = await ctrl.selectAuto();
+            if (!context.mounted) return;
+            if (error != null) {
+              AppToast.show(context, error, type: AppToastType.error);
+              return;
+            }
             setState(() => _selectedId = null);
-            ctrl.selectAuto();
             AppToast.show(
               context,
               '已开启自动选择，将使用最优节点',
@@ -190,7 +195,6 @@ class _NodesPageState extends State<NodesPage> {
                     selected: !isAuto && n.id == effectiveId,
                     favorite: _favorites.contains(n.id),
                     onTap: () async {
-                      setState(() => _selectedId = n.id);
                       final overlay = Overlay.of(context, rootOverlay: true);
                       final error = await ctrl.setCurrentNode(n);
                       if (!context.mounted) return;
@@ -200,13 +204,14 @@ class _NodesPageState extends State<NodesPage> {
                           error,
                           type: AppToastType.error,
                         );
-                      } else {
-                        AppToast.showInOverlay(
-                          overlay,
-                          '已切换至 ${n.name}',
-                          type: AppToastType.success,
-                        );
+                        return;
                       }
+                      setState(() => _selectedId = n.id);
+                      AppToast.showInOverlay(
+                        overlay,
+                        '已切换至 ${n.name}',
+                        type: AppToastType.success,
+                      );
                     },
                     onToggleFavorite: () => _toggleFavorite(n.id),
                   );
