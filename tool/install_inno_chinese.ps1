@@ -55,7 +55,7 @@ if ($needsDownload) {
       $downloaded = $true
       break
     } catch {
-      Write-Warning "Failed to download from $url: $($_.Exception.Message)"
+      Write-Warning "Failed to download from ${url}: $($_.Exception.Message)"
     }
   }
 
