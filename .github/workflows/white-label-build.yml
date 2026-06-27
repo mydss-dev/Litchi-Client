@@ -191,7 +191,7 @@ jobs:
           INSTALLER_APP_ID: ${{ steps.config.outputs.android_application_id }}
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
-          choco install innosetup --no-progress -y
+          .\tool\install_inno_chinese.ps1
           $outputName = "$env:PACKAGE_NAME $env:BUILD_VERSION Windows Setup"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             "/DMyAppId=$env:INSTALLER_APP_ID" `
