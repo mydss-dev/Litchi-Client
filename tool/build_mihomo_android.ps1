@@ -54,7 +54,7 @@ foreach ($target in $targets) {
   $output = Join-Path $outDir "liblitchi_mihomo.so"
   Push-Location $core
   try {
-    & go build -tags with_gvisor -trimpath -ldflags "-s -w -X main.version=v1.19.27" -buildmode=c-shared -o $output .
+    & go build -tags "with_gvisor,cmfa" -trimpath -ldflags "-s -w -X main.version=v1.19.27" -buildmode=c-shared -o $output .
     if ($LASTEXITCODE -ne 0) { throw "mihomo Android build failed for $($target.Abi)" }
   } finally {
     Pop-Location

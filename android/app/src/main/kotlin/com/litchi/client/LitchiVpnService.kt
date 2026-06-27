@@ -10,24 +10,26 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
-import android.os.ParcelFileDescriptor
+import android.os.PowerManager
 
 class LitchiVpnService : VpnService() {
     private var tunFd: Int = -1
     private var currentConfig: String = ""
-    private var stopReceiverRegistered: Boolean = false
     private var networkCallbackRegistered: Boolean = false
+    private var powerReceiverRegistered: Boolean = false
+    private var stopHandled: Boolean = false
     private val underlyingNetworks = linkedSetOf<Network>()
     private val connectivityManager: ConnectivityManager?
         get() = getSystemService(ConnectivityManager::class.java)
-    private val stopReceiver = object : BroadcastReceiver() {
+    private val powerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ACTION_STOP) stopVpnLayer()
+            updateSuspendState()
         }
     }
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -62,6 +64,13 @@ class LitchiVpnService : VpnService() {
             }
             updateUnderlyingNetworks()
         }
+
+        override fun onLinkPropertiesChanged(
+            network: Network,
+            linkProperties: LinkProperties
+        ) {
+            updateUnderlyingNetworks()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -72,14 +81,22 @@ class LitchiVpnService : VpnService() {
                 return START_NOT_STICKY
             }
 
+            ACTION_STOP_ALL -> {
+                AndroidCoreStatus.emit("stopping", "vpn")
+                LitchiCoreService.stop(this)
+                stopVpnLayer()
+                return START_NOT_STICKY
+            }
+
             ACTION_START -> {
+                stopHandled = false
                 if (isRunning) {
                     startCoreForeground("Litchi connected")
                     AndroidCoreStatus.emit("running", "vpn")
                     return START_NOT_STICKY
                 }
-                registerStopReceiver()
                 registerNetworkCallback()
+                registerPowerReceiver()
                 startCoreForeground("Litchi connecting")
                 AndroidCoreStatus.emit("starting", "vpn")
                 val fd = openTun()
@@ -92,6 +109,7 @@ class LitchiVpnService : VpnService() {
                     return START_NOT_STICKY
                 }
                 isRunning = true
+                updateSuspendState()
                 startCoreForeground("Litchi connected")
                 AndroidCoreStatus.emit("running", "vpn")
                 return START_NOT_STICKY
@@ -101,27 +119,31 @@ class LitchiVpnService : VpnService() {
         return START_NOT_STICKY
     }
 
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        stopVpnLayer(emitStopped = false)
-        super.onTaskRemoved(rootIntent)
+    override fun onDestroy() {
+        stopVpnLayer(emitStopped = isRunning)
+        super.onDestroy()
     }
 
-    override fun onDestroy() {
-        stopVpnLayer(emitStopped = false)
-        super.onDestroy()
+    override fun onRevoke() {
+        AndroidCoreStatus.emit("stopping", "vpn")
+        stopVpnLayer()
+        super.onRevoke()
     }
 
     /// Tears down only the VPN layer.  Calls native stopVpn so the Go TUN
     /// listener and socket protection are cleaned up; the core listeners
     /// (mixed/http/socks) stay alive.
     private fun stopVpnLayer(emitStopped: Boolean = true) {
+        if (stopHandled) return
+        stopHandled = true
         unregisterNetworkCallback()
-        unregisterStopReceiver()
+        unregisterPowerReceiver()
+        AndroidMihomoEngine.setSuspended(false)
+        // The detached TUN descriptor is consumed by the native sing-tun
+        // listener. AndroidMihomoEngine also closes it when native startup
+        // fails, so Kotlin must never adopt/close the same descriptor again.
         AndroidMihomoEngine.stopVpn()
-        if (tunFd >= 0) {
-            runCatching { ParcelFileDescriptor.adoptFd(tunFd).close() }
-            tunFd = -1
-        }
+        tunFd = -1
         runCatching { setUnderlyingNetworks(null) }
         currentConfig = ""
         isRunning = false
@@ -155,6 +177,9 @@ class LitchiVpnService : VpnService() {
             .addRoute("::", 0)
             .setBlocking(false)
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            builder.setMetered(false)
+        }
         tunFd = builder.establish()?.detachFd() ?: -1
         updateUnderlyingNetworks()
         return tunFd
@@ -162,10 +187,18 @@ class LitchiVpnService : VpnService() {
 
     private fun buildNotification(text: String): Notification {
         ensureNotificationChannel()
-        val stopIntent = PendingIntent.getBroadcast(
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            NOTIFICATION_ID,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val stopIntent = PendingIntent.getService(
             this,
             0,
-            Intent(ACTION_STOP).setPackage(packageName),
+            Intent(this, LitchiVpnService::class.java).apply {
+                action = ACTION_STOP_ALL
+            },
             PendingIntent.FLAG_UPDATE_CURRENT or immutableFlag()
         )
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -173,6 +206,7 @@ class LitchiVpnService : VpnService() {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Litchi")
                 .setContentText(text)
+                .setContentIntent(contentIntent)
                 .setOngoing(true)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Disconnect", stopIntent)
                 .build()
@@ -182,6 +216,7 @@ class LitchiVpnService : VpnService() {
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle("Litchi")
                 .setContentText(text)
+                .setContentIntent(contentIntent)
                 .setOngoing(true)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Disconnect", stopIntent)
                 .build()
@@ -190,7 +225,7 @@ class LitchiVpnService : VpnService() {
 
     private fun startCoreForeground(text: String) {
         val notification = buildNotification(text)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
@@ -210,28 +245,6 @@ class LitchiVpnService : VpnService() {
             NotificationManager.IMPORTANCE_LOW
         )
         manager.createNotificationChannel(channel)
-    }
-
-    private fun registerStopReceiver() {
-        if (stopReceiverRegistered) return
-        runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(
-                    stopReceiver,
-                    IntentFilter(ACTION_STOP),
-                    Context.RECEIVER_NOT_EXPORTED
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                registerReceiver(stopReceiver, IntentFilter(ACTION_STOP))
-            }
-        }.onSuccess { stopReceiverRegistered = true }
-    }
-
-    private fun unregisterStopReceiver() {
-        if (!stopReceiverRegistered) return
-        stopReceiverRegistered = false
-        runCatching { unregisterReceiver(stopReceiver) }
     }
 
     private fun registerNetworkCallback() {
@@ -272,10 +285,46 @@ class LitchiVpnService : VpnService() {
 
     private fun updateUnderlyingNetworks() {
         if (tunFd < 0) return
-        val networks = synchronized(underlyingNetworks) {
-            underlyingNetworks.toTypedArray().takeIf { it.isNotEmpty() }
+        val manager = connectivityManager
+        val network = synchronized(underlyingNetworks) {
+            manager?.let {
+                AndroidMihomoEngine.preferredNetwork(it, underlyingNetworks)
+            }
         }
-        runCatching { setUnderlyingNetworks(networks) }
+        runCatching { setUnderlyingNetworks(network?.let { arrayOf(it) }) }
+        AndroidMihomoEngine.updateDns(this)
+    }
+
+    private fun updateSuspendState() {
+        val power = getSystemService(PowerManager::class.java)
+        val suspended = !power.isInteractive && power.isDeviceIdleMode
+        AndroidMihomoEngine.setSuspended(suspended)
+    }
+
+    private fun registerPowerReceiver() {
+        if (powerReceiverRegistered) return
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
+        }
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(powerReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                registerReceiver(powerReceiver, filter)
+            }
+        }.onSuccess {
+            powerReceiverRegistered = true
+            updateSuspendState()
+        }
+    }
+
+    private fun unregisterPowerReceiver() {
+        if (!powerReceiverRegistered) return
+        powerReceiverRegistered = false
+        runCatching { unregisterReceiver(powerReceiver) }
     }
 
     private fun immutableFlag(): Int {
@@ -289,6 +338,7 @@ class LitchiVpnService : VpnService() {
     companion object {
         private const val ACTION_START = "com.litchi.client.START_VPN"
         private const val ACTION_STOP = "com.litchi.client.STOP_VPN"
+        private const val ACTION_STOP_ALL = "com.litchi.client.STOP_ALL"
         private const val EXTRA_CONFIG = "config"
         private const val CHANNEL_ID = "litchi_core"
         private const val NOTIFICATION_ID = 1001

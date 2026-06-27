@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/auto_start.dart';
 import '../shared/services/settings_service.dart';
+import 'core_platform_support.dart';
 
 /// Owns all user-configurable settings. Persists changes via [SettingsService].
 ///
@@ -22,6 +23,7 @@ class SettingsController extends ChangeNotifier {
   String _dnsMode = '系统 DNS';
   int _proxyPort = 7890;
   bool _killSwitch = false;
+  bool _closeConnectionsOnSwitch = true;
   bool _allowInsecureNodes = false;
   ThemeMode _themeMode = ThemeMode.light;
 
@@ -36,6 +38,7 @@ class SettingsController extends ChangeNotifier {
   String get dnsMode => _dnsMode;
   int get proxyPort => _proxyPort;
   bool get killSwitch => _killSwitch;
+  bool get closeConnectionsOnSwitch => _closeConnectionsOnSwitch;
   bool get allowInsecureNodes => _allowInsecureNodes;
   ThemeMode get themeMode => _themeMode;
   bool get isDark => _themeMode == ThemeMode.dark;
@@ -50,11 +53,15 @@ class SettingsController extends ChangeNotifier {
     _devMode = s.devMode;
     _language = s.language;
     _proxyMode = s.proxyMode;
-    _networkMode = s.networkMode;
+    _networkMode = CorePlatformSupport.normalizeNetworkMode(s.networkMode);
+    if (_networkMode != s.networkMode) {
+      SettingsService.setNetworkMode(_networkMode);
+    }
     _dnsMode = s.dnsMode;
     _wasConnected = s.wasConnected;
     _lastNodeId = s.lastNodeId;
     _killSwitch = s.killSwitch;
+    _closeConnectionsOnSwitch = s.closeConnectionsOnSwitch;
     _allowInsecureNodes = s.allowInsecureNodes;
     _themeMode = s.themeMode;
     // Sync registry to match the saved preference (also refreshes exe path
@@ -136,6 +143,7 @@ class SettingsController extends ChangeNotifier {
   }
 
   void setNetworkMode(NetworkMode v) {
+    if (!CorePlatformSupport.supportsNetworkMode(v)) return;
     if (_networkMode == v) return;
     _networkMode = v;
     SettingsService.setNetworkMode(v);
@@ -153,6 +161,13 @@ class SettingsController extends ChangeNotifier {
     if (_killSwitch == v) return;
     _killSwitch = v;
     SettingsService.setKillSwitch(v);
+    notifyListeners();
+  }
+
+  void setCloseConnectionsOnSwitch(bool v) {
+    if (_closeConnectionsOnSwitch == v) return;
+    _closeConnectionsOnSwitch = v;
+    SettingsService.setCloseConnectionsOnSwitch(v);
     notifyListeners();
   }
 

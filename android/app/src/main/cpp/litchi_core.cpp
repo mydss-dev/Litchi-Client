@@ -2,6 +2,9 @@
 #include <mutex>
 #include "liblitchi_mihomo.h"
 
+extern "C" void litchiMihomoSetSuspended(int suspended);
+extern "C" void litchiMihomoCloseConnections();
+
 extern "C" void (*litchi_protect_socket_func)(void *, int);
 
 static JavaVM *g_vm = nullptr;
@@ -162,6 +165,88 @@ JNIEXPORT void JNICALL
 Java_com_litchi_client_AndroidMihomoEngine_nativeStop(JNIEnv *env, jobject) {
     litchiMihomoStop();
     release_service(env);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_litchi_client_AndroidMihomoEngine_nativeUpdateDns(
+    JNIEnv *env,
+    jobject,
+    jstring servers
+) {
+    const char *servers_chars = env->GetStringUTFChars(servers, nullptr);
+    litchiMihomoUpdateDns(const_cast<char *>(servers_chars));
+    env->ReleaseStringUTFChars(servers, servers_chars);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_litchi_client_AndroidMihomoEngine_nativeSetSuspended(
+    JNIEnv *,
+    jobject,
+    jboolean suspended
+) {
+    litchiMihomoSetSuspended(suspended ? 1 : 0);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_litchi_client_AndroidMihomoEngine_nativeCloseConnections(
+    JNIEnv *,
+    jobject
+) {
+    litchiMihomoCloseConnections();
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_litchi_client_AndroidMihomoEngine_nativeSwitchProxy(
+    JNIEnv *env,
+    jobject,
+    jstring group,
+    jstring proxy
+) {
+    const char *group_chars = env->GetStringUTFChars(group, nullptr);
+    const char *proxy_chars = env->GetStringUTFChars(proxy, nullptr);
+    char *error = litchiMihomoSwitchProxy(
+        const_cast<char *>(group_chars),
+        const_cast<char *>(proxy_chars)
+    );
+    env->ReleaseStringUTFChars(group, group_chars);
+    env->ReleaseStringUTFChars(proxy, proxy_chars);
+    jstring result = env->NewStringUTF(error == nullptr ? "" : error);
+    if (error != nullptr) litchiMihomoFree(error);
+    return result;
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_litchi_client_AndroidMihomoEngine_nativeSetMode(
+    JNIEnv *env,
+    jobject,
+    jstring mode
+) {
+    const char *mode_chars = env->GetStringUTFChars(mode, nullptr);
+    char *error = litchiMihomoSetMode(const_cast<char *>(mode_chars));
+    env->ReleaseStringUTFChars(mode, mode_chars);
+    jstring result = env->NewStringUTF(error == nullptr ? "" : error);
+    if (error != nullptr) litchiMihomoFree(error);
+    return result;
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_litchi_client_AndroidMihomoEngine_nativeReloadConfig(
+    JNIEnv *env,
+    jobject,
+    jstring config
+) {
+    const char *config_chars = env->GetStringUTFChars(config, nullptr);
+    char *error = litchiMihomoReloadConfig(const_cast<char *>(config_chars));
+    env->ReleaseStringUTFChars(config, config_chars);
+    jstring result = env->NewStringUTF(error == nullptr ? "" : error);
+    if (error != nullptr) litchiMihomoFree(error);
+    return result;
 }
 
 extern "C"

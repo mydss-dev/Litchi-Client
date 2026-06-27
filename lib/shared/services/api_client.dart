@@ -114,10 +114,7 @@ class ApiClient {
   /// [AppConfig.applyRemote] so that every code path that reaches the API
   /// client is protected.
   void configure(List<String> serverUrls, {String? authData}) {
-    _bases = serverUrls
-        .map(_normalizeTrustedApiBase)
-        .whereType<String>()
-        .toList();
+    _bases = _trustedApiBases(serverUrls);
     _index = 0;
     _authData = authData;
     if (_bases.isEmpty) {
@@ -125,6 +122,40 @@ class ApiClient {
     } else {
       _rebuild();
     }
+  }
+
+  /// Atomically replaces API endpoints while preserving the current session.
+  ///
+  /// Invalid refreshes leave the last known-good client untouched.
+  bool updateServerUrls(
+    List<String> serverUrls, {
+    bool forceRebuild = false,
+  }) {
+    final next = _trustedApiBases(serverUrls);
+    if (next.isEmpty) {
+      SecureLogger.warn(
+        'ApiClient.updateServerUrls: rejected empty trusted API base list',
+      );
+      return false;
+    }
+    if (!forceRebuild && _sameBases(_bases, next)) return true;
+    _bases = next;
+    _index = 0;
+    _rebuild();
+    return true;
+  }
+
+  static List<String> _trustedApiBases(List<String> values) => values
+      .map(_normalizeTrustedApiBase)
+      .whereType<String>()
+      .toList(growable: false);
+
+  static bool _sameBases(List<String> left, List<String> right) {
+    if (left.length != right.length) return false;
+    for (var i = 0; i < left.length; i++) {
+      if (left[i] != right[i]) return false;
+    }
+    return true;
   }
 
   static String? _normalizeTrustedApiBase(String value) {

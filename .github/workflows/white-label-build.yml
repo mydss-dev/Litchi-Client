@@ -170,8 +170,9 @@ jobs:
         run: |
           set -euo pipefail
           app="build/macos/Build/Products/Release/litchi_client.app"
-          codesign --force --sign - "$app/Contents/Resources/mihomo"
-          codesign --force --deep --sign - "$app"
+          codesign --force --options runtime --sign - "$app/Contents/Resources/mihomo"
+          codesign --force --deep --options runtime --sign - \
+            --entitlements macos/Runner/Release.entitlements "$app"
           codesign --verify --deep --strict "$app"
 
       - name: Verify Android native core

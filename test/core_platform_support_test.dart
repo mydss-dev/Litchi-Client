@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/core_platform_support.dart';
+import 'package:litchi_client/shared/models/app_models.dart';
 
 void main() {
   test('supports Windows, macOS and Android core platforms', () {
@@ -54,5 +55,24 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('normalizes network interception mode by platform', () {
+    NetworkMode normalize(
+      NetworkMode requested, {
+      bool windows = false,
+      bool macos = false,
+      bool android = false,
+    }) => CorePlatformSupport.normalizeNetworkModeForPlatform(
+      requested: requested,
+      isWindows: windows,
+      isMacOS: macos,
+      isAndroid: android,
+    );
+
+    expect(normalize(NetworkMode.system, android: true), NetworkMode.tun);
+    expect(normalize(NetworkMode.tun, macos: true), NetworkMode.system);
+    expect(normalize(NetworkMode.tun, windows: true), NetworkMode.tun);
+    expect(normalize(NetworkMode.system, windows: true), NetworkMode.system);
   });
 }

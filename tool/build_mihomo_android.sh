@@ -23,7 +23,7 @@ build_one() {
   (
     cd "$CORE"
     GOOS=android GOARCH="$arch" GOARM="${4:-}" CGO_ENABLED=1 CC="$BIN/$cc_name" \
-      go build -tags with_gvisor -trimpath \
+      go build -tags "with_gvisor,cmfa" -trimpath \
         -ldflags="-s -w -X main.version=v1.19.27" \
         -buildmode=c-shared -o "$out/liblitchi_mihomo.so" .
   )

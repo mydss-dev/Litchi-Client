@@ -249,8 +249,9 @@ jobs:
           # Credentials use a portable store on macOS (no Keychain), so no
           # keychain entitlement is needed — keeping the signature plain avoids
           # the Gatekeeper "cannot verify" hard block on ad-hoc builds.
-          codesign --force --sign - "$app/Contents/Resources/mihomo"
-          codesign --force --deep --sign - "$app"
+          codesign --force --options runtime --sign - "$app/Contents/Resources/mihomo"
+          codesign --force --deep --options runtime --sign - \
+            --entitlements macos/Runner/Release.entitlements "$app"
           codesign --verify --deep --strict "$app" && echo "codesign ok"
 
       - name: Build DMG

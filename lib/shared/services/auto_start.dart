@@ -5,8 +5,7 @@ import 'dart:io';
 /// Writes / removes a REG_SZ value under:
 ///   HKCU\Software\Microsoft\Windows\CurrentVersion\Run
 abstract final class AutoStart {
-  static const _key =
-      r'HKCU\Software\Microsoft\Windows\CurrentVersion\Run';
+  static const _key = r'HKCU\Software\Microsoft\Windows\CurrentVersion\Run';
   static const _name = 'LitchiClient';
 
   static String get _exePath => Platform.resolvedExecutable;
@@ -16,7 +15,15 @@ abstract final class AutoStart {
     if (!Platform.isWindows) return;
     try {
       await Process.run('reg', [
-        'add', _key, '/v', _name, '/t', 'REG_SZ', '/d', _exePath, '/f',
+        'add',
+        _key,
+        '/v',
+        _name,
+        '/t',
+        'REG_SZ',
+        '/d',
+        '"$_exePath"',
+        '/f',
       ]);
     } catch (_) {}
   }
@@ -25,9 +32,7 @@ abstract final class AutoStart {
   static Future<void> disable() async {
     if (!Platform.isWindows) return;
     try {
-      await Process.run('reg', [
-        'delete', _key, '/v', _name, '/f',
-      ]);
+      await Process.run('reg', ['delete', _key, '/v', _name, '/f']);
     } catch (_) {}
   }
 }

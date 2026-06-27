@@ -75,4 +75,19 @@ void main() {
     expect(message, hasLength(301));
     expect(message, endsWith('…'));
   });
+
+  test(
+    'rejects an invalid live endpoint refresh without clearing the client',
+    () {
+      final client = ApiClient()
+        ..configure(const ['https://api.example.com'], authData: 'session');
+
+      expect(client.isConfigured, isTrue);
+      expect(
+        client.updateServerUrls(const ['http://insecure.example.com']),
+        isFalse,
+      );
+      expect(client.isConfigured, isTrue);
+    },
+  );
 }

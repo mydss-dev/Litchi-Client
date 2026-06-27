@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/app_controller.dart';
+import '../../../app/core_platform_support.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
@@ -19,6 +20,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
   bool _checkingAdmin = false;
 
   Future<void> _setMode(NetworkMode mode) async {
+    if (!CorePlatformSupport.supportsNetworkMode(mode)) return;
     final ctrl = AppScope.of(context);
     if (ctrl.networkMode == mode) return;
 
@@ -115,6 +117,12 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final mode = ctrl.networkMode;
+    final supportsSystem = CorePlatformSupport.supportsNetworkMode(
+      NetworkMode.system,
+    );
+    final supportsTun = CorePlatformSupport.supportsNetworkMode(
+      NetworkMode.tun,
+    );
 
     return AppCard(
       radius: AppRadius.card,
@@ -131,9 +139,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
           ),
           const SizedBox(height: 10),
           Text(
-            mode == NetworkMode.system
-                ? '使用系统代理接管网络请求'
-                : '通过虚拟网卡接管全部流量',
+            mode == NetworkMode.system ? '使用系统代理接管网络请求' : '通过虚拟网卡接管全部流量',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.body.copyWith(color: c.textMuted),
@@ -150,22 +156,24 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
             ),
             child: Row(
               children: [
-                Expanded(
-                  child: _NetworkModeOption(
-                    label: '系统代理',
-                    selected: mode == NetworkMode.system,
-                    loading: false,
-                    onTap: () => _setMode(NetworkMode.system),
+                if (supportsSystem)
+                  Expanded(
+                    child: _NetworkModeOption(
+                      label: '系统代理',
+                      selected: mode == NetworkMode.system,
+                      loading: false,
+                      onTap: () => _setMode(NetworkMode.system),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _NetworkModeOption(
-                    label: '虚拟网卡',
-                    selected: mode == NetworkMode.tun,
-                    loading: _checkingAdmin,
-                    onTap: () => _setMode(NetworkMode.tun),
+                if (supportsTun)
+                  Expanded(
+                    child: _NetworkModeOption(
+                      label: '虚拟网卡',
+                      selected: mode == NetworkMode.tun,
+                      loading: _checkingAdmin,
+                      onTap: () => _setMode(NetworkMode.tun),
+                    ),
                   ),
-                ),
               ],
             ),
           ),

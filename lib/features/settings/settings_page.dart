@@ -156,6 +156,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
               _SettingRow(
+                label: '切换节点或模式时断开旧连接',
+                subtitle: '让已有 TCP/QUIC 连接立即使用新策略',
+                trailing: AppSwitch(
+                  value: ctrl.closeConnectionsOnSwitch,
+                  onChanged: ctrl.setCloseConnectionsOnSwitch,
+                ),
+              ),
+              _SettingRow(
                 label: '允许不安全节点',
                 subtitle: '节点 TLS 证书验证失败时可尝试开启，安全性会降低',
                 trailing: AppSwitch(

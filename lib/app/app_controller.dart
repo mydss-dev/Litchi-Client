@@ -42,6 +42,7 @@ enum AuthScreen { login, register, changePassword, forgotPassword }
 
 class AppController extends ChangeNotifier {
   AppController() {
+    AppConfig.revision.addListener(_onRemoteConfigChanged);
     _settings.addListener(notifyListeners);
     _core.addListener(_onCoreChanged);
     _core.addListener(notifyListeners);
@@ -93,6 +94,7 @@ class AppController extends ChangeNotifier {
   String get dnsMode => _settings.dnsMode;
   int get proxyPort => _settings.proxyPort;
   bool get killSwitch => _settings.killSwitch;
+  bool get closeConnectionsOnSwitch => _settings.closeConnectionsOnSwitch;
   bool get allowInsecureNodes => _settings.allowInsecureNodes;
 
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
@@ -111,6 +113,11 @@ class AppController extends ChangeNotifier {
   void setKillSwitch(bool v) {
     _settings.setKillSwitch(v);
     _core.killSwitchEnabled = _settings.killSwitch;
+  }
+
+  void setCloseConnectionsOnSwitch(bool v) {
+    _settings.setCloseConnectionsOnSwitch(v);
+    _core.closeConnectionsOnSwitch = _settings.closeConnectionsOnSwitch;
   }
 
   void setAllowInsecureNodes(bool v) {
@@ -246,6 +253,7 @@ class AppController extends ChangeNotifier {
     await _notices.loadLastSeen();
     await _core.init();
     _core.killSwitchEnabled = _settings.killSwitch;
+    _core.closeConnectionsOnSwitch = _settings.closeConnectionsOnSwitch;
 
     _apiClient.configure(AppConfig.effectiveApiBases);
     _apiClient.onSessionExpired = logout;
@@ -364,6 +372,7 @@ class AppController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    AppConfig.revision.removeListener(_onRemoteConfigChanged);
     _settings.removeListener(notifyListeners);
     _core.removeListener(_onCoreChanged);
     _core.removeListener(notifyListeners);
@@ -382,6 +391,19 @@ class AppController extends ChangeNotifier {
     _account.dispose();
     _nodes.dispose();
     super.dispose();
+  }
+
+  void _onRemoteConfigChanged() {
+    if (_disposed) return;
+    // Rebuild even when only api_prefix changed and the host list stayed the
+    // same; Dio stores the combined base URL when it is constructed.
+    _apiClient.updateServerUrls(
+      AppConfig.effectiveApiBases,
+      forceRebuild: true,
+    );
+    unawaited(refreshRegisterConfigCache());
+    unawaited(_checkForUpdate());
+    notifyListeners();
   }
 
   void _onCoreChanged() {
@@ -744,7 +766,9 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _testLatenciesInBackground() async {
-    if (!supportsCoreConnection || _nodes.isEmpty || !coreProcessRunning) return;
+    if (!supportsCoreConnection || _nodes.isEmpty || !coreProcessRunning) {
+      return;
+    }
 
     final runId = _nextLatencyRunId();
     final snapshot = List<NodeModel>.from(_nodes.nodes);

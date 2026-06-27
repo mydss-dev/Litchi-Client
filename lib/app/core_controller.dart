@@ -38,6 +38,7 @@ class CoreController extends ChangeNotifier {
   static const Duration _connectionToggleCooldown = Duration(milliseconds: 800);
 
   bool killSwitchEnabled = false;
+  bool closeConnectionsOnSwitch = true;
 
   final ValueNotifier<int> upBpsNotifier = ValueNotifier(0);
   final ValueNotifier<int> downBpsNotifier = ValueNotifier(0);
@@ -75,9 +76,12 @@ class CoreController extends ChangeNotifier {
         _onAndroidCoreStatusChanged,
       );
       await _androidCore.init();
+      _apiPort = _androidCore.controllerPort;
+      MihomoConfig.restoreApiSecret(_androidCore.controllerSecret);
       if (_androidCore.isVpnRunning) {
         _status = ConnectionStatus.connected;
         _connectedAt = DateTime.now();
+        _startTrafficMonitor();
       } else {
         _status = ConnectionStatus.disconnected;
         _connectedAt = null;
@@ -207,26 +211,30 @@ class CoreController extends ChangeNotifier {
       final coreConfig = Map<String, dynamic>.from(vpnConfig);
       coreConfig['tun'] = {'enable': false};
 
-      final ok = await MihomoApiClient.reloadConfig(
+      final ok = await _androidCore.reloadConfig(
         MihomoConfig.encodeConfig(coreConfig),
-        apiPort: _apiPort,
       );
-      if (ok) {
-        await _applyInitialSelection(req);
-        // If VPN was connected, restart it with the full TUN config.
-        if (wasVpnConnected) {
-          await _androidCore.stopVpn();
-          final vpnOk = await _androidCore.startVpn(
-            MihomoConfig.encodeConfig(vpnConfig),
+      if (!ok) {
+        _coreError = CoreErrorMessageService.androidStartFailure(
+          _androidCore.lastError,
+        );
+        notifyListeners();
+        return _coreError;
+      }
+      await _applyInitialSelection(req);
+      // If VPN was connected, restart it with the full TUN config.
+      if (wasVpnConnected) {
+        await _androidCore.stopVpn();
+        final vpnOk = await _androidCore.startVpn(
+          MihomoConfig.encodeConfig(vpnConfig),
+        );
+        if (!vpnOk) {
+          _coreError = CoreErrorMessageService.androidStartFailure(
+            _androidCore.lastError,
           );
-          if (!vpnOk) {
-            _coreError = CoreErrorMessageService.androidStartFailure(
-              _androidCore.lastError,
-            );
-            _status = ConnectionStatus.error;
-            notifyListeners();
-            return _coreError;
-          }
+          _status = ConnectionStatus.error;
+          notifyListeners();
+          return _coreError;
         }
       }
       return null;
@@ -379,7 +387,9 @@ class CoreController extends ChangeNotifier {
       return _coreError;
     }
 
-    _apiPort = await _allocateApiPort();
+    if (!_androidCore.isCoreRunning) {
+      _apiPort = await _allocateApiPort();
+    }
     final config = req.buildConfig(
       overrideNetworkMode: NetworkMode.tun,
       apiPort: _apiPort,
@@ -461,19 +471,62 @@ class CoreController extends ChangeNotifier {
     _status = ConnectionStatus.disconnected;
   }
 
-  Future<bool> switchNode(NodeModel node) => MihomoApiClient.switchProxy(
-    MihomoConfig.nodeTagFor(node),
-    apiPort: _apiPort,
-  );
+  Future<bool> switchNode(NodeModel node) async {
+    final tag = MihomoConfig.nodeTagFor(node);
+    final changed = Platform.isAndroid
+        ? await _androidCore.switchProxy(MihomoConfig.selectorTag, tag)
+        : await MihomoApiClient.switchProxy(tag, apiPort: _apiPort);
+    if (changed && closeConnectionsOnSwitch) {
+      await _closeConnections();
+    }
+    return changed;
+  }
 
-  Future<bool> switchToAuto() => MihomoApiClient.switchProxy(
-    MihomoConfig.autoSelectTag,
-    apiPort: _apiPort,
-  );
+  Future<bool> switchToAuto() async {
+    final changed = Platform.isAndroid
+        ? await _androidCore.switchProxy(
+            MihomoConfig.selectorTag,
+            MihomoConfig.autoSelectTag,
+          )
+        : await MihomoApiClient.switchProxy(
+            MihomoConfig.autoSelectTag,
+            apiPort: _apiPort,
+          );
+    if (changed && closeConnectionsOnSwitch) {
+      await _closeConnections();
+    }
+    return changed;
+  }
+
+  Future<bool> _closeConnections() {
+    if (Platform.isAndroid) {
+      return _androidCore.closeConnections();
+    }
+    return MihomoApiClient.closeConnections(apiPort: _apiPort);
+  }
 
   Future<bool> setMode(ProxyMode proxyMode) async {
     if (!coreProcessRunning) return true;
-    return MihomoApiClient.setMode(proxyMode.clashValue, apiPort: _apiPort);
+    bool changed;
+    if (Platform.isAndroid) {
+      changed = await _androidCore.setMode(proxyMode.clashValue);
+      if (!changed) return false;
+      if (proxyMode == ProxyMode.global) {
+        changed = await _androidCore.switchProxy(
+          MihomoConfig.globalTag,
+          MihomoConfig.selectorTag,
+        );
+      }
+    } else {
+      changed = await MihomoApiClient.setMode(
+        proxyMode.clashValue,
+        apiPort: _apiPort,
+      );
+    }
+    if (changed && closeConnectionsOnSwitch) {
+      await _closeConnections();
+    }
+    return changed;
   }
 
   Future<void> fixProxy(
@@ -565,6 +618,17 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<void> _applyInitialSelection(CoreConnectionRequest req) async {
+    if (Platform.isAndroid) {
+      await _androidCore.switchProxy(MihomoConfig.selectorTag, req.selectedTag);
+      if (req.proxyMode == ProxyMode.global) {
+        await _androidCore.setMode('global');
+        await _androidCore.switchProxy(
+          MihomoConfig.globalTag,
+          MihomoConfig.selectorTag,
+        );
+      }
+      return;
+    }
     await MihomoApiClient.switchProxy(req.selectedTag, apiPort: _apiPort);
     if (req.proxyMode == ProxyMode.global) {
       await MihomoApiClient.setMode('global', apiPort: _apiPort);

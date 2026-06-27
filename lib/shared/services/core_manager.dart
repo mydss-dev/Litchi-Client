@@ -104,31 +104,40 @@ class CoreManager {
       // Save PID so the next startup can clean this process up if we crash.
       await _writePidFile(_process!.pid, exe);
 
-      _process!.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) => _emitLog(line));
+      final outputLines = <String>[];
+      void handleOutput(String line) {
+        outputLines.add(line);
+        if (outputLines.length > 50) outputLines.removeAt(0);
+        _emitLog(line);
+        if (_state == CoreState.starting) {
+          final lower = line.toLowerCase();
+          if (lower.contains('fatal') || lower.contains('error')) {
+            _lastError = _stripAnsi(line);
+          }
+        }
+      }
 
-      final stderrLines = <String>[];
-      _process!.stderr
+      final stdoutDone = _process!.stdout
           .transform(utf8.decoder)
           .transform(const LineSplitter())
-          .listen((line) {
-            stderrLines.add(line);
-            _emitLog(line);
-            if (_state == CoreState.starting) {
-              final lower = line.toLowerCase();
-              if (lower.contains('fatal') || lower.contains('error')) {
-                _lastError = _stripAnsi(line);
-              }
-            }
-          });
+          .listen(handleOutput)
+          .asFuture<void>();
+
+      final stderrDone = _process!.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen(handleOutput)
+          .asFuture<void>();
 
       unawaited(
-        _process!.exitCode.then((code) {
+        _process!.exitCode.then((code) async {
+          // Mihomo emits some fatal startup diagnostics on stdout. Drain both
+          // streams before choosing the message so the useful line is not
+          // replaced by a generic exit code.
+          await Future.wait([stdoutDone, stderrDone]);
           if (_state == CoreState.running || _state == CoreState.starting) {
-            if (_lastError.isEmpty && stderrLines.isNotEmpty) {
-              _lastError = _stripAnsi(stderrLines.last);
+            if (_lastError.isEmpty && outputLines.isNotEmpty) {
+              _lastError = _stripAnsi(outputLines.last);
             }
             if (_lastError.isEmpty) _lastError = '核心进程退出 (code: $code)';
             _setState(CoreState.error);

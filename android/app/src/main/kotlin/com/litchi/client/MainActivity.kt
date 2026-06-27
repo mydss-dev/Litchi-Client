@@ -62,6 +62,8 @@ class MainActivity : FlutterActivity() {
                     result.success(LitchiCoreService.stop(this))
                 }
                 "isCoreRunning" -> result.success(LitchiCoreService.isRunning)
+                "controllerPort" -> result.success(LitchiCoreService.controllerPort)
+                "controllerSecret" -> result.success(LitchiCoreService.controllerSecret)
                 // ── VPN ──────────────────────────────────────────────────
                 "startVpn" -> {
                     val config = (call.arguments as? Map<*, *>)?.get("config") as? String
@@ -81,6 +83,35 @@ class MainActivity : FlutterActivity() {
                 }
                 "stopVpn" -> result.success(LitchiVpnService.stop(this))
                 "isVpnRunning" -> result.success(LitchiVpnService.isRunning)
+                "switchProxy" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val group = args?.get("group") as? String
+                    val proxy = args?.get("proxy") as? String
+                    if (group.isNullOrBlank() || proxy.isNullOrBlank()) {
+                        result.error("invalid_proxy", "代理组或节点为空", null)
+                    } else {
+                        result.success(AndroidMihomoEngine.switchProxy(group, proxy))
+                    }
+                }
+                "setMode" -> {
+                    val mode = (call.arguments as? Map<*, *>)?.get("mode") as? String
+                    if (mode.isNullOrBlank()) {
+                        result.error("invalid_mode", "代理模式为空", null)
+                    } else {
+                        result.success(AndroidMihomoEngine.setMode(mode))
+                    }
+                }
+                "closeConnections" -> result.success(
+                    AndroidMihomoEngine.closeConnections()
+                )
+                "reloadConfig" -> {
+                    val config = (call.arguments as? Map<*, *>)?.get("config") as? String
+                    if (config.isNullOrBlank()) {
+                        result.error("invalid_config", "核心配置为空", null)
+                    } else {
+                        result.success(AndroidMihomoEngine.reloadConfig(config))
+                    }
+                }
                 // ── Legacy / shared ──────────────────────────────────────
                 "start" -> {
                     val config = (call.arguments as? Map<*, *>)?.get("config") as? String

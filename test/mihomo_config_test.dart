@@ -5,6 +5,17 @@ import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/shared/services/mihomo_config.dart';
 
 void main() {
+  test('restores a running Android controller secret safely', () {
+    final original = MihomoConfig.apiSecret;
+    addTearDown(() => MihomoConfig.restoreApiSecret(original));
+
+    MihomoConfig.restoreApiSecret('restored-secret');
+    expect(MihomoConfig.apiSecret, 'restored-secret');
+
+    MihomoConfig.restoreApiSecret('');
+    expect(MihomoConfig.apiSecret, 'restored-secret');
+  });
+
   test('appDataDir is under a Litchi folder', () {
     expect(MihomoConfig.appDataDir(), contains('Litchi'));
   });
@@ -45,7 +56,18 @@ void main() {
     );
 
     expect(config, isNotNull);
-    expect(config!['rules'], isA<List>());
+    expect(
+      (config!['dns'] as Map<String, dynamic>)['fake-ip-filter'],
+      containsAll(<String>['localhost', '*.local', '*.lan']),
+    );
+    expect((config['dns'] as Map<String, dynamic>)['nameserver'], const [
+      'system',
+    ]);
+    expect(
+      (config['dns'] as Map<String, dynamic>).containsKey('fallback'),
+      isFalse,
+    );
+    expect(config['rules'], isA<List>());
   });
 
   test('generated config passes the bundled mihomo validator', () async {

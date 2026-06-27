@@ -12,11 +12,12 @@ abstract final class ProxySetter {
   static const _key =
       r'HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings';
   static const _snapshotName = 'proxy_snapshot.json';
+  static Future<void> _pendingUpdate = Future<void>.value();
 
-  static Future<void> enable({int port = 7890}) async {
+  static Future<void> enable({int port = 7890}) => _schedule(() async {
     if (Platform.isWindows) return _winEnable(port);
     if (Platform.isMacOS) return _macSetProxy('127.0.0.1', port);
-  }
+  });
 
   /// Kill-switch: point the system proxy at a dead local port so proxy-aware
   /// traffic fails closed instead of leaking directly when the tunnel drops.
@@ -25,27 +26,33 @@ abstract final class ProxySetter {
   /// Note: protects proxy-aware apps in system-proxy mode. Apps that open raw
   /// sockets ignoring the system proxy are not covered — a full firewall
   /// kill-switch is the follow-up for that threat model.
-  static Future<void> engageKillSwitch() async {
+  static Future<void> engageKillSwitch() => _schedule(() async {
     // 127.0.0.1:1 — nothing listens here, so every proxied request is refused.
     if (Platform.isWindows) return _winKillSwitch();
     if (Platform.isMacOS) return _macSetProxy('127.0.0.1', 1);
-  }
+  });
 
   /// Clears the system proxy. [notify] broadcasts the change to WinInet so
   /// open browsers pick it up immediately — skip it on app exit, where the
   /// registry write already takes effect and waiting on the FFI call would
   /// stall shutdown. (macOS applies immediately, so [notify] is a no-op.)
-  static Future<void> disable({bool notify = true}) async {
+  static Future<void> disable({bool notify = true}) => _schedule(() async {
     if (Platform.isWindows) return _winDisable(notify: notify);
     if (Platform.isMacOS) return _macDisable();
-  }
+  });
 
   /// On startup: if the system proxy still points to our previous Litchi
   /// snapshot and no application-owned core is alive, restore it silently.
   /// Without a valid snapshot, do nothing — another proxy app may own 127.0.0.1.
-  static Future<void> disableIfStale() async {
+  static Future<void> disableIfStale() => _schedule(() async {
     if (Platform.isWindows) return _winDisableIfStale();
     if (Platform.isMacOS) return _macDisableIfStale();
+  });
+
+  static Future<void> _schedule(Future<void> Function() operation) {
+    final result = _pendingUpdate.then((_) => operation());
+    _pendingUpdate = result.catchError((_) {});
+    return result;
   }
 
   // ── Windows (registry + WinInet) ───────────────────────────────────────────
@@ -69,9 +76,7 @@ abstract final class ProxySetter {
   static Future<void> _winDisable({bool notify = true}) async {
     try {
       final restored = await _winRestoreSnapshotIfOwned();
-      if (!restored) {
-        await _reg('ProxyEnable', 'REG_DWORD', '0');
-      }
+      if (!restored) return;
     } catch (e) {
       SecureLogger.warn('ProxySetter.disable failed', e);
     }
@@ -96,23 +101,19 @@ abstract final class ProxySetter {
   }
 
   static Future<void> _winSaveSnapshotIfNeeded(int port) async {
-    try {
-      final file = await _snapshotFile();
-      if (await file.exists()) return;
-      final snapshot = <String, Object?>{
-        'platform': 'windows',
-        'owner_host': '127.0.0.1',
-        'owner_port': port,
-        'proxy_enable': await _regReadDword('ProxyEnable'),
-        'proxy_server': await _regReadString('ProxyServer'),
-        'proxy_override': await _regReadString('ProxyOverride'),
-        'saved_at': DateTime.now().toIso8601String(),
-      };
-      await file.parent.create(recursive: true);
-      await file.writeAsString(jsonEncode(snapshot));
-    } catch (e) {
-      SecureLogger.warn('ProxySetter snapshot save failed', e);
-    }
+    final file = await _snapshotFile();
+    if (await _updateSnapshotOwner(file, 'windows', port)) return;
+    final snapshot = <String, Object?>{
+      'platform': 'windows',
+      'owner_host': '127.0.0.1',
+      'owner_port': port,
+      'proxy_enable': await _regReadDword('ProxyEnable'),
+      'proxy_server': await _regReadString('ProxyServer'),
+      'proxy_override': await _regReadString('ProxyOverride'),
+      'saved_at': DateTime.now().toIso8601String(),
+    };
+    await file.parent.create(recursive: true);
+    await file.writeAsString(jsonEncode(snapshot), flush: true);
   }
 
   static Future<bool> _winRestoreSnapshotIfOwned() async {
@@ -270,20 +271,39 @@ abstract final class ProxySetter {
 
   static Future<void> _macSetProxy(String host, int port) async {
     await _macSaveSnapshotIfNeeded(port);
-    for (final service in await _macNetworkServices()) {
-      await _macRun(['-setwebproxy', service, host, '$port']);
-      await _macRun(['-setsecurewebproxy', service, host, '$port']);
-      await _macRun(['-setwebproxystate', service, 'on']);
-      await _macRun(['-setsecurewebproxystate', service, 'on']);
+    final services = await _macNetworkServices();
+    if (services.isEmpty) {
+      throw StateError('macOS did not return any enabled network services');
+    }
+    try {
+      for (final service in services) {
+        await _macRun([
+          '-setwebproxy',
+          service,
+          host,
+          '$port',
+        ], throwOnError: true);
+        await _macRun([
+          '-setsecurewebproxy',
+          service,
+          host,
+          '$port',
+        ], throwOnError: true);
+        await _macRun(['-setwebproxystate', service, 'on'], throwOnError: true);
+        await _macRun([
+          '-setsecurewebproxystate',
+          service,
+          'on',
+        ], throwOnError: true);
+      }
+    } catch (_) {
+      await _macRestoreSnapshotIfOwned();
+      rethrow;
     }
   }
 
   static Future<void> _macDisable() async {
-    if (await _macRestoreSnapshotIfOwned()) return;
-    for (final service in await _macNetworkServices()) {
-      await _macRun(['-setwebproxystate', service, 'off']);
-      await _macRun(['-setsecurewebproxystate', service, 'off']);
-    }
+    await _macRestoreSnapshotIfOwned();
   }
 
   static Future<void> _macDisableIfStale() async {
@@ -300,43 +320,46 @@ abstract final class ProxySetter {
     }
   }
 
-  static Future<void> _macRun(List<String> args) async {
+  static Future<void> _macRun(
+    List<String> args, {
+    bool throwOnError = false,
+  }) async {
     final r = await Process.run('networksetup', args);
     if (r.exitCode != 0) {
-      SecureLogger.warn(
-        'networksetup ${args.first} failed (exit ${r.exitCode})',
-        r.stderr,
-      );
+      final error =
+          'networksetup ${args.first} failed (exit ${r.exitCode}): ${r.stderr}';
+      SecureLogger.warn(error);
+      if (throwOnError) throw StateError(error);
     }
   }
 
   static Future<void> _macSaveSnapshotIfNeeded(int port) async {
-    try {
-      final file = await _snapshotFile();
-      if (await file.exists()) return;
-      final services = <Map<String, Object?>>[];
-      for (final service in await _macNetworkServices()) {
-        services.add({
-          'name': service,
-          'web': _parseMacProxy(await _macGetProxy('-getwebproxy', service)),
-          'secure': _parseMacProxy(
-            await _macGetProxy('-getsecurewebproxy', service),
-          ),
-        });
-      }
-      await file.parent.create(recursive: true);
-      await file.writeAsString(
-        jsonEncode({
-          'platform': 'macos',
-          'owner_host': '127.0.0.1',
-          'owner_port': port,
-          'services': services,
-          'saved_at': DateTime.now().toIso8601String(),
-        }),
-      );
-    } catch (e) {
-      SecureLogger.warn('macOS proxy snapshot save failed', e);
+    final file = await _snapshotFile();
+    if (await _updateSnapshotOwner(file, 'macos', port)) return;
+    final services = <Map<String, Object?>>[];
+    for (final service in await _macNetworkServices()) {
+      services.add({
+        'name': service,
+        'web': _parseMacProxy(await _macGetProxy('-getwebproxy', service)),
+        'secure': _parseMacProxy(
+          await _macGetProxy('-getsecurewebproxy', service),
+        ),
+      });
     }
+    if (services.isEmpty) {
+      throw StateError('macOS did not return any enabled network services');
+    }
+    await file.parent.create(recursive: true);
+    await file.writeAsString(
+      jsonEncode({
+        'platform': 'macos',
+        'owner_host': '127.0.0.1',
+        'owner_port': port,
+        'services': services,
+        'saved_at': DateTime.now().toIso8601String(),
+      }),
+      flush: true,
+    );
   }
 
   static Future<bool> _macRestoreSnapshotIfOwned() async {
@@ -364,16 +387,18 @@ abstract final class ProxySetter {
       if (item is! Map) continue;
       final service = item['name']?.toString();
       if (service == null || service.isEmpty) continue;
-      final current = _parseMacProxy(
-        await _macGetProxy('-getwebproxy', service),
-      );
-      final server = current['server']?.toString() ?? '';
-      final port = current['port'];
-      final currentServer = port is int && port > 0 ? '$server:$port' : server;
-      if (current['enabled'] == true &&
-          !_isOwnedLocalProxyServer(currentServer, ownerPort)) {
-        await _deleteSnapshot();
-        return true;
+      for (final command in const ['-getwebproxy', '-getsecurewebproxy']) {
+        final current = _parseMacProxy(await _macGetProxy(command, service));
+        final server = current['server']?.toString() ?? '';
+        final port = current['port'];
+        final currentServer = port is int && port > 0
+            ? '$server:$port'
+            : server;
+        if (current['enabled'] == true &&
+            !_isOwnedLocalProxyServer(currentServer, ownerPort)) {
+          await _deleteSnapshot();
+          return true;
+        }
       }
     }
 
@@ -447,6 +472,27 @@ abstract final class ProxySetter {
         ? Directory('$base\\Litchi')
         : Directory('$base/Litchi');
     return File('${dir.path}${Platform.pathSeparator}$_snapshotName');
+  }
+
+  static Future<bool> _updateSnapshotOwner(
+    File file,
+    String platform,
+    int port,
+  ) async {
+    if (!await file.exists()) return false;
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is Map<String, dynamic> && decoded['platform'] == platform) {
+        decoded['owner_host'] = '127.0.0.1';
+        decoded['owner_port'] = port;
+        await file.writeAsString(jsonEncode(decoded), flush: true);
+        return true;
+      }
+    } catch (_) {}
+    try {
+      await file.delete();
+    } catch (_) {}
+    return false;
   }
 
   static Future<void> _deleteSnapshot() async {

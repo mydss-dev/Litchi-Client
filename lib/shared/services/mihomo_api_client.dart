@@ -108,6 +108,11 @@ abstract final class MihomoApiClient {
     return true;
   }
 
+  static Future<bool> closeConnections({int apiPort = 9090}) async {
+    final response = await _request('DELETE', '/connections', apiPort: apiPort);
+    return response?.statusCode == 204;
+  }
+
   static Stream<({int upBps, int downBps})> trafficStream({
     int apiPort = 9090,
   }) {
@@ -170,6 +175,7 @@ abstract final class MihomoApiClient {
       final request = switch (method) {
         'PUT' => await client.putUrl(uri),
         'PATCH' => await client.patchUrl(uri),
+        'DELETE' => await client.deleteUrl(uri),
         _ => await client.getUrl(uri),
       };
       request.headers.add('Authorization', 'Bearer ${MihomoConfig.apiSecret}');

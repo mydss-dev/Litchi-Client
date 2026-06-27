@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../shared/models/app_models.dart';
+
 abstract final class CorePlatformSupport {
   static bool get isAndroid => Platform.isAndroid;
   static bool get isWindows => Platform.isWindows;
@@ -29,4 +31,26 @@ abstract final class CorePlatformSupport {
   }) {
     return isAndroid ? androidRunning : desktopRunning;
   }
+
+  static NetworkMode normalizeNetworkModeForPlatform({
+    required NetworkMode requested,
+    required bool isWindows,
+    required bool isMacOS,
+    required bool isAndroid,
+  }) {
+    if (isAndroid) return NetworkMode.tun;
+    if (isMacOS) return NetworkMode.system;
+    return requested;
+  }
+
+  static NetworkMode normalizeNetworkMode(NetworkMode requested) =>
+      normalizeNetworkModeForPlatform(
+        requested: requested,
+        isWindows: isWindows,
+        isMacOS: isMacOS,
+        isAndroid: isAndroid,
+      );
+
+  static bool supportsNetworkMode(NetworkMode mode) =>
+      normalizeNetworkMode(mode) == mode;
 }

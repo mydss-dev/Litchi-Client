@@ -23,18 +23,24 @@ class AndroidCoreManager {
   bool _isRunning = false;
   bool _isCoreRunning = false;
   bool _isVpnRunning = false;
+  int _controllerPort = 9090;
+  String _controllerSecret = '';
   String _lastError = '';
   StreamSubscription<AndroidCoreStatusEvent>? _statusSub;
 
   bool get isRunning => _isRunning;
   bool get isCoreRunning => _isCoreRunning;
   bool get isVpnRunning => _isVpnRunning;
+  int get controllerPort => _controllerPort;
+  String get controllerSecret => _controllerSecret;
   String get lastError => _lastError;
 
   Future<void> init() async {
     _statusSub ??= statusStream.listen(_applyStatus);
     _isCoreRunning = await _invokeBool('isCoreRunning');
     _isVpnRunning = await _invokeBool('isVpnRunning');
+    _controllerPort = await _invokeInt('controllerPort', fallback: 9090);
+    _controllerSecret = await _invokeString('controllerSecret');
     _isRunning = _isCoreRunning || _isVpnRunning;
   }
 
@@ -123,6 +129,16 @@ class AndroidCoreManager {
     await stopCore();
   }
 
+  Future<bool> switchProxy(String group, String proxy) =>
+      _invokeBool('switchProxy', {'group': group, 'proxy': proxy});
+
+  Future<bool> setMode(String mode) => _invokeBool('setMode', {'mode': mode});
+
+  Future<bool> closeConnections() => _invokeBool('closeConnections');
+
+  Future<bool> reloadConfig(String config) =>
+      _invokeBool('reloadConfig', {'config': config});
+
   Future<String> version() => _invokeString('version');
 
   Future<void> dispose() async {
@@ -173,6 +189,15 @@ class AndroidCoreManager {
     } on PlatformException catch (e) {
       _lastError = e.message ?? 'Android 核心调用失败';
       throw AndroidCoreException(_lastError);
+    }
+  }
+
+  Future<int> _invokeInt(String method, {required int fallback}) async {
+    try {
+      return await _channel.invokeMethod<int>(method) ?? fallback;
+    } on PlatformException catch (e) {
+      _lastError = e.message ?? 'Android 核心调用失败';
+      return fallback;
     }
   }
 }

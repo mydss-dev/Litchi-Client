@@ -12,6 +12,12 @@ import 'package:flutter/material.dart';
 ///     --dart-define=API_BASE="https://your-panel.com"
 
 abstract final class AppConfig {
+  /// Increments after a trusted remote config changes effective runtime values.
+  ///
+  /// Long-lived services can listen to this instead of waiting for the next
+  /// process launch to pick up a refreshed OSS config.
+  static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+
   // ── Version ─────────────────────────────────────────────────────────────────
 
   static String currentVersion = const String.fromEnvironment('APP_VERSION');
@@ -77,14 +83,18 @@ abstract final class AppConfig {
       LinearGradient(colors: [brandStart, brandEnd]);
 
   static void applyRemote(Map<String, dynamic> json) {
+    final before = _runtimeFingerprint();
+
     _str(json, 'api_prefix', (v) => apiPrefix = v);
 
     final bases = json['api_base_list'];
     if (bases is List) {
       final urls = bases
           .whereType<String>()
-          .map((e) => e.trim().replaceAll(RegExp(r'/+$'), ''))
-          .where((e) => e.startsWith('https://'))
+          .map(_trustedHttpsUrl)
+          .whereType<String>()
+          .map((e) => e.replaceAll(RegExp(r'/+$'), ''))
+          .toSet()
           .toList();
       if (urls.isNotEmpty) {
         apiBase = urls.first;
@@ -106,7 +116,27 @@ abstract final class AppConfig {
     _str(json, 'update_version', (v) => updateVersion = v);
     _updateDownloadUrlsFromJson(json['update_download_url']);
     _str(json, 'update_changelog', (v) => updateChangelog = v);
+
+    if (_runtimeFingerprint() != before) {
+      revision.value++;
+    }
   }
+
+  static String _runtimeFingerprint() => <Object?>[
+    apiBase,
+    ...apiBaseList,
+    apiPrefix,
+    appName,
+    logoUrl,
+    avatarUrl,
+    inviteUrlBase,
+    updateVersion,
+    for (final entry
+        in (_updateDownloadUrls.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key))))
+      '${entry.key}=${entry.value}',
+    updateChangelog,
+  ].join('\u0000');
 
   static void _updateDownloadUrlsFromJson(Object? value) {
     if (value is Map) {

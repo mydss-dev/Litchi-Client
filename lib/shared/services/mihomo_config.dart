@@ -17,7 +17,13 @@ abstract final class MihomoConfig {
   static const String globalTag = 'GLOBAL';
   static const String delayTestUrl = 'https://www.gstatic.com/generate_204';
 
-  static final String apiSecret = _generateSecret();
+  static String apiSecret = _generateSecret();
+
+  /// Restores the secret owned by an already-running Android core after the
+  /// Flutter activity/isolate is recreated. Empty values are never accepted.
+  static void restoreApiSecret(String value) {
+    if (value.isNotEmpty) apiSecret = value;
+  }
 
   static String appDataDir() {
     final sep = Platform.pathSeparator;
@@ -69,10 +75,16 @@ abstract final class MihomoConfig {
       'MATCH,$selectorTag',
     ];
 
-    final nameserver = switch (dnsMode) {
-      'Google' => 'https://dns.google/dns-query',
-      'Cloudflare' => 'https://1.1.1.1/dns-query',
-      _ => 'system',
+    final (nameserver, fallback) = switch (dnsMode) {
+      'Google' => (
+        const ['https://dns.google/dns-query'],
+        const ['https://1.1.1.1/dns-query'],
+      ),
+      'Cloudflare' => (
+        const ['https://1.1.1.1/dns-query'],
+        const ['https://dns.google/dns-query'],
+      ),
+      _ => (const ['system'], const <String>[]),
     };
 
     return {
@@ -92,11 +104,10 @@ abstract final class MihomoConfig {
         'ipv6': true,
         'enhanced-mode': 'fake-ip',
         'fake-ip-range': '198.18.0.1/16',
-        'nameserver': [nameserver],
-        'fallback': [
-          'https://1.1.1.1/dns-query',
-          'https://dns.google/dns-query',
-        ],
+        'fake-ip-filter': ['localhost', '*.local', '*.lan'],
+        'use-system-hosts': true,
+        'nameserver': nameserver,
+        if (fallback.isNotEmpty) 'fallback': fallback,
       },
       // Android supplies a VpnService-owned file descriptor to the embedded
       // core. The ordinary config TUN is therefore only enabled on desktop.
@@ -290,7 +301,8 @@ abstract final class MihomoConfig {
     await cleanupStaleConfigFiles();
 
     final nonce = Random.secure().nextInt(1 << 32).toRadixString(16);
-    final name = 'litchi_core_'
+    final name =
+        'litchi_core_'
         '${DateTime.now().microsecondsSinceEpoch}_$nonce.yaml';
     final file = File('${dir.path}${Platform.pathSeparator}$name');
     await file.writeAsString(encodeConfig(config), flush: true);

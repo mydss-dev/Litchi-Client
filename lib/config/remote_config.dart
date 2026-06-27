@@ -31,7 +31,7 @@ abstract final class RemoteConfigService {
   /// still accepted for rollout compatibility.
   static const publicKeyBase64Url = String.fromEnvironment(
     'REMOTE_CONFIG_PUBLIC_KEY',
-    defaultValue: 'J9E-BBh19QQsGhpAJd654FkxN09pcH2K4FMq_3lYEyw',
+    defaultValue: 'b0nnSjObRhQe3l2ZOeSacmTbNMI0I4qf4_3g01lTK6I',
   );
 
   // ── Internal settings ─────────────────────────────────────────────────────
