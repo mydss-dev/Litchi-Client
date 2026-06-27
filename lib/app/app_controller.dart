@@ -120,11 +120,21 @@ class AppController extends ChangeNotifier {
     if (_settings.allowInsecureNodes != old) unawaited(_reloadCoreConfig());
   }
 
-  void setProxyMode(ProxyMode v) {
+  Future<String?> setProxyMode(ProxyMode v) async {
     final old = _settings.proxyMode;
+    if (old == v) return null;
+
     _settings.setProxyMode(v);
-    if (_settings.proxyMode == old) return;
-    if (_core.coreProcessRunning) unawaited(_core.setMode(v));
+
+    if (_core.coreProcessRunning) {
+      final ok = await _core.setMode(v);
+      if (!ok) {
+        _settings.setProxyMode(old);
+        return '模式切换失败，请重试';
+      }
+    }
+
+    return null;
   }
 
   void setNetworkMode(NetworkMode v) {

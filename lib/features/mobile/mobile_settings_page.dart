@@ -135,9 +135,13 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
       ),
     );
     if (mode != null && mode != ctrl.proxyMode) {
-      ctrl.setProxyMode(mode);
+      final error = await ctrl.setProxyMode(mode);
       if (!context.mounted) return;
-      AppToast.show(context, mode.switchToast, type: AppToastType.success);
+      if (error != null) {
+        AppToast.show(context, error, type: AppToastType.error);
+      } else {
+        AppToast.show(context, mode.switchToast, type: AppToastType.success);
+      }
     }
   }
 

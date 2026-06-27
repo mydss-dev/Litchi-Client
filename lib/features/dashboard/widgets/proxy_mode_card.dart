@@ -47,12 +47,19 @@ class ProxyModeCard extends StatelessWidget {
               const SizedBox(height: 16),
               _ProxyModeSegment(
                 value: proxyMode,
-                onChanged: (mode) {
+                onChanged: (mode) async {
                   final ctrl = AppScope.read(context);
                   if (mode == ctrl.proxyMode) return;
                   final wasRunning = ctrl.coreRunning;
-                  ctrl.setProxyMode(mode);
-                  if (wasRunning) {
+                  final error = await ctrl.setProxyMode(mode);
+                  if (!context.mounted) return;
+                  if (error != null) {
+                    AppToast.show(
+                      context,
+                      error,
+                      type: AppToastType.error,
+                    );
+                  } else if (wasRunning) {
                     AppToast.show(
                       context,
                       '已切换至 ${mode.label}',

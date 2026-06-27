@@ -378,9 +378,9 @@ class CoreController extends ChangeNotifier {
     apiPort: _apiPort,
   );
 
-  Future<void> setMode(ProxyMode proxyMode) async {
-    if (!coreProcessRunning) return;
-    await MihomoApiClient.setMode(proxyMode.clashValue, apiPort: _apiPort);
+  Future<bool> setMode(ProxyMode proxyMode) async {
+    if (!coreProcessRunning) return true;
+    return MihomoApiClient.setMode(proxyMode.clashValue, apiPort: _apiPort);
   }
 
   Future<void> fixProxy(

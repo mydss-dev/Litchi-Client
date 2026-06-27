@@ -126,14 +126,23 @@ class _MobileHomePageState extends State<MobileHomePage> {
           const SizedBox(height: 14),
           _ModeStrip(
             selected: ctrl.proxyMode,
-            onChanged: (mode) {
+            onChanged: (mode) async {
               if (mode == ctrl.proxyMode) return;
-              ctrl.setProxyMode(mode);
-              AppToast.show(
-                context,
-                mode.switchToast,
-                type: AppToastType.success,
-              );
+              final error = await ctrl.setProxyMode(mode);
+              if (!context.mounted) return;
+              if (error != null) {
+                AppToast.show(
+                  context,
+                  error,
+                  type: AppToastType.error,
+                );
+              } else {
+                AppToast.show(
+                  context,
+                  mode.switchToast,
+                  type: AppToastType.success,
+                );
+              }
             },
           ),
           const SizedBox(height: 14),
