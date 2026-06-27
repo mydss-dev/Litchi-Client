@@ -126,7 +126,6 @@ jobs:
     name: Build Android
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-    env:
     steps:
       - uses: actions/checkout@v4
 
