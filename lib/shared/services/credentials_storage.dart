@@ -193,11 +193,13 @@ abstract final class CredentialsStorage {
 
   /// Protects arbitrary sensitive text.
   ///
-  /// Windows uses DPAPI; other platforms return `null` (callers must handle
-  /// the missing protection gracefully — e.g. NodeCacheService will skip
-  /// writing a secure cache on non-Windows platforms).
+  /// Windows uses DPAPI. macOS / Linux return `null` because no generic
+  /// secure blob backend is available on those platforms (macOS uses
+  /// Keychain for password/token but not for arbitrary payloads).
+  /// Callers must handle `null` gracefully — e.g. NodeCacheService will
+  /// skip writing a secure cache and fall back to the redacted UI cache.
   static Future<String?> protectString(String plaintext) {
-    if (Platform.isLinux) return Future.value(null);
+    if (Platform.isLinux || Platform.isMacOS) return Future.value(null);
     if (Platform.isWindows) {
       return _protectDpapi(plaintext)
           .then((value) => value ?? _protectPortable(plaintext));
