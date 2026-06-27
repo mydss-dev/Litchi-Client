@@ -33,28 +33,38 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Fetch OSS config
+        id: fetch
         run: |
-          curl -sSL "${{ inputs.remote_config_url }}" -o /tmp/config_raw.json
-          # If the response is a signed wrapper, extract the payload
           node -e "
+            const https = require('https');
+            const os = require('os');
             const fs = require('fs');
-            const raw = JSON.parse(fs.readFileSync('/tmp/config_raw.json','utf8'));
-            if (raw.payload_b64 && raw.signature) {
-              fs.writeFileSync('/tmp/config.json', Buffer.from(raw.payload_b64, 'base64url').toString('utf8'));
-            } else {
-              fs.writeFileSync('/tmp/config.json', JSON.stringify(raw));
-            }
+            const url = '${{ inputs.remote_config_url }}';
+            const tmp = os.tmpdir();
+            https.get(url, (res) => {
+              let data = '';
+              res.on('data', (chunk) => data += chunk);
+              res.on('end', () => {
+                const raw = JSON.parse(data);
+                let payload;
+                if (raw.payload_b64 && raw.signature) {
+                  payload = JSON.parse(Buffer.from(raw.payload_b64, 'base64url').toString('utf8'));
+                } else {
+                  payload = raw;
+                }
+                const out = JSON.stringify(payload);
+                fs.writeFileSync(tmp + '/config.json', out);
+                // Also write flattened values for GitHub Output
+                const p = JSON.parse(out);
+                const app = p.app_name || 'Litchi';
+                const logo = p.logo_url || '';
+                const api = p.api_base_list?.[0] || p.api_base || '';
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, 'app_name=' + app + '\n');
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, 'logo_url=' + logo + '\n');
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, 'api_base=' + api + '\n');
+              });
+            }).on('error', (e) => { console.error(e); process.exit(1); });
           "
-
-      - name: Read config values
-        id: config
-        run: |
-          APP_NAME=$(node -e "console.log(require('/tmp/config.json').app_name || 'Litchi')")
-          LOGO_URL=$(node -e "console.log(require('/tmp/config.json').logo_url || '')")
-          API_BASE=$(node -e "console.log(require('/tmp/config.json').api_base_list?.[0] || require('/tmp/config.json').api_base || '')")
-          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
-          echo "logo_url=$LOGO_URL" >> $GITHUB_OUTPUT
-          echo "api_base=$API_BASE" >> $GITHUB_OUTPUT
 
       - uses: subosito/flutter-action@v2
         with:
@@ -67,16 +77,16 @@ jobs:
           case "${{ inputs.platform }}" in
             android)
               flutter build apk --release \
-                --dart-define=APP_NAME="${{ steps.config.outputs.app_name }}" \
-                --dart-define=LOGO_URL="${{ steps.config.outputs.logo_url }}" \
-                --dart-define=API_BASE="${{ steps.config.outputs.api_base }}" \
+                --dart-define=APP_NAME="${{ steps.fetch.outputs.app_name }}" \
+                --dart-define=LOGO_URL="${{ steps.fetch.outputs.logo_url }}" \
+                --dart-define=API_BASE="${{ steps.fetch.outputs.api_base }}" \
                 --dart-define=APP_VERSION="${{ inputs.version }}"
               ;;
             *)
               flutter build ${{ inputs.platform }} --release \
-                --dart-define=APP_NAME="${{ steps.config.outputs.app_name }}" \
-                --dart-define=LOGO_URL="${{ steps.config.outputs.logo_url }}" \
-                --dart-define=API_BASE="${{ steps.config.outputs.api_base }}" \
+                --dart-define=APP_NAME="${{ steps.fetch.outputs.app_name }}" \
+                --dart-define=LOGO_URL="${{ steps.fetch.outputs.logo_url }}" \
+                --dart-define=API_BASE="${{ steps.fetch.outputs.api_base }}" \
                 --dart-define=APP_VERSION="${{ inputs.version }}"
               ;;
           esac
@@ -167,7 +177,7 @@ jobs:
       - name: Rename artifact
         shell: bash
         run: |
-          APP="${{ steps.config.outputs.app_name }}"
+          APP="${{ steps.fetch.outputs.app_name }}"
           VER="${{ inputs.version }}"
           mkdir -p release
           case "${{ inputs.platform }}" in
