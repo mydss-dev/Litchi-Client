@@ -6,7 +6,6 @@ import 'package:image/image.dart' as image;
 
 const _maxDownloadBytes = 10 * 1024 * 1024;
 const _canvasSize = 1024;
-const _foregroundSize = 640;
 const _icoSizes = [256, 128, 64, 48, 40, 32, 24, 20, 16];
 
 Future<void> main(List<String> args) async {
@@ -96,21 +95,9 @@ Future<void> _saveAssets(image.Image logo, Directory assets) async {
   await File('${assets.path}/logo.png').writeAsBytes(image.encodePng(logo));
   await File('${assets.path}/app_icon.png').writeAsBytes(image.encodePng(logo));
 
-  final foreground = image.Image(
-    width: _canvasSize,
-    height: _canvasSize,
-    numChannels: 4,
-  )..clear(image.ColorRgba8(0, 0, 0, 0));
-  final foregroundLogo = image.copyResize(
-    logo,
-    width: _foregroundSize,
-    height: _foregroundSize,
-    interpolation: image.Interpolation.cubic,
-  );
-  image.compositeImage(foreground, foregroundLogo, center: true);
   await File(
     '${assets.path}/app_icon_foreground.png',
-  ).writeAsBytes(image.encodePng(foreground));
+  ).writeAsBytes(image.encodePng(logo));
 
   await File(
     '${assets.path}/tray_icon.ico',
