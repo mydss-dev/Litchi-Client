@@ -6,17 +6,17 @@ abstract final class UrlOpener {
   static const _channel = MethodChannel('litchi/url_opener');
 
   static Future<bool> open(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
-      return false;
-    }
+    if (!_isSafeExternalUrl(url)) return false;
 
     try {
       if (Platform.isAndroid) {
         return await _channel.invokeMethod<bool>('openUrl', url) ?? false;
       }
       if (Platform.isWindows) {
-        final result = await Process.run('cmd', ['/c', 'start', '', url]);
+        final result = await Process.run('rundll32', [
+          'url.dll,FileProtocolHandler',
+          url,
+        ]);
         return result.exitCode == 0;
       }
       if (Platform.isMacOS) {
@@ -29,5 +29,13 @@ abstract final class UrlOpener {
       }
     } catch (_) {}
     return false;
+  }
+
+  static bool _isSafeExternalUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+    if (uri.scheme != 'https') return false;
+    if (uri.host.isEmpty) return false;
+    return true;
   }
 }
