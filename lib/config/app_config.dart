@@ -56,14 +56,16 @@ abstract final class AppConfig {
 
   static String apiPrefix = '';
 
-  // ── Brand (OSS provides the real values; compile-time defaults are neutral) ─
+  // ── Brand ──────────────────────────────────────────────────────────────────
 
   static String appName = const String.fromEnvironment('APP_NAME');
   static String logoUrl = const String.fromEnvironment('LOGO_URL');
   static String avatarUrl = '';
 
-  static Color brandStart = Colors.transparent;
-  static Color brandEnd = Colors.transparent;
+  // Keep a usable blue→purple fallback even when OSS is unavailable or an
+  // older config does not contain brand colors.
+  static Color brandStart = const Color(0xFF2563EB);
+  static Color brandEnd = const Color(0xFF7C3AED);
 
   // ── URLs ────────────────────────────────────────────────────────────────────
 
@@ -93,7 +95,13 @@ abstract final class AppConfig {
     _str(json, 'app_name', (v) => appName = v);
     _str(json, 'logo_url', (v) => logoUrl = v);
     _url(json, 'avatar_url', (v) => avatarUrl = v);
-    _firstUrl(json, ['invite_url_base', 'invite_base_url', 'invite_url', 'frontend_url', 'site_url'], (v) => inviteUrlBase = v);
+    _firstUrl(json, [
+      'invite_url_base',
+      'invite_base_url',
+      'invite_url',
+      'frontend_url',
+      'site_url',
+    ], (v) => inviteUrlBase = v);
 
     _str(json, 'update_version', (v) => updateVersion = v);
     _updateDownloadUrlsFromJson(json['update_download_url']);
@@ -112,12 +120,20 @@ abstract final class AppConfig {
     }
   }
 
-  static void _str(Map<String, dynamic> json, String key, void Function(String) apply) {
+  static void _str(
+    Map<String, dynamic> json,
+    String key,
+    void Function(String) apply,
+  ) {
     final v = json[key];
     if (v is String && v.isNotEmpty) apply(v);
   }
 
-  static void _firstUrl(Map<String, dynamic> json, List<String> keys, void Function(String) apply) {
+  static void _firstUrl(
+    Map<String, dynamic> json,
+    List<String> keys,
+    void Function(String) apply,
+  ) {
     for (final key in keys) {
       final v = json[key];
       if (v is! String || v.isEmpty) continue;
@@ -129,7 +145,11 @@ abstract final class AppConfig {
     }
   }
 
-  static void _url(Map<String, dynamic> json, String key, void Function(String) apply) {
+  static void _url(
+    Map<String, dynamic> json,
+    String key,
+    void Function(String) apply,
+  ) {
     final v = json[key];
     if (v is! String || v.isEmpty) return;
     final normalized = _trustedHttpsUrl(v);
@@ -142,5 +162,4 @@ abstract final class AppConfig {
     if (u != null && u.scheme == 'https' && u.host.isNotEmpty) return trimmed;
     return null;
   }
-
 }

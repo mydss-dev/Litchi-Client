@@ -36,11 +36,32 @@ GITHUB_REPO=Kimibit7/Litchi-Client
 GITHUB_REF=main
 GITHUB_WORKFLOW_ID=white-label-build.yml
 BUILD_VERSION=1.2.7
+DOWNLOAD_BASE_URL=https://download.example.com
 DB_PATH=./data/bot.sqlite
 ```
 
 `BUILD_VERSION` 是必填项，机器人直接把它交给 GitHub Actions，不读取
 `pubspec.yaml`。发布新版本时修改 `.env` 后重启机器人。
+
+## Cloudflare R2 自动下载
+
+在 R2 Bucket 的设置中绑定公开自定义域名，并把这个域名写入机器人 `.env`：
+
+```env
+DOWNLOAD_BASE_URL=https://download.example.com
+```
+
+在 GitHub 仓库的 Actions secrets 中配置：
+
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET`
+
+R2 API Token 只授予目标 Bucket 的 Object Read & Write 权限。构建成功后，工作流会
+上传到 `packages/<APP_ID>/<platform>/<version>/<request-id>.<ext>`，机器人随后把
+这个公开地址记录为该平台的最新下载链接。`DOWNLOAD_BASE_URL` 留空时跳过 R2 上传，
+仍保留 GitHub Artifact。
 
 `BOT_ADMINS` 不能为空，否则机器人会拒绝启动。直接运行：
 

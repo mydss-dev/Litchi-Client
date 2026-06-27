@@ -8,8 +8,19 @@ export const env = {
   githubRef: process.env.GITHUB_REF ?? 'main',
   githubWorkflowId: process.env.GITHUB_WORKFLOW_ID ?? 'white-label-build.yml',
   buildVersion: process.env.BUILD_VERSION ?? '',
+  downloadBaseUrl: normalizeBaseUrl(process.env.DOWNLOAD_BASE_URL ?? ''),
   dbPath: process.env.DB_PATH ?? './data/bot.sqlite',
 };
+
+function normalizeBaseUrl(raw: string): string {
+  const value = raw.trim().replace(/\/+$/, '');
+  if (!value) return '';
+  const parsed = new URL(value);
+  if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.search || parsed.hash) {
+    throw new Error('DOWNLOAD_BASE_URL must be an https URL without query or hash');
+  }
+  return value;
+}
 
 function parseAdmins(raw: string): Set<number> {
   return new Set(

@@ -106,6 +106,11 @@ void main() {
       expect(AppConfig.currentVersion, '9.9.9');
       AppConfig.setVersion(original);
     });
+
+    test('keeps usable legacy brand colors', () {
+      expect(AppConfig.brandStart.toARGB32(), 0xFF2563EB);
+      expect(AppConfig.brandEnd.toARGB32(), 0xFF7C3AED);
+    });
   });
 
   group('WindowsDpapi', () {

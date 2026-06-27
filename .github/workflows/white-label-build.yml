@@ -23,6 +23,10 @@ on:
       request_id:
         required: true
         type: string
+      download_base_url:
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -37,6 +41,8 @@ jobs:
       BUILD_VERSION: ${{ inputs.version }}
       REMOTE_CONFIG_URL: ${{ inputs.remote_config_url }}
       REMOTE_CONFIG_VERIFIER: ${{ inputs.remote_config_verifier }}
+      DOWNLOAD_BASE_URL: ${{ inputs.download_base_url }}
+      REQUEST_ID: ${{ inputs.request_id }}
       LIBBOX_REF: v1.13.13
 
     steps:
@@ -243,6 +249,19 @@ jobs:
           mkdir -p release
           cp build/app/outputs/flutter-apk/app-release.apk \
             "release/$PACKAGE_NAME $BUILD_VERSION Android.apk"
+
+      - name: Upload package to Cloudflare R2
+        if: inputs.download_base_url != ''
+        id: r2
+        shell: bash
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python -m pip install --disable-pip-version-check --quiet boto3
+          python tool/upload_r2.py release
 
       - name: Upload package
         uses: actions/upload-artifact@v4

@@ -8,6 +8,7 @@ export type BuildPlatform = 'windows' | 'android' | 'macos';
 export type BuildStatusSnapshot = {
   githubRunUrl: string;
   status: string;
+  downloadUrl: string;
 };
 
 export function buildRunName(input: {
@@ -31,20 +32,24 @@ export async function dispatchBuild(input: {
   const { owner, repo } = repoParts();
   const octokit = new Octokit({ auth: env.githubToken });
   const requestId = nanoid(12);
+  const workflowInputs: Record<string, string> = {
+    app_id: input.appId,
+    platform: input.platform,
+    version: input.version,
+    remote_config_url: input.remoteConfigUrl,
+    remote_config_verifier: input.verifier,
+    request_id: requestId,
+  };
+  if (env.downloadBaseUrl) {
+    workflowInputs.download_base_url = env.downloadBaseUrl;
+  }
 
   await octokit.actions.createWorkflowDispatch({
     owner,
     repo,
     workflow_id: env.githubWorkflowId,
     ref: env.githubRef,
-    inputs: {
-      app_id: input.appId,
-      platform: input.platform,
-      version: input.version,
-      remote_config_url: input.remoteConfigUrl,
-      remote_config_verifier: input.verifier,
-      request_id: requestId,
-    },
+    inputs: workflowInputs,
   });
 
   return {
@@ -84,7 +89,42 @@ export async function readBuildStatus(input: {
   return {
     githubRunUrl: run.html_url,
     status: normalizeRunStatus(run.status, run.conclusion),
+    downloadUrl:
+      run.conclusion === 'success'
+        ? buildDownloadUrl({
+            appId: input.appId,
+            platform: input.platform,
+            version: input.version,
+            requestId: input.requestId,
+          })
+        : '',
   };
+}
+
+export function buildDownloadUrl(input: {
+  appId: string;
+  platform: string;
+  version: string;
+  requestId: string;
+}): string {
+  if (!env.downloadBaseUrl) return '';
+  const extension =
+    input.platform === 'windows'
+      ? 'zip'
+      : input.platform === 'macos'
+        ? 'dmg'
+        : input.platform === 'android'
+          ? 'apk'
+          : '';
+  if (!extension) return '';
+  const segments = [
+    'packages',
+    input.appId,
+    input.platform,
+    input.version,
+    `${input.requestId}.${extension}`,
+  ].map(encodeURIComponent);
+  return `${env.downloadBaseUrl}/${segments.join('/')}`;
 }
 
 export function getCurrentBuildVersion(): string {

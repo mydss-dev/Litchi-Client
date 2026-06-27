@@ -149,7 +149,9 @@ export function wireCommands(bot: Telegraf): void {
       return;
     }
 
-    await ctx.reply(formatProfile(profile));
+    await ctx.reply(formatProfile(profile), {
+      link_preview_options: { is_disabled: true },
+    });
   });
 
   bot.on('text', async (ctx, next) => {
@@ -308,7 +310,10 @@ async function authorizeTarget(
 async function bindOssForUser(
   ctx: {
     from?: { username?: string };
-    reply(text: string): Promise<unknown>;
+    reply(
+      text: string,
+      extra?: { link_preview_options: { is_disabled: boolean } },
+    ): Promise<unknown>;
   },
   ossRaw: string,
   userId: number,
@@ -338,6 +343,9 @@ async function bindOssForUser(
         '',
         '下一步请发送 /signconfig，机器人会继续提示你上传或粘贴配置。',
       ].join('\n'),
+      {
+        link_preview_options: { is_disabled: true },
+      },
     );
   } catch (error) {
     await ctx.reply(error instanceof Error ? error.message : String(error));

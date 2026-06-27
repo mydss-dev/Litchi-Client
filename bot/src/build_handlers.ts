@@ -84,7 +84,7 @@ export function wireBuildCommands(bot: Telegraf): void {
       refreshedRows
         .map(
           (row) =>
-            `#${row.id} ${row.platform} ${row.version} ${row.status}\n${row.download_url || row.github_run_url || '-'}`,
+            `#${row.id} ${row.platform} ${row.version} ${row.status}\n${row.download_url || '等待构建完成后生成下载链接'}`,
         )
         .join('\n\n'),
     );
@@ -253,7 +253,7 @@ async function startBuildFromInput(
         githubRunUrl: dispatched.workflowUrl,
       });
 
-      results.push(`#${id} ${platform}\n${dispatched.workflowUrl}`);
+      results.push(`#${id} ${platform} 已进入构建队列`);
       startBuildTracking(bot, {
         buildId: id,
         chatId,
@@ -325,11 +325,13 @@ async function refreshBuildRows(rows: BuildRow[]): Promise<BuildRow[]> {
           id: row.id,
           status: snapshot.status,
           githubRunUrl: snapshot.githubRunUrl,
+          downloadUrl: snapshot.downloadUrl,
         });
         nextRows.push({
           ...row,
           status: snapshot.status,
           github_run_url: snapshot.githubRunUrl,
+          download_url: snapshot.downloadUrl || row.download_url,
         });
         continue;
       }
@@ -393,6 +395,7 @@ function scheduleBuildTracking(
         id: input.buildId,
         status: snapshot.status,
         githubRunUrl: snapshot.githubRunUrl,
+        downloadUrl: snapshot.downloadUrl,
       });
 
       const lastStatus = trackingStates.get(input.buildId);
@@ -400,7 +403,10 @@ function scheduleBuildTracking(
         trackingStates.set(input.buildId, snapshot.status);
         await bot.telegram.sendMessage(
           input.chatId,
-          formatTrackingMessage(input, snapshot.status, snapshot.githubRunUrl),
+          formatTrackingMessage(input, snapshot.status, snapshot.downloadUrl),
+          {
+            link_preview_options: { is_disabled: true },
+          },
         );
       }
 
@@ -436,16 +442,19 @@ function formatTrackingMessage(
     version: string;
   },
   status: string,
-  runUrl: string,
+  downloadUrl: string,
 ): string {
   const statusText = mapStatusText(status);
-  return [
+  const lines = [
     `打包状态更新 #${input.buildId}`,
     `平台: ${input.platform}`,
     `版本: ${input.version}`,
     `状态: ${statusText}`,
-    runUrl,
-  ].join('\n');
+  ];
+  if (downloadUrl) {
+    lines.push(`下载: ${downloadUrl}`);
+  }
+  return lines.join('\n');
 }
 
 function mapStatusText(status: string): string {
