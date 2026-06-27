@@ -73,6 +73,7 @@ jobs:
       - run: flutter pub get
 
       - name: Build ${{ inputs.platform }}
+        shell: bash
         run: |
           case "${{ inputs.platform }}" in
             android)
