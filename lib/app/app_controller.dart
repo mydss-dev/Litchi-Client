@@ -13,7 +13,6 @@ import '../shared/services/node_cache_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
 import '../shared/services/secure_logger.dart';
-import '../shared/services/tcp_ping_service.dart';
 import '../shared/services/token_storage.dart';
 import '../shared/services/update_service.dart';
 import 'account_controller.dart';
@@ -701,11 +700,7 @@ class AppController extends ChangeNotifier {
 
   Future<void> _testStartupLatencies() async {
     if (!supportsCoreConnection) return;
-    if (Platform.isAndroid) {
-      await testLatencies();
-      return;
-    }
-    await _testTcpLatencies(showProgress: false);
+    await _testLatenciesInBackground();
   }
 
   Future<void> _reloadCoreConfig({bool startIfStopped = false}) async {
@@ -722,24 +717,24 @@ class AppController extends ChangeNotifier {
 
     if (coreProcessRunning) {
       await Future.delayed(const Duration(milliseconds: 1000));
-      if (Platform.isAndroid) {
-        unawaited(testLatencies());
-      } else {
-        unawaited(_testLatenciesInBackground());
-      }
+      unawaited(_testLatenciesInBackground());
     }
   }
 
   Future<void> testLatencies() async {
     if (!supportsCoreConnection || _nodes.isEmpty) return;
-    if (!coreProcessRunning) {
-      await _testTcpLatencies(showProgress: true);
-      return;
-    }
 
     final runId = _nextLatencyRunId();
     _nodes.markAllLatency(-1);
     final snapshot = List<NodeModel>.from(_nodes.nodes);
+
+    final ready = await _ensureCoreForLatencyTest();
+    if (!_isCurrentLatencyRun(runId)) return;
+    if (!ready) {
+      _markLatencyTestFailed(runId, snapshot);
+      return;
+    }
+
     await _core.testLatencies(
       snapshot,
       onResult: (idx, updated) {
@@ -750,13 +745,13 @@ class AppController extends ChangeNotifier {
 
   Future<void> _testLatenciesInBackground() async {
     if (!supportsCoreConnection || _nodes.isEmpty) return;
-    if (!coreProcessRunning) {
-      await _testTcpLatencies(showProgress: false);
-      return;
-    }
 
     final runId = _nextLatencyRunId();
     final snapshot = List<NodeModel>.from(_nodes.nodes);
+
+    final ready = await _ensureCoreForLatencyTest();
+    if (!_isCurrentLatencyRun(runId) || !ready) return;
+
     await _core.testLatencies(
       snapshot,
       onResult: (idx, updated) {
@@ -765,26 +760,15 @@ class AppController extends ChangeNotifier {
     );
   }
 
-  Future<void> _testTcpLatencies({required bool showProgress}) async {
-    final runId = _nextLatencyRunId();
-    if (showProgress) _nodes.markAllLatency(-1);
+  Future<bool> _ensureCoreForLatencyTest() async {
+    if (coreProcessRunning) return true;
+    await _core.startCoreOnly(_buildConnectionRequest());
+    return coreProcessRunning;
+  }
 
-    final snapshot = List<NodeModel>.from(_nodes.nodes);
-    const concurrency = 8;
-    for (var i = 0; i < snapshot.length; i += concurrency) {
-      if (_disposed) return;
-      final batch = snapshot.skip(i).take(concurrency).toList();
-      final results = await Future.wait(
-        batch.map((node) async {
-          final ms = await TcpPingService.ping(node.server, node.port);
-          return (id: node.id, latency: ms ?? 9999);
-        }),
-      );
-      if (_disposed) return;
-      if (_isCurrentLatencyRun(runId)) {
-        _nodes.applyLatencyById({for (final r in results) r.id: r.latency});
-      }
-    }
+  void _markLatencyTestFailed(int runId, List<NodeModel> snapshot) {
+    if (!_isCurrentLatencyRun(runId)) return;
+    _nodes.applyLatencyById({for (final node in snapshot) node.id: 9999});
   }
 
   int _nextLatencyRunId() => ++_latencyRunId;
