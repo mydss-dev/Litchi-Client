@@ -162,7 +162,7 @@ jobs:
       - name: Bundle macOS core
         if: inputs.platform == 'macos'
         shell: bash
-        run: tool/bundle_macos_core.sh "build/macos/Build/Products/Release/litchi_client.app"
+        run: bash tool/bundle_macos_core.sh "build/macos/Build/Products/Release/litchi_client.app"
 
       - name: Ad-hoc codesign
         if: inputs.platform == 'macos'

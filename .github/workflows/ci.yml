@@ -249,7 +249,7 @@ jobs:
             "--dart-define=LOGO_URL=$logo_url"
 
       - name: Bundle mihomo core (universal)
-        run: tool/bundle_macos_core.sh "build/macos/Build/Products/Release/litchi_client.app"
+        run: bash tool/bundle_macos_core.sh "build/macos/Build/Products/Release/litchi_client.app"
 
       - name: Ad-hoc codesign
         run: |
