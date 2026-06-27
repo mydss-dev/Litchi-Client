@@ -110,12 +110,21 @@ abstract final class AppConfig {
 
   static void _updateDownloadUrlsFromJson(Object? value) {
     if (value is Map) {
-      _updateDownloadUrls.clear();
+      final next = <String, String>{};
+
       for (final entry in value.entries) {
-        final v = entry.value?.toString() ?? '';
-        if (v.isNotEmpty) {
-          _updateDownloadUrls[entry.key.toString()] = v;
+        final platform = entry.key.toString();
+        final raw = entry.value?.toString() ?? '';
+        final safe = _trustedHttpsUrl(raw);
+        if (safe != null) {
+          next[platform] = safe;
         }
+      }
+
+      if (next.isNotEmpty) {
+        _updateDownloadUrls
+          ..clear()
+          ..addAll(next);
       }
     }
   }
