@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'secure_logger.dart';
+import 'wininet_notify.dart';
 
 /// Sets / clears the system HTTP(S) proxy.
 ///
@@ -32,8 +33,8 @@ abstract final class ProxySetter {
 
   /// Clears the system proxy. [notify] broadcasts the change to WinInet so
   /// open browsers pick it up immediately — skip it on app exit, where the
-  /// registry write already takes effect and waiting on the PowerShell helper
-  /// would stall shutdown. (macOS applies immediately, so [notify] is a no-op.)
+  /// registry write already takes effect and waiting on the FFI call would
+  /// stall shutdown. (macOS applies immediately, so [notify] is a no-op.)
   static Future<void> disable({bool notify = true}) async {
     if (Platform.isWindows) return _winDisable(notify: notify);
     if (Platform.isMacOS) return _macDisable();
@@ -236,58 +237,14 @@ abstract final class ProxySetter {
   }
 
   /// Notify WinInet so browsers pick up the registry change immediately.
-  /// Compiles a tiny C# DLL to %TEMP% on the first call, then loads the cached
-  /// DLL on subsequent calls — avoiding repeated JIT compile overhead.
+  /// Uses Dart FFI to call InternetSetOptionW directly — no PowerShell, no
+  /// temporary scripts, no DLL compilation.
   static Future<void> _notify() async {
-    final tmp = Directory.systemTemp.path;
-    final ps1 = '$tmp\\litchi_notify.ps1';
-    final dll = '$tmp\\litchi_wininet.dll';
-
-    if (!File(ps1).existsSync()) {
-      await File(ps1).writeAsString(_notifyScript(dll));
+    try {
+      WinInetNotify.notifyChanged();
+    } catch (e) {
+      SecureLogger.warn('WinInet notify failed', e);
     }
-
-    await Process.run('powershell', [
-      '-NoProfile',
-      '-NonInteractive',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-File',
-      ps1,
-    ]).timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => ProcessResult(0, 0, '', ''),
-    );
-  }
-
-  static String _notifyScript(String dllPath) {
-    final esc = dllPath.replaceAll("'", "''"); // PowerShell single-quote escape
-    return "\$dll = '$esc'\n"
-        r"""
-$src = @'
-using System.Runtime.InteropServices;
-namespace LitchiWin {
-  public class WinInet {
-    [DllImport("wininet.dll")]
-    public static extern bool InternetSetOption(
-      System.IntPtr h, int d, System.IntPtr b, int l);
-  }
-}
-'@
-try {
-  if (-not (Test-Path $dll)) {
-    Add-Type -TypeDefinition $src -OutputAssembly $dll -ErrorAction Stop
-  }
-  Add-Type -Path $dll -ErrorAction Stop
-} catch {
-  # Fallback: inline compile (slower, but always works).
-  Add-Type -MemberDefinition '[DllImport("wininet.dll")] public static extern bool InternetSetOption(IntPtr h,int d,IntPtr b,int l);' -Namespace LW -Name N -ErrorAction SilentlyContinue
-}
-foreach ($opt in 39, 37) {
-  try { [LitchiWin.WinInet]::InternetSetOption([System.IntPtr]::Zero, $opt, [System.IntPtr]::Zero, 0) | Out-Null } catch {}
-  try { [LW.N]::InternetSetOption([System.IntPtr]::Zero, $opt, [System.IntPtr]::Zero, 0) | Out-Null } catch {}
-}
-""";
   }
 
   // ── macOS (networksetup) ───────────────────────────────────────────────────
