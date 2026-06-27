@@ -151,6 +151,7 @@ abstract final class MihomoConfig {
     return outbound == null ? null : _normalizedToMihomo(outbound);
   }
 
+  /// Must stay in sync with [SubscriptionParser._supportedClashTypes].
   static const _supportedTypes = {
     'vmess',
     'vless',

@@ -238,9 +238,9 @@ class PanelApi {
     final res = await _client.getPlainUrl(
       subscribeUrl,
       headers: {
-        // Neutral UA: panel returns Base64 URI list by default.
-        // UA containing "clash" often returns Clash YAML.
-        'User-Agent': 'LitchiClient/1.0',
+        // UA containing "clash" triggers many subscription providers to return
+        // Clash YAML instead of a plain Base64 URI list.
+        'User-Agent': 'ClashMetaForLitchi/1.0',
       },
     );
     final body = (res.data ?? '').trim();

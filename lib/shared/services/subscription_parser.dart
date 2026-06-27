@@ -31,6 +31,41 @@ abstract final class SubscriptionParser {
 
   // ── Clash YAML ────────────────────────────────────────────────────────────
 
+  /// Clash proxy types that [MihomoConfig._supportedTypes] can pass through
+  /// as-is.  Must stay in sync with that list.
+  static const _supportedClashTypes = {
+    'vmess',
+    'vless',
+    'trojan',
+    'ss',
+    'shadowsocks',
+    'hysteria',
+    'hysteria2',
+    'hy2',
+    'tuic',
+    'anytls',
+    'socks5',
+    'http',
+    'wireguard',
+    'ssh',
+    'mieru',
+    'snell',
+  };
+
+  /// Validates a raw Clash proxy entry without normalising it — the entry is
+  /// passed through to mihomo in its original form.  [OutboundParser] is only
+  /// used for URI-scheme nodes; Clash entries only need a type/server/name
+  /// sanity check so socks5/http/wireguard/ssh/etc. are not incorrectly dropped.
+  static bool _isSupportedClashProxy(Map<String, dynamic> proxy) {
+    final type = '${proxy['type'] ?? ''}'.toLowerCase();
+    if (!_supportedClashTypes.contains(type)) return false;
+    final name = '${proxy['name'] ?? ''}'.trim();
+    if (name.isEmpty) return false;
+    final server = '${proxy['server'] ?? ''}'.trim();
+    if (server.isEmpty) return false;
+    return true;
+  }
+
   static List<RemoteNode> _parseClashYaml(String content) {
     final nodes = <RemoteNode>[];
     int id = 1;
@@ -46,7 +81,7 @@ abstract final class SubscriptionParser {
         for (final entry in proxy.entries) {
           rawOutbound[entry.key.toString()] = _plainYamlValue(entry.value);
         }
-        if (OutboundParser.parseClashProxy(rawOutbound, tag: 'probe') == null) {
+        if (!_isSupportedClashProxy(rawOutbound)) {
           continue;
         }
         final name = proxy['name']?.toString() ?? 'Node $id';
