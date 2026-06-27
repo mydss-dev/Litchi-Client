@@ -1,0 +1,25 @@
+{
+  "name": "litchi-build-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/run.ts",
+    "bot": "tsx src/run.ts",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.2",
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.4.7",
+    "nanoid": "^5.0.9",
+    "telegraf": "^4.16.3",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
