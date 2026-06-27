@@ -18,11 +18,8 @@ import '../features/shop/shop_page.dart';
 import '../features/tickets/tickets_page.dart';
 import '../features/traffic/traffic_page.dart';
 import '../shared/theme/app_colors.dart';
-import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
-import '../shared/theme/app_text_styles.dart';
 import '../shared/widgets/app_sidebar.dart';
-import '../shared/services/url_opener.dart';
 import '../shared/widgets/notice_banner.dart';
 import '../shared/widgets/update_banner.dart';
 import '../shared/models/app_models.dart';
@@ -58,7 +55,6 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const Size _appWindowSize = Size(900, 700);
   bool _maximized = false;
   bool _trayActive = false;
-  bool _versionChecked = false;
   bool? _compactWindow;
   double? _authHeight;
 
@@ -105,25 +101,6 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       unawaited(_syncTrayState());
     }
 
-    // One-time version check after the user is authenticated and UI is ready.
-    if (ctrl.isAuthenticated && !_versionChecked) {
-      _versionChecked = true;
-      if (AppConfig.isVersionOutdated) {
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _showOutdatedDialog(),
-        );
-      }
-    }
-  }
-
-  void _showOutdatedDialog() {
-    if (!mounted) return;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.42),
-      builder: (_) => const _OutdatedVersionDialog(),
-    );
   }
 
   @override
@@ -508,114 +485,6 @@ class _DesktopPageFrame extends StatelessWidget {
   }
 }
 
-class _OutdatedVersionDialog extends StatelessWidget {
-  const _OutdatedVersionDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: c.softBorder),
-            boxShadow: AppShadows.card(c),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: c.warning.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Icon(
-                      Icons.system_update_alt_rounded,
-                      size: 20,
-                      color: c.warning,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '需要更新',
-                      style: AppTextStyles.sectionTitle.copyWith(
-                        color: c.textPrimary,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                '当前版本 ${AppConfig.currentVersion} 已过期，请更新到 ${AppConfig.minVersion} 或更高版本后继续使用。',
-                style: AppTextStyles.body.copyWith(
-                  color: c.textSecondary,
-                  height: 1.55,
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (AppConfig.downloadUrl.isNotEmpty)
-                SizedBox(
-                  width: double.infinity,
-                  height: 42,
-                  child: FilledButton(
-                    onPressed: () =>
-                        unawaited(UrlOpener.open(AppConfig.downloadUrl)),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: c.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                    ),
-                    child: Text(
-                      '立即下载最新版本',
-                      style: AppTextStyles.button.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                height: 38,
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: TextButton.styleFrom(
-                    foregroundColor: c.textMuted,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                  ),
-                  child: Text(
-                    '稍后再说',
-                    style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// Logged-out layout: full-width controls strip + centered auth panel.
 class _AuthShell extends StatelessWidget {

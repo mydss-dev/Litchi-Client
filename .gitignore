@@ -68,6 +68,7 @@ app.*.map.json
 /android/app/*.jks
 **/Flutter/ephemeral/
 **/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
 **/linux/flutter/ephemeral/
 
 # Accidental nested project / build output

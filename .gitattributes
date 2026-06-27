@@ -1,0 +1,6 @@
+# Auto-generated Flutter plugin registrant files — force LF so they don't
+# flip between CRLF (Windows) and LF on every `flutter pub get`.
+**/GeneratedPluginRegistrant.*   text eol=lf
+**/generated_plugin_registrant.* text eol=lf
+**/generated_plugins.cmake       text eol=lf
+**/flutter_export_environment.sh text eol=lf
