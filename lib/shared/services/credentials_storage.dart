@@ -9,30 +9,31 @@ import 'windows_dpapi.dart';
 
 /// Stores remembered login credentials.
 ///
-/// The account/email is stored as plain text for reliable autofill. The
-/// password is encrypted via Windows DPAPI (native CryptProtectData over FFI —
-/// no PowerShell, so the secret never appears on a process command line). The
-/// hex format stays compatible with the older PowerShell blobs.
+/// | Platform  | Backend                             |
+/// |-----------|-------------------------------------|
+/// | Android   | FlutterSecureStorage (Keystore)     |
+/// | iOS       | FlutterSecureStorage (Keychain)     |
+/// | macOS     | FlutterSecureStorage (Keychain)     |
+/// | Windows   | DPAPI via [WindowsDpapi]            |
+/// | Linux     | No secure backend — saving disabled |
 ///
-/// Fallback: on machines where PowerShell/DPAPI is blocked, credentials are
-/// stored with a base64 marker. This is weaker than DPAPI, but it keeps the
-/// app from silently losing remembered login data.
+/// macOS Keychain requires a signed app with a keychain-access-groups
+/// entitlement. Ad-hoc / unsigned builds may fail with -34018
+/// (errSecMissingEntitlement). Release builds must include the
+/// entitlement to use Keychain.
 abstract final class CredentialsStorage {
   static const _keyEmail = 'remember_email';
   static const _legacyKeyEmail = 'dpapi_email';
   static const _keyPassword = 'dpapi_password';
   static const _plainPrefix = 'P:';
 
-  /// Mobile secure store (Android Keystore / iOS Keychain). Desktop does NOT
-  /// use this: Windows uses DPAPI via [WindowsDpapi], and macOS/Linux use the
-  /// portable [protectString] path. macOS Keychain needs a signed app with a
-  /// keychain-access-groups entitlement; ad-hoc / unsigned builds fail with
-  /// -34018 (errSecMissingEntitlement), so we avoid it there.
   static const _secureStorage = FlutterSecureStorage();
 
-  /// Only mobile platforms use the OS secure store; desktop uses prefs +
-  /// [protectString] (DPAPI on Windows, portable encoding elsewhere).
-  static bool get _useSecureStorage => Platform.isAndroid || Platform.isIOS;
+  /// Android, iOS and macOS use the OS secure store (Keystore / Keychain).
+  /// Windows uses DPAPI. Linux has no secure backend and must not silently
+  /// fall back to base64.
+  static bool get _useSecureStorage =>
+      Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
 
   static Future<void> save({
     required String email,
@@ -42,6 +43,10 @@ abstract final class CredentialsStorage {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_keyEmail, email);
       await _secureStorage.write(key: _keyPassword, value: password);
+      return;
+    }
+    if (Platform.isLinux) {
+      SecureLogger.warn('CredentialsStorage.save: no secure backend on Linux');
       return;
     }
     try {
@@ -60,7 +65,20 @@ abstract final class CredentialsStorage {
     final prefs = await SharedPreferences.getInstance();
     if (_useSecureStorage) {
       final email = await _loadEmail(prefs);
-      final password = await _secureStorage.read(key: _keyPassword);
+      var password = await _secureStorage.read(key: _keyPassword);
+      // Migration: macOS may have a legacy P:base64 blob from before Keychain
+      // was enabled. Read it once, re-save to Keychain, and remove the blob.
+      if ((password == null || password.isEmpty) && Platform.isMacOS) {
+        final legacyEnc = prefs.getString(_keyPassword);
+        if (legacyEnc != null && legacyEnc.isNotEmpty) {
+          final legacyPassword = await unprotectString(legacyEnc);
+          if (legacyPassword != null && legacyPassword.isNotEmpty) {
+            await _secureStorage.write(key: _keyPassword, value: legacyPassword);
+            await prefs.remove(_keyPassword);
+            password = legacyPassword;
+          }
+        }
+      }
       if (email == null || email.isEmpty || password == null) return null;
       return (email: email, password: password);
     }
@@ -120,6 +138,10 @@ abstract final class CredentialsStorage {
       await _secureStorage.write(key: _keyAuthToken, value: token);
       return;
     }
+    if (Platform.isLinux) {
+      SecureLogger.warn('CredentialsStorage.saveAuthToken: no secure backend on Linux');
+      return;
+    }
     try {
       final enc = await protectString(token);
       if (enc == null) return;
@@ -132,7 +154,21 @@ abstract final class CredentialsStorage {
 
   static Future<String?> loadAuthToken() async {
     if (_useSecureStorage) {
-      return _secureStorage.read(key: _keyAuthToken);
+      var token = await _secureStorage.read(key: _keyAuthToken);
+      // Migration: macOS may have a legacy P:base64 blob.
+      if ((token == null || token.isEmpty) && Platform.isMacOS) {
+        final prefs = await SharedPreferences.getInstance();
+        final legacyEnc = prefs.getString(_keyAuthToken);
+        if (legacyEnc != null && legacyEnc.isNotEmpty) {
+          final legacyToken = await unprotectString(legacyEnc);
+          if (legacyToken != null && legacyToken.isNotEmpty) {
+            await _secureStorage.write(key: _keyAuthToken, value: legacyToken);
+            await prefs.remove(_keyAuthToken);
+            token = legacyToken;
+          }
+        }
+      }
+      return token;
     }
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -155,13 +191,19 @@ abstract final class CredentialsStorage {
 
   // ── Generic protected strings ─────────────────────────────────────────────
 
-  /// Protects arbitrary sensitive text with the same DPAPI path used for
-  /// credentials. Used by secure local caches that must survive app restarts.
-  static Future<String?> protectString(String plaintext) => Platform.isWindows
-      ? _protectDpapi(
-          plaintext,
-        ).then((value) => value ?? _protectPortable(plaintext))
-      : _protectPortable(plaintext);
+  /// Protects arbitrary sensitive text.
+  ///
+  /// Windows uses DPAPI; other platforms return `null` (callers must handle
+  /// the missing protection gracefully — e.g. NodeCacheService will skip
+  /// writing a secure cache on non-Windows platforms).
+  static Future<String?> protectString(String plaintext) {
+    if (Platform.isLinux) return Future.value(null);
+    if (Platform.isWindows) {
+      return _protectDpapi(plaintext)
+          .then((value) => value ?? _protectPortable(plaintext));
+    }
+    return _protectPortable(plaintext);
+  }
 
   /// Unprotects text returned by [protectString]. Legacy weak fallback payloads
   /// are rejected so callers never silently depend on the removed XOR path.
@@ -179,6 +221,8 @@ abstract final class CredentialsStorage {
     return _unprotectDpapi(encrypted);
   }
 
+  /// Only used as a Windows DPAPI fallback and for reading legacy payloads.
+  /// Must never be the primary storage strategy for sensitive data.
   static Future<String?> _protectPortable(String plaintext) async {
     return '$_plainPrefix${base64.encode(utf8.encode(plaintext))}';
   }
