@@ -311,14 +311,7 @@ class AppController extends ChangeNotifier {
         return;
       }
 
-      await TokenStorage.clearAuthData();
-      _apiClient.updateAuthData(null);
-      _isAuthenticated = false;
-      _authScreen = AuthScreen.login;
-      _startupMessage = '登录已过期，请重新登录';
-      _isInitialLoading = false;
-      _nodes.reset();
-      if (!_disposed) notifyListeners();
+      await _expireSessionAndStopCore('登录已过期，请重新登录');
     }
   }
 
@@ -457,6 +450,26 @@ class AppController extends ChangeNotifier {
     unawaited(_refreshAfterAutoLogin());
   }
 
+  Future<void> _expireSessionAndStopCore(String message) async {
+    await _core.stopAndReset();
+    await TokenStorage.clearAuthData();
+    _apiClient.updateAuthData(null);
+    _isAuthenticated = false;
+    _authScreen = AuthScreen.login;
+    _startupMessage = message;
+    _account.reset();
+    _nodes.reset();
+    _plans = const [];
+    _invite.reset();
+    _wallet.reset();
+    _subscription.reset();
+    _dataLoadError = null;
+    _notices.reset();
+    await NodeCacheService.clear();
+    _isInitialLoading = false;
+    if (!_disposed) notifyListeners();
+  }
+
   Future<void> logout() async {
     if (_logoutInFlight) return;
     _logoutInFlight = true;
@@ -547,11 +560,8 @@ class AppController extends ChangeNotifier {
             ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
             : '当前无法连接服务器，且暂无本地节点缓存，请检查网络或联系客服。';
       } else {
-        await TokenStorage.clearAuthData();
-        _apiClient.updateAuthData(null);
-        _isAuthenticated = false;
-        _authScreen = AuthScreen.login;
-        _startupMessage = '登录已过期，请重新登录';
+        await _expireSessionAndStopCore('登录已过期，请重新登录');
+        return;
       }
     }
     notifyListeners();
