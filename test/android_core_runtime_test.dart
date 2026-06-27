@@ -39,22 +39,22 @@ void main() {
     networkMode: NetworkMode.system,
   );
 
-  test('AndroidCoreRuntime forces TUN mode by default', () async {
-    final core = FakeAndroidCoreManager();
-    final runtime = AndroidCoreRuntime(core: core);
+  test(
+    'AndroidCoreRuntime leaves config TUN to the native VPN bridge',
+    () async {
+      final core = FakeAndroidCoreManager();
+      final runtime = AndroidCoreRuntime(core: core);
 
-    final ok = await runtime.start(
-      const CoreRuntimeStartPlan(request: request),
-    );
+      final ok = await runtime.start(
+        const CoreRuntimeStartPlan(request: request),
+      );
 
-    expect(ok, isTrue);
-    final config = jsonDecode(core.capturedConfig!) as Map<String, dynamic>;
-    final inbounds = config['inbounds'] as List<dynamic>;
-    expect(
-      inbounds.any((item) => (item as Map<String, dynamic>)['type'] == 'tun'),
-      isTrue,
-    );
-  });
+      expect(ok, isTrue);
+      final config = jsonDecode(core.capturedConfig!) as Map<String, dynamic>;
+      final tun = config['tun'] as Map<String, dynamic>;
+      expect(tun['enable'], isFalse);
+    },
+  );
 
   test('AndroidCoreRuntime reports config build failures', () async {
     final runtime = AndroidCoreRuntime(core: FakeAndroidCoreManager());

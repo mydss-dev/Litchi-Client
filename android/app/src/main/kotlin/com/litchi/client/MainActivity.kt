@@ -46,10 +46,10 @@ class MainActivity : FlutterActivity() {
                         result.error("invalid_config", "核心配置为空", null)
                         return@setMethodCallHandler
                     }
-                    if (!AndroidSingboxEngine.isAvailable()) {
+                    if (!AndroidMihomoEngine.isAvailable()) {
                         result.error(
                             "missing_core",
-                            AndroidSingboxEngine.lastError(),
+                            AndroidMihomoEngine.lastError(),
                             null
                         )
                         return@setMethodCallHandler
@@ -58,8 +58,8 @@ class MainActivity : FlutterActivity() {
                 }
                 "stop" -> result.success(LitchiVpnService.stop(this))
                 "isRunning" -> result.success(LitchiVpnService.isRunning)
-                "lastError" -> result.success(AndroidSingboxEngine.lastError())
-                "version" -> result.success(AndroidSingboxEngine.version())
+                "lastError" -> result.success(AndroidMihomoEngine.lastError())
+                "version" -> result.success(AndroidMihomoEngine.version())
                 else -> result.notImplemented()
             }
         }

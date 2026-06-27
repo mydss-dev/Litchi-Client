@@ -6,7 +6,7 @@ void main() {
     expect(CoreErrorMessageService.noAvailableNodes, contains('没有可用节点'));
     expect(CoreErrorMessageService.configBuildFailed, contains('生成配置失败'));
     expect(CoreErrorMessageService.restartClient, contains('连接失败'));
-    expect(CoreErrorMessageService.missingSingBox, contains('sing-box'));
+    expect(CoreErrorMessageService.missingCore, contains('mihomo'));
     expect(CoreErrorMessageService.permissionDenied, contains('管理员'));
     expect(CoreErrorMessageService.androidStartFailed, contains('Android'));
   });
@@ -43,7 +43,7 @@ void main() {
   test('uses default platform messages when last error is empty', () {
     expect(
       CoreErrorMessageService.processStartFailure(''),
-      CoreErrorMessageService.missingSingBox,
+      CoreErrorMessageService.missingCore,
     );
     expect(
       CoreErrorMessageService.androidStartFailure(''),

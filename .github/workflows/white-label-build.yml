@@ -43,7 +43,6 @@ jobs:
       REMOTE_CONFIG_VERIFIER: ${{ inputs.remote_config_verifier }}
       DOWNLOAD_BASE_URL: ${{ inputs.download_base_url }}
       REQUEST_ID: ${{ inputs.request_id }}
-      LIBBOX_REF: v1.13.13
 
     steps:
       - uses: actions/checkout@v4
@@ -80,9 +79,6 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;28.0.13004108"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Configure Android signing
         if: inputs.platform == 'android'
@@ -165,30 +161,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $releaseDir = "build\windows\x64\runner\Release"
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/SagerNet/sing-box/releases/tags/$env:LIBBOX_REF" `
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" `
             -Headers @{ "User-Agent"="litchi-ci"; "Authorization"="Bearer $env:GH_TOKEN" }
-          $asset = $release.assets | Where-Object { $_.name -match "windows-amd64\.zip$" } | Select-Object -First 1
-          if (-not $asset) { throw "sing-box Windows asset not found for $env:LIBBOX_REF" }
-          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile singbox.zip
-          Expand-Archive singbox.zip -DestinationPath singbox-tmp
-          $exe = Get-ChildItem -Recurse -Filter "sing-box.exe" singbox-tmp | Select-Object -First 1
-          if (-not $exe) { throw "sing-box.exe missing from downloaded archive" }
-          Copy-Item $exe.FullName "$releaseDir\sing-box.exe"
+          $asset = $release.assets | Where-Object { $_.name -match "^mihomo-windows-amd64-v[0-9.]+\.zip$" } | Select-Object -First 1
+          if (-not $asset) { throw "mihomo Windows asset not found" }
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile mihomo.zip
+          Expand-Archive mihomo.zip -DestinationPath mihomo-tmp
+          $exe = Get-ChildItem -Recurse -Filter "mihomo*.exe" mihomo-tmp | Select-Object -First 1
+          if (-not $exe) { throw "mihomo.exe missing from downloaded archive" }
+          Copy-Item $exe.FullName "$releaseDir\mihomo.exe"
 
           Invoke-WebRequest -Uri "https://www.wintun.net/builds/wintun-0.14.1.zip" -OutFile wintun.zip
           Expand-Archive wintun.zip -DestinationPath wintun-tmp
           Copy-Item "wintun-tmp\wintun\bin\amd64\wintun.dll" "$releaseDir\wintun.dll"
-
-          $rulesDir = "$releaseDir\rules"
-          New-Item -ItemType Directory -Force -Path $rulesDir | Out-Null
-          $rules = @{
-            "geosite-cn.srs" = "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs"
-            "geosite-category-ads-all.srs" = "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs"
-            "geoip-cn.srs" = "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"
-          }
-          foreach ($entry in $rules.GetEnumerator()) {
-            Invoke-WebRequest -Uri $entry.Value -OutFile "$rulesDir\$($entry.Key)"
-          }
 
       - name: Bundle macOS core
         if: inputs.platform == 'macos'
@@ -200,21 +185,18 @@ jobs:
           app="build/macos/Build/Products/Release/litchi_client.app"
           release="$(curl --fail --silent --show-error --location \
             -H "Authorization: Bearer $GH_TOKEN" -H "User-Agent: litchi-ci" \
-            "https://api.github.com/repos/SagerNet/sing-box/releases/tags/$LIBBOX_REF")"
-          amd_url="$(printf '%s' "$release" | grep -o 'https://[^"]*darwin-amd64\.tar\.gz' | head -1)"
-          arm_url="$(printf '%s' "$release" | grep -o 'https://[^"]*darwin-arm64\.tar\.gz' | head -1)"
+            "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest")"
+          amd_url="$(printf '%s' "$release" | grep -o 'https://[^"]*/mihomo-darwin-amd64-v[0-9.]*\.gz' | head -1)"
+          arm_url="$(printf '%s' "$release" | grep -o 'https://[^"]*/mihomo-darwin-arm64-v[0-9.]*\.gz' | head -1)"
           [[ -n "$amd_url" && -n "$arm_url" ]]
-          curl --fail --silent --show-error --location "$amd_url" -o amd.tar.gz
-          curl --fail --silent --show-error --location "$arm_url" -o arm.tar.gz
-          mkdir amd arm
-          tar -xzf amd.tar.gz -C amd
-          tar -xzf arm.tar.gz -C arm
-          amd_bin="$(find amd -type f -name sing-box | head -1)"
-          arm_bin="$(find arm -type f -name sing-box | head -1)"
-          lipo -create "$amd_bin" "$arm_bin" -output sing-box
-          chmod +x sing-box
-          cp sing-box "$app/Contents/Resources/sing-box"
-          codesign --force --sign - "$app/Contents/Resources/sing-box"
+          curl --fail --silent --show-error --location "$amd_url" -o mihomo-amd64.gz
+          curl --fail --silent --show-error --location "$arm_url" -o mihomo-arm64.gz
+          gunzip mihomo-amd64.gz
+          gunzip mihomo-arm64.gz
+          lipo -create mihomo-amd64 mihomo-arm64 -output mihomo
+          chmod +x mihomo
+          cp mihomo "$app/Contents/Resources/mihomo"
+          codesign --force --sign - "$app/Contents/Resources/mihomo"
           codesign --force --deep --sign - "$app"
           codesign --verify --deep --strict "$app"
 
@@ -222,8 +204,8 @@ jobs:
         if: inputs.platform == 'android'
         shell: bash
         run: |
-          unzip -l android/app/libs/libbox.aar | grep -q "jni/arm64-v8a/" || {
-            echo "::error::libbox.aar does not contain arm64-v8a"
+          unzip -l build/app/outputs/flutter-apk/app-release.apk | grep -q "lib/arm64-v8a/liblitchi_mihomo.so" || {
+            echo "::error::APK does not contain mihomo arm64-v8a"
             exit 1
           }
 

@@ -3,16 +3,14 @@ installer_output/
 # OSS config (contains api_base, keep off git)
 oss_config.json
 
-# sing-box runtime cache (BoltDB) — leaks DNS/fakeip history, never commit
+# mihomo runtime cache — may contain DNS/fake-IP history
 cache.db
 *.pid
-litchi_singbox.pid
+mihomo.pid.json
 
-# libbox core — built fresh per-build by ensureOfficialLibbox (multi-ABI on CI).
-# Never commit a prebuilt .aar: a stale/partial-ABI copy short-circuits the
-# build and silently ships a core that won't load on real (arm64) phones.
-android/app/libs/libbox.aar
-android/app/libs/libbox-legacy.aar
+# Embedded mihomo libraries are built from source for every Android release.
+android/app/src/main/jniLibs/
+android/app/src/main/cpp/includes/
 
 # Miscellaneous
 *.class
@@ -47,6 +45,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+/core/mihomo/litchi-mihomo*
 /coverage/
 
 # Symbolication related

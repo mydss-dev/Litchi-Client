@@ -1,23 +1,23 @@
 {
   "api_base_list": [
-    "https://litchia.cfd",
-    "https://litchib.cfd",
-    "https://litchic.cfd",
-    "https://litchid.cfd"
+    "https://test1.com",
+    "https://test2.com",
+    "https://test3.com",
+    "https://test4.com"
   ],
-  "api_prefix": "/x7f3a9k",
+  "api_prefix": "/api/v1",
 
-  "app_name": "Litchi Client",
+  "app_name": "Litchi VPN",
   "logo_url": "https://t.alcy.cc/tx",
   "avatar_url": "https://t.alcy.cc/tx",
 
-  "invite_url_base": "https://litchia.cfd",
+  "invite_url_base": "https://test2.cfd",
 
   "update_version": "1.2.8",
   "update_download_url": {
-    "windows": "https://litchia.cfd/1.exe",
-    "macos": "https://litchia.cfd/2.exe",
-    "android": "https://litchia.cfd/3.exe"
+    "windows": "https://test1.com/1.exe",
+    "macos": "https://test1.com/2.exe",
+    "android": "https://test1.com/3.exe"
   },
   "update_changelog": "修复已知问题，优化用户体验。"
 }

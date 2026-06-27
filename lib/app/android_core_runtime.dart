@@ -1,6 +1,6 @@
 import '../shared/models/app_models.dart';
 import '../shared/services/android_core_manager.dart';
-import '../shared/services/singbox_config.dart';
+import '../shared/services/mihomo_config.dart';
 import 'core_runtime.dart';
 
 class AndroidCoreRuntime implements CoreRuntime {
@@ -31,7 +31,8 @@ class AndroidCoreRuntime implements CoreRuntime {
       _lastError = '配置生成失败，请检查节点格式';
       return false;
     }
-    final ok = await _core.start(SingboxConfig.encodeConfig(config));
+    (config['tun'] as Map<String, dynamic>)['enable'] = false;
+    final ok = await _core.start(MihomoConfig.encodeConfig(config));
     if (!ok) _lastError = _core.lastError;
     return ok;
   }

@@ -40,7 +40,7 @@ abstract final class ProxySetter {
   }
 
   /// On startup: if the system proxy still points to our previous Litchi
-  /// snapshot and no sing-box is alive, restore the user's old proxy silently.
+  /// snapshot and no application-owned core is alive, restore it silently.
   /// Without a valid snapshot, do nothing — another proxy app may own 127.0.0.1.
   static Future<void> disableIfStale() async {
     if (Platform.isWindows) return _winDisableIfStale();

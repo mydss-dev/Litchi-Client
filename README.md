@@ -1,27 +1,28 @@
 # Litchi Client
 
-Cross-platform desktop VPN/proxy client built with Flutter (Windows + macOS).
-Connects to V2Board-compatible panels, manages a local sing-box core, and
+Cross-platform VPN/proxy client built with Flutter.
+Connects to V2Board-compatible panels, manages a local mihomo core, and
 handles subscriptions, orders, and traffic statistics.
 
 ## Platform support
 
 | Platform | Core connection | System proxy | Notes |
 |----------|-----------------|--------------|-------|
-| Windows  | ✅ | registry + WinInet | Full support |
-| macOS    | ✅ system-proxy mode | `networksetup` | Requires `sing-box` placed next to the app / in `Contents/Resources`; the App Sandbox is disabled (ships outside the Mac App Store). TUN mode is not wired yet. |
+| Windows  | ✅ mihomo subprocess | registry + WinInet | System proxy and TUN configuration supported |
+| macOS    | ✅ mihomo subprocess | `networksetup` | Bundles a universal mihomo executable; desktop TUN still requires system privileges |
+| Android  | ✅ embedded mihomo library | VpnService | Native TUN FD bridge with socket protection |
 
 On macOS, set the proxy mode to **system proxy** (TUN needs root + a network
-extension and is not implemented). The bundled `sing-box` binary must be
+extension and is not implemented). The bundled `mihomo` binary must be
 executable (`chmod +x`).
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| UI | Flutter (Windows desktop) |
+| UI | Flutter (Windows, macOS, Android) |
 | Panel API | V2Board-compatible REST (Dio) |
-| Proxy core | sing-box (managed subprocess) |
+| Proxy core | mihomo (managed subprocess / Android shared library) |
 | Runtime switching | Clash-compatible REST API |
 | Settings persistence | SharedPreferences |
 | Credential storage | Windows DPAPI (via PowerShell) |
@@ -31,7 +32,7 @@ executable (`chmod +x`).
 
 - Flutter SDK ≥ 3.12 (`flutter --version`)
 - Windows 10 / 11 (64-bit)
-- `sing-box.exe` placed in the project root or `assets/` (not bundled)
+- `mihomo.exe` placed next to the built Windows executable for local runs
 
 ## Getting Started
 
@@ -53,7 +54,7 @@ lib/
 ├── app/
 │   ├── app_controller.dart       # Top-level coordinator (nav, auth, data)
 │   ├── settings_controller.dart  # Settings state + SharedPrefs persistence
-│   ├── core_controller.dart      # sing-box process + connection lifecycle
+│   ├── core_controller.dart      # mihomo process + connection lifecycle
 │   ├── app_shell.dart            # Root widget (auth vs main shell)
 │   └── app_window_bar.dart       # Custom window title bar
 │
@@ -71,7 +72,7 @@ lib/
 ├── shared/
 │   ├── config/                   # AppConfig (API base URL, constants)
 │   ├── models/                   # Data models + mappers
-│   ├── services/                 # API client, sing-box config, parsers
+│   ├── services/                 # API client, mihomo config, parsers
 │   ├── theme/                    # Colors, text styles, radius, shadows
 │   └── widgets/                  # Reusable UI components
 │
@@ -85,10 +86,10 @@ lib/
 | `services/panel_api.dart` | V2Board REST endpoints |
 | `services/api_client.dart` | Dio HTTP client with auth |
 | `services/subscription_parser.dart` | Base64 URI list + Clash YAML parsing |
-| `services/outbound_parser.dart` | VMess / VLESS / Trojan / SS / Hysteria2 URI → sing-box outbound map |
-| `services/singbox_config.dart` | Builds sing-box JSON config |
-| `services/core_manager.dart` | Spawns / monitors sing-box subprocess |
-| `services/singbox_api_client.dart` | Clash REST API (proxy switch, latency test) |
+| `services/outbound_parser.dart` | VMess / VLESS / Trojan / SS / Hysteria URI normalization |
+| `services/mihomo_config.dart` | Builds native mihomo configuration |
+| `services/core_manager.dart` | Spawns / monitors the mihomo subprocess |
+| `services/mihomo_api_client.dart` | mihomo REST API (switching, group delay, traffic) |
 | `services/proxy_setter.dart` | Windows system proxy via registry |
 | `services/credentials_storage.dart` | DPAPI-encrypted password storage |
 
@@ -122,7 +123,7 @@ Format: `<type>(<scope>): <subject>`
 Examples:
 ```
 feat(shop): add coupon code field to order confirmation
-fix(core): handle sing-box startup timeout on slow machines
+fix(core): handle mihomo startup timeout on slow machines
 refactor(controller): extract SettingsController from AppController
 chore(deps): upgrade dio to 5.8.0
 ```

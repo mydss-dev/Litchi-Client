@@ -1,5 +1,5 @@
 import '../shared/models/app_models.dart';
-import '../shared/services/singbox_config.dart';
+import '../shared/services/mihomo_config.dart';
 import 'core_connection_request.dart';
 
 abstract interface class CoreRuntime {
@@ -37,7 +37,7 @@ class CoreRuntimeStartPlan {
   Map<String, dynamic>? buildConfig() {
     return request.buildConfig(
       overrideNetworkMode: overrideNetworkMode,
-      apiPort: apiPort ?? SingboxConfig.defaultApiPort,
+      apiPort: apiPort ?? MihomoConfig.defaultApiPort,
     );
   }
 }

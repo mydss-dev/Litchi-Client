@@ -304,6 +304,7 @@ class PanelApi {
     final res = await _client.post(
       '/user/transfer',
       data: {'transfer_amount': amountCents},
+      headers: {'Idempotency-Key': _idempotencyKey('transfer-commission')},
     );
     _check(res);
   }
@@ -320,6 +321,7 @@ class PanelApi {
         'withdraw_account': account,
         'withdraw_method': method,
       },
+      headers: {'Idempotency-Key': _idempotencyKey('withdraw-commission')},
     );
     _check(res);
   }
@@ -330,6 +332,20 @@ class PanelApi {
     final res = await _client.get('/user/stat/getTrafficLog');
     _check(res);
     return _dataList(res).map(RemoteTrafficLog.fromJson).toList();
+  }
+
+  // ── Idempotency helper ────────────────────────────────────────────────────
+
+  /// Generates a client-side idempotency key for financial POST requests.
+  ///
+  /// The key is sent as an `Idempotency-Key` header.  A server that recognises
+  /// the header can de-duplicate retried submissions.  Even without server
+  /// support the header is harmless — real double-submit prevention also
+  /// depends on the server-side unique constraint on trade_no / order id.
+  static String _idempotencyKey(String action) {
+    final ts = DateTime.now().microsecondsSinceEpoch;
+    final rand = (DateTime.now().hashCode ^ ts) & 0x7FFFFFFF;
+    return 'litchi-$action-$ts-${rand.toRadixString(36)}';
   }
 
   // ── Order ─────────────────────────────────────────────────────────────────
@@ -363,7 +379,11 @@ class PanelApi {
     if (couponCode != null && couponCode.isNotEmpty) {
       data['coupon_code'] = couponCode;
     }
-    final res = await _client.post('/user/order/save', data: data);
+    final res = await _client.post(
+      '/user/order/save',
+      data: data,
+      headers: {'Idempotency-Key': _idempotencyKey('submit-order')},
+    );
     _check(res);
     return res['data']?.toString() ?? '';
   }
@@ -374,6 +394,7 @@ class PanelApi {
     final res = await _client.post(
       '/user/order/save',
       data: {'period': 'deposit', 'deposit_amount': amountCents, 'plan_id': 0},
+      headers: {'Idempotency-Key': _idempotencyKey('recharge-order')},
     );
     _check(res);
     return res['data']?.toString() ?? '';
@@ -393,6 +414,7 @@ class PanelApi {
     final res = await _client.post(
       '/user/order/checkout',
       data: {'trade_no': tradeNo, 'method': methodId},
+      headers: {'Idempotency-Key': _idempotencyKey('checkout-order')},
     );
     _check(res);
     final url = res['data']?.toString() ?? '';

@@ -145,7 +145,7 @@ class ApiClient {
         },
       ),
     );
-    // Route through the Windows system proxy when one is active (e.g. sing-box).
+    // Route through the Windows system proxy when one is active.
     // This allows API calls to reach blocked domains via the VPN tunnel.
     _dio!.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () =>
@@ -205,30 +205,45 @@ class ApiClient {
     }
   }
 
+  /// Downloads a plain-text resource (e.g. subscription node list) from an
+  /// absolute URL.
+  ///
+  /// **Security**: this uses a standalone [Dio] instance that never carries the
+  /// panel Authorization header, so the user's V2Board auth_data cannot leak to
+  /// third-party subscription domains or CDNs.  Only `https://` URLs are
+  /// accepted; the request does NOT participate in API-base failover because the
+  /// URL is already absolute.
   Future<Response<String>> getPlainUrl(
     String url, {
     Map<String, dynamic>? headers,
   }) async {
-    _assertReady();
-    final sw = Stopwatch()..start();
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      throw const ApiException('订阅地址不安全');
+    }
+
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 8),
+        receiveTimeout: const Duration(seconds: 15),
+        responseType: ResponseType.plain,
+        headers: {
+          'Accept': '*/*',
+          if (headers != null) ...headers,
+        },
+      ),
+    );
+
+    // Route the subscription download through the system proxy so it can
+    // reach blocked domains when the VPN tunnel is active.
+    dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () =>
+          HttpClient()..findProxy = HttpClient.findProxyFromEnvironment,
+    );
+
     try {
-      final res = await _withFailover(
-        () => _getWithRetry(
-          () => _dio!.get<String>(
-            url,
-            options: Options(
-              responseType: ResponseType.plain,
-              headers: headers,
-            ),
-          ),
-        ),
-      );
-      return res;
+      return await dio.get<String>(url);
     } on DioException catch (e) {
-      SecureLogger.warn(
-        'ApiClient getPlainUrl DioException after ${sw.elapsedMilliseconds}ms',
-        e,
-      );
       throw ApiException(_friendlyMessage(e));
     }
   }
@@ -236,6 +251,9 @@ class ApiClient {
   /// Runs [request] against the current base; on a connection-level failure
   /// (domain unreachable / blocked) rotates to the next base and retries,
   /// cycling through every base once. Sticks to whichever base succeeds.
+  ///
+  /// **Only used by GET requests.**  POSTs use a narrower failover that
+  /// excludes [DioExceptionType.receiveTimeout] to avoid double-submission.
   Future<T> _withFailover<T>(Future<T> Function() request) async {
     var tried = 0;
     while (true) {
@@ -251,13 +269,26 @@ class ApiClient {
     }
   }
 
-  /// Connection-level error = the base itself is unreachable (timeout / refused
-  /// / blocked), so failing over to another domain may help. A bad HTTP status
-  /// means the server WAS reached, so we do not switch bases.
+  /// True when the request could not reach the server at all — DNS failure,
+  /// TCP handshake timeout, connection refused / reset.  Rotating to a
+  /// different API base may help.
   static bool _isConnLevel(DioException e) => switch (e.type) {
     DioExceptionType.connectionTimeout ||
     DioExceptionType.sendTimeout ||
     DioExceptionType.receiveTimeout ||
+    DioExceptionType.connectionError => true,
+    _ => false,
+  };
+
+  /// True when the request failed *before* the server could have processed it
+  /// — DNS, TCP handshake, or connection refused.  Safe for POST retry because
+  /// the server never saw the request body.
+  ///
+  /// [DioExceptionType.receiveTimeout] is deliberately excluded: the server
+  /// received and may have already acted on the POST body, so we must not
+  /// blindly resubmit.
+  static bool _isPreSendConnectionFailure(DioException e) => switch (e.type) {
+    DioExceptionType.connectionTimeout ||
     DioExceptionType.connectionError => true,
     _ => false,
   };
@@ -298,19 +329,40 @@ class ApiClient {
   Future<Map<String, dynamic>> post(
     String path, {
     Map<String, dynamic>? data,
+    Map<String, dynamic>? headers,
   }) async {
     _assertReady();
-    try {
-      // Failover only triggers on connection-level errors (request never
-      // reached the server), so retrying a POST on another base can't
-      // double-submit.
-      final res = await _withFailover(() => _dio!.post(path, data: data));
-      return _parse(res);
-    } on DioException catch (e) {
-      if (_isConnLevel(e)) {
-        throw ApiException(_connectionFailureMessage());
+
+    var tried = 0;
+    while (true) {
+      try {
+        final res = await _dio!.post(
+          path,
+          data: data,
+          options: Options(headers: headers),
+        );
+        return _parse(res);
+      } on DioException catch (e) {
+        tried += 1;
+
+        // Only rotate to the next API base when the failure happened before
+        // the server could have received the request body (DNS / TCP handshake /
+        // connection refused).  A receiveTimeout means the server may have
+        // already processed the POST — resubmitting would double-charge.
+        if (!_isPreSendConnectionFailure(e) || tried >= _bases.length) {
+          if (_isPreSendConnectionFailure(e)) {
+            throw ApiException(_connectionFailureMessage());
+          }
+          throw ApiException(_friendlyMessage(e));
+        }
+
+        SecureLogger.warn(
+          'ApiClient POST failover rotating base attempt=$tried',
+          e,
+        );
+        _index = (_index + 1) % _bases.length;
+        _rebuild();
       }
-      throw ApiException(_friendlyMessage(e));
     }
   }
 

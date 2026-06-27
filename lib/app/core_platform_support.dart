@@ -5,7 +5,7 @@ abstract final class CorePlatformSupport {
   static bool get isWindows => Platform.isWindows;
   static bool get isMacOS => Platform.isMacOS;
 
-  /// Desktop platforms that manage a bundled sing-box subprocess + system proxy.
+  /// Desktop platforms that manage a bundled mihomo subprocess + system proxy.
   static bool get isDesktop => isWindows || isMacOS;
 
   static bool get supportsCurrentPlatform => supportsPlatform(

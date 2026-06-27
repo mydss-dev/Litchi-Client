@@ -8,7 +8,7 @@ Android 原生平台目录。
 - AndroidManifest.xml
 - Kotlin / Java 原生代码
 - VpnService
-- sing-box / libbox Android 接入
+- mihomo 共享库与 TUN 接入
 - 通知栏和后台服务
 
 Flutter 移动端 UI 不放在这里，移动端 UI 放在：

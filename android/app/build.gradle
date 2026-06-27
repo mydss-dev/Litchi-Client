@@ -37,6 +37,14 @@ android {
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode
         versionName flutter.versionName
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17"
+            }
+        }
+        ndk {
+            abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
+        }
     }
 
     signingConfigs {
@@ -57,75 +65,84 @@ android {
             }
         }
     }
+
+    externalNativeBuild {
+        cmake {
+            path file("src/main/cpp/CMakeLists.txt")
+            version "3.22.1"
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ["src/main/jniLibs"]
+        }
+    }
 }
 
 flutter {
     source "../.."
 }
 
-tasks.register("ensureOfficialLibbox") {
-    def aar = file("libs/libbox.aar")
-    def libboxRef = providers.environmentVariable("LIBBOX_REF").orElse("v1.13.13").get()
-    def psScript = file("../../tool/build_libbox_android.ps1")
-    def shScript = file("../../tool/build_libbox_android.sh")
-    outputs.file(aar)
+tasks.register("ensureMihomoLibraries") {
+    def libraries = [
+        file("src/main/jniLibs/arm64-v8a/liblitchi_mihomo.so"),
+        file("src/main/jniLibs/armeabi-v7a/liblitchi_mihomo.so"),
+        file("src/main/jniLibs/x86_64/liblitchi_mihomo.so"),
+    ]
+    def headers = [
+        file("src/main/cpp/includes/arm64-v8a/liblitchi_mihomo.h"),
+        file("src/main/cpp/includes/arm64-v8a/bridge.h"),
+        file("src/main/cpp/includes/armeabi-v7a/liblitchi_mihomo.h"),
+        file("src/main/cpp/includes/armeabi-v7a/bridge.h"),
+        file("src/main/cpp/includes/x86_64/liblitchi_mihomo.h"),
+        file("src/main/cpp/includes/x86_64/bridge.h"),
+    ]
+    def psScript = file("../../tool/build_mihomo_android.ps1")
+    def shScript = file("../../tool/build_mihomo_android.sh")
+    inputs.files(fileTree("../../core/mihomo"), psScript, shScript)
+    outputs.files(libraries + headers)
     doLast {
         def requestedTasks = gradle.startParameter.taskNames.collect { it.toLowerCase() }
         def allowMissingForDebug = requestedTasks.any {
             it.contains("debug") || it.contains("profile")
         }
-        if (aar.exists()) {
-            logger.lifecycle("Using existing official libbox: ${aar}")
-            return
-        }
-        def buildLibbox = {
+        def buildMihomo = {
             if (System.getProperty("os.name").toLowerCase().contains("windows")) {
                 if (!psScript.exists()) {
-                    throw new GradleException("Missing libbox build script: ${psScript}")
+                    throw new GradleException("Missing mihomo build script: ${psScript}")
                 }
                 providers.exec {
-                    commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath, "-Ref", libboxRef
+                    commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
                 }.result.get().assertNormalExitValue()
             } else {
                 if (!shScript.exists()) {
-                    throw new GradleException("Missing libbox build script: ${shScript}")
+                    throw new GradleException("Missing mihomo build script: ${shScript}")
                 }
                 providers.exec {
-                    commandLine "bash", shScript.absolutePath, libboxRef
+                    commandLine "bash", shScript.absolutePath
                 }.result.get().assertNormalExitValue()
             }
         }
         try {
-            buildLibbox()
+            buildMihomo()
         } catch (Exception error) {
             if (allowMissingForDebug) {
-                logger.warn("Skipping libbox.aar for debug/profile build: ${error.message}")
+                logger.warn("Skipping mihomo native build for debug/profile: ${error.message}")
                 return
             }
             throw error
         }
-        if (!aar.exists()) {
+        if (!libraries.every { it.exists() }) {
             if (allowMissingForDebug) {
-                logger.warn("Skipping libbox.aar for debug/profile build because it was not generated")
+                logger.warn("Skipping missing mihomo libraries for debug/profile")
                 return
             }
-            throw new GradleException("Official libbox.aar was not generated")
+            throw new GradleException("mihomo Android libraries were not generated")
         }
     }
 }
 
 tasks.named("preBuild") {
-    dependsOn("ensureOfficialLibbox")
-}
-
-dependencies {
-    // Exclude libbox-legacy.aar: it ships the same io.nekohasekai.libbox classes
-    // and lib/arm64-v8a/libbox.so as libbox.aar, which collides at
-    // mergeReleaseNativeLibs / causes duplicate-class errors. The modern
-    // libbox.aar covers our arm64/arm targets.
-    implementation fileTree(
-        dir: "libs",
-        include: ["*.jar", "*.aar"],
-        exclude: ["libbox-legacy.aar"],
-    )
+    dependsOn("ensureMihomoLibraries")
 }

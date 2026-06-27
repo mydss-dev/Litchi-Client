@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'secure_logger.dart';
-import 'singbox_api_client.dart';
+import 'mihomo_api_client.dart';
+import 'mihomo_config.dart';
 
 enum CoreState { stopped, starting, running, error }
 
-/// Manages the sing-box process lifecycle.
+/// Manages the mihomo process lifecycle.
 class CoreManager {
   Process? _process;
   CoreState _state = CoreState.stopped;
@@ -21,7 +22,7 @@ class CoreManager {
   bool get isRunning => _state == CoreState.running;
   Stream<CoreState> get stateStream => _stateCtrl.stream;
 
-  /// Emits stripped log lines from sing-box stdout + stderr.
+  /// Emits stripped log lines from mihomo stdout + stderr.
   Stream<String> get logStream => _logCtrl.stream;
 
   // ── PID file ──────────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ class CoreManager {
     final dir = Platform.isWindows
         ? '$base\\Litchi'
         : '$base${Platform.pathSeparator}Litchi';
-    return File('$dir${Platform.pathSeparator}singbox.pid.json');
+    return File('$dir${Platform.pathSeparator}mihomo.pid.json');
   }
 
   // ── Executable discovery ──────────────────────────────────────────────────
@@ -48,16 +49,16 @@ class CoreManager {
     final home = Platform.environment['HOME'];
     final candidates = <String>[
       if (Platform.isWindows) ...[
-        '$exeDir\\sing-box.exe',
-        '$exeDir\\core\\sing-box.exe',
-        '${Platform.environment['LOCALAPPDATA']}\\LitchiClient\\sing-box.exe',
+        '$exeDir\\mihomo.exe',
+        '$exeDir\\core\\mihomo.exe',
+        '${Platform.environment['LOCALAPPDATA']}\\LitchiClient\\mihomo.exe',
       ] else ...[
-        '$exeDir${sep}sing-box',
+        '$exeDir${sep}mihomo',
         // macOS .app bundle ships the binary under Contents/Resources.
-        '$exeDir$sep..${sep}Resources${sep}sing-box',
-        '$exeDir${sep}core${sep}sing-box',
+        '$exeDir$sep..${sep}Resources${sep}mihomo',
+        '$exeDir${sep}core${sep}mihomo',
         if (home != null && home.isNotEmpty)
-          '$home/Library/Application Support/LitchiClient/sing-box',
+          '$home/Library/Application Support/LitchiClient/mihomo',
       ],
     ];
     for (final p in candidates) {
@@ -73,11 +74,11 @@ class CoreManager {
 
     final exe = findExecutable();
     if (exe == null) {
-      _setError('未找到 sing-box.exe，请将其放置在应用目录下');
+      _setError('未找到 mihomo 核心，请重新安装客户端');
       return;
     }
 
-    // Kill any previously owned sing-box process (by saved PID).
+    // Kill any previously owned mihomo process (by saved PID).
     await _killSavedPid(expectedExePath: exe);
 
     // Wait (briefly) for the API port to become free instead of failing on the
@@ -90,10 +91,15 @@ class CoreManager {
 
     _lastError = '';
     _setState(CoreState.starting);
-    _emitLog('── sing-box 启动中 ──');
+    _emitLog('── mihomo 启动中 ──');
 
     try {
-      _process = await Process.start(exe, ['run', '-c', configPath]);
+      _process = await Process.start(exe, [
+        '-d',
+        MihomoConfig.appDataDir(),
+        '-f',
+        configPath,
+      ]);
 
       // Save PID so the next startup can clean this process up if we crash.
       await _writePidFile(_process!.pid, exe);
@@ -132,12 +138,12 @@ class CoreManager {
         }),
       );
 
-      // Poll the Clash API port to confirm sing-box is actually ready.
+      // Poll the controller API to confirm mihomo is actually ready.
       final ready = await _waitForApi(apiPort);
 
       if (_process != null && _state != CoreState.error) {
         if (ready) {
-          _emitLog('── sing-box 运行中 (PID ${_process!.pid}) ──');
+          _emitLog('── mihomo 运行中 (PID ${_process!.pid}) ──');
           _setState(CoreState.running);
           _deleteConfigFile(configPath);
         } else {
@@ -160,12 +166,12 @@ class CoreManager {
           raw.contains('EACCES') ||
           raw.contains('access')) {
         msg = Platform.isMacOS
-            ? '权限不足，请确认 sing-box 具有执行权限（chmod +x）'
+            ? '权限不足，请确认 mihomo 具有执行权限（chmod +x）'
             : '权限不足，请以管理员身份运行客户端';
       } else if (raw.contains('No such file') || raw.contains('系统找不到')) {
-        msg = '未找到 sing-box.exe，请检查文件是否存在';
+        msg = '未找到 mihomo 核心，请检查文件是否存在';
       } else {
-        msg = '启动失败，请检查 sing-box.exe 是否完整';
+        msg = '启动失败，请检查 mihomo 核心是否完整';
       }
       _setError(msg);
       _emitLog('── 启动异常: $raw ──');
@@ -180,7 +186,7 @@ class CoreManager {
     _process = null;
     _lastError = '';
     _setState(CoreState.stopped);
-    _emitLog('── sing-box 已停止 ──');
+    _emitLog('── mihomo 已停止 ──');
     p?.kill();
     _deletePidFile();
     // Brief wait so the port is released before any next start().
@@ -203,14 +209,14 @@ class CoreManager {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  /// Called at app startup to kill any orphaned sing-box process left by a
+  /// Called at app startup to kill any orphaned mihomo process left by a
   /// previous crash and remove the stale PID file.
   static Future<void> cleanupOnStartup() async {
     await _killSavedPid(expectedExePath: findExecutable());
   }
 
-  /// Kill the specific sing-box process we previously spawned (by saved PID).
-  /// This only affects our own process — not any other sing-box instances.
+  /// Kill the specific mihomo process we previously spawned (by saved PID).
+  /// This only affects our own process — not any other mihomo instances.
   /// Uses [Process.killPid], which maps to TerminateProcess on Windows and
   /// SIGKILL on POSIX, so it is cross-platform.
   static Future<void> _killSavedPid({String? expectedExePath}) async {
@@ -349,7 +355,7 @@ class CoreManager {
   }
 
   /// Polls until [port] is free, up to ~2 s. Handles the common race where a
-  /// just-killed sing-box process has not yet released the API port.
+  /// just-killed mihomo process has not yet released the API port.
   static Future<bool> _waitForPortFree(int port) async {
     for (var i = 0; i < 10; i++) {
       if (await _isPortFree(port)) return true;
@@ -385,7 +391,7 @@ class CoreManager {
       if (_state == CoreState.error || _state == CoreState.stopped) {
         return false;
       }
-      if (await SingboxApiClient.isReady(apiPort: port)) return true;
+      if (await MihomoApiClient.isReady(apiPort: port)) return true;
     }
     return false;
   }

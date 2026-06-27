@@ -4,7 +4,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart' show ProxyMode;
-import '../../shared/services/singbox_config.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -39,7 +38,6 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
     final c = AppColors.of(context);
-    final ruleStatus = SingboxConfig.ruleStatus(ctrl.proxyMode);
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -85,15 +83,6 @@ class _MobileSettingsPageState extends State<MobileSettingsPage> {
               value: _proxyModeLabel(ctrl.proxyMode),
               onTap: () => _pickProxyMode(context),
             ),
-            if (!ruleStatus.isNormal) ...[
-              _Divider(color: c.softBorder),
-              _InfoRow(
-                icon: LucideIcons.badgeInfo,
-                title: '规则状态',
-                subtitle: _ruleStatusSubtitle(ruleStatus),
-                value: _ruleStatusLabel(ruleStatus),
-              ),
-            ],
             _Divider(color: c.softBorder),
             _OptionRow(
               icon: LucideIcons.globe,
@@ -204,19 +193,6 @@ String _dnsModeLabel(String mode) => switch (mode) {
   'Google' => 'Google',
   _ => '系统 DNS',
 };
-
-String _ruleStatusLabel(RuleSetStatus status) => switch (status.state) {
-  RuleSetState.normal => '正常',
-  RuleSetState.missing => '缺失',
-  RuleSetState.degraded => '已降级',
-};
-
-String _ruleStatusSubtitle(RuleSetStatus status) {
-  if (status.isNormal) return '规则文件完整，规则模式可正常分流';
-  final missing = status.missingFiles.join(', ');
-  if (status.isDegraded) return '缺失 $missing，规则模式已降级';
-  return '缺失 $missing';
-}
 
 class _InfoRow extends StatelessWidget {
   const _InfoRow({

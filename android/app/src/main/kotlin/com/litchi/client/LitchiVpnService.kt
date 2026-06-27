@@ -15,10 +15,9 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
-import android.os.ParcelFileDescriptor
 
 class LitchiVpnService : VpnService() {
-    private var tunFd: ParcelFileDescriptor? = null
+    private var tunFd: Int = -1
     private var currentConfig: String = ""
     private var stopReceiverRegistered: Boolean = false
     private var networkCallbackRegistered: Boolean = false
@@ -90,9 +89,10 @@ class LitchiVpnService : VpnService() {
                 registerNetworkCallback()
                 startCoreForeground("Litchi connecting")
                 AndroidCoreStatus.emit("starting")
-                val ok = AndroidSingboxEngine.start(config, this)
+                val fd = openTun()
+                val ok = AndroidMihomoEngine.start(config, this, fd)
                 if (!ok) {
-                    AndroidCoreStatus.emit("error", AndroidSingboxEngine.lastError())
+                    AndroidCoreStatus.emit("error", AndroidMihomoEngine.lastError())
                     stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
@@ -119,9 +119,8 @@ class LitchiVpnService : VpnService() {
     private fun stopCore(emitStopped: Boolean = true) {
         unregisterNetworkCallback()
         unregisterStopReceiver()
-        AndroidSingboxEngine.stop()
-        runCatching { tunFd?.close() }
-        tunFd = null
+        AndroidMihomoEngine.stop()
+        tunFd = -1
         runCatching { setUnderlyingNetworks(null) }
         currentConfig = ""
         isRunning = false
@@ -135,37 +134,22 @@ class LitchiVpnService : VpnService() {
         stopSelf()
     }
 
-    fun openTun(options: Any?): Int {
-        runCatching { tunFd?.close() }
-        val mtu = intOption(options, "getMTU", "getMtu")
-            .takeIf { it in 1280..DEFAULT_MTU }
-            ?: DEFAULT_MTU
-        val enableIpv6 = boolOption(
-            options,
-            "isIPv6Enabled",
-            "isIpv6Enabled",
-            "getIPv6Enabled",
-            default = true
-        )
-
+    private fun openTun(): Int {
+        if (tunFd >= 0) return tunFd
         val builder = Builder()
             .setSession("Litchi")
-            .setMtu(mtu)
+            .setMtu(DEFAULT_MTU)
             .addAddress("172.19.0.1", 30)
-            .addDnsServer("223.5.5.5")
-            .addDnsServer("1.1.1.1")
+            .addDnsServer("172.19.0.2")
             .addRoute("0.0.0.0", 0)
+            .addAddress("fdfe:dcba:9876::1", 126)
+            .addDnsServer("fdfe:dcba:9876::2")
+            .addRoute("::", 0)
+            .setBlocking(false)
 
-        if (enableIpv6) {
-            builder
-                .addAddress("fdfe:dcba:9876::1", 126)
-                .addDnsServer("2606:4700:4700::1111")
-                .addRoute("::", 0)
-        }
-
-        tunFd = builder.establish()
+        tunFd = builder.establish()?.detachFd() ?: -1
         updateUnderlyingNetworks()
-        return tunFd?.fd ?: -1
+        return tunFd
     }
 
     private fun buildNotification(text: String): Notification {
@@ -279,41 +263,11 @@ class LitchiVpnService : VpnService() {
     }
 
     private fun updateUnderlyingNetworks() {
-        if (tunFd == null) return
+        if (tunFd < 0) return
         val networks = synchronized(underlyingNetworks) {
             underlyingNetworks.toTypedArray().takeIf { it.isNotEmpty() }
         }
         runCatching { setUnderlyingNetworks(networks) }
-    }
-
-    private fun intOption(target: Any?, vararg names: String): Int {
-        if (target == null) return DEFAULT_MTU
-        for (name in names) {
-            val value = runCatching {
-                target.javaClass.methods.firstOrNull {
-                    it.name == name && it.parameterTypes.isEmpty()
-                }?.invoke(target)
-            }.getOrNull()
-            if (value is Number) return value.toInt()
-        }
-        return DEFAULT_MTU
-    }
-
-    private fun boolOption(
-        target: Any?,
-        vararg names: String,
-        default: Boolean
-    ): Boolean {
-        if (target == null) return default
-        for (name in names) {
-            val value = runCatching {
-                target.javaClass.methods.firstOrNull {
-                    it.name == name && it.parameterTypes.isEmpty()
-                }?.invoke(target)
-            }.getOrNull()
-            if (value is Boolean) return value
-        }
-        return default
     }
 
     private fun immutableFlag(): Int {

@@ -144,7 +144,7 @@ class RemoteNode {
   final String rawUri;
 
   /// Original Clash proxy object for YAML subscriptions. This preserves the
-  /// protocol-specific fields needed to generate a sing-box outbound.
+  /// protocol-specific fields from a native Clash subscription entry.
   final Map<String, dynamic>? rawOutbound;
 
   const RemoteNode({

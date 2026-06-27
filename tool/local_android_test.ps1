@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path "$PSScriptRoot\..").Path
-$aar = Join-Path $root "android\app\libs\libbox.aar"
+$coreLibrary = Join-Path $root "android\app\src\main\jniLibs\arm64-v8a\liblitchi_mihomo.so"
 $configPath = (Resolve-Path $Config -ErrorAction Stop).Path
 $testConfig = Get-Content $configPath -Raw | ConvertFrom-Json
 
@@ -20,12 +20,12 @@ if (-not $env:ANDROID_HOME -and -not $env:ANDROID_SDK_ROOT) {
   $env:ANDROID_SDK_ROOT = $defaultSdk
 }
 
-if ($Action -eq "core" -or -not (Test-Path $aar)) {
-  & "$PSScriptRoot\build_libbox_android.ps1"
+if ($Action -eq "core" -or -not (Test-Path $coreLibrary)) {
+  & "$PSScriptRoot\build_mihomo_android.ps1"
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 if ($Action -eq "core") {
-  Write-Host "Android core ready: $aar"
+  Write-Host "Android core ready: $coreLibrary"
   exit 0
 }
 

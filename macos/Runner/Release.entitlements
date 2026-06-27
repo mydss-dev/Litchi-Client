@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- A proxy client must spawn the sing-box subprocess and run
+	<!-- A proxy client must spawn the mihomo subprocess and run
 	     `networksetup` to change the system proxy; neither is possible under
 	     the App Sandbox, so it is disabled (this app ships outside the MAS). -->
 	<key>com.apple.security.app-sandbox</key>

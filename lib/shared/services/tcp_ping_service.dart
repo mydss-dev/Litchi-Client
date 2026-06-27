@@ -2,7 +2,7 @@ import 'dart:io';
 
 /// Lightweight TCP-handshake latency probe.
 ///
-/// Used for pre-connect "测速" — especially on Android, where the sing-box core
+/// Used for pre-connect "测速" — especially on Android, where the proxy core
 /// cannot run without establishing the VpnService tunnel, so the Clash API
 /// delay test is unavailable until connected. A TCP connect to the node's
 /// `server:port` measures reachability + round-trip without needing the core.

@@ -7,12 +7,18 @@ import '../shared/models/app_models.dart';
 import '../shared/services/android_core_manager.dart';
 import '../shared/services/core_manager.dart';
 import '../shared/services/proxy_setter.dart';
-import '../shared/services/singbox_api_client.dart';
-import '../shared/services/singbox_config.dart';
+import '../shared/services/mihomo_api_client.dart';
+import '../shared/services/mihomo_config.dart';
 import 'core_connection_request.dart';
 import 'core_error_message_service.dart';
 
-enum ConnectionStatus { disconnected, connecting, connected, disconnecting, error }
+enum ConnectionStatus {
+  disconnected,
+  connecting,
+  connected,
+  disconnecting,
+  error,
+}
 
 class CoreController extends ChangeNotifier {
   final CoreManager _core = CoreManager();
@@ -24,7 +30,7 @@ class CoreController extends ChangeNotifier {
   DateTime? _connectedAt;
   ConnectionStatus _status = ConnectionStatus.disconnected;
   String _coreError = '';
-  int _apiPort = SingboxConfig.defaultApiPort;
+  int _apiPort = MihomoConfig.defaultApiPort;
 
   bool _disposed = false;
   bool _connectionToggleInFlight = false;
@@ -48,7 +54,9 @@ class CoreController extends ChangeNotifier {
       _status == ConnectionStatus.disconnecting;
 
   bool get connectionActionLocked =>
-      coreConnecting || _connectionToggleInFlight || _isConnectionToggleCoolingDown;
+      coreConnecting ||
+      _connectionToggleInFlight ||
+      _isConnectionToggleCoolingDown;
 
   bool get coreProcessRunning =>
       Platform.isAndroid ? _androidCore.isRunning : _core.isRunning;
@@ -137,9 +145,12 @@ class CoreController extends ChangeNotifier {
     if (config == null) return;
 
     try {
-      final configPath = await SingboxConfig.writeConfig(config);
+      final configPath = await MihomoConfig.writeConfig(config);
       await _core.start(configPath, apiPort: _apiPort);
-      if (_core.isRunning) notifyListeners();
+      if (_core.isRunning) {
+        await _applyInitialSelection(req);
+        notifyListeners();
+      }
     } catch (_) {}
   }
 
@@ -218,7 +229,7 @@ class CoreController extends ChangeNotifier {
       _coreError = '';
       notifyListeners();
       try {
-        final switched = await SingboxApiClient.switchProxy(
+        final switched = await MihomoApiClient.switchProxy(
           req.selectedTag,
           apiPort: _apiPort,
         );
@@ -251,10 +262,11 @@ class CoreController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final configPath = await SingboxConfig.writeConfig(config);
+      final configPath = await MihomoConfig.writeConfig(config);
       await _core.start(configPath, apiPort: _apiPort);
 
       if (_core.isRunning) {
+        await _applyInitialSelection(req);
         if (req.networkMode == NetworkMode.system) {
           await ProxySetter.enable(port: req.proxyPort);
         }
@@ -309,15 +321,18 @@ class CoreController extends ChangeNotifier {
       notifyListeners();
       return _coreError;
     }
+    (config['tun'] as Map<String, dynamic>)['enable'] = false;
 
     _status = ConnectionStatus.connecting;
     _coreError = '';
     notifyListeners();
 
     try {
-      final configJson = SingboxConfig.encodeConfig(config);
+      final configJson = MihomoConfig.encodeConfig(config);
       final ok = await _androidCore.start(configJson);
       if (ok) {
+        await _waitForController();
+        await _applyInitialSelection(req);
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
         _startTrafficMonitor();
@@ -353,19 +368,19 @@ class CoreController extends ChangeNotifier {
     _status = ConnectionStatus.disconnected;
   }
 
-  Future<bool> switchNode(NodeModel node) => SingboxApiClient.switchProxy(
-    SingboxConfig.nodeTagFor(node),
+  Future<bool> switchNode(NodeModel node) => MihomoApiClient.switchProxy(
+    MihomoConfig.nodeTagFor(node),
     apiPort: _apiPort,
   );
 
-  Future<bool> switchToAuto() => SingboxApiClient.switchProxy(
-    SingboxConfig.autoSelectTag,
+  Future<bool> switchToAuto() => MihomoApiClient.switchProxy(
+    MihomoConfig.autoSelectTag,
     apiPort: _apiPort,
   );
 
   Future<void> setMode(ProxyMode proxyMode) async {
     if (!coreProcessRunning) return;
-    await SingboxApiClient.setMode(proxyMode.clashValue, apiPort: _apiPort);
+    await MihomoApiClient.setMode(proxyMode.clashValue, apiPort: _apiPort);
   }
 
   Future<void> fixProxy(
@@ -384,14 +399,17 @@ class CoreController extends ChangeNotifier {
     if (Platform.isAndroid) return AndroidCoreManager().version();
     if (!Platform.isWindows && !Platform.isMacOS) return '当前平台暂未接入核心';
     final exe = CoreManager.findExecutable();
-    if (exe == null) return '未找到 sing-box 核心';
+    if (exe == null) return '未找到 mihomo 核心';
     try {
       final r = await Process.run(exe, ['version']).timeout(
         const Duration(seconds: 3),
         onTimeout: () => ProcessResult(0, 1, '', ''),
       );
       final out = '${r.stdout}'.trim();
-      final m = RegExp(r'sing-box version ([\d.]+\S*)').firstMatch(out);
+      final m = RegExp(
+        r'(?:Mihomo Meta|mihomo) ([\d.]+\S*)',
+        caseSensitive: false,
+      ).firstMatch(out);
       return m?.group(1) ?? out.split('\n').first.trim();
     } catch (_) {
       return '获取失败';
@@ -423,7 +441,7 @@ class CoreController extends ChangeNotifier {
 
   void _startTrafficMonitor() {
     _stopTrafficMonitor();
-    _trafficSub = SingboxApiClient.trafficStream(apiPort: _apiPort).listen((t) {
+    _trafficSub = MihomoApiClient.trafficStream(apiPort: _apiPort).listen((t) {
       downBpsNotifier.value = t.downBps;
       upBpsNotifier.value = t.upBps;
     });
@@ -444,17 +462,28 @@ class CoreController extends ChangeNotifier {
   }) async {
     if (nodes.isEmpty || !coreProcessRunning) return;
 
-    final tags = nodes.map(SingboxConfig.nodeTagFor).toList();
-    final history = await SingboxApiClient.testAllViaUrltest(
-      tags: tags,
-      apiPort: _apiPort,
-    );
+    final history = await MihomoApiClient.testGroup(apiPort: _apiPort);
 
     for (var i = 0; i < nodes.length; i++) {
       final node = nodes[i];
-      final ms = history[SingboxConfig.nodeTagFor(node)] ?? 9999;
+      final ms = history[MihomoConfig.nodeTagFor(node)] ?? 9999;
       onResult(i, node.copyWith(latency: ms));
     }
+  }
+
+  Future<void> _applyInitialSelection(CoreConnectionRequest req) async {
+    await MihomoApiClient.switchProxy(req.selectedTag, apiPort: _apiPort);
+    if (req.proxyMode == ProxyMode.global) {
+      await MihomoApiClient.setMode('global', apiPort: _apiPort);
+    }
+  }
+
+  Future<bool> _waitForController() async {
+    for (var i = 0; i < 30; i++) {
+      if (await MihomoApiClient.isReady(apiPort: _apiPort)) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return false;
   }
 
   bool get _isConnectionToggleCoolingDown {
@@ -491,7 +520,7 @@ class CoreController extends ChangeNotifier {
       );
       return socket.port;
     } catch (_) {
-      return SingboxConfig.defaultApiPort;
+      return MihomoConfig.defaultApiPort;
     } finally {
       await socket?.close();
     }
@@ -534,7 +563,9 @@ class CoreController extends ChangeNotifier {
       case AndroidCoreNativeStatus.stopped:
         _stopTrafficMonitor();
         _connectedAt = null;
-        if (_status != ConnectionStatus.error) _status = ConnectionStatus.disconnected;
+        if (_status != ConnectionStatus.error) {
+          _status = ConnectionStatus.disconnected;
+        }
       case AndroidCoreNativeStatus.error:
         _stopTrafficMonitor();
         _connectedAt = null;

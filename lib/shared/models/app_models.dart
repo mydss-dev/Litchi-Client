@@ -84,7 +84,7 @@ class NodeModel {
   /// True for the virtual "自动选择" entry.
   final bool isAuto;
 
-  /// Original proxy URI for sing-box config generation.
+  /// Original proxy URI used for core config generation.
   final String rawUri;
 
   /// Original Clash proxy object for YAML subscriptions.
@@ -224,7 +224,7 @@ enum ProxyMode {
     ProxyMode.direct => '\u5df2\u5207\u6362\u5230\u76f4\u8fde\u6a21\u5f0f',
   };
 
-  /// Value sent to the Clash-compatible API (sing-box `/configs` endpoint).
+  /// Value sent to the mihomo `/configs` endpoint.
   String get clashValue => switch (this) {
     ProxyMode.rule => 'rule',
     ProxyMode.global => 'global',
@@ -242,7 +242,7 @@ enum ProxyMode {
   };
 }
 
-/// Network interception mode — controls how sing-box captures traffic.
+/// Network interception mode — controls how mihomo captures traffic.
 enum NetworkMode {
   system,
   tun;

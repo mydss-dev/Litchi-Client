@@ -1,5 +1,5 @@
 import '../shared/models/app_models.dart';
-import '../shared/services/singbox_config.dart';
+import '../shared/services/mihomo_config.dart';
 
 class CoreConnectionRequest {
   const CoreConnectionRequest({
@@ -33,7 +33,7 @@ class CoreConnectionRequest {
 
   String get selectedTag {
     final node = selectedNode;
-    return node == null ? '' : SingboxConfig.nodeTagFor(node);
+    return node == null ? '' : MihomoConfig.nodeTagFor(node);
   }
 
   CoreConnectionRequest withNetworkMode(NetworkMode mode) =>
@@ -49,13 +49,13 @@ class CoreConnectionRequest {
 
   Map<String, dynamic>? buildConfig({
     NetworkMode? overrideNetworkMode,
-    int apiPort = SingboxConfig.defaultApiPort,
+    int apiPort = MihomoConfig.defaultApiPort,
   }) {
     final availableNodes = validNodes;
     if (availableNodes.isEmpty) return null;
     final tag = selectedTag;
     if (tag.isEmpty) return null;
-    return SingboxConfig.buildFullConfig(
+    return MihomoConfig.buildFullConfig(
       availableNodes,
       selectedTag: tag,
       port: proxyPort,

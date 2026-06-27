@@ -54,19 +54,19 @@ jobs:
             "--dart-define=APP_NAME=$appName" `
             "--dart-define=LOGO_URL=$logoUrl"
 
-      - name: Download sing-box
+      - name: Download mihomo
         shell: pwsh
         run: |
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/SagerNet/sing-box/releases/latest" `
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest" `
             -Headers @{ "User-Agent" = "litchi-ci"; "Authorization" = "Bearer $env:GITHUB_TOKEN" }
-          $asset = $release.assets | Where-Object { $_.name -match "windows-amd64\.zip$" } | Select-Object -First 1
-          if (-not $asset) { Write-Error "sing-box Windows asset not found"; exit 1 }
+          $asset = $release.assets | Where-Object { $_.name -match "^mihomo-windows-amd64-v[0-9.]+\.zip$" } | Select-Object -First 1
+          if (-not $asset) { Write-Error "mihomo Windows asset not found"; exit 1 }
           Write-Host "Downloading $($asset.name)"
-          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile singbox.zip
-          Expand-Archive singbox.zip -DestinationPath singbox-tmp
-          $exe = Get-ChildItem -Recurse -Filter "sing-box.exe" singbox-tmp | Select-Object -First 1
-          Copy-Item $exe.FullName "build\windows\x64\runner\Release\sing-box.exe"
-          Write-Host "sing-box.exe ready"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile mihomo.zip
+          Expand-Archive mihomo.zip -DestinationPath mihomo-tmp
+          $exe = Get-ChildItem -Recurse -Filter "mihomo*.exe" mihomo-tmp | Select-Object -First 1
+          Copy-Item $exe.FullName "build\windows\x64\runner\Release\mihomo.exe"
+          Write-Host "mihomo.exe ready"
 
       - name: Download wintun
         shell: pwsh
@@ -75,26 +75,6 @@ jobs:
           Expand-Archive wintun.zip -DestinationPath wintun-tmp
           Copy-Item "wintun-tmp\wintun\bin\amd64\wintun.dll" "build\windows\x64\runner\Release\wintun.dll"
           Write-Host "wintun.dll ready"
-
-      - name: Download rule sets
-        shell: pwsh
-        run: |
-          $rulesDir = "build\windows\x64\runner\Release\rules"
-          New-Item -ItemType Directory -Force -Path $rulesDir | Out-Null
-          # sing-geosite and sing-geoip no longer ship .srs files in releases —
-          # they switched to .db format. The pre-compiled binary rule sets (.srs)
-          # live in the `sing` branch of each repo and are updated on every push.
-          $files = @{
-            "geosite-cn.srs"              = "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs"
-            "geosite-category-ads-all.srs"= "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs"
-            "geoip-cn.srs"                = "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"
-          }
-          foreach ($kv in $files.GetEnumerator()) {
-            Write-Host "Downloading $($kv.Key) ..."
-            Invoke-WebRequest -Uri $kv.Value -OutFile "$rulesDir\$($kv.Key)"
-            $size = [math]::Round((Get-Item "$rulesDir\$($kv.Key)").Length / 1KB)
-            Write-Host "Done: $($kv.Key) ($size KB)"
-          }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -147,7 +127,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     env:
-      LIBBOX_REF: v1.13.13
     steps:
       - uses: actions/checkout@v4
 
@@ -170,12 +149,6 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;28.0.13004108"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
-
-      - name: Install gomobile
-        run: |
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - run: flutter pub get
 
@@ -225,8 +198,7 @@ jobs:
           major="${major:-0}"; minor="${minor:-0}"; patch="${patch:-0}"
           version_code=$((10#$major * 10000 + 10#$minor * 100 + 10#$patch))
           if [ "$version_code" -le 0 ]; then version_code="${{ github.run_number }}"; fi
-          # ensureOfficialLibbox builds the official multi-ABI libbox.aar here
-          # (Go + NDK + gomobile are installed above), so the core works on arm64.
+          # Gradle builds the embedded multi-ABI mihomo shared libraries.
           flutter build apk --release \
             "--build-name=$version" \
             "--build-number=$version_code" \
@@ -237,13 +209,13 @@ jobs:
 
       - name: Verify the core includes arm64
         run: |
-          aar="android/app/libs/libbox.aar"
-          if ! unzip -l "$aar" | grep -q "jni/arm64-v8a/"; then
-            echo "::error::libbox.aar is missing arm64-v8a — the APK would not run on real phones"
-            unzip -l "$aar" | grep "jni/" || true
+          apk="build/app/outputs/flutter-apk/app-release.apk"
+          if ! unzip -l "$apk" | grep -q "lib/arm64-v8a/liblitchi_mihomo.so"; then
+            echo "::error::mihomo arm64-v8a library is missing from the APK"
+            unzip -l "$apk" | grep "liblitchi_" || true
             exit 1
           fi
-          echo "libbox.aar contains arm64-v8a ✅"
+          echo "mihomo arm64-v8a library is packaged"
 
       - name: Rename APK
         run: |
@@ -299,27 +271,26 @@ jobs:
             "--dart-define=APP_NAME=$app_name" \
             "--dart-define=LOGO_URL=$logo_url"
 
-      - name: Bundle sing-box core (universal)
+      - name: Bundle mihomo core (universal)
         run: |
           app="build/macos/Build/Products/Release/litchi_client.app"
           if [ ! -d "$app" ]; then echo "::error::app bundle not found at $app"; ls -la build/macos/Build/Products/Release || true; exit 1; fi
           release=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "User-Agent: litchi-ci" \
-            https://api.github.com/repos/SagerNet/sing-box/releases/latest)
-          amd_url=$(echo "$release" | grep -o 'https://[^"]*darwin-amd64\.tar\.gz' | head -1)
-          arm_url=$(echo "$release" | grep -o 'https://[^"]*darwin-arm64\.tar\.gz' | head -1)
-          if [ -z "$amd_url" ] || [ -z "$arm_url" ]; then echo "::error::sing-box darwin assets not found"; exit 1; fi
+            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest)
+          amd_url=$(echo "$release" | grep -o 'https://[^"]*/mihomo-darwin-amd64-v[0-9.]*\.gz' | head -1)
+          arm_url=$(echo "$release" | grep -o 'https://[^"]*/mihomo-darwin-arm64-v[0-9.]*\.gz' | head -1)
+          if [ -z "$amd_url" ] || [ -z "$arm_url" ]; then echo "::error::mihomo darwin assets not found"; exit 1; fi
           echo "amd64: $amd_url"; echo "arm64: $arm_url"
-          curl -sSL "$amd_url" -o amd.tar.gz && tar -xzf amd.tar.gz
-          curl -sSL "$arm_url" -o arm.tar.gz && tar -xzf arm.tar.gz
-          amd_bin=$(find . -maxdepth 2 -type f -name sing-box -path '*amd64*' | head -1)
-          arm_bin=$(find . -maxdepth 2 -type f -name sing-box -path '*arm64*' | head -1)
-          echo "amd_bin=$amd_bin  arm_bin=$arm_bin"
+          curl -sSL "$amd_url" -o mihomo-amd64.gz
+          curl -sSL "$arm_url" -o mihomo-arm64.gz
+          gunzip mihomo-amd64.gz
+          gunzip mihomo-arm64.gz
           # Combine into a universal binary so the build runs on both Intel and Apple Silicon Macs.
-          lipo -create "$amd_bin" "$arm_bin" -output sing-box || cp "$arm_bin" sing-box
-          chmod +x sing-box
+          lipo -create mihomo-amd64 mihomo-arm64 -output mihomo
+          chmod +x mihomo
           mkdir -p "$app/Contents/Resources"
-          cp sing-box "$app/Contents/Resources/sing-box"
-          lipo -info "$app/Contents/Resources/sing-box" || true
+          cp mihomo "$app/Contents/Resources/mihomo"
+          lipo -info "$app/Contents/Resources/mihomo" || true
 
       - name: Ad-hoc codesign
         run: |
@@ -328,7 +299,7 @@ jobs:
           # Credentials use a portable store on macOS (no Keychain), so no
           # keychain entitlement is needed — keeping the signature plain avoids
           # the Gatekeeper "cannot verify" hard block on ad-hoc builds.
-          codesign --force --sign - "$app/Contents/Resources/sing-box"
+          codesign --force --sign - "$app/Contents/Resources/mihomo"
           codesign --force --deep --sign - "$app"
           codesign --verify --deep --strict "$app" && echo "codesign ok"
 

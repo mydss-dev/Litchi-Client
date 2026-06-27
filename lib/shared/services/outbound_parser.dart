@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-/// Converts a proxy URI string into a sing-box outbound map.
+/// Parses supported proxy URIs into a normalized intermediate map.
 ///
 /// Supports: VMess, VLESS, Trojan, Shadowsocks, Hysteria2.
 /// All methods are stateless — no I/O, no side effects.
 abstract final class OutboundParser {
-  /// Returns a sing-box outbound map for [uri], or null if unsupported.
+  /// Returns a normalized proxy map for [uri], or null if unsupported.
   ///
   /// When [allowInsecure] is false, any `tls.insecure` flag the node requested
   /// is stripped so certificate validation is always enforced.
@@ -35,7 +35,7 @@ abstract final class OutboundParser {
     return null;
   }
 
-  /// Converts one Clash `proxies:` entry into a sing-box outbound.
+  /// Validates and normalizes one Clash `proxies:` entry.
   static Map<String, dynamic>? parseClashProxy(
     Map<String, dynamic> proxy, {
     required String tag,
