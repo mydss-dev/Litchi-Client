@@ -19,14 +19,29 @@ static JNIEnv *attach_env(bool *attached) {
     return env;
 }
 
-static void protect_socket(void *bridge, int fd) {
-    if (bridge == nullptr || g_vm == nullptr || g_protect == nullptr) return;
+static void protect_socket(void *, int fd) {
+    if (g_vm == nullptr || g_protect == nullptr) return;
+
     bool attached = false;
     JNIEnv *env = attach_env(&attached);
-    if (env != nullptr) {
-        env->CallBooleanMethod(static_cast<jobject>(bridge), g_protect, fd);
-        if (env->ExceptionCheck()) env->ExceptionClear();
+    if (env == nullptr) return;
+
+    // Safely obtain a local ref under the lock so DeleteGlobalRef in
+    // release_service() cannot race with a concurrent protect_socket() call.
+    jobject service_ref = nullptr;
+    {
+        std::lock_guard<std::mutex> guard(g_lock);
+        if (g_service != nullptr) {
+            service_ref = env->NewLocalRef(g_service);
+        }
     }
+
+    if (service_ref != nullptr) {
+        env->CallBooleanMethod(service_ref, g_protect, fd);
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        env->DeleteLocalRef(service_ref);
+    }
+
     if (attached) g_vm->DetachCurrentThread();
 }
 
@@ -62,10 +77,20 @@ Java_com_litchi_client_AndroidMihomoEngine_nativeStart(
         fd,
         g_service
     );
+
+    bool ok = error == nullptr || error[0] == '\0';
+
     env->ReleaseStringUTFChars(config, config_chars);
     env->ReleaseStringUTFChars(home, home_chars);
-    jstring result = env->NewStringUTF(error == nullptr ? "" : error);
+
+    jstring result = env->NewStringUTF(ok ? "" : error);
+
     if (error != nullptr) litchiMihomoFree(error);
+
+    if (!ok) {
+        release_service(env);
+    }
+
     return result;
 }
 
