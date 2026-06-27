@@ -272,17 +272,22 @@ abstract final class MihomoConfig {
     return const JsonEncoder.withIndent('  ').convert(clean);
   }
 
-  /// Writes the full mihomo configuration to a *randomly-named* temporary file
-  /// and returns its path.  A random suffix prevents other processes from
-  /// monitoring a predictable filename; the file is deleted as soon as mihomo
-  /// confirms readiness (see [CoreManager.start]).
+  /// Writes the full mihomo configuration to a one-time-use file and returns
+  /// its path.  The filename embeds a wall-clock timestamp and a random nonce
+  /// so no other process can predict it.  The file is deleted as soon as
+  /// mihomo confirms readiness (see [CoreManager.start]).
   ///
-  /// On non-Windows platforms the file is also `chmod 600` so only the owning
-  /// user can read it.
+  /// Stale files from a previous crash are cleaned up before writing.  On
+  /// non-Windows platforms the file is `chmod 600` so only the owning user
+  /// can read it.
   static Future<String> writeConfig(Map<String, dynamic> config) async {
     final dir = Directory(appDataDir());
     await dir.create(recursive: true);
-    final name = 'config-${_generateSecret()}.yaml';
+    await cleanupStaleConfigFiles();
+
+    final nonce = Random.secure().nextInt(1 << 32).toRadixString(16);
+    final name = 'litchi_core_'
+        '${DateTime.now().microsecondsSinceEpoch}_$nonce.yaml';
     final file = File('${dir.path}${Platform.pathSeparator}$name');
     await file.writeAsString(encodeConfig(config), flush: true);
     if (!Platform.isWindows) {
@@ -293,20 +298,23 @@ abstract final class MihomoConfig {
     return file.path;
   }
 
-  /// Removes any leftover `config-*.yaml` files from a previous crash.
-  /// Called once at startup by [CoreManager.cleanupOnStartup].
-  static Future<void> cleanupConfigFiles() async {
+  /// Removes any leftover `litchi_core_*.yaml` files from a previous crash.
+  /// Called at app startup and again inside [writeConfig].
+  static Future<void> cleanupStaleConfigFiles() async {
     try {
       final dir = Directory(appDataDir());
-      if (!dir.existsSync()) return;
+      if (!await dir.exists()) return;
       await for (final entity in dir.list()) {
-        if (entity is File &&
-            entity.path.endsWith('.yaml') &&
-            entity.path.contains('config-')) {
-          try {
-            await entity.delete();
-          } catch (_) {}
+        if (entity is! File) continue;
+        final name = entity.uri.pathSegments.isNotEmpty
+            ? entity.uri.pathSegments.last
+            : '';
+        if (!name.startsWith('litchi_core_') || !name.endsWith('.yaml')) {
+          continue;
         }
+        try {
+          await entity.delete();
+        } catch (_) {}
       }
     } catch (_) {}
   }

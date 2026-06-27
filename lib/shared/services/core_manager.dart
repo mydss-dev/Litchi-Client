@@ -213,7 +213,7 @@ class CoreManager {
   /// previous crash, remove stale PID/config files, and restore proxy state.
   static Future<void> cleanupOnStartup() async {
     await _killSavedPid(expectedExePath: findExecutable());
-    await MihomoConfig.cleanupConfigFiles();
+    await MihomoConfig.cleanupStaleConfigFiles();
   }
 
   /// Kill the specific mihomo process we previously spawned (by saved PID).
