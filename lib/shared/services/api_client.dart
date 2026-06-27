@@ -108,14 +108,32 @@ class ApiClient {
   /// Configures one or more API base URLs. The client tries them in order and
   /// sticks to the first that responds (see [_withFailover]); a blocked domain
   /// auto-falls back to the next.
+  ///
+  /// Only `https://` URLs with a non-empty host are accepted; everything else
+  /// is silently dropped.  This is enforced here rather than relying solely on
+  /// [AppConfig.applyRemote] so that every code path that reaches the API
+  /// client is protected.
   void configure(List<String> serverUrls, {String? authData}) {
     _bases = serverUrls
-        .map((s) => s.trim().replaceAll(RegExp(r'/+$'), ''))
-        .where((s) => s.isNotEmpty)
+        .map(_normalizeTrustedApiBase)
+        .whereType<String>()
         .toList();
     _index = 0;
     _authData = authData;
-    if (_bases.isNotEmpty) _rebuild();
+    if (_bases.isEmpty) {
+      SecureLogger.warn('ApiClient.configure: no trusted https API base');
+    } else {
+      _rebuild();
+    }
+  }
+
+  static String? _normalizeTrustedApiBase(String value) {
+    final trimmed = value.trim().replaceAll(RegExp(r'/+$'), '');
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null) return null;
+    if (uri.scheme != 'https') return null;
+    if (uri.host.isEmpty) return null;
+    return trimmed;
   }
 
   void updateAuthData(String? authData) {
