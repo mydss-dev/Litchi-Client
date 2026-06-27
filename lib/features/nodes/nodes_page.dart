@@ -90,25 +90,6 @@ class _NodesPageState extends State<NodesPage> {
       tab: _selectedTab,
       favorites: _favorites,
     );
-    /*
-      switch (_tabs[_tab]) {
-        case '收藏':
-          return _favorites.contains(n.id);
-        case 'VIP':
-          return n.tags.contains('Premium');
-        case '亚洲':
-          return n.region == NodeRegion.asia;
-        case '欧洲':
-          return n.region == NodeRegion.europe;
-        case '美洲':
-          return n.region == NodeRegion.america;
-        case '大洋洲':
-          return n.region == NodeRegion.oceania;
-        default:
-          return true;
-      }
-    }).toList();
-    */
   }
 
   @override
@@ -125,7 +106,6 @@ class _NodesPageState extends State<NodesPage> {
       children: [
         const PageHeader(title: '节点', subtitle: '选择适合你的高速线路'),
         const SizedBox(height: 12),
-        // Search + refresh row
         Row(
           children: [
             Expanded(
@@ -135,11 +115,10 @@ class _NodesPageState extends State<NodesPage> {
               ),
             ),
             const SizedBox(width: 12),
-            _RefreshButton(ctrl: ctrl),
+            _LatencyTestButton(ctrl: ctrl),
           ],
         ),
         const SizedBox(height: 14),
-        // Smart recommendation card (always visible)
         _AutoCard(
           ctrl: ctrl,
           selected: isAuto,
@@ -245,7 +224,6 @@ class _AutoCard extends StatelessWidget {
     final tested = nodes
         .where((n) => n.latency > 0 && n.latency < 9999)
         .toList();
-    // Find best node for display
     NodeModel? best;
     for (final n in tested) {
       if (best == null || n.latency < best.latency) best = n;
@@ -325,7 +303,7 @@ class _AutoCard extends StatelessWidget {
                       )
                     else
                       Text(
-                        '连接后自动选择最优节点',
+                        '根据延迟自动使用最优线路',
                         style: AppTextStyles.caption.copyWith(
                           color: c.textMuted,
                         ),
@@ -333,7 +311,6 @@ class _AutoCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Latency summary badge
               if (tested.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -370,71 +347,62 @@ class _AutoCard extends StatelessWidget {
   }
 }
 
-// ── Refresh button ─────────────────────────────────────────────────────────
+// ── Latency test button ────────────────────────────────────────────────────
 
-class _RefreshButton extends StatefulWidget {
-  const _RefreshButton({required this.ctrl});
+class _LatencyTestButton extends StatefulWidget {
+  const _LatencyTestButton({required this.ctrl});
   final AppController ctrl;
 
   @override
-  State<_RefreshButton> createState() => _RefreshButtonState();
+  State<_LatencyTestButton> createState() => _LatencyTestButtonState();
 }
 
-class _RefreshButtonState extends State<_RefreshButton>
-    with SingleTickerProviderStateMixin {
+class _LatencyTestButtonState extends State<_LatencyTestButton> {
   bool _loading = false;
-  late final AnimationController _spin;
-
-  @override
-  void initState() {
-    super.initState();
-    _spin = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..repeat();
-    _spin.stop();
-  }
-
-  @override
-  void dispose() {
-    _spin.dispose();
-    super.dispose();
-  }
 
   Future<void> _onTap() async {
     if (_loading) return;
-    setState(() => _loading = true);
-    unawaited(_spin.repeat());
-    await widget.ctrl.refreshNodes();
-    if (mounted) {
-      _spin.stop();
-      setState(() => _loading = false);
+    if (widget.ctrl.nodes.isEmpty) {
+      AppToast.show(context, '暂无可测速节点');
+      return;
     }
+    setState(() => _loading = true);
+    await widget.ctrl.testLatencies();
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: _onTap,
-        child: Container(
-          width: 44,
-          height: 44,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.user),
-            border: Border.all(color: c.softBorder),
-          ),
-          child: RotationTransition(
-            turns: _spin,
-            child: Icon(
-              LucideIcons.refreshCw,
-              size: 18,
-              color: _loading ? c.primary : c.iconDefault,
+    return Tooltip(
+      message: '测速',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: _onTap,
+          child: Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: c.cardBg,
+              borderRadius: BorderRadius.circular(AppRadius.user),
+              border: Border.all(color: c.softBorder),
             ),
+            child: _loading
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(c.primary),
+                    ),
+                  )
+                : Icon(
+                    LucideIcons.gauge,
+                    size: 18,
+                    color: c.iconDefault,
+                  ),
           ),
         ),
       ),
@@ -481,7 +449,6 @@ class _NodeCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: SVG flag + node name + star
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -516,7 +483,6 @@ class _NodeCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              // English name subtitle
               if (node.englishName.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(left: 38),
@@ -529,7 +495,6 @@ class _NodeCard extends StatelessWidget {
                   ),
                 ),
               const Spacer(),
-              // Bottom row: latency + badge + checkmark
               Row(
                 children: [
                   _LatencyIndicator(latency: node.latency),
