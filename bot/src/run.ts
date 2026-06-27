@@ -8,6 +8,46 @@ import { wireSignCommands } from './sign_handlers.js';
 
 requireAdminConfig();
 const bot = new Telegraf(requireBotToken());
+const menuStates = new Map<number, string>();
+
+type MenuCommand = { command: string; description: string };
+
+const baseCommands: MenuCommand[] = [
+  { command: 'help', description: '查看当前可用命令' },
+  { command: 'myid', description: '查看我的 Telegram ID' },
+];
+const boundCommands: MenuCommand[] = [
+  { command: 'apps', description: '查看当前 APP 绑定' },
+  { command: 'signconfig', description: '生成签名配置' },
+  { command: 'build', description: '开始打包' },
+  { command: 'status', description: '查看打包进度' },
+  { command: 'latest', description: '获取最新安装包' },
+];
+const adminCommands: MenuCommand[] = [
+  { command: 'authorize', description: '授权用户' },
+  { command: 'authorized', description: '查看授权用户' },
+];
+
+async function syncPrivateMenu(input: {
+  chatId: number;
+  userId: number;
+  authorized: boolean;
+  bound: boolean;
+}): Promise<void> {
+  const commands = [...baseCommands];
+  if (isAdmin(input.userId)) commands.push(...adminCommands);
+  if (input.authorized && !input.bound) {
+    commands.push({ command: 'bindoss', description: '绑定 OSS 地址' });
+  }
+  if (input.bound) commands.push(...boundCommands);
+
+  const state = commands.map((item) => item.command).join(',');
+  if (menuStates.get(input.chatId) === state) return;
+  await bot.telegram.setMyCommands(commands, {
+    scope: { type: 'chat', chat_id: input.chatId },
+  });
+  menuStates.set(input.chatId, state);
+}
 
 bot.use(async (ctx, next) => {
   const userId = ctx.from?.id;
@@ -23,7 +63,21 @@ bot.use(async (ctx, next) => {
     return;
   }
 
-  if (!allowPreAuthCommands && !isAdmin(userId) && !getAuthorizedUser(userId)) {
+  const profile = getAuthorizedUser(userId);
+  if (ctx.chat?.type === 'private') {
+    await syncPrivateMenu({
+      chatId: ctx.chat.id,
+      userId,
+      authorized: Boolean(profile),
+      bound: Boolean(
+        profile?.app_id && profile.remote_config_url && profile.public_key,
+      ),
+    }).catch((error) => {
+      console.error('Failed to update private command menu', error);
+    });
+  }
+
+  if (!allowPreAuthCommands && !isAdmin(userId) && !profile) {
     await ctx.reply(
       [
         '未授权，请联系管理员授权。',
@@ -35,6 +89,22 @@ bot.use(async (ctx, next) => {
   }
 
   await next();
+
+  // Commands such as /bindoss change the profile during this update. Refresh
+  // once more so the Telegram menu immediately reflects the new state.
+  if (ctx.chat?.type === 'private') {
+    const updated = getAuthorizedUser(userId);
+    await syncPrivateMenu({
+      chatId: ctx.chat.id,
+      userId,
+      authorized: Boolean(updated),
+      bound: Boolean(
+        updated?.app_id && updated.remote_config_url && updated.public_key,
+      ),
+    }).catch((error) => {
+      console.error('Failed to refresh private command menu', error);
+    });
+  }
 });
 
 bot.start((ctx) => ctx.reply(buildStartText(ctx.from?.id)));
@@ -44,20 +114,7 @@ wireSignCommands(bot);
 wireBuildCommands(bot);
 
 void bot.telegram
-  .setMyCommands([
-    { command: 'help', description: '获取帮助菜单' },
-    { command: 'myid', description: '查看我的 Telegram ID' },
-    { command: 'authorize', description: '管理员授权用户' },
-    { command: 'authorized', description: '查看授权用户列表' },
-    { command: 'bindoss', description: '绑定 OSS 地址' },
-    { command: 'apps', description: '查看当前绑定信息' },
-    { command: 'signconfig', description: '生成签名 config.json' },
-    { command: 'build', description: '触发打包' },
-    { command: 'status', description: '查看打包进度' },
-    { command: 'latest', description: '查看最新可下载包' },
-    { command: 'setlatest', description: '手动记录下载链接' },
-    { command: 'cancel', description: '取消当前输入流程' },
-  ])
+  .setMyCommands(baseCommands)
   .catch((error) => {
     console.error('Failed to set bot commands', error);
   });

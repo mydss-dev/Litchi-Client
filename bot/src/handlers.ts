@@ -186,38 +186,42 @@ export function wireCommands(bot: Telegraf): void {
 
 export function buildHelpText(userId?: number): string {
   if (isAdmin(userId)) {
-    return [
+    const lines = [
       '管理员命令:',
       '/authorize',
       '/authorized',
-      '',
-      '通用命令:',
-      '/myid',
-      '/bindoss',
-      '/apps',
-      '/signconfig',
-      '/build',
-      '/status',
-      '/latest',
-      '/setlatest',
-      '/cancel',
-      '',
-      '说明: 先发命令，再按机器人提示输入参数。',
-    ].join('\n');
+    ];
+    const profile = userId ? getAuthorizedUser(userId) : undefined;
+    if (profile?.app_id) {
+      lines.push(
+        '',
+        '打包命令:',
+        '/apps',
+        '/signconfig',
+        '/build',
+        '/status',
+        '/latest',
+      );
+    }
+    return [...lines, '', '输入过程中可随时发送 /cancel。'].join('\n');
   }
 
+  const profile = userId ? getAuthorizedUser(userId) : undefined;
+  if (!profile) {
+    return ['可用命令:', '/myid', '', '请把 ID 发给管理员授权。'].join('\n');
+  }
+  if (!profile.app_id) {
+    return ['可用命令:', '/myid', '/bindoss'].join('\n');
+  }
   return [
-    '用户命令:',
-    '/myid',
-    '/bindoss',
+    '可用命令:',
     '/apps',
     '/signconfig',
     '/build',
     '/status',
     '/latest',
-    '/cancel',
     '',
-    '说明: 先发命令，再按机器人提示输入参数。',
+    '输入过程中可随时发送 /cancel。',
   ].join('\n');
 }
 
