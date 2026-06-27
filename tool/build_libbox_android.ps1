@@ -13,15 +13,58 @@ function Require-Command($Name) {
 
 Require-Command git
 Require-Command go
-Require-Command make
+
+if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
+  $java = Get-ChildItem "C:\Program Files\Eclipse Adoptium" `
+    -Recurse -Filter "java.exe" -ErrorAction SilentlyContinue |
+    Select-Object -First 1
+  if ($java) {
+    $env:JAVA_HOME = $java.Directory.Parent.FullName
+    $env:Path = "$($java.DirectoryName);$env:Path"
+  }
+}
+Require-Command java
 
 if (-not $env:ANDROID_HOME -and -not $env:ANDROID_SDK_ROOT) {
-  throw "ANDROID_HOME or ANDROID_SDK_ROOT must be set"
+  $defaultSdk = Join-Path $env:LOCALAPPDATA "Android\Sdk"
+  if (Test-Path $defaultSdk) {
+    $env:ANDROID_HOME = $defaultSdk
+    $env:ANDROID_SDK_ROOT = $defaultSdk
+  } else {
+    throw "ANDROID_HOME or ANDROID_SDK_ROOT must be set"
+  }
+}
+
+if (-not (Get-Command make -ErrorAction SilentlyContinue)) {
+  $make = Get-ChildItem `
+    (Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Packages") `
+    -Recurse -Filter "make.exe" -ErrorAction SilentlyContinue |
+    Select-Object -First 1
+  if ($make) {
+    $env:Path = "$($make.DirectoryName);$env:Path"
+  }
+}
+Require-Command make
+
+$sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { $env:ANDROID_SDK_ROOT }
+if (-not $env:ANDROID_NDK_HOME -and -not $env:ANDROID_NDK_ROOT) {
+  $ndk = Get-ChildItem (Join-Path $sdk "ndk") -Directory -ErrorAction SilentlyContinue |
+    Sort-Object Name -Descending |
+    Select-Object -First 1
+  if (-not $ndk) {
+    throw "Android NDK is not installed under $sdk\ndk"
+  }
+  $env:ANDROID_NDK_HOME = $ndk.FullName
+  $env:ANDROID_NDK_ROOT = $ndk.FullName
 }
 
 $repo = "https://github.com/SagerNet/sing-box.git"
 $root = Resolve-Path "$PSScriptRoot\.."
 $libs = Join-Path $root "android\app\libs"
+$goPath = (go env GOPATH).Trim()
+if ($goPath) {
+  $env:Path = "$(Join-Path $goPath 'bin');$env:Path"
+}
 
 if (-not (Test-Path $WorkDir)) {
   git clone --depth 1 --branch $Ref $repo $WorkDir

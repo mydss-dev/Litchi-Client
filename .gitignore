@@ -67,6 +67,7 @@ app.*.map.json
 /android/app/upload-keystore.jks
 /android/app/*.jks
 /android/signing-secrets.txt
+/local_test_config.json
 **/Flutter/ephemeral/
 **/ios/Flutter/Generated.xcconfig
 **/ios/Flutter/flutter_export_environment.sh

@@ -39,6 +39,14 @@ void main() {
     expect(redacted, contains('"password":[REDACTED]'));
   });
 
+  test('collapses and bounds oversized multiline log content', () {
+    final redacted = SecureLogRedactor.redact('<html>\n${'x' * 1000}\n</html>');
+
+    expect(redacted, isNot(contains('\n')));
+    expect(redacted.length, lessThanOrEqualTo(815));
+    expect(redacted, endsWith('… [truncated]'));
+  });
+
   test('rejects oversized subscription payloads', () {
     final body = 'a' * (SubscriptionParser.maxBodyBytes + 1);
 

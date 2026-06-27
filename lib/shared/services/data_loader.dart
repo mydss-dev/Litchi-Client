@@ -250,7 +250,6 @@ class DataLoader {
         snap.dailyUsage = points.map((p) => p.totalGb).toList();
       }
     } catch (e) {
-      debugPrint('[Litchi] getTrafficLog error: $e');
       SecureLogger.warn(
         'DataLoader getTrafficLog failed after ${sw.elapsedMilliseconds}ms',
         e,

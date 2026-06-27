@@ -59,4 +59,20 @@ void main() {
       isFalse,
     );
   });
+
+  test('does not expose an HTML error page as an API message', () {
+    expect(
+      extractApiErrorMessage(
+        '<!doctype html><html><head><title>404 Not Found</title></head></html>',
+      ),
+      isNull,
+    );
+  });
+
+  test('bounds plain-text server error messages', () {
+    final message = extractApiErrorMessage('x' * 500);
+
+    expect(message, hasLength(301));
+    expect(message, endsWith('…'));
+  });
 }

@@ -1,0 +1,6 @@
+{
+  "TENANT_ID": "client_telegram_id",
+  "BUILD_VERSION": "1.2.7",
+  "REMOTE_CONFIG_URL": "https://example.com/config.json",
+  "REMOTE_CONFIG_VERIFIER": "replace-with-tenant-public-key"
+}

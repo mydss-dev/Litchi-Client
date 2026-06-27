@@ -54,7 +54,23 @@ String? extractApiErrorMessage(Object? data) {
       return formatApiErrorMessage(message);
     }
   }
-  if (data is String && data.isNotEmpty) return formatApiErrorMessage(data);
+  if (data is String && data.trim().isNotEmpty) {
+    final text = data.trim();
+    // Reverse proxies commonly return a full HTML error document for 404/5xx.
+    // It is not a useful user-facing message and may contain large inline
+    // images, CSS, or server details.
+    if (RegExp(
+      r'^(?:<!doctype\s+html|<html|<head|<body)\b',
+      caseSensitive: false,
+    ).hasMatch(text)) {
+      return null;
+    }
+    const maxMessageLength = 300;
+    final bounded = text.length <= maxMessageLength
+        ? text
+        : '${text.substring(0, maxMessageLength)}…';
+    return formatApiErrorMessage(bounded);
+  }
   return null;
 }
 

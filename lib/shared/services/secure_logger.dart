@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 abstract final class SecureLogRedactor {
+  static const int maxLogTextLength = 800;
+
   static final List<RegExp> _patterns = [
     RegExp(r'Bearer\s+[A-Za-z0-9._~+/=-]+', caseSensitive: false),
     RegExp(r'(?<=Authorization:\s*)[^\s,;]+', caseSensitive: false),
@@ -33,6 +35,10 @@ abstract final class SecureLogRedactor {
         }
         return '[REDACTED]';
       });
+    }
+    text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (text.length > maxLogTextLength) {
+      text = '${text.substring(0, maxLogTextLength)}… [truncated]';
     }
     return text;
   }
