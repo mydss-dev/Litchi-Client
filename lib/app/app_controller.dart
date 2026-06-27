@@ -287,7 +287,7 @@ class AppController extends ChangeNotifier {
     _invalidateLatencyRuns();
     _nodes.setNodes(cached);
     _restoreLastNode();
-    if (supportsCoreConnection) unawaited(_testStartupLatencies());
+    if (supportsCoreConnection) unawaited(_preloadCoreAndTestLatencies());
   }
 
   Future<void> refreshRegisterConfigCache() async {
@@ -582,7 +582,7 @@ class AppController extends ChangeNotifier {
     if (_nodes.isNotEmpty) {
       unawaited(NodeCacheService.save(_nodes.nodes));
       _restoreLastNode();
-      if (supportsCoreConnection) unawaited(_testStartupLatencies());
+      if (supportsCoreConnection) unawaited(_preloadCoreAndTestLatencies());
     }
   }
 
@@ -698,8 +698,10 @@ class AppController extends ChangeNotifier {
     return null;
   }
 
-  Future<void> _testStartupLatencies() async {
-    if (!supportsCoreConnection) return;
+  Future<void> _preloadCoreAndTestLatencies() async {
+    if (!supportsCoreConnection || _nodes.isEmpty) return;
+    final ready = await _preloadCoreOnly();
+    if (!ready) return;
     await _testLatenciesInBackground();
   }
 
@@ -728,9 +730,7 @@ class AppController extends ChangeNotifier {
     _nodes.markAllLatency(-1);
     final snapshot = List<NodeModel>.from(_nodes.nodes);
 
-    final ready = await _ensureCoreForLatencyTest();
-    if (!_isCurrentLatencyRun(runId)) return;
-    if (!ready) {
+    if (!coreProcessRunning) {
       _markLatencyTestFailed(runId, snapshot);
       return;
     }
@@ -744,13 +744,10 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _testLatenciesInBackground() async {
-    if (!supportsCoreConnection || _nodes.isEmpty) return;
+    if (!supportsCoreConnection || _nodes.isEmpty || !coreProcessRunning) return;
 
     final runId = _nextLatencyRunId();
     final snapshot = List<NodeModel>.from(_nodes.nodes);
-
-    final ready = await _ensureCoreForLatencyTest();
-    if (!_isCurrentLatencyRun(runId) || !ready) return;
 
     await _core.testLatencies(
       snapshot,
@@ -760,7 +757,7 @@ class AppController extends ChangeNotifier {
     );
   }
 
-  Future<bool> _ensureCoreForLatencyTest() async {
+  Future<bool> _preloadCoreOnly() async {
     if (coreProcessRunning) return true;
     await _core.startCoreOnly(_buildConnectionRequest());
     return coreProcessRunning;
