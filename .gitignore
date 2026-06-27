@@ -2,6 +2,8 @@
 installer_output/
 # OSS config (contains api_base, keep off git)
 oss_config.json
+# Local working copy of the config template
+bot/config.json
 
 # mihomo runtime cache — may contain DNS/fake-IP history
 cache.db

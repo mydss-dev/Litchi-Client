@@ -56,8 +56,77 @@ export function parseAndValidateConfig(raw: string): Record<string, unknown> {
   return payload;
 }
 
+/// Strips `//` line comments and `/* … */` block comments from a JSON-like
+/// string so users can paste a documented config file directly into the bot.
+function stripJsonComments(raw: string): string {
+  let result = '';
+  let inSingleLine = false;
+  let inMultiLine = false;
+  let inString = false;
+  let stringQuote = '';
+  let escaped = false;
+
+  for (let i = 0; i < raw.length; i += 1) {
+    const ch = raw[i];
+    const next = raw[i + 1] ?? '';
+
+    if (inSingleLine) {
+      if (ch === '\n' || ch === '\r') {
+        inSingleLine = false;
+        result += ch;
+      }
+      continue;
+    }
+
+    if (inMultiLine) {
+      if (ch === '*' && next === '/') {
+        inMultiLine = false;
+        i += 1; // skip '/'
+      }
+      continue;
+    }
+
+    if (inString) {
+      result += ch;
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (ch === stringQuote) {
+        inString = false;
+        stringQuote = '';
+      }
+      continue;
+    }
+
+    // Not in a string — check for comment start.
+    if (ch === '/' && next === '/') {
+      inSingleLine = true;
+      i += 1; // skip second '/'
+      continue;
+    }
+    if (ch === '/' && next === '*') {
+      inMultiLine = true;
+      i += 1; // skip '*'
+      continue;
+    }
+
+    result += ch;
+    if (ch === '"' || ch === "'" || ch === '`') {
+      inString = true;
+      stringQuote = ch;
+    }
+  }
+
+  return result;
+}
+
 function parseLooseConfig(raw: string): unknown {
-  const cleaned = stripCodeFence(raw).trim();
+  const cleaned = stripJsonComments(stripCodeFence(raw)).trim();
   if (!cleaned) {
     throw new Error('配置内容为空，请发送 JSON 或 config.js 中的 payload 内容。');
   }

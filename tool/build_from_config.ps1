@@ -3,17 +3,17 @@
 # Usage:
 #   .\tool\build_from_config.ps1 windows   (or macos, android)
 #
-# Reads app_name, logo_url from config.json and passes them as --dart-define
-# flags automatically.
+# Copy bot/config.sample.json to bot/config.json first, edit it, then run.
 
 param(
   [ValidateSet("windows", "macos", "android")]
   [string]$Platform = "windows"
 )
 
-$configPath = "config.json"
+$configPath = "bot/config.json"
+$samplePath = "bot/config.sample.json"
 if (-not (Test-Path $configPath)) {
-  Write-Error "config.json not found. Create it first."
+  Write-Error "$configPath not found. Copy $samplePath to $configPath and edit it."
   exit 1
 }
 

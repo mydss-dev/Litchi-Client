@@ -4,16 +4,16 @@
 # Usage:
 #   ./tool/build_from_config.sh windows   (or macos, android)
 #
-# Reads app_name, logo_url from config.json and passes them as --dart-define
-# flags automatically. No more manual dart-define typing.
+# Copy bot/config.sample.json to bot/config.json first, edit it, then run.
 
 set -euo pipefail
 
 PLATFORM="${1:-windows}"
-CONFIG="config.json"
+CONFIG="bot/config.json"
+SAMPLE="bot/config.sample.json"
 
 if [ ! -f "$CONFIG" ]; then
-  echo "ERROR: $CONFIG not found. Create it first (see config.json template)."
+  echo "ERROR: $CONFIG not found. Copy $SAMPLE to $CONFIG and edit it."
   exit 1
 fi
 
