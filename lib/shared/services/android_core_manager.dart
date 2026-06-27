@@ -102,14 +102,12 @@ class AndroidCoreManager {
     return false;
   }
 
-  /// Stops the VPN layer only.  Short-term approach: sets _isCoreRunning
-  /// to false so callers restart core-only for a clean slate.  Long-term
-  /// the native stopVpn will keep the core fully intact.
+  /// Stops the VPN layer only.  Core stays running — native stopVpn
+  /// tears down TUN and socket protection but keeps listeners alive.
   Future<void> stopVpn() async {
     await _invokeBool('stopVpn');
     _isVpnRunning = false;
-    _isCoreRunning = false;
-    _isRunning = false;
+    _isRunning = _isCoreRunning;
   }
 
   /// Stops everything — core + VPN.

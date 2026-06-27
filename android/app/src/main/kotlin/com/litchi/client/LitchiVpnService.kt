@@ -118,11 +118,13 @@ class LitchiVpnService : VpnService() {
         super.onDestroy()
     }
 
-    /// Tears down only the VPN layer (TUN + foreground notification).
-    /// Does NOT call native stop — the core keeps running.
+    /// Tears down only the VPN layer.  Calls native stopVpn so the Go TUN
+    /// listener and socket protection are cleaned up; the core listeners
+    /// (mixed/http/socks) stay alive.
     private fun stopVpnLayer(emitStopped: Boolean = true) {
         unregisterNetworkCallback()
         unregisterStopReceiver()
+        AndroidMihomoEngine.stopVpn()
         if (tunFd >= 0) {
             runCatching { ParcelFileDescriptor.adoptFd(tunFd).close() }
             tunFd = -1

@@ -356,7 +356,7 @@ class CoreController extends ChangeNotifier {
   Future<String?> _toggleAndroidConnection(CoreConnectionRequest req) async {
     if (coreConnecting) return null;
 
-    // ── Disconnect: stop VPN, restart core-only ──────────────────────────
+    // ── Disconnect: stop VPN, core stays running ─────────────────────────
     if (_status == ConnectionStatus.connected) {
       _status = ConnectionStatus.disconnecting;
       notifyListeners();
@@ -364,14 +364,6 @@ class CoreController extends ChangeNotifier {
       _stopTrafficMonitor();
       _connectedAt = null;
       _coreError = '';
-
-      // Short-term: restart core-only so URLTest is available immediately.
-      if (req.validNodes.isNotEmpty) {
-        unawaited(startCoreOnly(req).then((_) {
-          if (!_disposed) notifyListeners();
-        }));
-      }
-
       _status = ConnectionStatus.disconnected;
       notifyListeners();
       return null;
