@@ -1,135 +1,90 @@
-# Litchi Build Bot MVP
+# Litchi 多租户打包机器人
 
-这个目录是白牌打包机器人的 MVP。第一版不做复杂 SaaS 面板，先跑通：
+Telegram 机器人负责授权、绑定客户 OSS、签名远程配置并触发
+`.github/workflows/white-label-build.yml`。真正的 Windows、macOS 和 Android
+构建在 GitHub Actions 中完成。
 
-- Telegram 创建 App：`/newapp`
-- 签名远程配置：`/signconfig`
-- 触发 GitHub Actions 打包：`/build`
-- 记录最新下载包：`/setlatest`
-- 中心更新接口：`npm run server`
+本地运行使用 Node.js 22；Docker 镜像已经固定到 Node 22。
 
-## 安装
+每个客户在机器人内部固定拥有：
+
+- 内部 `APP_ID`（只用于数据库索引、任务和派生原生安装身份）
+- `REMOTE_CONFIG_URL`
+- Ed25519 配置签名密钥
+- Android applicationId
+- macOS Bundle ID
+- GitHub Actions request ID
+
+客户端本身只编入该客户的 `REMOTE_CONFIG_URL` 和 Ed25519 公钥；名称、Logo、
+API 地址等业务配置全部从客户 OSS 获取。内部 `APP_ID` 不会写入 Dart 客户端。
+
+## 配置
 
 ```bash
-cd build-bot
-npm install
+cd bot
 cp .env.example .env
+npm ci
 ```
 
-编辑 `.env`：
+至少填写：
 
 ```env
-BOT_TOKEN=你的 Telegram Bot Token
-BOT_ADMINS=你的 Telegram 数字用户 ID
-GITHUB_TOKEN=你的 GitHub Token
+BOT_TOKEN=Telegram Bot Token
+BOT_ADMINS=管理员的 Telegram 数字 ID
+GITHUB_TOKEN=可触发 Actions 的 GitHub Token
 GITHUB_REPO=Kimibit7/Litchi-Client
 GITHUB_REF=main
 GITHUB_WORKFLOW_ID=white-label-build.yml
-UPDATE_CHECK_URL=https://你的域名/update
+BUILD_VERSION=1.2.7
 DB_PATH=./data/bot.sqlite
-PORT=3000
 ```
 
-## 运行机器人
+`BUILD_VERSION` 是必填项，机器人直接把它交给 GitHub Actions，不读取
+`pubspec.yaml`。发布新版本时修改 `.env` 后重启机器人。
 
-完整打包命令版：
+`BOT_ADMINS` 不能为空，否则机器人会拒绝启动。直接运行：
 
 ```bash
-npx tsx src/run_build.ts
+npm run bot
 ```
 
-配置签名版：
+或使用 Docker：
 
 ```bash
-npx tsx src/run_sign.ts
+docker compose up -d --build
 ```
 
-当前 `package.json` 的 `npm run bot` 先保留最基础入口；后续可以改成 `src/run_build.ts` 或合并入口。
+## GitHub Actions 准备
 
-## Telegram 命令
+Android 正式包需要在仓库中设置以下 Actions secrets：
 
-### 创建 App
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
 
-```text
-/newapp client_10001 https://your-oss.com/client_10001/config.json
-```
+同一个客户后续升级必须保持 applicationId 和签名证书不变。当前工作流使用一套
+发行证书签署所有独立 applicationId；如果需要客户独享证书，应进一步接入外部密钥库，
+不要把私钥作为 workflow input 传递。
 
-机器人返回：
+## 使用流程
 
-```text
-APP_ID=client_10001
-REMOTE_CONFIG_URL=https://your-oss.com/client_10001/config.json
-REMOTE_CONFIG_PUBLIC_KEY=xxxxx
-```
+1. 用户发送 `/myid`，管理员使用 `/authorize` 授权。
+2. 用户发送 `/bindoss`，绑定自己的 HTTPS OSS 地址。
+3. 用户发送 `/signconfig`，上传或粘贴配置。
+4. 将机器人返回的 `config.json` 上传到该用户绑定的 OSS。
+5. 用户发送 `/build`，选择 `windows`、`macos`、`android` 或 `all`。
+6. 使用 `/status` 查看精确到本次 request ID 的构建状态。
 
-这三个值后续打包必须固定。
+工作流会先使用该客户的公钥验证 OSS 配置签名。验签失败、配置字段非法或没有生成
+最终安装包时，任务会直接失败，不会上传空产物。
 
-### 签名配置
-
-```text
-/signconfig client_10001
-{
-  "app_name": "Litchi Client",
-  "logo_letter": "https://xxx.com/logo.png",
-  "api_base_list": ["https://api.xxx.com"],
-  "api_path_prefix": "/x7f3a9k",
-  "support_url": "https://t.me/xxx"
-}
-```
-
-机器人会自动加：
-
-```json
-{
-  "config_version": 1,
-  "expires_at": "..."
-}
-```
-
-然后返回签名后的：
-
-```json
-{
-  "payload_b64": "...",
-  "signature": "..."
-}
-```
-
-把这个内容保存为 `config.json` 上传到该机场主 OSS。
-
-### 触发打包
-
-```text
-/build client_10001 windows 1.2.8
-/build client_10001 android 1.2.8
-```
-
-机器人会触发 `.github/workflows/white-label-build.yml`。
-
-## 中心更新接口
-
-启动：
+## 本地检查
 
 ```bash
-npm run server
+npm run check
+npm test
 ```
 
-接口：
-
-```text
-/update?app_id=client_10001&platform=windows&version=1.2.7
-```
-
-返回字段兼容客户端当前 `UpdateService`。
-
-## 重要规则
-
-同一个 APP_ID 的每次打包都必须保持一致：
-
-- APP_ID
-- REMOTE_CONFIG_URL
-- REMOTE_CONFIG_PUBLIC_KEY
-- Android applicationId / 签名证书
-- Windows 安装器身份
-
-更新接口只能返回同一个 APP_ID 的专属包，不能返回通用包。
+SQLite 中保存了配置签名私钥。部署时务必保护 `bot/data` 目录及备份，不要把数据库
+提交到 Git。

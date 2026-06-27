@@ -15,8 +15,11 @@ import '../shared/services/secure_logger.dart';
 abstract final class RemoteConfigService {
   // ── Editable settings ─────────────────────────────────────────────────────
 
-  /// OSS URL for the remote config wrapper or legacy JSON config.
-  static const configUrl = 'https://oss.litchi.cfd/config.json';
+  /// OSS URL compiled into this tenant's package.
+  static const configUrl = String.fromEnvironment(
+    'REMOTE_CONFIG_URL',
+    defaultValue: 'https://oss.litchi.cfd/config.json',
+  );
 
   /// Ed25519 public key, encoded with base64url without padding.
   ///
@@ -26,8 +29,10 @@ abstract final class RemoteConfigService {
   /// Put PUBLIC_KEY here. Keep PRIVATE_KEY offline and never commit it.
   /// While this is left as the placeholder value, unsigned legacy config is
   /// still accepted for rollout compatibility.
-  static const publicKeyBase64Url =
-      'J9E-BBh19QQsGhpAJd654FkxN09pcH2K4FMq_3lYEyw';
+  static const publicKeyBase64Url = String.fromEnvironment(
+    'REMOTE_CONFIG_PUBLIC_KEY',
+    defaultValue: 'J9E-BBh19QQsGhpAJd654FkxN09pcH2K4FMq_3lYEyw',
+  );
 
   // ── Internal settings ─────────────────────────────────────────────────────
 

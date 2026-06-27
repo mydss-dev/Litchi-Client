@@ -184,7 +184,7 @@ jobs:
           if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
             echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
             cat > android/key.properties <<'EOF'
-          storeFile=app/upload-keystore.jks
+          storeFile=upload-keystore.jks
           storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -203,7 +203,7 @@ jobs:
               -validity 3650 \
               -dname "CN=Litchi CI,O=Litchi,C=US"
             cat > android/key.properties <<'EOF'
-          storeFile=app/upload-keystore.jks
+          storeFile=upload-keystore.jks
           storePassword=android-ci-password
           keyAlias=android-ci
           keyPassword=android-ci-password

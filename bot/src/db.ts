@@ -9,6 +9,10 @@ fs.mkdirSync(path.dirname(env.dbPath), { recursive: true });
 
 export const db = new Database(env.dbPath);
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+if (process.platform !== 'win32') {
+  fs.chmodSync(env.dbPath, 0o600);
+}
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS apps (
@@ -26,6 +30,7 @@ CREATE TABLE IF NOT EXISTS builds (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   app_id TEXT NOT NULL,
   tg_user_id INTEGER NOT NULL,
+  request_id TEXT NOT NULL DEFAULT '',
   platform TEXT NOT NULL,
   version TEXT NOT NULL,
   status TEXT NOT NULL,
@@ -50,6 +55,11 @@ CREATE TABLE IF NOT EXISTS authorized_users (
 );
 `);
 
+const buildColumns = db.pragma('table_info(builds)') as Array<{ name: string }>;
+if (!buildColumns.some((column) => column.name === 'request_id')) {
+  db.exec("ALTER TABLE builds ADD COLUMN request_id TEXT NOT NULL DEFAULT ''");
+}
+
 export type AppRow = {
   app_id: string;
   tg_user_id: number;
@@ -65,6 +75,7 @@ export type BuildRow = {
   id: number;
   app_id: string;
   tg_user_id: number;
+  request_id: string;
   platform: string;
   version: string;
   status: string;
@@ -152,14 +163,19 @@ export function bumpConfigVersion(appId: string): number {
 export function createBuild(input: {
   appId: string;
   tgUserId: number;
+  requestId: string;
   platform: string;
   version: string;
   status: string;
   githubRunUrl?: string;
 }): number {
   const result = db.prepare(`
-    INSERT INTO builds (app_id, tg_user_id, platform, version, status, github_run_url)
-    VALUES (@appId, @tgUserId, @platform, @version, @status, @githubRunUrl)
+    INSERT INTO builds (
+      app_id, tg_user_id, request_id, platform, version, status, github_run_url
+    )
+    VALUES (
+      @appId, @tgUserId, @requestId, @platform, @version, @status, @githubRunUrl
+    )
   `).run({ ...input, githubRunUrl: input.githubRunUrl ?? '' });
   return Number(result.lastInsertRowid);
 }

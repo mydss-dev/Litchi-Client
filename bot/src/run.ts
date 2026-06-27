@@ -1,11 +1,12 @@
 import { Telegraf } from 'telegraf';
 
-import { isAdmin, requireBotToken } from './config.js';
+import { isAdmin, requireAdminConfig, requireBotToken } from './config.js';
 import { getAuthorizedUser } from './db.js';
 import { wireBuildCommands } from './build_handlers.js';
 import { buildHelpText, buildStartText, wireCommands } from './handlers.js';
 import { wireSignCommands } from './sign_handlers.js';
 
+requireAdminConfig();
 const bot = new Telegraf(requireBotToken());
 
 bot.use(async (ctx, next) => {

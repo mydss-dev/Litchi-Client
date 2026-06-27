@@ -236,7 +236,7 @@ async function startBuildFromInput(
     const results: string[] = [];
 
     for (const platform of platforms) {
-      const runUrl = await dispatchBuild({
+      const dispatched = await dispatchBuild({
         appId: profile.app_id,
         platform,
         version,
@@ -246,19 +246,21 @@ async function startBuildFromInput(
       const id = createBuild({
         appId: profile.app_id,
         tgUserId: userId,
+        requestId: dispatched.requestId,
         platform,
         version,
         status: 'queued',
-        githubRunUrl: runUrl,
+        githubRunUrl: dispatched.workflowUrl,
       });
 
-      results.push(`#${id} ${platform}\n${runUrl}`);
+      results.push(`#${id} ${platform}\n${dispatched.workflowUrl}`);
       startBuildTracking(bot, {
         buildId: id,
         chatId,
         appId: profile.app_id,
         platform,
         version,
+        requestId: dispatched.requestId,
       });
     }
 
@@ -315,6 +317,7 @@ async function refreshBuildRows(rows: BuildRow[]): Promise<BuildRow[]> {
         appId: row.app_id,
         platform: row.platform,
         version: row.version,
+        requestId: row.request_id,
       });
 
       if (snapshot) {
@@ -348,6 +351,7 @@ function startBuildTracking(
     appId: string;
     platform: string;
     version: string;
+    requestId: string;
   },
 ): void {
   stopBuildTracking(input.buildId);
@@ -362,6 +366,7 @@ function scheduleBuildTracking(
     appId: string;
     platform: string;
     version: string;
+    requestId: string;
   },
   delayMs: number,
   attempt: number,
@@ -372,6 +377,7 @@ function scheduleBuildTracking(
         appId: input.appId,
         platform: input.platform,
         version: input.version,
+        requestId: input.requestId,
       });
 
       if (!snapshot) {

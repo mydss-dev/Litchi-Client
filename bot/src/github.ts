@@ -1,7 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { nanoid } from 'nanoid';
 
 import { env, repoParts } from './config.js';
 
@@ -12,17 +10,27 @@ export type BuildStatusSnapshot = {
   status: string;
 };
 
+export function buildRunName(input: {
+  appId: string;
+  platform: string;
+  version: string;
+  requestId: string;
+}): string {
+  return `${input.appId} ${input.platform} v${input.version} [${input.requestId}]`;
+}
+
 export async function dispatchBuild(input: {
   appId: string;
   platform: BuildPlatform;
   version: string;
   remoteConfigUrl: string;
   verifier: string;
-}): Promise<string> {
+}): Promise<{ requestId: string; workflowUrl: string }> {
   if (!env.githubToken) throw new Error('Missing GITHUB_TOKEN');
 
   const { owner, repo } = repoParts();
   const octokit = new Octokit({ auth: env.githubToken });
+  const requestId = nanoid(12);
 
   await octokit.actions.createWorkflowDispatch({
     owner,
@@ -35,22 +43,27 @@ export async function dispatchBuild(input: {
       version: input.version,
       remote_config_url: input.remoteConfigUrl,
       remote_config_verifier: input.verifier,
+      request_id: requestId,
     },
   });
 
-  return `https://github.com/${owner}/${repo}/actions/workflows/${env.githubWorkflowId}`;
+  return {
+    requestId,
+    workflowUrl: `https://github.com/${owner}/${repo}/actions/workflows/${env.githubWorkflowId}`,
+  };
 }
 
 export async function readBuildStatus(input: {
   appId: string;
   platform: string;
   version: string;
+  requestId: string;
 }): Promise<BuildStatusSnapshot | undefined> {
   if (!env.githubToken) return undefined;
 
   const { owner, repo } = repoParts();
   const octokit = new Octokit({ auth: env.githubToken });
-  const expectedTitle = `${input.appId} ${input.platform} v${input.version}`;
+  const expectedTitle = buildRunName(input);
 
   const response = await octokit.actions.listWorkflowRuns({
     owner,
@@ -75,46 +88,14 @@ export async function readBuildStatus(input: {
 }
 
 export function getCurrentBuildVersion(): string {
-  const envVersion = env.buildVersion.trim();
-  if (envVersion) {
-    return envVersion;
+  const version = env.buildVersion.trim();
+  if (!version) {
+    throw new Error('Missing BUILD_VERSION，请在 bot/.env 中填写，例如 1.2.7');
   }
-
-  const pubspecPath = resolvePubspecPath();
-  const content = fs.readFileSync(pubspecPath, 'utf8');
-  const match = content.match(/^version:\s*([^\s+]+)/m);
-  if (!match?.[1]) {
-    throw new Error(`无法从 ${pubspecPath} 读取当前版本。`);
+  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
+    throw new Error('BUILD_VERSION 格式不正确，应类似 1.2.7');
   }
-  return match[1].trim();
-}
-
-function resolvePubspecPath(): string {
-  const currentFile = fileURLToPath(import.meta.url);
-  const currentDir = path.dirname(currentFile);
-
-  const candidates = [
-    env.buildVersionFile.trim(),
-    path.resolve(currentDir, '../../pubspec.yaml'),
-    path.resolve(currentDir, '../../../pubspec.yaml'),
-    path.resolve(process.cwd(), 'pubspec.yaml'),
-    path.resolve(process.cwd(), '../pubspec.yaml'),
-    path.resolve(process.cwd(), '../../pubspec.yaml'),
-  ].filter(Boolean);
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-      return candidate;
-    }
-  }
-
-  throw new Error(
-    [
-      '找不到 pubspec.yaml。',
-      '请在 .env 中配置 BUILD_VERSION=1.2.7',
-      '或者配置 BUILD_VERSION_FILE=/app/pubspec.yaml',
-    ].join('\n'),
-  );
+  return version;
 }
 
 function normalizeRunStatus(

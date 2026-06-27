@@ -1,4 +1,5 @@
 name: White Label Build
+run-name: ${{ inputs.app_id }} ${{ inputs.platform }} v${{ inputs.version }} [${{ inputs.request_id }}]
 
 on:
   workflow_dispatch:
@@ -19,135 +20,38 @@ on:
       remote_config_verifier:
         required: true
         type: string
+      request_id:
+        required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
-    name: ${{ inputs.app_id }} ${{ inputs.platform }} v${{ inputs.version }}
+    name: Build ${{ inputs.platform }}
     runs-on: ${{ inputs.platform == 'windows' && 'windows-latest' || inputs.platform == 'macos' && 'macos-latest' || 'ubuntu-latest' }}
+    timeout-minutes: 90
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TENANT_ID: ${{ inputs.app_id }}
+      BUILD_VERSION: ${{ inputs.version }}
+      REMOTE_CONFIG_URL: ${{ inputs.remote_config_url }}
+      REMOTE_CONFIG_VERIFIER: ${{ inputs.remote_config_verifier }}
+      LIBBOX_REF: v1.13.13
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch OSS config
-        id: fetch
-        run: |
-          node -e "
-            const https = require('https');
-            const os = require('os');
-            const fs = require('fs');
-            const url = '${{ inputs.remote_config_url }}';
-            const tmp = os.tmpdir();
-            https.get(url, (res) => {
-              let data = '';
-              res.on('data', (chunk) => data += chunk);
-              res.on('end', () => {
-                const raw = JSON.parse(data);
-                let payload;
-                if (raw.payload_b64 && raw.signature) {
-                  payload = JSON.parse(Buffer.from(raw.payload_b64, 'base64url').toString('utf8'));
-                } else {
-                  payload = raw;
-                }
-                const out = JSON.stringify(payload);
-                fs.writeFileSync(tmp + '/config.json', out);
-                // Also write flattened values for GitHub Output
-                const p = JSON.parse(out);
-                const app = p.app_name || 'Litchi';
-                const logo = p.logo_url || '';
-                const api = p.api_base_list?.[0] || p.api_base || '';
-                fs.appendFileSync(process.env.GITHUB_OUTPUT, 'app_name=' + app + '\n');
-                fs.appendFileSync(process.env.GITHUB_OUTPUT, 'logo_url=' + logo + '\n');
-                fs.appendFileSync(process.env.GITHUB_OUTPUT, 'api_base=' + api + '\n');
-              });
-            }).on('error', (e) => { console.error(e); process.exit(1); });
-          "
+      - name: Verify signed tenant config
+        id: config
+        shell: bash
+        run: node tool/prepare_white_label_config.mjs
 
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          cache: true
 
-      - run: flutter pub get
-
-      - name: Build ${{ inputs.platform }}
-        shell: bash
-        run: |
-          case "${{ inputs.platform }}" in
-            android)
-              flutter build apk --release \
-                --dart-define=APP_NAME="${{ steps.fetch.outputs.app_name }}" \
-                --dart-define=LOGO_URL="${{ steps.fetch.outputs.logo_url }}" \
-                --dart-define=API_BASE="${{ steps.fetch.outputs.api_base }}" \
-                --dart-define=APP_VERSION="${{ inputs.version }}"
-              ;;
-            *)
-              flutter build ${{ inputs.platform }} --release \
-                --dart-define=APP_NAME="${{ steps.fetch.outputs.app_name }}" \
-                --dart-define=LOGO_URL="${{ steps.fetch.outputs.logo_url }}" \
-                --dart-define=API_BASE="${{ steps.fetch.outputs.api_base }}" \
-                --dart-define=APP_VERSION="${{ inputs.version }}"
-              ;;
-          esac
-
-      # ── Windows: sing-box + wintun + rule sets ─────────────────────────
-      - name: Bundle sing-box (Windows)
-        if: inputs.platform == 'windows'
-        shell: pwsh
-        run: |
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/SagerNet/sing-box/releases/latest" -Headers @{ "User-Agent"="litchi-ci"; "Authorization"="Bearer $env:GITHUB_TOKEN" }
-          $asset = $release.assets | Where-Object { $_.name -match "windows-amd64\.zip$" } | Select-Object -First 1
-          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile singbox.zip
-          Expand-Archive singbox.zip -DestinationPath singbox-tmp
-          $exe = Get-ChildItem -Recurse -Filter "sing-box.exe" singbox-tmp | Select-Object -First 1
-          Copy-Item $exe.FullName "build\windows\x64\runner\Release\sing-box.exe"
-          Write-Host "sing-box.exe ready"
-
-      - name: Bundle wintun (Windows)
-        if: inputs.platform == 'windows'
-        shell: pwsh
-        run: |
-          Invoke-WebRequest -Uri "https://www.wintun.net/builds/wintun-0.14.1.zip" -OutFile wintun.zip
-          Expand-Archive wintun.zip -DestinationPath wintun-tmp
-          Copy-Item "wintun-tmp\wintun\bin\amd64\wintun.dll" "build\windows\x64\runner\Release\wintun.dll"
-
-      - name: Bundle rule sets (Windows)
-        if: inputs.platform == 'windows'
-        shell: pwsh
-        run: |
-          $rulesDir = "build\windows\x64\runner\Release\rules"
-          New-Item -ItemType Directory -Force -Path $rulesDir | Out-Null
-          $files = @{
-            "geosite-cn.srs"               = "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs"
-            "geosite-category-ads-all.srs" = "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs"
-            "geoip-cn.srs"                 = "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"
-          }
-          foreach ($kv in $files.GetEnumerator()) { Invoke-WebRequest -Uri $kv.Value -OutFile "$rulesDir\$($kv.Key)" }
-
-      # ── macOS: sing-box universal ────────────────────────────────────
-      - name: Bundle sing-box (macOS)
-        if: inputs.platform == 'macos'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          app="build/macos/Build/Products/Release/litchi_client.app"
-          release=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "User-Agent: litchi-ci" https://api.github.com/repos/SagerNet/sing-box/releases/latest)
-          amd_url=$(echo "$release" | grep -o 'https://[^"]*darwin-amd64\.tar\.gz' | head -1)
-          arm_url=$(echo "$release" | grep -o 'https://[^"]*darwin-arm64\.tar\.gz' | head -1)
-          curl -sSL "$amd_url" -o amd.tar.gz && tar -xzf amd.tar.gz
-          curl -sSL "$arm_url" -o arm.tar.gz && tar -xzf arm.tar.gz
-          amd_bin=$(find . -maxdepth 2 -type f -name sing-box -path '*amd64*' | head -1)
-          arm_bin=$(find . -maxdepth 2 -type f -name sing-box -path '*arm64*' | head -1)
-          lipo -create "$amd_bin" "$arm_bin" -output sing-box || cp "$arm_bin" sing-box
-          chmod +x sing-box
-          mkdir -p "$app/Contents/Resources"
-          cp sing-box "$app/Contents/Resources/sing-box"
-          codesign --force --sign - "$app/Contents/Resources/sing-box"
-          codesign --force --deep --sign - "$app"
-
-      # ── Android: libbox AAR ──────────────────────────────────────────
       - uses: actions/setup-java@v4
         if: inputs.platform == 'android'
         with:
@@ -159,51 +63,191 @@ jobs:
         with:
           go-version: stable
 
-      - name: Install Android NDK + gomobile
+      - name: Install Android build dependencies
         if: inputs.platform == 'android'
+        shell: bash
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;28.0.13004108"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
           go install golang.org/x/mobile/cmd/gomobile@latest
           go install golang.org/x/mobile/cmd/gobind@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-      - name: Build libbox AAR (Android)
+      - name: Configure Android signing
         if: inputs.platform == 'android'
-        run: |
-          gomobile init
-          dart run tool/build_libbox_android.sh
-
-      - name: Rename artifact
         shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          APP="${{ steps.fetch.outputs.app_name }}"
-          VER="${{ inputs.version }}"
-          mkdir -p release
+          if [[ -z "$KEYSTORE_BASE64" || -z "$KEYSTORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+            echo "::error::Android white-label builds require all ANDROID_KEYSTORE_* repository secrets"
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          {
+            echo "storeFile=upload-keystore.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+
+      - name: Configure macOS bundle identity
+        if: inputs.platform == 'macos'
+        shell: bash
+        env:
+          BUNDLE_ID: ${{ steps.config.outputs.macos_bundle_id }}
+        run: |
+          sed -i '' "s/^PRODUCT_BUNDLE_IDENTIFIER = .*/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID/" \
+            macos/Runner/Configs/AppInfo.xcconfig
+
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+
+      - name: Build tenant package
+        shell: bash
+        env:
+          APP_NAME: ${{ steps.config.outputs.app_name }}
+          LOGO_URL: ${{ steps.config.outputs.logo_url }}
+          API_BASE: ${{ steps.config.outputs.api_base }}
+          ANDROID_APPLICATION_ID: ${{ steps.config.outputs.android_application_id }}
+          VERSION_CODE: ${{ steps.config.outputs.version_code }}
+        run: |
+          defines=(
+            "--dart-define=APP_NAME=$APP_NAME"
+            "--dart-define=LOGO_URL=$LOGO_URL"
+            "--dart-define=API_BASE=$API_BASE"
+            "--dart-define=APP_VERSION=$BUILD_VERSION"
+            "--dart-define=REMOTE_CONFIG_URL=$REMOTE_CONFIG_URL"
+            "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$REMOTE_CONFIG_VERIFIER"
+          )
           case "${{ inputs.platform }}" in
-            windows)
-              cp build/windows/x64/runner/Release/*.exe "release/$APP $VER.exe" 2>/dev/null || true
-              ;;
-            macos)
-              cp -R "build/macos/Build/Products/Release/"*.app "release/" 2>/dev/null || true
-              hdiutil create -volname "$APP" -srcfolder release -ov -format UDZO "$APP $VER.dmg" 2>/dev/null || true
-              ;;
             android)
-              cp build/app/outputs/flutter-apk/app-release.apk "release/$APP $VER.apk" 2>/dev/null || true
+              flutter build apk --release \
+                "--build-name=$BUILD_VERSION" \
+                "--build-number=$VERSION_CODE" \
+                "${defines[@]}"
+              ;;
+            *)
+              flutter build "${{ inputs.platform }}" --release \
+                "--build-name=$BUILD_VERSION" \
+                "${defines[@]}"
               ;;
           esac
 
-      - name: Upload
+      - name: Bundle Windows runtime
+        if: inputs.platform == 'windows'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $releaseDir = "build\windows\x64\runner\Release"
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/SagerNet/sing-box/releases/tags/$env:LIBBOX_REF" `
+            -Headers @{ "User-Agent"="litchi-ci"; "Authorization"="Bearer $env:GH_TOKEN" }
+          $asset = $release.assets | Where-Object { $_.name -match "windows-amd64\.zip$" } | Select-Object -First 1
+          if (-not $asset) { throw "sing-box Windows asset not found for $env:LIBBOX_REF" }
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile singbox.zip
+          Expand-Archive singbox.zip -DestinationPath singbox-tmp
+          $exe = Get-ChildItem -Recurse -Filter "sing-box.exe" singbox-tmp | Select-Object -First 1
+          if (-not $exe) { throw "sing-box.exe missing from downloaded archive" }
+          Copy-Item $exe.FullName "$releaseDir\sing-box.exe"
+
+          Invoke-WebRequest -Uri "https://www.wintun.net/builds/wintun-0.14.1.zip" -OutFile wintun.zip
+          Expand-Archive wintun.zip -DestinationPath wintun-tmp
+          Copy-Item "wintun-tmp\wintun\bin\amd64\wintun.dll" "$releaseDir\wintun.dll"
+
+          $rulesDir = "$releaseDir\rules"
+          New-Item -ItemType Directory -Force -Path $rulesDir | Out-Null
+          $rules = @{
+            "geosite-cn.srs" = "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs"
+            "geosite-category-ads-all.srs" = "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs"
+            "geoip-cn.srs" = "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"
+          }
+          foreach ($entry in $rules.GetEnumerator()) {
+            Invoke-WebRequest -Uri $entry.Value -OutFile "$rulesDir\$($entry.Key)"
+          }
+
+      - name: Bundle macOS core
+        if: inputs.platform == 'macos'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          app="build/macos/Build/Products/Release/litchi_client.app"
+          release="$(curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer $GH_TOKEN" -H "User-Agent: litchi-ci" \
+            "https://api.github.com/repos/SagerNet/sing-box/releases/tags/$LIBBOX_REF")"
+          amd_url="$(printf '%s' "$release" | grep -o 'https://[^"]*darwin-amd64\.tar\.gz' | head -1)"
+          arm_url="$(printf '%s' "$release" | grep -o 'https://[^"]*darwin-arm64\.tar\.gz' | head -1)"
+          [[ -n "$amd_url" && -n "$arm_url" ]]
+          curl --fail --silent --show-error --location "$amd_url" -o amd.tar.gz
+          curl --fail --silent --show-error --location "$arm_url" -o arm.tar.gz
+          mkdir amd arm
+          tar -xzf amd.tar.gz -C amd
+          tar -xzf arm.tar.gz -C arm
+          amd_bin="$(find amd -type f -name sing-box | head -1)"
+          arm_bin="$(find arm -type f -name sing-box | head -1)"
+          lipo -create "$amd_bin" "$arm_bin" -output sing-box
+          chmod +x sing-box
+          cp sing-box "$app/Contents/Resources/sing-box"
+          codesign --force --sign - "$app/Contents/Resources/sing-box"
+          codesign --force --deep --sign - "$app"
+          codesign --verify --deep --strict "$app"
+
+      - name: Verify Android native core
+        if: inputs.platform == 'android'
+        shell: bash
+        run: |
+          unzip -l android/app/libs/libbox.aar | grep -q "jni/arm64-v8a/" || {
+            echo "::error::libbox.aar does not contain arm64-v8a"
+            exit 1
+          }
+
+      - name: Package Windows artifact
+        if: inputs.platform == 'windows'
+        shell: pwsh
+        env:
+          PACKAGE_NAME: ${{ steps.config.outputs.package_name }}
+        run: |
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $archive = "release\$env:PACKAGE_NAME $env:BUILD_VERSION Windows.zip"
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath $archive
+          if (-not (Test-Path $archive)) { throw "Windows archive was not created" }
+
+      - name: Package macOS artifact
+        if: inputs.platform == 'macos'
+        shell: bash
+        env:
+          PACKAGE_NAME: ${{ steps.config.outputs.package_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p release dmg-stage
+          cp -R "build/macos/Build/Products/Release/litchi_client.app" \
+            "dmg-stage/$PACKAGE_NAME.app"
+          ln -s /Applications dmg-stage/Applications
+          hdiutil create -volname "$PACKAGE_NAME" -srcfolder dmg-stage \
+            -ov -format UDZO "release/$PACKAGE_NAME $BUILD_VERSION macOS.dmg"
+
+      - name: Package Android artifact
+        if: inputs.platform == 'android'
+        shell: bash
+        env:
+          PACKAGE_NAME: ${{ steps.config.outputs.package_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "release/$PACKAGE_NAME $BUILD_VERSION Android.apk"
+
+      - name: Upload package
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.app_id }}-${{ inputs.platform }}-${{ inputs.version }}
           path: release/*
+          if-no-files-found: error
           retention-days: 30
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release/*
-          generate_release_notes: true

@@ -8,7 +8,6 @@ export const env = {
   githubRef: process.env.GITHUB_REF ?? 'main',
   githubWorkflowId: process.env.GITHUB_WORKFLOW_ID ?? 'white-label-build.yml',
   buildVersion: process.env.BUILD_VERSION ?? '',
-  buildVersionFile: process.env.BUILD_VERSION_FILE ?? '',
   dbPath: process.env.DB_PATH ?? './data/bot.sqlite',
 };
 
@@ -26,9 +25,14 @@ export function requireBotToken(): string {
   return env.botToken;
 }
 
+export function requireAdminConfig(): void {
+  if (env.botAdmins.size === 0) {
+    throw new Error('BOT_ADMINS must contain at least one Telegram user id');
+  }
+}
+
 export function isAdmin(userId?: number): boolean {
   if (!userId) return false;
-  if (env.botAdmins.size === 0) return true;
   return env.botAdmins.has(userId);
 }
 

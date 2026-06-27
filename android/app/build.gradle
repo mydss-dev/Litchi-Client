@@ -30,7 +30,9 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.litchi.client"
+        // White-label CI supplies a stable per-tenant id. Keep the original id
+        // for normal local builds.
+        applicationId System.getenv("ANDROID_APPLICATION_ID") ?: "com.litchi.client"
         minSdkVersion flutter.minSdkVersion
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode

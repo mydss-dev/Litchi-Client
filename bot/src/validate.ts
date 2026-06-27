@@ -171,6 +171,9 @@ function requireString(
   }
 
   const trimmed = value.trim();
+  if (/[\u0000-\u001f\u007f]/.test(trimmed)) {
+    throw new Error(`${key} 不能包含控制字符。`);
+  }
   if (trimmed.length < min || trimmed.length > max) {
     throw new Error(`${key} 长度必须在 ${min}-${max} 之间。`);
   }
@@ -190,6 +193,9 @@ function optionalString(
   }
 
   const trimmed = value.trim();
+  if (/[\u0000-\u001f\u007f]/.test(trimmed)) {
+    throw new Error(`${key} 不能包含控制字符。`);
+  }
   if (trimmed.length < min || trimmed.length > max) {
     throw new Error(`${key} 长度必须在 ${min}-${max} 之间。`);
   }
