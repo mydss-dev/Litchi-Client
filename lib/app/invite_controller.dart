@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../shared/config/app_config.dart';
+import '../config/app_config.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/panel_api.dart';
 

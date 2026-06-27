@@ -1,0 +1,18 @@
+{
+  "api_base_list": ["https://your-panel.com", "https://your-panel-cdn.com"],
+  "api_prefix": "/api/v1",
+
+  "app_name": "Litchi Client",
+  "logo_url": "L",
+  "avatar_url": "https://t.alcy.cc/tx",
+
+  "invite_url_base": "https://litchia.cfd",
+
+  "update_version": "1.2.8",
+  "update_download_url": {
+    "windows": "https://oss.litchi.cfd/litchi-setup.exe",
+    "macos": "https://oss.litchi.cfd/litchi.dmg",
+    "android": "https://oss.litchi.cfd/litchi.apk"
+  },
+  "update_changelog": "修复已知问题，优化用户体验。"
+}

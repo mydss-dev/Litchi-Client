@@ -1,0 +1,57 @@
+# Build Litchi Client with branding from config.json.
+#
+# Usage:
+#   .\tool\build_from_config.ps1 windows   (or macos, android)
+#
+# Reads app_name, logo_url from config.json and passes them as --dart-define
+# flags automatically.
+
+param(
+  [ValidateSet("windows", "macos", "android")]
+  [string]$Platform = "windows"
+)
+
+$configPath = "config.json"
+if (-not (Test-Path $configPath)) {
+  Write-Error "config.json not found. Create it first."
+  exit 1
+}
+
+$config = Get-Content $configPath -Raw | ConvertFrom-Json
+
+$appName     = if ($config.app_name)     { $config.app_name }     else { "" }
+$logoUrl  = if ($config.logo_url)  { $config.logo_url }  else { "" }
+$apiBase     = if ($config.api_base_list -and $config.api_base_list[0]) { $config.api_base_list[0] } else { "" }
+$brandStart  = if ($config.brand_color_start) { $config.brand_color_start } else { "" }
+$brandEnd    = if ($config.brand_color_end)   { $config.brand_color_end }   else { "" }
+$version     = if ($config.update_version)    { $config.update_version }    else { "" }
+
+$flags = @()
+if ($appName)    { $flags += "--dart-define=APP_NAME=$appName" }
+if ($logoUrl) { $flags += "--dart-define=LOGO_URL=$logoUrl" }
+if ($apiBase)    { $flags += "--dart-define=API_BASE=$apiBase" }
+if ($brandStart) { $flags += "--dart-define=BRAND_COLOR_START=$brandStart" }
+if ($brandEnd)   { $flags += "--dart-define=BRAND_COLOR_END=$brandEnd" }
+if ($version)    { $flags += "--dart-define=APP_VERSION=$version" }
+
+Write-Host "==> Building for $Platform" -ForegroundColor Cyan
+Write-Host "    Name:    $appName"
+Write-Host "    Logo:    ${logoUrl}"
+Write-Host "    API:     $apiBase"
+Write-Host "    Version: $version"
+Write-Host ""
+
+switch ($Platform) {
+  "windows" {
+    flutter build windows --release $flags
+    Write-Host "`n==> Done. Output: build/windows/x64/runner/Release/" -ForegroundColor Green
+  }
+  "macos" {
+    flutter build macos --release $flags
+    Write-Host "`n==> Done. Output: build/macos/Build/Products/Release/" -ForegroundColor Green
+  }
+  "android" {
+    flutter build apk --release $flags
+    Write-Host "`n==> Done. Output: build/app/outputs/flutter-apk/" -ForegroundColor Green
+  }
+}

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../config/app_config.dart';
+import '../../config/app_config.dart';
 
 /// Renders the brand mark. Priority order:
-/// 1. Remote image URL in AppConfig.logoLetter (http/https)
+/// 1. Remote image URL in AppConfig.logoUrl (http/https)
 /// 2. Local PNG at assets/images/logo.png
-/// 3. Gradient square with AppConfig.logoLetter as a letter
+/// 3. Gradient square with AppConfig.logoUrl as a letter
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.size = 30, this.radius});
 
@@ -15,7 +15,7 @@ class BrandLogo extends StatelessWidget {
   static const String _pngAsset = 'assets/images/logo.png';
 
   bool get _isUrl {
-    final v = AppConfig.logoLetter;
+    final v = AppConfig.logoUrl;
     return v.startsWith('http://') || v.startsWith('https://');
   }
 
@@ -28,7 +28,7 @@ class BrandLogo extends StatelessWidget {
       return ClipRRect(
         borderRadius: BorderRadius.circular(r),
         child: Image.network(
-          AppConfig.logoLetter,
+          AppConfig.logoUrl,
           width: size,
           height: size,
           fit: BoxFit.cover,
@@ -66,7 +66,7 @@ class BrandLogo extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        AppConfig.logoLetter,
+        AppConfig.logoUrl,
         style: TextStyle(
           color: Colors.white,
           fontSize: size * 0.47,

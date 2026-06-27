@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../shared/config/app_config.dart';
+import '../../config/mobile_layout.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -149,7 +149,7 @@ class _MobileTicketsPageState extends State<MobileTicketsPage> {
 }
 
 bool _isPrimaryMobileTab(String type) {
-  return AppConfig.mobileTabs.any((tab) => tab.type == type);
+  return MobileLayout.tabs.any((tab) => tab.type == type);
 }
 
 class _NewTicketSheet extends StatefulWidget {

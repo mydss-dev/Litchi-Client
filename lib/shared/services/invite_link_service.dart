@@ -1,4 +1,4 @@
-import '../config/app_config.dart';
+import '../../config/app_config.dart';
 import '../models/app_models.dart';
 
 abstract final class InviteLinkService {

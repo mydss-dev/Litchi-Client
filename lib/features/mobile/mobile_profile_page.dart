@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../shared/config/app_config.dart';
+import '../../config/app_config.dart';
+import '../../config/mobile_layout.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -97,7 +98,7 @@ class _MobileProfilePageState extends State<MobileProfilePage> {
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
     final user = ctrl.user;
-    final summaryType = AppConfig.mobileProfileSummaryCard;
+    final summaryType = MobileLayout.profileSummaryCard;
 
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
@@ -554,7 +555,7 @@ class _ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final url = AppConfig.userAvatarUrl.trim();
+    final url = AppConfig.avatarUrl.trim();
     final fallback = Text(
       avatar.isEmpty ? 'L' : avatar,
       style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
@@ -586,7 +587,7 @@ class _ProfileMenuSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      for (final item in AppConfig.mobileProfileMenu)
+      for (final item in MobileLayout.profileMenu)
         _MenuEntry(
           icon: _profileMenuIcon(item.icon, item.type),
           title: item.title.isEmpty ? _profileMenuTitle(item.type) : item.title,
@@ -603,7 +604,7 @@ class _ProfileMenuSection extends StatelessWidget {
       ),
     ];
 
-    if (AppConfig.mobileProfileMenuLayout == 'list') {
+    if (MobileLayout.profileMenuLayout == 'list') {
       return Column(
         children: [
           for (int i = 0; i < items.length; i++) ...[

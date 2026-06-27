@@ -1,62 +1,29 @@
-import 'package:dio/dio.dart';
-
-import '../config/app_config.dart';
+import '../../config/app_config.dart';
 import '../models/app_models.dart';
-import 'api_client.dart';
-import 'secure_logger.dart';
 
+/// Checks for updates by reading [AppConfig.updateVersion] — which is set by
+/// the OSS remote config. If the OSS payload includes `update_version`,
+/// `update_download_url`, and optionally `update_changelog`, the app shows an
+/// update banner.
+///
+/// No separate HTTP fetch. One OSS config file delivers both brand/api config
+/// and the latest version info.
 abstract final class UpdateService {
-  static final _dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  );
+  /// Returns [UpdateInfo] if the OSS config declares a newer version than the
+  /// currently running one, or null when disabled / already up-to-date.
+  static UpdateInfo? check() {
+    final latest = AppConfig.updateVersion.trim();
+    if (latest.isEmpty) return null;
+    final downloadUrl = AppConfig.updateDownloadUrl.trim();
+    if (downloadUrl.isEmpty) return null;
 
-  /// Fetches the version manifest at [AppConfig.updateCheckUrl] and returns
-  /// [UpdateInfo] if a newer version is available, or null when the check is
-  /// disabled / already up-to-date.
-  static Future<UpdateInfo?> check() async {
-    if (AppConfig.updateCheckUrl.isEmpty) return null;
-    final manifestUri = Uri.tryParse(AppConfig.updateCheckUrl);
-    if (manifestUri == null || manifestUri.scheme != 'https') {
-      SecureLogger.debug('Skip update check: invalid manifest url');
-      return null;
-    }
-    try {
-      final res = await _getWithRetry(manifestUri.toString());
-      final data = res.data;
-      if (data == null) return null;
-      final latest = data['version']?.toString() ?? '';
-      if (!_isNewer(latest, AppConfig.currentVersion)) return null;
-      final downloadUrl = _trustedHttpsUrl(data['download_url']?.toString());
-      return UpdateInfo(
-        version: latest,
-        downloadUrl: downloadUrl ?? '',
-        changelog: data['changelog']?.toString() ?? '',
-      );
-    } catch (e) {
-      SecureLogger.debug('Update check failed', e);
-      return null;
-    }
-  }
+    if (!_isNewer(latest, AppConfig.currentVersion)) return null;
 
-  static Future<Response<Map<String, dynamic>>> _getWithRetry(
-    String url,
-  ) async {
-    var attempt = 0;
-    while (true) {
-      try {
-        return await _dio.get<Map<String, dynamic>>(url);
-      } on DioException catch (e) {
-        if (attempt >= ApiClient.maxGetRetries ||
-            !ApiClient.isRetriableGetError(e)) {
-          rethrow;
-        }
-        attempt += 1;
-        await Future.delayed(Duration(milliseconds: 250 * attempt));
-      }
-    }
+    return UpdateInfo(
+      version: latest,
+      downloadUrl: downloadUrl,
+      changelog: AppConfig.updateChangelog.trim(),
+    );
   }
 
   static bool _isNewer(String latest, String current) {
@@ -69,13 +36,5 @@ abstract final class UpdateService {
       if (lv < cv) return false;
     }
     return false;
-  }
-
-  static String? _trustedHttpsUrl(String? value) {
-    if (value == null || value.isEmpty) return null;
-    final trimmed = value.trim();
-    final uri = Uri.tryParse(trimmed);
-    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return null;
-    return trimmed;
   }
 }

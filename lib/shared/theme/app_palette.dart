@@ -1,11 +1,12 @@
 import 'package:flutter/widgets.dart';
 
-import '../config/app_config.dart';
+import '../../config/app_config.dart';
 
 /// Raw color values transcribed from the design spec (§6).
 ///
-/// Brand gradient colors delegate to [BrandConfig] so they can be swapped at
-/// build time via --dart-define. All other palette tokens remain const.
+/// Brand gradient colors delegate to [AppConfig] so they can be swapped at
+/// build time via --dart-define or at runtime via OSS remote config.
+/// All other palette tokens remain const.
 /// Prefer consuming semantic colors via [AppColors.of] in widgets.
 class AppPalette {
   AppPalette._();

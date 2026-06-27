@@ -5,7 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
-import '../../shared/config/app_config.dart';
+import '../../config/mobile_layout.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -490,7 +490,7 @@ class _HomeCardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cards = AppConfig.mobileHomeCards.take(4).toList();
+    final cards = MobileLayout.homeCards.take(4).toList();
     final rows = <Widget>[];
     for (var i = 0; i < cards.length; i += 2) {
       rows.add(

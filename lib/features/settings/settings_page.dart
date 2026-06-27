@@ -1,10 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../shared/config/app_config.dart';
+import '../../config/app_config.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -203,21 +201,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           const SizedBox(height: 16),
-          if (AppConfig.supportUrl.isNotEmpty) ...[
-            _SettingsGroup(
-              title: '帮助与关于',
-              children: [
-                _SettingRow(
-                  label: '联系客服',
-                  trailing: _DiagnosticButton(
-                    label: '打开',
-                    onTap: () => _openUrl(AppConfig.supportUrl),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
           _SettingsGroup(
             title: '账号安全',
             children: [_LogoutRow(onLogout: ctrl.logout)],
@@ -225,18 +208,6 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
-  }
-}
-
-void _openUrl(String url) {
-  final uri = Uri.tryParse(url);
-  if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) return;
-  if (Platform.isWindows) {
-    Process.run('explorer', [url]);
-  } else if (Platform.isMacOS) {
-    Process.run('open', [url]);
-  } else {
-    Process.run('xdg-open', [url]);
   }
 }
 

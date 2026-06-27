@@ -16,7 +16,7 @@ Future<void> main(List<String> args) async {
   }
 
   final appName = _string(payload['app_name'], fallback: 'Litchi Client');
-  final logo = _string(payload['logo_letter']);
+  final logo = _string(payload['logo_url']);
 
   stdout.writeln('Branding source: $source');
   stdout.writeln('App name: $appName');
@@ -43,7 +43,7 @@ Usage:
 
 The tool reads existing remote config fields:
   app_name     -> Android label + Windows product metadata
-  logo_letter  -> if http(s), download as assets/images/logo.png and app_icon.png
+  logo_url  -> if http(s), download as assets/images/logo.png and app_icon.png
 
 Examples:
   dart run tool/apply_branding.dart config.js

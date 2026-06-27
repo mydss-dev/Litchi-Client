@@ -9,7 +9,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
 import 'config/remote_config.dart';
-import 'shared/config/app_config.dart';
+import 'config/app_config.dart';
 
 bool get _isDesktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 

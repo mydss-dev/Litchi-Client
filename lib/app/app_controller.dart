@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../shared/config/app_config.dart';
+import '../config/app_config.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/api_client.dart';
@@ -323,7 +323,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _checkForUpdate() async {
-    final info = await UpdateService.check();
+    final info = UpdateService.check();
     if (info != null && !_disposed) {
       _updateInfo = info;
       notifyListeners();

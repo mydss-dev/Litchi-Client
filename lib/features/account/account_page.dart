@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../config/app_config.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -114,9 +115,22 @@ class _AccountContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarUrl = AppConfig.avatarUrl.trim();
+    final fallbackLetter = user.email.isNotEmpty ? user.email[0].toUpperCase() : 'L';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _Avatar(
+              url: avatarUrl,
+              fallbackLetter: fallbackLetter,
+              size: 64,
+            ),
+          ),
+        ),
         _AccountInfoCard(user: user, onCopy: onCopy),
         const SizedBox(height: 14),
         _AccountShortcutGrid(onNavigate: onNavigate),
@@ -474,6 +488,57 @@ class _LoginRecordsCard extends StatelessWidget {
           style: AppTextStyles.caption.copyWith(color: c.textMuted),
         ),
       ],
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({
+    required this.url,
+    required this.fallbackLetter,
+    required this.size,
+  });
+
+  final String url;
+  final String fallbackLetter;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+
+    if (url.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          url,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _letterAvatar(c),
+        ),
+      );
+    }
+
+    return _letterAvatar(c);
+  }
+
+  Widget _letterAvatar(AppColors c) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: AppConfig.brandGradient,
+      ),
+      child: Text(
+        fallbackLetter,
+        style: TextStyle(
+          fontSize: size * 0.4,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 }

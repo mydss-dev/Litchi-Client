@@ -12,7 +12,7 @@ import '../features/mobile/mobile_shop_page.dart';
 import '../features/mobile/mobile_tickets_page.dart';
 import '../features/mobile/mobile_traffic_page.dart';
 import '../features/mobile/mobile_wallet_page.dart';
-import '../shared/config/app_config.dart';
+import '../config/mobile_layout.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
@@ -150,7 +150,7 @@ class _MobileBottomNav extends StatelessWidget {
 List<_MobileNavItem> _mobileNavItems() {
   return [
     const _MobileNavItem(AppPage.dashboard, LucideIcons.home, '首页'),
-    for (final tab in AppConfig.mobileTabs.take(3)) _mobileNavItemFor(tab),
+    for (final tab in MobileLayout.tabs.take(3)) _mobileNavItemFor(tab),
     const _MobileNavItem(AppPage.account, LucideIcons.user, '我的'),
   ];
 }

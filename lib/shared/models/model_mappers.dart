@@ -1,4 +1,4 @@
-import '../config/app_config.dart';
+import '../../config/app_config.dart';
 import 'api_models.dart';
 import 'app_models.dart';
 

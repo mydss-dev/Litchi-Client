@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
-import '../shared/config/app_config.dart';
+import '../config/app_config.dart';
 import '../features/account/account_page.dart';
 import '../features/account/wallet_page.dart';
 import '../features/auth/auth_flow.dart';

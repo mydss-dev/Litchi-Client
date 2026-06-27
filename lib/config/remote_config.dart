@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:cryptography/cryptography.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../shared/config/app_config.dart';
+import 'app_config.dart';
 import '../shared/services/secure_logger.dart';
 
 /// Fetches brand/API config from OSS and applies it to [AppConfig].
@@ -32,7 +32,6 @@ abstract final class RemoteConfigService {
   // ── Internal settings ─────────────────────────────────────────────────────
 
   static const _cacheKey = 'remote_config_v1';
-  static const _highestVersionKey = 'remote_config_highest_version_v1';
   static const _timeout = Duration(seconds: 5);
 
   static bool get _requiresSignature =>
@@ -50,7 +49,7 @@ abstract final class RemoteConfigService {
     if (cached != null) {
       try {
         final config = await _parseTrustedConfig(cached);
-        if (config != null && await _acceptConfig(config, prefs)) {
+        if (config != null) {
           AppConfig.applyRemote(config);
           applied = true;
         }
@@ -88,13 +87,12 @@ abstract final class RemoteConfigService {
 
       final config = await _parseTrustedConfig(body);
       if (config == null) return;
-      if (!await _acceptConfig(config, prefs)) return;
 
       // Persist the original trusted body for next launch. For signed config,
       // this keeps the signature wrapper so cache is re-verified on every start.
       await prefs.setString(_cacheKey, body);
 
-      // Also apply to current session (colors/text update live if widgets rebuild).
+      // Also apply to current session.
       AppConfig.applyRemote(config);
     } catch (e) {
       // Network unavailable, JSON malformed, or signature invalid — non-fatal,
@@ -154,65 +152,6 @@ abstract final class RemoteConfigService {
     } catch (_) {
       return null;
     }
-  }
-
-  static Future<bool> _acceptConfig(
-    Map<String, dynamic> config,
-    SharedPreferences prefs,
-  ) async {
-    if (!_requiresSignature) return true;
-
-    final version = _configVersion(config['config_version']);
-    final expiresAt = _expiresAt(config['expires_at']);
-    if (version == null || expiresAt == null) {
-      SecureLogger.warn('RemoteConfig rejected: missing version/expiry');
-      return false;
-    }
-    if (!DateTime.now().toUtc().isBefore(expiresAt)) {
-      SecureLogger.warn('RemoteConfig rejected: expired');
-      return false;
-    }
-
-    final highest = prefs.getInt(_highestVersionKey) ?? 0;
-    if (version < highest) {
-      SecureLogger.warn('RemoteConfig rejected: rollback $version < $highest');
-      return false;
-    }
-    if (version > highest) {
-      await prefs.setInt(_highestVersionKey, version);
-    }
-    return true;
-  }
-
-  static int? _configVersion(Object? value) {
-    if (value is int && value > 0) return value;
-    if (value is num && value > 0) return value.toInt();
-    if (value is String) {
-      final parsed = int.tryParse(value.trim());
-      if (parsed != null && parsed > 0) return parsed;
-    }
-    return null;
-  }
-
-  static DateTime? _expiresAt(Object? value) {
-    if (value is int) {
-      return DateTime.fromMillisecondsSinceEpoch(value * 1000, isUtc: true);
-    }
-    if (value is num) {
-      return DateTime.fromMillisecondsSinceEpoch(
-        value.toInt() * 1000,
-        isUtc: true,
-      );
-    }
-    if (value is String) {
-      final trimmed = value.trim();
-      final epoch = int.tryParse(trimmed);
-      if (epoch != null) {
-        return DateTime.fromMillisecondsSinceEpoch(epoch * 1000, isUtc: true);
-      }
-      return DateTime.tryParse(trimmed)?.toUtc();
-    }
-    return null;
   }
 
   static List<int> _base64UrlDecode(String raw) {

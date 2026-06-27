@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../shared/config/app_config.dart';
+import '../config/app_config.dart';
 import '../shared/theme/app_theme.dart';
 import 'app_controller.dart';
 import 'app_shell.dart';

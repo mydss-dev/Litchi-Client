@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:litchi_client/shared/config/app_config.dart';
+import 'package:litchi_client/config/app_config.dart';
 import 'package:litchi_client/shared/models/api_models.dart';
 import 'package:litchi_client/shared/services/secure_logger.dart';
 import 'package:litchi_client/shared/services/subscription_data_service.dart';

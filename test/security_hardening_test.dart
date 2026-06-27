@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:litchi_client/shared/config/app_config.dart';
+import 'package:litchi_client/config/app_config.dart';
 import 'package:litchi_client/shared/services/outbound_parser.dart';
 import 'package:litchi_client/shared/services/windows_dpapi.dart';
 

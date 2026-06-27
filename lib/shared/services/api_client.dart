@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
-import '../config/app_config.dart';
+import '../../config/app_config.dart';
 import 'secure_logger.dart';
 
 typedef SessionExpiredCallback = FutureOr<void> Function();
@@ -110,7 +110,7 @@ class ApiClient {
   /// Normalised API path prefix: guaranteed single leading slash, no trailing
   /// slash (so `$base$prefix/passport/...` is always well-formed).
   static String get _pathPrefix {
-    var p = AppConfig.apiPathPrefix.trim();
+    var p = AppConfig.apiPrefix.trim();
     if (p.isEmpty) return '';
     if (!p.startsWith('/')) p = '/$p';
     return p.replaceAll(RegExp(r'/+$'), '');
@@ -123,11 +123,7 @@ class ApiClient {
         connectTimeout: const Duration(seconds: 8),
         receiveTimeout: const Duration(seconds: 15),
         contentType: 'application/json',
-        // Browser-like headers so the control-plane traffic blends in with
-        // normal web browsing instead of exposing a Dart/dart:io client.
-        // The User-Agent is remote-configurable (AppConfig.apiUserAgent).
         headers: {
-          'User-Agent': AppConfig.apiUserAgent,
           'Accept': 'application/json, text/plain, */*',
           'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
         },
