@@ -245,44 +245,10 @@ class _MobileConnectionCard extends StatelessWidget {
             children: [_StatusPill(label: statusText, color: statusColor)],
           ),
           const SizedBox(height: 18),
-          GestureDetector(
-            onTap: isBusy || !supportsConnection ? null : onToggle,
-            child: Container(
-              width: 132,
-              height: 132,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: status == ConnectionStatus.connected
-                    ? c.brandGradient
-                    : null,
-                color: status == ConnectionStatus.connected
-                    ? null
-                    : c.surfaceMuted,
-                boxShadow: status == ConnectionStatus.connected
-                    ? AppShadows.powerButton
-                    : AppShadows.soft(c),
-                border: Border.all(
-                  color: status == ConnectionStatus.connected
-                      ? Colors.white.withValues(alpha: 0.3)
-                      : c.softBorder,
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: isBusy
-                    ? CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: c.primary,
-                      )
-                    : Icon(
-                        LucideIcons.power,
-                        size: 46,
-                        color: status == ConnectionStatus.connected
-                            ? Colors.white
-                            : c.primary,
-                      ),
-              ),
-            ),
+          _MobilePowerButton(
+            status: status,
+            disabled: isBusy || !supportsConnection,
+            onTap: onToggle,
           ),
           const SizedBox(height: 16),
           Text(
@@ -750,6 +716,165 @@ class _StatusDot extends StatelessWidget {
       width: 9,
       height: 9,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _MobilePowerButton extends StatefulWidget {
+  const _MobilePowerButton({
+    required this.status,
+    required this.disabled,
+    required this.onTap,
+  });
+
+  final ConnectionStatus status;
+  final bool disabled;
+  final VoidCallback onTap;
+
+  @override
+  State<_MobilePowerButton> createState() => _MobilePowerButtonState();
+}
+
+class _MobilePowerButtonState extends State<_MobilePowerButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  bool _pressed = false;
+
+  bool get _connected => widget.status == ConnectionStatus.connected;
+  bool get _transitioning =>
+      widget.status == ConnectionStatus.connecting ||
+      widget.status == ConnectionStatus.disconnecting;
+  bool get _shouldPulse => _transitioning;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1150),
+    );
+    _syncPulse();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MobilePowerButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncPulse();
+  }
+
+  void _syncPulse() {
+    if (_shouldPulse && !_pulseController.isAnimating) {
+      _pulseController.repeat();
+    } else if (!_shouldPulse && _pulseController.isAnimating) {
+      _pulseController
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final disconnecting = widget.status == ConnectionStatus.disconnecting;
+    final pulseColor = disconnecting ? c.textMuted : c.primary;
+
+    return GestureDetector(
+      onTap: widget.disabled ? null : widget.onTap,
+      onTapDown: widget.disabled
+          ? null
+          : (_) => setState(() => _pressed = true),
+      onTapUp: widget.disabled ? null : (_) => setState(() => _pressed = false),
+      onTapCancel: widget.disabled
+          ? null
+          : () => setState(() => _pressed = false),
+      child: SizedBox(
+        width: 152,
+        height: 152,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (_shouldPulse)
+              AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, _) {
+                  final t = Curves.easeOut.transform(_pulseController.value);
+                  return Container(
+                    width: 126 + 26 * t,
+                    height: 126 + 26 * t,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: pulseColor.withValues(alpha: 0.18 * (1 - t)),
+                      border: Border.all(
+                        color: pulseColor.withValues(alpha: 0.24 * (1 - t)),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            AnimatedScale(
+              duration: const Duration(milliseconds: 170),
+              curve: Curves.easeOutCubic,
+              scale: widget.disabled ? 0.96 : (_pressed ? 0.92 : 1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                width: 132,
+                height: 132,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: _connected ? c.brandGradient : null,
+                  color: _connected ? null : c.surfaceMuted,
+                  boxShadow: _connected
+                      ? AppShadows.powerButton
+                      : AppShadows.soft(c),
+                  border: Border.all(
+                    color: _connected
+                        ? Colors.white.withValues(alpha: 0.3)
+                        : c.softBorder,
+                  ),
+                ),
+                child: Center(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 240),
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween<double>(
+                          begin: 0.88,
+                          end: 1,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    ),
+                    child: _transitioning
+                        ? SizedBox(
+                            key: ValueKey(widget.status),
+                            width: 42,
+                            height: 42,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: pulseColor,
+                            ),
+                          )
+                        : Icon(
+                            LucideIcons.power,
+                            key: ValueKey(widget.status),
+                            size: 46,
+                            color: _connected ? Colors.white : c.primary,
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
