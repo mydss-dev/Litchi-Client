@@ -58,16 +58,7 @@ jobs:
 
       - name: Install Inno Setup
         shell: pwsh
-        run: |
-          choco install innosetup --no-progress -y
-          $langDir = "C:\Program Files (x86)\Inno Setup 6\Languages"
-          $isl = "$langDir\ChineseSimplified.isl"
-          if (-not (Test-Path $isl)) {
-            Invoke-WebRequest `
-              -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl" `
-              -OutFile $isl
-            Write-Host "Downloaded ChineseSimplified.isl"
-          }
+        run: .\tool\install_inno_chinese.ps1
 
       - name: Build installer
         shell: pwsh
