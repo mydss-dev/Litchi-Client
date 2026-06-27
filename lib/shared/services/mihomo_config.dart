@@ -272,12 +272,43 @@ abstract final class MihomoConfig {
     return const JsonEncoder.withIndent('  ').convert(clean);
   }
 
+  /// Writes the full mihomo configuration to a *randomly-named* temporary file
+  /// and returns its path.  A random suffix prevents other processes from
+  /// monitoring a predictable filename; the file is deleted as soon as mihomo
+  /// confirms readiness (see [CoreManager.start]).
+  ///
+  /// On non-Windows platforms the file is also `chmod 600` so only the owning
+  /// user can read it.
   static Future<String> writeConfig(Map<String, dynamic> config) async {
     final dir = Directory(appDataDir());
     await dir.create(recursive: true);
-    final file = File('${dir.path}${Platform.pathSeparator}config.yaml');
-    await file.writeAsString(encodeConfig(config));
+    final name = 'config-${_generateSecret()}.yaml';
+    final file = File('${dir.path}${Platform.pathSeparator}$name');
+    await file.writeAsString(encodeConfig(config), flush: true);
+    if (!Platform.isWindows) {
+      try {
+        await Process.run('chmod', ['600', file.path]);
+      } catch (_) {}
+    }
     return file.path;
+  }
+
+  /// Removes any leftover `config-*.yaml` files from a previous crash.
+  /// Called once at startup by [CoreManager.cleanupOnStartup].
+  static Future<void> cleanupConfigFiles() async {
+    try {
+      final dir = Directory(appDataDir());
+      if (!dir.existsSync()) return;
+      await for (final entity in dir.list()) {
+        if (entity is File &&
+            entity.path.endsWith('.yaml') &&
+            entity.path.contains('config-')) {
+          try {
+            await entity.delete();
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
   }
 
   static String _generateSecret() {

@@ -210,9 +210,10 @@ class CoreManager {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   /// Called at app startup to kill any orphaned mihomo process left by a
-  /// previous crash and remove the stale PID file.
+  /// previous crash, remove stale PID/config files, and restore proxy state.
   static Future<void> cleanupOnStartup() async {
     await _killSavedPid(expectedExePath: findExecutable());
+    await MihomoConfig.cleanupConfigFiles();
   }
 
   /// Kill the specific mihomo process we previously spawned (by saved PID).
