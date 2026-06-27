@@ -89,6 +89,52 @@ func litchiMihomoStart(
 	return C.CString("")
 }
 
+//export litchiMihomoStartVpn
+func litchiMihomoStartVpn(
+	tunFD C.int,
+	callback unsafe.Pointer,
+) *C.char {
+	coreLock.Lock()
+	defer coreLock.Unlock()
+
+	// Only tear down a previous TUN — never touch the core listeners.
+	stopVpnLocked()
+
+	bridge = callback
+	dialer.DefaultSocketHook = func(
+		network string,
+		address string,
+		connection syscall.RawConn,
+	) error {
+		return connection.Control(func(fd uintptr) {
+			C.litchi_protect_socket(bridge, C.int(fd))
+		})
+	}
+
+	stack := constant.TunMixed
+	prefix4 := netip.MustParsePrefix("172.19.0.1/30")
+	prefix6 := netip.MustParsePrefix("fdfe:dcba:9876::1/126")
+	options := LC.Tun{
+		Enable:              true,
+		Device:              "Litchi",
+		Stack:               stack,
+		DNSHijack:           []string{net.JoinHostPort("0.0.0.0", "53")},
+		AutoRoute:           false,
+		AutoDetectInterface: false,
+		Inet4Address:        []netip.Prefix{prefix4},
+		Inet6Address:        []netip.Prefix{prefix6},
+		MTU:                 1500,
+		FileDescriptor:      int(tunFD),
+	}
+	var err error
+	tun, err = mihomoTun.New(options, tunnel.Tunnel)
+	if err != nil {
+		stopVpnLocked()
+		return C.CString(fmt.Sprintf("start Android TUN: %v", err))
+	}
+	return C.CString("")
+}
+
 //export litchiMihomoStartCoreOnly
 func litchiMihomoStartCoreOnly(
 	configJSON *C.char,

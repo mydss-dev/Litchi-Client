@@ -96,6 +96,35 @@ Java_com_litchi_client_AndroidMihomoEngine_nativeStart(
 
 extern "C"
 JNIEXPORT jstring JNICALL
+Java_com_litchi_client_AndroidMihomoEngine_nativeStartVpn(
+    JNIEnv *env,
+    jobject,
+    jint fd,
+    jobject service
+) {
+    release_service(env);
+    {
+        std::lock_guard<std::mutex> guard(g_lock);
+        g_service = env->NewGlobalRef(service);
+    }
+
+    char *error = litchiMihomoStartVpn(fd, g_service);
+
+    bool ok = error == nullptr || error[0] == '\0';
+
+    jstring result = env->NewStringUTF(ok ? "" : error);
+
+    if (error != nullptr) litchiMihomoFree(error);
+
+    if (!ok) {
+        release_service(env);
+    }
+
+    return result;
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
 Java_com_litchi_client_AndroidMihomoEngine_nativeStartCoreOnly(
     JNIEnv *env,
     jobject,

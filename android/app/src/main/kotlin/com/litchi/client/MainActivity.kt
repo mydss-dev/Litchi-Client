@@ -57,7 +57,10 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(LitchiCoreService.start(this, config))
                 }
-                "stopCore" -> result.success(LitchiCoreService.stop(this))
+                "stopCore" -> {
+                    LitchiVpnService.stop(this)
+                    result.success(LitchiCoreService.stop(this))
+                }
                 "isCoreRunning" -> result.success(LitchiCoreService.isRunning)
                 // ── VPN ──────────────────────────────────────────────────
                 "startVpn" -> {

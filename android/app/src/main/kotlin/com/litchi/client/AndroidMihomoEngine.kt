@@ -25,11 +25,36 @@ object AndroidMihomoEngine {
         home: String,
     ): String
 
+    private external fun nativeStartVpn(
+        tunFd: Int,
+        service: LitchiVpnService,
+    ): String
+
     private external fun nativeStopVpn()
     private external fun nativeStop()
     private external fun nativeVersion(): String
 
     fun isAvailable(): Boolean = loaded
+
+    fun startVpn(service: LitchiVpnService, tunFd: Int): Boolean {
+        if (!loaded) {
+            lastError = lastError.ifBlank { "mihomo Android library could not be loaded" }
+            return false
+        }
+
+        val ok = runCatching {
+            val error = nativeStartVpn(tunFd, service)
+            lastError = error
+            error.isBlank()
+        }.getOrElse {
+            lastError = it.message ?: it.toString()
+            Log.e(TAG, "startVpn failed", it)
+            false
+        }
+
+        if (!ok) closeDetachedFd(tunFd)
+        return ok
+    }
 
     fun stopVpn() {
         if (loaded) runCatching { nativeStopVpn() }

@@ -73,29 +73,22 @@ class LitchiVpnService : VpnService() {
             }
 
             ACTION_START -> {
-                val config = intent.getStringExtra(EXTRA_CONFIG).orEmpty()
-                if (config.isBlank()) {
-                    AndroidCoreStatus.emit("error", "vpn", "Android core config is empty")
-                    stopCore(emitStopped = false)
-                    return START_NOT_STICKY
-                }
-                if (isRunning && currentConfig == config) {
-                    registerStopReceiver()
+                if (isRunning) {
                     startCoreForeground("Litchi connected")
                     AndroidCoreStatus.emit("running", "vpn")
                     return START_NOT_STICKY
                 }
-                currentConfig = config
                 registerStopReceiver()
                 registerNetworkCallback()
                 startCoreForeground("Litchi connecting")
                 AndroidCoreStatus.emit("starting", "vpn")
                 val fd = openTun()
-                val ok = AndroidMihomoEngine.start(config, this, fd)
+                // Attach TUN to already-running core — does NOT restart the core.
+                val ok = AndroidMihomoEngine.startVpn(this, fd)
                 if (!ok) {
                     tunFd = -1
                     AndroidCoreStatus.emit("error", "vpn", AndroidMihomoEngine.lastError())
-                    stopCore(emitStopped = false)
+                    stopVpnLayer(emitStopped = false)
                     return START_NOT_STICKY
                 }
                 isRunning = true
