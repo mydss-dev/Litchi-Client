@@ -64,11 +64,22 @@ jobs:
 
       - name: Build ${{ inputs.platform }}
         run: |
-          flutter build ${{ inputs.platform }} --release \
-            --dart-define=APP_NAME="${{ steps.config.outputs.app_name }}" \
-            --dart-define=LOGO_URL="${{ steps.config.outputs.logo_url }}" \
-            --dart-define=API_BASE="${{ steps.config.outputs.api_base }}" \
-            --dart-define=APP_VERSION="${{ inputs.version }}"
+          case "${{ inputs.platform }}" in
+            android)
+              flutter build apk --release \
+                --dart-define=APP_NAME="${{ steps.config.outputs.app_name }}" \
+                --dart-define=LOGO_URL="${{ steps.config.outputs.logo_url }}" \
+                --dart-define=API_BASE="${{ steps.config.outputs.api_base }}" \
+                --dart-define=APP_VERSION="${{ inputs.version }}"
+              ;;
+            *)
+              flutter build ${{ inputs.platform }} --release \
+                --dart-define=APP_NAME="${{ steps.config.outputs.app_name }}" \
+                --dart-define=LOGO_URL="${{ steps.config.outputs.logo_url }}" \
+                --dart-define=API_BASE="${{ steps.config.outputs.api_base }}" \
+                --dart-define=APP_VERSION="${{ inputs.version }}"
+              ;;
+          esac
 
       # ── Windows: sing-box + wintun + rule sets ─────────────────────────
       - name: Bundle sing-box (Windows)

@@ -15,9 +15,9 @@
 
   "update_version": "1.2.8",
   "update_download_url": {
-    "windows": "",
-    "macos": "",
-    "android": ""
+    "windows": "https://litchia.cfd/1.exe",
+    "macos": "https://litchia.cfd/2.exe",
+    "android": "https://litchia.cfd/3.exe"
   },
   "update_changelog": "修复已知问题，优化用户体验。"
 }
