@@ -156,20 +156,24 @@ abstract final class SubscriptionParser {
 
   /// Maps custom policy group names in server-side rules to the client's
   /// canonical PROXY group. Built-in actions (DIRECT, REJECT, etc.) pass
-  /// through unchanged.
+  /// through unchanged. Rule options such as `no-resolve` must remain untouched.
   static String _normalizeRulePolicy(String rule) {
-    final parts = rule.split(',');
-    if (parts.length < 2) return rule;
-    final policy = parts.last.trim().toUpperCase();
+    final parts = rule.split(',').map((e) => e.trim()).toList();
+    if (parts.length < 3) return rule;
+
     const builtin = {
       'DIRECT',
       'REJECT',
       'REJECT-DROP',
       'PASS',
       'GLOBAL',
+      'PROXY',
     };
-    if (builtin.contains(policy)) return rule;
-    parts[parts.length - 1] = 'PROXY';
+
+    const policyIndex = 2;
+    final policy = parts[policyIndex].toUpperCase();
+    if (!builtin.contains(policy)) parts[policyIndex] = 'PROXY';
+
     return parts.join(',');
   }
 
