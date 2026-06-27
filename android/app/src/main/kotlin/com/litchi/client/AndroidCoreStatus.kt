@@ -17,10 +17,11 @@ object AndroidCoreStatus {
         eventSink?.success(lastStatus)
     }
 
-    fun emit(status: String, error: String = "") {
+    fun emit(status: String, error: String = "", layer: String = "") {
         val payload = mapOf(
             "status" to status,
-            "error" to error
+            "error" to error,
+            "layer" to layer
         )
         lastStatus = payload
         mainHandler.post {

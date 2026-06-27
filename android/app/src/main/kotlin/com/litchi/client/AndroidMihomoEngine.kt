@@ -25,10 +25,15 @@ object AndroidMihomoEngine {
         home: String,
     ): String
 
+    private external fun nativeStopVpn()
     private external fun nativeStop()
     private external fun nativeVersion(): String
 
     fun isAvailable(): Boolean = loaded
+
+    fun stopVpn() {
+        if (loaded) runCatching { nativeStopVpn() }
+    }
 
     fun startCoreOnly(config: String, home: String): Boolean {
         if (!loaded) {

@@ -131,18 +131,34 @@ class AndroidCoreManager {
   }
 
   void _applyStatus(AndroidCoreStatusEvent event) {
+    final layer = event.layer;
     switch (event.status) {
       case AndroidCoreNativeStatus.starting:
         _lastError = '';
       case AndroidCoreNativeStatus.running:
-        _isRunning = true;
+        if (layer == 'core') {
+          _isCoreRunning = true;
+        } else {
+          // 'vpn' or legacy (no layer): treat as VPN-level connected.
+          _isVpnRunning = true;
+          _isCoreRunning = true; // VPN implies core is also running.
+        }
+        _isRunning = _isCoreRunning || _isVpnRunning;
         _lastError = '';
       case AndroidCoreNativeStatus.stopping:
-        _lastError = '';
       case AndroidCoreNativeStatus.stopped:
-        _isRunning = false;
+        if (layer == 'core') {
+          _isCoreRunning = false;
+        } else if (layer == 'vpn') {
+          _isVpnRunning = false;
+        } else {
+          // Legacy: stop everything.
+          _isCoreRunning = false;
+          _isVpnRunning = false;
+        }
+        _isRunning = _isCoreRunning || _isVpnRunning;
+        _lastError = '';
       case AndroidCoreNativeStatus.error:
-        _isRunning = false;
         _lastError = event.error;
     }
   }
@@ -169,10 +185,18 @@ class AndroidCoreManager {
 enum AndroidCoreNativeStatus { starting, running, stopping, stopped, error }
 
 class AndroidCoreStatusEvent {
-  const AndroidCoreStatusEvent({required this.status, this.error = ''});
+  const AndroidCoreStatusEvent({
+    required this.status,
+    this.error = '',
+    this.layer = '',
+  });
 
   final AndroidCoreNativeStatus status;
   final String error;
+
+  /// "core" or "vpn" — which layer emitted this event.
+  /// Empty string means legacy (no layer field); treated as VPN.
+  final String layer;
 
   static AndroidCoreStatusEvent fromEvent(Object? event) {
     final data = event is Map ? event : const <Object?, Object?>{};
@@ -187,6 +211,7 @@ class AndroidCoreStatusEvent {
     return AndroidCoreStatusEvent(
       status: status,
       error: data['error']?.toString() ?? '',
+      layer: data['layer']?.toString() ?? '',
     );
   }
 }

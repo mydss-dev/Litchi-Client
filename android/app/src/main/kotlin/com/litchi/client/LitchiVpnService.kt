@@ -66,7 +66,7 @@ class LitchiVpnService : VpnService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                AndroidCoreStatus.emit("stopping")
+                AndroidCoreStatus.emit(layer = "vpn", status = "stopping")
                 stopCore()
                 return START_NOT_STICKY
             }
@@ -74,32 +74,32 @@ class LitchiVpnService : VpnService() {
             ACTION_START -> {
                 val config = intent.getStringExtra(EXTRA_CONFIG).orEmpty()
                 if (config.isBlank()) {
-                    AndroidCoreStatus.emit("error", "Android core config is empty")
+                    AndroidCoreStatus.emit(layer = "vpn", status = "error", "Android core config is empty")
                     stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
                 if (isRunning && currentConfig == config) {
                     registerStopReceiver()
                     startCoreForeground("Litchi connected")
-                    AndroidCoreStatus.emit("running")
+                    AndroidCoreStatus.emit(layer = "vpn", status = "running")
                     return START_NOT_STICKY
                 }
                 currentConfig = config
                 registerStopReceiver()
                 registerNetworkCallback()
                 startCoreForeground("Litchi connecting")
-                AndroidCoreStatus.emit("starting")
+                AndroidCoreStatus.emit(layer = "vpn", status = "starting")
                 val fd = openTun()
                 val ok = AndroidMihomoEngine.start(config, this, fd)
                 if (!ok) {
                     tunFd = -1
-                    AndroidCoreStatus.emit("error", AndroidMihomoEngine.lastError())
+                    AndroidCoreStatus.emit(layer = "vpn", status = "error", AndroidMihomoEngine.lastError())
                     stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
                 isRunning = true
                 startCoreForeground("Litchi connected")
-                AndroidCoreStatus.emit("running")
+                AndroidCoreStatus.emit(layer = "vpn", status = "running")
                 return START_NOT_STICKY
             }
         }
@@ -120,12 +120,12 @@ class LitchiVpnService : VpnService() {
     private fun stopCore(emitStopped: Boolean = true) {
         unregisterNetworkCallback()
         unregisterStopReceiver()
-        AndroidMihomoEngine.stop()
+        AndroidMihomoEngine.stopVpn()
         tunFd = -1
         runCatching { setUnderlyingNetworks(null) }
         currentConfig = ""
         isRunning = false
-        if (emitStopped) AndroidCoreStatus.emit("stopped")
+        if (emitStopped) AndroidCoreStatus.emit(layer = "vpn", status = "stopped")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             stopForeground(STOP_FOREGROUND_REMOVE)
         } else {

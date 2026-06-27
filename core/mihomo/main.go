@@ -116,11 +116,30 @@ func litchiMihomoStartCoreOnly(
 	return C.CString("")
 }
 
+//export litchiMihomoStopVpn
+func litchiMihomoStopVpn() {
+	coreLock.Lock()
+	defer coreLock.Unlock()
+	stopVpnLocked()
+}
+
 //export litchiMihomoStop
 func litchiMihomoStop() {
 	coreLock.Lock()
 	defer coreLock.Unlock()
 	stopLocked()
+}
+
+// stopVpnLocked tears down the TUN listener and socket protection but
+// keeps the mixed/http/socks listeners alive so the external-controller
+// (URLTest, proxy switching, etc.) continues to work.
+func stopVpnLocked() {
+	dialer.DefaultSocketHook = nil
+	if tun != nil {
+		_ = tun.Close()
+		tun = nil
+	}
+	bridge = nil
 }
 
 func stopLocked() {

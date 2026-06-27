@@ -75,9 +75,12 @@ class CoreController extends ChangeNotifier {
         _onAndroidCoreStatusChanged,
       );
       await _androidCore.init();
-      if (_androidCore.isRunning) {
+      if (_androidCore.isVpnRunning) {
         _status = ConnectionStatus.connected;
         _connectedAt = DateTime.now();
+      } else {
+        _status = ConnectionStatus.disconnected;
+        _connectedAt = null;
       }
       return;
     }
@@ -148,7 +151,12 @@ class CoreController extends ChangeNotifier {
       final configJson = MihomoConfig.encodeConfig(config);
       final ok = await _androidCore.startCoreOnly(configJson);
       if (ok) {
-        await _waitForController();
+        final ready = await _waitForController();
+        if (!ready) {
+          _coreError = 'Android 核心启动成功但控制接口无响应';
+          notifyListeners();
+          return;
+        }
         await _applyInitialSelection(req);
         _connectedAt = null; // core-only is not "connected"
         notifyListeners();
@@ -401,7 +409,13 @@ class CoreController extends ChangeNotifier {
           notifyListeners();
           return _coreError;
         }
-        await _waitForController();
+        final ready = await _waitForController();
+        if (!ready) {
+          _coreError = 'Android 核心启动成功但控制接口无响应';
+          _status = ConnectionStatus.error;
+          notifyListeners();
+          return _coreError;
+        }
         await _applyInitialSelection(req);
       }
 
@@ -626,30 +640,39 @@ class CoreController extends ChangeNotifier {
   }
 
   void _onAndroidCoreStatusChanged(AndroidCoreStatusEvent event) {
+    final isVpn = event.layer == 'vpn' || event.layer.isEmpty;
     switch (event.status) {
       case AndroidCoreNativeStatus.starting:
         _coreError = '';
-        _status = ConnectionStatus.connecting;
+        if (isVpn) _status = ConnectionStatus.connecting;
       case AndroidCoreNativeStatus.running:
         _coreError = '';
-        _connectedAt ??= DateTime.now();
-        _status = ConnectionStatus.connected;
-        _startTrafficMonitor();
+        if (isVpn) {
+          _connectedAt ??= DateTime.now();
+          _status = ConnectionStatus.connected;
+          _startTrafficMonitor();
+        }
+        // core-only running: core is ready for latency tests, etc.
+        // Do NOT set connected status.
       case AndroidCoreNativeStatus.stopping:
-        _status = ConnectionStatus.disconnecting;
+        if (isVpn) _status = ConnectionStatus.disconnecting;
       case AndroidCoreNativeStatus.stopped:
-        _stopTrafficMonitor();
-        _connectedAt = null;
-        if (_status != ConnectionStatus.error) {
-          _status = ConnectionStatus.disconnected;
+        if (isVpn) {
+          _stopTrafficMonitor();
+          _connectedAt = null;
+          if (_status != ConnectionStatus.error) {
+            _status = ConnectionStatus.disconnected;
+          }
         }
       case AndroidCoreNativeStatus.error:
-        _stopTrafficMonitor();
-        _connectedAt = null;
+        if (isVpn) {
+          _stopTrafficMonitor();
+          _connectedAt = null;
+        }
         _coreError = event.error.isNotEmpty
             ? event.error
             : CoreErrorMessageService.androidStartFailed;
-        _status = ConnectionStatus.error;
+        if (isVpn) _status = ConnectionStatus.error;
     }
     notifyListeners();
   }

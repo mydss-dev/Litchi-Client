@@ -123,6 +123,13 @@ Java_com_litchi_client_AndroidMihomoEngine_nativeStartCoreOnly(
 
 extern "C"
 JNIEXPORT void JNICALL
+Java_com_litchi_client_AndroidMihomoEngine_nativeStopVpn(JNIEnv *env, jobject) {
+    litchiMihomoStopVpn();
+    release_service(env);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
 Java_com_litchi_client_AndroidMihomoEngine_nativeStop(JNIEnv *env, jobject) {
     litchiMihomoStop();
     release_service(env);
