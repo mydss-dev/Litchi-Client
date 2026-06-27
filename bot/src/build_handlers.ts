@@ -57,11 +57,11 @@ export function wireBuildCommands(bot: Telegraf): void {
       setPendingAction(userId, { type: 'build' });
       await ctx.reply(
         [
-          '请选择打包平台并直接回复:',
-          'all',
-          'windows',
-          'android',
-          'macos',
+          '请回复数字选择打包平台:',
+          '1 — 全部 (Windows + Android + macOS)',
+          '2 — Windows',
+          '3 — Android',
+          '4 — macOS',
           '退出请输入 /cancel',
         ].join('\n'),
       );
@@ -235,7 +235,7 @@ async function startBuildFromInput(
   const platforms = parsePlatforms(platformRaw);
   if (!platforms.length) {
     setPendingAction(userId, { type: 'build' });
-    await ctx.reply('平台输入不对，请回复 all / windows / android / macos。');
+    await ctx.reply('平台输入不对，请回复 1-4 (1=全部, 2=Windows, 3=Android, 4=macOS)。');
     return;
   }
 
@@ -506,12 +506,19 @@ function splitArgs(text = ''): string[] {
 }
 
 function parsePlatforms(raw?: string): BuildPlatform[] {
-  if (!raw || raw === 'all') return allPlatforms;
-  const platform = parseSinglePlatform(raw);
+  if (!raw) return [];
+  const trimmed = raw.trim();
+  // Numeric shortcuts: 1=all, 2=windows, 3=android, 4=macos
+  if (trimmed === '1' || trimmed.toLowerCase() === 'all') return allPlatforms;
+  const platform = parseSinglePlatform(trimmed);
   return platform ? [platform] : [];
 }
 
 function parseSinglePlatform(raw?: string): BuildPlatform | undefined {
-  if (raw === 'windows' || raw === 'android' || raw === 'macos') return raw;
+  if (!raw) return undefined;
+  const trimmed = raw.trim().toLowerCase();
+  if (trimmed === '2' || trimmed === 'windows') return 'windows';
+  if (trimmed === '3' || trimmed === 'android') return 'android';
+  if (trimmed === '4' || trimmed === 'macos') return 'macos';
   return undefined;
 }
