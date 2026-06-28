@@ -16,7 +16,6 @@ import '../features/invite/invite_page.dart';
 import '../features/mobile/mobile_home_page.dart';
 import '../features/mobile/mobile_invite_page.dart';
 import '../features/mobile/mobile_nodes_page.dart';
-import '../features/mobile/mobile_orders_page.dart';
 import '../features/mobile/mobile_profile_page.dart';
 import '../features/mobile/mobile_settings_page.dart';
 import '../features/mobile/mobile_shop_page.dart';
@@ -72,7 +71,7 @@ Widget _pageFor(AppPage page, {required bool compact}) {
     case AppPage.wallet:
       return compact ? const MobileWalletPage() : const WalletPage();
     case AppPage.orders:
-      return compact ? const MobileOrdersPage() : const OrdersPage();
+      return const OrdersPage();
     case AppPage.tickets:
       return compact ? const MobileTicketsPage() : const TicketsPage();
   }
