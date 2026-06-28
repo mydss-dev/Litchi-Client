@@ -24,8 +24,6 @@ import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
 import '../shared/theme/app_text_styles.dart';
-import '../shared/widgets/notice_banner.dart';
-import '../shared/widgets/update_banner.dart';
 import 'app_controller.dart';
 import 'app_window_bar.dart';
 
@@ -413,19 +411,9 @@ class _CompactBody extends StatelessWidget {
 
     final content = Column(
       children: [
-        if (ctrl.updateInfo != null)
-          UpdateBanner(
-            info: ctrl.updateInfo!,
-            onDismiss: ctrl.dismissUpdate,
-          ),
-        if (ctrl.hasUnreadNotice)
-          NoticeBanner(
-            notice: ctrl.notices.first,
-            onDismiss: ctrl.markNoticeRead,
-          ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
             child: _pageFor(ctrl.page),
           ),
         ),
@@ -517,7 +505,7 @@ class _MobileBottomNav extends StatelessWidget {
     final ctrl = AppScope.of(context);
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(18, 2, 18, bottomPadding + 8),
+      padding: EdgeInsets.fromLTRB(18, 4, 18, bottomPadding + 10),
       child: Container(
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
@@ -570,7 +558,7 @@ class _MobileNavButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Ink(
-            height: 44,
+            height: 46,
             decoration: BoxDecoration(
               color: selected ? c.primarySoft : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadius.md),

@@ -13,11 +13,14 @@ import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/utils/formatters.dart';
+import '../../config/app_config.dart';
 import '../../shared/widgets/app_toast.dart';
+import '../../shared/widgets/brand_logo.dart';
 import '../../shared/widgets/mode_strip.dart';
+import '../../shared/widgets/notice_banner.dart';
+import '../../shared/widgets/update_banner.dart';
 import '../../shared/widgets/page_header.dart';
 import '../mobile/mobile_node_picker_sheet.dart';
-import '../mobile/mobile_page_header.dart';
 import 'widgets/connection_hero_card.dart';
 import 'widgets/connection_stats_row.dart';
 import 'widgets/error_banner.dart';
@@ -176,6 +179,20 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           _MobileHeader(connected: ctrl.coreRunning),
           const SizedBox(height: 12),
+          if (ctrl.updateInfo != null) ...[
+            UpdateBanner(
+              info: ctrl.updateInfo!,
+              onDismiss: ctrl.dismissUpdate,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (ctrl.hasUnreadNotice) ...[
+            NoticeBanner(
+              notice: ctrl.notices.first,
+              onDismiss: ctrl.markNoticeRead,
+            ),
+            const SizedBox(height: 12),
+          ],
           if (ctrl.dataLoadError != null) ...[
             _InlineNotice(
               icon: LucideIcons.circleAlert,
@@ -283,32 +300,53 @@ class _MobileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
 
-    return Row(
-      children: [
-        Expanded(
-          child: MobilePageHeader(
-            title: '首页',
-            subtitle: '网络状态与节点连接',
-            trailing: Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: connected
-                    ? c.success.withValues(alpha: 0.12)
-                    : c.surfaceMuted,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: c.softBorder),
-              ),
-              child: Icon(
-                connected ? LucideIcons.shieldCheck : LucideIcons.shield,
-                color: connected ? c.success : c.iconMuted,
-                size: 19,
-              ),
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          const BrandLogo(size: 28, radius: 8),
+          const SizedBox(width: 8),
+          Text(
+            AppConfig.appName,
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: c.primary,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
             ),
           ),
+          const Spacer(),
+          _HeaderStatusIcon(
+            icon: connected ? LucideIcons.shieldCheck : LucideIcons.shield,
+            active: connected,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 纯展示的状态图标（无 InkWell / 无涟漪）。
+class _HeaderStatusIcon extends StatelessWidget {
+  const _HeaderStatusIcon({required this.icon, required this.active});
+
+  final IconData icon;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Container(
+      width: 38,
+      height: 38,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: active ? c.success.withValues(alpha: 0.12) : c.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: active ? c.success.withValues(alpha: 0.18) : c.border,
         ),
-      ],
+      ),
+      child: Icon(icon, size: 19, color: active ? c.success : c.iconDefault),
     );
   }
 }
@@ -359,9 +397,16 @@ class _MobileConnectionCard extends StatelessWidget {
             ConnectionStatus.disconnected => '开始连接',
           };
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            c.cardBg,
+            c.primarySoft,
+          ],
+        ),
         borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(color: c.softBorder),
         boxShadow: AppShadows.card(c),
@@ -786,8 +831,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
           ? null
           : () => setState(() => _pressed = false),
       child: SizedBox(
-        width: 152,
-        height: 152,
+        width: 148,
+        height: 148,
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -797,8 +842,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                 builder: (context, _) {
                   final t = Curves.easeOut.transform(_pulseController.value);
                   return Container(
-                    width: 126 + 26 * t,
-                    height: 126 + 26 * t,
+                    width: 124 + 24 * t,
+                    height: 124 + 24 * t,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: pulseColor.withValues(alpha: 0.18 * (1 - t)),
@@ -816,8 +861,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 320),
                 curve: Curves.easeOutCubic,
-                width: 132,
-                height: 132,
+                width: 124,
+                height: 124,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: _connected ? c.brandGradient : null,
@@ -828,7 +873,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                   border: Border.all(
                     color: _connected
                         ? Colors.white.withValues(alpha: 0.3)
-                        : c.softBorder,
+                        : c.border,
                   ),
                 ),
                 child: Center(
@@ -857,7 +902,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                         : Icon(
                             LucideIcons.power,
                             key: ValueKey(widget.status),
-                            size: 46,
+                            size: 42,
                             color: _connected ? Colors.white : c.primary,
                           ),
                   ),
