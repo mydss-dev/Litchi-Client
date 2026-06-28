@@ -45,7 +45,7 @@ abstract final class MihomoConfig {
     ProxyMode proxyMode = ProxyMode.rule,
     String dnsMode = '系统 DNS',
     NetworkMode networkMode = NetworkMode.system,
-    bool allowInsecure = true,
+    bool allowInsecure = false,
     List<String> rules = const [],
     Map<String, dynamic> ruleProviders = const {},
   }) {

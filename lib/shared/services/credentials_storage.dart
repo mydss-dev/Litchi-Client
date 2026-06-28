@@ -211,16 +211,19 @@ abstract final class CredentialsStorage {
   /// that callers persist as-is; [unprotectString] resolves it back to the
   /// plaintext from the platform store. Windows returns a DPAPI blob.
   /// Callers must handle `null` (Linux) gracefully.
-  static Future<String?> protectString(String plaintext) async {
+  static Future<String?> protectString(
+    String plaintext, {
+    String slot = 'secure_nodes_cache',
+  }) async {
     if (Platform.isWindows) {
       return _protectDpapi(plaintext);
     }
     if (_useSecureStorage) {
-      await _secureStorage.write(
-        key: 'secure_nodes_cache',
-        value: plaintext,
-      );
-      return '$_secureStorageRef:secure_nodes_cache';
+      // [slot] keys the secure-storage entry so multiple callers do not
+      // overwrite each other. The default preserves the original key for
+      // backward compatibility with already-stored values.
+      await _secureStorage.write(key: slot, value: plaintext);
+      return '$_secureStorageRef:$slot';
     }
     // Linux — no secure backend.
     return null;

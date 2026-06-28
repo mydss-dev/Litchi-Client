@@ -39,6 +39,11 @@ abstract final class RemoteConfigService {
   static const _cacheKey = 'remote_config_v1';
   static const _timeout = Duration(seconds: 5);
 
+  /// Maximum time the *first* launch will block on the remote config fetch
+  /// before continuing with the compiled default. The fetch still runs to
+  /// completion in the background and updates the cache for the next launch.
+  static const _firstLaunchBudget = Duration(milliseconds: 1500);
+
   static bool get _requiresSignature =>
       publicKeyBase64Url.isNotEmpty &&
       !publicKeyBase64Url.startsWith('REPLACE_WITH_');
@@ -65,11 +70,17 @@ abstract final class RemoteConfigService {
       // Have a trusted config already — refresh in the background.
       unawaited(_refresh(prefs));
     } else {
-      // First launch / no trusted cache: AWAIT the first fetch (bounded by
-      // _timeout) so the real API base is set before the app configures its
-      // HTTP client. Otherwise it falls back to the compiled default domain,
-      // which may be blocked — leaving login stuck until a restart.
-      await _refresh(prefs);
+      // First launch / no trusted cache: briefly wait for the first fetch so
+      // the real API base is set before the app configures its HTTP client,
+      // but bound that wait so a slow or blocked OSS endpoint cannot stall the
+      // first frame. If it overruns, the fetch keeps running in the background
+      // and the compiled default is used for this session; the next launch
+      // picks up the cached config.
+      final refresh = _refresh(prefs);
+      await refresh.timeout(
+        _firstLaunchBudget,
+        onTimeout: () => unawaited(refresh),
+      );
     }
   }
 

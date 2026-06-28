@@ -1,4 +1,4 @@
-import vm from 'node:vm';
+import JSON5 from 'json5';
 
 const reservedKeys = new Set([
   'app_id',
@@ -125,7 +125,7 @@ function stripJsonComments(raw: string): string {
   return result;
 }
 
-function parseLooseConfig(raw: string): unknown {
+export function parseLooseConfig(raw: string): unknown {
   const cleaned = stripJsonComments(stripCodeFence(raw)).trim();
   if (!cleaned) {
     throw new Error('配置内容为空，请发送 JSON 或 config.js 中的 payload 内容。');
@@ -140,8 +140,12 @@ function parseLooseConfig(raw: string): unknown {
   const objectLiteral = extractObjectLiteral(cleaned);
 
   try {
-    const script = new vm.Script(`(${objectLiteral})`);
-    const value = script.runInNewContext(Object.create(null), { timeout: 1000 });
+    // Parse the object literal WITHOUT executing it. JSON5 accepts the
+    // config.js conveniences (unquoted keys, single quotes, trailing commas,
+    // comments) but never evaluates expressions, function calls or template
+    // strings — so a malicious payload pasted into the bot cannot run code on
+    // the host that holds the Ed25519 signing key.
+    const value = JSON5.parse(objectLiteral) as unknown;
     return JSON.parse(JSON.stringify(value)) as unknown;
   } catch (error) {
     throw new Error(

@@ -5,6 +5,7 @@ abstract final class CoreErrorMessageService {
   static const missingCore = '连接失败，请检查 mihomo 核心是否存在';
   static const permissionDenied = '权限不足，请以管理员身份运行客户端';
   static const androidStartFailed = 'Android 核心启动失败';
+  static const unexpectedCoreExit = '核心异常退出，连接已断开，请重新连接';
 
   static String windowsStartException(Object error) {
     final raw = '$error';

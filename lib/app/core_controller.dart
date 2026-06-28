@@ -464,6 +464,12 @@ class CoreController extends ChangeNotifier {
       return;
     }
     _stopTrafficMonitor();
+    // Mark this as an intentional stop before the core exits, so the stopped
+    // event is not misread as an unexpected core death by _onCoreStateChanged.
+    if (_status == ConnectionStatus.connected ||
+        _status == ConnectionStatus.connecting) {
+      _status = ConnectionStatus.disconnecting;
+    }
     if (_core.isRunning) await _core.stop();
     await ProxySetter.disable();
     _connectedAt = null;
@@ -687,15 +693,22 @@ class CoreController extends ChangeNotifier {
     if ((state == CoreState.error || state == CoreState.stopped) &&
         (_status == ConnectionStatus.connected ||
             _status == ConnectionStatus.connecting)) {
+      // A clean, user-initiated disconnect always moves the status to
+      // disconnecting *before* stopping the core, so reaching here while the
+      // status is still connected/connecting means the core died
+      // unexpectedly. Surface it as an error instead of a silent
+      // "disconnected": in TUN mode the tunnel interface is now gone and
+      // traffic would otherwise fall back to the physical link with the user
+      // believing they were still protected.
       final wasConnected = _status == ConnectionStatus.connected;
       _stopTrafficMonitor();
       _connectedAt = null;
       if (state == CoreState.error && _core.lastError.isNotEmpty) {
         _coreError = _core.lastError;
+      } else if (_coreError.isEmpty) {
+        _coreError = CoreErrorMessageService.unexpectedCoreExit;
       }
-      _status = state == CoreState.error
-          ? ConnectionStatus.error
-          : ConnectionStatus.disconnected;
+      _status = ConnectionStatus.error;
       if (killSwitchEnabled && wasConnected) {
         unawaited(ProxySetter.engageKillSwitch());
       } else {

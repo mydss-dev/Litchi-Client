@@ -141,7 +141,11 @@ abstract final class SubscriptionParser {
           final key = entry.key.toString();
           final value = entry.value;
           if (value is YamlMap) {
-            ruleProviders[key] = _plainYamlValue(value);
+            final plain = _plainYamlValue(value);
+            if (plain is Map) {
+              final safe = _sanitizeRuleProvider(plain, key);
+              if (safe != null) ruleProviders[key] = safe;
+            }
           }
         }
       }
@@ -319,6 +323,65 @@ abstract final class SubscriptionParser {
       rate: 1.0,
       rawUri: uri,
     );
+  }
+
+  // ── Rule-provider sanitization ────────────────────────────────────────────
+
+  /// Sanitises one subscription-supplied `rule-providers` entry.
+  ///
+  /// A subscription is only semi-trusted (a compromised panel or a MITM'd
+  /// fetch can inject entries), so the core must never be told to:
+  ///   * fetch a rule list over plaintext http, or
+  ///   * write a provider file outside its own data directory via a traversal
+  ///     or absolute `path`.
+  ///
+  /// A non-https provider URL is dropped (it cannot be made safe). A dangerous
+  /// `path` is *confined* to a safe default under `providers/` instead of being
+  /// dropped, so a benign config that merely uses an unusual path still works
+  /// and rules referencing the provider do not break core startup.
+  static Map<String, dynamic>? _sanitizeRuleProvider(Map provider, String key) {
+    final out = <String, dynamic>{
+      for (final entry in provider.entries) entry.key.toString(): entry.value,
+    };
+
+    final type = '${out['type'] ?? ''}'.toLowerCase();
+    if (type == 'http' || out.containsKey('url')) {
+      final url = '${out['url'] ?? ''}'.trim();
+      final uri = Uri.tryParse(url);
+      if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+        return null;
+      }
+      out['url'] = url;
+    }
+
+    if (out['path'] != null) {
+      out['path'] = _confineProviderPath('${out['path']}', key);
+    }
+
+    return out;
+  }
+
+  /// Returns a confined relative provider path under `providers/`. Absolute
+  /// paths or `..` traversal are replaced with a safe default rather than
+  /// dropped.
+  static String _confineProviderPath(String raw, String fallbackName) {
+    var p = raw.trim().replaceAll('\\', '/');
+    final isAbsolute = p.startsWith('/') || RegExp(r'^[a-zA-Z]:').hasMatch(p);
+    if (p.startsWith('./')) p = p.substring(2);
+    final segments = p.split('/').where((s) => s.isNotEmpty).toList();
+    final hasTraversal = segments.contains('..');
+    final safeFallback =
+        'providers/${_safeFileStem(fallbackName)}.yaml';
+    if (p.isEmpty || isAbsolute || hasTraversal || segments.isEmpty) {
+      return safeFallback;
+    }
+    if (segments.first == 'providers') return segments.join('/');
+    return 'providers/${segments.join('/')}';
+  }
+
+  static String _safeFileStem(String name) {
+    final cleaned = name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_').trim();
+    return cleaned.isEmpty ? 'provider' : cleaned;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

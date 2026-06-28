@@ -9,6 +9,7 @@ void main() {
     expect(CoreErrorMessageService.missingCore, contains('mihomo'));
     expect(CoreErrorMessageService.permissionDenied, contains('管理员'));
     expect(CoreErrorMessageService.androidStartFailed, contains('Android'));
+    expect(CoreErrorMessageService.unexpectedCoreExit, contains('异常退出'));
   });
 
   test('maps Windows permission failures to admin hint', () {
