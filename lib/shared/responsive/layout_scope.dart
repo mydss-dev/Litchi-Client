@@ -2,10 +2,6 @@ import 'package:flutter/widgets.dart';
 
 import 'breakpoints.dart';
 
-/// Sidebar width constant shared with `AppSidebar` so the content-area
-/// calculation and the widget never drift apart.
-const double kSidebarWidth = 176;
-
 /// Global layout-mode source of truth.  Injected by the shell inside a
 /// [LayoutBuilder] using the **content-area** width — not the whole window —
 /// so every page sees the same compact / wide decision at any given window

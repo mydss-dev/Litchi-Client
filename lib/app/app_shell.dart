@@ -19,13 +19,11 @@ import '../features/tickets/tickets_page.dart';
 import '../features/traffic/traffic_page.dart';
 import 'nav_destinations.dart';
 import '../shared/models/app_models.dart';
-import '../shared/responsive/breakpoints.dart';
 import '../shared/responsive/layout_scope.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
 import '../shared/theme/app_text_styles.dart';
-import '../shared/widgets/app_sidebar.dart';
 import '../shared/widgets/notice_banner.dart';
 import '../shared/widgets/update_banner.dart';
 import 'app_controller.dart';
@@ -75,7 +73,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   // so the window and the new content land together (no measure-then-resize
   // stutter, no wasted whitespace).
   static const double _authWindowWidth = 400;
-  static const Size _appWindowSize = Size(900, 700);
+  static const Size _appWindowSize = Size(420, 760);
   bool _maximized = false;
   bool _trayActive = false;
   bool? _compactWindow;
@@ -386,96 +384,22 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   }
 }
 
-/// Logged-in layout: responsive. A full-height sidebar + main column on wide
-/// screens; a bottom-nav layout on narrow screens. The choice is by available
-/// width, not platform, so a narrow desktop window also gets the compact UI.
+/// Single fixed-size layout — bottom nav only.  No sidebar, no responsive
+/// switching.  The app always renders the compact body regardless of width.
 class _MainShell extends StatelessWidget {
   const _MainShell();
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final full = constraints.maxWidth;
-        final compact = Breakpoints.isCompactWidth(full);
-        final contentWidth = compact ? full : (full - kSidebarWidth);
-        return LayoutScope(
-          isCompact: compact,
-          contentWidth: contentWidth,
-          child: compact ? const _CompactBody() : const _WideBody(),
-        );
-      },
+    return const LayoutScope(
+      isCompact: true,
+      contentWidth: 420,
+      child: _CompactBody(),
     );
   }
 }
 
-/// Wide (sidebar) layout — used on desktop windows and wide tablets.
-class _WideBody extends StatelessWidget {
-  const _WideBody();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final controller = AppScope.of(context);
-
-    final body = Row(
-      children: [
-        const AppSidebar(),
-        Expanded(
-          child: Column(
-            children: [
-              if (_usesCustomChrome) const WindowControlsBar(),
-              Expanded(
-                child: Container(
-                  color: c.appBg,
-                  padding: EdgeInsets.fromLTRB(
-                    _isDesktop ? 28 : 24,
-                    _isDesktop ? 14 : 24,
-                    _isDesktop ? 28 : 24,
-                    24,
-                  ),
-                  child: _DesktopPageFrame(
-                    page: controller.page,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (controller.updateInfo != null)
-                          UpdateBanner(
-                            info: controller.updateInfo!,
-                            onDismiss: controller.dismissUpdate,
-                          ),
-                        if (controller.hasUnreadNotice)
-                          NoticeBanner(
-                            notice: controller.notices.first,
-                            onDismiss: controller.markNoticeRead,
-                          ),
-                        Expanded(
-                          child: _pageFor(controller.page),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-
-    if (!Platform.isMacOS) return body;
-    // Reserve a full-width top strip on macOS so the native traffic lights and
-    // window dragging have room above the sidebar and content.
-    return Column(
-      children: [
-        const _MacTitleBarSpacer(),
-        Expanded(child: body),
-      ],
-    );
-  }
-}
-
-/// Compact (bottom-nav) layout — used on phones and narrow desktop windows.
+/// Compact (bottom-nav) layout.
 /// On desktop it keeps the window chrome (custom controls / macOS drag strip)
 /// so the window is still movable and closable.
 class _CompactBody extends StatelessWidget {
@@ -489,6 +413,16 @@ class _CompactBody extends StatelessWidget {
 
     final content = Column(
       children: [
+        if (ctrl.updateInfo != null)
+          UpdateBanner(
+            info: ctrl.updateInfo!,
+            onDismiss: ctrl.dismissUpdate,
+          ),
+        if (ctrl.hasUnreadNotice)
+          NoticeBanner(
+            notice: ctrl.notices.first,
+            onDismiss: ctrl.markNoticeRead,
+          ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -515,40 +449,6 @@ class _CompactBody extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _DesktopPageFrame extends StatelessWidget {
-  const _DesktopPageFrame({required this.page, required this.child});
-
-  final AppPage page;
-  final Widget child;
-
-  double get _maxWidth {
-    return switch (page) {
-      AppPage.dashboard => 1080,
-      AppPage.nodes => 1080,
-      AppPage.traffic => 1080,
-      AppPage.shop => 1080,
-      AppPage.invite => 980,
-      AppPage.settings => 980,
-      AppPage.account => 960,
-      AppPage.wallet => 960,
-      AppPage.orders => 980,
-      AppPage.tickets => 980,
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_isDesktop) return child;
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: _maxWidth),
-        child: child,
       ),
     );
   }

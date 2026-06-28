@@ -299,7 +299,7 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
     final total = data.fold<double>(0, (sum, p) => sum + p.value);
     final days = _daysForPeriod();
     final slotWidth = days <= 7 ? 54.0 : 36.0;
-    final barWidth = days <= 7 ? 18.0 : 12.0;
+    final barWidth = days <= 7 ? 18.0 : 16.0;
     _scrollToLatestAfterLayout(data);
 
     return AppCard(

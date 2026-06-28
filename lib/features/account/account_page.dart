@@ -11,7 +11,6 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/services/secure_logger.dart';
 import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_card.dart';
@@ -42,7 +41,6 @@ class _AccountPageState extends State<AccountPage> {
   bool _loading = true;
   String? _error;
   RemoteUser? _user;
-  List<RemoteLoginLog> _loginLogs = [];
   bool _initialized = false;
 
   // Compact-branch state.
@@ -65,16 +63,9 @@ class _AccountPageState extends State<AccountPage> {
     try {
       final api = AppScope.of(context).api;
       final user = await api.getUserInfo();
-      List<RemoteLoginLog> logs = [];
-      try {
-        logs = await api.getLoginLogs();
-      } catch (e) {
-        SecureLogger.debug('get login logs failed', e);
-      }
       if (!mounted) return;
       setState(() {
         _user = user;
-        _loginLogs = logs;
         _loading = false;
       });
     } catch (e) {
@@ -189,7 +180,6 @@ class _AccountPageState extends State<AccountPage> {
           else
             _AccountContent(
               user: _user!,
-              loginLogs: _loginLogs,
               onCopy: _copy,
               onNavigate: AppScope.of(context).goToPage,
             ),
@@ -236,13 +226,11 @@ class _AccountPageState extends State<AccountPage> {
 class _AccountContent extends StatelessWidget {
   const _AccountContent({
     required this.user,
-    required this.loginLogs,
     required this.onCopy,
     required this.onNavigate,
   });
 
   final RemoteUser user;
-  final List<RemoteLoginLog> loginLogs;
   final void Function(String text, String label) onCopy;
   final ValueChanged<AppPage> onNavigate;
 
@@ -267,8 +255,6 @@ class _AccountContent extends StatelessWidget {
         _AccountInfoCard(user: user, onCopy: onCopy),
         const SizedBox(height: 14),
         _AccountShortcutGrid(onNavigate: onNavigate),
-        const SizedBox(height: 14),
-        _LoginRecordsCard(logs: loginLogs),
       ],
     );
   }
@@ -550,81 +536,6 @@ class _CopyButton extends StatelessWidget {
   }
 }
 
-class _LoginRecordsCard extends StatelessWidget {
-  const _LoginRecordsCard({required this.logs});
-
-  final List<RemoteLoginLog> logs;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(LucideIcons.shieldCheck, size: 15, color: c.primary),
-              const SizedBox(width: 8),
-              Text(
-                '登录记录',
-                style: AppTextStyles.cardTitle.copyWith(color: c.textSecondary),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (logs.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                '暂无登录记录',
-                style: AppTextStyles.body.copyWith(color: c.textMuted),
-              ),
-            )
-          else
-            for (int i = 0; i < logs.length; i++) ...[
-              _recordRow(c, logs[i]),
-              if (i != logs.length - 1)
-                Divider(color: c.softBorder, height: 16),
-            ],
-        ],
-      ),
-    );
-  }
-
-  Widget _recordRow(AppColors c, RemoteLoginLog log) {
-    return Row(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Text(
-                log.ip.isEmpty ? '未知 IP' : log.ip,
-                style: AppTextStyles.body.copyWith(color: c.textPrimary),
-              ),
-              const SizedBox(width: 8),
-              if (log.remind)
-                AppBadge(
-                  text: '异常',
-                  background: c.dangerSoft,
-                  textColor: c.danger,
-                  fontSize: 10,
-                  height: 18,
-                ),
-            ],
-          ),
-        ),
-        Text(
-          log.dateDisplay,
-          style: AppTextStyles.caption.copyWith(color: c.textMuted),
-        ),
-      ],
-    );
-  }
-}
-
 class _Avatar extends StatelessWidget {
   const _Avatar({
     required this.url,
@@ -728,7 +639,7 @@ class _TrafficOverviewCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$percent%',
+                  '已用 $percent%',
                   style: AppTextStyles.caption.copyWith(
                     color: c.textMuted,
                     fontWeight: FontWeight.w700,

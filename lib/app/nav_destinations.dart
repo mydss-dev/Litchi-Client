@@ -73,39 +73,39 @@ const List<NavDestination> kNavDestinations = [
 
   // ── "我的" hub ────────────────────────────────────────────────────────────
   NavDestination(
+    page: AppPage.wallet,
+    label: '我的钱包',
+    icon: LucideIcons.wallet,
+    compact: CompactPlacement.hub,
+    subtitle: '余额、佣金与账户充值',
+  ),
+  NavDestination(
     page: AppPage.orders,
-    label: '订单',
+    label: '订单记录',
     icon: LucideIcons.clipboardList,
     compact: CompactPlacement.hub,
-    subtitle: '购买记录与支付状态',
+    subtitle: '查看购买记录与支付状态',
   ),
   NavDestination(
     page: AppPage.traffic,
-    label: '流量',
+    label: '用量统计',
     icon: LucideIcons.chartColumn,
     compact: CompactPlacement.hub,
-    subtitle: '用量统计',
-  ),
-  NavDestination(
-    page: AppPage.wallet,
-    label: '钱包',
-    icon: LucideIcons.wallet,
-    compact: CompactPlacement.hub,
-    subtitle: '余额与充值',
+    subtitle: '查看流量与近期记录',
   ),
   NavDestination(
     page: AppPage.tickets,
-    label: '工单',
+    label: '工单支持',
     icon: LucideIcons.messageSquare,
     compact: CompactPlacement.hub,
-    subtitle: '联系客服',
+    subtitle: '联系在线客服',
   ),
   NavDestination(
     page: AppPage.settings,
-    label: '设置',
+    label: '系统设置',
     icon: LucideIcons.settings,
     compact: CompactPlacement.hub,
-    subtitle: '应用偏好',
+    subtitle: '网络、代理与外观',
   ),
 ];
 

@@ -175,7 +175,7 @@ class _DashboardPageState extends State<DashboardPage> {
         padding: EdgeInsets.zero,
         children: [
           _MobileHeader(connected: ctrl.coreRunning),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (ctrl.dataLoadError != null) ...[
             _InlineNotice(
               icon: LucideIcons.circleAlert,
@@ -206,7 +206,7 @@ class _DashboardPageState extends State<DashboardPage> {
               color: c.danger,
             ),
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           ModeStrip(
             selected: ctrl.proxyMode,
             onChanged: (mode) async {
@@ -228,7 +228,7 @@ class _DashboardPageState extends State<DashboardPage> {
               }
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           _HomeCardGrid(
             ctrl: ctrl,
             formatTrafficGb: formatTrafficGb,

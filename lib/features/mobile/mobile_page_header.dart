@@ -30,17 +30,17 @@ class MobilePageHeader extends StatelessWidget {
                 title,
                 style: AppTextStyles.pageTitle.copyWith(
                   color: c.textPrimary,
-                  fontSize: 26,
+                  fontSize: 22,
                 ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 2),
               Text(
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
                   color: c.textMuted,
-                  fontSize: 12,
+                  fontSize: 11,
                 ),
               ),
             ],

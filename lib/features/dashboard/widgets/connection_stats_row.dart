@@ -24,11 +24,6 @@ class ConnectionStatsRow extends StatelessWidget {
     final latencyValue = latency > 0 && latency < 9999
         ? latency.toString()
         : '--';
-    final latencyCard = _ConnectionStatCard(
-      label: '当前延迟',
-      value: latencyValue,
-      unit: 'ms',
-    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -43,17 +38,25 @@ class ConnectionStatsRow extends StatelessWidget {
             builder: (context, upBps, _) {
               final (downValue, downUnit) = formatSpeed(downBps);
               final (upValue, upUnit) = formatSpeed(upBps);
+              final running = ctrl.coreRunning;
               final cards = [
-                latencyCard,
+                _ConnectionStatCard(
+                  label: '当前延迟',
+                  value: latencyValue,
+                  unit: 'ms',
+                  dimmed: !running,
+                ),
                 _ConnectionStatCard(
                   label: '下载速度',
                   value: downValue,
                   unit: downUnit,
+                  dimmed: !running,
                 ),
                 _ConnectionStatCard(
                   label: '上传速度',
                   value: upValue,
                   unit: upUnit,
+                  dimmed: !running,
                 ),
               ];
 
@@ -92,57 +95,62 @@ class _ConnectionStatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.unit,
+    this.dimmed = false,
   });
 
   final String label;
   final String value;
   final String unit;
+  final bool dimmed;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.fromLTRB(18, 15, 18, 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: AppTextStyles.body.copyWith(
-              color: c.textMuted,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Flexible(
-                child: Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.largeNumber(
-                    fontSize: 23,
-                  ).copyWith(color: c.textPrimary, height: 1),
-                ),
+    return Opacity(
+      opacity: dimmed ? 0.38 : 1.0,
+      child: AppCard(
+        radius: AppRadius.card,
+        padding: const EdgeInsets.fromLTRB(18, 15, 18, 15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: AppTextStyles.body.copyWith(
+                color: c.textMuted,
+                fontSize: 12,
               ),
-              const SizedBox(width: 5),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  unit,
-                  style: AppTextStyles.caption.copyWith(
-                    color: c.textMuted,
-                    fontSize: 11,
+            ),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Flexible(
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.largeNumber(
+                      fontSize: 23,
+                    ).copyWith(color: c.textPrimary, height: 1),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 5),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    unit,
+                    style: AppTextStyles.caption.copyWith(
+                      color: c.textMuted,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
