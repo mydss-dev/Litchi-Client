@@ -5,13 +5,24 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
+import '../mobile/mobile_back_button.dart';
+import '../mobile/mobile_page_header.dart';
 
+/// Invite — a single responsive page.
+///
+/// Two-layout merge. Wide keeps the desktop design; compact keeps the mobile
+/// design (pull-to-refresh, peeking card carousel). `_selected`/`_creating` and
+/// `_createInviteCode` are shared. The two layouts use page controllers with
+/// different viewport fractions, so both are kept (`_pageController` for wide,
+/// `_compactPageController` for compact). Mobile sub-widgets + the `_ShareTarget`
+/// enum are kept under a `C` suffix. Split on window width.
 class InvitePage extends StatefulWidget {
   const InvitePage({super.key});
 
@@ -21,6 +32,7 @@ class InvitePage extends StatefulWidget {
 
 class _InvitePageState extends State<InvitePage> {
   late final PageController _pageController;
+  late final PageController _compactPageController;
   int _selected = 0;
   bool _creating = false;
 
@@ -28,11 +40,13 @@ class _InvitePageState extends State<InvitePage> {
   void initState() {
     super.initState();
     _pageController = PageController();
+    _compactPageController = PageController(viewportFraction: 0.9);
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _compactPageController.dispose();
     super.dispose();
   }
 
@@ -51,6 +65,11 @@ class _InvitePageState extends State<InvitePage> {
 
   @override
   Widget build(BuildContext context) {
+    return context.isCompact ? _buildCompact(context) : _buildWide(context);
+  }
+
+  // ── Wide (sidebar) layout ──────────────────────────────────────────────
+  Widget _buildWide(BuildContext context) {
     final ctrl = AppScope.of(context);
     final invites = ctrl.inviteCodes.isEmpty
         ? [
@@ -106,7 +125,92 @@ class _InvitePageState extends State<InvitePage> {
       ),
     );
   }
+
+  // ── Compact (bottom-nav) layout ────────────────────────────────────────
+  Widget _buildCompact(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final invites = ctrl.inviteCodes.isEmpty
+        ? [
+            InviteCodeModel(
+              code: ctrl.inviteCode.isEmpty ? '--' : ctrl.inviteCode,
+              link: ctrl.inviteLink,
+            ),
+          ]
+        : ctrl.inviteCodes;
+    final safeSelected = _selected.clamp(0, invites.length - 1);
+    final asChild = ctrl.mobileProfileChildPage;
+
+    void switchTo(int index) {
+      final next = index % invites.length;
+      _compactPageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+      );
+      setState(() => _selected = next);
+    }
+
+    return RefreshIndicator(
+      onRefresh: _handlePullRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          if (asChild)
+            Row(
+              children: [
+                MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '邀请返佣',
+                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                  ),
+                ),
+              ],
+            )
+          else
+            const MobilePageHeader(title: '邀请', subtitle: '邀请好友获得返佣奖励'),
+          const SizedBox(height: 16),
+          _InviteLinkPanelC(
+            invites: invites,
+            selected: safeSelected,
+            creating: _creating,
+            controller: _compactPageController,
+            onChanged: (index) => setState(() => _selected = index),
+            onPrevious: () => switchTo(safeSelected - 1 + invites.length),
+            onNext: () => switchTo(safeSelected + 1),
+            onCreate: _createInviteCode,
+          ),
+          const SizedBox(height: 14),
+          _InviteStatsGridC(
+            registeredUsers: ctrl.invitedCount,
+            pendingCommission:
+                '${ctrl.currencySymbol}${ctrl.pendingCommission.toStringAsFixed(2)}',
+            earnedCommission:
+                '${ctrl.currencySymbol}${ctrl.earnedCommission.toStringAsFixed(2)}',
+            commissionRate: '${ctrl.commissionRate.toStringAsFixed(0)}%',
+          ),
+          const SizedBox(height: 12),
+          _CommissionRecords(
+            records: ctrl.inviteRecords,
+            currencySymbol: ctrl.currencySymbol,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Compact pull-to-refresh ────────────────────────────────────────────
+  Future<void> _handlePullRefresh() async {
+    final ctrl = AppScope.of(context);
+    await ctrl.refreshData();
+    if (!mounted || ctrl.dataLoadError != null) return;
+    AppToast.show(context, '已刷新', type: AppToastType.success);
+  }
 }
+
+// ── Wide-layout widgets (original desktop InvitePage, verbatim) ───────────
 
 class _InviteLinkPanel extends StatelessWidget {
   const _InviteLinkPanel({
@@ -801,4 +905,426 @@ Future<void> _shareInvite(
     _ShareTarget.telegram => 'Telegram',
   };
   AppToast.show(context, '链接已复制，可粘贴到$name', type: AppToastType.success);
+}
+
+// ── Compact-layout widgets (original MobileInvitePage, verbatim, C-suffixed)
+
+class _InviteLinkPanelC extends StatelessWidget {
+  const _InviteLinkPanelC({
+    required this.invites,
+    required this.selected,
+    required this.creating,
+    required this.controller,
+    required this.onChanged,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onCreate,
+  });
+
+  final List<InviteCodeModel> invites;
+  final int selected;
+  final bool creating;
+  final PageController controller;
+  final ValueChanged<int> onChanged;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final invite = invites[selected];
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: c.softBorder),
+        boxShadow: AppShadows.soft(c),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '邀请链接',
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              _CreateCodeButtonC(
+                creating: creating,
+                onTap: creating ? null : onCreate,
+              ),
+            ],
+          ),
+          const SizedBox(height: 26),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                height: 164,
+                child: PageView.builder(
+                  itemCount: invites.length,
+                  onPageChanged: onChanged,
+                  controller: controller,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                      child: _InviteCodeCardC(
+                        code: invites[index].code,
+                        index: index + 1,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (invites.length > 1) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _ArrowButtonC(
+                    icon: LucideIcons.chevronLeft,
+                    onTap: onPrevious,
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: _ArrowButtonC(
+                    icon: LucideIcons.chevronRight,
+                    onTap: onNext,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          _PageDots(count: invites.length, selected: selected),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(child: _LinkBox(link: invite.link)),
+              const SizedBox(width: 10),
+              _CopyButtonC(label: '复制链接', value: invite.link, filled: true),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _ShareButtonC(
+                label: '微信',
+                icon: LucideIcons.messageCircle,
+                onTap: () =>
+                    _shareInvite(context, invite.link, _ShareTarget.wechat),
+              ),
+              _ShareButtonC(
+                label: 'QQ',
+                icon: LucideIcons.messageCircleMore,
+                onTap: () =>
+                    _shareInvite(context, invite.link, _ShareTarget.qq),
+              ),
+              _ShareButtonC(
+                label: 'Twitter',
+                icon: LucideIcons.share2,
+                onTap: () =>
+                    _shareInvite(context, invite.link, _ShareTarget.twitter),
+              ),
+              _ShareButtonC(
+                label: 'Telegram',
+                icon: LucideIcons.send,
+                onTap: () =>
+                    _shareInvite(context, invite.link, _ShareTarget.telegram),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreateCodeButtonC extends StatelessWidget {
+  const _CreateCodeButtonC({required this.creating, required this.onTap});
+
+  final bool creating;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 11),
+        decoration: BoxDecoration(
+          color: c.primarySoft,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (creating)
+              SizedBox(
+                width: 13,
+                height: 13,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: c.primary,
+                ),
+              )
+            else
+              Icon(LucideIcons.plus, color: c.primary, size: 15),
+            const SizedBox(width: 5),
+            Text(
+              creating ? '创建中' : '创建邀请码',
+              style: AppTextStyles.caption.copyWith(
+                color: c.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InviteCodeCardC extends StatelessWidget {
+  const _InviteCodeCardC({required this.code, required this.index});
+
+  final String code;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 17, 20, 17),
+      decoration: BoxDecoration(
+        gradient: c.brandGradient,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: [
+          BoxShadow(
+            color: c.primary.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(LucideIcons.ticket, color: Colors.white, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                '邀请码 $index',
+                style: AppTextStyles.bodyStrong.copyWith(color: Colors.white),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Text(
+              code,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.largeNumber(
+                fontSize: 24,
+              ).copyWith(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ArrowButtonC extends StatelessWidget {
+  const _ArrowButtonC({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 34,
+        height: 34,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          shape: BoxShape.circle,
+          border: Border.all(color: c.softBorder),
+          boxShadow: AppShadows.soft(c),
+        ),
+        child: Icon(icon, color: c.primary, size: 18),
+      ),
+    );
+  }
+}
+
+
+class _ShareButtonC extends StatelessWidget {
+  const _ShareButtonC({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: c.softBorder),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: c.textPrimary, size: 15),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                color: c.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InviteStatsGridC extends StatelessWidget {
+  const _InviteStatsGridC({
+    required this.registeredUsers,
+    required this.pendingCommission,
+    required this.earnedCommission,
+    required this.commissionRate,
+  });
+
+  final int registeredUsers;
+  final String pendingCommission;
+  final String earnedCommission;
+  final String commissionRate;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.92,
+      children: [
+        _InviteStatTile(
+          label: '已注册用户',
+          value: '$registeredUsers 人',
+          icon: LucideIcons.users,
+        ),
+        _InviteStatTile(
+          label: '确认中佣金',
+          value: pendingCommission,
+          icon: LucideIcons.circleDollarSign,
+        ),
+        _InviteStatTile(
+          label: '累计佣金',
+          value: earnedCommission,
+          icon: LucideIcons.walletCards,
+        ),
+        _InviteStatTile(
+          label: '佣金比例',
+          value: commissionRate,
+          icon: LucideIcons.chartNoAxesColumnIncreasing,
+        ),
+      ],
+    );
+  }
+}
+
+
+class _CopyButtonC extends StatelessWidget {
+  const _CopyButtonC({
+    required this.label,
+    required this.value,
+    this.filled = false,
+  });
+
+  final String label;
+  final String value;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return GestureDetector(
+      onTap: () async {
+        final text = value.trim();
+        if (text.isEmpty) {
+          AppToast.show(context, '邀请链接未配置', type: AppToastType.warning);
+          return;
+        }
+        await Clipboard.setData(ClipboardData(text: text));
+        if (context.mounted) {
+          AppToast.show(context, '已复制', type: AppToastType.success);
+        }
+      },
+      child: Container(
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: filled ? c.primary : c.primarySoft,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              LucideIcons.copy,
+              size: 15,
+              color: filled ? Colors.white : c.primary,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: AppTextStyles.button.copyWith(
+                color: filled ? Colors.white : c.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

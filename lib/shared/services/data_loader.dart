@@ -86,7 +86,6 @@ class DataLoader {
       snap.currentPlanId = info.planId;
       snap.traffic = ModelMappers.toTraffic(info);
     } catch (e) {
-      debugPrint('[Litchi] getUserInfo error: $e');
       SecureLogger.warn(
         'DataLoader getUserInfo failed after ${sw.elapsedMilliseconds}ms',
         e,
@@ -112,7 +111,6 @@ class DataLoader {
         );
       }
     } catch (e) {
-      debugPrint('[Litchi] getSubscribeInfo error: $e');
       SecureLogger.warn(
         'DataLoader getSubscribeInfo failed after ${sw.elapsedMilliseconds}ms',
         e,
@@ -146,7 +144,6 @@ class DataLoader {
         );
       }
     } catch (e) {
-      debugPrint('[Litchi] _fillNodes error: $e');
       SecureLogger.warn(
         'DataLoader fetchSubscription failed after ${sw.elapsedMilliseconds}ms',
         e,
@@ -171,7 +168,6 @@ class DataLoader {
         }
       }
     } catch (e) {
-      debugPrint('[Litchi] getPlans error: $e');
       SecureLogger.warn(
         'DataLoader getPlans failed after ${sw.elapsedMilliseconds}ms',
         e,
@@ -213,7 +209,6 @@ class DataLoader {
       snap.minWithdrawAmount = commConfig.minWithdrawAmount / 100;
       snap.inviteRecords = await _api.getInviteDetails(pageSize: 10);
     } catch (e) {
-      debugPrint('[Litchi] getInviteInfo error: $e');
       SecureLogger.warn(
         'DataLoader getInvite failed after ${sw.elapsedMilliseconds}ms',
         e,
