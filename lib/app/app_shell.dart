@@ -450,7 +450,9 @@ class _AuthShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        const Positioned.fill(child: AuthFlow()),
+        Positioned.fill(
+          child: AuthFlow(screen: AppScope.of(context).authScreen),
+        ),
         if (_usesCustomChrome)
           const Positioned(
             top: 0,
