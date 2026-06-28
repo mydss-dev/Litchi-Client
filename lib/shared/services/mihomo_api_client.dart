@@ -7,6 +7,26 @@ import 'secure_logger.dart';
 
 /// REST client for the native mihomo external controller.
 abstract final class MihomoApiClient {
+  // ── shared client for short controller calls ──────────────────────────────
+  static HttpClient? _client;
+
+  static HttpClient get _sharedClient {
+    final existing = _client;
+    if (existing != null) return existing;
+    final created = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 3)
+      ..idleTimeout = const Duration(seconds: 15);
+    _client = created;
+    return created;
+  }
+
+  /// Drop idle connections to a now-dead controller port. Call on core stop /
+  /// before a restart. Safe to call anytime; the next request lazily rebuilds.
+  static void resetClient() {
+    _client?.close(force: true);
+    _client = null;
+  }
+
   static Future<bool> isReady({int apiPort = 9090}) async {
     final data = await getProxies(apiPort: apiPort);
     return data?['proxies'] is Map;
@@ -174,8 +194,8 @@ abstract final class MihomoApiClient {
     required int apiPort,
     Map<String, dynamic>? body,
   }) async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
     try {
+      final client = _sharedClient;
       final uri = Uri.parse('http://127.0.0.1:$apiPort$path');
       final request = switch (method) {
         'PUT' => await client.putUrl(uri),
@@ -194,8 +214,6 @@ abstract final class MihomoApiClient {
     } catch (e) {
       SecureLogger.debug('mihomo API request failed', e);
       return null;
-    } finally {
-      client.close();
     }
   }
 }

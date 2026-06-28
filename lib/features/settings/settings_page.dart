@@ -3,7 +3,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../config/app_config.dart';
+import '../../config/mobile_layout.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -13,6 +15,12 @@ import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_switch.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
+import '../mobile/mobile_back_button.dart';
+import '../mobile/mobile_page_header.dart';
+
+bool _isPrimaryMobileTab(String type) {
+  return MobileLayout.tabs.any((tab) => tab.type == type);
+}
 
 /// Settings page (§15): General / Network / Advanced cards.
 class SettingsPage extends StatefulWidget {
@@ -65,157 +73,220 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _onRefresh() async {
+    final v = await AppController.getCoreVersion();
+    if (mounted) setState(() => _coreVersion = v);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final ctrl = AppScope.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
+          return _buildCompact(context);
+        }
+        return _buildWide(context);
+      },
+    );
+  }
 
+  // ── Wide (sidebar) layout ──────────────────────────────────────────────────
+
+  Widget _buildWide(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const PageHeader(title: '设置', subtitle: '配置客户端偏好和网络选项'),
           const SizedBox(height: 12),
-          if (!AppConfig.isSecureServer) ...[
-            const _HttpsWarningCard(),
-            const SizedBox(height: 12),
-          ],
-          _SettingsGroup(
-            title: '系统设置',
-            children: [
-              _SettingRow(
-                label: '开机启动',
-                trailing: AppSwitch(
-                  value: ctrl.autoStart,
-                  onChanged: ctrl.setAutoStart,
-                ),
-              ),
-              _SettingRow(
-                label: '自动更新',
-                trailing: AppSwitch(
-                  value: ctrl.autoUpdate,
-                  onChanged: ctrl.setAutoUpdate,
-                ),
-              ),
-              _SettingRow(
-                label: '外观模式',
-                trailing: AppSelect<ThemeMode>(
-                  value: ctrl.themeMode,
-                  items: const [
-                    ThemeMode.system,
-                    ThemeMode.light,
-                    ThemeMode.dark,
-                  ],
-                  labelOf: (v) => switch (v) {
-                    ThemeMode.system => '跟随系统',
-                    ThemeMode.light => '浅色模式',
-                    ThemeMode.dark => '深色模式',
-                  },
-                  onChanged: ctrl.setThemeMode,
-                ),
-              ),
-              _SettingRow(
-                label: '语言',
-                trailing: AppSelect<String>(
-                  value: ctrl.language,
-                  items: const ['简体中文', 'English', '繁體中文'],
-                  labelOf: (v) => v,
-                  onChanged: ctrl.setLanguage,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _SettingsGroup(
-            title: '连接设置',
-            children: [
-              _SettingRow(
-                label: '代理模式',
-                trailing: AppSelect<ProxyMode>(
-                  value: ctrl.proxyMode,
-                  items: ProxyMode.values,
-                  labelOf: (v) => v.label,
-                  onChanged: ctrl.setProxyMode,
-                ),
-              ),
-              _SettingRow(
-                label: 'DNS',
-                trailing: AppSelect<String>(
-                  value: ctrl.dnsMode,
-                  items: const ['系统 DNS', 'Cloudflare', 'Google'],
-                  labelOf: (v) => v,
-                  onChanged: ctrl.setDnsMode,
-                ),
-              ),
-              _PortSettingRow(controller: ctrl),
-              _SettingRow(
-                label: '断网保护 (Kill Switch)',
-                subtitle: '核心异常退出时阻断系统代理流量，避免直接泄漏',
-                trailing: AppSwitch(
-                  value: ctrl.killSwitch,
-                  onChanged: ctrl.setKillSwitch,
-                ),
-              ),
-              _SettingRow(
-                label: '切换节点或模式时断开旧连接',
-                subtitle: '让已有 TCP/QUIC 连接立即使用新策略',
-                trailing: AppSwitch(
-                  value: ctrl.closeConnectionsOnSwitch,
-                  onChanged: ctrl.setCloseConnectionsOnSwitch,
-                ),
-              ),
-              _SettingRow(
-                label: '允许不安全节点',
-                subtitle: '节点 TLS 证书验证失败时可尝试开启，安全性会降低',
-                trailing: AppSwitch(
-                  value: ctrl.allowInsecureNodes,
-                  onChanged: ctrl.setAllowInsecureNodes,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _SettingsGroup(
-            title: '核心与诊断',
-            children: [
-              _SettingRow(
-                label: '核心版本',
-                trailing: Text(
-                  _coreVersion,
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.of(context).textMuted,
-                  ),
-                ),
-              ),
-              _SettingRow(
-                label: '重启核心',
-                trailing: _DiagnosticButton(
-                  label: _restarting ? '重启中…' : '重启',
-                  enabled: ctrl.coreRunning && !_restarting,
-                  onTap: _onRestart,
-                ),
-              ),
-              _SettingRow(
-                label: '修复系统代理',
-                trailing: _DiagnosticButton(label: '修复', onTap: _onFixProxy),
-              ),
-              _SettingRow(
-                label: '导出诊断日志',
-                trailing: _DiagnosticButton(
-                  label: _exporting ? '导出中…' : '导出',
-                  enabled: !_exporting,
-                  onTap: _onExportLogs,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _SettingsGroup(
-            title: '账号安全',
-            children: [_LogoutRow(onLogout: ctrl.logout)],
-          ),
+          ..._bodyChildren(context),
         ],
       ),
     );
+  }
+
+  // ── Compact (bottom-nav) layout ────────────────────────────────────────────
+
+  Widget _buildCompact(BuildContext context) {
+    final asPrimary = _isPrimaryMobileTab('settings');
+    return RefreshIndicator(
+      onRefresh: _onRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          if (asPrimary)
+            const MobilePageHeader(
+              title: '设置',
+              subtitle: '配置客户端偏好和网络选项',
+            )
+          else
+            Row(
+              children: [
+                MobileBackButton(
+                  onTap: () => AppScope.of(context).goToPage(AppPage.account),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '设置',
+                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 18),
+          ..._bodyChildren(context),
+        ],
+      ),
+    );
+  }
+
+  // ── Shared body (all settings sections) ────────────────────────────────────
+
+  List<Widget> _bodyChildren(BuildContext context) {
+    final ctrl = AppScope.of(context);
+
+    return [
+      if (!AppConfig.isSecureServer) ...[
+        const _HttpsWarningCard(),
+        const SizedBox(height: 12),
+      ],
+      _SettingsGroup(
+        title: '系统设置',
+        children: [
+          _SettingRow(
+            label: '开机启动',
+            trailing: AppSwitch(
+              value: ctrl.autoStart,
+              onChanged: ctrl.setAutoStart,
+            ),
+          ),
+          _SettingRow(
+            label: '自动更新',
+            trailing: AppSwitch(
+              value: ctrl.autoUpdate,
+              onChanged: ctrl.setAutoUpdate,
+            ),
+          ),
+          _SettingRow(
+            label: '外观模式',
+            trailing: AppSelect<ThemeMode>(
+              value: ctrl.themeMode,
+              items: const [
+                ThemeMode.system,
+                ThemeMode.light,
+                ThemeMode.dark,
+              ],
+              labelOf: (v) => switch (v) {
+                ThemeMode.system => '跟随系统',
+                ThemeMode.light => '浅色模式',
+                ThemeMode.dark => '深色模式',
+              },
+              onChanged: ctrl.setThemeMode,
+            ),
+          ),
+          _SettingRow(
+            label: '语言',
+            trailing: AppSelect<String>(
+              value: ctrl.language,
+              items: const ['简体中文', 'English', '繁體中文'],
+              labelOf: (v) => v,
+              onChanged: ctrl.setLanguage,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      _SettingsGroup(
+        title: '连接设置',
+        children: [
+          _SettingRow(
+            label: '代理模式',
+            trailing: AppSelect<ProxyMode>(
+              value: ctrl.proxyMode,
+              items: ProxyMode.values,
+              labelOf: (v) => v.label,
+              onChanged: ctrl.setProxyMode,
+            ),
+          ),
+          _SettingRow(
+            label: 'DNS',
+            trailing: AppSelect<String>(
+              value: ctrl.dnsMode,
+              items: const ['系统 DNS', 'Cloudflare', 'Google'],
+              labelOf: (v) => v,
+              onChanged: ctrl.setDnsMode,
+            ),
+          ),
+          _PortSettingRow(controller: ctrl),
+          _SettingRow(
+            label: '断网保护 (Kill Switch)',
+            subtitle: '核心异常退出时阻断系统代理流量，避免直接泄漏',
+            trailing: AppSwitch(
+              value: ctrl.killSwitch,
+              onChanged: ctrl.setKillSwitch,
+            ),
+          ),
+          _SettingRow(
+            label: '切换节点或模式时断开旧连接',
+            subtitle: '让已有 TCP/QUIC 连接立即使用新策略',
+            trailing: AppSwitch(
+              value: ctrl.closeConnectionsOnSwitch,
+              onChanged: ctrl.setCloseConnectionsOnSwitch,
+            ),
+          ),
+          _SettingRow(
+            label: '允许不安全节点',
+            subtitle: '节点 TLS 证书验证失败时可尝试开启，安全性会降低',
+            trailing: AppSwitch(
+              value: ctrl.allowInsecureNodes,
+              onChanged: ctrl.setAllowInsecureNodes,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      _SettingsGroup(
+        title: '核心与诊断',
+        children: [
+          _SettingRow(
+            label: '核心版本',
+            trailing: Text(
+              _coreVersion,
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.of(context).textMuted,
+              ),
+            ),
+          ),
+          _SettingRow(
+            label: '重启核心',
+            trailing: _DiagnosticButton(
+              label: _restarting ? '重启中…' : '重启',
+              enabled: ctrl.coreRunning && !_restarting,
+              onTap: _onRestart,
+            ),
+          ),
+          _SettingRow(
+            label: '修复系统代理',
+            trailing: _DiagnosticButton(label: '修复', onTap: _onFixProxy),
+          ),
+          _SettingRow(
+            label: '导出诊断日志',
+            trailing: _DiagnosticButton(
+              label: _exporting ? '导出中…' : '导出',
+              enabled: !_exporting,
+              onTap: _onExportLogs,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      _SettingsGroup(
+        title: '账号安全',
+        children: [_LogoutRow(onLogout: ctrl.logout)],
+      ),
+    ];
   }
 }
 

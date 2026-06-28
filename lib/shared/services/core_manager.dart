@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'secure_logger.dart';
+import 'windows_shell.dart';
 import 'mihomo_api_client.dart';
 import 'mihomo_config.dart';
 
@@ -303,15 +304,7 @@ class CoreManager {
   static Future<String?> _processPath(int pid) async {
     try {
       if (Platform.isWindows) {
-        final result = await Process.run('powershell', [
-          '-NoProfile',
-          '-NonInteractive',
-          '-Command',
-          '(Get-CimInstance Win32_Process -Filter "ProcessId=$pid").ExecutablePath',
-        ]).timeout(const Duration(seconds: 3));
-        if (result.exitCode != 0) return null;
-        final path = '${result.stdout}'.trim();
-        return path.isEmpty ? null : path;
+        return getProcessImagePath(pid);
       }
       if (Platform.isLinux) {
         try {

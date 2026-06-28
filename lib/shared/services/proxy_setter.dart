@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'secure_logger.dart';
+import 'windows_registry.dart';
 import 'wininet_notify.dart';
 
 /// Sets / clears the system HTTP(S) proxy.
@@ -10,7 +11,7 @@ import 'wininet_notify.dart';
 /// macOS: `networksetup` web/secure-web proxy on every enabled network service.
 abstract final class ProxySetter {
   static const _key =
-      r'HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings';
+      r'Software\Microsoft\Windows\CurrentVersion\Internet Settings';
   static const _snapshotName = 'proxy_snapshot.json';
   static Future<void> _pendingUpdate = Future<void>.value();
 
@@ -63,15 +64,15 @@ abstract final class ProxySetter {
     await _winSaveSnapshotIfNeeded(port);
     // ProxyServer first: if either write fails, the proxy is never left
     // enabled while pointing at a stale address.
-    await _reg('ProxyServer', 'REG_SZ', '127.0.0.1:$port');
-    await _reg('ProxyEnable', 'REG_DWORD', '1');
+    WindowsRegistry.writeString(_key, 'ProxyServer', '127.0.0.1:$port');
+    WindowsRegistry.writeDword(_key, 'ProxyEnable', 1);
     await _notify();
   }
 
   static Future<void> _winKillSwitch() async {
     await _winSaveSnapshotIfNeeded(1);
-    await _reg('ProxyServer', 'REG_SZ', '127.0.0.1:1');
-    await _reg('ProxyEnable', 'REG_DWORD', '1');
+    WindowsRegistry.writeString(_key, 'ProxyServer', '127.0.0.1:1');
+    WindowsRegistry.writeDword(_key, 'ProxyEnable', 1);
     await _notify();
   }
 
@@ -87,14 +88,10 @@ abstract final class ProxySetter {
 
   static Future<void> _winDisableIfStale() async {
     try {
-      final r1 = await Process.run('reg', ['query', _key, '/v', 'ProxyEnable']);
-      if (r1.exitCode != 0) return;
-      // reg query prints "ProxyEnable    REG_DWORD    0x1" — match the value
-      // token exactly so error text containing "0x1" can't false-positive.
-      if (!RegExp(r'REG_DWORD\s+0x1\b').hasMatch('${r1.stdout}')) return;
-      final r2 = await Process.run('reg', ['query', _key, '/v', 'ProxyServer']);
-      if (r2.exitCode != 0) return;
-      if ('${r2.stdout}'.contains('127.0.0.1:')) {
+      final enable = WindowsRegistry.readDword(_key, 'ProxyEnable');
+      if (enable != 1) return;
+      final server = WindowsRegistry.readString(_key, 'ProxyServer');
+      if (server != null && server.contains('127.0.0.1:')) {
         await _winRestoreSnapshotIfOwned();
       }
     } catch (e) {
@@ -109,9 +106,9 @@ abstract final class ProxySetter {
       'platform': 'windows',
       'owner_host': '127.0.0.1',
       'owner_port': port,
-      'proxy_enable': await _regReadDword('ProxyEnable'),
-      'proxy_server': await _regReadString('ProxyServer'),
-      'proxy_override': await _regReadString('ProxyOverride'),
+      'proxy_enable': WindowsRegistry.readDword(_key, 'ProxyEnable'),
+      'proxy_server': WindowsRegistry.readString(_key, 'ProxyServer'),
+      'proxy_override': WindowsRegistry.readString(_key, 'ProxyOverride'),
       'saved_at': DateTime.now().toIso8601String(),
     };
     await file.parent.create(recursive: true);
@@ -135,7 +132,7 @@ abstract final class ProxySetter {
     }
 
     final ownerPort = _ownerPort(snapshot);
-    final currentServer = await _regReadString('ProxyServer') ?? '';
+    final currentServer = WindowsRegistry.readString(_key, 'ProxyServer') ?? '';
     if (!_isOwnedLocalProxyServer(currentServer, ownerPort)) {
       // The user or another app changed the proxy while Litchi was running.
       // Do not overwrite that newer choice.
@@ -148,16 +145,16 @@ abstract final class ProxySetter {
     final oldEnable = snapshot['proxy_enable'] as int? ?? 0;
 
     if (oldServer != null) {
-      await _reg('ProxyServer', 'REG_SZ', oldServer);
+      WindowsRegistry.writeString(_key, 'ProxyServer', oldServer);
     } else {
-      await _regDelete('ProxyServer');
+      WindowsRegistry.deleteValue(_key, 'ProxyServer');
     }
     if (oldOverride != null) {
-      await _reg('ProxyOverride', 'REG_SZ', oldOverride);
+      WindowsRegistry.writeString(_key, 'ProxyOverride', oldOverride);
     } else {
-      await _regDelete('ProxyOverride');
+      WindowsRegistry.deleteValue(_key, 'ProxyOverride');
     }
-    await _reg('ProxyEnable', 'REG_DWORD', oldEnable == 0 ? '0' : '1');
+    WindowsRegistry.writeDword(_key, 'ProxyEnable', oldEnable == 0 ? 0 : 1);
     await _deleteSnapshot();
     return true;
   }
@@ -193,53 +190,6 @@ abstract final class ProxySetter {
     return lower.contains('127.0.0.1:') || lower.contains('localhost:');
   }
 
-  static Future<int?> _regReadDword(String name) async {
-    final result = await Process.run('reg', ['query', _key, '/v', name]);
-    if (result.exitCode != 0) return null;
-    final match = RegExp(
-      r'REG_DWORD\s+0x([0-9a-fA-F]+)\b',
-    ).firstMatch('${result.stdout}');
-    if (match == null) return null;
-    return int.tryParse(match.group(1)!, radix: 16);
-  }
-
-  static Future<String?> _regReadString(String name) async {
-    final result = await Process.run('reg', ['query', _key, '/v', name]);
-    if (result.exitCode != 0) return null;
-    final lines = const LineSplitter().convert('${result.stdout}');
-    for (final line in lines) {
-      final match = RegExp(
-        r'^\s*' + RegExp.escape(name) + r'\s+REG_\w+\s+(.*)$',
-      ).firstMatch(line);
-      if (match != null) return match.group(1)?.trim();
-    }
-    return null;
-  }
-
-  static Future<void> _reg(String name, String type, String value) async {
-    final result = await Process.run('reg', [
-      'add',
-      _key,
-      '/v',
-      name,
-      '/t',
-      type,
-      '/d',
-      value,
-      '/f',
-    ]);
-    if (result.exitCode != 0) {
-      throw Exception('系统代理设置失败 (exit ${result.exitCode}): ${result.stderr}');
-    }
-  }
-
-  static Future<void> _regDelete(String name) async {
-    final result = await Process.run('reg', ['delete', _key, '/v', name, '/f']);
-    if (result.exitCode != 0) {
-      // Missing values are fine; reg.exe returns non-zero for that case.
-      SecureLogger.warn('reg delete $name skipped', result.stderr);
-    }
-  }
 
   /// Notify WinInet so browsers pick up the registry change immediately.
   /// Uses Dart FFI to call InternetSetOptionW directly — no PowerShell, no

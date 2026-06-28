@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../config/mobile_layout.dart';
+import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -11,8 +13,15 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
+import '../mobile/mobile_back_button.dart';
+import '../mobile/mobile_page_header.dart';
 import '../shop/payment_dialog.dart';
 
+/// Wallet — a single responsive page.
+///
+/// Wide screens get the sidebar-style layout with a refresh button and dialogs;
+/// compact screens get pull-to-refresh, a mobile header/back button, and the same
+/// shared wallet content (hero card + recharge card).
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key});
 
@@ -121,13 +130,24 @@ class _WalletPageState extends State<WalletPage> {
     );
   }
 
+  // ── Responsive build ──────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    final balance = ctrl.user.balance / 100;
-    final commission = ctrl.withdrawable;
-    final total = balance + commission;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
+          return _buildCompact(context);
+        }
+        return _buildWide(context);
+      },
+    );
+  }
 
+  // ── Wide (sidebar) layout ─────────────────────────────────────────────────
+
+  Widget _buildWide(BuildContext context) {
+    final ctrl = AppScope.of(context);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,32 +167,87 @@ class _WalletPageState extends State<WalletPage> {
             ],
           ),
           const SizedBox(height: 12),
-          _WalletHero(
-            total: '${ctrl.currencySymbol}${total.toStringAsFixed(2)}',
-            balance: '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
-            commission:
-                '${ctrl.currencySymbol}${commission.toStringAsFixed(2)}',
-            onTransfer: _transferCommission,
-            onWithdraw: _withdrawCommission,
-          ),
-          const SizedBox(height: 14),
-          _RechargeCard(
-            presets: _presets,
-            selectedPreset: _selectedPreset,
-            controller: _amountCtrl,
-            currencySymbol: ctrl.currencySymbol,
-            submitting: _submitting,
-            onPreset: (amount) {
-              setState(() => _selectedPreset = amount);
-              _amountCtrl.text = amount.toString();
-            },
-            onSubmit: _recharge,
-          ),
+          ..._bodyChildren(context),
         ],
       ),
     );
   }
+
+  // ── Compact (bottom-nav) layout ───────────────────────────────────────────
+
+  Widget _buildCompact(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final asPrimary = _isPrimaryMobileTab('wallet');
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          if (asPrimary)
+            const MobilePageHeader(
+              title: '钱包',
+              subtitle: '余额、佣金与账户充值',
+            )
+          else
+            Row(
+              children: [
+                MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '我的钱包',
+                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 16),
+          ..._bodyChildren(context),
+        ],
+      ),
+    );
+  }
+
+  // ── Shared body (wallet hero + recharge card) ─────────────────────────────
+
+  List<Widget> _bodyChildren(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final balance = ctrl.user.balance / 100;
+    final commission = ctrl.withdrawable;
+    final total = balance + commission;
+
+    return [
+      _WalletHero(
+        total: '${ctrl.currencySymbol}${total.toStringAsFixed(2)}',
+        balance: '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
+        commission:
+            '${ctrl.currencySymbol}${commission.toStringAsFixed(2)}',
+        onTransfer: _transferCommission,
+        onWithdraw: _withdrawCommission,
+      ),
+      const SizedBox(height: 14),
+      _RechargeCard(
+        presets: _presets,
+        selectedPreset: _selectedPreset,
+        controller: _amountCtrl,
+        currencySymbol: ctrl.currencySymbol,
+        submitting: _submitting,
+        onPreset: (amount) {
+          setState(() => _selectedPreset = amount);
+          _amountCtrl.text = amount.toString();
+        },
+        onSubmit: _recharge,
+      ),
+    ];
+  }
 }
+
+bool _isPrimaryMobileTab(String type) {
+  return MobileLayout.tabs.any((tab) => tab.type == type);
+}
+
+// ── Wallet hero card ──────────────────────────────────────────────────────────
 
 class _WalletHero extends StatelessWidget {
   const _WalletHero({
@@ -391,6 +466,8 @@ class _WalletActionButton extends StatelessWidget {
     );
   }
 }
+
+// ── Recharge card ─────────────────────────────────────────────────────────────
 
 class _RechargeCard extends StatelessWidget {
   const _RechargeCard({
@@ -633,6 +710,8 @@ class _PresetChip extends StatelessWidget {
   }
 }
 
+// ── Transfer dialog ───────────────────────────────────────────────────────────
+
 class _TransferDialog extends StatefulWidget {
   const _TransferDialog({
     required this.maxAmount,
@@ -735,6 +814,8 @@ class _TransferDialogState extends State<_TransferDialog> {
     );
   }
 }
+
+// ── Withdraw dialog ───────────────────────────────────────────────────────────
 
 class _WithdrawDialog extends StatefulWidget {
   const _WithdrawDialog({
@@ -879,6 +960,8 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
     );
   }
 }
+
+// ── Shared dialog shell / hint / chips / text field ──────────────────────────
 
 class _WalletDialogShell extends StatelessWidget {
   const _WalletDialogShell({

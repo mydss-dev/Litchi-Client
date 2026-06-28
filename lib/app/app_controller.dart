@@ -13,6 +13,7 @@ import '../shared/services/node_cache_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
 import '../shared/services/secure_logger.dart';
+import '../shared/services/windows_shell.dart';
 import '../shared/services/token_storage.dart';
 import '../shared/services/update_service.dart';
 import 'account_controller.dart';
@@ -40,7 +41,7 @@ enum AppPage {
 
 enum AuthScreen { login, register, changePassword, forgotPassword }
 
-class AppController extends ChangeNotifier {
+class AppController extends ChangeNotifier with WidgetsBindingObserver {
   AppController() {
     AppConfig.revision.addListener(_onRemoteConfigChanged);
     _settings.addListener(notifyListeners);
@@ -52,6 +53,7 @@ class AppController extends ChangeNotifier {
     _invite.addListener(notifyListeners);
     _account.addListener(notifyListeners);
     _nodes.addListener(notifyListeners);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   final SettingsController _settings = SettingsController();
@@ -82,6 +84,10 @@ class AppController extends ChangeNotifier {
   bool _isInitialLoading = false;
   bool _logoutInFlight = false;
   int _latencyRunId = 0;
+
+  Timer? _statusRefreshTimer;
+  bool _statusRefreshInFlight = false;
+  static const Duration _statusRefreshInterval = Duration(minutes: 5);
 
   ThemeMode get themeMode => _settings.themeMode;
   bool get isDark => _settings.isDark;
@@ -272,6 +278,7 @@ class AppController extends ChangeNotifier {
     await _restoreCachedNodes();
 
     _isAuthenticated = true;
+    _startStatusRefresh();
     _isInitialLoading = true;
     _isInitializing = false;
     notifyListeners();
@@ -371,8 +378,77 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  // ── Account status refresh (lightweight timer for traffic / expiry / devices)
+
+  /// Applies only the account & subscription counter fields, without touching
+  /// nodes or latency state.
+  void _applyAccountStatus(DataSnapshot snap) {
+    if (snap.user != null) {
+      _account.applySnapshot(user: snap.user, traffic: snap.traffic);
+    }
+    _subscription.applySnapshot(
+      aliveIp: snap.aliveIp,
+      deviceLimit: snap.deviceLimit,
+      resetDay: snap.resetDay,
+      expiredAt: snap.expiredAt,
+    );
+    if (!_disposed) notifyListeners();
+  }
+
+  void _startStatusRefresh() {
+    if (_disposed || !_isAuthenticated) return;
+    _statusRefreshTimer?.cancel();
+    _statusRefreshTimer = Timer.periodic(
+      _statusRefreshInterval,
+      (_) => unawaited(_refreshAccountStatusSilently()),
+    );
+  }
+
+  void _stopStatusRefresh() {
+    _statusRefreshTimer?.cancel();
+    _statusRefreshTimer = null;
+  }
+
+  /// Background poll: NEVER surfaces an error, NEVER logs the user out.
+  /// A transient 401 on a timer must not kick the user — real auth expiry is
+  /// handled the next time the user performs an action through refreshData().
+  Future<void> _refreshAccountStatusSilently() async {
+    if (_disposed || !_isAuthenticated) return;
+    if (_statusRefreshInFlight) return;
+    if (connectionActionLocked) return;
+    _statusRefreshInFlight = true;
+    try {
+      final snap = await _dataLoader.loadAccountStatus();
+      if (_disposed || !_isAuthenticated) return;
+      _applyAccountStatus(snap);
+    } catch (_) {
+      // intentional: silent on a background poll.
+    } finally {
+      _statusRefreshInFlight = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (_isAuthenticated) {
+          _startStatusRefresh();
+          unawaited(_refreshAccountStatusSilently());
+        }
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+        _stopStatusRefresh();
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
   @override
   void dispose() {
+    _stopStatusRefresh();
+    WidgetsBinding.instance.removeObserver(this);
     _disposed = true;
     AppConfig.revision.removeListener(_onRemoteConfigChanged);
     _settings.removeListener(notifyListeners);
@@ -505,6 +581,7 @@ class AppController extends ChangeNotifier {
     _apiClient.updateAuthData(authData);
     await _restoreCachedNodes();
     _isAuthenticated = true;
+    _startStatusRefresh();
     _dataLoadError = null;
     _isInitialLoading = true;
     _page = AppPage.dashboard;
@@ -513,6 +590,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _expireSessionAndStopCore(String message) async {
+    _stopStatusRefresh();
     await _core.stopAndReset();
     await TokenStorage.clearAuthData();
     _apiClient.updateAuthData(null);
@@ -535,6 +613,7 @@ class AppController extends ChangeNotifier {
   Future<void> logout() async {
     if (_logoutInFlight) return;
     _logoutInFlight = true;
+    _stopStatusRefresh();
     try {
       await _core.stopAndReset();
       _isAuthenticated = false;
@@ -576,19 +655,7 @@ class AppController extends ChangeNotifier {
   }
 
   static Future<bool> checkAdminPrivileges() async {
-    if (!Platform.isWindows) return true;
-    try {
-      final result = await Process.run('powershell', [
-        '-NonInteractive',
-        '-NoProfile',
-        '-Command',
-        '([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)',
-      ]).timeout(const Duration(seconds: 8));
-      return result.stdout.toString().trim().toLowerCase() == 'true';
-    } catch (e) {
-      SecureLogger.debug('admin privilege check failed', e);
-      return false;
-    }
+    return checkWindowsAdminPrivilege();
   }
 
   Future<void> _loadAllData() async {

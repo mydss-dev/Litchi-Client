@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../config/mobile_layout.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
@@ -14,6 +16,8 @@ import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
+import '../mobile/mobile_back_button.dart';
+import '../mobile/mobile_page_header.dart';
 
 /// Statistics page (§13): compact traffic, device, and subscription stats.
 class TrafficPage extends StatefulWidget {
@@ -33,8 +37,23 @@ class _TrafficPageState extends State<TrafficPage> {
     AppToast.show(context, '已刷新', type: AppToastType.success);
   }
 
+  Future<void> _handleRefresh() => _refresh();
+
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
+          return _buildCompact(context);
+        }
+        return _buildWide(context);
+      },
+    );
+  }
+
+  // ── Wide (sidebar) layout ──────────────────────────────────────────────────
+
+  Widget _buildWide(BuildContext context) {
     final ctrl = AppScope.of(context);
     return SingleChildScrollView(
       child: Column(
@@ -55,16 +74,65 @@ class _TrafficPageState extends State<TrafficPage> {
             ],
           ),
           const SizedBox(height: 12),
-          const _StatsGrid(),
-          const SizedBox(height: 16),
-          _UsageTrendCard(
-            period: _period,
-            onPeriodChanged: (v) => setState(() => _period = v),
-          ),
+          ..._bodyChildren(context),
         ],
       ),
     );
   }
+
+  // ── Compact (bottom-nav) layout ────────────────────────────────────────────
+
+  Widget _buildCompact(BuildContext context) {
+    final asPrimary = _isPrimaryMobileTab('traffic');
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          if (asPrimary)
+            const MobilePageHeader(
+              title: '流量',
+              subtitle: '查看流量、设备和套餐周期',
+            )
+          else
+            Row(
+              children: [
+                MobileBackButton(
+                  onTap: () => AppScope.of(context).goToPage(AppPage.account),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '流量统计',
+                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 16),
+          ..._bodyChildren(context),
+        ],
+      ),
+    );
+  }
+
+  // ── Shared body ────────────────────────────────────────────────────────────
+
+  List<Widget> _bodyChildren(BuildContext context) {
+    return [
+      const _StatsGrid(),
+      const SizedBox(height: 16),
+      _UsageTrendCard(
+        period: _period,
+        onPeriodChanged: (v) => setState(() => _period = v),
+      ),
+    ];
+  }
+}
+
+bool _isPrimaryMobileTab(String type) {
+  return MobileLayout.tabs.any((tab) => tab.type == type);
 }
 
 class _StatsGrid extends StatelessWidget {

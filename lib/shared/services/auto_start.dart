@@ -1,13 +1,14 @@
 import 'dart:io';
 
 import 'secure_logger.dart';
+import 'windows_registry.dart';
 
 /// Manages the Windows auto-start registry entry for Litchi.
 ///
 /// Writes / removes a REG_SZ value under:
 ///   HKCU\Software\Microsoft\Windows\CurrentVersion\Run
 abstract final class AutoStart {
-  static const _key = r'HKCU\Software\Microsoft\Windows\CurrentVersion\Run';
+  static const _key = r'Software\Microsoft\Windows\CurrentVersion\Run';
   static const _name = 'LitchiClient';
 
   static String get _exePath => Platform.resolvedExecutable;
@@ -16,17 +17,7 @@ abstract final class AutoStart {
   static Future<void> enable() async {
     if (!Platform.isWindows) return;
     try {
-      await Process.run('reg', [
-        'add',
-        _key,
-        '/v',
-        _name,
-        '/t',
-        'REG_SZ',
-        '/d',
-        '"$_exePath"',
-        '/f',
-      ]);
+      WindowsRegistry.writeString(_key, _name, '"$_exePath"');
     } catch (e) {
       SecureLogger.debug('auto-start registry add failed', e);
     }
@@ -36,7 +27,7 @@ abstract final class AutoStart {
   static Future<void> disable() async {
     if (!Platform.isWindows) return;
     try {
-      await Process.run('reg', ['delete', _key, '/v', _name, '/f']);
+      WindowsRegistry.deleteValue(_key, _name);
     } catch (e) {
       SecureLogger.debug('auto-start registry delete failed', e);
     }

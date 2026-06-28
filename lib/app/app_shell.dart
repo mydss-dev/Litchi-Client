@@ -13,15 +13,6 @@ import '../features/account/wallet_page.dart';
 import '../features/auth/auth_flow.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/invite/invite_page.dart';
-import '../features/mobile/mobile_home_page.dart';
-import '../features/mobile/mobile_invite_page.dart';
-import '../features/mobile/mobile_nodes_page.dart';
-import '../features/mobile/mobile_profile_page.dart';
-import '../features/mobile/mobile_settings_page.dart';
-import '../features/mobile/mobile_shop_page.dart';
-import '../features/mobile/mobile_tickets_page.dart';
-import '../features/mobile/mobile_traffic_page.dart';
-import '../features/mobile/mobile_wallet_page.dart';
 import '../features/nodes/nodes_page.dart';
 import '../features/orders/orders_page.dart';
 import '../features/settings/settings_page.dart';
@@ -48,33 +39,21 @@ bool get _isDesktop =>
 /// gets neither the custom controls nor the rounded clip.
 bool get _usesCustomChrome => Platform.isWindows || Platform.isLinux;
 
-/// Picks the page widget for [page]. While the per-page migration is in
-/// progress this still chooses the compact (mobile) or wide (desktop) widget by
-/// width; once a page is unified into a single responsive widget, both branches
-/// return the same widget and the mobile_* twin can be deleted.
-Widget _pageFor(AppPage page, {required bool compact}) {
-  switch (page) {
-    case AppPage.dashboard:
-      return compact ? const MobileHomePage() : const DashboardPage();
-    case AppPage.nodes:
-      return compact ? const MobileNodesPage() : const NodesPage();
-    case AppPage.shop:
-      return compact ? const MobileShopPage() : const ShopPage();
-    case AppPage.traffic:
-      return compact ? const MobileTrafficPage() : const TrafficPage();
-    case AppPage.invite:
-      return compact ? const MobileInvitePage() : const InvitePage();
-    case AppPage.settings:
-      return compact ? const MobileSettingsPage() : const SettingsPage();
-    case AppPage.account:
-      return compact ? const MobileProfilePage() : const AccountPage();
-    case AppPage.wallet:
-      return compact ? const MobileWalletPage() : const WalletPage();
-    case AppPage.orders:
-      return const OrdersPage();
-    case AppPage.tickets:
-      return compact ? const MobileTicketsPage() : const TicketsPage();
-  }
+/// All pages are now responsive — each handles its own compact / wide layout
+/// internally, so the shell just picks the widget directly.
+Widget _pageFor(AppPage page) {
+  return switch (page) {
+    AppPage.dashboard => const DashboardPage(),
+    AppPage.nodes => const NodesPage(),
+    AppPage.shop => const ShopPage(),
+    AppPage.traffic => const TrafficPage(),
+    AppPage.invite => const InvitePage(),
+    AppPage.settings => const SettingsPage(),
+    AppPage.account => const AccountPage(),
+    AppPage.wallet => const WalletPage(),
+    AppPage.orders => const OrdersPage(),
+    AppPage.tickets => const TicketsPage(),
+  };
 }
 
 /// Root window shell. The whole app is clipped to an 18px rounded rectangle on
@@ -467,7 +446,7 @@ class _WideBody extends StatelessWidget {
                             onDismiss: controller.markNoticeRead,
                           ),
                         Expanded(
-                          child: _pageFor(controller.page, compact: false),
+                          child: _pageFor(controller.page),
                         ),
                       ],
                     ),
@@ -509,7 +488,7 @@ class _CompactBody extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: _pageFor(ctrl.page, compact: true),
+            child: _pageFor(ctrl.page),
           ),
         ),
         _MobileBottomNav(bottomPadding: bottom),

@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../config/mobile_layout.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/responsive/breakpoints.dart';
 import '../../shared/services/node_filter.dart';
 import '../../shared/services/settings_service.dart';
 import '../../shared/theme/app_colors.dart';
@@ -16,7 +18,10 @@ import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/search_input.dart';
+import '../mobile/mobile_back_button.dart';
+import '../mobile/mobile_page_header.dart';
 
+/// Node selection page — a single responsive page.
 class NodesPage extends StatefulWidget {
   const NodesPage({super.key});
 
@@ -92,57 +97,73 @@ class _NodesPageState extends State<NodesPage> {
     );
   }
 
+  Future<void> _handleRefresh() async {
+    await AppScope.of(context).testLatencies();
+    await _loadFavorites();
+    if (mounted) {
+      AppToast.show(context, '已刷新', type: AppToastType.success);
+    }
+  }
+
+  Future<void> _toggleAutoSelect() async {
+    final ctrl = AppScope.of(context);
+    final error = await ctrl.selectAuto();
+    if (!mounted) return;
+    if (error != null) {
+      AppToast.show(context, error, type: AppToastType.error);
+      return;
+    }
+    setState(() => _selectedId = null);
+    AppToast.show(
+      context,
+      '已开启自动选择，将使用最优节点',
+      type: AppToastType.success,
+    );
+  }
+
+  Future<void> _selectNode(NodeModel node) async {
+    final ctrl = AppScope.of(context);
+    final error = await ctrl.setCurrentNode(node);
+    if (!mounted) return;
+    if (error != null) {
+      AppToast.show(context, error, type: AppToastType.error);
+      return;
+    }
+    setState(() => _selectedId = node.id);
+    AppToast.show(
+      context,
+      '已切换至 ${node.name}',
+      type: AppToastType.success,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
+          return _buildCompact(context);
+        }
+        return _buildWide(context);
+      },
+    );
+  }
+
+  // ── Wide (sidebar) layout ────────────────────────────────────────────────────
+
+  Widget _buildWide(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final isAuto = ctrl.autoSelected;
-    final effectiveId = isAuto
-        ? '__auto__'
-        : (_selectedId ?? ctrl.currentNode.id);
+    final effectiveId =
+        isAuto ? '__auto__' : (_selectedId ?? ctrl.currentNode.id);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const PageHeader(title: '节点', subtitle: '选择适合你的高速线路'),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: SearchInput(
-                hintText: '搜索节点',
-                onChanged: _onSearchChanged,
-              ),
-            ),
-            const SizedBox(width: 12),
-            _LatencyTestButton(ctrl: ctrl),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _AutoCard(
-          ctrl: ctrl,
-          selected: isAuto,
-          onTap: () async {
-            final error = await ctrl.selectAuto();
-            if (!context.mounted) return;
-            if (error != null) {
-              AppToast.show(context, error, type: AppToastType.error);
-              return;
-            }
-            setState(() => _selectedId = null);
-            AppToast.show(
-              context,
-              '已开启自动选择，将使用最优节点',
-              type: AppToastType.success,
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        FilterTabs(
-          tabs: _tabs,
-          selectedIndex: _tab,
-          onSelected: (i) => setState(() => _tab = i),
-        ),
+        ..._bodyChildren(context),
         const SizedBox(height: 14),
         Expanded(
           child: LayoutBuilder(
@@ -173,25 +194,7 @@ class _NodesPageState extends State<NodesPage> {
                     node: n,
                     selected: !isAuto && n.id == effectiveId,
                     favorite: _favorites.contains(n.id),
-                    onTap: () async {
-                      final overlay = Overlay.of(context, rootOverlay: true);
-                      final error = await ctrl.setCurrentNode(n);
-                      if (!context.mounted) return;
-                      if (error != null) {
-                        AppToast.showInOverlay(
-                          overlay,
-                          error,
-                          type: AppToastType.error,
-                        );
-                        return;
-                      }
-                      setState(() => _selectedId = n.id);
-                      AppToast.showInOverlay(
-                        overlay,
-                        '已切换至 ${n.name}',
-                        type: AppToastType.success,
-                      );
-                    },
+                    onTap: () => _selectNode(n),
                     onToggleFavorite: () => _toggleFavorite(n.id),
                   );
                 },
@@ -202,6 +205,129 @@ class _NodesPageState extends State<NodesPage> {
       ],
     );
   }
+
+  // ── Compact (bottom-nav) layout ──────────────────────────────────────────────
+
+  Widget _buildCompact(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final isAuto = ctrl.autoSelected;
+    final effectiveId =
+        isAuto ? '__auto__' : (_selectedId ?? ctrl.currentNode.id);
+    final asPrimary = _isPrimaryMobileTab('nodes');
+    final nodes = _filtered;
+
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          if (asPrimary)
+            const MobilePageHeader(
+              title: '节点',
+              subtitle: '选择线路并查看延迟',
+            )
+          else
+            Row(
+              children: [
+                MobileBackButton(
+                  onTap: () =>
+                      AppScope.of(context).goToPage(AppPage.dashboard),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '节点',
+                        style: AppTextStyles.pageTitle.copyWith(
+                          color: c.textPrimary,
+                          fontSize: 26,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        '选择线路并查看延迟',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 16),
+          ..._bodyChildren(context),
+          if (nodes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 48),
+              child: Center(
+                child: Text(
+                  '没有匹配的节点',
+                  style: AppTextStyles.body.copyWith(color: c.textMuted),
+                ),
+              ),
+            )
+          else
+            for (final n in nodes) ...[
+              _NodeCard(
+                node: n,
+                selected: !isAuto && n.id == effectiveId,
+                favorite: _favorites.contains(n.id),
+                onTap: () => _selectNode(n),
+                onToggleFavorite: () => _toggleFavorite(n.id),
+              ),
+              const SizedBox(height: 10),
+            ],
+        ],
+      ),
+    );
+  }
+
+  // ── Shared body ──────────────────────────────────────────────────────────────
+
+  List<Widget> _bodyChildren(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final isAuto = ctrl.autoSelected;
+
+    return [
+      Row(
+        children: [
+          Expanded(
+            child: SearchInput(
+              hintText: '搜索节点',
+              onChanged: _onSearchChanged,
+            ),
+          ),
+          const SizedBox(width: 12),
+          _LatencyTestButton(ctrl: ctrl),
+        ],
+      ),
+      const SizedBox(height: 14),
+      _AutoCard(
+        ctrl: ctrl,
+        selected: isAuto,
+        onTap: _toggleAutoSelect,
+      ),
+      const SizedBox(height: 12),
+      FilterTabs(
+        tabs: _tabs,
+        selectedIndex: _tab,
+        onSelected: (i) => setState(() => _tab = i),
+      ),
+      const SizedBox(height: 14),
+    ];
+  }
+}
+
+bool _isPrimaryMobileTab(String type) {
+  return MobileLayout.tabs.any((tab) => tab.type == type);
 }
 
 // ── Smart recommendation card ──────────────────────────────────────────────
@@ -548,9 +674,8 @@ class _LatencyIndicator extends StatelessWidget {
         ],
       );
     }
-    final color = latency < 60
-        ? c.success
-        : (latency < 150 ? c.warning : c.danger);
+    final color =
+        latency < 60 ? c.success : (latency < 150 ? c.warning : c.danger);
     return Row(
       children: [
         Container(

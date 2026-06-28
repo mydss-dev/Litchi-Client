@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 
 import 'secure_logger.dart';
+import 'windows_shell.dart';
 
 abstract final class UrlOpener {
   static const _channel = MethodChannel('litchi/url_opener');
@@ -15,11 +16,7 @@ abstract final class UrlOpener {
         return await _channel.invokeMethod<bool>('openUrl', url) ?? false;
       }
       if (Platform.isWindows) {
-        final result = await Process.run('rundll32', [
-          'url.dll,FileProtocolHandler',
-          url,
-        ]);
-        return result.exitCode == 0;
+        return shellExecuteUrl(url);
       }
       if (Platform.isMacOS) {
         final result = await Process.run('open', [url]);

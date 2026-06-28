@@ -76,6 +76,15 @@ class DataLoader {
     return snap;
   }
 
+  /// Lightweight refresh: only the live account counters the user watches
+  /// (remaining traffic, expiry, device count). Does NOT touch nodes, plans,
+  /// invite data, or the core — safe to call on a timer while connected.
+  Future<DataSnapshot> loadAccountStatus() async {
+    final snap = DataSnapshot();
+    await _fillUserInfo(snap);
+    return snap;
+  }
+
   // ── Private fill methods ─────────────────────────────────────────────────
 
   Future<void> _fillUserInfo(DataSnapshot snap) async {

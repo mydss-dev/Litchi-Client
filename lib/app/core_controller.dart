@@ -38,6 +38,8 @@ class CoreController extends ChangeNotifier {
   DateTime? _lastConnectionToggleAt;
   static const Duration _connectionToggleCooldown = Duration(milliseconds: 800);
 
+  Future<Map<String, int>>? _groupTestInFlight;
+
   bool killSwitchEnabled = false;
   bool closeConnectionsOnSwitch = true;
 
@@ -265,6 +267,7 @@ class CoreController extends ChangeNotifier {
       // intentional: best-effort cleanup during stop, failure is safe to ignore
     }
     await _core.stop();
+    MihomoApiClient.resetClient();
     _connectedAt = null;
     _coreError = '';
     _status = ConnectionStatus.disconnected;
@@ -293,7 +296,10 @@ class CoreController extends ChangeNotifier {
       notifyListeners();
       _stopTrafficMonitor();
       await ProxySetter.disable();
-      if (req.networkMode == NetworkMode.tun) await _core.stop();
+      if (req.networkMode == NetworkMode.tun) {
+        await _core.stop();
+        MihomoApiClient.resetClient();
+      }
       _connectedAt = null;
       _coreError = '';
       _status = ConnectionStatus.disconnected;
@@ -478,7 +484,10 @@ class CoreController extends ChangeNotifier {
         _status == ConnectionStatus.connecting) {
       _status = ConnectionStatus.disconnecting;
     }
-    if (_core.isRunning) await _core.stop();
+    if (_core.isRunning) {
+      await _core.stop();
+      MihomoApiClient.resetClient();
+    }
     await ProxySetter.disable();
     _connectedAt = null;
     _coreError = '';
@@ -618,18 +627,30 @@ class CoreController extends ChangeNotifier {
     upBpsNotifier.value = 0;
   }
 
+  /// Coalesces concurrent callers onto a single /group/{}/delay so a double
+  /// tap (or a UI test + a background preload firing together) hits the core
+  /// only once.  Each caller maps the shared result onto its own node snapshot;
+  /// AppController's runId guard discards stale UI updates.
   Future<void> testLatencies(
     List<NodeModel> nodes, {
     required void Function(int idx, NodeModel updated) onResult,
   }) async {
     if (nodes.isEmpty || !coreProcessRunning) return;
 
-    final history = await MihomoApiClient.testGroup(apiPort: _apiPort);
+    final history = await (_groupTestInFlight ??= _runGroupTest());
 
     for (var i = 0; i < nodes.length; i++) {
       final node = nodes[i];
       final ms = history[MihomoConfig.nodeTagFor(node)] ?? 9999;
       onResult(i, node.copyWith(latency: ms));
+    }
+  }
+
+  Future<Map<String, int>> _runGroupTest() async {
+    try {
+      return await MihomoApiClient.testGroup(apiPort: _apiPort);
+    } finally {
+      _groupTestInFlight = null;
     }
   }
 
@@ -712,6 +733,7 @@ class CoreController extends ChangeNotifier {
       // traffic would otherwise fall back to the physical link with the user
       // believing they were still protected.
       final wasConnected = _status == ConnectionStatus.connected;
+      MihomoApiClient.resetClient();
       _stopTrafficMonitor();
       _connectedAt = null;
       if (state == CoreState.error && _core.lastError.isNotEmpty) {
