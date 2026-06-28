@@ -23,6 +23,7 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+      - run: flutter test
       - run: flutter analyze
 
   build-windows:

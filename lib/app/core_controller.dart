@@ -9,6 +9,7 @@ import '../shared/services/core_manager.dart';
 import '../shared/services/proxy_setter.dart';
 import '../shared/services/mihomo_api_client.dart';
 import '../shared/services/mihomo_config.dart';
+import '../shared/services/secure_logger.dart';
 import 'core_connection_request.dart';
 import 'core_error_message_service.dart';
 
@@ -136,7 +137,9 @@ class CoreController extends ChangeNotifier {
     _core.dispose();
     try {
       await ProxySetter.disable(notify: false);
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort cleanup during dispose, failure is safe to ignore
+    }
   }
 
   Future<void> startCoreOnly(CoreConnectionRequest req) async {
@@ -184,7 +187,9 @@ class CoreController extends ChangeNotifier {
         await _applyInitialSelection(req);
         notifyListeners();
       }
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.debug('startCoreOnly: core start failed', e);
+    }
   }
 
   Future<String?> reloadCore(CoreConnectionRequest req) async {
@@ -256,7 +261,9 @@ class CoreController extends ChangeNotifier {
     _stopTrafficMonitor();
     try {
       await ProxySetter.disable(notify: false);
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort cleanup during stop, failure is safe to ignore
+    }
     await _core.stop();
     _connectedAt = null;
     _coreError = '';
@@ -314,7 +321,8 @@ class CoreController extends ChangeNotifier {
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
         _startTrafficMonitor();
-      } catch (_) {
+      } catch (e) {
+        SecureLogger.debug('connect: proxy enable or port ready failed', e);
         _coreError = CoreErrorMessageService.restartClient;
         _status = ConnectionStatus.error;
       }
@@ -563,7 +571,8 @@ class CoreController extends ChangeNotifier {
         caseSensitive: false,
       ).firstMatch(out);
       return m?.group(1) ?? out.split('\n').first.trim();
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('detectCoreVersion: version parse failed', e);
       return '获取失败';
     }
   }
@@ -586,7 +595,8 @@ class CoreController extends ChangeNotifier {
       final file = File('${dir.path}\\logs-$ts.txt');
       await file.writeAsString(_logs.join('\n'));
       return file.path;
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('exportLogs: file write failed', e);
       return null;
     }
   }
@@ -682,7 +692,8 @@ class CoreController extends ChangeNotifier {
         shared: false,
       );
       return socket.port;
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('_allocatePort: bind failed, using default', e);
       return MihomoConfig.defaultApiPort;
     } finally {
       await socket?.close();

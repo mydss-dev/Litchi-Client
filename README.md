@@ -11,6 +11,7 @@ handles subscriptions, orders, and traffic statistics.
 | Windows  | ✅ mihomo subprocess | registry + WinInet | System proxy and TUN configuration supported |
 | macOS    | ✅ mihomo subprocess | `networksetup` | Bundles a universal mihomo executable; desktop TUN still requires system privileges |
 | Android  | ✅ embedded mihomo library | VpnService | Native TUN FD bridge with socket protection |
+| Linux    | ⚠️ mihomo subprocess (scaffold) | not yet implemented | CMake/GTK scaffold present; core process management and system proxy are under development |
 
 On macOS, set the proxy mode to **system proxy** (TUN needs root + a network
 extension and is not implemented). The bundled `mihomo` binary must be

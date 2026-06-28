@@ -63,7 +63,9 @@ abstract final class RemoteConfigService {
           AppConfig.applyRemote(config);
           applied = true;
         }
-      } catch (_) {}
+      } catch (_) {
+        // intentional: parse attempt, fallback handled below
+      }
     }
 
     if (applied) {
@@ -166,6 +168,7 @@ abstract final class RemoteConfigService {
       if (payload is! Map<String, dynamic>) return null;
       return payload;
     } catch (_) {
+      // intentional: parse attempt, fallback handled below
       return null;
     }
   }

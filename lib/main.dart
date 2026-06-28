@@ -38,7 +38,9 @@ void _writeCrashLog(String message) {
     final ts = DateTime.now().toLocal().toString().substring(0, 19);
     final safeMessage = SecureLogRedactor.redact(message);
     file.writeAsStringSync('[$ts] $safeMessage\n\n', mode: FileMode.append);
-  } catch (_) {}
+  } catch (_) {
+    // intentional: best-effort crash log, failure is safe to ignore
+  }
 }
 
 Stream<String> _socketLines(Socket socket) => socket
@@ -61,6 +63,7 @@ Future<bool> _focusExistingInstance() async {
         .timeout(const Duration(seconds: 1), onTimeout: () => '');
     return response.trim() == _instancePong;
   } catch (_) {
+    // intentional: instance check, treat as not found
     return false;
   } finally {
     socket?.destroy();
@@ -85,7 +88,9 @@ Future<void> _boot() async {
   try {
     final info = await PackageInfo.fromPlatform();
     AppConfig.setVersion(info.version);
-  } catch (_) {}
+  } catch (e) {
+    SecureLogger.debug('PackageInfo.fromPlatform failed', e);
+  }
 
   if (_isDesktop) {
     // Single-instance enforcement: bind a loopback port as a mutex.
@@ -99,6 +104,7 @@ Future<void> _boot() async {
         shared: false,
       );
     } catch (_) {
+      // intentional: port already in use, falls through to focus existing
       if (await _focusExistingInstance()) exit(0);
       _writeCrashLog(
         'Single-instance lock port $_instanceLockPort is occupied by a non-Litchi process.',
@@ -121,6 +127,7 @@ Future<void> _boot() async {
           unawaited(windowManager.focus());
         }
       } catch (_) {
+        // intentional: best-effort window focus, failure is safe to ignore
       } finally {
         client.destroy();
       }

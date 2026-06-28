@@ -247,6 +247,7 @@ abstract final class CredentialsStorage {
           base64.decode(encrypted.substring(_plainPrefix.length)),
         );
       } catch (_) {
+        // intentional: parse attempt, fallback handled below
         return null;
       }
     }

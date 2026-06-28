@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'secure_logger.dart';
+
 /// Lightweight TCP-handshake latency probe.
 ///
 /// Used for pre-connect "测速" — especially on Android, where the proxy core
@@ -27,7 +29,8 @@ abstract final class TcpPingService {
       socket = await Socket.connect(host, port, timeout: timeout);
       stopwatch.stop();
       return stopwatch.elapsedMilliseconds;
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('TCP ping failed', e);
       return null;
     } finally {
       socket?.destroy();

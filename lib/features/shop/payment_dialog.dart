@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
+import '../../shared/services/secure_logger.dart';
 import '../../shared/services/url_opener.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
@@ -30,7 +31,9 @@ Future<void> showOrderPaymentDialog({
   if (currencySymbol == null) {
     try {
       sym = await api.getCommCurrencySymbol();
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.debug('get currency symbol failed', e);
+    }
   }
   if (!context.mounted) return;
   return showDialog<void>(
@@ -177,7 +180,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         _pollTimer?.cancel();
         setState(() => _stage = _Stage.success);
       }
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.debug('payment poll failed', e);
+    }
   }
 
   Future<void> _manualCheck() async {

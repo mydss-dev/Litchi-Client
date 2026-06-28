@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import 'secure_logger.dart';
+
 abstract final class UrlOpener {
   static const _channel = MethodChannel('litchi/url_opener');
 
@@ -27,7 +29,9 @@ abstract final class UrlOpener {
         final result = await Process.run('xdg-open', [url]);
         return result.exitCode == 0;
       }
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.debug('URL open failed', e);
+    }
     return false;
   }
 

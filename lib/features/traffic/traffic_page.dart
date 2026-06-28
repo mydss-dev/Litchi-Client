@@ -9,6 +9,7 @@ import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/utils/formatters.dart';
 import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
@@ -148,7 +149,7 @@ class _RemainingDaysCard extends StatelessWidget {
     final expiredAt = ctrl.expiredAt;
     final expiry = expiredAt == null || expiredAt == 0
         ? ctrl.user.expiry
-        : _formatDate(DateTime.fromMillisecondsSinceEpoch(expiredAt * 1000));
+        : formatDate(DateTime.fromMillisecondsSinceEpoch(expiredAt * 1000));
     final remainingDays = expiredAt == null || expiredAt == 0
         ? _remainingDays(expiry)
         : _remainingDaysFromTimestamp(expiredAt);
@@ -180,11 +181,6 @@ class _RemainingDaysCard extends StatelessWidget {
     return end.difference(start).inDays.clamp(0, 9999);
   }
 
-  String _formatDate(DateTime date) {
-    final m = date.month.toString().padLeft(2, '0');
-    final d = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$m-$d';
-  }
 }
 
 class _TrafficResetCard extends StatelessWidget {
@@ -263,7 +259,7 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$period 共 ${_formatGb(total)}',
+                      '$period 共 ${formatGb(total)}',
                       style: AppTextStyles.caption.copyWith(color: c.textMuted),
                     ),
                   ],
@@ -360,7 +356,7 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
                                                 final point =
                                                     data[group.x.toInt()];
                                                 return BarTooltipItem(
-                                                  '${point.tooltipLabel}\n上行 ${_formatGb(point.uploadGb)}\n下行 ${_formatGb(point.downloadGb)}\n合计 ${_formatGb(point.value)}',
+                                                  '${point.tooltipLabel}\n上行 ${formatGb(point.uploadGb)}\n下行 ${formatGb(point.downloadGb)}\n合计 ${formatGb(point.value)}',
                                                   AppTextStyles.caption
                                                       .copyWith(
                                                         color: c.cardBg,
@@ -559,13 +555,6 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
     }
     if (value == 0) return '0 GB';
     if (value == value.roundToDouble()) return '${value.toInt()} GB';
-    return '${value.toStringAsFixed(1)} GB';
-  }
-
-  String _formatGb(double value) {
-    if (value == 0) return '0 GB';
-    if (value < 0.01) return '${(value * 1024).toStringAsFixed(1)} MB';
-    if (value < 1) return '${value.toStringAsFixed(2)} GB';
     return '${value.toStringAsFixed(1)} GB';
   }
 

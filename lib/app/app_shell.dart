@@ -309,7 +309,9 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     // exit — cap it and then terminate the process hard.
     try {
       await _ctrl?.shutdown().timeout(const Duration(seconds: 5));
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort cleanup, failure is safe to ignore
+    }
     exit(0);
   }
 

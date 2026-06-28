@@ -12,7 +12,9 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/utils/formatters.dart';
 import '../../shared/widgets/app_toast.dart';
+import '../../shared/widgets/mode_strip.dart';
 import '../../shared/widgets/page_header.dart';
 import '../mobile/mobile_node_picker_sheet.dart';
 import '../mobile/mobile_page_header.dart';
@@ -28,7 +30,8 @@ import 'widgets/proxy_mode_card.dart';
 /// Two-layout merge. Wide keeps the desktop dashboard (hero + mini cards +
 /// stats row); compact keeps the mobile home (pull-to-refresh, connection card,
 /// mode strip, card grid). The 1-second uptime ticker (`_tickTimer`/`_syncTimer`)
-/// and `_formatDuration` are shared — the mobile `_syncTimer` (with a mounted
+/// and formatters are in `shared/utils/formatters.dart`; `ModeStrip` lives in
+/// `shared/widgets/mode_strip.dart`. The mobile `_syncTimer` (with a mounted
 /// guard) is kept for both. Wide/compact action handlers are distinct. There are
 /// no sub-widget name collisions, so nothing is renamed. Split on window width.
 class DashboardPage extends StatefulWidget {
@@ -69,13 +72,6 @@ class _DashboardPageState extends State<DashboardPage> {
       _tickTimer!.cancel();
       _tickTimer = null;
     }
-  }
-
-  String _formatDuration(Duration d) {
-    final h = d.inHours.toString().padLeft(2, '0');
-    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
-    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
   }
 
   // ── Wide-branch actions ────────────────────────────────────────────────
@@ -120,11 +116,6 @@ class _DashboardPageState extends State<DashboardPage> {
     AppToast.show(context, '已刷新', type: AppToastType.success);
   }
 
-  String _formatTrafficGb(double gb) {
-    if (gb <= 0) return '0.0 GB';
-    return '${gb.toStringAsFixed(1)} GB';
-  }
-
   @override
   Widget build(BuildContext context) {
     return context.isCompact ? _buildCompact(context) : _buildWide(context);
@@ -154,7 +145,7 @@ class _DashboardPageState extends State<DashboardPage> {
             valueListenable: _tick,
             builder: (context, _, _) => ConnectionHeroCard(
               status: status,
-              elapsedLabel: _formatDuration(ctrl.connectedDuration),
+              elapsedLabel: formatDuration(ctrl.connectedDuration),
               onToggle: _onToggle,
             ),
           ),
@@ -200,7 +191,7 @@ class _DashboardPageState extends State<DashboardPage> {
               node: ctrl.currentNode,
               proxyMode: ctrl.proxyMode,
               automatic: ctrl.autoSelected,
-              elapsedLabel: _formatDuration(ctrl.connectedDuration),
+              elapsedLabel: formatDuration(ctrl.connectedDuration),
               supportsConnection: ctrl.supportsCoreConnection,
               onToggle: _toggleConnection,
               onNodesTap: () => showMobileNodePicker(context),
@@ -216,7 +207,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ],
           const SizedBox(height: 14),
-          _ModeStrip(
+          ModeStrip(
             selected: ctrl.proxyMode,
             onChanged: (mode) async {
               if (mode == ctrl.proxyMode) return;
@@ -240,7 +231,7 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 14),
           _HomeCardGrid(
             ctrl: ctrl,
-            formatTrafficGb: _formatTrafficGb,
+            formatTrafficGb: formatTrafficGb,
           ),
         ],
       ),
@@ -496,91 +487,6 @@ class _LatencyBadge extends StatelessWidget {
   }
 }
 
-String _formatRate(int bps) {
-  if (bps <= 0) return '0 KB/s';
-  const kb = 1024;
-  const mb = 1024 * 1024;
-  if (bps >= mb) return '${(bps / mb).toStringAsFixed(1)} MB/s';
-  if (bps >= kb) return '${(bps / kb).toStringAsFixed(0)} KB/s';
-  return '$bps B/s';
-}
-
-class _ModeStrip extends StatelessWidget {
-  const _ModeStrip({required this.selected, required this.onChanged});
-
-  final ProxyMode selected;
-  final ValueChanged<ProxyMode> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: c.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.softBorder),
-      ),
-      child: Row(
-        children: [
-          for (final mode in ProxyMode.values)
-            Expanded(
-              child: _ModeButton(
-                label: switch (mode) {
-                  ProxyMode.rule => '规则',
-                  ProxyMode.global => '全局',
-                  ProxyMode.direct => '直连',
-                },
-                selected: selected == mode,
-                onTap: () => onChanged(mode),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeButton extends StatelessWidget {
-  const _ModeButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Ink(
-          height: 42,
-          decoration: BoxDecoration(
-            color: selected ? c.cardBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            boxShadow: selected ? AppShadows.soft(c) : null,
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: AppTextStyles.bodyStrong.copyWith(
-                color: selected ? c.primary : c.textMuted,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _HomeCardGrid extends StatelessWidget {
   const _HomeCardGrid({
     required this.ctrl,
@@ -639,8 +545,8 @@ class _HomeConfigCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final icon = _homeCardIcon(config.icon, config.type);
-    final title = config.title.isEmpty ? _homeCardTitle(config.type) : config.title;
+    final icon = homeCardIcon(config.icon, config.type);
+    final title = config.title.isEmpty ? homeCardTitle(config.type) : config.title;
 
     if (config.type == 'downSpeed') {
       return ValueListenableBuilder<int>(
@@ -648,7 +554,7 @@ class _HomeConfigCard extends StatelessWidget {
         builder: (context, value, _) => _MetricCard(
           icon: icon,
           label: title,
-          value: _formatRate(value),
+          value: formatRate(value),
           color: c.primary,
         ),
       );
@@ -660,7 +566,7 @@ class _HomeConfigCard extends StatelessWidget {
         builder: (context, value, _) => _MetricCard(
           icon: icon,
           label: title,
-          value: _formatRate(value),
+          value: formatRate(value),
           color: c.primary,
         ),
       );
@@ -684,60 +590,10 @@ String _homeCardValue(
     'currentPlan' => ctrl.user.plan.isEmpty ? '--' : ctrl.user.plan,
     'remainTraffic' => formatTrafficGb(ctrl.traffic.remainGb),
     'todayTraffic' => formatTrafficGb(ctrl.todayTrafficGb),
-    'resetDay' => _formatResetDay(ctrl.resetDay),
-    'deviceLimit' => _formatDeviceLimit(ctrl.deviceLimit),
+    'resetDay' => formatResetDay(ctrl.resetDay),
+    'deviceLimit' => formatDeviceLimit(ctrl.deviceLimit),
     'expireDate' => ctrl.user.expiry.isEmpty ? '--' : ctrl.user.expiry,
     _ => '--',
-  };
-}
-
-String _homeCardTitle(String type) {
-  return switch (type) {
-    'currentPlan' => '当前套餐',
-    'remainTraffic' => '剩余流量',
-    'todayTraffic' => '今日流量',
-    'downSpeed' => '下行速率',
-    'upSpeed' => '上行速率',
-    'resetDay' => '流量重置',
-    'deviceLimit' => '设备数',
-    'expireDate' => '到期时间',
-    _ => '信息',
-  };
-}
-
-String _formatResetDay(int? resetDay) {
-  if (resetDay == null || resetDay == 0) return '--';
-  return '每月 $resetDay 日';
-}
-
-String _formatDeviceLimit(int? deviceLimit) {
-  if (deviceLimit == null) return '--';
-  return deviceLimit > 0 ? '$deviceLimit 台' : '不限';
-}
-
-IconData _homeCardIcon(String icon, String type) {
-  final name = icon.isEmpty ? type : icon;
-  return switch (name) {
-    'package' => LucideIcons.package,
-    'gauge' => LucideIcons.gauge,
-    'calendarDays' => LucideIcons.calendarDays,
-    'calendarClock' => LucideIcons.calendarClock,
-    'refreshCw' => LucideIcons.refreshCw,
-    'download' => LucideIcons.download,
-    'upload' => LucideIcons.upload,
-    'smartphone' => LucideIcons.smartphone,
-    'timer' => LucideIcons.timer,
-    'activity' => LucideIcons.activity,
-    'zap' => LucideIcons.zap,
-    'currentPlan' => LucideIcons.package,
-    'remainTraffic' => LucideIcons.gauge,
-    'todayTraffic' => LucideIcons.calendarDays,
-    'downSpeed' => LucideIcons.download,
-    'upSpeed' => LucideIcons.upload,
-    'resetDay' => LucideIcons.refreshCw,
-    'deviceLimit' => LucideIcons.smartphone,
-    'expireDate' => LucideIcons.calendarClock,
-    _ => LucideIcons.gauge,
   };
 }
 

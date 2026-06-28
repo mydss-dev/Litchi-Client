@@ -304,7 +304,9 @@ class AppController extends ChangeNotifier {
       await RegisterConfigCache.save(AppConfig.apiBase, config);
       _registerConfig = config;
       if (!_disposed) notifyListeners();
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.debug('register config cache refresh failed', e);
+    }
   }
 
   Future<void> _refreshAfterAutoLogin() async {
@@ -583,7 +585,8 @@ class AppController extends ChangeNotifier {
         '([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)',
       ]).timeout(const Duration(seconds: 8));
       return result.stdout.toString().trim().toLowerCase() == 'true';
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('admin privilege check failed', e);
       return false;
     }
   }

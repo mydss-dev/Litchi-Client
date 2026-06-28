@@ -5,7 +5,9 @@ analyzer:
     # Treat missing returns as errors, not warnings.
     missing_return: error
     # Dead code is a sign of logic bugs, not just style.
-    dead_code: warning
+    dead_code: error
+    # Unused imports clutter the namespace and slow analysis.
+    unused_import: error
 
 linter:
   rules:
@@ -14,6 +16,8 @@ linter:
     avoid_print: true
     # Catches fire-and-forget futures that swallow errors silently.
     unawaited_futures: true
+    # Enforce exhaustive switch cases on enums and sealed types (Dart 3).
+    exhaustive_cases: true
     # Avoids accidental mutation of list/map literals shared across callers.
     prefer_const_constructors: true
     prefer_const_literals_to_create_immutables: true

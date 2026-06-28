@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'secure_logger.dart';
+
 /// Manages the Windows auto-start registry entry for Litchi.
 ///
 /// Writes / removes a REG_SZ value under:
@@ -25,7 +27,9 @@ abstract final class AutoStart {
         '"$_exePath"',
         '/f',
       ]);
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.debug('auto-start registry add failed', e);
+    }
   }
 
   /// Remove the auto-start registry entry.
@@ -33,6 +37,8 @@ abstract final class AutoStart {
     if (!Platform.isWindows) return;
     try {
       await Process.run('reg', ['delete', _key, '/v', _name, '/f']);
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.debug('auto-start registry delete failed', e);
+    }
   }
 }

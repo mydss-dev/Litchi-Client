@@ -46,7 +46,9 @@ abstract final class NodeCacheService {
       try {
         final file = File(path);
         if (file.existsSync()) await file.delete();
-      } catch (_) {}
+      } catch (_) {
+        // intentional: best-effort cache, failure is safe to ignore
+      }
     }
   }
 
@@ -58,7 +60,9 @@ abstract final class NodeCacheService {
         jsonEncode(nodes.map(_toPublicJson).toList()),
         flush: true,
       );
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort cache, failure is safe to ignore
+    }
   }
 
   static Future<void> _saveSecureCache(List<NodeModel> nodes) async {
@@ -69,7 +73,9 @@ abstract final class NodeCacheService {
       final file = File(_secureCachePath);
       await file.parent.create(recursive: true);
       await file.writeAsString(encrypted, flush: true);
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort cache, failure is safe to ignore
+    }
   }
 
   static Future<List<NodeModel>> _loadSecureCache() async {
@@ -84,6 +90,7 @@ abstract final class NodeCacheService {
       if (decrypted == null || decrypted.isEmpty) return [];
       return _decodeNodeList(decrypted);
     } catch (_) {
+      // intentional: best-effort cache, failure is safe to ignore
       return [];
     }
   }
@@ -94,6 +101,7 @@ abstract final class NodeCacheService {
       if (!file.existsSync()) return [];
       return _decodeNodeList(await file.readAsString());
     } catch (_) {
+      // intentional: best-effort cache, failure is safe to ignore
       return [];
     }
   }
@@ -110,6 +118,7 @@ abstract final class NodeCacheService {
       if (nodes.any((n) => n.rawUri.isNotEmpty)) await save(nodes);
       return nodes;
     } catch (_) {
+      // intentional: best-effort cache, failure is safe to ignore
       return [];
     }
   }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'mihomo_config.dart';
+import 'secure_logger.dart';
 
 /// REST client for the native mihomo external controller.
 abstract final class MihomoApiClient {
@@ -142,9 +143,12 @@ abstract final class MihomoApiClient {
               upBps: (data['up'] as num?)?.toInt() ?? 0,
               downBps: (data['down'] as num?)?.toInt() ?? 0,
             ));
-          } catch (_) {}
+          } catch (_) {
+            // intentional: parse attempt, fallback handled below
+          }
         }
-      } catch (_) {
+      } catch (e) {
+        SecureLogger.debug('traffic stream error', e);
       } finally {
         client?.close();
         if (!controller.isClosed) unawaited(controller.close());
@@ -159,6 +163,7 @@ abstract final class MihomoApiClient {
     try {
       return jsonDecode(response!.body) as Map<String, dynamic>;
     } catch (_) {
+      // intentional: parse attempt, fallback handled below
       return null;
     }
   }
@@ -186,7 +191,8 @@ abstract final class MihomoApiClient {
       final response = await request.close();
       final text = await response.transform(utf8.decoder).join();
       return _ApiResponse(response.statusCode, text);
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('mihomo API request failed', e);
       return null;
     } finally {
       client.close();

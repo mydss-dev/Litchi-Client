@@ -4,6 +4,7 @@ import 'package:yaml/yaml.dart';
 
 import '../models/api_models.dart';
 import 'outbound_parser.dart';
+import 'secure_logger.dart';
 
 /// Parses subscription body text into a list of [RemoteNode].
 ///
@@ -32,7 +33,9 @@ abstract final class SubscriptionParser {
         if (decoded.contains('\nproxies:') || decoded.startsWith('proxies:')) {
           content = decoded;
         }
-      } catch (_) {}
+      } catch (_) {
+        // intentional: try base64, fall back to raw
+      }
     }
 
     if (content.contains('\nproxies:') || content.startsWith('proxies:')) {
@@ -149,7 +152,9 @@ abstract final class SubscriptionParser {
           }
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      // intentional: parse attempt, fallback handled below
+    }
 
     return ParsedSubscriptionProfile(
       nodes: nodes,
@@ -224,7 +229,9 @@ abstract final class SubscriptionParser {
       if (scheme == 'tuic') return _parseHostFrag(uri, id);
       if (scheme == 'anytls') return _parseHostFrag(uri, id);
       if (scheme == 'ss') return _parseSS(uri, id);
-    } catch (_) {}
+    } catch (_) {
+      // intentional: parse attempt, fallback handled below
+    }
     return null;
   }
 
@@ -314,7 +321,9 @@ abstract final class SubscriptionParser {
           port = parsed.$2;
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      // intentional: parse attempt, fallback handled below
+    }
     return RemoteNode(
       id: id,
       name: name,
@@ -390,7 +399,8 @@ abstract final class SubscriptionParser {
     if (s == null || s.isEmpty) return null;
     try {
       return Uri.decodeComponent(s);
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('URI decode failed, using raw value', e);
       return s;
     }
   }

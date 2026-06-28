@@ -1,5 +1,6 @@
 import '../models/api_models.dart';
 import 'api_client.dart';
+import 'secure_logger.dart';
 import 'subscription_parser.dart';
 
 /// Generic subscription panel API client.
@@ -144,7 +145,8 @@ class PanelApi {
   Future<RegisterConfig> getRegisterConfig() async {
     try {
       return await fetchRegisterConfig();
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('get register config failed', e);
       return const RegisterConfig();
     }
   }
@@ -203,7 +205,8 @@ class PanelApi {
       final res = await _client.get('/user/login/log');
       _check(res);
       return _dataList(res).map(RemoteLoginLog.fromJson).toList();
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('get login logs failed', e);
       return [];
     }
   }
@@ -360,7 +363,8 @@ class PanelApi {
       final res = await _client.get('/user/comm/config');
       _check(res);
       return (res['data'] as Map?)?['currency_symbol']?.toString() ?? '¥';
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('get currency symbol failed', e);
       return '¥';
     }
   }
@@ -463,7 +467,8 @@ class PanelApi {
           .whereType<Map<String, dynamic>>()
           .map(NoticeModel.fromJson)
           .toList();
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('get notices failed', e);
       return [];
     }
   }

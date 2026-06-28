@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 
+import 'secure_logger.dart';
+
 /// Windows DPAPI (CryptProtectData / CryptUnprotectData) via FFI.
 ///
 /// Current-user scope, no extra entropy. The plaintext never leaves process
@@ -61,7 +63,8 @@ final class WindowsDpapi {
       if (ok == 0) return null;
       final out = _copyBlob(outBlob);
       return _hexEncode(out);
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('DPAPI protect failed', e);
       return null;
     } finally {
       if (outBlob.ref.pbData != nullptr) _localFree(outBlob.ref.pbData.cast());
@@ -92,7 +95,8 @@ final class WindowsDpapi {
       if (ok == 0) return null;
       final out = _copyBlob(outBlob);
       return _utf16leDecode(out);
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('DPAPI unprotect failed', e);
       return null;
     } finally {
       if (outBlob.ref.pbData != nullptr) _localFree(outBlob.ref.pbData.cast());

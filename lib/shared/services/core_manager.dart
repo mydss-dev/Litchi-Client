@@ -236,7 +236,9 @@ class CoreManager {
       Object? decoded;
       try {
         decoded = jsonDecode(raw);
-      } catch (_) {}
+      } catch (_) {
+        // intentional: parse attempt, corrupt PID file is safe to ignore
+      }
       final pid = decoded is Map
           ? int.tryParse('${decoded['pid'] ?? ''}')
           : int.tryParse(raw.trim());
@@ -255,13 +257,17 @@ class CoreManager {
       await _pidFile.delete();
       // Give the OS a moment to release the port.
       await Future.delayed(const Duration(milliseconds: 400));
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort process cleanup, failure is safe to ignore
+    }
   }
 
   static void _deletePidFile() {
     try {
       _pidFile.deleteSync();
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort file cleanup, failure is safe to ignore
+    }
   }
 
   static Future<void> _writePidFile(int pid, String exePath) async {
@@ -307,6 +313,16 @@ class CoreManager {
         final path = '${result.stdout}'.trim();
         return path.isEmpty ? null : path;
       }
+      if (Platform.isLinux) {
+        try {
+          final link = File('/proc/$pid/exe');
+          if (link.existsSync()) {
+            return link.resolveSymbolicLinksSync();
+          }
+        } catch (_) {
+          // Fall through to generic ps method.
+        }
+      }
       final result = await Process.run('ps', [
         '-p',
         '$pid',
@@ -316,7 +332,8 @@ class CoreManager {
       if (result.exitCode != 0) return null;
       final path = '${result.stdout}'.trim();
       return path.isEmpty ? null : path;
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('_processPath: ps query failed for pid=$pid', e);
       return null;
     }
   }
@@ -332,7 +349,8 @@ class CoreManager {
       if (result.exitCode != 0) return null;
       final command = '${result.stdout}'.trim();
       return command.isEmpty ? null : command;
-    } catch (_) {
+    } catch (e) {
+      SecureLogger.debug('_processCommand: ps query failed for pid=$pid', e);
       return null;
     }
   }
@@ -361,7 +379,9 @@ class CoreManager {
   static void _deleteConfigFile(String path) {
     try {
       File(path).deleteSync();
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort config file cleanup, failure is safe to ignore
+    }
   }
 
   /// Polls until [port] is free, up to ~2 s. Handles the common race where a
@@ -385,6 +405,7 @@ class CoreManager {
       await s.close();
       return true;
     } catch (_) {
+      // intentional: port check failed, treat as unavailable
       return false;
     }
   }

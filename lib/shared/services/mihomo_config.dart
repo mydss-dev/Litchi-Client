@@ -309,7 +309,9 @@ abstract final class MihomoConfig {
     if (!Platform.isWindows) {
       try {
         await Process.run('chmod', ['600', file.path]);
-      } catch (_) {}
+      } catch (_) {
+        // intentional: best-effort cleanup, failure is safe to ignore
+      }
     }
     return file.path;
   }
@@ -330,9 +332,13 @@ abstract final class MihomoConfig {
         }
         try {
           await entity.delete();
-        } catch (_) {}
+        } catch (_) {
+          // intentional: best-effort cleanup, failure is safe to ignore
+        }
       }
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort cleanup, failure is safe to ignore
+    }
   }
 
   static String _generateSecret() {

@@ -31,7 +31,9 @@ abstract final class OutboundParser {
         _ => null,
       };
       return _applyTlsPolicy(out, allowInsecure);
-    } catch (_) {}
+    } catch (_) {
+      // intentional: parse attempt, fallback handled below
+    }
     return null;
   }
 
@@ -56,6 +58,7 @@ abstract final class OutboundParser {
       };
       return _applyTlsPolicy(out, allowInsecure);
     } catch (_) {
+      // intentional: parse attempt, fallback handled below
       return null;
     }
   }
@@ -230,6 +233,7 @@ abstract final class OutboundParser {
       try {
         decoded = utf8.decode(base64.decode(_pad(userInfo)));
       } catch (_) {
+        // intentional: parse attempt, fallback handled below
         decoded = Uri.decodeComponent(userInfo);
       }
       final ci = decoded.indexOf(':');

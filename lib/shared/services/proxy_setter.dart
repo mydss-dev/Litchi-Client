@@ -51,7 +51,9 @@ abstract final class ProxySetter {
 
   static Future<void> _schedule(Future<void> Function() operation) {
     final result = _pendingUpdate.then((_) => operation());
-    _pendingUpdate = result.catchError((_) {});
+    _pendingUpdate = result.catchError((_) {
+      // intentional: cascade error in scheduler chain, surfaced upstream
+    });
     return result;
   }
 
@@ -124,7 +126,9 @@ abstract final class ProxySetter {
     try {
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is Map<String, dynamic>) snapshot = decoded;
-    } catch (_) {}
+    } catch (_) {
+      // intentional: parse attempt, fallback handled below
+    }
     if (snapshot == null || snapshot['platform'] != 'windows') {
       await _deleteSnapshot();
       return false;
@@ -297,6 +301,7 @@ abstract final class ProxySetter {
         ], throwOnError: true);
       }
     } catch (_) {
+      // intentional: best-effort snapshot restore on failure, then rethrow
       await _macRestoreSnapshotIfOwned();
       rethrow;
     }
@@ -370,7 +375,9 @@ abstract final class ProxySetter {
     try {
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is Map<String, dynamic>) snapshot = decoded;
-    } catch (_) {}
+    } catch (_) {
+      // intentional: parse attempt, fallback handled below
+    }
     if (snapshot == null || snapshot['platform'] != 'macos') {
       await _deleteSnapshot();
       return false;
@@ -418,6 +425,7 @@ abstract final class ProxySetter {
       final r = await Process.run('networksetup', [command, service]);
       return r.exitCode == 0 ? '${r.stdout}' : '';
     } catch (_) {
+      // intentional: best-effort proxy query, failure is safe to ignore
       return '';
     }
   }
@@ -488,10 +496,14 @@ abstract final class ProxySetter {
         await file.writeAsString(jsonEncode(decoded), flush: true);
         return true;
       }
-    } catch (_) {}
+    } catch (_) {
+      // intentional: parse attempt, fallback handled below
+    }
     try {
       await file.delete();
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort cleanup, failure is safe to ignore
+    }
     return false;
   }
 
@@ -499,6 +511,8 @@ abstract final class ProxySetter {
     try {
       final file = await _snapshotFile();
       if (await file.exists()) await file.delete();
-    } catch (_) {}
+    } catch (_) {
+      // intentional: best-effort cleanup, failure is safe to ignore
+    }
   }
 }

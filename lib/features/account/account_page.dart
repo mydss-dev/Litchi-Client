@@ -11,6 +11,7 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/services/secure_logger.dart';
 import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_card.dart';
@@ -67,7 +68,9 @@ class _AccountPageState extends State<AccountPage> {
       List<RemoteLoginLog> logs = [];
       try {
         logs = await api.getLoginLogs();
-      } catch (_) {}
+      } catch (e) {
+        SecureLogger.debug('get login logs failed', e);
+      }
       if (!mounted) return;
       setState(() {
         _user = user;

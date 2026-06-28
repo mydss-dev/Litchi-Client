@@ -6,6 +6,7 @@ import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/utils/formatters.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'mobile_back_button.dart';
 import 'mobile_page_header.dart';
@@ -101,7 +102,7 @@ class _TrafficSummaryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '已用 ${_formatGb(traffic.usedGb)} / 总量 ${_formatGb(traffic.totalGb)}',
+                      '已用 ${formatGb(traffic.usedGb)} / 总量 ${formatGb(traffic.totalGb)}',
                       style: AppTextStyles.caption.copyWith(
                         color: c.textMuted,
                       ),
@@ -120,7 +121,7 @@ class _TrafficSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            _formatGb(traffic.remainGb),
+            formatGb(traffic.remainGb),
             style: AppTextStyles.pageTitle.copyWith(
               color: c.textPrimary,
               fontSize: 30,
@@ -162,7 +163,7 @@ class _TrafficStatsGrid extends StatelessWidget {
               child: _TrafficStatCard(
                 icon: LucideIcons.calendarDays,
                 title: '今日流量',
-                value: _formatGb(ctrl.todayTrafficGb),
+                value: formatGb(ctrl.todayTrafficGb),
               ),
             ),
             const SizedBox(width: 10),
@@ -170,7 +171,7 @@ class _TrafficStatsGrid extends StatelessWidget {
               child: _TrafficStatCard(
                 icon: LucideIcons.refreshCw,
                 title: '流量重置',
-                value: _formatResetDay(ctrl.resetDay),
+                value: formatResetDay(ctrl.resetDay),
               ),
             ),
           ],
@@ -182,7 +183,7 @@ class _TrafficStatsGrid extends StatelessWidget {
               child: _TrafficStatCard(
                 icon: LucideIcons.monitorSmartphone,
                 title: '设备数',
-                value: _formatDeviceLimit(ctrl.deviceLimit),
+                value: formatDeviceLimit(ctrl.deviceLimit),
               ),
             ),
             const SizedBox(width: 10),
@@ -321,7 +322,7 @@ class _TrafficRecordRow extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            _formatDate(point.date),
+            formatDate(point.date),
             style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
           ),
         ),
@@ -329,12 +330,12 @@ class _TrafficRecordRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              _formatGb(point.totalGb),
+              formatGb(point.totalGb),
               style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
             ),
             const SizedBox(height: 3),
             Text(
-              '上 ${_formatGb(point.uploadGb)}  下 ${_formatGb(point.downloadGb)}',
+              '上 ${formatGb(point.uploadGb)}  下 ${formatGb(point.downloadGb)}',
               style: AppTextStyles.caption.copyWith(color: c.textMuted),
             ),
           ],
@@ -365,23 +366,3 @@ class _TrafficIcon extends StatelessWidget {
   }
 }
 
-String _formatGb(double value) {
-  if (value <= 0) return '0.0 GB';
-  return '${value.toStringAsFixed(1)} GB';
-}
-
-String _formatResetDay(int? resetDay) {
-  if (resetDay == null || resetDay == 0) return '--';
-  return '每月 $resetDay 日';
-}
-
-String _formatDeviceLimit(int? deviceLimit) {
-  if (deviceLimit == null) return '--';
-  return deviceLimit > 0 ? '$deviceLimit 台' : '不限';
-}
-
-String _formatDate(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
-}

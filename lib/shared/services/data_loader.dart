@@ -80,42 +80,50 @@ class DataLoader {
 
   Future<void> _fillUserInfo(DataSnapshot snap) async {
     final sw = Stopwatch()..start();
-    try {
-      final info = await _api.getUserInfo();
-      snap.user = ModelMappers.toUser(info);
-      snap.currentPlanId = info.planId;
-      snap.traffic = ModelMappers.toTraffic(info);
-    } catch (e) {
-      SecureLogger.warn(
-        'DataLoader getUserInfo failed after ${sw.elapsedMilliseconds}ms',
-        e,
-      );
-      snap.criticalError = '用户信息加载失败，请检查网络后重试';
+
+    Future<void> loadUser() async {
+      try {
+        final info = await _api.getUserInfo();
+        snap.user = ModelMappers.toUser(info);
+        snap.currentPlanId = info.planId;
+        snap.traffic = ModelMappers.toTraffic(info);
+      } catch (e) {
+        SecureLogger.warn(
+          'DataLoader getUserInfo failed after ${sw.elapsedMilliseconds}ms',
+          e,
+        );
+        snap.criticalError = '用户信息加载失败，请检查网络后重试';
+      }
     }
-    try {
-      final subscribe = await _api.getSubscribeInfo();
-      snap.subscribeUrl = subscribe.subscribeUrl;
-      snap.aliveIp = subscribe.aliveIp;
-      snap.deviceLimit = subscribe.deviceLimit;
-      snap.resetDay = subscribe.resetDay;
-      snap.expiredAt = subscribe.expiredAt;
-      if (subscribe.transferEnable > 0) {
-        final total = subscribe.transferEnable / AppConfig.bytesPerGb;
-        final used =
-            (subscribe.upload + subscribe.download) / AppConfig.bytesPerGb;
-        final remain = (total - used).clamp(0.0, double.infinity);
-        snap.traffic = TrafficModel(
-          totalGb: total,
-          usedGb: used,
-          remainGb: remain,
+
+    Future<void> loadSubscribe() async {
+      try {
+        final subscribe = await _api.getSubscribeInfo();
+        snap.subscribeUrl = subscribe.subscribeUrl;
+        snap.aliveIp = subscribe.aliveIp;
+        snap.deviceLimit = subscribe.deviceLimit;
+        snap.resetDay = subscribe.resetDay;
+        snap.expiredAt = subscribe.expiredAt;
+        if (subscribe.transferEnable > 0) {
+          final total = subscribe.transferEnable / AppConfig.bytesPerGb;
+          final used =
+              (subscribe.upload + subscribe.download) / AppConfig.bytesPerGb;
+          final remain = (total - used).clamp(0.0, double.infinity);
+          snap.traffic = TrafficModel(
+            totalGb: total,
+            usedGb: used,
+            remainGb: remain,
+          );
+        }
+      } catch (e) {
+        SecureLogger.warn(
+          'DataLoader getSubscribeInfo failed after ${sw.elapsedMilliseconds}ms',
+          e,
         );
       }
-    } catch (e) {
-      SecureLogger.warn(
-        'DataLoader getSubscribeInfo failed after ${sw.elapsedMilliseconds}ms',
-        e,
-      );
     }
+
+    await Future.wait([loadUser(), loadSubscribe()]);
   }
 
   Future<void> _fillNodes(DataSnapshot snap) async {

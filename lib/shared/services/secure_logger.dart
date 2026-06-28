@@ -88,7 +88,7 @@ abstract final class SecureLogger {
       }
       file.writeAsStringSync('$line\n', mode: FileMode.append, flush: false);
     } catch (_) {
-      // Logging must never throw into the caller's path.
+      // intentional: logging must never throw into the caller's path.
     }
   }
 }
