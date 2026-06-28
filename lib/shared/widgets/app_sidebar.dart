@@ -1,24 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/nav_destinations.dart';
 import '../../config/app_config.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import '../responsive/layout_scope.dart' show kSidebarWidth;
 import '../theme/app_text_styles.dart';
 import 'brand_logo.dart';
 
-/// Left navigation rail (§8). Fixed 160px wide.
+/// Left navigation rail.  All items are derived from the single
+/// [kNavDestinations] list so adding a page there automatically
+/// updates the sidebar, bottom nav, and "我的" hub together.
 class AppSidebar extends StatelessWidget {
   const AppSidebar({super.key});
-
-  static const _items = <_MenuItem>[
-    _MenuItem(AppPage.dashboard, '首页', LucideIcons.home),
-    _MenuItem(AppPage.shop, '套餐', LucideIcons.shoppingBag),
-    _MenuItem(AppPage.invite, '邀请', LucideIcons.gift),
-    _MenuItem(AppPage.account, '我的', LucideIcons.user),
-    _MenuItem(AppPage.settings, '设置', LucideIcons.settings),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +21,7 @@ class AppSidebar extends StatelessWidget {
     final controller = AppScope.of(context);
 
     return Container(
-      width: 176,
+      width: kSidebarWidth,
       decoration: BoxDecoration(
         color: c.sidebarBg,
         border: Border(right: BorderSide(color: c.sidebarBorder)),
@@ -42,7 +37,7 @@ class AppSidebar extends StatelessWidget {
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
-                  for (final item in _items) ...[
+                  for (final item in sidebarDestinations) ...[
                     _SidebarMenuItem(
                       item: item,
                       selected: _isSelected(controller.page, item.page),
@@ -67,21 +62,10 @@ class AppSidebar extends StatelessWidget {
     }
     if (item == AppPage.account) {
       return current == AppPage.account ||
-          current == AppPage.wallet ||
-          current == AppPage.orders ||
-          current == AppPage.tickets ||
-          current == AppPage.traffic;
+          hubDestinations.any((d) => d.page == current);
     }
     return current == item;
   }
-}
-
-class _MenuItem {
-  const _MenuItem(this.page, this.label, this.icon);
-
-  final AppPage page;
-  final String label;
-  final IconData icon;
 }
 
 class _BrandArea extends StatelessWidget {
@@ -117,7 +101,7 @@ class _SidebarMenuItem extends StatefulWidget {
     required this.onTap,
   });
 
-  final _MenuItem item;
+  final NavDestination item;
   final bool selected;
   final VoidCallback onTap;
 

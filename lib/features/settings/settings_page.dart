@@ -3,7 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../config/app_config.dart';
-import '../../config/mobile_layout.dart';
+import '../../app/nav_destinations.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
@@ -18,9 +18,6 @@ import '../../shared/widgets/page_header.dart';
 import '../mobile/mobile_back_button.dart';
 import '../mobile/mobile_page_header.dart';
 
-bool _isPrimaryMobileTab(String type) {
-  return MobileLayout.tabs.any((tab) => tab.type == type);
-}
 
 /// Settings page (§15): General / Network / Advanced cards.
 class SettingsPage extends StatefulWidget {
@@ -108,7 +105,7 @@ class _SettingsPageState extends State<SettingsPage> {
   // ── Compact (bottom-nav) layout ────────────────────────────────────────────
 
   Widget _buildCompact(BuildContext context) {
-    final asPrimary = _isPrimaryMobileTab('settings');
+    final asPrimary = isPrimaryCompactTab(AppPage.settings);
     return RefreshIndicator(
       onRefresh: _onRefresh,
       child: ListView(

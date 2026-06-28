@@ -2,12 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../config/app_config.dart';
-import '../config/mobile_layout.dart';
 import '../features/account/account_page.dart';
 import '../features/account/wallet_page.dart';
 import '../features/auth/auth_flow.dart';
@@ -19,8 +17,10 @@ import '../features/settings/settings_page.dart';
 import '../features/shop/shop_page.dart';
 import '../features/tickets/tickets_page.dart';
 import '../features/traffic/traffic_page.dart';
+import 'nav_destinations.dart';
 import '../shared/models/app_models.dart';
 import '../shared/responsive/breakpoints.dart';
+import '../shared/responsive/layout_scope.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
@@ -396,10 +396,14 @@ class _MainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
-          return const _CompactBody();
-        }
-        return const _WideBody();
+        final full = constraints.maxWidth;
+        final compact = Breakpoints.isCompactWidth(full);
+        final contentWidth = compact ? full : (full - kSidebarWidth);
+        return LayoutScope(
+          isCompact: compact,
+          contentWidth: contentWidth,
+          child: compact ? const _CompactBody() : const _WideBody(),
+        );
       },
     );
   }
@@ -611,7 +615,6 @@ class _MobileBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
-    final items = _mobileNavItems();
 
     return Padding(
       padding: EdgeInsets.fromLTRB(18, 2, 18, bottomPadding + 8),
@@ -625,15 +628,14 @@ class _MobileBottomNav extends StatelessWidget {
         ),
         child: Row(
           children: [
-            for (final item in items)
+            for (final item in compactPrimaryDestinations)
               Expanded(
                 child: _MobileNavButton(
                   item: item,
-                  selected: _isSelected(
+                  selected: compactSelectedPrimary(
                     ctrl.page,
-                    item.page,
                     ctrl.mobileProfileChildPage,
-                  ),
+                  ) == item.page,
                   onTap: () => ctrl.goToPage(item.page),
                 ),
               ),
@@ -642,76 +644,6 @@ class _MobileBottomNav extends StatelessWidget {
       ),
     );
   }
-
-  bool _isSelected(AppPage current, AppPage tab, bool profileChild) {
-    if (profileChild) {
-      return tab == AppPage.account;
-    }
-    if (tab == AppPage.dashboard) {
-      return current == AppPage.dashboard;
-    }
-    if (tab == AppPage.shop) {
-      return current == AppPage.shop;
-    }
-    if (tab == AppPage.account) {
-      return current == AppPage.account ||
-          current == AppPage.orders ||
-          current == AppPage.settings ||
-          current == AppPage.tickets ||
-          current == AppPage.wallet;
-    }
-    return current == tab;
-  }
-}
-
-List<_MobileNavItem> _mobileNavItems() {
-  return [
-    const _MobileNavItem(AppPage.dashboard, LucideIcons.home, '首页'),
-    for (final tab in MobileLayout.tabs.take(3)) _mobileNavItemFor(tab),
-    const _MobileNavItem(AppPage.account, LucideIcons.user, '我的'),
-  ];
-}
-
-_MobileNavItem _mobileNavItemFor(MobileTabConfig tab) {
-  final page = switch (tab.type) {
-    'shop' => AppPage.shop,
-    'invite' => AppPage.invite,
-    'tickets' => AppPage.tickets,
-    'wallet' => AppPage.wallet,
-    'orders' => AppPage.orders,
-    'traffic' => AppPage.traffic,
-    _ => AppPage.shop,
-  };
-  return _MobileNavItem(
-    page,
-    _mobileNavIcon(tab.icon, tab.type),
-    tab.label.isEmpty ? _mobileNavLabel(tab.type) : tab.label,
-  );
-}
-
-String _mobileNavLabel(String type) {
-  return switch (type) {
-    'shop' => '套餐',
-    'invite' => '邀请',
-    'tickets' => '工单',
-    'wallet' => '钱包',
-    'orders' => '订单',
-    'traffic' => '用量',
-    _ => '套餐',
-  };
-}
-
-IconData _mobileNavIcon(String icon, String type) {
-  final name = icon.isEmpty ? type : icon;
-  return switch (name) {
-    'shoppingBag' || 'shop' => LucideIcons.shoppingBag,
-    'gift' || 'invite' => LucideIcons.gift,
-    'messageSquare' || 'tickets' => LucideIcons.messageSquare,
-    'wallet' => LucideIcons.wallet,
-    'clipboardList' || 'orders' => LucideIcons.clipboardList,
-    'gauge' || 'traffic' => LucideIcons.gauge,
-    _ => LucideIcons.circle,
-  };
 }
 
 class _MobileNavButton extends StatelessWidget {
@@ -721,7 +653,7 @@ class _MobileNavButton extends StatelessWidget {
     required this.onTap,
   });
 
-  final _MobileNavItem item;
+  final NavDestination item;
   final bool selected;
   final VoidCallback onTap;
 
@@ -762,12 +694,4 @@ class _MobileNavButton extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MobileNavItem {
-  const _MobileNavItem(this.page, this.icon, this.label);
-
-  final AppPage page;
-  final IconData icon;
-  final String label;
 }

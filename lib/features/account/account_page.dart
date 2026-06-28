@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/nav_destinations.dart';
 import '../../config/app_config.dart';
-import '../../config/mobile_layout.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
@@ -202,7 +202,7 @@ class _AccountPageState extends State<AccountPage> {
   Widget _buildCompact(BuildContext context) {
     final ctrl = AppScope.of(context);
     final user = ctrl.user;
-    final summaryType = MobileLayout.profileSummaryCard;
+    const summaryType = 'traffic';
 
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
@@ -1101,40 +1101,6 @@ class _ProfileMenuSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = [
-      for (final item in MobileLayout.profileMenu)
-        _MenuEntry(
-          icon: _profileMenuIcon(item.icon, item.type),
-          title: item.title.isEmpty ? _profileMenuTitle(item.type) : item.title,
-          subtitle: item.subtitle.isEmpty
-              ? _profileMenuSubtitle(item.type)
-              : item.subtitle,
-          page: _profileMenuPage(item.type),
-        ),
-      const _MenuEntry(
-        icon: LucideIcons.settings,
-        title: '系统设置',
-        subtitle: '网络、代理与外观',
-        page: AppPage.settings,
-      ),
-    ];
-
-    if (MobileLayout.profileMenuLayout == 'list') {
-      return Column(
-        children: [
-          for (int i = 0; i < items.length; i++) ...[
-            _MenuListTile(
-              icon: items[i].icon,
-              title: items[i].title,
-              subtitle: items[i].subtitle,
-              onTap: () => ctrl.goToProfileChildPage(items[i].page),
-            ),
-            if (i + 1 < items.length) const SizedBox(height: 10),
-          ],
-        ],
-      );
-    }
-
     return GridView.count(
       crossAxisCount: 2,
       crossAxisSpacing: 10,
@@ -1144,10 +1110,10 @@ class _ProfileMenuSection extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.zero,
       children: [
-        for (final item in items)
+        for (final item in hubDestinations)
           _MenuTile(
             icon: item.icon,
-            title: item.title,
+            title: item.label,
             subtitle: item.subtitle,
             onTap: () => ctrl.goToProfileChildPage(item.page),
           ),
@@ -1156,132 +1122,6 @@ class _ProfileMenuSection extends StatelessWidget {
   }
 }
 
-class _MenuEntry {
-  const _MenuEntry({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.page,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final AppPage page;
-}
-
-class _MenuListTile extends StatelessWidget {
-  const _MenuListTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: c.softBorder),
-          boxShadow: AppShadows.soft(c),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: c.primarySoft,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(icon, color: c.primary, size: 19),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: AppTextStyles.bodyStrong),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Icon(LucideIcons.chevronRight, size: 18, color: c.iconMuted),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-AppPage _profileMenuPage(String type) {
-  return switch (type) {
-    'wallet' => AppPage.wallet,
-    'orders' => AppPage.orders,
-    'tickets' => AppPage.tickets,
-    'traffic' => AppPage.traffic,
-    'invite' => AppPage.invite,
-    'shop' => AppPage.shop,
-    _ => AppPage.settings,
-  };
-}
-
-String _profileMenuTitle(String type) {
-  return switch (type) {
-    'wallet' => '我的钱包',
-    'orders' => '订单记录',
-    'tickets' => '工单支持',
-    'traffic' => '用量统计',
-    'invite' => '邀请返佣',
-    'shop' => '套餐购买',
-    _ => '功能',
-  };
-}
-
-String _profileMenuSubtitle(String type) {
-  return switch (type) {
-    'wallet' => '余额、佣金与账户充值',
-    'orders' => '查看购买记录与支付状态',
-    'tickets' => '联系在线客服',
-    'traffic' => '查看流量与近期记录',
-    'invite' => '邀请好友获得返佣奖励',
-    'shop' => '选择适合你的流量方案',
-    _ => '',
-  };
-}
-
-IconData _profileMenuIcon(String icon, String type) {
-  final name = icon.isEmpty ? type : icon;
-  return switch (name) {
-    'wallet' => LucideIcons.wallet,
-    'walletCards' => LucideIcons.walletCards,
-    'orders' || 'clipboardList' => LucideIcons.clipboardList,
-    'tickets' || 'messageSquare' => LucideIcons.messageSquare,
-    'traffic' || 'gauge' => LucideIcons.gauge,
-    'invite' || 'gift' => LucideIcons.gift,
-    'shop' || 'shoppingBag' => LucideIcons.shoppingBag,
-    _ => LucideIcons.circle,
-  };
-}
 
 class _MenuTile extends StatelessWidget {
   const _MenuTile({

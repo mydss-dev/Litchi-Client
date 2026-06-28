@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import 'layout_scope.dart';
+
 /// Width breakpoints for the single responsive UI.
 ///
 /// The app no longer forks on platform (Android vs desktop). The layout is
@@ -18,10 +20,13 @@ abstract final class Breakpoints {
 }
 
 extension ResponsiveContext on BuildContext {
-  /// True when the current window width is in the compact (mobile) range.
+  /// True when the content area is in the compact (mobile) range.
   ///
-  /// At the shell level prefer a [LayoutBuilder]'s constraints (more precise);
-  /// use this inside a page when only the overall window width matters.
-  bool get isCompact =>
-      MediaQuery.sizeOf(this).width < Breakpoints.compact;
+  /// Reads the global [LayoutScope] injected by the shell, which uses the
+  /// **content-area** width (not the whole window).  This guarantees every
+  /// page makes the same compact / wide decision at any given window size.
+  bool get isCompact => LayoutScope.of(this).isCompact;
+
+  /// Content-area width as reported by [LayoutScope].
+  double get contentWidth => LayoutScope.of(this).contentWidth;
 }

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../config/mobile_layout.dart';
+import '../../app/nav_destinations.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
@@ -83,7 +83,7 @@ class _TrafficPageState extends State<TrafficPage> {
   // ── Compact (bottom-nav) layout ────────────────────────────────────────────
 
   Widget _buildCompact(BuildContext context) {
-    final asPrimary = _isPrimaryMobileTab('traffic');
+    final asPrimary = isPrimaryCompactTab(AppPage.traffic);
     return RefreshIndicator(
       onRefresh: _handleRefresh,
       child: ListView(
@@ -131,9 +131,6 @@ class _TrafficPageState extends State<TrafficPage> {
   }
 }
 
-bool _isPrimaryMobileTab(String type) {
-  return MobileLayout.tabs.any((tab) => tab.type == type);
-}
 
 class _StatsGrid extends StatelessWidget {
   const _StatsGrid();

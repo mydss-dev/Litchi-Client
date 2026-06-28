@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../config/mobile_layout.dart';
+import '../../app/nav_destinations.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/services/node_filter.dart';
@@ -214,7 +214,7 @@ class _NodesPageState extends State<NodesPage> {
     final isAuto = ctrl.autoSelected;
     final effectiveId =
         isAuto ? '__auto__' : (_selectedId ?? ctrl.currentNode.id);
-    final asPrimary = _isPrimaryMobileTab('nodes');
+    final asPrimary = isPrimaryCompactTab(AppPage.nodes);
     final nodes = _filtered;
 
     return RefreshIndicator(
@@ -326,9 +326,6 @@ class _NodesPageState extends State<NodesPage> {
   }
 }
 
-bool _isPrimaryMobileTab(String type) {
-  return MobileLayout.tabs.any((tab) => tab.type == type);
-}
 
 // ── Smart recommendation card ──────────────────────────────────────────────
 

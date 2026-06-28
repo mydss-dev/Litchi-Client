@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../config/mobile_layout.dart';
+import '../../app/nav_destinations.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
@@ -151,7 +151,7 @@ class _TicketsPageState extends State<TicketsPage> {
 
   Widget _buildCompact(BuildContext context) {
     final c = AppColors.of(context);
-    final asPrimary = _isPrimaryMobileTab('tickets');
+    final asPrimary = isPrimaryCompactTab(AppPage.tickets);
     return RefreshIndicator(
       onRefresh: _handleRefresh,
       child: ListView(
@@ -233,9 +233,6 @@ class _TicketsPageState extends State<TicketsPage> {
   }
 }
 
-bool _isPrimaryMobileTab(String type) {
-  return MobileLayout.tabs.any((tab) => tab.type == type);
-}
 
 // ── Ticket card (shared) ───────────────────────────────────────────────────────
 

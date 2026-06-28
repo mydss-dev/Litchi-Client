@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../config/mobile_layout.dart';
+import '../../app/nav_destinations.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -177,7 +177,7 @@ class _WalletPageState extends State<WalletPage> {
 
   Widget _buildCompact(BuildContext context) {
     final ctrl = AppScope.of(context);
-    final asPrimary = _isPrimaryMobileTab('wallet');
+    final asPrimary = isPrimaryCompactTab(AppPage.wallet);
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView(
@@ -243,9 +243,6 @@ class _WalletPageState extends State<WalletPage> {
   }
 }
 
-bool _isPrimaryMobileTab(String type) {
-  return MobileLayout.tabs.any((tab) => tab.type == type);
-}
 
 // ── Wallet hero card ──────────────────────────────────────────────────────────
 
