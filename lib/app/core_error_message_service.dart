@@ -6,6 +6,8 @@ abstract final class CoreErrorMessageService {
   static const permissionDenied = '权限不足，请以管理员身份运行客户端';
   static const androidStartFailed = 'Android 核心启动失败';
   static const unexpectedCoreExit = '核心异常退出，连接已断开，请重新连接';
+  static const invalidNodeConfig = '当前节点配置无效，请切换节点后重试';
+  static const genericConnectionFailure = '连接失败，请切换节点或稍后重试';
 
   static String windowsStartException(Object error) {
     final raw = '$error';
@@ -21,5 +23,31 @@ abstract final class CoreErrorMessageService {
 
   static String androidStartFailure(String lastError) {
     return lastError.isNotEmpty ? lastError : androidStartFailed;
+  }
+
+  /// Converts low-level core output into a short message suitable for UI.
+  static String userFacing(String error) {
+    final raw = error.trim();
+    if (raw.isEmpty) return genericConnectionFailure;
+
+    final lower = raw.toLowerCase();
+    if (lower.contains('proxy') && lower.contains('not found')) {
+      return invalidNodeConfig;
+    }
+    if (lower.contains('parse config') || lower.contains('config error')) {
+      return configBuildFailed;
+    }
+    if (lower.contains('access denied') ||
+        lower.contains('permission denied')) {
+      return permissionDenied;
+    }
+
+    final looksLikeRawLog =
+        raw.length > 120 ||
+        raw.contains('\n') ||
+        lower.contains('time=') ||
+        lower.contains('level=') ||
+        lower.contains('msg=');
+    return looksLikeRawLog ? genericConnectionFailure : raw;
   }
 }

@@ -37,7 +37,7 @@ class _LitchiAppState extends State<LitchiApp> {
         animation: _controller,
         builder: (context, _) {
           return MaterialApp(
-            title: '${AppConfig.appName} Client',
+            title: AppConfig.appName,
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),

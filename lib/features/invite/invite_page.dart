@@ -13,7 +13,6 @@ import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../mobile/mobile_back_button.dart';
-import '../mobile/mobile_page_header.dart';
 
 /// Invite — a single responsive page.
 ///
@@ -156,7 +155,7 @@ class _InvitePageState extends State<InvitePage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          if (asChild)
+          if (asChild) ...[
             Row(
               children: [
                 MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
@@ -168,10 +167,9 @@ class _InvitePageState extends State<InvitePage> {
                   ),
                 ),
               ],
-            )
-          else
-            const MobilePageHeader(title: '邀请', subtitle: '邀请好友获得返佣奖励'),
-          const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 16),
+          ],
           _InviteLinkPanelC(
             invites: invites,
             selected: safeSelected,
@@ -240,7 +238,7 @@ class _InviteLinkPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: c.softBorder),
         boxShadow: AppShadows.soft(c),
@@ -669,7 +667,7 @@ class _InviteStatTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.softBorder),
         boxShadow: AppShadows.soft(c),
@@ -732,7 +730,7 @@ class _CommissionRecords extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.softBorder),
         boxShadow: AppShadows.soft(c),
@@ -937,7 +935,7 @@ class _InviteLinkPanelC extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: c.softBorder),
         boxShadow: AppShadows.soft(c),
@@ -1179,7 +1177,6 @@ class _ArrowButtonC extends StatelessWidget {
   }
 }
 
-
 class _ShareButtonC extends StatelessWidget {
   const _ShareButtonC({
     required this.label,
@@ -1271,7 +1268,6 @@ class _InviteStatsGridC extends StatelessWidget {
     );
   }
 }
-
 
 class _CopyButtonC extends StatelessWidget {
   const _CopyButtonC({

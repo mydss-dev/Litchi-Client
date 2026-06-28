@@ -51,4 +51,24 @@ void main() {
       CoreErrorMessageService.androidStartFailed,
     );
   });
+
+  test('converts raw core logs into user-facing messages', () {
+    expect(
+      CoreErrorMessageService.userFacing(
+        'time="2026-06-29" level=fatal msg="Parse config error: '
+        'proxy [Litchi Cloud] not found"',
+      ),
+      CoreErrorMessageService.invalidNodeConfig,
+    );
+    expect(
+      CoreErrorMessageService.userFacing(
+        'time="2026-06-29" level=fatal msg="unexpected low-level failure"',
+      ),
+      CoreErrorMessageService.genericConnectionFailure,
+    );
+  });
+
+  test('preserves short readable core errors', () {
+    expect(CoreErrorMessageService.userFacing('节点连接超时，请稍后重试'), '节点连接超时，请稍后重试');
+  });
 }

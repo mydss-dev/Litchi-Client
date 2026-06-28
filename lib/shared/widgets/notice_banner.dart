@@ -22,7 +22,6 @@ class NoticeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(14, 9, 10, 9),
       decoration: BoxDecoration(
         color: c.primarySoft,
@@ -138,7 +137,11 @@ class _NoticeDetailDialog extends StatelessWidget {
 }
 
 class _TextBtn extends StatelessWidget {
-  const _TextBtn({required this.label, required this.color, required this.onTap});
+  const _TextBtn({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   final String label;
   final Color color;

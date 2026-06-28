@@ -71,6 +71,13 @@ class AppColors extends ThemeExtension<AppColors> {
   /// Brand gradient is theme-independent.
   LinearGradient get brandGradient => AppPalette.brandGradient;
 
+  /// Standard content-card surface used throughout the app.
+  LinearGradient get cardGradient => LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [cardBg, primarySoft],
+  );
+
   static final AppColors light = AppColors(
     appBg: AppPalette.lightAppBg,
     sidebarBg: AppPalette.lightSidebarBg,
@@ -210,7 +217,11 @@ class AppColors extends ThemeExtension<AppColors> {
       danger: Color.lerp(danger, other.danger, t)!,
       dangerSoft: Color.lerp(dangerSoft, other.dangerSoft, t)!,
       premiumBadgeBg: Color.lerp(premiumBadgeBg, other.premiumBadgeBg, t)!,
-      premiumBadgeText: Color.lerp(premiumBadgeText, other.premiumBadgeText, t)!,
+      premiumBadgeText: Color.lerp(
+        premiumBadgeText,
+        other.premiumBadgeText,
+        t,
+      )!,
       shadow: Color.lerp(shadow, other.shadow, t)!,
     );
   }

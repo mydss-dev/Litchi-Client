@@ -815,16 +815,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> testLatencies() async {
-    if (!supportsCoreConnection || _nodes.isEmpty) return;
+  Future<bool> testLatencies() async {
+    if (!supportsCoreConnection || _nodes.isEmpty) return false;
 
     final runId = _nextLatencyRunId();
     _nodes.markAllLatency(-1);
     final snapshot = List<NodeModel>.from(_nodes.nodes);
 
     if (!coreProcessRunning) {
-      _markLatencyTestFailed(runId, snapshot);
-      return;
+      final ready = await _preloadCoreOnly();
+      if (!ready) {
+        _markLatencyTestFailed(runId, snapshot);
+        return false;
+      }
     }
 
     await _core.testLatencies(
@@ -833,6 +836,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         if (_isCurrentLatencyRun(runId)) _nodes.applyLatencyAt(idx, updated);
       },
     );
+    return _isCurrentLatencyRun(runId) &&
+        _nodes.nodes.any((node) => node.latency > 0 && node.latency < 9999);
   }
 
   Future<void> _testLatenciesInBackground() async {

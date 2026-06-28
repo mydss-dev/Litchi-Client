@@ -57,23 +57,29 @@ class _ModeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Ink(
-          height: 42,
-          decoration: BoxDecoration(
-            color: selected ? c.cardBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            boxShadow: selected ? AppShadows.soft(c) : null,
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: AppTextStyles.bodyStrong.copyWith(
-                color: selected ? c.primary : c.textMuted,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Ink(
+            height: 42,
+            decoration: BoxDecoration(
+              color: selected ? c.primarySoft : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: selected
+                  ? Border.all(color: c.primary.withValues(alpha: 0.22))
+                  : null,
+              boxShadow: selected ? AppShadows.soft(c) : null,
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: AppTextStyles.bodyStrong.copyWith(
+                  color: selected ? c.primary : c.textMuted,
+                ),
               ),
             ),
           ),

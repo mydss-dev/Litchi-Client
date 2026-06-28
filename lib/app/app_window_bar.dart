@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../config/app_config.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
+import '../shared/theme/app_text_styles.dart';
+import '../shared/widgets/brand_logo.dart';
+import 'app_controller.dart';
 
-/// Slim top strip hosting the window controls (§7, reconciled with the design
-/// screenshots): the brand lives in the sidebar, so there is no brand text
-/// here. Controls match the design: minimize, maximize/restore, close. The
-/// empty area is draggable to move the window.
+/// Compact branded title bar with native-like window controls.
+///
+/// The whole brand area remains draggable and supports double-click maximize.
 class WindowControlsBar extends StatefulWidget {
   const WindowControlsBar({super.key, this.height = 46});
 
@@ -62,14 +65,15 @@ class _WindowControlsBarState extends State<WindowControlsBar>
       height: widget.height,
       child: Row(
         children: [
-          // Draggable region fills all space left of the buttons; double-click
-          // toggles maximize like a normal title bar.
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onPanStart: (_) => windowManager.startDragging(),
               onDoubleTap: _toggleMaximize,
-              child: const SizedBox.expand(),
+              child: const Padding(
+                padding: EdgeInsets.only(left: 18),
+                child: _BrandTitle(),
+              ),
             ),
           ),
           _WindowButton(
@@ -88,6 +92,131 @@ class _WindowControlsBarState extends State<WindowControlsBar>
           ),
           const SizedBox(width: 12),
         ],
+      ),
+    );
+  }
+}
+
+class MobileTitleBar extends StatelessWidget {
+  const MobileTitleBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 46,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 18),
+        child: Row(
+          children: [
+            Expanded(child: _BrandTitle()),
+            _ThemeTitleAction(),
+            SizedBox(width: 4),
+            _LanguageTitleAction(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BrandTitle extends StatelessWidget {
+  const _BrandTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const BrandLogo(size: 24, radius: 7),
+        const SizedBox(width: 7),
+        Flexible(
+          child: Text(
+            AppConfig.appName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: AppColors.of(context).primary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ThemeTitleAction extends StatelessWidget {
+  const _ThemeTitleAction();
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Tooltip(
+      message: dark ? '切换浅色模式' : '切换深色模式',
+      child: _TitleActionSurface(
+        icon: dark ? LucideIcons.sun : LucideIcons.moon,
+        onTap: () => ctrl.setThemeMode(dark ? ThemeMode.light : ThemeMode.dark),
+      ),
+    );
+  }
+}
+
+class _LanguageTitleAction extends StatelessWidget {
+  const _LanguageTitleAction();
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final c = AppColors.of(context);
+    return PopupMenuButton<String>(
+      initialValue: ctrl.language,
+      tooltip: '语言',
+      position: PopupMenuPosition.under,
+      color: c.cardBg,
+      surfaceTintColor: Colors.transparent,
+      onSelected: ctrl.setLanguage,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        side: BorderSide(color: c.softBorder),
+      ),
+      itemBuilder: (context) => [
+        for (final language in const ['简体中文', '繁體中文', 'English'])
+          PopupMenuItem(
+            value: language,
+            child: Row(
+              children: [
+                Expanded(child: Text(language)),
+                if (ctrl.language == language)
+                  Icon(LucideIcons.check, size: 16, color: c.primary),
+              ],
+            ),
+          ),
+      ],
+      child: const _TitleActionSurface(icon: LucideIcons.languages),
+    );
+  }
+}
+
+class _TitleActionSurface extends StatelessWidget {
+  const _TitleActionSurface({required this.icon, this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.xs),
+        child: SizedBox(
+          width: 30,
+          height: 30,
+          child: Icon(icon, size: 17, color: c.iconDefault),
+        ),
       ),
     );
   }

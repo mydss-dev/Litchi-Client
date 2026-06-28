@@ -8,6 +8,7 @@ import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_shadows.dart';
 import '../../../shared/theme/app_text_styles.dart';
+import '../../../shared/utils/latency_status.dart';
 import '../../../shared/widgets/app_toast.dart';
 
 Future<void> showDesktopNodePicker(BuildContext context) {
@@ -561,7 +562,8 @@ class _SelectableSurface extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: selected ? c.primarySoft : c.cardBg,
+            color: selected ? c.primarySoft : null,
+            gradient: selected ? null : c.cardGradient,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: selected ? c.primary : c.softBorder),
           ),
@@ -639,15 +641,15 @@ class _Latency extends StatelessWidget {
         child: CircularProgressIndicator(strokeWidth: 2, color: c.warning),
       );
     }
-    if (latency <= 0 || latency >= 9999) {
+    if (latency <= 0) {
       return Text(
         '--',
         style: AppTextStyles.caption.copyWith(color: c.textMuted),
       );
     }
-    final color = latency < 150 ? c.success : c.danger;
+    final color = LatencyStatus.color(latency, c);
     return Text(
-      '$latency ms',
+      LatencyStatus.label(latency),
       style: AppTextStyles.caption.copyWith(
         color: color,
         fontWeight: FontWeight.w700,

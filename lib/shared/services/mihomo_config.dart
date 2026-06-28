@@ -51,6 +51,7 @@ abstract final class MihomoConfig {
   }) {
     final proxies = <Map<String, dynamic>>[];
     final names = <String>[];
+    final originalNameToTag = <String, String>{};
 
     for (final node in nodes) {
       final name = nodeTagFor(node);
@@ -58,10 +59,14 @@ abstract final class MihomoConfig {
       if (proxy == null) continue;
       proxies.add(proxy);
       names.add(name);
+      final originalName = '${node.rawOutbound?['name'] ?? ''}'.trim();
+      if (originalName.isNotEmpty) originalNameToTag[originalName] = name;
     }
     if (names.isEmpty) return null;
+    _repairProxyReferences(proxies, names, originalNameToTag);
 
     final selected = names.contains(selectedTag) ? selectedTag : autoSelectTag;
+    final safeRules = rules.map(_repairRulePolicyReference).toList();
     final fallbackRules = <String>[
       'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve',
       'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
@@ -138,7 +143,7 @@ abstract final class MihomoConfig {
         },
       ],
       if (ruleProviders.isNotEmpty) 'rule-providers': ruleProviders,
-      'rules': rules.isNotEmpty ? rules : fallbackRules,
+      'rules': safeRules.isNotEmpty ? safeRules : fallbackRules,
       'litchi-selected-proxy': selected,
     };
   }
@@ -163,6 +168,59 @@ abstract final class MihomoConfig {
       allowInsecure: allowInsecure,
     );
     return outbound == null ? null : _normalizedToMihomo(outbound);
+  }
+
+  /// Full Clash subscriptions may attach `dialer-proxy` to each proxy through
+  /// a provider override. This client rebuilds its own groups, so references to
+  /// subscription groups no longer exist. Preserve references to real proxies
+  /// by rewriting their original names to generated tags, and remove dangling
+  /// group references that would make mihomo reject the entire config.
+  static void _repairProxyReferences(
+    List<Map<String, dynamic>> proxies,
+    List<String> generatedTags,
+    Map<String, String> originalNameToTag,
+  ) {
+    const builtinOutbounds = {'DIRECT', 'REJECT', 'PASS'};
+    for (final proxy in proxies) {
+      final reference = '${proxy['dialer-proxy'] ?? ''}'.trim();
+      if (reference.isEmpty) continue;
+
+      final mapped = originalNameToTag[reference];
+      if (mapped != null) {
+        proxy['dialer-proxy'] = mapped;
+        continue;
+      }
+      if (generatedTags.contains(reference) ||
+          builtinOutbounds.contains(reference.toUpperCase())) {
+        continue;
+      }
+      proxy.remove('dialer-proxy');
+    }
+  }
+
+  /// Defense-in-depth for cached profiles created before rule normalization
+  /// handled two-field MATCH/FINAL rules.
+  static String _repairRulePolicyReference(String rule) {
+    final parts = rule.split(',').map((part) => part.trim()).toList();
+    if (parts.length < 2) return rule;
+
+    final ruleType = parts.first.toUpperCase();
+    final policyIndex = (ruleType == 'MATCH' || ruleType == 'FINAL') ? 1 : 2;
+    if (policyIndex >= parts.length) return rule;
+
+    const validPolicies = {
+      selectorTag,
+      autoSelectTag,
+      'DIRECT',
+      'REJECT',
+      'REJECT-DROP',
+      'PASS',
+      globalTag,
+    };
+    if (!validPolicies.contains(parts[policyIndex].toUpperCase())) {
+      parts[policyIndex] = selectorTag;
+    }
+    return parts.join(',');
   }
 
   /// Must stay in sync with [SubscriptionParser._supportedClashTypes].

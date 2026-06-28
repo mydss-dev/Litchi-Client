@@ -223,16 +223,12 @@ class _TicketsPageState extends State<TicketsPage> {
     }
     return [
       for (final ticket in _tickets) ...[
-        _TicketCard(
-          ticket: ticket,
-          onTap: () => _openTicketDetail(ticket),
-        ),
+        _TicketCard(ticket: ticket, onTap: () => _openTicketDetail(ticket)),
         const SizedBox(height: 10),
       ],
     ];
   }
 }
-
 
 // ── Ticket card (shared) ───────────────────────────────────────────────────────
 
@@ -254,7 +250,7 @@ class _TicketCard extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: c.cardBg,
+            gradient: c.cardGradient,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: c.softBorder),
             boxShadow: AppShadows.soft(c),

@@ -18,7 +18,6 @@ import '../../shared/widgets/app_switch.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
-import '../mobile/mobile_page_header.dart';
 
 /// Account / Profile — a single responsive page.
 ///
@@ -200,8 +199,6 @@ class _AccountPageState extends State<AccountPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          const MobilePageHeader(title: '我的', subtitle: '账号信息与套餐状态'),
-          const SizedBox(height: 14),
           _ProfileHeader(
             userName: user.name,
             plan: user.plan,
@@ -237,7 +234,9 @@ class _AccountContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatarUrl = AppConfig.avatarUrl.trim();
-    final fallbackLetter = user.email.isNotEmpty ? user.email[0].toUpperCase() : 'L';
+    final fallbackLetter = user.email.isNotEmpty
+        ? user.email[0].toUpperCase()
+        : 'L';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,7 +617,7 @@ class _TrafficOverviewCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: c.cardBg,
+          gradient: c.cardGradient,
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: c.softBorder),
           boxShadow: AppShadows.soft(c),
@@ -752,7 +751,7 @@ class _InfoSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.softBorder),
         boxShadow: AppShadows.soft(c),
@@ -905,7 +904,7 @@ class _ProfileHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.softBorder),
         boxShadow: AppShadows.soft(c),
@@ -944,8 +943,10 @@ class _ProfileHeader extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: c.primarySoft,
+                color: c.cardBg,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
+                border: Border.all(color: c.primary.withValues(alpha: 0.20)),
+                boxShadow: AppShadows.soft(c),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1033,7 +1034,6 @@ class _ProfileMenuSection extends StatelessWidget {
   }
 }
 
-
 class _MenuTile extends StatelessWidget {
   const _MenuTile({
     required this.icon,
@@ -1055,7 +1055,7 @@ class _MenuTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: c.cardBg,
+          gradient: c.cardGradient,
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: c.softBorder),
           boxShadow: AppShadows.soft(c),

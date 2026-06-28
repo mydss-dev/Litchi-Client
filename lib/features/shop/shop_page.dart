@@ -11,7 +11,6 @@ import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../mobile/mobile_back_button.dart';
-import '../mobile/mobile_page_header.dart';
 import 'order_confirm_dialog.dart';
 
 /// Shop — a single responsive page.
@@ -129,7 +128,7 @@ class _ShopPageState extends State<ShopPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          if (asChild)
+          if (asChild) ...[
             Row(
               children: [
                 MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
@@ -141,10 +140,9 @@ class _ShopPageState extends State<ShopPage> {
                   ),
                 ),
               ],
-            )
-          else
-            const MobilePageHeader(title: '套餐', subtitle: '选择适合你的流量方案'),
-          const SizedBox(height: 14),
+            ),
+            const SizedBox(height: 14),
+          ],
           _ShopTabsC(
             tabs: _compactTabs,
             selected: _tab,
@@ -329,7 +327,7 @@ class _PlanCardState extends State<_PlanCard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
           color: plan.featured ? c.primary : c.softBorder,
@@ -465,20 +463,20 @@ class _CycleChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final fg = selected
+        ? Colors.white
+        : enabled
+        ? c.textSecondary
+        : c.textMuted.withValues(alpha: 0.32);
+    final bg = selected
         ? c.primary
         : enabled
-        ? c.textMuted
-        : c.textMuted.withValues(alpha: 0.38);
-    final bg = selected
-        ? c.primarySoft
-        : enabled
-        ? c.surfaceMuted
-        : c.surfaceMuted.withValues(alpha: 0.22);
+        ? c.cardBg
+        : c.surfaceMuted.withValues(alpha: 0.35);
     final borderColor = selected
-        ? c.primarySoft
+        ? c.primary
         : enabled
-        ? c.softBorder
-        : c.softBorder.withValues(alpha: 0.35);
+        ? c.primary.withValues(alpha: 0.16)
+        : c.softBorder.withValues(alpha: 0.28);
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
       child: GestureDetector(
@@ -805,7 +803,7 @@ class _PlanCardStateC extends State<_PlanCardC> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(
           color: plan.featured ? c.primary : c.softBorder,
@@ -956,51 +954,53 @@ class _CycleChipC extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final fg = selected
+        ? Colors.white
+        : enabled
+        ? c.textSecondary
+        : c.textMuted.withValues(alpha: 0.32);
+    final bg = selected
         ? c.primary
         : enabled
-        ? c.textMuted
-        : c.textMuted.withValues(alpha: 0.38);
-    final bg = selected
-        ? c.primarySoft
-        : enabled
-        ? c.surfaceMuted
-        : c.surfaceMuted.withValues(alpha: 0.22);
+        ? c.cardBg
+        : c.surfaceMuted.withValues(alpha: 0.35);
     final borderColor = selected
-        ? c.primarySoft
+        ? c.primary
         : enabled
-        ? c.softBorder
-        : c.softBorder.withValues(alpha: 0.35);
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          border: Border.all(color: borderColor),
-        ),
-        child: Text(
-          _cycleLabel(cycle),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.caption.copyWith(
-            fontSize: 12,
-            color: fg,
-            fontWeight: selected
-                ? FontWeight.w800
-                : enabled
-                ? FontWeight.w600
-                : FontWeight.w500,
+        ? c.primary.withValues(alpha: 0.16)
+        : c.softBorder.withValues(alpha: 0.28);
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.forbidden,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: borderColor),
+          ),
+          child: Text(
+            _cycleLabel(cycle),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 12,
+              color: fg,
+              fontWeight: selected
+                  ? FontWeight.w800
+                  : enabled
+                  ? FontWeight.w600
+                  : FontWeight.w500,
+            ),
           ),
         ),
       ),
     );
   }
 }
-
 
 String _cycleLabel(BillingCycle cycle) => switch (cycle) {
   BillingCycle.monthly => '月付',

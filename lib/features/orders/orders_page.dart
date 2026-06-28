@@ -185,10 +185,7 @@ class _OrdersPageState extends State<OrdersPage> {
         padding: EdgeInsets.zero,
         children: [
           if (asPrimary)
-            const MobilePageHeader(
-              title: '订单',
-              subtitle: '查看购买记录与支付状态',
-            )
+            const MobilePageHeader(title: '订单', subtitle: '查看购买记录与支付状态')
           else
             Row(
               children: [
@@ -250,7 +247,6 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 }
 
-
 class _OrderCard extends StatelessWidget {
   const _OrderCard({
     required this.order,
@@ -282,7 +278,7 @@ class _OrderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.softBorder),
         boxShadow: AppShadows.soft(c),
@@ -324,7 +320,9 @@ class _OrderCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Expanded(child: _OrderMeta(label: '类型', value: typeValue)),
+                Expanded(
+                  child: _OrderMeta(label: '类型', value: typeValue),
+                ),
                 Expanded(
                   child: _OrderMeta(label: '日期', value: order.dateDisplay),
                 ),

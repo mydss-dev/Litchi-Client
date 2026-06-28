@@ -171,13 +171,15 @@ abstract final class SubscriptionParser {
   ///
   ///     IP-CIDR,1.1.1.1/32,DIRECT,no-resolve
   ///     DOMAIN-SUFFIX,google.com,PROXY
+  ///     MATCH,PROXY
   ///
-  /// This method reads the field at index 2 and leaves the rest alone.
+  /// Most rules store the policy at index 2, while terminal MATCH/FINAL rules
+  /// contain only two fields and store it at index 1.
   /// Built-in actions (DIRECT, REJECT, REJECT-DROP, PASS, GLOBAL, PROXY)
   /// pass through unchanged; unrecognised values are mapped to PROXY.
   static String _normalizeRulePolicy(String rule) {
     final parts = rule.split(',').map((e) => e.trim()).toList();
-    if (parts.length < 3) return rule;
+    if (parts.length < 2) return rule;
 
     const builtin = {
       'DIRECT',
@@ -188,7 +190,9 @@ abstract final class SubscriptionParser {
       'PROXY',
     };
 
-    const policyIndex = 2;
+    final ruleType = parts.first.toUpperCase();
+    final policyIndex = (ruleType == 'MATCH' || ruleType == 'FINAL') ? 1 : 2;
+    if (policyIndex >= parts.length) return rule;
     final policy = parts[policyIndex].toUpperCase();
 
     if (!builtin.contains(policy)) {
@@ -379,8 +383,7 @@ abstract final class SubscriptionParser {
     if (p.startsWith('./')) p = p.substring(2);
     final segments = p.split('/').where((s) => s.isNotEmpty).toList();
     final hasTraversal = segments.contains('..');
-    final safeFallback =
-        'providers/${_safeFileStem(fallbackName)}.yaml';
+    final safeFallback = 'providers/${_safeFileStem(fallbackName)}.yaml';
     if (p.isEmpty || isAbsolute || hasTraversal || segments.isEmpty) {
       return safeFallback;
     }

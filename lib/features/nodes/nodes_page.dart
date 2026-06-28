@@ -13,6 +13,7 @@ import '../../shared/services/settings_service.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/utils/latency_status.dart';
 import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/filter_tabs.dart';
@@ -114,11 +115,7 @@ class _NodesPageState extends State<NodesPage> {
       return;
     }
     setState(() => _selectedId = null);
-    AppToast.show(
-      context,
-      '已开启自动选择，将使用最优节点',
-      type: AppToastType.success,
-    );
+    AppToast.show(context, '已开启自动选择，将使用最优节点', type: AppToastType.success);
   }
 
   Future<void> _selectNode(NodeModel node) async {
@@ -130,11 +127,7 @@ class _NodesPageState extends State<NodesPage> {
       return;
     }
     setState(() => _selectedId = node.id);
-    AppToast.show(
-      context,
-      '已切换至 ${node.name}',
-      type: AppToastType.success,
-    );
+    AppToast.show(context, '已切换至 ${node.name}', type: AppToastType.success);
   }
 
   @override
@@ -155,8 +148,9 @@ class _NodesPageState extends State<NodesPage> {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final isAuto = ctrl.autoSelected;
-    final effectiveId =
-        isAuto ? '__auto__' : (_selectedId ?? ctrl.currentNode.id);
+    final effectiveId = isAuto
+        ? '__auto__'
+        : (_selectedId ?? ctrl.currentNode.id);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,8 +206,9 @@ class _NodesPageState extends State<NodesPage> {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final isAuto = ctrl.autoSelected;
-    final effectiveId =
-        isAuto ? '__auto__' : (_selectedId ?? ctrl.currentNode.id);
+    final effectiveId = isAuto
+        ? '__auto__'
+        : (_selectedId ?? ctrl.currentNode.id);
     final asPrimary = isPrimaryCompactTab(AppPage.nodes);
     final nodes = _filtered;
 
@@ -224,16 +219,12 @@ class _NodesPageState extends State<NodesPage> {
         padding: EdgeInsets.zero,
         children: [
           if (asPrimary)
-            const MobilePageHeader(
-              title: '节点',
-              subtitle: '选择线路并查看延迟',
-            )
+            const MobilePageHeader(title: '节点', subtitle: '选择线路并查看延迟')
           else
             Row(
               children: [
                 MobileBackButton(
-                  onTap: () =>
-                      AppScope.of(context).goToPage(AppPage.dashboard),
+                  onTap: () => AppScope.of(context).goToPage(AppPage.dashboard),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -300,21 +291,14 @@ class _NodesPageState extends State<NodesPage> {
       Row(
         children: [
           Expanded(
-            child: SearchInput(
-              hintText: '搜索节点',
-              onChanged: _onSearchChanged,
-            ),
+            child: SearchInput(hintText: '搜索节点', onChanged: _onSearchChanged),
           ),
           const SizedBox(width: 12),
           _LatencyTestButton(ctrl: ctrl),
         ],
       ),
       const SizedBox(height: 14),
-      _AutoCard(
-        ctrl: ctrl,
-        selected: isAuto,
-        onTap: _toggleAutoSelect,
-      ),
+      _AutoCard(ctrl: ctrl, selected: isAuto, onTap: _toggleAutoSelect),
       const SizedBox(height: 12),
       FilterTabs(
         tabs: _tabs,
@@ -325,7 +309,6 @@ class _NodesPageState extends State<NodesPage> {
     ];
   }
 }
-
 
 // ── Smart recommendation card ──────────────────────────────────────────────
 
@@ -360,7 +343,8 @@ class _AutoCard extends StatelessWidget {
           height: 64,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: selected ? c.primarySoft : c.cardBg,
+            color: selected ? c.primarySoft : null,
+            gradient: selected ? null : c.cardGradient,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
               color: selected ? c.primary : c.softBorder,
@@ -463,10 +447,7 @@ class _AutoCard extends StatelessWidget {
   }
 
   Color _bestColor(int? ms, AppColors c) {
-    if (ms == null) return c.textMuted;
-    if (ms < 60) return c.success;
-    if (ms < 150) return c.warning;
-    return c.danger;
+    return LatencyStatus.color(ms, c);
   }
 }
 
@@ -490,8 +471,14 @@ class _LatencyTestButtonState extends State<_LatencyTestButton> {
       return;
     }
     setState(() => _loading = true);
-    await widget.ctrl.testLatencies();
-    if (mounted) setState(() => _loading = false);
+    final success = await widget.ctrl.testLatencies();
+    if (!mounted) return;
+    setState(() => _loading = false);
+    AppToast.show(
+      context,
+      success ? '测速完成' : '测速失败，请检查节点后重试',
+      type: success ? AppToastType.success : AppToastType.warning,
+    );
   }
 
   @override
@@ -521,11 +508,7 @@ class _LatencyTestButtonState extends State<_LatencyTestButton> {
                       valueColor: AlwaysStoppedAnimation(c.primary),
                     ),
                   )
-                : Icon(
-                    LucideIcons.gauge,
-                    size: 18,
-                    color: c.iconDefault,
-                  ),
+                : Icon(LucideIcons.gauge, size: 18, color: c.iconDefault),
           ),
         ),
       ),
@@ -562,7 +545,8 @@ class _NodeCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(
-            color: selected ? c.primarySoft : c.cardBg,
+            color: selected ? c.primarySoft : null,
+            gradient: selected ? null : c.cardGradient,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
               color: selected ? c.primary : c.softBorder,
@@ -655,7 +639,7 @@ class _LatencyIndicator extends StatelessWidget {
         ),
       );
     }
-    if (latency <= 0 || latency >= 9999) {
+    if (latency <= 0) {
       return Row(
         children: [
           Container(
@@ -671,8 +655,8 @@ class _LatencyIndicator extends StatelessWidget {
         ],
       );
     }
-    final color =
-        latency < 60 ? c.success : (latency < 150 ? c.warning : c.danger);
+    final color = LatencyStatus.color(latency, c);
+    final label = LatencyStatus.label(latency);
     return Row(
       children: [
         Container(
@@ -681,7 +665,7 @@ class _LatencyIndicator extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text('$latency ms', style: AppTextStyles.menu.copyWith(color: color)),
+        Text(label, style: AppTextStyles.menu.copyWith(color: color)),
       ],
     );
   }

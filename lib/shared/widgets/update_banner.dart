@@ -43,12 +43,16 @@ class _UpdateBannerState extends State<UpdateBanner> {
       await UpdateService.downloadAndInstall(
         widget.info,
         onProgress: (received, total) {
-          if (mounted) setState(() { _received = received; _total = total; });
+          if (mounted) {
+            setState(() {
+              _received = received;
+              _total = total;
+            });
+          }
         },
       );
       if (mounted) {
-        AppToast.show(context, '下载完成，正在打开安装包',
-            type: AppToastType.success);
+        AppToast.show(context, '下载完成，正在打开安装包', type: AppToastType.success);
       }
     } catch (e) {
       if (mounted) {
@@ -57,7 +61,11 @@ class _UpdateBannerState extends State<UpdateBanner> {
           e.toString().replaceFirst('Exception: ', ''),
           type: AppToastType.error,
         );
-        setState(() { _downloading = false; _received = 0; _total = -1; });
+        setState(() {
+          _downloading = false;
+          _received = 0;
+          _total = -1;
+        });
       }
     }
   }
@@ -68,7 +76,6 @@ class _UpdateBannerState extends State<UpdateBanner> {
     final info = widget.info;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(14, 9, 10, 9),
       decoration: BoxDecoration(
         color: c.success.withValues(alpha: 0.10),
@@ -95,11 +102,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
               ),
               const SizedBox(width: 8),
               if (info.downloadUrl.isNotEmpty && !_downloading)
-                _TextBtn(
-                  label: '立即下载',
-                  color: c.success,
-                  onTap: _download,
-                ),
+                _TextBtn(label: '立即下载', color: c.success, onTap: _download),
               if (_downloading)
                 _TextBtn(
                   label: '${(_progress * 100).toStringAsFixed(0)}%',

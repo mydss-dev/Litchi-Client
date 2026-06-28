@@ -172,7 +172,7 @@ class PageStateCard extends StatelessWidget {
     final content = Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.softBorder),
       ),
