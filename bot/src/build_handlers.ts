@@ -1,12 +1,11 @@
 import type { Telegraf } from 'telegraf';
 
+import { env } from './config.js';
 import {
+  countRecentBuilds,
   createBuild,
   getAuthorizedUser,
-  listBuildsForUser,
-  setLatestBuild,
   updateBuildStatus,
-  type BuildRow,
 } from './db.js';
 import {
   clearPendingAction,
@@ -57,6 +56,8 @@ export function wireBuildCommands(bot: Telegraf): void {
       setPendingAction(userId, { type: 'build' });
       await ctx.reply(
         [
+          `当前版本: ${getCurrentBuildVersion()}`,
+          '',
           '请回复数字选择打包平台:',
           '1 — 全部 (Windows + Android + macOS)',
           '2 — Windows',
@@ -69,95 +70,6 @@ export function wireBuildCommands(bot: Telegraf): void {
     }
 
     await startBuildFromInput(bot, ctx, platformRaw);
-  });
-
-  bot.command('status', async (ctx) => {
-    const userId = ctx.from?.id;
-    if (!userId) {
-      await ctx.reply('无法识别当前用户。');
-      return;
-    }
-
-    const profile = requireBoundProfile(userId);
-    if (profile instanceof Error) {
-      await ctx.reply(profile.message);
-      return;
-    }
-
-    const rows = listBuildsForUser(profile.app_id, userId);
-    if (rows.length === 0) {
-      await ctx.reply('还没有打包记录。');
-      return;
-    }
-
-    const refreshedRows = await refreshBuildRows(rows);
-    await ctx.reply(
-      refreshedRows
-        .map(
-          (row) =>
-            `#${row.id} ${row.platform} ${row.version} ${row.status}\n${row.download_url || '等待构建完成后生成下载链接'}`,
-        )
-        .join('\n\n'),
-    );
-  });
-
-  bot.command('latest', async (ctx) => {
-    const userId = ctx.from?.id;
-    if (!userId) {
-      await ctx.reply('无法识别当前用户。');
-      return;
-    }
-
-    const profile = requireBoundProfile(userId);
-    if (profile instanceof Error) {
-      await ctx.reply(profile.message);
-      return;
-    }
-
-    const rows = listBuildsForUser(profile.app_id, userId).filter(
-      (row) => row.status === 'success' && row.download_url,
-    );
-    if (rows.length === 0) {
-      await ctx.reply('还没有可下载的最新包。');
-      return;
-    }
-
-    await ctx.reply(
-      rows
-        .map((row) => `${row.platform} ${row.version}\n${row.download_url}`)
-        .join('\n\n'),
-    );
-  });
-
-  bot.command('setlatest', async (ctx) => {
-    const userId = ctx.from?.id;
-    if (!userId) {
-      await ctx.reply('无法识别当前用户。');
-      return;
-    }
-
-    const [platformRaw, downloadUrl] = splitArgs(ctx.message.text);
-    if (!platformRaw) {
-      setPendingAction(userId, { type: 'setlatest_platform' });
-      await ctx.reply(
-        ['请先发送平台名称:', 'windows', 'android', 'macos', '退出请输入 /cancel'].join('\n'),
-      );
-      return;
-    }
-
-    const platform = parseSinglePlatform(platformRaw);
-    if (!platform) {
-      await ctx.reply('平台只能是 windows / android / macos。');
-      return;
-    }
-
-    if (!downloadUrl) {
-      setPendingAction(userId, { type: 'setlatest_url', platform });
-      await ctx.reply(`请发送 ${platform} 的下载链接。`);
-      return;
-    }
-
-    await saveLatestBuild(ctx, platform, downloadUrl);
   });
 
   bot.on('text', async (ctx, next) => {
@@ -177,23 +89,6 @@ export function wireBuildCommands(bot: Telegraf): void {
     if (pending.type === 'build') {
       clearPendingAction(userId);
       await startBuildFromInput(bot, ctx, text);
-      return;
-    }
-
-    if (pending.type === 'setlatest_platform') {
-      const platform = parseSinglePlatform(text);
-      if (!platform) {
-        await ctx.reply('平台只能是 windows / android / macos，请重新输入。');
-        return;
-      }
-      setPendingAction(userId, { type: 'setlatest_url', platform });
-      await ctx.reply(`请发送 ${platform} 的下载链接。`);
-      return;
-    }
-
-    if (pending.type === 'setlatest_url') {
-      clearPendingAction(userId);
-      await saveLatestBuild(ctx, pending.platform, text);
       return;
     }
 
@@ -242,6 +137,19 @@ async function startBuildFromInput(
   const profile = requireBoundProfile(userId);
   if (profile instanceof Error) {
     await ctx.reply(profile.message);
+    return;
+  }
+
+  // ── Rate limit ───────────────────────────────────────────────────────────
+  const { maxBuilds, windowHours } = env.buildRateLimit;
+  const recent = countRecentBuilds(profile.app_id, windowHours);
+  if (recent >= maxBuilds) {
+    const resetHint = windowHours >= 24
+      ? '明天再试'
+      : `${windowHours}小时后再试`;
+    await ctx.reply(
+      `过去${windowHours}小时内已构建 ${recent} 次（上限 ${maxBuilds} 次），${resetHint}。`,
+    );
     return;
   }
 
@@ -302,74 +210,6 @@ async function startBuildFromInput(
   } catch (error) {
     await ctx.reply(error instanceof Error ? error.message : String(error));
   }
-}
-
-async function saveLatestBuild(
-  ctx: {
-    from?: { id?: number };
-    reply(text: string): Promise<unknown>;
-  },
-  platform: BuildPlatform,
-  downloadUrl: string,
-): Promise<void> {
-  const userId = ctx.from?.id;
-  if (!userId) {
-    await ctx.reply('无法识别当前用户。');
-    return;
-  }
-
-  const profile = requireBoundProfile(userId);
-  if (profile instanceof Error) {
-    await ctx.reply(profile.message);
-    return;
-  }
-
-  const version = getCurrentBuildVersion();
-  const id = setLatestBuild({
-    appId: profile.app_id,
-    tgUserId: userId,
-    platform,
-    version,
-    downloadUrl,
-  });
-  await ctx.reply(`已记录最新安装包 #${id}`);
-}
-
-async function refreshBuildRows(rows: BuildRow[]): Promise<BuildRow[]> {
-  const nextRows: BuildRow[] = [];
-
-  for (const row of rows) {
-    try {
-      const snapshot = await readBuildStatus({
-        appId: row.app_id,
-        platform: row.platform,
-        version: row.version,
-        requestId: row.request_id,
-      });
-
-      if (snapshot) {
-        updateBuildStatus({
-          id: row.id,
-          status: snapshot.status,
-          githubRunUrl: snapshot.githubRunUrl,
-          downloadUrl: snapshot.downloadUrl,
-        });
-        nextRows.push({
-          ...row,
-          status: snapshot.status,
-          github_run_url: snapshot.githubRunUrl,
-          download_url: snapshot.downloadUrl || row.download_url,
-        });
-        continue;
-      }
-    } catch {
-      // Keep last known state if GitHub polling fails.
-    }
-
-    nextRows.push(row);
-  }
-
-  return nextRows;
 }
 
 function scheduleGroupPoll(

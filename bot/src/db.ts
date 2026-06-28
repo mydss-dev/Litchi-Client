@@ -235,6 +235,19 @@ export function updateBuildStatus(input: {
   });
 }
 
+/**
+ * Counts builds created for [appId] within the last [windowHours] hours.
+ * Used for per-tenant rate limiting.
+ */
+export function countRecentBuilds(appId: string, windowHours: number): number {
+  const row = db.prepare(`
+    SELECT COUNT(*) as cnt FROM builds
+    WHERE app_id = ?
+      AND created_at >= datetime('now', '-' || ? || ' hours')
+  `).get(appId, String(windowHours)) as { cnt: number } | undefined;
+  return row?.cnt ?? 0;
+}
+
 export function latestBuild(appId: string, platform: string): BuildRow | undefined {
   const rows = db.prepare(`
     SELECT * FROM builds

@@ -195,7 +195,10 @@ abstract final class WindowsRegistry {
         if (rc != _errorSuccess && rc != _errorMoreData) return null;
         if (size.value == 0) return '';
 
-        final raw = calloc<Uint16>(size.value ~/ 2);
+        // Ceiling division so an odd-byte REG_BINARY value (never hit by
+        // current callers, which only read REG_SZ keys) cannot under-size the
+        // buffer by one byte.
+        final raw = calloc<Uint16>((size.value + 1) ~/ 2);
         try {
           rc = _Advapi32.regQueryValueExW(
             hKey,
@@ -206,6 +209,8 @@ abstract final class WindowsRegistry {
             size,
           );
           if (rc != _errorSuccess) return null;
+          // Only REG_SZ / REG_EXPAND_SZ make sense for string reads.
+          if (type.value != 1 && type.value != 2) return null;
           // Build string from UTF-16 code units, stopping at the first null.
           final charCount = size.value ~/ 2;
           if (charCount == 0) return '';

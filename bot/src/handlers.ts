@@ -199,8 +199,6 @@ export function buildHelpText(userId?: number): string {
         '/apps',
         '/signconfig',
         '/build',
-        '/status',
-        '/latest',
       );
     }
     return [...lines, '', '输入过程中可随时发送 /cancel。'].join('\n');
@@ -218,8 +216,6 @@ export function buildHelpText(userId?: number): string {
     '/apps',
     '/signconfig',
     '/build',
-    '/status',
-    '/latest',
     '',
     '输入过程中可随时发送 /cancel。',
   ].join('\n');
@@ -266,13 +262,11 @@ export function normalizeOssDomain(raw: string): string {
 
 function formatProfile(profile: {
   app_id: string;
-  oss_domain: string;
   remote_config_url: string;
   public_key: string;
 }): string {
   return [
     `APP_ID=${profile.app_id}`,
-    `OSS_DOMAIN=${profile.oss_domain || '-'}`,
     `REMOTE_CONFIG_URL=${profile.remote_config_url || '-'}`,
     `REMOTE_CONFIG_PUBLIC_KEY=${profile.public_key || '-'}`,
   ].join('\n');
@@ -339,7 +333,6 @@ async function bindOssForUser(
       [
         '绑定成功，以下信息已经固定，请妥善保存。',
         `APP_ID=${bound.app_id}`,
-        `OSS_DOMAIN=${bound.oss_domain}`,
         `REMOTE_CONFIG_URL=${bound.remote_config_url}`,
         `REMOTE_CONFIG_PUBLIC_KEY=${bound.public_key}`,
         '',
