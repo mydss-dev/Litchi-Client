@@ -1,14 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
 import '../shared/theme/app_theme.dart';
 import 'app_controller.dart';
 import 'app_shell.dart';
-import 'mobile_app_shell.dart';
-
-bool get _isDesktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
 /// Root widget: owns the [AppController] and rebuilds [MaterialApp] when the
 /// theme mode changes.
@@ -49,9 +44,13 @@ class _LitchiAppState extends State<LitchiApp> {
             themeMode: _controller.themeMode,
             // Transparent so the rounded window shell shows through at the
             // clipped corners (§ rounded-window spec).
-            home: Scaffold(
+            //
+            // A single responsive shell for every platform: it renders a
+            // sidebar layout on wide windows and a bottom-nav layout on narrow
+            // ones, chosen by width rather than by platform.
+            home: const Scaffold(
               backgroundColor: Colors.transparent,
-              body: _isDesktop ? const AppShell() : const MobileAppShell(),
+              body: AppShell(),
             ),
           );
         },

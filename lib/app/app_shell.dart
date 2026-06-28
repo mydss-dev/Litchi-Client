@@ -2,27 +2,42 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../config/app_config.dart';
+import '../config/mobile_layout.dart';
 import '../features/account/account_page.dart';
 import '../features/account/wallet_page.dart';
 import '../features/auth/auth_flow.dart';
 import '../features/dashboard/dashboard_page.dart';
 import '../features/invite/invite_page.dart';
+import '../features/mobile/mobile_home_page.dart';
+import '../features/mobile/mobile_invite_page.dart';
+import '../features/mobile/mobile_nodes_page.dart';
+import '../features/mobile/mobile_orders_page.dart';
+import '../features/mobile/mobile_profile_page.dart';
+import '../features/mobile/mobile_settings_page.dart';
+import '../features/mobile/mobile_shop_page.dart';
+import '../features/mobile/mobile_tickets_page.dart';
+import '../features/mobile/mobile_traffic_page.dart';
+import '../features/mobile/mobile_wallet_page.dart';
 import '../features/nodes/nodes_page.dart';
 import '../features/orders/orders_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/shop/shop_page.dart';
 import '../features/tickets/tickets_page.dart';
 import '../features/traffic/traffic_page.dart';
+import '../shared/models/app_models.dart';
+import '../shared/responsive/breakpoints.dart';
 import '../shared/theme/app_colors.dart';
+import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
+import '../shared/theme/app_text_styles.dart';
 import '../shared/widgets/app_sidebar.dart';
 import '../shared/widgets/notice_banner.dart';
 import '../shared/widgets/update_banner.dart';
-import '../shared/models/app_models.dart';
 import 'app_controller.dart';
 import 'app_window_bar.dart';
 
@@ -34,9 +49,39 @@ bool get _isDesktop =>
 /// gets neither the custom controls nor the rounded clip.
 bool get _usesCustomChrome => Platform.isWindows || Platform.isLinux;
 
+/// Picks the page widget for [page]. While the per-page migration is in
+/// progress this still chooses the compact (mobile) or wide (desktop) widget by
+/// width; once a page is unified into a single responsive widget, both branches
+/// return the same widget and the mobile_* twin can be deleted.
+Widget _pageFor(AppPage page, {required bool compact}) {
+  switch (page) {
+    case AppPage.dashboard:
+      return compact ? const MobileHomePage() : const DashboardPage();
+    case AppPage.nodes:
+      return compact ? const MobileNodesPage() : const NodesPage();
+    case AppPage.shop:
+      return compact ? const MobileShopPage() : const ShopPage();
+    case AppPage.traffic:
+      return compact ? const MobileTrafficPage() : const TrafficPage();
+    case AppPage.invite:
+      return compact ? const MobileInvitePage() : const InvitePage();
+    case AppPage.settings:
+      return compact ? const MobileSettingsPage() : const SettingsPage();
+    case AppPage.account:
+      return compact ? const MobileProfilePage() : const AccountPage();
+    case AppPage.wallet:
+      return compact ? const MobileWalletPage() : const WalletPage();
+    case AppPage.orders:
+      return compact ? const MobileOrdersPage() : const OrdersPage();
+    case AppPage.tickets:
+      return compact ? const MobileTicketsPage() : const TicketsPage();
+  }
+}
+
 /// Root window shell. The whole app is clipped to an 18px rounded rectangle on
 /// a transparent window background, with a 1px border and outer shadow. Corners
-/// go square while maximized.
+/// go square while maximized. The body inside is responsive: a sidebar layout
+/// on wide screens, a bottom-nav layout on narrow ones.
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -100,7 +145,6 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     } else if (_trayActive) {
       unawaited(_syncTrayState());
     }
-
   }
 
   @override
@@ -362,9 +406,28 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   }
 }
 
-/// Logged-in layout: full-height sidebar + main column (controls strip + page).
+/// Logged-in layout: responsive. A full-height sidebar + main column on wide
+/// screens; a bottom-nav layout on narrow screens. The choice is by available
+/// width, not platform, so a narrow desktop window also gets the compact UI.
 class _MainShell extends StatelessWidget {
   const _MainShell();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
+          return const _CompactBody();
+        }
+        return const _WideBody();
+      },
+    );
+  }
+}
+
+/// Wide (sidebar) layout — used on desktop windows and wide tablets.
+class _WideBody extends StatelessWidget {
+  const _WideBody();
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +465,9 @@ class _MainShell extends StatelessWidget {
                             notice: controller.notices.first,
                             onDismiss: controller.markNoticeRead,
                           ),
-                        Expanded(child: _pageFor(controller.page)),
+                        Expanded(
+                          child: _pageFor(controller.page, compact: false),
+                        ),
                       ],
                     ),
                   ),
@@ -424,30 +489,50 @@ class _MainShell extends StatelessWidget {
       ],
     );
   }
+}
 
-  Widget _pageFor(AppPage page) {
-    switch (page) {
-      case AppPage.dashboard:
-        return const DashboardPage();
-      case AppPage.nodes:
-        return const NodesPage();
-      case AppPage.shop:
-        return const ShopPage();
-      case AppPage.traffic:
-        return const TrafficPage();
-      case AppPage.invite:
-        return const InvitePage();
-      case AppPage.settings:
-        return const SettingsPage();
-      case AppPage.account:
-        return const AccountPage();
-      case AppPage.wallet:
-        return const WalletPage();
-      case AppPage.orders:
-        return const OrdersPage();
-      case AppPage.tickets:
-        return const TicketsPage();
-    }
+/// Compact (bottom-nav) layout — used on phones and narrow desktop windows.
+/// On desktop it keeps the window chrome (custom controls / macOS drag strip)
+/// so the window is still movable and closable.
+class _CompactBody extends StatelessWidget {
+  const _CompactBody();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final bottom = MediaQuery.paddingOf(context).bottom;
+
+    final content = Column(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: _pageFor(ctrl.page, compact: true),
+          ),
+        ),
+        _MobileBottomNav(bottomPadding: bottom),
+      ],
+    );
+
+    return Container(
+      color: c.appBg,
+      child: Column(
+        children: [
+          if (_usesCustomChrome) const WindowControlsBar(),
+          if (Platform.isMacOS) const _MacTitleBarSpacer(),
+          Expanded(
+            // Phones need the top safe-area inset; on desktop the chrome above
+            // already accounts for it, so no extra top inset there.
+            child: SafeArea(
+              top: !_isDesktop,
+              bottom: false,
+              child: content,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -484,7 +569,6 @@ class _DesktopPageFrame extends StatelessWidget {
     );
   }
 }
-
 
 /// Logged-out layout: full-width controls strip + centered auth panel.
 class _AuthShell extends StatelessWidget {
@@ -534,4 +618,176 @@ class _MacTitleBarSpacer extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Compact bottom navigation (shared) ───────────────────────────────────────
+
+class _MobileBottomNav extends StatelessWidget {
+  const _MobileBottomNav({required this.bottomPadding});
+
+  final double bottomPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final items = _mobileNavItems();
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 2, 18, bottomPadding + 8),
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: c.softBorder),
+          boxShadow: AppShadows.soft(c),
+        ),
+        child: Row(
+          children: [
+            for (final item in items)
+              Expanded(
+                child: _MobileNavButton(
+                  item: item,
+                  selected: _isSelected(
+                    ctrl.page,
+                    item.page,
+                    ctrl.mobileProfileChildPage,
+                  ),
+                  onTap: () => ctrl.goToPage(item.page),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _isSelected(AppPage current, AppPage tab, bool profileChild) {
+    if (profileChild) {
+      return tab == AppPage.account;
+    }
+    if (tab == AppPage.dashboard) {
+      return current == AppPage.dashboard;
+    }
+    if (tab == AppPage.shop) {
+      return current == AppPage.shop;
+    }
+    if (tab == AppPage.account) {
+      return current == AppPage.account ||
+          current == AppPage.orders ||
+          current == AppPage.settings ||
+          current == AppPage.tickets ||
+          current == AppPage.wallet;
+    }
+    return current == tab;
+  }
+}
+
+List<_MobileNavItem> _mobileNavItems() {
+  return [
+    const _MobileNavItem(AppPage.dashboard, LucideIcons.home, '首页'),
+    for (final tab in MobileLayout.tabs.take(3)) _mobileNavItemFor(tab),
+    const _MobileNavItem(AppPage.account, LucideIcons.user, '我的'),
+  ];
+}
+
+_MobileNavItem _mobileNavItemFor(MobileTabConfig tab) {
+  final page = switch (tab.type) {
+    'shop' => AppPage.shop,
+    'invite' => AppPage.invite,
+    'tickets' => AppPage.tickets,
+    'wallet' => AppPage.wallet,
+    'orders' => AppPage.orders,
+    'traffic' => AppPage.traffic,
+    _ => AppPage.shop,
+  };
+  return _MobileNavItem(
+    page,
+    _mobileNavIcon(tab.icon, tab.type),
+    tab.label.isEmpty ? _mobileNavLabel(tab.type) : tab.label,
+  );
+}
+
+String _mobileNavLabel(String type) {
+  return switch (type) {
+    'shop' => '套餐',
+    'invite' => '邀请',
+    'tickets' => '工单',
+    'wallet' => '钱包',
+    'orders' => '订单',
+    'traffic' => '用量',
+    _ => '套餐',
+  };
+}
+
+IconData _mobileNavIcon(String icon, String type) {
+  final name = icon.isEmpty ? type : icon;
+  return switch (name) {
+    'shoppingBag' || 'shop' => LucideIcons.shoppingBag,
+    'gift' || 'invite' => LucideIcons.gift,
+    'messageSquare' || 'tickets' => LucideIcons.messageSquare,
+    'wallet' => LucideIcons.wallet,
+    'clipboardList' || 'orders' => LucideIcons.clipboardList,
+    'gauge' || 'traffic' => LucideIcons.gauge,
+    _ => LucideIcons.circle,
+  };
+}
+
+class _MobileNavButton extends StatelessWidget {
+  const _MobileNavButton({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _MobileNavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final color = selected ? c.primary : c.textMuted;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Ink(
+            height: 44,
+            decoration: BoxDecoration(
+              color: selected ? c.primarySoft : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(item.icon, size: 18, color: color),
+                const SizedBox(height: 3),
+                Text(
+                  item.label,
+                  style: AppTextStyles.caption.copyWith(
+                    color: color,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileNavItem {
+  const _MobileNavItem(this.page, this.icon, this.label);
+
+  final AppPage page;
+  final IconData icon;
+  final String label;
 }
