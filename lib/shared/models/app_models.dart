@@ -327,15 +327,23 @@ class LoginRecord {
   final bool suspicious;
 }
 
-/// Carries version info returned by the update manifest endpoint.
+/// Carries version info from the signed OSS remote config.
 class UpdateInfo {
   const UpdateInfo({
     required this.version,
     required this.downloadUrl,
     this.changelog = '',
+    this.sha256 = '',
   });
 
   final String version;
   final String downloadUrl;
   final String changelog;
+
+  /// SHA-256 hex digest of the expected installer file, used for client-side
+  /// integrity verification.  Empty when the config hasn't been updated to
+  /// include it — the download still works but the file is not verified.
+  final String sha256;
+
+  bool get hasHash => sha256.length == 64;
 }

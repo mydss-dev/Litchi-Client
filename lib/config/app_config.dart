@@ -25,6 +25,7 @@ abstract final class AppConfig {
   static String updateVersion = '';
   static final Map<String, String> _updateDownloadUrls = {};
   static String updateChangelog = '';
+  static String updateSha256 = '';
 
   /// Picks the platform-specific download URL, falling back to the first
   /// available entry or the old-style flat key.
@@ -116,6 +117,7 @@ abstract final class AppConfig {
     _str(json, 'update_version', (v) => updateVersion = v);
     _updateDownloadUrlsFromJson(json['update_download_url']);
     _str(json, 'update_changelog', (v) => updateChangelog = v);
+    _str(json, 'update_sha256', (v) => updateSha256 = v);
 
     if (_runtimeFingerprint() != before) {
       revision.value++;
@@ -136,6 +138,7 @@ abstract final class AppConfig {
           ..sort((a, b) => a.key.compareTo(b.key))))
       '${entry.key}=${entry.value}',
     updateChangelog,
+    updateSha256,
   ].join('\u0000');
 
   static void _updateDownloadUrlsFromJson(Object? value) {

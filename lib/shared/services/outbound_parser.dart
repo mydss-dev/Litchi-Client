@@ -12,7 +12,7 @@ abstract final class OutboundParser {
   static Map<String, dynamic>? parse(
     String uri, {
     required String tag,
-    bool allowInsecure = true,
+    bool allowInsecure = false,
   }) {
     try {
       final scheme = _scheme(uri);
@@ -41,7 +41,7 @@ abstract final class OutboundParser {
   static Map<String, dynamic>? parseClashProxy(
     Map<String, dynamic> proxy, {
     required String tag,
-    bool allowInsecure = true,
+    bool allowInsecure = false,
   }) {
     try {
       final type = proxy['type']?.toString().toLowerCase() ?? '';

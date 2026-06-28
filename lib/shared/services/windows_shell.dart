@@ -140,9 +140,13 @@ String? getProcessImagePath(int pid) {
 
 /// Opens [url] in the default browser on Windows.
 ///
-/// Returns true on success (ShellExecuteW return value > 32), false otherwise.
-/// Must only be called when [Platform.isWindows] is true.
+/// Only allows HTTPS URLs — non-HTTPS or unparseable URLs return false
+/// without touching the shell.  Must only be called when
+/// [Platform.isWindows] is true.
 bool shellExecuteUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.scheme != 'https') return false;
+
   final op = 'open'.toNativeUtf16();
   final file = url.toNativeUtf16();
   try {

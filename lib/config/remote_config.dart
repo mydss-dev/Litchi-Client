@@ -34,6 +34,22 @@ abstract final class RemoteConfigService {
     defaultValue: 'b0nnSjObRhQe3l2ZOeSacmTbNMI0I4qf4_3g01lTK6I',
   );
 
+  /// Fallback key for key-rotation scenarios.  When the primary key is
+  /// compromised and must be replaced, follow this procedure:
+  ///
+  /// 1. Generate a new key pair; set the new public key as
+  ///    [fallbackPublicKeyBase64Url] and ship a client update.
+  /// 2. After enough clients have updated, switch the bot to the new key
+  ///    and move the new public key to [publicKeyBase64Url] in the next
+  ///    client release.
+  /// 3. Clear [fallbackPublicKeyBase64Url] once the old key is fully retired.
+  ///
+  /// An empty value disables the fallback.
+  static const fallbackPublicKeyBase64Url = String.fromEnvironment(
+    'REMOTE_CONFIG_FALLBACK_PUBLIC_KEY',
+    defaultValue: '',
+  );
+
   // ── Internal settings ─────────────────────────────────────────────────────
 
   static const _cacheKey = 'remote_config_v1';
@@ -153,15 +169,24 @@ abstract final class RemoteConfigService {
       final signatureB64 = wrapper['signature'] as String;
       final payloadBytes = _base64UrlDecode(payloadB64);
       final signatureBytes = _base64UrlDecode(signatureB64);
-      final publicKeyBytes = _base64UrlDecode(publicKeyBase64Url);
 
       final algorithm = Ed25519();
-      final publicKey = SimplePublicKey(
-        publicKeyBytes,
-        type: KeyPairType.ed25519,
-      );
-      final signature = Signature(signatureBytes, publicKey: publicKey);
-      final ok = await algorithm.verify(payloadBytes, signature: signature);
+      final keys = [
+        _base64UrlDecode(publicKeyBase64Url),
+        if (fallbackPublicKeyBase64Url.isNotEmpty)
+          _base64UrlDecode(fallbackPublicKeyBase64Url),
+      ];
+
+      var ok = false;
+      for (final keyBytes in keys) {
+        final publicKey = SimplePublicKey(
+          keyBytes,
+          type: KeyPairType.ed25519,
+        );
+        final signature = Signature(signatureBytes, publicKey: publicKey);
+        ok = await algorithm.verify(payloadBytes, signature: signature);
+        if (ok) break;
+      }
       if (!ok) return null;
 
       final payload = jsonDecode(utf8.decode(payloadBytes));

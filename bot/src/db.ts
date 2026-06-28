@@ -4,6 +4,7 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 
 import { env } from './config.js';
+import { decryptKey, encryptKey } from './crypto.js';
 
 fs.mkdirSync(path.dirname(env.dbPath), { recursive: true });
 
@@ -108,7 +109,7 @@ export function createApp(input: {
   db.prepare(`
     INSERT INTO apps (app_id, tg_user_id, remote_config_url, public_key, private_key)
     VALUES (@appId, @tgUserId, @remoteConfigUrl, @publicKey, @privateKey)
-  `).run(input);
+  `).run({ ...input, privateKey: encryptKey(input.privateKey) });
 }
 
 export function upsertImportedApp(input: {
@@ -127,19 +128,23 @@ export function upsertImportedApp(input: {
       public_key = excluded.public_key,
       private_key = excluded.private_key,
       updated_at = CURRENT_TIMESTAMP
-  `).run(input);
+  `).run({ ...input, privateKey: encryptKey(input.privateKey) });
 }
 
 export function getAppForUser(appId: string, tgUserId: number): AppRow | undefined {
-  return db.prepare(`
+  const row = db.prepare(`
     SELECT * FROM apps WHERE app_id = ? AND tg_user_id = ?
   `).get(appId, tgUserId) as AppRow | undefined;
+  if (row) row.private_key = decryptKey(row.private_key);
+  return row;
 }
 
 export function listAppsForUser(tgUserId: number): AppRow[] {
-  return db.prepare(`
+  const rows = db.prepare(`
     SELECT * FROM apps WHERE tg_user_id = ? ORDER BY created_at DESC
   `).all(tgUserId) as AppRow[];
+  for (const row of rows) row.private_key = decryptKey(row.private_key);
+  return rows;
 }
 
 export function bumpConfigVersion(appId: string): number {
@@ -265,16 +270,20 @@ export function authorizeUser(input: {
 }
 
 export function listAuthorizedUsers(): AuthorizedUserRow[] {
-  return db.prepare(`
+  const rows = db.prepare(`
     SELECT * FROM authorized_users
     ORDER BY created_at DESC
   `).all() as AuthorizedUserRow[];
+  for (const row of rows) row.private_key = decryptKey(row.private_key);
+  return rows;
 }
 
 export function getAuthorizedUser(tgUserId: number): AuthorizedUserRow | undefined {
-  return db.prepare(`
+  const row = db.prepare(`
     SELECT * FROM authorized_users WHERE tg_user_id = ?
   `).get(tgUserId) as AuthorizedUserRow | undefined;
+  if (row) row.private_key = decryptKey(row.private_key);
+  return row;
 }
 
 export function isAuthorizedUser(tgUserId: number): boolean {
@@ -314,6 +323,7 @@ export function bindAuthorizedUser(input: {
     `).run({
       ...input,
       username: input.username?.trim() ?? current.username,
+      privateKey: encryptKey(input.privateKey),
     });
 
     upsertImportedApp({

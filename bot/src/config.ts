@@ -10,6 +10,7 @@ export const env = {
   buildVersion: process.env.BUILD_VERSION ?? '',
   downloadBaseUrl: normalizeBaseUrl(process.env.DOWNLOAD_BASE_URL ?? ''),
   dbPath: process.env.DB_PATH ?? './data/bot.sqlite',
+  keyEncryptionKey: process.env.KEY_ENCRYPTION_KEY ?? '',
 };
 
 function normalizeBaseUrl(raw: string): string {
