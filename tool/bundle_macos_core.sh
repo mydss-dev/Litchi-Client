@@ -54,5 +54,16 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp mihomo "$APP_BUNDLE/Contents/Resources/mihomo"
 lipo -info "$APP_BUNDLE/Contents/Resources/mihomo" || true
 
+# ── geo databases ────────────────────────────────────────────────────
+# mihomo needs these to evaluate GEOIP/GEOSITE rules. Ship them inside the
+# bundle so a fresh install never downloads them at first launch.
+GEO_BASE="https://github.com/MetaCubeX/meta-rules-dat/releases/download/${GEO_VERSION}"
+for f in country.mmdb geosite.dat; do
+    echo "Downloading $f (${GEO_VERSION})"
+    curl --fail --silent --show-error --location "$GEO_BASE/$f" \
+        -o "$APP_BUNDLE/Contents/Resources/$f"
+done
+echo "geo databases ready"
+
 # Cleanup
 rm -f mihomo mihomo-amd64 mihomo-arm64 mihomo-amd64.gz mihomo-arm64.gz

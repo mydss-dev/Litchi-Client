@@ -53,5 +53,30 @@ Expand-Archive wintun.zip -DestinationPath wintun-tmp -Force
 Copy-Item "wintun-tmp\wintun\bin\amd64\wintun.dll" "$ReleaseDir\wintun.dll"
 Write-Host "wintun.dll ready"
 
+# ── geo databases ────────────────────────────────────────────────────
+# mihomo needs these to evaluate GEOIP/GEOSITE rules (the panel's Clash
+# config ends with `GEOIP,CN,DIRECT`). Ship them next to mihomo.exe so a
+# fresh install never has to download them at first launch (which fails
+# behind a firewall and leaves the core unable to start).
+$geoBase = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/$($env:GEO_VERSION)"
+
+function Fetch-Geo($fileName, $expectedSha) {
+    Write-Host "Downloading $fileName ($($env:GEO_VERSION))"
+    Invoke-WebRequest -Uri "$geoBase/$fileName" -OutFile $fileName
+    $actual = (Get-FileHash $fileName -Algorithm SHA256).Hash.ToLower()
+    if ([string]::IsNullOrWhiteSpace($expectedSha)) {
+        Write-Host "  $fileName sha256 = $actual  (paste into core_versions.env to lock)"
+    } elseif ($actual -ne $expectedSha.ToLower()) {
+        throw "$fileName sha256 mismatch: actual=$actual expected=$expectedSha"
+    } else {
+        Write-Host "  $fileName sha256 verified"
+    }
+    Copy-Item $fileName "$ReleaseDir\$fileName" -Force
+}
+
+Fetch-Geo "country.mmdb" $env:GEOIP_MMDB_SHA256
+Fetch-Geo "geosite.dat"  $env:GEOSITE_DAT_SHA256
+Write-Host "geo databases ready"
+
 # Cleanup
-Remove-Item -Recurse -Force mihomo-tmp, wintun-tmp, mihomo.zip, wintun.zip -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force mihomo-tmp, wintun-tmp, mihomo.zip, wintun.zip, country.mmdb, geosite.dat -ErrorAction SilentlyContinue

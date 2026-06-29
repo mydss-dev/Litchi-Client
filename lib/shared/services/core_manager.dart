@@ -68,6 +68,41 @@ class CoreManager {
     return null;
   }
 
+  /// Geo databases mihomo loads for GEOIP/GEOSITE rules. They are bundled next
+  /// to the executable by the platform packaging scripts.
+  static const _geoFiles = ['country.mmdb', 'geosite.dat', 'geoip.dat'];
+
+  /// Copies any bundled geo databases into the writable home dir if missing, so
+  /// the core never has to download them at startup. Best-effort: if a file is
+  /// absent or the copy fails, the core falls back to its own download logic and
+  /// startup is not blocked.
+  static Future<void> _ensureGeoAssets(String exePath) async {
+    try {
+      final sep = Platform.pathSeparator;
+      final exeDir = File(exePath).parent.path;
+      final destDir = MihomoConfig.appDataDir();
+      await Directory(destDir).create(recursive: true);
+
+      // Where the bundled geo files might live relative to the executable.
+      // macOS ships them in the .app bundle's Contents/Resources.
+      final sourceDirs = <String>[exeDir, '$exeDir$sep..${sep}Resources'];
+
+      for (final name in _geoFiles) {
+        final dest = File('$destDir$sep$name');
+        if (await dest.exists()) continue; // keep an already-updated copy
+        for (final dir in sourceDirs) {
+          final src = File('$dir$sep$name');
+          if (await src.exists()) {
+            await src.copy(dest.path);
+            break;
+          }
+        }
+      }
+    } catch (_) {
+      // intentional: best-effort staging, failure must not block core startup
+    }
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   Future<void> start(String configPath, {int apiPort = 9090}) async {
@@ -78,6 +113,14 @@ class CoreManager {
       _setError('未找到 mihomo 核心，请重新安装客户端');
       return;
     }
+
+    // Stage the geo databases the core needs (country.mmdb for GEOIP rules,
+    // geosite.dat for GEOSITE rules) into the writable home dir before spawning.
+    // They ship next to the executable; copying them here means a fresh install
+    // never has to download geo data at startup — that download fails behind a
+    // firewall and would leave the core unable to start (no API → no latency
+    // test, no proxy → no connectivity).
+    await _ensureGeoAssets(exe);
 
     // Kill any previously owned mihomo process (by saved PID).
     await _killSavedPid(expectedExePath: exe);

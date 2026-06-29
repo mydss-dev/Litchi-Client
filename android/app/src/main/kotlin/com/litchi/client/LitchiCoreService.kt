@@ -73,6 +73,11 @@ class LitchiCoreService : Service() {
                 startCoreForeground()
                 AndroidCoreStatus.emit("starting", "core")
                 updateSystemDns()
+                // Copy bundled geo databases into the core home dir (filesDir)
+                // before the core parses the config, so GEOIP/GEOSITE rules
+                // resolve without an at-startup download (which fails behind a
+                // firewall and would stop the core from starting).
+                GeoAssets.stage(this)
                 val ok = AndroidMihomoEngine.startCoreOnly(config, filesDir.absolutePath)
                 if (!ok) {
                     AndroidCoreStatus.emit("error", "core", AndroidMihomoEngine.lastError())
