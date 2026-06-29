@@ -340,10 +340,9 @@ class UpdateInfo {
   final String downloadUrl;
   final String changelog;
 
-  /// SHA-256 hex digest of the expected installer file, used for client-side
-  /// integrity verification.  Empty when the config hasn't been updated to
-  /// include it — the download still works but the file is not verified.
+  /// SHA-256 hex digest of the expected installer file. Update installation is
+  /// refused unless this is a complete hexadecimal digest.
   final String sha256;
 
-  bool get hasHash => sha256.length == 64;
+  bool get hasHash => RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(sha256);
 }

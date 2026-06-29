@@ -6,17 +6,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
 import '../../shared/models/api_models.dart';
-import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
-import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/widgets/app_bottom_sheet.dart';
+import '../../shared/widgets/app_modal.dart';
+import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_toast.dart';
-import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
-import '../mobile/mobile_back_button.dart';
-import '../mobile/mobile_page_header.dart';
+import '../../shared/widgets/responsive_page_scaffold.dart';
 import '../shop/payment_dialog.dart';
 
 /// Order history — a single responsive page.
@@ -97,17 +94,11 @@ class _OrdersPageState extends State<OrdersPage> {
     if (_activeTradeNo != null) return;
     setState(() => _activeTradeNo = order.tradeNo);
 
-    // Adaptive confirm: bottom sheet on touch-sized layouts, dialog otherwise.
-    final confirmed = context.isCompact
-        ? await showAppBottomSheet<bool>(
-            context: context,
-            builder: (_) => _CancelOrderSheet(orderNo: order.tradeNo),
-          )
-        : await showDialog<bool>(
-            context: context,
-            barrierColor: Colors.black.withValues(alpha: 0.42),
-            builder: (_) => _CancelOrderDialog(orderNo: order.tradeNo),
-          );
+    final confirmed = await showAppAdaptiveModal<bool>(
+      context: context,
+      builder: (_, compact) =>
+          _CancelOrderModal(compact: compact, orderNo: order.tradeNo),
+    );
 
     if (confirmed != true || !mounted) {
       if (mounted) setState(() => _activeTradeNo = null);
@@ -133,78 +124,16 @@ class _OrdersPageState extends State<OrdersPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
-          return _buildCompact(context);
-        }
-        return _buildWide(context);
-      },
-    );
-  }
-
-  // ── Wide (sidebar) layout ──────────────────────────────────────────────────
-
-  Widget _buildWide(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              PageBackButton(
-                onTap: () => ctrl.goToPage(AppPage.account),
-                tooltip: '返回我的',
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: PageHeader(title: '订单记录', subtitle: '查看购买与支付记录'),
-              ),
-              if (!_loading) ...[
-                const SizedBox(width: 10),
-                RefreshIconButton(onTap: _handleRefresh),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          ..._bodyChildren(context),
-        ],
-      ),
-    );
-  }
-
-  // ── Compact (bottom-nav) layout ────────────────────────────────────────────
-
-  Widget _buildCompact(BuildContext context) {
-    final asPrimary = isPrimaryCompactTab(AppPage.orders);
-    return RefreshIndicator(
+    return ResponsivePageScaffold(
+      title: '订单记录',
+      subtitle: '查看购买与支付记录',
+      compactTitle: '订单',
+      compactSubtitle: '查看购买记录与支付状态',
+      primaryCompact: isPrimaryCompactTab(AppPage.orders),
       onRefresh: _handleRefresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          if (asPrimary)
-            const MobilePageHeader(title: '订单', subtitle: '查看购买记录与支付状态')
-          else
-            Row(
-              children: [
-                MobileBackButton(
-                  onTap: () => AppScope.of(context).goToPage(AppPage.account),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '订单记录',
-                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(height: 16),
-          ..._bodyChildren(context),
-        ],
-      ),
+      onBack: () => AppScope.of(context).goToPage(AppPage.account),
+      showWideRefresh: !_loading,
+      children: _bodyChildren(context),
     );
   }
 
@@ -275,14 +204,9 @@ class _OrderCard extends StatelessWidget {
     final isDeposit = order.period == 'deposit';
     final typeValue = isDeposit ? '账户充值' : order.periodLabel;
 
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: c.cardGradient,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.softBorder),
-        boxShadow: AppShadows.soft(c),
-      ),
+      shadow: AppCardShadow.soft,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -539,16 +463,17 @@ class _CancelOrderBody extends StatelessWidget {
   }
 }
 
-class _CancelOrderDialog extends StatefulWidget {
-  const _CancelOrderDialog({required this.orderNo});
+class _CancelOrderModal extends StatefulWidget {
+  const _CancelOrderModal({required this.compact, required this.orderNo});
 
+  final bool compact;
   final String orderNo;
 
   @override
-  State<_CancelOrderDialog> createState() => _CancelOrderDialogState();
+  State<_CancelOrderModal> createState() => _CancelOrderModalState();
 }
 
-class _CancelOrderDialogState extends State<_CancelOrderDialog> {
+class _CancelOrderModalState extends State<_CancelOrderModal> {
   bool _submitting = false;
 
   void _confirm() {
@@ -559,75 +484,13 @@ class _CancelOrderDialogState extends State<_CancelOrderDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: c.softBorder),
-            boxShadow: AppShadows.card(c),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '取消订单',
-                style: AppTextStyles.sectionTitle.copyWith(
-                  color: c.textPrimary,
-                ),
-              ),
-              if (widget.orderNo.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  '订单号 ${widget.orderNo}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
-              ],
-              const SizedBox(height: 16),
-              _CancelOrderBody(submitting: _submitting, onConfirm: _confirm),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CancelOrderSheet extends StatefulWidget {
-  const _CancelOrderSheet({required this.orderNo});
-
-  final String orderNo;
-
-  @override
-  State<_CancelOrderSheet> createState() => _CancelOrderSheetState();
-}
-
-class _CancelOrderSheetState extends State<_CancelOrderSheet> {
-  bool _submitting = false;
-
-  void _confirm() {
-    if (_submitting) return;
-    setState(() => _submitting = true);
-    Navigator.of(context).pop(true);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBottomSheet(
+    return AppAdaptiveModal(
+      compact: widget.compact,
       title: '取消订单',
       subtitle: widget.orderNo.isEmpty ? null : '订单号 ${widget.orderNo}',
-      children: [
-        _CancelOrderBody(submitting: _submitting, onConfirm: _confirm),
-      ],
+      maxWidth: 420,
+      showCloseButton: false,
+      child: _CancelOrderBody(submitting: _submitting, onConfirm: _confirm),
     );
   }
 }

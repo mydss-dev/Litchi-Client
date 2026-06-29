@@ -20,6 +20,7 @@ const allowedTopLevelKeys = new Set([
   'avatar_url',
   'update_version',
   'update_download_url',
+  'update_sha256',
   'update_changelog',
 ]);
 
@@ -51,7 +52,9 @@ export function parseAndValidateConfig(raw: string): Record<string, unknown> {
   optionalHttpsUrl(payload, 'avatar_url');
   optionalString(payload, 'update_version', 0, 20);
   optionalUrl(payload, 'update_download_url');
+  optionalSha256(payload, 'update_sha256');
   optionalString(payload, 'update_changelog', 0, 200);
+  requireUpdateIntegrity(payload);
 
   return payload;
 }
@@ -349,5 +352,52 @@ function optionalUrl(
   const trimmed = value.trim();
   if (!trimmed.startsWith('https://')) {
     throw new Error(`${key} 必须是 https URL。`);
+  }
+}
+
+function optionalSha256(
+  obj: Record<string, unknown>,
+  key: string,
+): void {
+  const value = obj[key];
+  if (value === undefined || value === '') return;
+  const valid = (hash: unknown): boolean =>
+    typeof hash === 'string' && /^[a-fA-F0-9]{64}$/.test(hash.trim());
+
+  if (valid(value)) return;
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    const hashes = Object.values(value as Record<string, unknown>);
+    if (hashes.length > 0 && hashes.every(valid)) return;
+  }
+  throw new Error(
+    `${key} 必须是 64 位十六进制字符串或按平台的对象 {"windows":"...",...}。`,
+  );
+}
+
+function requireUpdateIntegrity(payload: Record<string, unknown>): void {
+  const version = payload.update_version;
+  if (typeof version !== 'string' || version.trim() === '') return;
+
+  const urls = payload.update_download_url;
+  const hashes = payload.update_sha256;
+  if (urls === undefined || urls === '' || hashes === undefined || hashes === '') {
+    throw new Error('启用 update_version 时必须同时填写下载地址和 update_sha256。');
+  }
+
+  const urlIsMap = urls !== null && typeof urls === 'object' && !Array.isArray(urls);
+  const hashIsMap =
+    hashes !== null && typeof hashes === 'object' && !Array.isArray(hashes);
+  if (urlIsMap != hashIsMap) {
+    throw new Error('分平台下载地址必须配套使用相同平台键的 update_sha256。');
+  }
+  if (!urlIsMap) return;
+
+  const urlKeys = Object.keys(urls as Record<string, unknown>).sort();
+  const hashKeys = Object.keys(hashes as Record<string, unknown>).sort();
+  if (
+    urlKeys.length !== hashKeys.length ||
+    urlKeys.some((key, index) => key !== hashKeys[index])
+  ) {
+    throw new Error('update_download_url 与 update_sha256 的平台键必须完全一致。');
   }
 }

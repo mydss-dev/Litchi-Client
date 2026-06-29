@@ -11,7 +11,7 @@ import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_shadows.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_card.dart';
-import 'desktop_node_picker_dialog.dart';
+import '../../nodes/node_picker.dart';
 
 class ConnectionHeroCard extends StatelessWidget {
   const ConnectionHeroCard({
@@ -57,7 +57,7 @@ class ConnectionHeroCard extends StatelessWidget {
                     ),
                     _NodeInlineAction(
                       hasNodes: ctrl.nodes.isNotEmpty,
-                      onTap: () => showDesktopNodePicker(context),
+                      onTap: () => showNodePicker(context),
                     ),
                   ],
                 ),
@@ -197,25 +197,21 @@ class _SecurityBadge extends StatelessWidget {
     final c = AppColors.of(context);
     final (icon, text, color) = switch (status) {
       ConnectionStatus.connected => (
-          LucideIcons.shieldCheck,
-          '军事级加密保护已开启',
-          c.success,
-        ),
+        LucideIcons.shieldCheck,
+        '军事级加密保护已开启',
+        c.success,
+      ),
       ConnectionStatus.connecting => (
-          LucideIcons.shield,
-          '正在建立加密通道...',
-          c.primary,
-        ),
+        LucideIcons.shield,
+        '正在建立加密通道...',
+        c.primary,
+      ),
       ConnectionStatus.disconnecting => (
-          LucideIcons.shield,
-          '正在关闭加密通道...',
-          c.textMuted,
-        ),
-      _ => (
-          LucideIcons.shieldOff,
-          '网络暂未受到加密保护',
-          c.textMuted,
-        ),
+        LucideIcons.shield,
+        '正在关闭加密通道...',
+        c.textMuted,
+      ),
+      _ => (LucideIcons.shieldOff, '网络暂未受到加密保护', c.textMuted),
     };
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
@@ -373,7 +369,9 @@ class _PowerButtonState extends State<_PowerButton>
         onTap: _isDisabled ? null : widget.onTap,
         onTapDown: _isDisabled ? null : (_) => setState(() => _pressed = true),
         onTapUp: _isDisabled ? null : (_) => setState(() => _pressed = false),
-        onTapCancel: _isDisabled ? null : () => setState(() => _pressed = false),
+        onTapCancel: _isDisabled
+            ? null
+            : () => setState(() => _pressed = false),
         child: SizedBox(
           width: 126,
           height: 126,
@@ -448,7 +446,10 @@ class _PowerButtonState extends State<_PowerButton>
                           return FadeTransition(
                             opacity: animation,
                             child: ScaleTransition(
-                              scale: Tween<double>(begin: 0.88, end: 1).animate(animation),
+                              scale: Tween<double>(
+                                begin: 0.88,
+                                end: 1,
+                              ).animate(animation),
                               child: child,
                             ),
                           );

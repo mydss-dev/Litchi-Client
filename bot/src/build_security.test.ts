@@ -46,6 +46,44 @@ test('config validation accepts a normal signed-config payload', () => {
   );
 });
 
+test('config validation requires SHA-256 when updates are enabled', () => {
+  assert.throws(
+    () =>
+      parseAndValidateConfig(
+        JSON.stringify({
+          app_name: 'Customer Client',
+          logo_url: 'https://cdn.example.com/logo.png',
+          api_base_list: ['https://api.example.com'],
+          update_version: '2.0.0',
+          update_download_url: 'https://cdn.example.com/setup.exe',
+        }),
+      ),
+    /update_sha256/,
+  );
+});
+
+test('config validation accepts matching platform update hashes', () => {
+  const hash = 'a'.repeat(64);
+  const config = parseAndValidateConfig(
+    JSON.stringify({
+      app_name: 'Customer Client',
+      logo_url: 'https://cdn.example.com/logo.png',
+      api_base_list: ['https://api.example.com'],
+      update_version: '2.0.0',
+      update_download_url: {
+        windows: 'https://cdn.example.com/setup.exe',
+        macos: 'https://cdn.example.com/setup.dmg',
+      },
+      update_sha256: { windows: hash, macos: hash },
+    }),
+  );
+
+  assert.deepEqual(config.update_sha256, {
+    windows: hash,
+    macos: hash,
+  });
+});
+
 test('config validation requires a logo URL', () => {
   assert.throws(
     () =>

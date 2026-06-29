@@ -50,8 +50,14 @@ dart run flutter_launcher_icons
 flutter run -d windows
 
 # Build release
-flutter build windows --release
+flutter build windows --release \
+  --dart-define=REMOTE_CONFIG_URL="https://your-oss.example/config.json" \
+  --dart-define=REMOTE_CONFIG_PUBLIC_KEY="<tenant-ed25519-public-key>"
 ```
+
+Remote config is fail-closed. Manual builds have no default config endpoint or
+shared signing key; both defines above are required before signed remote config
+will be fetched or cached. The white-label workflow supplies them automatically.
 
 ## Project Structure
 

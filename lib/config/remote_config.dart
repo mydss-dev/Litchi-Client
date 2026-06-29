@@ -15,10 +15,12 @@ import '../shared/services/secure_logger.dart';
 abstract final class RemoteConfigService {
   // ── Editable settings ─────────────────────────────────────────────────────
 
-  /// OSS URL compiled into this tenant's package.
+  /// HTTPS config URL compiled into this tenant's package.
+  ///
+  /// Deliberately empty by default: every tenant must provide its own endpoint.
   static const configUrl = String.fromEnvironment(
     'REMOTE_CONFIG_URL',
-    defaultValue: 'https://oss.litchi.cfd/config.json',
+    defaultValue: '',
   );
 
   /// Ed25519 public key, encoded with base64url without padding.
@@ -26,12 +28,11 @@ abstract final class RemoteConfigService {
   /// Generate once with:
   ///   dart run tool/sign_remote_config.dart generate
   ///
-  /// Put PUBLIC_KEY here. Keep PRIVATE_KEY offline and never commit it.
-  /// While this is left as the placeholder value, unsigned legacy config is
-  /// still accepted for rollout compatibility.
+  /// Supply this through `REMOTE_CONFIG_PUBLIC_KEY`. Keep the private key
+  /// offline. There is deliberately no shared default trust anchor.
   static const publicKeyBase64Url = String.fromEnvironment(
     'REMOTE_CONFIG_PUBLIC_KEY',
-    defaultValue: 'b0nnSjObRhQe3l2ZOeSacmTbNMI0I4qf4_3g01lTK6I',
+    defaultValue: '',
   );
 
   /// Fallback key for key-rotation scenarios.  When the primary key is
@@ -60,15 +61,28 @@ abstract final class RemoteConfigService {
   /// completion in the background and updates the cache for the next launch.
   static const _firstLaunchBudget = Duration(milliseconds: 1500);
 
-  static bool get _requiresSignature =>
-      publicKeyBase64Url.isNotEmpty &&
-      !publicKeyBase64Url.startsWith('REPLACE_WITH_');
+  static bool get isConfigured {
+    final uri = Uri.tryParse(configUrl.trim());
+    if (uri == null || uri.scheme != 'https' || !uri.hasAuthority) return false;
+    try {
+      return _base64UrlDecode(publicKeyBase64Url).length == 32;
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Call once in main(), before runApp().
   ///
   /// Applies cached config immediately (if any), then kicks off a background
   /// HTTP refresh that updates the cache for next launch.
   static Future<void> initialize(SharedPreferences prefs) async {
+    if (!isConfigured) {
+      SecureLogger.warn(
+        'Remote config disabled: tenant HTTPS URL or Ed25519 key is missing',
+      );
+      return;
+    }
+
     // 1. Apply trusted cache immediately so the first frame is correct.
     final cached = prefs.getString(_cacheKey);
     var applied = false;
@@ -103,6 +117,7 @@ abstract final class RemoteConfigService {
   }
 
   static Future<void> _refresh(SharedPreferences prefs) async {
+    if (!isConfigured) return;
     HttpClient? client;
     try {
       client = HttpClient()..connectionTimeout = _timeout;
@@ -137,7 +152,7 @@ abstract final class RemoteConfigService {
     }
   }
 
-  /// Parses a legacy config or a signed wrapper.
+  /// Parses a signed config wrapper.
   ///
   /// Signed format:
   /// {
@@ -147,13 +162,8 @@ abstract final class RemoteConfigService {
   static Future<Map<String, dynamic>?> _parseTrustedConfig(String body) async {
     final decoded = jsonDecode(body);
     if (decoded is! Map<String, dynamic>) return null;
-
-    if (_looksSigned(decoded)) {
-      return _verifySigned(decoded);
-    }
-
-    if (_requiresSignature) return null;
-    return decoded;
+    if (!isConfigured || !_looksSigned(decoded)) return null;
+    return _verifySigned(decoded);
   }
 
   static bool _looksSigned(Map<String, dynamic> json) =>
@@ -162,7 +172,7 @@ abstract final class RemoteConfigService {
   static Future<Map<String, dynamic>?> _verifySigned(
     Map<String, dynamic> wrapper,
   ) async {
-    if (!_requiresSignature) return null;
+    if (!isConfigured) return null;
 
     try {
       final payloadB64 = wrapper['payload_b64'] as String;
@@ -179,10 +189,7 @@ abstract final class RemoteConfigService {
 
       var ok = false;
       for (final keyBytes in keys) {
-        final publicKey = SimplePublicKey(
-          keyBytes,
-          type: KeyPairType.ed25519,
-        );
+        final publicKey = SimplePublicKey(keyBytes, type: KeyPairType.ed25519);
         final signature = Signature(signatureBytes, publicKey: publicKey);
         ok = await algorithm.verify(payloadBytes, signature: signature);
         if (ok) break;

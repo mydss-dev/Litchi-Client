@@ -4,17 +4,15 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
-import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_modal.dart';
+import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/app_toast.dart';
-import '../../shared/widgets/page_header.dart';
-import '../../shared/widgets/page_status_cards.dart';
-import '../mobile/mobile_back_button.dart';
-import '../mobile/mobile_page_header.dart';
+import '../../shared/widgets/responsive_page_scaffold.dart';
 import '../shop/payment_dialog.dart';
 
 /// Wallet — a single responsive page.
@@ -96,9 +94,10 @@ class _WalletPageState extends State<WalletPage> {
       AppToast.show(context, '暂无可划转佣金', type: AppToastType.warning);
       return;
     }
-    await showDialog<void>(
+    await showAppAdaptiveModal<void>(
       context: context,
-      builder: (_) => _TransferDialog(
+      builder: (_, compact) => _TransferModal(
+        compact: compact,
         maxAmount: ctrl.withdrawable,
         currencySymbol: ctrl.currencySymbol,
       ),
@@ -119,9 +118,10 @@ class _WalletPageState extends State<WalletPage> {
       AppToast.show(context, '暂无可用提现方式', type: AppToastType.warning);
       return;
     }
-    await showDialog<void>(
+    await showAppAdaptiveModal<void>(
       context: context,
-      builder: (_) => _WithdrawDialog(
+      builder: (_, compact) => _WithdrawModal(
+        compact: compact,
         maxAmount: ctrl.withdrawable,
         minAmount: ctrl.minWithdrawAmount,
         methods: ctrl.withdrawMethods,
@@ -134,78 +134,15 @@ class _WalletPageState extends State<WalletPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
-          return _buildCompact(context);
-        }
-        return _buildWide(context);
-      },
-    );
-  }
-
-  // ── Wide (sidebar) layout ─────────────────────────────────────────────────
-
-  Widget _buildWide(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              PageBackButton(
-                onTap: () => ctrl.goToPage(AppPage.account),
-                tooltip: '返回我的',
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: PageHeader(title: '我的钱包', subtitle: '查看余额、佣金与充值'),
-              ),
-              const SizedBox(width: 10),
-              RefreshIconButton(onTap: _refresh),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ..._bodyChildren(context),
-        ],
-      ),
-    );
-  }
-
-  // ── Compact (bottom-nav) layout ───────────────────────────────────────────
-
-  Widget _buildCompact(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    final asPrimary = isPrimaryCompactTab(AppPage.wallet);
-    return RefreshIndicator(
+    return ResponsivePageScaffold(
+      title: '我的钱包',
+      subtitle: '查看余额、佣金与充值',
+      compactTitle: '钱包',
+      compactSubtitle: '余额、佣金与账户充值',
+      primaryCompact: isPrimaryCompactTab(AppPage.wallet),
       onRefresh: _refresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          if (asPrimary)
-            const MobilePageHeader(
-              title: '钱包',
-              subtitle: '余额、佣金与账户充值',
-            )
-          else
-            Row(
-              children: [
-                MobileBackButton(onTap: () => ctrl.goToPage(AppPage.account)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '我的钱包',
-                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(height: 16),
-          ..._bodyChildren(context),
-        ],
-      ),
+      onBack: () => AppScope.of(context).goToPage(AppPage.account),
+      children: _bodyChildren(context),
     );
   }
 
@@ -221,8 +158,7 @@ class _WalletPageState extends State<WalletPage> {
       _WalletHero(
         total: '${ctrl.currencySymbol}${total.toStringAsFixed(2)}',
         balance: '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
-        commission:
-            '${ctrl.currencySymbol}${commission.toStringAsFixed(2)}',
+        commission: '${ctrl.currencySymbol}${commission.toStringAsFixed(2)}',
         onTransfer: _transferCommission,
         onWithdraw: _withdrawCommission,
       ),
@@ -242,7 +178,6 @@ class _WalletPageState extends State<WalletPage> {
     ];
   }
 }
-
 
 // ── Wallet hero card ──────────────────────────────────────────────────────────
 
@@ -707,22 +642,24 @@ class _PresetChip extends StatelessWidget {
   }
 }
 
-// ── Transfer dialog ───────────────────────────────────────────────────────────
+// ── Transfer modal ────────────────────────────────────────────────────────────
 
-class _TransferDialog extends StatefulWidget {
-  const _TransferDialog({
+class _TransferModal extends StatefulWidget {
+  const _TransferModal({
+    required this.compact,
     required this.maxAmount,
     required this.currencySymbol,
   });
 
+  final bool compact;
   final double maxAmount;
   final String currencySymbol;
 
   @override
-  State<_TransferDialog> createState() => _TransferDialogState();
+  State<_TransferModal> createState() => _TransferModalState();
 }
 
-class _TransferDialogState extends State<_TransferDialog> {
+class _TransferModalState extends State<_TransferModal> {
   late final TextEditingController _amountCtrl;
   bool _submitting = false;
 
@@ -769,7 +706,8 @@ class _TransferDialogState extends State<_TransferDialog> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return _WalletDialogShell(
+    return AppAdaptiveModal(
+      compact: widget.compact,
       title: '划转佣金',
       icon: LucideIcons.arrowRightLeft,
       child: Column(
@@ -778,7 +716,7 @@ class _TransferDialogState extends State<_TransferDialog> {
         children: [
           const _HintBox(text: '将可提现佣金划转到账户余额，划转后可用于购买套餐。'),
           const SizedBox(height: 14),
-          _WalletTextField(
+          AppTextField(
             controller: _amountCtrl,
             label: '划转金额',
             hint: '请输入划转金额',
@@ -812,26 +750,28 @@ class _TransferDialogState extends State<_TransferDialog> {
   }
 }
 
-// ── Withdraw dialog ───────────────────────────────────────────────────────────
+// ── Withdraw modal ────────────────────────────────────────────────────────────
 
-class _WithdrawDialog extends StatefulWidget {
-  const _WithdrawDialog({
+class _WithdrawModal extends StatefulWidget {
+  const _WithdrawModal({
+    required this.compact,
     required this.maxAmount,
     required this.minAmount,
     required this.methods,
     required this.currencySymbol,
   });
 
+  final bool compact;
   final double maxAmount;
   final double minAmount;
   final List<String> methods;
   final String currencySymbol;
 
   @override
-  State<_WithdrawDialog> createState() => _WithdrawDialogState();
+  State<_WithdrawModal> createState() => _WithdrawModalState();
 }
 
-class _WithdrawDialogState extends State<_WithdrawDialog> {
+class _WithdrawModalState extends State<_WithdrawModal> {
   final _accountCtrl = TextEditingController();
   late final TextEditingController _amountCtrl;
   late String _method;
@@ -896,7 +836,8 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return _WalletDialogShell(
+    return AppAdaptiveModal(
+      compact: widget.compact,
       title: '申请提现',
       icon: LucideIcons.receipt,
       child: Column(
@@ -924,13 +865,13 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
             ],
           ),
           const SizedBox(height: 14),
-          _WalletTextField(
+          AppTextField(
             controller: _accountCtrl,
             label: '提现账户',
             hint: '请输入收款账号',
           ),
           const SizedBox(height: 12),
-          _WalletTextField(
+          AppTextField(
             controller: _amountCtrl,
             label: '提现金额',
             hint: '请输入提现金额',
@@ -953,70 +894,6 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Shared dialog shell / hint / chips / text field ──────────────────────────
-
-class _WalletDialogShell extends StatelessWidget {
-  const _WalletDialogShell({
-    required this.title,
-    required this.icon,
-    required this.child,
-  });
-
-  final String title;
-  final IconData icon;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: c.softBorder),
-            boxShadow: AppShadows.card(c),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 18, color: c.primary),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: AppTextStyles.sectionTitle.copyWith(
-                        color: c.textPrimary,
-                      ),
-                    ),
-                  ),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Icon(LucideIcons.x, size: 17, color: c.textMuted),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              child,
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1085,65 +962,6 @@ class _MethodChip extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _WalletTextField extends StatelessWidget {
-  const _WalletTextField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    this.prefixText,
-    this.keyboardType,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final String? prefixText;
-  final TextInputType? keyboardType;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            color: c.textMuted,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          keyboardType: keyboardType,
-          style: AppTextStyles.input.copyWith(color: c.textPrimary),
-          decoration: InputDecoration(
-            prefixText: prefixText,
-            hintText: hint,
-            hintStyle: AppTextStyles.input.copyWith(color: c.textMuted),
-            filled: true,
-            fillColor: c.surfaceMuted,
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              borderSide: BorderSide(color: c.softBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              borderSide: BorderSide(color: c.primary),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

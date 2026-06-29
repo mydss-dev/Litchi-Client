@@ -15,13 +15,14 @@ import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/utils/formatters.dart';
-import '../../shared/utils/latency_status.dart';
 import '../../shared/widgets/app_toast.dart';
+import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/mode_strip.dart';
+import '../../shared/widgets/node_latency.dart';
 import '../../shared/widgets/notice_banner.dart';
 import '../../shared/widgets/update_banner.dart';
 import '../../shared/widgets/page_header.dart';
-import '../mobile/mobile_node_picker_sheet.dart';
+import '../nodes/node_picker.dart';
 import 'widgets/connection_hero_card.dart';
 import 'widgets/connection_stats_row.dart';
 import 'widgets/error_banner.dart';
@@ -194,7 +195,7 @@ class _DashboardPageState extends State<DashboardPage> {
               elapsedLabel: formatDuration(ctrl.connectedDuration),
               supportsConnection: ctrl.supportsCoreConnection,
               onToggle: _toggleConnection,
-              onNodesTap: () => showMobileNodePicker(context),
+              onNodesTap: () => showNodePicker(context),
             ),
           ),
           const SizedBox(height: 10),
@@ -356,14 +357,9 @@ class _MobileConnectionCard extends StatelessWidget {
             ConnectionStatus.error => '重新连接',
             ConnectionStatus.disconnected => '开始连接',
           };
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-      decoration: BoxDecoration(
-        gradient: c.cardGradient,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: c.softBorder),
-        boxShadow: AppShadows.card(c),
-      ),
+      radius: AppRadius.xl,
       child: Column(
         children: [
           Row(
@@ -461,7 +457,10 @@ class _MobileConnectionCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    _LatencyBadge(latency: node.latency),
+                    NodeLatency(
+                      latency: node.latency,
+                      style: NodeLatencyStyle.badge,
+                    ),
                     const SizedBox(width: 6),
                     Icon(
                       LucideIcons.chevronRight,
@@ -474,42 +473,6 @@ class _MobileConnectionCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _LatencyBadge extends StatelessWidget {
-  const _LatencyBadge({required this.latency});
-
-  final int latency;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    if (latency < 0) {
-      return SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(strokeWidth: 2, color: c.warning),
-      );
-    }
-    final label = LatencyStatus.label(latency);
-    final color = LatencyStatus.color(latency, c);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.caption.copyWith(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
       ),
     );
   }
@@ -655,14 +618,10 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Container(
+    return AppCard(
       height: 78,
       padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        gradient: c.cardGradient,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.softBorder),
-      ),
+      shadow: AppCardShadow.none,
       child: Row(
         children: [
           Container(

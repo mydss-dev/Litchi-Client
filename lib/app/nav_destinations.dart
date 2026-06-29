@@ -125,7 +125,7 @@ List<NavDestination> get hubDestinations =>
         .toList();
 
 /// Returns true when [page] is a primary bottom-nav tab (should show a
-/// [MobilePageHeader] in compact layout rather than a back-button row).
+/// compact page header rather than a back-button row).
 bool isPrimaryCompactTab(AppPage page) =>
     compactPrimaryDestinations.any((d) => d.page == page);
 

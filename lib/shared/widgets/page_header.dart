@@ -61,3 +61,51 @@ class PageHeader extends StatelessWidget {
     );
   }
 }
+
+class CompactPageHeader extends StatelessWidget {
+  const CompactPageHeader({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppTextStyles.pageTitle.copyWith(
+                  color: c.textPrimary,
+                  fontSize: 22,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: c.textMuted,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+      ],
+    );
+  }
+}

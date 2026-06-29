@@ -1,14 +1,26 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/config/app_config.dart';
 import 'package:litchi_client/config/remote_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  test('uses the production OSS remote config by default', () {
-    expect(RemoteConfigService.configUrl, 'https://oss.litchi.cfd/config.json');
-    expect(
-      RemoteConfigService.publicKeyBase64Url,
-      'b0nnSjObRhQe3l2ZOeSacmTbNMI0I4qf4_3g01lTK6I',
-    );
+  test('has no shared remote-config trust anchor by default', () {
+    expect(RemoteConfigService.configUrl, isEmpty);
+    expect(RemoteConfigService.publicKeyBase64Url, isEmpty);
+    expect(RemoteConfigService.isConfigured, isFalse);
+  });
+
+  test('fail-closed defaults do not apply an unsigned cached config', () async {
+    final originalName = AppConfig.appName;
+    addTearDown(() => AppConfig.appName = originalName);
+    SharedPreferences.setMockInitialValues({
+      'remote_config_v1': '{"app_name":"untrusted"}',
+    });
+    final prefs = await SharedPreferences.getInstance();
+
+    await RemoteConfigService.initialize(prefs);
+
+    expect(AppConfig.appName, originalName);
   });
 
   test('notifies long-lived services only when effective config changes', () {

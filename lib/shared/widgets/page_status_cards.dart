@@ -169,13 +169,10 @@ class PageStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final content = Container(
+    return AppCard(
+      onTap: onTap,
+      shadow: AppCardShadow.none,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: c.cardGradient,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.softBorder),
-      ),
       child: Row(
         children: [
           Container(
@@ -209,10 +206,50 @@ class PageStateCard extends StatelessWidget {
         ],
       ),
     );
-    if (onTap == null) return content;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(onTap: onTap, child: content),
+  }
+}
+
+class AppEmptyState extends StatelessWidget {
+  const AppEmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.padding = const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Center(
+      child: Padding(
+        padding: padding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 22, color: c.iconMuted),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
+            ),
+            if (subtitle != null && subtitle!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                subtitle!,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

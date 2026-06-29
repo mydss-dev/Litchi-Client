@@ -8,7 +8,6 @@ import '../../app/app_controller.dart';
 import '../../config/app_config.dart';
 import '../../app/nav_destinations.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
@@ -18,9 +17,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_switch.dart';
 import '../../shared/widgets/app_toast.dart';
-import '../../shared/widgets/page_header.dart';
-import '../mobile/mobile_back_button.dart';
-import '../mobile/mobile_page_header.dart';
+import '../../shared/widgets/responsive_page_scaffold.dart';
 
 /// Settings page (§15): General / Network / Advanced cards.
 class SettingsPage extends StatefulWidget {
@@ -77,58 +74,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
-          return _buildCompact(context);
-        }
-        return _buildWide(context);
-      },
-    );
-  }
-
-  // ── Wide (sidebar) layout ──────────────────────────────────────────────────
-
-  Widget _buildWide(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const PageHeader(title: '设置', subtitle: '配置客户端偏好和网络选项'),
-          const SizedBox(height: 12),
-          ..._bodyChildren(context),
-        ],
-      ),
-    );
-  }
-
-  // ── Compact (bottom-nav) layout ────────────────────────────────────────────
-
-  Widget _buildCompact(BuildContext context) {
-    final asPrimary = isPrimaryCompactTab(AppPage.settings);
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        if (asPrimary)
-          const MobilePageHeader(title: '设置', subtitle: '配置客户端偏好和网络选项')
-        else
-          Row(
-            children: [
-              MobileBackButton(
-                onTap: () => AppScope.of(context).goToPage(AppPage.account),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '设置',
-                  style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
-                ),
-              ),
-            ],
-          ),
-        const SizedBox(height: 18),
-        ..._bodyChildren(context),
-      ],
+    return ResponsivePageScaffold(
+      title: '设置',
+      subtitle: '配置客户端偏好和网络选项',
+      compactTitle: '设置',
+      primaryCompact: isPrimaryCompactTab(AppPage.settings),
+      onBack: () => AppScope.of(context).goToPage(AppPage.account),
+      compactBodySpacing: 18,
+      showWideBack: false,
+      children: _bodyChildren(context),
     );
   }
 

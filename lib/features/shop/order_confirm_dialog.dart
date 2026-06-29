@@ -9,6 +9,7 @@ import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
+import '../../shared/widgets/app_modal.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/icon_action_btn.dart';
 import 'payment_dialog.dart';
@@ -56,23 +57,14 @@ Future<void> showOrderConfirmDialog({
   required BillingCycle cycle,
   required PanelApi api,
 }) {
-  final compact = MediaQuery.sizeOf(context).width < 700;
-  if (compact) {
-    return showAppBottomSheet<void>(
-      context: context,
-      builder: (_) => _OrderConfirmDialog(
-        plan: plan,
-        cycle: cycle,
-        api: api,
-        compact: true,
-      ),
-    );
-  }
-  return showDialog<void>(
+  return showAppAdaptiveModal<void>(
     context: context,
-    barrierColor: Colors.black54,
-    builder: (_) =>
-        _OrderConfirmDialog(plan: plan, cycle: cycle, api: api, compact: false),
+    builder: (_, compact) => _OrderConfirmDialog(
+      plan: plan,
+      cycle: cycle,
+      api: api,
+      compact: compact,
+    ),
   );
 }
 
@@ -232,15 +224,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
         title: '确认订单',
         subtitle: widget.plan.title,
         maxHeightFactor: 0.92,
-        children: [
-          _buildPeriodSelector(c),
-          const SizedBox(height: 20),
-          _buildCouponRow(c),
-          const SizedBox(height: 20),
-          _buildSummary(c),
-          const SizedBox(height: 24),
-          _buildActions(c),
-        ],
+        children: [_buildContent(c)],
       );
     }
     return Center(
@@ -268,24 +252,28 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
               Flexible(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildPeriodSelector(c),
-                      const SizedBox(height: 20),
-                      _buildCouponRow(c),
-                      const SizedBox(height: 20),
-                      _buildSummary(c),
-                      const SizedBox(height: 24),
-                      _buildActions(c),
-                    ],
-                  ),
+                  child: _buildContent(c),
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildContent(AppColors c) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildPeriodSelector(c),
+        const SizedBox(height: 20),
+        _buildCouponRow(c),
+        const SizedBox(height: 20),
+        _buildSummary(c),
+        const SizedBox(height: 24),
+        _buildActions(c),
+      ],
     );
   }
 

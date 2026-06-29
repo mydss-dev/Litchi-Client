@@ -5,7 +5,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
@@ -14,10 +13,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/utils/formatters.dart';
 import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_toast.dart';
-import '../../shared/widgets/page_header.dart';
-import '../../shared/widgets/page_status_cards.dart';
-import '../mobile/mobile_back_button.dart';
-import '../mobile/mobile_page_header.dart';
+import '../../shared/widgets/responsive_page_scaffold.dart';
 
 /// Statistics page (§13): compact traffic, device, and subscription stats.
 class TrafficPage extends StatefulWidget {
@@ -41,79 +37,14 @@ class _TrafficPageState extends State<TrafficPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
-          return _buildCompact(context);
-        }
-        return _buildWide(context);
-      },
-    );
-  }
-
-  // ── Wide (sidebar) layout ──────────────────────────────────────────────────
-
-  Widget _buildWide(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              PageBackButton(
-                onTap: () => ctrl.goToPage(AppPage.account),
-                tooltip: '返回我的',
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: PageHeader(title: '流量统计', subtitle: '查看流量、设备和套餐周期'),
-              ),
-              const SizedBox(width: 10),
-              RefreshIconButton(onTap: _refresh),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ..._bodyChildren(context),
-        ],
-      ),
-    );
-  }
-
-  // ── Compact (bottom-nav) layout ────────────────────────────────────────────
-
-  Widget _buildCompact(BuildContext context) {
-    final asPrimary = isPrimaryCompactTab(AppPage.traffic);
-    return RefreshIndicator(
+    return ResponsivePageScaffold(
+      title: '流量统计',
+      subtitle: '查看流量、设备和套餐周期',
+      compactTitle: '流量',
+      primaryCompact: isPrimaryCompactTab(AppPage.traffic),
       onRefresh: _handleRefresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          if (asPrimary)
-            const MobilePageHeader(
-              title: '流量',
-              subtitle: '查看流量、设备和套餐周期',
-            )
-          else
-            Row(
-              children: [
-                MobileBackButton(
-                  onTap: () => AppScope.of(context).goToPage(AppPage.account),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '流量统计',
-                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(height: 16),
-          ..._bodyChildren(context),
-        ],
-      ),
+      onBack: () => AppScope.of(context).goToPage(AppPage.account),
+      children: _bodyChildren(context),
     );
   }
 
@@ -130,7 +61,6 @@ class _TrafficPageState extends State<TrafficPage> {
     ];
   }
 }
-
 
 class _StatsGrid extends StatelessWidget {
   const _StatsGrid();
@@ -245,7 +175,6 @@ class _RemainingDaysCard extends StatelessWidget {
     final end = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
     return end.difference(start).inDays.clamp(0, 9999);
   }
-
 }
 
 class _TrafficResetCard extends StatelessWidget {

@@ -16,10 +16,10 @@ import '../../shared/theme/app_text_styles.dart';
 import '../../shared/utils/latency_status.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/filter_tabs.dart';
+import '../../shared/widgets/node_latency.dart';
 import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/page_status_cards.dart';
 import '../../shared/widgets/search_input.dart';
-import '../mobile/mobile_back_button.dart';
-import '../mobile/mobile_page_header.dart';
 
 /// Node selection page — a single responsive page.
 class NodesPage extends StatefulWidget {
@@ -143,7 +143,6 @@ class _NodesPageState extends State<NodesPage> {
   // ── Wide (sidebar) layout ────────────────────────────────────────────────────
 
   Widget _buildWide(BuildContext context) {
-    final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final isAuto = ctrl.autoSelected;
     final effectiveId = isAuto
@@ -164,11 +163,10 @@ class _NodesPageState extends State<NodesPage> {
               final cols = w >= 620 ? 3 : (w >= 440 ? 2 : 1);
               final nodes = _filtered;
               if (nodes.isEmpty) {
-                return Center(
-                  child: Text(
-                    '没有匹配的节点',
-                    style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  ),
+                return const AppEmptyState(
+                  icon: LucideIcons.searchX,
+                  title: '没有匹配的节点',
+                  subtitle: '换个关键词或分区再试试',
                 );
               }
               return GridView.builder(
@@ -217,11 +215,11 @@ class _NodesPageState extends State<NodesPage> {
         padding: EdgeInsets.zero,
         children: [
           if (asPrimary)
-            const MobilePageHeader(title: '节点', subtitle: '选择线路并查看延迟')
+            const CompactPageHeader(title: '节点', subtitle: '选择线路并查看延迟')
           else
             Row(
               children: [
-                MobileBackButton(
+                PageBackButton(
                   onTap: () => AppScope.of(context).goToPage(AppPage.dashboard),
                 ),
                 const SizedBox(width: 10),
@@ -254,13 +252,12 @@ class _NodesPageState extends State<NodesPage> {
           const SizedBox(height: 16),
           ..._bodyChildren(context),
           if (nodes.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 48),
-              child: Center(
-                child: Text(
-                  '没有匹配的节点',
-                  style: AppTextStyles.body.copyWith(color: c.textMuted),
-                ),
+            const Padding(
+              padding: EdgeInsets.only(top: 48),
+              child: AppEmptyState(
+                icon: LucideIcons.searchX,
+                title: '没有匹配的节点',
+                subtitle: '换个关键词或分区再试试',
               ),
             )
           else
@@ -602,7 +599,10 @@ class _NodeCard extends StatelessWidget {
               const Spacer(),
               Row(
                 children: [
-                  _LatencyIndicator(latency: node.latency),
+                  NodeLatency(
+                    latency: node.latency,
+                    style: NodeLatencyStyle.dot,
+                  ),
                   const Spacer(),
                   if (selected)
                     Icon(LucideIcons.circleCheck, size: 16, color: c.primary),
@@ -612,55 +612,6 @@ class _NodeCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _LatencyIndicator extends StatelessWidget {
-  const _LatencyIndicator({required this.latency});
-  final int latency;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    if (latency == -1) {
-      return SizedBox(
-        width: 8,
-        height: 8,
-        child: CircularProgressIndicator(
-          strokeWidth: 1.5,
-          valueColor: AlwaysStoppedAnimation(c.warning),
-        ),
-      );
-    }
-    if (latency <= 0) {
-      return Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: c.textMuted,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text('--', style: AppTextStyles.menu.copyWith(color: c.textMuted)),
-        ],
-      );
-    }
-    final color = LatencyStatus.color(latency, c);
-    final label = LatencyStatus.label(latency);
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: AppTextStyles.menu.copyWith(color: color)),
-      ],
     );
   }
 }

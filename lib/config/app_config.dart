@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 ///     --dart-define=APP_NAME="MyVPN"
 ///     --dart-define=LOGO_URL="https://oss.example.com/logo.png"
 ///     --dart-define=API_BASE="https://your-panel.com"
+///     --dart-define=REMOTE_CONFIG_URL="https://oss.example.com/config.json"
+///     --dart-define=REMOTE_CONFIG_PUBLIC_KEY="tenant-ed25519-public-key"
 
 abstract final class AppConfig {
   /// Increments after a trusted remote config changes effective runtime values.
@@ -24,19 +26,32 @@ abstract final class AppConfig {
 
   static String updateVersion = '';
   static final Map<String, String> _updateDownloadUrls = {};
+  static final Map<String, String> _updateSha256s = {};
   static String updateChangelog = '';
-  static String updateSha256 = '';
 
-  /// Picks the platform-specific download URL, falling back to the first
-  /// available entry or the old-style flat key.
-  static String get updateDownloadUrl {
-    final key = _platformKey;
-    if (key != null && _updateDownloadUrls.containsKey(key)) {
-      return _updateDownloadUrls[key]!;
+  static String? get _selectedUpdateKey {
+    final platform = _platformKey;
+    if (platform != null && _updateDownloadUrls.containsKey(platform)) {
+      return platform;
     }
-    return _updateDownloadUrls.isNotEmpty
-        ? _updateDownloadUrls.values.first
-        : '';
+    if (_updateDownloadUrls.containsKey('default')) return 'default';
+    return _updateDownloadUrls.keys.firstOrNull;
+  }
+
+  /// Picks the platform-specific download URL.
+  static String get updateDownloadUrl {
+    final key = _selectedUpdateKey;
+    return key == null ? '' : _updateDownloadUrls[key]!;
+  }
+
+  /// Picks the digest paired with the selected platform URL. A flat digest is
+  /// stored under `default` and applies to every platform.
+  static String get updateSha256 {
+    final key = _selectedUpdateKey;
+    if (key != null && _updateSha256s.containsKey(key)) {
+      return _updateSha256s[key]!;
+    }
+    return _updateSha256s['default'] ?? '';
   }
 
   static String? get _platformKey => () {
@@ -117,7 +132,7 @@ abstract final class AppConfig {
     _str(json, 'update_version', (v) => updateVersion = v);
     _updateDownloadUrlsFromJson(json['update_download_url']);
     _str(json, 'update_changelog', (v) => updateChangelog = v);
-    _str(json, 'update_sha256', (v) => updateSha256 = v);
+    _updateSha256sFromJson(json['update_sha256']);
 
     if (_runtimeFingerprint() != before) {
       revision.value++;
@@ -138,10 +153,22 @@ abstract final class AppConfig {
           ..sort((a, b) => a.key.compareTo(b.key))))
       '${entry.key}=${entry.value}',
     updateChangelog,
-    updateSha256,
+    for (final entry
+        in (_updateSha256s.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key))))
+      '${entry.key}=${entry.value}',
   ].join('\u0000');
 
   static void _updateDownloadUrlsFromJson(Object? value) {
+    if (value is String) {
+      final safe = _trustedHttpsUrl(value);
+      if (safe != null) {
+        _updateDownloadUrls
+          ..clear()
+          ..['default'] = safe;
+      }
+      return;
+    }
     if (value is Map) {
       final next = <String, String>{};
 
@@ -156,6 +183,29 @@ abstract final class AppConfig {
 
       if (next.isNotEmpty) {
         _updateDownloadUrls
+          ..clear()
+          ..addAll(next);
+      }
+    }
+  }
+
+  static void _updateSha256sFromJson(Object? value) {
+    if (value is String) {
+      _updateSha256s
+        ..clear()
+        ..['default'] = value.trim().toLowerCase();
+      return;
+    }
+    if (value is Map) {
+      final next = <String, String>{};
+      for (final entry in value.entries) {
+        if (entry.value is! String) continue;
+        next[entry.key.toString()] = (entry.value as String)
+            .trim()
+            .toLowerCase();
+      }
+      if (next.isNotEmpty) {
+        _updateSha256s
           ..clear()
           ..addAll(next);
       }

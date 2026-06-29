@@ -16,6 +16,7 @@ import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_switch.dart';
+import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
@@ -611,89 +612,81 @@ class _TrafficOverviewCard extends StatelessWidget {
         ? '重置日 --'
         : '每月 $resetDay 日重置';
 
-    return GestureDetector(
+    return AppCard(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: c.cardGradient,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: c.softBorder),
-          boxShadow: AppShadows.soft(c),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _SmallIcon(icon: LucideIcons.gauge, color: c.primary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '流量概览',
-                    style: AppTextStyles.bodyStrong.copyWith(
-                      color: c.textPrimary,
-                    ),
+      shadow: AppCardShadow.soft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _SmallIcon(icon: LucideIcons.gauge, color: c.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '流量概览',
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: c.textPrimary,
                   ),
-                ),
-                Text(
-                  '已用 $percent%',
-                  style: AppTextStyles.caption.copyWith(
-                    color: c.textMuted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${remainGb.toStringAsFixed(1)} GB',
-                  style: AppTextStyles.largeNumber(
-                    fontSize: 24,
-                  ).copyWith(color: c.textPrimary),
-                ),
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 3),
-                  child: Text(
-                    '剩余',
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 7,
-                backgroundColor: c.surfaceMuted,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  progress > 0.85 ? c.warning : c.primary,
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '已用 ${usedGb.toStringAsFixed(1)} / ${totalGb.toStringAsFixed(1)} GB',
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                  ),
+              Text(
+                '已用 $percent%',
+                style: AppTextStyles.caption.copyWith(
+                  color: c.textMuted,
+                  fontWeight: FontWeight.w700,
                 ),
-                Text(
-                  reset,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${remainGb.toStringAsFixed(1)} GB',
+                style: AppTextStyles.largeNumber(
+                  fontSize: 24,
+                ).copyWith(color: c.textPrimary),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  '剩余',
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 7,
+              backgroundColor: c.surfaceMuted,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                progress > 0.85 ? c.warning : c.primary,
+              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '已用 ${usedGb.toStringAsFixed(1)} / ${totalGb.toStringAsFixed(1)} GB',
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+              ),
+              Text(
+                reset,
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -747,14 +740,9 @@ class _InfoSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: c.cardGradient,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.softBorder),
-        boxShadow: AppShadows.soft(c),
-      ),
+      shadow: AppCardShadow.soft,
       child: Row(
         children: [
           _SmallIcon(icon: icon, color: c.primary),
@@ -900,14 +888,9 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: c.cardGradient,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.softBorder),
-        boxShadow: AppShadows.soft(c),
-      ),
+      shadow: AppCardShadow.soft,
       child: Row(
         children: [
           _ProfileAvatar(avatar: avatar),
@@ -1051,45 +1034,38 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return GestureDetector(
+    return AppCard(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: c.cardGradient,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: c.softBorder),
-          boxShadow: AppShadows.soft(c),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: c.primarySoft,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(icon, color: c.primary, size: 19),
+      padding: const EdgeInsets.all(14),
+      shadow: AppCardShadow.soft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: c.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            const Spacer(),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyStrong,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption.copyWith(color: c.textMuted),
-            ),
-          ],
-        ),
+            child: Icon(icon, color: c.primary, size: 19),
+          ),
+          const Spacer(),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodyStrong,
+          ),
+          const SizedBox(height: 3),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(color: c.textMuted),
+          ),
+        ],
       ),
     );
   }
@@ -1332,11 +1308,26 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     return AppBottomSheet(
       title: '修改密码',
       children: [
-        _PasswordField(controller: _oldCtrl, label: '当前密码'),
+        AppTextField(
+          controller: _oldCtrl,
+          label: '当前密码',
+          hint: '请输入当前密码',
+          obscureText: true,
+        ),
         const SizedBox(height: 12),
-        _PasswordField(controller: _newCtrl, label: '新密码'),
+        AppTextField(
+          controller: _newCtrl,
+          label: '新密码',
+          hint: '请输入新密码',
+          obscureText: true,
+        ),
         const SizedBox(height: 12),
-        _PasswordField(controller: _confirmCtrl, label: '确认新密码'),
+        AppTextField(
+          controller: _confirmCtrl,
+          label: '确认新密码',
+          hint: '请输入确认新密码',
+          obscureText: true,
+        ),
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
@@ -1351,54 +1342,6 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                   )
                 : const Icon(LucideIcons.lockKeyhole, size: 17),
             label: Text(_submitting ? '更新中...' : '确认修改'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PasswordField extends StatelessWidget {
-  const _PasswordField({required this.controller, required this.label});
-
-  final TextEditingController controller;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            color: c.textMuted,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          obscureText: true,
-          style: AppTextStyles.input.copyWith(color: c.textPrimary),
-          decoration: InputDecoration(
-            hintText: '请输入$label',
-            hintStyle: AppTextStyles.input.copyWith(color: c.textMuted),
-            filled: true,
-            fillColor: c.surfaceMuted,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              borderSide: BorderSide(color: c.softBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              borderSide: BorderSide(color: c.primary),
-            ),
           ),
         ),
       ],
