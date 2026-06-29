@@ -55,14 +55,37 @@ cp mihomo "$APP_BUNDLE/Contents/Resources/mihomo"
 lipo -info "$APP_BUNDLE/Contents/Resources/mihomo" || true
 
 # ── geo databases ────────────────────────────────────────────────────
-# mihomo needs these to evaluate GEOIP/GEOSITE rules. Ship them inside the
-# bundle so a fresh install never downloads them at first launch.
+# mihomo needs these for GEOIP/GEOSITE rules. Download to a temp file in the
+# destination dir, SHA-256 verify, then atomically replace — a partial download
+# is never used. Hash blank in core_versions.env = print only (don't enforce).
 GEO_BASE="https://github.com/MetaCubeX/meta-rules-dat/releases/download/${GEO_VERSION}"
-for f in country.mmdb geosite.dat; do
-    echo "Downloading $f (${GEO_VERSION})"
-    curl --fail --silent --show-error --location "$GEO_BASE/$f" \
-        -o "$APP_BUNDLE/Contents/Resources/$f"
-done
+RES="$APP_BUNDLE/Contents/Resources"
+
+fetch_geo() {
+    local name="$1" expected="$2" tmp actual
+    tmp="$(mktemp "$RES/.${name}.XXXXXX")"
+    echo "Downloading $name (${GEO_VERSION})"
+    if ! curl --fail --silent --show-error --location "$GEO_BASE/$name" -o "$tmp"; then
+        rm -f "$tmp"; echo "::error::download failed: $name" >&2; exit 1
+    fi
+    if [ ! -s "$tmp" ]; then
+        rm -f "$tmp"; echo "::error::empty download: $name" >&2; exit 1
+    fi
+    actual="$(shasum -a 256 "$tmp" | awk '{print $1}')"
+    if [ -z "$expected" ]; then
+        echo "  $name sha256 = $actual  (paste into core_versions.env to lock)"
+    elif [ "$actual" != "$expected" ]; then
+        rm -f "$tmp"
+        echo "::error::$name sha256 mismatch: actual=$actual expected=$expected" >&2
+        exit 1
+    else
+        echo "  $name sha256 verified"
+    fi
+    mv -f "$tmp" "$RES/$name"   # verified → atomic rename (same dir)
+}
+
+fetch_geo "country.mmdb" "${GEOIP_MMDB_SHA256:-}"
+fetch_geo "geosite.dat"  "${GEOSITE_DAT_SHA256:-}"
 echo "geo databases ready"
 
 # Cleanup

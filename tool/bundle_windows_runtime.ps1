@@ -61,17 +61,25 @@ Write-Host "wintun.dll ready"
 $geoBase = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/$($env:GEO_VERSION)"
 
 function Fetch-Geo($fileName, $expectedSha) {
+    $tmp = "$ReleaseDir\$fileName.part"
+    $final = "$ReleaseDir\$fileName"
     Write-Host "Downloading $fileName ($($env:GEO_VERSION))"
-    Invoke-WebRequest -Uri "$geoBase/$fileName" -OutFile $fileName
-    $actual = (Get-FileHash $fileName -Algorithm SHA256).Hash.ToLower()
+    Invoke-WebRequest -Uri "$geoBase/$fileName" -OutFile $tmp
+    if (-not (Test-Path $tmp) -or (Get-Item $tmp).Length -eq 0) {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+        throw "empty download: $fileName"
+    }
+    $actual = (Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower()
     if ([string]::IsNullOrWhiteSpace($expectedSha)) {
         Write-Host "  $fileName sha256 = $actual  (paste into core_versions.env to lock)"
     } elseif ($actual -ne $expectedSha.ToLower()) {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
         throw "$fileName sha256 mismatch: actual=$actual expected=$expectedSha"
     } else {
         Write-Host "  $fileName sha256 verified"
     }
-    Copy-Item $fileName "$ReleaseDir\$fileName" -Force
+    # Verified — promote atomically (same dir → rename; partial .part never used).
+    Move-Item -Path $tmp -Destination $final -Force
 }
 
 Fetch-Geo "country.mmdb" $env:GEOIP_MMDB_SHA256
@@ -79,4 +87,4 @@ Fetch-Geo "geosite.dat"  $env:GEOSITE_DAT_SHA256
 Write-Host "geo databases ready"
 
 # Cleanup
-Remove-Item -Recurse -Force mihomo-tmp, wintun-tmp, mihomo.zip, wintun.zip, country.mmdb, geosite.dat -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force mihomo-tmp, wintun-tmp, mihomo.zip, wintun.zip -ErrorAction SilentlyContinue
