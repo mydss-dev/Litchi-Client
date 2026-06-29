@@ -98,7 +98,10 @@ abstract final class MihomoConfig {
       'bind-address': '127.0.0.1',
       'mode': proxyMode.clashValue,
       'log-level': 'warning',
-      'ipv6': true,
+      // IPv6 disabled: many nodes can't carry v6, so AAAA traffic black-holes
+      // ("connected but some sites won't load"). Re-enable only if your nodes
+      // and the underlying network both support IPv6.
+      'ipv6': false,
       'unified-delay': true,
       'tcp-concurrent': true,
       'external-controller': '127.0.0.1:$apiPort',
@@ -106,12 +109,38 @@ abstract final class MihomoConfig {
       'profile': {'store-selected': false, 'store-fake-ip': false},
       'dns': {
         'enable': true,
-        'ipv6': true,
+        'ipv6': false,
         'enhanced-mode': 'fake-ip',
         'fake-ip-range': '198.18.0.1/16',
-        'fake-ip-filter': ['localhost', '*.local', '*.lan'],
+        // Domains that must resolve to a REAL IP (never a fake one): local
+        // names, time sync, connectivity checks. A too-small filter is a common
+        // cause of "connected but flaky".
+        'fake-ip-filter': [
+          'localhost',
+          '*.local',
+          '*.lan',
+          '*.arpa',
+          'time.*.com',
+          'time.*.gov',
+          'time.*.apple.com',
+          'ntp.*.com',
+          '+.ntp.org',
+          '*.msftncsi.com',
+          'www.msftconnecttest.com',
+          'connectivitycheck.gstatic.com',
+          'captive.apple.com',
+        ],
         'use-system-hosts': true,
+        // Plain-IP bootstrap resolvers. Without these, DoH hostnames like
+        // dns.google can never be resolved, so the Google/Cloudflare DNS modes
+        // silently fail. These are reachable worldwide.
+        'default-nameserver': ['223.5.5.5', '119.29.29.29'],
         'nameserver': nameserver,
+        // Resolve the proxy NODE's own domain with a reliable resolver instead
+        // of falling back to (a possibly-blocked) DoH. This is why switching to
+        // Google/Cloudflare DNS could break the latency test entirely: the node
+        // domain became unresolvable.
+        'proxy-server-nameserver': ['223.5.5.5', '119.29.29.29'],
         if (fallback.isNotEmpty) 'fallback': fallback,
       },
       // Android supplies a VpnService-owned file descriptor to the embedded

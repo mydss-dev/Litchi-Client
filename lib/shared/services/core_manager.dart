@@ -124,6 +124,10 @@ class CoreManager {
 
     // Kill any previously owned mihomo process (by saved PID).
     await _killSavedPid(expectedExePath: exe);
+    // Also sweep any orphans from earlier force-closes that the saved-PID
+    // cleanup cannot see — otherwise they keep port 7890 occupied and the new
+    // core comes up with a dead proxy port (connected, but no traffic).
+    await _killOrphanedCores(exe);
 
     // Wait (briefly) for the API port to become free instead of failing on the
     // first check. This makes restarts robust without callers having to insert
@@ -149,12 +153,22 @@ class CoreManager {
       await _writePidFile(_process!.pid, exe);
 
       final outputLines = <String>[];
+      // mihomo logs a non-fatal error and keeps running when it cannot bind the
+      // mixed proxy port. In system-proxy mode that means the system proxy then
+      // points at a dead port: "connected", but zero traffic. Track it so we can
+      // surface a real error instead of a fake "running" state.
+      var proxyPortBindFailed = false;
       void handleOutput(String line) {
         outputLines.add(line);
         if (outputLines.length > 50) outputLines.removeAt(0);
         _emitLog(line);
+        final lower = line.toLowerCase();
+        if (lower.contains('mixed') &&
+            lower.contains('server error') &&
+            lower.contains('bind')) {
+          proxyPortBindFailed = true;
+        }
         if (_state == CoreState.starting) {
-          final lower = line.toLowerCase();
           if (lower.contains('fatal') || lower.contains('error')) {
             _lastError = _stripAnsi(line);
           }
@@ -195,16 +209,26 @@ class CoreManager {
       final ready = await _waitForApi(apiPort);
 
       if (_process != null && _state != CoreState.error) {
-        if (ready) {
-          _emitLog('── mihomo 运行中 (PID ${_process!.pid}) ──');
-          _setState(CoreState.running);
-          _deleteConfigFile(configPath);
-        } else {
+        if (!ready) {
           _setError('核心启动超时 (端口 $apiPort)，请检查配置文件或重试');
           _emitLog('── 启动超时，已停止 ──');
           _process?.kill();
           _process = null;
           _deletePidFile();
+          _deleteConfigFile(configPath);
+        } else if (proxyPortBindFailed) {
+          _setError(
+            '代理端口被占用，无法建立连接。请关闭占用该端口的程序'
+            '（或残留的 mihomo 进程）后重试，或在设置里更换代理端口。',
+          );
+          _emitLog('── 代理端口被占用，已停止 ──');
+          _process?.kill();
+          _process = null;
+          _deletePidFile();
+          _deleteConfigFile(configPath);
+        } else {
+          _emitLog('── mihomo 运行中 (PID ${_process!.pid}) ──');
+          _setState(CoreState.running);
           _deleteConfigFile(configPath);
         }
       }
@@ -266,6 +290,7 @@ class CoreManager {
   /// previous crash, remove stale PID/config files, and restore proxy state.
   static Future<void> cleanupOnStartup() async {
     await _killSavedPid(expectedExePath: findExecutable());
+    await _killOrphanedCores(findExecutable());
     await MihomoConfig.cleanupStaleConfigFiles();
   }
 
@@ -303,6 +328,38 @@ class CoreManager {
       await Future.delayed(const Duration(milliseconds: 400));
     } catch (_) {
       // intentional: best-effort process cleanup, failure is safe to ignore
+    }
+  }
+
+  /// Kills EVERY stray mihomo whose executable path matches our bundled core,
+  /// not just the single PID we last recorded. The old single-PID cleanup
+  /// could not reclaim cores orphaned by earlier force-closes/crashes, so they
+  /// accumulated (dozens of mihomo.exe holding port 7890 + the cache file).
+  /// Scoped by exe path so other apps' mihomo instances are left untouched.
+  /// Best-effort: any failure leaves the previous behaviour unchanged.
+  static Future<void> _killOrphanedCores(String? exePath) async {
+    if (exePath == null || exePath.isEmpty) return;
+    try {
+      if (Platform.isWindows) {
+        final escaped = exePath.replaceAll("'", "''");
+        await Process.run('powershell', [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          "Get-CimInstance Win32_Process -Filter \"Name='mihomo.exe'\" | "
+              "Where-Object { \$_.ExecutablePath -ieq '$escaped' } | "
+              "ForEach-Object { Stop-Process -Id \$_.ProcessId -Force "
+              "-ErrorAction SilentlyContinue }",
+        ]).timeout(const Duration(seconds: 5));
+      } else {
+        // Matches processes whose command line contains our exe path.
+        await Process.run('pkill', ['-f', exePath])
+            .timeout(const Duration(seconds: 5));
+      }
+      // Let the OS release the listening ports the killed cores held.
+      await Future.delayed(const Duration(milliseconds: 400));
+    } catch (_) {
+      // intentional: best-effort sweep, failure is safe to ignore
     }
   }
 
