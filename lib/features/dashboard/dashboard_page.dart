@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
@@ -17,9 +16,7 @@ import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/utils/formatters.dart';
 import '../../shared/utils/latency_status.dart';
-import '../../config/app_config.dart';
 import '../../shared/widgets/app_toast.dart';
-import '../../shared/widgets/brand_logo.dart';
 import '../../shared/widgets/mode_strip.dart';
 import '../../shared/widgets/notice_banner.dart';
 import '../../shared/widgets/update_banner.dart';
@@ -180,10 +177,6 @@ class _DashboardPageState extends State<DashboardPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          if (Platform.isMacOS) ...[
-            _MobileHeader(connected: ctrl.coreRunning),
-            const SizedBox(height: 12),
-          ],
           _DashboardAlerts(
             ctrl: ctrl,
             onConnectionRetry: _toggleConnection,
@@ -314,66 +307,6 @@ class _InfoMiniCardsRow extends StatelessWidget {
 
 // ── Compact-layout widgets (original MobileHomePage, verbatim) ────────────
 
-class _MobileHeader extends StatelessWidget {
-  const _MobileHeader({required this.connected});
-
-  final bool connected;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-
-    return SizedBox(
-      height: 44,
-      child: Row(
-        children: [
-          const BrandLogo(size: 28, radius: 8),
-          const SizedBox(width: 8),
-          Text(
-            AppConfig.appName,
-            style: AppTextStyles.sectionTitle.copyWith(
-              color: c.primary,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          _HeaderStatusIcon(
-            icon: connected ? LucideIcons.shieldCheck : LucideIcons.shield,
-            active: connected,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 纯展示的状态图标（无 InkWell / 无涟漪）。
-class _HeaderStatusIcon extends StatelessWidget {
-  const _HeaderStatusIcon({required this.icon, required this.active});
-
-  final IconData icon;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Container(
-      width: 38,
-      height: 38,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: active ? c.success.withValues(alpha: 0.12) : c.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(
-          color: active ? c.success.withValues(alpha: 0.18) : c.border,
-        ),
-      ),
-      child: Icon(icon, size: 19, color: active ? c.success : c.iconDefault),
-    );
-  }
-}
-
 class _MobileConnectionCard extends StatelessWidget {
   const _MobileConnectionCard({
     required this.status,
@@ -430,7 +363,13 @@ class _MobileConnectionCard extends StatelessWidget {
       child: Column(
         children: [
           Row(
-            children: [_StatusPill(label: statusText, color: statusColor)],
+            children: [
+              _StatusPill(
+                status: status,
+                label: statusText,
+                color: statusColor,
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           _MobilePowerButton(
@@ -462,49 +401,57 @@ class _MobileConnectionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          GestureDetector(
-            onTap: onNodesTap,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: c.surfaceMuted,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                border: Border.all(color: c.softBorder),
-              ),
-              child: Row(
-                children: [
-                  _NodeAvatar(node: node),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          node.name.isEmpty ? '请选择节点' : node.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.bodyStrong.copyWith(
-                            color: c.textPrimary,
-                            fontSize: 15,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onNodesTap,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              child: Ink(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: c.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppRadius.card),
+                  border: Border.all(color: c.softBorder),
+                ),
+                child: Row(
+                  children: [
+                    _NodeAvatar(node: node),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            node.name.isEmpty ? '请选择节点' : node.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodyStrong.copyWith(
+                              color: c.textPrimary,
+                              fontSize: 15,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '节点模式：${automatic ? '自动选择' : '手动选择'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.caption.copyWith(
-                            color: c.textMuted,
+                          const SizedBox(height: 4),
+                          Text(
+                            '节点模式：${automatic ? '自动选择' : '手动选择'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption.copyWith(
+                              color: c.textMuted,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  _LatencyBadge(latency: node.latency),
-                  const SizedBox(width: 2),
-                  Icon(LucideIcons.chevronRight, size: 18, color: c.iconMuted),
-                ],
+                    const SizedBox(width: 10),
+                    _LatencyBadge(latency: node.latency),
+                    const SizedBox(width: 6),
+                    Icon(
+                      LucideIcons.chevronRight,
+                      size: 18,
+                      color: c.iconMuted,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -522,9 +469,15 @@ class _LatencyBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    if (latency < 0) {
+      return SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(strokeWidth: 2, color: c.warning),
+      );
+    }
     final label = LatencyStatus.label(latency);
     final color = LatencyStatus.color(latency, c);
-    if (latency <= 0) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -716,21 +669,6 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 9,
-      height: 9,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-}
-
 class _MobilePowerButton extends StatefulWidget {
   const _MobilePowerButton({
     required this.status,
@@ -891,13 +829,25 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.color});
+  const _StatusPill({
+    required this.status,
+    required this.label,
+    required this.color,
+  });
 
+  final ConnectionStatus status;
   final String label;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
+    final icon = switch (status) {
+      ConnectionStatus.connected => LucideIcons.shieldCheck,
+      ConnectionStatus.connecting => LucideIcons.shield,
+      ConnectionStatus.disconnected => LucideIcons.shield,
+      ConnectionStatus.disconnecting ||
+      ConnectionStatus.error => LucideIcons.shieldOff,
+    };
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -909,7 +859,7 @@ class _StatusPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _StatusDot(color: color),
+          Icon(icon, size: 14, color: color),
           const SizedBox(width: 6),
           Text(
             label,

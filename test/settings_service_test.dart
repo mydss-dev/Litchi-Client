@@ -7,17 +7,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test(
-    'closes old connections after a node or mode change by default',
-    () async {
-      expect((await SettingsService.load()).closeConnectionsOnSwitch, isTrue);
-    },
-  );
+  test('removes the legacy close-connections preference', () async {
+    SharedPreferences.setMockInitialValues({
+      'close_connections_on_switch': false,
+    });
 
-  test('persists the close-connections preference', () async {
-    SettingsService.setCloseConnectionsOnSwitch(false);
-    await Future<void>.delayed(Duration.zero);
-
-    expect((await SettingsService.load()).closeConnectionsOnSwitch, isFalse);
+    await SettingsService.load();
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.containsKey('close_connections_on_switch'), isFalse);
   });
 }

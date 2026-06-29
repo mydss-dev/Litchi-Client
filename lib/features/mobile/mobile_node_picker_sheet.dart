@@ -27,7 +27,7 @@ class _MobileNodePickerSheet extends StatefulWidget {
 }
 
 class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
-  static const _tabs = ['全部', 'VIP', '亚洲', '欧洲', '美洲', '大洋洲'];
+  static const _tabs = ['全部', '亚洲', '欧洲', '美洲', '大洋洲'];
 
   int _tab = 0;
   String _query = '';
@@ -43,7 +43,6 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
         if (!matchesSearch) return false;
       }
       return switch (_tabs[_tab]) {
-        'VIP' => node.tags.contains('Premium'),
         '亚洲' => node.region == NodeRegion.asia,
         '欧洲' => node.region == NodeRegion.europe,
         '美洲' => node.region == NodeRegion.america,
@@ -75,12 +74,18 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
     );
   }
 
-  void _testLatencies(AppController ctrl) {
+  Future<void> _testLatencies(AppController ctrl) async {
     if (ctrl.nodes.isEmpty) {
       AppToast.show(context, '暂无可测速节点', type: AppToastType.warning);
       return;
     }
-    ctrl.testLatencies();
+    final success = await ctrl.testLatencies();
+    if (!mounted) return;
+    AppToast.show(
+      context,
+      success ? '测速完成' : '测速失败，请稍后重试',
+      type: success ? AppToastType.success : AppToastType.warning,
+    );
   }
 
   @override
@@ -89,6 +94,7 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
     final c = AppColors.of(context);
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
     final nodes = _filteredNodes(ctrl);
+    final testing = ctrl.nodes.any((node) => node.latency < 0);
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
@@ -147,8 +153,19 @@ class _MobileNodePickerSheetState extends State<_MobileNodePickerSheet> {
                         ),
                         IconButton(
                           tooltip: '测速',
-                          onPressed: () => _testLatencies(ctrl),
-                          icon: Icon(LucideIcons.gauge, color: c.primary),
+                          onPressed: testing
+                              ? null
+                              : () => _testLatencies(ctrl),
+                          icon: testing
+                              ? SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: c.primary,
+                                  ),
+                                )
+                              : Icon(LucideIcons.gauge, color: c.primary),
                         ),
                         IconButton(
                           tooltip: '关闭',

@@ -72,7 +72,7 @@ abstract final class MihomoApiClient {
   /// Tests every member of the application's selector in one core operation.
   static Future<Map<String, int>> testGroup({
     int apiPort = 9090,
-    int timeout = 10000,
+    int timeout = 5000,
   }) async {
     final query = Uri(
       queryParameters: {
@@ -85,7 +85,7 @@ abstract final class MihomoApiClient {
       'GET',
       '/group/${Uri.encodeComponent(MihomoConfig.selectorTag)}/delay?$query',
       apiPort: apiPort,
-    );
+    ).timeout(Duration(milliseconds: timeout + 1500), onTimeout: () => null);
     if (response?.statusCode != 200) return {};
     final data = jsonDecode(response!.body);
     if (data is! Map) return {};

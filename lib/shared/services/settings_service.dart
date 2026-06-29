@@ -17,8 +17,6 @@ class SettingsSnapshot {
     required this.wasConnected,
     required this.lastNodeId,
     required this.killSwitch,
-    required this.closeConnectionsOnSwitch,
-    required this.allowInsecureNodes,
   });
 
   final int proxyPort;
@@ -35,11 +33,6 @@ class SettingsSnapshot {
   /// When true, an unexpected core drop blackholes the system proxy instead of
   /// reverting to a direct (unprotected) connection — fail-closed.
   final bool killSwitch;
-  final bool closeConnectionsOnSwitch;
-
-  /// When false, nodes that request `insecure` / skip-cert-verify have that flag
-  /// stripped, forcing TLS certificate validation (rejects MITM-prone nodes).
-  final bool allowInsecureNodes;
 
   /// ID of the node the user last manually selected.
   /// Empty string means "use auto-select".
@@ -50,6 +43,8 @@ class SettingsSnapshot {
 abstract final class SettingsService {
   static Future<SettingsSnapshot> load() async {
     final p = await SharedPreferences.getInstance();
+    await p.remove('allow_insecure_nodes');
+    await p.remove('close_connections_on_switch');
     return SettingsSnapshot(
       proxyPort: p.getInt('proxy_port') ?? 7890,
       autoStart: p.getBool('auto_start') ?? false,
@@ -67,22 +62,11 @@ abstract final class SettingsService {
       wasConnected: p.getBool('was_connected') ?? false,
       lastNodeId: p.getString('last_node_id') ?? '',
       killSwitch: p.getBool('kill_switch') ?? false,
-      closeConnectionsOnSwitch:
-          p.getBool('close_connections_on_switch') ?? true,
-      allowInsecureNodes: p.getBool('allow_insecure_nodes') ?? false,
     );
   }
 
   static void setKillSwitch(bool v) =>
       SharedPreferences.getInstance().then((p) => p.setBool('kill_switch', v));
-
-  static void setCloseConnectionsOnSwitch(bool v) =>
-      SharedPreferences.getInstance().then(
-        (p) => p.setBool('close_connections_on_switch', v),
-      );
-
-  static void setAllowInsecureNodes(bool v) => SharedPreferences.getInstance()
-      .then((p) => p.setBool('allow_insecure_nodes', v));
 
   static void setProxyPort(int v) =>
       SharedPreferences.getInstance().then((p) => p.setInt('proxy_port', v));

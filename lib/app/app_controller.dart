@@ -100,8 +100,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   String get dnsMode => _settings.dnsMode;
   int get proxyPort => _settings.proxyPort;
   bool get killSwitch => _settings.killSwitch;
-  bool get closeConnectionsOnSwitch => _settings.closeConnectionsOnSwitch;
-  bool get allowInsecureNodes => _settings.allowInsecureNodes;
 
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
@@ -119,17 +117,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   void setKillSwitch(bool v) {
     _settings.setKillSwitch(v);
     _core.killSwitchEnabled = _settings.killSwitch;
-  }
-
-  void setCloseConnectionsOnSwitch(bool v) {
-    _settings.setCloseConnectionsOnSwitch(v);
-    _core.closeConnectionsOnSwitch = _settings.closeConnectionsOnSwitch;
-  }
-
-  void setAllowInsecureNodes(bool v) {
-    final old = _settings.allowInsecureNodes;
-    _settings.setAllowInsecureNodes(v);
-    if (_settings.allowInsecureNodes != old) unawaited(_reloadCoreConfig());
   }
 
   Future<String?> setProxyMode(ProxyMode v) async {
@@ -188,7 +175,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> fixProxy() =>
       _core.fixProxy(_settings.proxyPort, networkMode: _settings.networkMode);
-  Future<String?> exportLogs() => _core.exportLogs();
   static Future<String> getCoreVersion() => CoreController.getCoreVersion();
 
   bool get isAuthenticated => _isAuthenticated;
@@ -259,7 +245,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     await _notices.loadLastSeen();
     await _core.init();
     _core.killSwitchEnabled = _settings.killSwitch;
-    _core.closeConnectionsOnSwitch = _settings.closeConnectionsOnSwitch;
 
     _apiClient.configure(AppConfig.effectiveApiBases);
     _apiClient.onSessionExpired = logout;
@@ -642,7 +627,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     dnsMode: _settings.dnsMode,
     proxyPort: _settings.proxyPort,
     networkMode: _settings.networkMode,
-    allowInsecure: _settings.allowInsecureNodes,
+    allowInsecure: false,
     rules: _subscription.rules,
     ruleProviders: _subscription.ruleProviders,
   );

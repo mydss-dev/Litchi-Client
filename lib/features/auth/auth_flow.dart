@@ -8,7 +8,6 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_select.dart';
-import '../../shared/widgets/brand_logo.dart';
 import 'change_password_page.dart';
 import 'forgot_password_page.dart';
 import 'login_page.dart';
@@ -109,10 +108,6 @@ class _AuthArea extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (Platform.isMacOS) ...[
-                                const _AuthBrandHeader(),
-                                const SizedBox(height: 16),
-                              ],
                               Text(
                                 spec.title,
                                 textAlign: TextAlign.center,
@@ -196,14 +191,5 @@ class _DesktopAuthPreferences extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-class _AuthBrandHeader extends StatelessWidget {
-  const _AuthBrandHeader();
-
-  @override
-  Widget build(BuildContext context) {
-    return const BrandLogo(size: 54);
   }
 }

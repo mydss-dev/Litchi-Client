@@ -41,7 +41,6 @@ class CoreController extends ChangeNotifier {
   Future<Map<String, int>>? _groupTestInFlight;
 
   bool killSwitchEnabled = false;
-  bool closeConnectionsOnSwitch = true;
 
   final ValueNotifier<int> upBpsNotifier = ValueNotifier(0);
   final ValueNotifier<int> downBpsNotifier = ValueNotifier(0);
@@ -499,7 +498,7 @@ class CoreController extends ChangeNotifier {
     final changed = Platform.isAndroid
         ? await _androidCore.switchProxy(MihomoConfig.selectorTag, tag)
         : await MihomoApiClient.switchProxy(tag, apiPort: _apiPort);
-    if (changed && closeConnectionsOnSwitch) {
+    if (changed) {
       await _closeConnections();
     }
     return changed;
@@ -515,7 +514,7 @@ class CoreController extends ChangeNotifier {
             MihomoConfig.autoSelectTag,
             apiPort: _apiPort,
           );
-    if (changed && closeConnectionsOnSwitch) {
+    if (changed) {
       await _closeConnections();
     }
     return changed;
@@ -546,7 +545,7 @@ class CoreController extends ChangeNotifier {
         apiPort: _apiPort,
       );
     }
-    if (changed && closeConnectionsOnSwitch) {
+    if (changed) {
       await _closeConnections();
     }
     return changed;
@@ -583,30 +582,6 @@ class CoreController extends ChangeNotifier {
     } catch (e) {
       SecureLogger.debug('detectCoreVersion: version parse failed', e);
       return '获取失败';
-    }
-  }
-
-  Future<String?> exportLogs() async {
-    if (_logs.isEmpty) return null;
-    try {
-      final base =
-          Platform.environment['LOCALAPPDATA'] ??
-          Platform.environment['APPDATA'] ??
-          Directory.systemTemp.path;
-      final dir = Directory('$base\\Litchi');
-      await dir.create(recursive: true);
-      final ts = DateTime.now()
-          .toLocal()
-          .toString()
-          .substring(0, 19)
-          .replaceAll(':', '-')
-          .replaceAll(' ', '_');
-      final file = File('${dir.path}\\logs-$ts.txt');
-      await file.writeAsString(_logs.join('\n'));
-      return file.path;
-    } catch (e) {
-      SecureLogger.debug('exportLogs: file write failed', e);
-      return null;
     }
   }
 

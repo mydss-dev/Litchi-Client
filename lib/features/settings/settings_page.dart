@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
@@ -8,8 +11,9 @@ import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
-import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/services/secure_logger.dart';
+import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_switch.dart';
@@ -17,7 +21,6 @@ import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
 import '../mobile/mobile_back_button.dart';
 import '../mobile/mobile_page_header.dart';
-
 
 /// Settings page (§15): General / Network / Advanced cards.
 class SettingsPage extends StatefulWidget {
@@ -28,51 +31,48 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  String _coreVersion = '加载中…';
-  bool _restarting = false;
-  bool _exporting = false;
+  String _coreVersion = '获取中…';
 
   @override
   void initState() {
     super.initState();
-    AppController.getCoreVersion().then((v) {
-      if (mounted) setState(() => _coreVersion = v);
+    AppController.getCoreVersion().then((version) {
+      if (mounted) setState(() => _coreVersion = version);
     });
-  }
-
-  Future<void> _onRestart() async {
-    setState(() => _restarting = true);
-    final error = await AppScope.of(context).restartCore();
-    if (!mounted) return;
-    setState(() => _restarting = false);
-    if (error != null) {
-      AppToast.show(context, error, type: AppToastType.error);
-    } else {
-      AppToast.show(context, '核心已重启', type: AppToastType.success);
-    }
   }
 
   Future<void> _onFixProxy() async {
     await AppScope.of(context).fixProxy();
     if (!mounted) return;
-    AppToast.show(context, '代理设置已同步', type: AppToastType.success);
+    AppToast.show(context, '网络设置已修复', type: AppToastType.success);
   }
 
-  Future<void> _onExportLogs() async {
-    setState(() => _exporting = true);
-    final path = await AppScope.of(context).exportLogs();
-    if (!mounted) return;
-    setState(() => _exporting = false);
-    if (path != null) {
-      AppToast.show(context, '日志已保存至 $path', type: AppToastType.success);
-    } else {
-      AppToast.show(context, '暂无日志，请先连接后再导出', type: AppToastType.error);
-    }
-  }
+  void _showDiagnosticInfo() {
+    final ctrl = AppScope.of(context);
+    final logs = ctrl.coreLogs
+        .map(SecureLogRedactor.redact)
+        .where((line) => line.isNotEmpty)
+        .toList();
+    final status = ctrl.coreConnecting
+        ? '连接处理中'
+        : ctrl.coreRunning
+        ? '已连接'
+        : '未连接';
+    final text = [
+      '${AppConfig.appName} ${AppConfig.currentVersion}',
+      '平台：${Platform.operatingSystem}',
+      '连接状态：$status',
+      '记录时间：${DateTime.now().toLocal()}',
+      if (ctrl.coreError.isNotEmpty)
+        '最近错误：${SecureLogRedactor.redact(ctrl.coreError)}',
+      '',
+      if (logs.isEmpty) '暂无运行日志，请先尝试连接后再查看。' else ...logs,
+    ].join('\n');
 
-  Future<void> _onRefresh() async {
-    final v = await AppController.getCoreVersion();
-    if (mounted) setState(() => _coreVersion = v);
+    showAppBottomSheet<void>(
+      context: context,
+      builder: (_) => _DiagnosticInfoSheet(text: text),
+    );
   }
 
   @override
@@ -106,36 +106,29 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildCompact(BuildContext context) {
     final asPrimary = isPrimaryCompactTab(AppPage.settings);
-    return RefreshIndicator(
-      onRefresh: _onRefresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          if (asPrimary)
-            const MobilePageHeader(
-              title: '设置',
-              subtitle: '配置客户端偏好和网络选项',
-            )
-          else
-            Row(
-              children: [
-                MobileBackButton(
-                  onTap: () => AppScope.of(context).goToPage(AppPage.account),
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        if (asPrimary)
+          const MobilePageHeader(title: '设置', subtitle: '配置客户端偏好和网络选项')
+        else
+          Row(
+            children: [
+              MobileBackButton(
+                onTap: () => AppScope.of(context).goToPage(AppPage.account),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '设置',
+                  style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    '设置',
-                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
-                  ),
-                ),
-              ],
-            ),
-          const SizedBox(height: 18),
-          ..._bodyChildren(context),
-        ],
-      ),
+              ),
+            ],
+          ),
+        const SizedBox(height: 18),
+        ..._bodyChildren(context),
+      ],
     );
   }
 
@@ -143,6 +136,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   List<Widget> _bodyChildren(BuildContext context) {
     final ctrl = AppScope.of(context);
+    final supportsSystemProxy = Platform.isWindows || Platform.isMacOS;
 
     return [
       if (!AppConfig.isSecureServer) ...[
@@ -152,13 +146,14 @@ class _SettingsPageState extends State<SettingsPage> {
       _SettingsGroup(
         title: '系统设置',
         children: [
-          _SettingRow(
-            label: '开机启动',
-            trailing: AppSwitch(
-              value: ctrl.autoStart,
-              onChanged: ctrl.setAutoStart,
+          if (Platform.isWindows)
+            _SettingRow(
+              label: '开机启动',
+              trailing: AppSwitch(
+                value: ctrl.autoStart,
+                onChanged: ctrl.setAutoStart,
+              ),
             ),
-          ),
           _SettingRow(
             label: '自动更新',
             trailing: AppSwitch(
@@ -170,11 +165,7 @@ class _SettingsPageState extends State<SettingsPage> {
             label: '外观模式',
             trailing: AppSelect<ThemeMode>(
               value: ctrl.themeMode,
-              items: const [
-                ThemeMode.system,
-                ThemeMode.light,
-                ThemeMode.dark,
-              ],
+              items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
               labelOf: (v) => switch (v) {
                 ThemeMode.system => '跟随系统',
                 ThemeMode.light => '浅色模式',
@@ -216,37 +207,58 @@ class _SettingsPageState extends State<SettingsPage> {
               onChanged: ctrl.setDnsMode,
             ),
           ),
-          _PortSettingRow(controller: ctrl),
-          _SettingRow(
-            label: '断网保护 (Kill Switch)',
-            subtitle: '核心异常退出时阻断系统代理流量，避免直接泄漏',
-            trailing: AppSwitch(
-              value: ctrl.killSwitch,
-              onChanged: ctrl.setKillSwitch,
+        ],
+      ),
+      const SizedBox(height: 16),
+      if (supportsSystemProxy) ...[
+        _SettingsGroup(
+          title: '安全设置',
+          children: [
+            _SettingRow(
+              label: '连接中断保护',
+              subtitle: '连接意外中断时阻止网络直接访问，避免隐私泄漏',
+              trailing: AppSwitch(
+                value: ctrl.killSwitch,
+                onChanged: ctrl.setKillSwitch,
+              ),
             ),
-          ),
-          _SettingRow(
-            label: '切换节点或模式时断开旧连接',
-            subtitle: '让已有 TCP/QUIC 连接立即使用新策略',
-            trailing: AppSwitch(
-              value: ctrl.closeConnectionsOnSwitch,
-              onChanged: ctrl.setCloseConnectionsOnSwitch,
+          ],
+        ),
+        const SizedBox(height: 16),
+      ],
+      _AdvancedSettingsGroup(
+        enabled: ctrl.devMode,
+        onChanged: ctrl.setDevMode,
+        children: [
+          if (supportsSystemProxy)
+            _SettingRow(
+              label: '修复网络设置',
+              subtitle: '连接异常或断开后无法上网时尝试修复',
+              trailing: _DiagnosticButton(label: '修复', onTap: _onFixProxy),
             ),
-          ),
           _SettingRow(
-            label: '允许不安全节点',
-            subtitle: '节点 TLS 证书验证失败时可尝试开启，安全性会降低',
-            trailing: AppSwitch(
-              value: ctrl.allowInsecureNodes,
-              onChanged: ctrl.setAllowInsecureNodes,
+            label: '诊断信息',
+            subtitle: '查看并复制信息，发送给管理员或客服',
+            trailing: _DiagnosticButton(
+              label: '查看',
+              onTap: _showDiagnosticInfo,
             ),
           ),
         ],
       ),
       const SizedBox(height: 16),
       _SettingsGroup(
-        title: '核心与诊断',
+        title: '关于应用',
         children: [
+          _SettingRow(
+            label: '应用版本',
+            trailing: Text(
+              AppConfig.currentVersion,
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.of(context).textMuted,
+              ),
+            ),
+          ),
           _SettingRow(
             label: '核心版本',
             trailing: Text(
@@ -256,32 +268,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          _SettingRow(
-            label: '重启核心',
-            trailing: _DiagnosticButton(
-              label: _restarting ? '重启中…' : '重启',
-              enabled: ctrl.coreRunning && !_restarting,
-              onTap: _onRestart,
-            ),
-          ),
-          _SettingRow(
-            label: '修复系统代理',
-            trailing: _DiagnosticButton(label: '修复', onTap: _onFixProxy),
-          ),
-          _SettingRow(
-            label: '导出诊断日志',
-            trailing: _DiagnosticButton(
-              label: _exporting ? '导出中…' : '导出',
-              enabled: !_exporting,
-              onTap: _onExportLogs,
-            ),
-          ),
         ],
-      ),
-      const SizedBox(height: 16),
-      _SettingsGroup(
-        title: '账号安全',
-        children: [_LogoutRow(onLogout: ctrl.logout)],
       ),
     ];
   }
@@ -352,6 +339,87 @@ class _SettingsGroup extends StatelessWidget {
   }
 }
 
+class _AdvancedSettingsGroup extends StatelessWidget {
+  const _AdvancedSettingsGroup({
+    required this.enabled,
+    required this.onChanged,
+    required this.children,
+  });
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AppCard(
+      radius: AppRadius.lg,
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '高级设置',
+                        style: AppTextStyles.sectionTitle.copyWith(
+                          color: c.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '开启后显示网络修复与诊断功能',
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AppSwitch(value: enabled, onChanged: onChanged),
+              ],
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: enabled
+                ? Column(
+                    children: [
+                      Divider(color: c.softBorder, height: 1),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 6, 20, 16),
+                        child: Column(
+                          children: [
+                            for (
+                              var index = 0;
+                              index < children.length;
+                              index++
+                            ) ...[
+                              children[index],
+                              if (index != children.length - 1)
+                                Divider(color: c.softBorder, height: 1),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SettingRow extends StatelessWidget {
   const _SettingRow({
     required this.label,
@@ -367,7 +435,7 @@ class _SettingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return SizedBox(
-      height: subtitle != null ? 58 : 46,
+      height: subtitle != null ? 68 : 46,
       child: Row(
         children: [
           Expanded(
@@ -384,8 +452,9 @@ class _SettingRow extends StatelessWidget {
                     subtitle!,
                     style: AppTextStyles.caption.copyWith(
                       color: c.textSecondary,
+                      height: 1.35,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
               ],
@@ -399,38 +468,31 @@ class _SettingRow extends StatelessWidget {
 }
 
 class _DiagnosticButton extends StatelessWidget {
-  const _DiagnosticButton({
-    required this.label,
-    required this.onTap,
-    this.enabled = true,
-  });
+  const _DiagnosticButton({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
-  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return MouseRegion(
-      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: enabled ? onTap : null,
+        onTap: onTap,
         child: Container(
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: enabled ? c.primarySoft : c.surfaceMuted,
+            color: c.primarySoft,
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(
-              color: enabled ? c.primary.withValues(alpha: 0.3) : c.softBorder,
-            ),
+            border: Border.all(color: c.primary.withValues(alpha: 0.3)),
           ),
           child: Text(
             label,
             style: AppTextStyles.button.copyWith(
-              color: enabled ? c.primary : c.textMuted,
+              color: c.primary,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -441,264 +503,57 @@ class _DiagnosticButton extends StatelessWidget {
   }
 }
 
-class _LogoutRow extends StatelessWidget {
-  const _LogoutRow({required this.onLogout});
+class _DiagnosticInfoSheet extends StatelessWidget {
+  const _DiagnosticInfoSheet({required this.text});
 
-  final Future<void> Function() onLogout;
-
-  Future<void> _confirmLogout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.42),
-      builder: (_) => const _LogoutConfirmDialog(),
-    );
-    if (confirmed == true) await onLogout();
-  }
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return SizedBox(
-      height: 46,
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '退出登录',
-              style: AppTextStyles.body.copyWith(color: c.danger),
-            ),
-          ),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => _confirmLogout(context),
-              child: Icon(LucideIcons.logOut, size: 18, color: c.danger),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LogoutConfirmDialog extends StatelessWidget {
-  const _LogoutConfirmDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+    return AppBottomSheet(
+      title: '诊断信息',
+      subtitle: '复制后发送给管理员或客服，可帮助快速定位问题',
+      children: [
+        Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 180, maxHeight: 360),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: c.softBorder),
-            boxShadow: AppShadows.card(c),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: c.dangerSoft,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Icon(LucideIcons.logOut, size: 19, color: c.danger),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '退出登录',
-                      style: AppTextStyles.sectionTitle.copyWith(
-                        color: c.textPrimary,
-                        fontSize: 19,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                '退出后会断开当前代理连接，并清除本次登录状态。',
-                style: AppTextStyles.body.copyWith(
-                  color: c.textSecondary,
-                  height: 1.55,
-                ),
-              ),
-              const SizedBox(height: 22),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  _DialogButton(
-                    label: '取消',
-                    onTap: () => Navigator.of(context).pop(false),
-                  ),
-                  const SizedBox(width: 10),
-                  _DialogButton(
-                    label: '退出登录',
-                    danger: true,
-                    onTap: () => Navigator.of(context).pop(true),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DialogButton extends StatelessWidget {
-  const _DialogButton({
-    required this.label,
-    required this.onTap,
-    this.danger = false,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: danger ? c.danger : c.surfaceMuted,
+            color: c.surfaceMuted,
             borderRadius: BorderRadius.circular(AppRadius.md),
-            border: danger ? null : Border.all(color: c.softBorder),
+            border: Border.all(color: c.softBorder),
           ),
-          child: Text(
-            label,
-            style: AppTextStyles.button.copyWith(
-              color: danger ? Colors.white : c.textSecondary,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              text,
+              style: TextStyle(
+                color: c.textSecondary,
+                fontSize: 11,
+                height: 1.5,
+                fontFamily: 'monospace',
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PortSettingRow extends StatefulWidget {
-  const _PortSettingRow({required this.controller});
-
-  final AppController controller;
-
-  @override
-  State<_PortSettingRow> createState() => _PortSettingRowState();
-}
-
-class _PortSettingRowState extends State<_PortSettingRow> {
-  late final TextEditingController _ctrl;
-  bool _hasError = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = TextEditingController(text: widget.controller.proxyPort.toString());
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _commit() {
-    final v = int.tryParse(_ctrl.text.trim());
-    if (v == null || v < 1 || v > 65535) {
-      setState(() => _hasError = true);
-      _ctrl.text = widget.controller.proxyPort.toString();
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) setState(() => _hasError = false);
-      });
-      return;
-    }
-    setState(() => _hasError = false);
-    widget.controller.setProxyPort(v);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return SizedBox(
-      height: 46,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '代理端口',
-                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
-                ),
-                Text(
-                  'HTTP + SOCKS5  127.0.0.1:${widget.controller.proxyPort}',
-                  style: AppTextStyles.caption.copyWith(
-                    color: c.textMuted,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: FilledButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: text));
+              AppToast.show(
+                context,
+                '诊断信息已复制，请发送给管理员或客服',
+                type: AppToastType.success,
+              );
+            },
+            icon: const Icon(LucideIcons.copy, size: 17),
+            label: const Text('一键复制'),
           ),
-          SizedBox(
-            width: 80,
-            height: 34,
-            child: TextField(
-              controller: _ctrl,
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              onEditingComplete: _commit,
-              onTapOutside: (_) => _commit(),
-              style: AppTextStyles.body.copyWith(
-                color: _hasError ? c.danger : c.textPrimary,
-              ),
-              decoration: InputDecoration(
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  borderSide: BorderSide(
-                    color: _hasError ? c.danger : c.border,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  borderSide: BorderSide(color: c.primary),
-                ),
-                filled: true,
-                fillColor: c.cardBg,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

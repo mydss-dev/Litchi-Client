@@ -1227,34 +1227,38 @@ class _ActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final color = danger ? c.danger : c.primary;
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 19),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.bodyStrong.copyWith(
-                      color: danger ? c.danger : c.textPrimary,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 19),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: danger ? c.danger : c.textPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Icon(LucideIcons.chevronRight, color: c.iconMuted, size: 18),
-          ],
+              Icon(LucideIcons.chevronRight, color: c.iconMuted, size: 18),
+            ],
+          ),
         ),
       ),
     );

@@ -14,7 +14,6 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/utils/latency_status.dart';
-import '../../shared/widgets/app_badge.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/page_header.dart';
@@ -31,7 +30,7 @@ class NodesPage extends StatefulWidget {
 }
 
 class _NodesPageState extends State<NodesPage> {
-  static const _tabs = ['全部', '收藏', 'VIP', '亚洲', '欧洲', '美洲', '大洋洲'];
+  static const _tabs = ['全部', '收藏', '亚洲', '欧洲', '美洲', '大洋洲'];
   int _tab = 0;
   String _query = '';
   String _pendingQuery = '';
@@ -74,11 +73,10 @@ class _NodesPageState extends State<NodesPage> {
 
   NodeFilterTab get _selectedTab => switch (_tab) {
     1 => NodeFilterTab.favorite,
-    2 => NodeFilterTab.premium,
-    3 => NodeFilterTab.asia,
-    4 => NodeFilterTab.europe,
-    5 => NodeFilterTab.america,
-    6 => NodeFilterTab.oceania,
+    2 => NodeFilterTab.asia,
+    3 => NodeFilterTab.europe,
+    4 => NodeFilterTab.america,
+    5 => NodeFilterTab.oceania,
     _ => NodeFilterTab.all,
   };
 
@@ -606,10 +604,6 @@ class _NodeCard extends StatelessWidget {
                 children: [
                   _LatencyIndicator(latency: node.latency),
                   const Spacer(),
-                  if (node.tags.contains('Premium')) ...[
-                    AppBadge.premium(context),
-                    const SizedBox(width: 6),
-                  ],
                   if (selected)
                     Icon(LucideIcons.circleCheck, size: 16, color: c.primary),
                 ],

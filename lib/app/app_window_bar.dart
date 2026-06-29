@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 import '../config/app_config.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
+import '../shared/theme/app_shadows.dart';
 import '../shared/theme/app_text_styles.dart';
 import '../shared/widgets/brand_logo.dart';
 import 'app_controller.dart';
@@ -97,22 +98,65 @@ class _WindowControlsBarState extends State<WindowControlsBar>
   }
 }
 
+class MacTitleBar extends StatelessWidget {
+  const MacTitleBar({super.key});
+
+  Future<void> _toggleMaximize() async {
+    if (await windowManager.isMaximized()) {
+      await windowManager.unmaximize();
+    } else {
+      await windowManager.maximize();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onPanStart: (_) => windowManager.startDragging(),
+      onDoubleTap: _toggleMaximize,
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: c.appBg,
+          border: Border(
+            bottom: BorderSide(color: c.softBorder.withValues(alpha: 0.72)),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: const IgnorePointer(child: _BrandTitle()),
+      ),
+    );
+  }
+}
+
 class MobileTitleBar extends StatelessWidget {
   const MobileTitleBar({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 46,
+    final c = AppColors.of(context);
+    return SizedBox(
+      height: 56,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 18),
-        child: Row(
-          children: [
-            Expanded(child: _BrandTitle()),
-            _ThemeTitleAction(),
-            SizedBox(width: 4),
-            _LanguageTitleAction(),
-          ],
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: c.cardGradient,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: c.softBorder),
+            boxShadow: AppShadows.soft(c),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Expanded(child: _BrandTitle()),
+                _TitleActionsGroup(),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -125,6 +169,7 @@ class _BrandTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         const BrandLogo(size: 24, radius: 7),
         const SizedBox(width: 7),
@@ -198,6 +243,22 @@ class _LanguageTitleAction extends StatelessWidget {
   }
 }
 
+class _TitleActionsGroup extends StatelessWidget {
+  const _TitleActionsGroup();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _ThemeTitleAction(),
+        SizedBox(width: 6),
+        _LanguageTitleAction(),
+      ],
+    );
+  }
+}
+
 class _TitleActionSurface extends StatelessWidget {
   const _TitleActionSurface({required this.icon, this.onTap});
 
@@ -211,11 +272,21 @@ class _TitleActionSurface extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.xs),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: SizedBox(
-          width: 30,
-          height: 30,
-          child: Icon(icon, size: 17, color: c.iconDefault),
+          width: 40,
+          height: 40,
+          child: Center(
+            child: Ink(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: c.surfaceMuted,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, size: 17, color: c.iconDefault),
+            ),
+          ),
         ),
       ),
     );

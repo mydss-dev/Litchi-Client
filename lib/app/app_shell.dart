@@ -509,7 +509,7 @@ class _CompactBody extends StatelessWidget {
       child: Column(
         children: [
           if (_usesCustomChrome) const WindowControlsBar(),
-          if (Platform.isMacOS) const _MacTitleBarSpacer(),
+          if (Platform.isMacOS) const MacTitleBar(),
           if (!_isDesktop)
             const SafeArea(bottom: false, child: MobileTitleBar()),
           Expanded(child: SafeArea(top: false, bottom: false, child: content)),
@@ -531,7 +531,7 @@ class _AuthShell extends StatelessWidget {
     return Column(
       children: [
         if (_usesCustomChrome) const WindowControlsBar(),
-        if (Platform.isMacOS) const _MacTitleBarSpacer(),
+        if (Platform.isMacOS) const MacTitleBar(),
         if (!_isDesktop) const SafeArea(bottom: false, child: MobileTitleBar()),
         Expanded(
           child: AnimatedOpacity(
@@ -544,26 +544,6 @@ class _AuthShell extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// A slim, transparent, draggable strip used on macOS in place of the custom
-/// window controls — it reserves room for the native traffic lights and lets
-/// the user drag the window from the top.
-class _MacTitleBarSpacer extends StatelessWidget {
-  const _MacTitleBarSpacer();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 30,
-      width: double.infinity,
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onPanStart: (_) => windowManager.startDragging(),
-        child: const SizedBox.expand(),
-      ),
     );
   }
 }
@@ -585,7 +565,7 @@ class _MobileBottomNav extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
-          color: c.cardBg,
+          gradient: c.cardGradient,
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: c.softBorder),
           boxShadow: AppShadows.soft(c),
