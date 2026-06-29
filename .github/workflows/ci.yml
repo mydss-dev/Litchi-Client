@@ -161,7 +161,7 @@ jobs:
           EOF
           fi
 
-      - name: Build release APK (multi-ABI)
+      - name: Build release APK (universal multi-ABI)
         run: |
           api_base="${{ secrets.API_BASE }}"
           app_name="${{ secrets.APP_NAME }}"
@@ -177,7 +177,8 @@ jobs:
           version_code=$((10#$major * 10000 + 10#$minor * 100 + 10#$patch))
           if [ "$version_code" -le 0 ]; then version_code="${{ github.run_number }}"; fi
           # Gradle builds the embedded multi-ABI mihomo shared libraries.
-          flutter build apk --release --split-per-abi \
+          # Do not use --split-per-abi together with Android ndk.abiFilters.
+          flutter build apk --release \
             "--build-name=$version" \
             "--build-number=$version_code" \
             "--dart-define=API_BASE=$api_base" \
@@ -187,7 +188,7 @@ jobs:
 
       - name: Verify the core includes arm64
         run: |
-          apk="build/app/outputs/flutter-apk/app-arm64-v8a-release.apk"
+          apk="build/app/outputs/flutter-apk/app-release.apk"
           if ! unzip -l "$apk" | grep -q "lib/arm64-v8a/liblitchi_mihomo.so"; then
             echo "::error::mihomo arm64-v8a library is missing from the APK"
             unzip -l "$apk" | grep "liblitchi_" || true
@@ -195,16 +196,14 @@ jobs:
           fi
           echo "mihomo arm64-v8a library is packaged"
 
-      - name: Rename APKs
+      - name: Rename APK
         run: |
           app_name="${{ secrets.APP_NAME }}"
           app_name="${app_name:-Litchi}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
-          for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
-            abi=$(echo "$apk" | sed -E 's/.*app-(.*)-release\.apk/\1/')
-            mv "$apk" "build/app/outputs/flutter-apk/$app_name $version $abi.apk"
-          done
+          mv build/app/outputs/flutter-apk/app-release.apk \
+             "build/app/outputs/flutter-apk/$app_name $version.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
