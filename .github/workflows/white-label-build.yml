@@ -142,7 +142,9 @@ jobs:
           )
           case "${{ inputs.platform }}" in
             android)
-              flutter build apk --release --split-per-abi \
+              # Keep white-label Android as one universal APK so TG/R2 returns a single file.
+              # Do not use --split-per-abi together with Android ndk.abiFilters.
+              flutter build apk --release \
                 "--build-name=$BUILD_VERSION" \
                 "--build-number=$VERSION_CODE" \
                 "${defines[@]}"
@@ -179,12 +181,11 @@ jobs:
         if: inputs.platform == 'android'
         shell: bash
         run: |
-          for apk in build/app/outputs/flutter-apk/app-arm64-v8a-release.apk; do
-            unzip -l "$apk" | grep -q "lib/arm64-v8a/liblitchi_mihomo.so" || {
-              echo "::error::APK does not contain mihomo arm64-v8a: $apk"
-              exit 1
-            }
-          done
+          apk="build/app/outputs/flutter-apk/app-release.apk"
+          unzip -l "$apk" | grep -q "lib/arm64-v8a/liblitchi_mihomo.so" || {
+            echo "::error::APK does not contain mihomo arm64-v8a: $apk"
+            exit 1
+          }
 
       - name: Build Windows installer
         if: inputs.platform == 'windows'
@@ -222,7 +223,7 @@ jobs:
           hdiutil create -volname "$PACKAGE_NAME" -srcfolder dmg-stage \
             -ov -format UDZO "release/$PACKAGE_NAME $BUILD_VERSION macOS.dmg"
 
-      - name: Package Android artifacts
+      - name: Package Android artifact
         if: inputs.platform == 'android'
         shell: bash
         env:
@@ -230,10 +231,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release
-          for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
-            abi=$(echo "$apk" | sed -E 's/.*app-(.*)-release\.apk/\1/')
-            cp "$apk" "release/$PACKAGE_NAME $BUILD_VERSION Android $abi.apk"
-          done
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "release/$PACKAGE_NAME $BUILD_VERSION Android.apk"
 
       - name: Upload package to Cloudflare R2
         if: inputs.download_base_url != ''
