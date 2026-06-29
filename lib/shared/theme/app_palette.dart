@@ -15,10 +15,10 @@ class AppPalette {
   // Brand gradients — driven by BrandConfig (--dart-define overridable)
   // ---------------------------------------------------------------------------
   static Color get brandStart => AppConfig.brandStart;
-  static Color get brandEnd   => AppConfig.brandEnd;
+  static Color get brandEnd => AppConfig.brandEnd;
 
   static Color get authButtonStart => AppConfig.brandStart;
-  static Color get authButtonEnd   => AppConfig.brandEnd;
+  static Color get authButtonEnd => AppConfig.brandEnd;
 
   static LinearGradient get brandGradient => AppConfig.brandGradient;
 
@@ -79,17 +79,23 @@ class AppPalette {
 
   static Color get darkPrimary => AppConfig.brandStart;
   static const Color darkPrimaryHover = Color(0xFF2563EB);
-  static const Color darkPrimarySoft = Color(0x293B82F6); // rgba(59,130,246,0.16)
+  static const Color darkPrimarySoft = Color(
+    0x293B82F6,
+  ); // rgba(59,130,246,0.16)
 
   static Color get darkSecondary => AppConfig.brandEnd;
-  static const Color darkSecondarySoft = Color(0x298B5CF6); // rgba(139,92,246,0.16)
+  static const Color darkSecondarySoft = Color(
+    0x298B5CF6,
+  ); // rgba(139,92,246,0.16)
 
   static const Color darkSuccess = Color(0xFF22C55E);
   static const Color darkWarning = Color(0xFFF59E0B);
   static const Color darkDanger = Color(0xFFEF4444);
   static const Color darkDangerSoft = Color(0x29EF4444);
 
-  static const Color darkPremiumBadgeBg = Color(0x29F59E0B); // rgba(245,158,11,0.16)
+  static const Color darkPremiumBadgeBg = Color(
+    0x29F59E0B,
+  ); // rgba(245,158,11,0.16)
   static const Color darkPremiumBadgeText = Color(0xFFFBBF24);
 
   static const Color darkShadow = Color(0x59000000); // rgba(0,0,0,0.35)

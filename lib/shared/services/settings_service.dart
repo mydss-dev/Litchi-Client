@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../l10n/app_locale_preference.dart';
 import '../models/app_models.dart';
 
 class SettingsSnapshot {
@@ -21,7 +22,7 @@ class SettingsSnapshot {
   final int proxyPort;
   final bool autoStart;
   final bool autoUpdate;
-  final String language;
+  final AppLocalePreference language;
   final ProxyMode proxyMode;
   final NetworkMode networkMode;
   final String dnsMode;
@@ -48,7 +49,7 @@ abstract final class SettingsService {
       proxyPort: p.getInt('proxy_port') ?? 7890,
       autoStart: p.getBool('auto_start') ?? false,
       autoUpdate: p.getBool('auto_update') ?? true,
-      language: p.getString('language') ?? '简体中文',
+      language: AppLocalePreference.fromStorage(p.getString('language')),
       proxyMode: ProxyMode.fromStorageKey(p.getString('proxy_mode')),
       networkMode: NetworkMode.fromStorageKey(p.getString('network_mode')),
       dnsMode: p.getString('dns_mode') ?? '系统 DNS',
@@ -75,8 +76,10 @@ abstract final class SettingsService {
   static void setAutoUpdate(bool v) =>
       SharedPreferences.getInstance().then((p) => p.setBool('auto_update', v));
 
-  static void setLanguage(String v) =>
-      SharedPreferences.getInstance().then((p) => p.setString('language', v));
+  static void setLanguage(AppLocalePreference value) =>
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.setString('language', value.storageKey),
+      );
 
   static void setProxyMode(ProxyMode v) => SharedPreferences.getInstance().then(
     (p) => p.setString('proxy_mode', v.storageKey),

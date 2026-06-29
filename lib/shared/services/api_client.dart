@@ -127,10 +127,7 @@ class ApiClient {
   /// Atomically replaces API endpoints while preserving the current session.
   ///
   /// Invalid refreshes leave the last known-good client untouched.
-  bool updateServerUrls(
-    List<String> serverUrls, {
-    bool forceRebuild = false,
-  }) {
+  bool updateServerUrls(List<String> serverUrls, {bool forceRebuild = false}) {
     final next = _trustedApiBases(serverUrls);
     if (next.isEmpty) {
       SecureLogger.warn(

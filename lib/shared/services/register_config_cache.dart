@@ -22,9 +22,6 @@ abstract final class RegisterConfigCache {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyApiBase, apiBase);
     await prefs.setStringList(_keyEmailSuffixes, config.emailSuffixes);
-    await prefs.setBool(
-      _keyEmailVerifyRequired,
-      config.emailVerifyRequired,
-    );
+    await prefs.setBool(_keyEmailVerifyRequired, config.emailVerifyRequired);
   }
 }

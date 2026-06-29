@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_locale_preference.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/auto_start.dart';
 import '../shared/services/settings_service.dart';
@@ -16,7 +17,7 @@ class SettingsController extends ChangeNotifier {
   String _lastNodeId = '';
   bool _autoStart = false;
   bool _autoUpdate = true;
-  String _language = '简体中文';
+  AppLocalePreference _language = AppLocalePreference.system;
   ProxyMode _proxyMode = ProxyMode.rule;
   NetworkMode _networkMode = NetworkMode.system;
   String _dnsMode = '系统 DNS';
@@ -28,7 +29,7 @@ class SettingsController extends ChangeNotifier {
   String get lastNodeId => _lastNodeId;
   bool get autoStart => _autoStart;
   bool get autoUpdate => _autoUpdate;
-  String get language => _language;
+  AppLocalePreference get language => _language;
   ProxyMode get proxyMode => _proxyMode;
   NetworkMode get networkMode => _networkMode;
   String get dnsMode => _dnsMode;
@@ -112,7 +113,7 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setLanguage(String v) {
+  void setLanguage(AppLocalePreference v) {
     if (_language == v) return;
     _language = v;
     SettingsService.setLanguage(v);

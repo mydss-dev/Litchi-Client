@@ -13,28 +13,32 @@ final class _Shell32 {
   _Shell32._();
   static final DynamicLibrary _lib = DynamicLibrary.open('shell32.dll');
   static final _IsUserAnAdminDart isUserAnAdmin = _lib
-      .lookupFunction<_IsUserAnAdminNative, _IsUserAnAdminDart>('IsUserAnAdmin');
+      .lookupFunction<_IsUserAnAdminNative, _IsUserAnAdminDart>(
+        'IsUserAnAdmin',
+      );
 }
 
 // ── ShellExecuteW ───────────────────────────────────────────────────────────
 // Opens a file or URL with the associated handler.  Returns a value > 32 on
 // success; ≤ 32 indicates an error.
-typedef _ShellExecuteWNative = IntPtr Function(
-  IntPtr hwnd,
-  Pointer<Utf16> lpOperation,
-  Pointer<Utf16> lpFile,
-  Pointer<Utf16> lpParameters,
-  Pointer<Utf16> lpDirectory,
-  Int32 nShowCmd,
-);
-typedef _ShellExecuteWDart = int Function(
-  int hwnd,
-  Pointer<Utf16> lpOperation,
-  Pointer<Utf16> lpFile,
-  Pointer<Utf16> lpParameters,
-  Pointer<Utf16> lpDirectory,
-  int nShowCmd,
-);
+typedef _ShellExecuteWNative =
+    IntPtr Function(
+      IntPtr hwnd,
+      Pointer<Utf16> lpOperation,
+      Pointer<Utf16> lpFile,
+      Pointer<Utf16> lpParameters,
+      Pointer<Utf16> lpDirectory,
+      Int32 nShowCmd,
+    );
+typedef _ShellExecuteWDart =
+    int Function(
+      int hwnd,
+      Pointer<Utf16> lpOperation,
+      Pointer<Utf16> lpFile,
+      Pointer<Utf16> lpParameters,
+      Pointer<Utf16> lpDirectory,
+      int nShowCmd,
+    );
 
 final _ShellExecuteWDart _shellExecuteW = _Shell32._lib
     .lookupFunction<_ShellExecuteWNative, _ShellExecuteWDart>('ShellExecuteW');
@@ -54,43 +58,48 @@ bool checkWindowsAdminPrivilege() {
 
 // ── Process image path (OpenProcess + QueryFullProcessImageNameW) ──────────
 
-typedef _OpenProcessNative = IntPtr Function(
-  Uint32 dwDesiredAccess,
-  Int32 bInheritHandle,
-  Uint32 dwProcessId,
-);
-typedef _OpenProcessDart = int Function(int dwDesiredAccess, int bInheritHandle, int dwProcessId);
+typedef _OpenProcessNative =
+    IntPtr Function(
+      Uint32 dwDesiredAccess,
+      Int32 bInheritHandle,
+      Uint32 dwProcessId,
+    );
+typedef _OpenProcessDart =
+    int Function(int dwDesiredAccess, int bInheritHandle, int dwProcessId);
 
-typedef _QueryFullProcessImageNameWNative = Int32 Function(
-  IntPtr hProcess,
-  Uint32 dwFlags,
-  Pointer<Utf16> lpExeName,
-  Pointer<Uint32> lpdwSize,
-);
-typedef _QueryFullProcessImageNameWDart = int Function(
-  int hProcess,
-  int dwFlags,
-  Pointer<Utf16> lpExeName,
-  Pointer<Uint32> lpdwSize,
-);
+typedef _QueryFullProcessImageNameWNative =
+    Int32 Function(
+      IntPtr hProcess,
+      Uint32 dwFlags,
+      Pointer<Utf16> lpExeName,
+      Pointer<Uint32> lpdwSize,
+    );
+typedef _QueryFullProcessImageNameWDart =
+    int Function(
+      int hProcess,
+      int dwFlags,
+      Pointer<Utf16> lpExeName,
+      Pointer<Uint32> lpdwSize,
+    );
 
 typedef _CloseHandleNative = Int32 Function(IntPtr hObject);
 typedef _CloseHandleDart = int Function(int hObject);
 
 final class _Kernel32 {
   _Kernel32._();
-  static final DynamicLibrary _lib =
-      DynamicLibrary.open('kernel32.dll');
+  static final DynamicLibrary _lib = DynamicLibrary.open('kernel32.dll');
 
   static final _OpenProcessDart openProcess = _lib
       .lookupFunction<_OpenProcessNative, _OpenProcessDart>('OpenProcess');
 
   static final _QueryFullProcessImageNameWDart queryFullProcessImageNameW = _lib
-      .lookupFunction<_QueryFullProcessImageNameWNative,
-          _QueryFullProcessImageNameWDart>('QueryFullProcessImageNameW');
+      .lookupFunction<
+        _QueryFullProcessImageNameWNative,
+        _QueryFullProcessImageNameWDart
+      >('QueryFullProcessImageNameW');
 
-  static final _CloseHandleDart closeHandle =
-      _lib.lookupFunction<_CloseHandleNative, _CloseHandleDart>('CloseHandle');
+  static final _CloseHandleDart closeHandle = _lib
+      .lookupFunction<_CloseHandleNative, _CloseHandleDart>('CloseHandle');
 }
 
 /// Returns the full executable path for the process identified by [pid], or

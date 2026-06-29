@@ -13,7 +13,8 @@ import 'config/app_config.dart';
 import 'shared/services/brand_asset_cache.dart';
 import 'shared/services/secure_logger.dart';
 
-bool get _isDesktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+bool get _isDesktop =>
+    Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
 const int _instanceLockPort = 54891;
 const String _instancePing = 'LITCHI_FOCUS_V1';
@@ -25,7 +26,8 @@ ServerSocket? _instanceLock;
 
 void _writeCrashLog(String message) {
   try {
-    final base = Platform.environment['LOCALAPPDATA'] ??
+    final base =
+        Platform.environment['LOCALAPPDATA'] ??
         Platform.environment['APPDATA'] ??
         Directory.systemTemp.path;
     final file = File(
@@ -59,9 +61,9 @@ Future<bool> _focusExistingInstance() async {
     );
     socket.writeln(_instancePing);
     await socket.flush();
-    final response = await _socketLines(socket)
-        .first
-        .timeout(const Duration(seconds: 1), onTimeout: () => '');
+    final response = await _socketLines(
+      socket,
+    ).first.timeout(const Duration(seconds: 1), onTimeout: () => '');
     return response.trim() == _instancePong;
   } catch (_) {
     // intentional: instance check, treat as not found
@@ -74,11 +76,14 @@ Future<bool> _focusExistingInstance() async {
 Future<void> main() {
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    _writeCrashLog('FlutterError: ${details.exceptionAsString()}\n${details.stack}');
+    _writeCrashLog(
+      'FlutterError: ${details.exceptionAsString()}\n${details.stack}',
+    );
   };
   return runZonedGuarded(_boot, (error, stack) {
-    _writeCrashLog('Uncaught: $error\n$stack');
-  }) ?? Future.value();
+        _writeCrashLog('Uncaught: $error\n$stack');
+      }) ??
+      Future.value();
 }
 
 Future<void> _boot() async {
@@ -118,9 +123,9 @@ Future<void> _boot() async {
     // Any later instance that pings the lock port asks us to show ourselves.
     _instanceLock!.listen((client) async {
       try {
-        final line = await _socketLines(client)
-            .first
-            .timeout(const Duration(seconds: 1), onTimeout: () => '');
+        final line = await _socketLines(
+          client,
+        ).first.timeout(const Duration(seconds: 1), onTimeout: () => '');
         if (line.trim() == _instancePing) {
           client.writeln(_instancePong);
           await client.flush();

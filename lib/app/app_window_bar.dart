@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../config/app_config.dart';
+import '../l10n/l10n.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
@@ -198,7 +199,7 @@ class _ThemeTitleAction extends StatelessWidget {
     final ctrl = AppScope.of(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
-      message: dark ? '切换浅色模式' : '切换深色模式',
+      message: dark ? context.l10n.lightMode : context.l10n.darkMode,
       child: _TitleActionSurface(
         icon: dark ? LucideIcons.sun : LucideIcons.moon,
         onTap: () => ctrl.setThemeMode(dark ? ThemeMode.light : ThemeMode.dark),
@@ -214,9 +215,10 @@ class _LanguageTitleAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
     final c = AppColors.of(context);
-    return PopupMenuButton<String>(
+    final l10n = context.l10n;
+    return PopupMenuButton<AppLocalePreference>(
       initialValue: ctrl.language,
-      tooltip: '语言',
+      tooltip: l10n.language,
       position: PopupMenuPosition.under,
       color: c.cardBg,
       surfaceTintColor: Colors.transparent,
@@ -226,12 +228,21 @@ class _LanguageTitleAction extends StatelessWidget {
         side: BorderSide(color: c.softBorder),
       ),
       itemBuilder: (context) => [
-        for (final language in const ['简体中文', '繁體中文', 'English'])
+        for (final language in AppLocalePreference.values)
           PopupMenuItem(
             value: language,
             child: Row(
               children: [
-                Expanded(child: Text(language)),
+                Expanded(
+                  child: Text(switch (language) {
+                    AppLocalePreference.system => l10n.followSystem,
+                    AppLocalePreference.simplifiedChinese =>
+                      l10n.simplifiedChinese,
+                    AppLocalePreference.traditionalChinese =>
+                      l10n.traditionalChinese,
+                    AppLocalePreference.english => l10n.english,
+                  }),
+                ),
                 if (ctrl.language == language)
                   Icon(LucideIcons.check, size: 16, color: c.primary),
               ],

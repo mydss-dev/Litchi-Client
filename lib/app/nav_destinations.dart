@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../l10n/l10n.dart';
 import 'app_controller.dart'; // AppPage
 
 /// Where a destination lives in the compact (narrow-screen) layout.
@@ -29,6 +30,34 @@ class NavDestination {
   final IconData icon;
   final CompactPlacement compact;
   final String subtitle;
+
+  String labelFor(BuildContext context) {
+    final l10n = context.l10n;
+    return switch (page) {
+      AppPage.dashboard => l10n.home,
+      AppPage.shop => l10n.plans,
+      AppPage.invite => l10n.invite,
+      AppPage.account => l10n.account,
+      AppPage.nodes => l10n.nodes,
+      AppPage.wallet => l10n.wallet,
+      AppPage.orders => l10n.orders,
+      AppPage.traffic => l10n.usage,
+      AppPage.tickets => l10n.support,
+      AppPage.settings => l10n.settings,
+    };
+  }
+
+  String subtitleFor(BuildContext context) {
+    final l10n = context.l10n;
+    return switch (page) {
+      AppPage.wallet => l10n.walletSubtitle,
+      AppPage.orders => l10n.ordersSubtitle,
+      AppPage.traffic => l10n.usageSubtitle,
+      AppPage.tickets => l10n.supportSubtitle,
+      AppPage.settings => l10n.settingsNavSubtitle,
+      _ => '',
+    };
+  }
 }
 
 // ── Single source of truth ───────────────────────────────────────────────────
@@ -111,18 +140,14 @@ const List<NavDestination> kNavDestinations = [
 
 // ── Derived subsets ──────────────────────────────────────────────────────────
 
-Iterable<NavDestination> get sidebarDestinations =>
-    kNavDestinations;
+Iterable<NavDestination> get sidebarDestinations => kNavDestinations;
 
-List<NavDestination> get compactPrimaryDestinations =>
-    kNavDestinations
-        .where((d) => d.compact == CompactPlacement.primary)
-        .toList();
+List<NavDestination> get compactPrimaryDestinations => kNavDestinations
+    .where((d) => d.compact == CompactPlacement.primary)
+    .toList();
 
 List<NavDestination> get hubDestinations =>
-    kNavDestinations
-        .where((d) => d.compact == CompactPlacement.hub)
-        .toList();
+    kNavDestinations.where((d) => d.compact == CompactPlacement.hub).toList();
 
 /// Returns true when [page] is a primary bottom-nav tab (should show a
 /// compact page header rather than a back-button row).

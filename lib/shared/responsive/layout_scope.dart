@@ -18,9 +18,11 @@ class LayoutScope extends InheritedWidget {
   final double contentWidth;
 
   static LayoutScope of(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<LayoutScope>();
-    assert(scope != null, 'LayoutScope.of() must be called inside a LayoutScope subtree');
+    final scope = context.dependOnInheritedWidgetOfExactType<LayoutScope>();
+    assert(
+      scope != null,
+      'LayoutScope.of() must be called inside a LayoutScope subtree',
+    );
     return scope!;
   }
 
@@ -28,8 +30,7 @@ class LayoutScope extends InheritedWidget {
   /// tree (edge cases during auth flow / splash).  Falls back to the whole
   /// window width, which is correct for the logged-out compact window.
   static LayoutScope maybeOf(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<LayoutScope>();
+    final scope = context.dependOnInheritedWidgetOfExactType<LayoutScope>();
     if (scope != null) return scope;
     final mq = MediaQuery.maybeOf(context);
     final w = mq?.size.width ?? 0;

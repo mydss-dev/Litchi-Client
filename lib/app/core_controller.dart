@@ -399,13 +399,24 @@ class CoreController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final existingMacTunInterfaces =
+          req.networkMode == NetworkMode.tun && Platform.isMacOS
+          ? await TunInterfaceVerifier.matchingInterfaceNames(
+              interfaceName: 'utun',
+              matchPrefix: true,
+            )
+          : const <String>{};
       final configPath = await MihomoConfig.writeConfig(config);
       await _core.start(configPath, apiPort: _apiPort);
 
       if (_core.isRunning) {
         await _applyInitialSelection(req);
         if (req.networkMode == NetworkMode.tun) {
-          final tunReady = await TunInterfaceVerifier.waitUntilReady();
+          final tunReady = await TunInterfaceVerifier.waitUntilReady(
+            interfaceName: Platform.isMacOS ? 'utun' : 'Litchi',
+            matchPrefix: Platform.isMacOS,
+            excludedNames: existingMacTunInterfaces,
+          );
           if (!tunReady) {
             _coreError = CoreErrorMessageService.tunInterfaceUnavailable;
             await _core.stop();
@@ -801,9 +812,15 @@ class CoreController extends ChangeNotifier {
       }
       _status = ConnectionStatus.error;
       if (_killSwitchEnabled && wasConnected) {
-        if (_activeNetworkMode == NetworkMode.tun && Platform.isWindows) {
-          // The WFP session was engaged while TUN was healthy. Keep it alive:
-          // once the adapter disappears, only loopback and mihomo stay allowed.
+        if (_activeNetworkMode == NetworkMode.tun) {
+          if (Platform.isWindows) {
+            // The WFP session was engaged while TUN was healthy. Keep it alive:
+            // once the adapter disappears, only loopback and mihomo stay allowed.
+          } else {
+            // macOS TUN currently has no firewall-level kill switch. Do not
+            // pretend the system-proxy fallback protects utun traffic.
+            unawaited(ProxySetter.disable());
+          }
         } else {
           unawaited(ProxySetter.engageKillSwitch());
         }

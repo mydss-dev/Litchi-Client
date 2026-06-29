@@ -24,24 +24,55 @@ final class WindowsDpapi {
   static final DynamicLibrary _crypt32 = DynamicLibrary.open('Crypt32.dll');
   static final DynamicLibrary _kernel32 = DynamicLibrary.open('Kernel32.dll');
 
-  static final _cryptProtect = _crypt32.lookupFunction<
-      Int32 Function(Pointer<_DataBlob>, Pointer<Utf16>, Pointer<_DataBlob>,
-          Pointer<Void>, Pointer<Void>, Uint32, Pointer<_DataBlob>),
-      int Function(Pointer<_DataBlob>, Pointer<Utf16>, Pointer<_DataBlob>,
-          Pointer<Void>, Pointer<Void>, int,
-          Pointer<_DataBlob>)>('CryptProtectData');
+  static final _cryptProtect = _crypt32
+      .lookupFunction<
+        Int32 Function(
+          Pointer<_DataBlob>,
+          Pointer<Utf16>,
+          Pointer<_DataBlob>,
+          Pointer<Void>,
+          Pointer<Void>,
+          Uint32,
+          Pointer<_DataBlob>,
+        ),
+        int Function(
+          Pointer<_DataBlob>,
+          Pointer<Utf16>,
+          Pointer<_DataBlob>,
+          Pointer<Void>,
+          Pointer<Void>,
+          int,
+          Pointer<_DataBlob>,
+        )
+      >('CryptProtectData');
 
-  static final _cryptUnprotect = _crypt32.lookupFunction<
-      Int32 Function(Pointer<_DataBlob>, Pointer<Pointer<Utf16>>,
-          Pointer<_DataBlob>, Pointer<Void>, Pointer<Void>, Uint32,
-          Pointer<_DataBlob>),
-      int Function(Pointer<_DataBlob>, Pointer<Pointer<Utf16>>,
-          Pointer<_DataBlob>, Pointer<Void>, Pointer<Void>, int,
-          Pointer<_DataBlob>)>('CryptUnprotectData');
+  static final _cryptUnprotect = _crypt32
+      .lookupFunction<
+        Int32 Function(
+          Pointer<_DataBlob>,
+          Pointer<Pointer<Utf16>>,
+          Pointer<_DataBlob>,
+          Pointer<Void>,
+          Pointer<Void>,
+          Uint32,
+          Pointer<_DataBlob>,
+        ),
+        int Function(
+          Pointer<_DataBlob>,
+          Pointer<Pointer<Utf16>>,
+          Pointer<_DataBlob>,
+          Pointer<Void>,
+          Pointer<Void>,
+          int,
+          Pointer<_DataBlob>,
+        )
+      >('CryptUnprotectData');
 
-  static final _localFree = _kernel32.lookupFunction<
-      Pointer<Void> Function(Pointer<Void>),
-      Pointer<Void> Function(Pointer<Void>)>('LocalFree');
+  static final _localFree = _kernel32
+      .lookupFunction<
+        Pointer<Void> Function(Pointer<Void>),
+        Pointer<Void> Function(Pointer<Void>)
+      >('LocalFree');
 
   /// Encrypts [plaintext] with DPAPI; returns a lowercase hex string, or null
   /// on failure / non-Windows.
@@ -58,7 +89,13 @@ final class WindowsDpapi {
       inBlob.ref.cbData = inBytes.length;
       inBlob.ref.pbData = inPtr;
       final ok = _cryptProtect(
-        inBlob, nullptr, nullptr, nullptr, nullptr, _uiForbidden, outBlob,
+        inBlob,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        _uiForbidden,
+        outBlob,
       );
       if (ok == 0) return null;
       final out = _copyBlob(outBlob);
@@ -90,7 +127,13 @@ final class WindowsDpapi {
       inBlob.ref.cbData = inBytes.length;
       inBlob.ref.pbData = inPtr;
       final ok = _cryptUnprotect(
-        inBlob, nullptr, nullptr, nullptr, nullptr, _uiForbidden, outBlob,
+        inBlob,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        _uiForbidden,
+        outBlob,
       );
       if (ok == 0) return null;
       final out = _copyBlob(outBlob);

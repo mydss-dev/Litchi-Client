@@ -18,8 +18,8 @@ class AppSwitch extends StatelessWidget {
     final trackColor = value
         ? c.primary
         : enabled
-            ? c.surfaceMuted
-            : c.softBorder;
+        ? c.surfaceMuted
+        : c.softBorder;
     return GestureDetector(
       onTap: onChanged == null ? null : () => onChanged!(!value),
       behavior: HitTestBehavior.opaque,
@@ -32,9 +32,7 @@ class AppSwitch extends StatelessWidget {
         decoration: BoxDecoration(
           color: trackColor,
           borderRadius: BorderRadius.circular(AppRadius.pill),
-          border: Border.all(
-            color: value ? c.primary : c.softBorder,
-          ),
+          border: Border.all(color: value ? c.primary : c.softBorder),
         ),
         child: AnimatedAlign(
           duration: const Duration(milliseconds: 180),

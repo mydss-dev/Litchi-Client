@@ -650,7 +650,7 @@ class _MobileNavButton extends StatelessWidget {
                 Icon(item.icon, size: 18, color: color),
                 const SizedBox(height: 3),
                 Text(
-                  item.label,
+                  item.labelFor(context),
                   style: AppTextStyles.caption.copyWith(
                     color: color,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,

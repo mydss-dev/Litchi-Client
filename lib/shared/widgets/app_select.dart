@@ -41,10 +41,12 @@ class AppSelect<T> extends StatelessWidget {
           PopupMenuItem<T>(
             value: item,
             height: 38,
-            child: Text(labelOf(item),
-                style: AppTextStyles.body.copyWith(
-                  color: item == value ? c.primary : c.textPrimary,
-                )),
+            child: Text(
+              labelOf(item),
+              style: AppTextStyles.body.copyWith(
+                color: item == value ? c.primary : c.textPrimary,
+              ),
+            ),
           ),
       ],
       child: Container(
@@ -59,8 +61,10 @@ class AppSelect<T> extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(labelOf(value),
-                style: AppTextStyles.menu.copyWith(color: c.textSecondary)),
+            Text(
+              labelOf(value),
+              style: AppTextStyles.menu.copyWith(color: c.textSecondary),
+            ),
             const SizedBox(width: 8),
             Icon(LucideIcons.chevronDown, size: 14, color: c.iconMuted),
           ],

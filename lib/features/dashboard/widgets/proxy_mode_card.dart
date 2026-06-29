@@ -20,7 +20,7 @@ class ProxyModeCard extends StatelessWidget {
       selector: (ctrl) => ctrl.proxyMode,
       builder: (context, proxyMode, _) {
         final description = switch (proxyMode) {
-          ProxyMode.rule   => '自动分流，国内直连、国外流量走代理',
+          ProxyMode.rule => '自动分流，国内直连、国外流量走代理',
           ProxyMode.global => '所有流量均通过代理节点转发',
           ProxyMode.direct => '不使用代理，直接连接目标网站',
         };
@@ -54,11 +54,7 @@ class ProxyModeCard extends StatelessWidget {
                   final error = await ctrl.setProxyMode(mode);
                   if (!context.mounted) return;
                   if (error != null) {
-                    AppToast.show(
-                      context,
-                      error,
-                      type: AppToastType.error,
-                    );
+                    AppToast.show(context, error, type: AppToastType.error);
                   } else if (wasRunning) {
                     AppToast.show(
                       context,

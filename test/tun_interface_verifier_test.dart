@@ -26,4 +26,27 @@ void main() {
 
     expect(ready, isFalse);
   });
+
+  test('supports macOS utun interface prefixes', () async {
+    final ready = await TunInterfaceVerifier.waitUntilReady(
+      interfaceName: 'utun',
+      matchPrefix: true,
+      timeout: Duration.zero,
+      probe: () async => const ['lo0', 'utun7'],
+    );
+
+    expect(ready, isTrue);
+  });
+
+  test('ignores utun interfaces that existed before core startup', () async {
+    final ready = await TunInterfaceVerifier.waitUntilReady(
+      interfaceName: 'utun',
+      matchPrefix: true,
+      excludedNames: const {'utun0', 'utun1'},
+      timeout: Duration.zero,
+      probe: () async => const ['utun0', 'utun1', 'utun2'],
+    );
+
+    expect(ready, isTrue);
+  });
 }

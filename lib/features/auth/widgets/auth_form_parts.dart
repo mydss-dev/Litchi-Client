@@ -50,11 +50,13 @@ class AuthCheckboxRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           child ??
-              Text(label,
-                  style: AppTextStyles.caption.copyWith(
-                    color: c.textSecondary,
-                    fontSize: 12,
-                  )),
+              Text(
+                label,
+                style: AppTextStyles.caption.copyWith(
+                  color: c.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
         ],
       ),
     );
@@ -99,8 +101,13 @@ class AuthDivider extends StatelessWidget {
         line,
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(label,
-              style: AppTextStyles.caption.copyWith(color: c.textMuted, fontSize: 12)),
+          child: Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: c.textMuted,
+              fontSize: 12,
+            ),
+          ),
         ),
         line,
       ],
@@ -127,8 +134,13 @@ class AuthBottomJump extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(leadingText,
-            style: AppTextStyles.caption.copyWith(color: c.textSecondary, fontSize: 13)),
+        Text(
+          leadingText,
+          style: AppTextStyles.caption.copyWith(
+            color: c.textSecondary,
+            fontSize: 13,
+          ),
+        ),
         const SizedBox(width: 4),
         AuthLinkText(text: actionText, onTap: onTap),
       ],

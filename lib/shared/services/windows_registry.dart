@@ -4,71 +4,73 @@ import 'package:ffi/ffi.dart';
 
 // ── Native typedefs ──────────────────────────────────────────────────────────
 
-typedef _RegOpenKeyExWNative = Int32 Function(
-  IntPtr hKey,
-  Pointer<Utf16> lpSubKey,
-  Uint32 ulOptions,
-  Uint32 samDesired,
-  Pointer<IntPtr> phkResult,
-);
+typedef _RegOpenKeyExWNative =
+    Int32 Function(
+      IntPtr hKey,
+      Pointer<Utf16> lpSubKey,
+      Uint32 ulOptions,
+      Uint32 samDesired,
+      Pointer<IntPtr> phkResult,
+    );
 
-typedef _RegQueryValueExWNative = Int32 Function(
-  IntPtr hKey,
-  Pointer<Utf16> lpValueName,
-  Pointer<Uint32> lpreserved,
-  Pointer<Uint32> lpType,
-  Pointer<Uint8> lpData,
-  Pointer<Uint32> lpcbData,
-);
+typedef _RegQueryValueExWNative =
+    Int32 Function(
+      IntPtr hKey,
+      Pointer<Utf16> lpValueName,
+      Pointer<Uint32> lpreserved,
+      Pointer<Uint32> lpType,
+      Pointer<Uint8> lpData,
+      Pointer<Uint32> lpcbData,
+    );
 
-typedef _RegSetValueExWNative = Int32 Function(
-  IntPtr hKey,
-  Pointer<Utf16> lpValueName,
-  Uint32 reserved,
-  Uint32 dwType,
-  Pointer<Uint8> lpData,
-  Uint32 cbData,
-);
+typedef _RegSetValueExWNative =
+    Int32 Function(
+      IntPtr hKey,
+      Pointer<Utf16> lpValueName,
+      Uint32 reserved,
+      Uint32 dwType,
+      Pointer<Uint8> lpData,
+      Uint32 cbData,
+    );
 
-typedef _RegDeleteValueWNative = Int32 Function(
-  IntPtr hKey,
-  Pointer<Utf16> lpValueName,
-);
+typedef _RegDeleteValueWNative =
+    Int32 Function(IntPtr hKey, Pointer<Utf16> lpValueName);
 
 typedef _RegCloseKeyNative = Int32 Function(IntPtr hKey);
 
 // ── Dart typedefs ────────────────────────────────────────────────────────────
 
-typedef _RegOpenKeyExWDart = int Function(
-  int hKey,
-  Pointer<Utf16> lpSubKey,
-  int ulOptions,
-  int samDesired,
-  Pointer<IntPtr> phkResult,
-);
+typedef _RegOpenKeyExWDart =
+    int Function(
+      int hKey,
+      Pointer<Utf16> lpSubKey,
+      int ulOptions,
+      int samDesired,
+      Pointer<IntPtr> phkResult,
+    );
 
-typedef _RegQueryValueExWDart = int Function(
-  int hKey,
-  Pointer<Utf16> lpValueName,
-  Pointer<Uint32> lpreserved,
-  Pointer<Uint32> lpType,
-  Pointer<Uint8> lpData,
-  Pointer<Uint32> lpcbData,
-);
+typedef _RegQueryValueExWDart =
+    int Function(
+      int hKey,
+      Pointer<Utf16> lpValueName,
+      Pointer<Uint32> lpreserved,
+      Pointer<Uint32> lpType,
+      Pointer<Uint8> lpData,
+      Pointer<Uint32> lpcbData,
+    );
 
-typedef _RegSetValueExWDart = int Function(
-  int hKey,
-  Pointer<Utf16> lpValueName,
-  int reserved,
-  int dwType,
-  Pointer<Uint8> lpData,
-  int cbData,
-);
+typedef _RegSetValueExWDart =
+    int Function(
+      int hKey,
+      Pointer<Utf16> lpValueName,
+      int reserved,
+      int dwType,
+      Pointer<Uint8> lpData,
+      int cbData,
+    );
 
-typedef _RegDeleteValueWDart = int Function(
-  int hKey,
-  Pointer<Utf16> lpValueName,
-);
+typedef _RegDeleteValueWDart =
+    int Function(int hKey, Pointer<Utf16> lpValueName);
 
 typedef _RegCloseKeyDart = int Function(int hKey);
 
@@ -93,25 +95,27 @@ final class _Advapi32 {
   static final DynamicLibrary _lib = DynamicLibrary.open('advapi32.dll');
 
   static final _RegOpenKeyExWDart regOpenKeyExW = _lib
-      .lookupFunction<_RegOpenKeyExWNative, _RegOpenKeyExWDart>('RegOpenKeyExW');
+      .lookupFunction<_RegOpenKeyExWNative, _RegOpenKeyExWDart>(
+        'RegOpenKeyExW',
+      );
 
   static final _RegQueryValueExWDart regQueryValueExW = _lib
       .lookupFunction<_RegQueryValueExWNative, _RegQueryValueExWDart>(
-    'RegQueryValueExW',
-  );
+        'RegQueryValueExW',
+      );
 
   static final _RegSetValueExWDart regSetValueExW = _lib
       .lookupFunction<_RegSetValueExWNative, _RegSetValueExWDart>(
-    'RegSetValueExW',
-  );
+        'RegSetValueExW',
+      );
 
   static final _RegDeleteValueWDart regDeleteValueW = _lib
       .lookupFunction<_RegDeleteValueWNative, _RegDeleteValueWDart>(
-    'RegDeleteValueW',
-  );
+        'RegDeleteValueW',
+      );
 
-  static final _RegCloseKeyDart regCloseKey =
-      _lib.lookupFunction<_RegCloseKeyNative, _RegCloseKeyDart>('RegCloseKey');
+  static final _RegCloseKeyDart regCloseKey = _lib
+      .lookupFunction<_RegCloseKeyNative, _RegCloseKeyDart>('RegCloseKey');
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────

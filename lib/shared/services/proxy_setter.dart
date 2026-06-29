@@ -190,7 +190,6 @@ abstract final class ProxySetter {
     return lower.contains('127.0.0.1:') || lower.contains('localhost:');
   }
 
-
   /// Notify WinInet so browsers pick up the registry change immediately.
   /// Uses Dart FFI to call InternetSetOptionW directly — no PowerShell, no
   /// temporary scripts, no DLL compilation.

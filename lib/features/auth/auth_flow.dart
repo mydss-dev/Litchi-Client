@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
@@ -23,26 +24,27 @@ class AuthFlow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final spec = switch (screen) {
-      AuthScreen.login => const _AuthSpec(
-        title: '登录账户',
-        subtitle: '请输入您的凭据继续',
-        child: LoginPage(),
+      AuthScreen.login => _AuthSpec(
+        title: l10n.loginTitle,
+        subtitle: l10n.loginSubtitle,
+        child: const LoginPage(),
       ),
-      AuthScreen.register => const _AuthSpec(
-        title: '创建账户',
-        subtitle: '开始连接全世界',
-        child: RegisterPage(),
+      AuthScreen.register => _AuthSpec(
+        title: l10n.registerTitle,
+        subtitle: l10n.registerSubtitle,
+        child: const RegisterPage(),
       ),
-      AuthScreen.changePassword => const _AuthSpec(
-        title: '修改密码',
-        subtitle: '更新登录密码，保护账户安全',
-        child: ChangePasswordPage(),
+      AuthScreen.changePassword => _AuthSpec(
+        title: l10n.changePasswordTitle,
+        subtitle: l10n.changePasswordSubtitle,
+        child: const ChangePasswordPage(),
       ),
-      AuthScreen.forgotPassword => const _AuthSpec(
-        title: '忘记密码',
-        subtitle: '我们将向您的邮箱发送验证码',
-        child: ForgotPasswordPage(),
+      AuthScreen.forgotPassword => _AuthSpec(
+        title: l10n.forgotPasswordTitle,
+        subtitle: l10n.forgotPasswordSubtitle,
+        child: const ForgotPasswordPage(),
       ),
     };
 
@@ -162,10 +164,17 @@ class _DesktopAuthPreferences extends StatelessWidget {
       children: [
         Icon(LucideIcons.languages, size: 15, color: c.iconMuted),
         const SizedBox(width: 6),
-        AppSelect<String>(
+        AppSelect<AppLocalePreference>(
           value: ctrl.language,
-          items: const ['简体中文', '繁體中文', 'English'],
-          labelOf: (value) => value,
+          items: AppLocalePreference.values,
+          labelOf: (value) => switch (value) {
+            AppLocalePreference.system => context.l10n.followSystem,
+            AppLocalePreference.simplifiedChinese =>
+              context.l10n.simplifiedChinese,
+            AppLocalePreference.traditionalChinese =>
+              context.l10n.traditionalChinese,
+            AppLocalePreference.english => context.l10n.english,
+          },
           onChanged: ctrl.setLanguage,
           minWidth: 112,
         ),
@@ -182,9 +191,9 @@ class _DesktopAuthPreferences extends StatelessWidget {
           value: ctrl.themeMode,
           items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
           labelOf: (value) => switch (value) {
-            ThemeMode.system => '跟随系统',
-            ThemeMode.light => '浅色模式',
-            ThemeMode.dark => '深色模式',
+            ThemeMode.system => context.l10n.followSystem,
+            ThemeMode.light => context.l10n.lightMode,
+            ThemeMode.dark => context.l10n.darkMode,
           },
           onChanged: ctrl.setThemeMode,
           minWidth: 104,

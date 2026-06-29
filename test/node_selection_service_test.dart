@@ -46,7 +46,9 @@ void main() {
 
   test('marks latency states in bulk', () {
     expect(
-      NodeSelectionService.markLatencyTesting(nodes).map((node) => node.latency),
+      NodeSelectionService.markLatencyTesting(
+        nodes,
+      ).map((node) => node.latency),
       everyElement(-1),
     );
     expect(

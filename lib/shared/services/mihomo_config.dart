@@ -19,6 +19,10 @@ abstract final class MihomoConfig {
 
   static String apiSecret = _generateSecret();
 
+  static String tunDeviceNameForPlatform({required bool isMacOS}) {
+    return isMacOS ? 'utun' : 'Litchi';
+  }
+
   /// Restores the secret owned by an already-running Android core after the
   /// Flutter activity/isolate is recreated. Empty values are never accepted.
   static void restoreApiSecret(String value) {
@@ -148,7 +152,9 @@ abstract final class MihomoConfig {
       'tun': {
         'enable': networkMode == NetworkMode.tun,
         'stack': 'mixed',
-        'device': 'Litchi',
+        // macOS only accepts utun-prefixed device names. Passing "utun"
+        // lets the kernel allocate the next available utun index.
+        'device': tunDeviceNameForPlatform(isMacOS: Platform.isMacOS),
         'dns-hijack': ['any:53'],
         'auto-route': true,
         'strict-route': true,

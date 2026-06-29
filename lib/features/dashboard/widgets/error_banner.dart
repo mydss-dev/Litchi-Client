@@ -39,10 +39,7 @@ class ErrorBanner extends StatelessWidget {
               message,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.body.copyWith(
-                color: color,
-                fontSize: 12,
-              ),
+              style: AppTextStyles.body.copyWith(color: color, fontSize: 12),
             ),
           ),
           const SizedBox(width: 8),
@@ -51,8 +48,10 @@ class ErrorBanner extends StatelessWidget {
             child: GestureDetector(
               onTap: onRetry,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.sm),

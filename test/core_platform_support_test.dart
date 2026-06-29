@@ -71,7 +71,7 @@ void main() {
     );
 
     expect(normalize(NetworkMode.system, android: true), NetworkMode.tun);
-    expect(normalize(NetworkMode.tun, macos: true), NetworkMode.system);
+    expect(normalize(NetworkMode.tun, macos: true), NetworkMode.tun);
     expect(normalize(NetworkMode.tun, windows: true), NetworkMode.tun);
     expect(normalize(NetworkMode.system, windows: true), NetworkMode.system);
   });

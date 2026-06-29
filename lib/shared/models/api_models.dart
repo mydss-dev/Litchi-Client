@@ -622,7 +622,8 @@ class SubscriptionResult {
   final List<RemoteNode> nodes;
   final SubTraffic? traffic; // null if header absent
   final List<String> rules;
-  final Map<String, dynamic> ruleProviders; // rule-provider name → {type, url, …}
+  final Map<String, dynamic>
+  ruleProviders; // rule-provider name → {type, url, …}
 
   const SubscriptionResult({
     required this.nodes,

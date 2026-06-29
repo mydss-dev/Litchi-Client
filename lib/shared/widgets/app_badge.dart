@@ -61,7 +61,10 @@ class AppBadge extends StatelessWidget {
         widthFactor: 1,
         child: Text(
           text,
-          style: AppTextStyles.badge.copyWith(color: textColor, fontSize: fontSize),
+          style: AppTextStyles.badge.copyWith(
+            color: textColor,
+            fontSize: fontSize,
+          ),
         ),
       ),
     );

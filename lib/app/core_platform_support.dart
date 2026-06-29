@@ -39,7 +39,6 @@ abstract final class CorePlatformSupport {
     required bool isAndroid,
   }) {
     if (isAndroid) return NetworkMode.tun;
-    if (isMacOS) return NetworkMode.system;
     return requested;
   }
 

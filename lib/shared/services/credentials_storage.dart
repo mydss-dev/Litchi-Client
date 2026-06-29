@@ -73,7 +73,10 @@ abstract final class CredentialsStorage {
         if (legacyEnc != null && legacyEnc.isNotEmpty) {
           final legacyPassword = await unprotectString(legacyEnc);
           if (legacyPassword != null && legacyPassword.isNotEmpty) {
-            await _secureStorage.write(key: _keyPassword, value: legacyPassword);
+            await _secureStorage.write(
+              key: _keyPassword,
+              value: legacyPassword,
+            );
             await prefs.remove(_keyPassword);
             password = legacyPassword;
           }
@@ -139,7 +142,9 @@ abstract final class CredentialsStorage {
       return;
     }
     if (Platform.isLinux) {
-      SecureLogger.warn('CredentialsStorage.saveAuthToken: no secure backend on Linux');
+      SecureLogger.warn(
+        'CredentialsStorage.saveAuthToken: no secure backend on Linux',
+      );
       return;
     }
     try {

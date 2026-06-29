@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
+import '../l10n/app_locale_preference.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/account_summary_cache.dart';
@@ -99,7 +100,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get isDark => _settings.isDark;
   bool get autoStart => _settings.autoStart;
   bool get autoUpdate => _settings.autoUpdate;
-  String get language => _settings.language;
+  AppLocalePreference get language => _settings.language;
+  Locale? get locale => _settings.language.locale;
   ProxyMode get proxyMode => _settings.proxyMode;
   NetworkMode get networkMode => _settings.networkMode;
   String get dnsMode => _settings.dnsMode;
@@ -112,7 +114,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
   void setAutoStart(bool v) => _settings.setAutoStart(v);
   void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
-  void setLanguage(String v) => _settings.setLanguage(v);
+  void setLanguage(AppLocalePreference v) => _settings.setLanguage(v);
 
   Future<void> setProxyPort(int port) async {
     final old = _settings.proxyPort;

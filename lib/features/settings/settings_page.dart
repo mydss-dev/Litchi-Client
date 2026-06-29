@@ -8,6 +8,7 @@ import '../../app/app_controller.dart';
 import '../../app/core_platform_support.dart';
 import '../../app/nav_destinations.dart';
 import '../../config/app_config.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -29,7 +30,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  String _coreVersion = '获取中…';
+  String _coreVersion = '';
 
   @override
   void initState() {
@@ -42,7 +43,11 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _onFixProxy() async {
     await AppScope.of(context).fixProxy();
     if (!mounted) return;
-    AppToast.show(context, '网络设置已修复', type: AppToastType.success);
+    AppToast.show(
+      context,
+      context.l10n.networkSettingsRepaired,
+      type: AppToastType.success,
+    );
   }
 
   Future<void> _setNetworkMode(NetworkMode mode) async {
@@ -54,7 +59,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!isAdmin) {
         AppToast.show(
           context,
-          'TUN 模式需要以管理员身份运行客户端',
+          context.l10n.administratorRequired,
           type: AppToastType.warning,
         );
         return;
@@ -64,7 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final wasRunning = ctrl.coreRunning;
     ctrl.setNetworkMode(mode);
     if (wasRunning && mounted) {
-      AppToast.show(context, '正在切换连接方式');
+      AppToast.show(context, context.l10n.switchingConnectionMethod);
     }
   }
 
@@ -99,10 +104,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return ResponsivePageScaffold(
-      title: '设置',
-      subtitle: '配置客户端偏好和网络选项',
-      compactTitle: '设置',
+      title: l10n.settings,
+      subtitle: l10n.settingsSubtitle,
+      compactTitle: l10n.settings,
       primaryCompact: isPrimaryCompactTab(AppPage.settings),
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
       compactBodySpacing: 18,
@@ -115,7 +121,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   List<Widget> _bodyChildren(BuildContext context) {
     final ctrl = AppScope.of(context);
+    final l10n = context.l10n;
     final supportsSystemProxy = Platform.isWindows || Platform.isMacOS;
+    final macTunWithoutProtection =
+        Platform.isMacOS && ctrl.networkMode == NetworkMode.tun;
     final networkModes = NetworkMode.values
         .where(CorePlatformSupport.supportsNetworkMode)
         .toList();
@@ -126,42 +135,48 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 12),
       ],
       _SettingsGroup(
-        title: '系统设置',
+        title: l10n.systemSettings,
         children: [
           if (Platform.isWindows)
             _SettingRow(
-              label: '开机启动',
+              label: l10n.launchAtStartup,
               trailing: AppSwitch(
                 value: ctrl.autoStart,
                 onChanged: ctrl.setAutoStart,
               ),
             ),
           _SettingRow(
-            label: '自动更新',
+            label: l10n.automaticUpdates,
             trailing: AppSwitch(
               value: ctrl.autoUpdate,
               onChanged: ctrl.setAutoUpdate,
             ),
           ),
           _SettingRow(
-            label: '外观模式',
+            label: l10n.appearance,
             trailing: AppSelect<ThemeMode>(
               value: ctrl.themeMode,
               items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
               labelOf: (v) => switch (v) {
-                ThemeMode.system => '跟随系统',
-                ThemeMode.light => '浅色模式',
-                ThemeMode.dark => '深色模式',
+                ThemeMode.system => l10n.followSystem,
+                ThemeMode.light => l10n.lightMode,
+                ThemeMode.dark => l10n.darkMode,
               },
               onChanged: ctrl.setThemeMode,
             ),
           ),
           _SettingRow(
-            label: '语言',
-            trailing: AppSelect<String>(
+            label: l10n.language,
+            trailing: AppSelect<AppLocalePreference>(
               value: ctrl.language,
-              items: const ['简体中文', 'English', '繁體中文'],
-              labelOf: (v) => v,
+              items: AppLocalePreference.values,
+              labelOf: (v) => switch (v) {
+                AppLocalePreference.system => l10n.followSystem,
+                AppLocalePreference.simplifiedChinese => l10n.simplifiedChinese,
+                AppLocalePreference.traditionalChinese =>
+                  l10n.traditionalChinese,
+                AppLocalePreference.english => l10n.english,
+              },
               onChanged: ctrl.setLanguage,
             ),
           ),
@@ -169,10 +184,10 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       const SizedBox(height: 16),
       _SettingsGroup(
-        title: '连接设置',
+        title: l10n.connectionSettings,
         children: [
           _SettingRow(
-            label: '代理模式',
+            label: l10n.proxyMode,
             trailing: AppSelect<ProxyMode>(
               value: ctrl.proxyMode,
               items: ProxyMode.values,
@@ -182,16 +197,18 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           if (networkModes.length > 1)
             _SettingRow(
-              label: '连接方式',
+              label: l10n.connectionMethod,
               subtitle: ctrl.networkMode == NetworkMode.tun
-                  ? '虚拟网卡接管全部流量'
-                  : '使用系统代理接管网络请求',
+                  ? Platform.isMacOS
+                        ? '${l10n.tunDescription} ${l10n.tunPermissionHintMac}'
+                        : l10n.tunDescription
+                  : l10n.systemProxyDescription,
               trailing: AppSelect<NetworkMode>(
                 value: ctrl.networkMode,
                 items: networkModes,
                 labelOf: (v) => switch (v) {
-                  NetworkMode.system => '系统代理',
-                  NetworkMode.tun => 'TUN 模式',
+                  NetworkMode.system => l10n.systemProxy,
+                  NetworkMode.tun => l10n.tunMode,
                 },
                 onChanged: _setNetworkMode,
               ),
@@ -209,30 +226,35 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       const SizedBox(height: 16),
       _SettingsGroup(
-        title: '高级设置',
+        title: l10n.advancedSettings,
         children: [
           if (supportsSystemProxy)
             _SettingRow(
-              label: '连接中断保护',
-              subtitle: ctrl.networkMode == NetworkMode.tun
-                  ? 'TUN 核心异常退出时阻止非隧道流量'
-                  : '系统代理核心异常退出时阻止网络直连',
+              label: l10n.connectionProtection,
+              subtitle: macTunWithoutProtection
+                  ? l10n.macTunProtectionUnavailable
+                  : ctrl.networkMode == NetworkMode.tun
+                  ? l10n.tunProtectionDescription
+                  : l10n.systemProtectionDescription,
               trailing: AppSwitch(
-                value: ctrl.killSwitch,
-                onChanged: ctrl.setKillSwitch,
+                value: macTunWithoutProtection ? false : ctrl.killSwitch,
+                onChanged: macTunWithoutProtection ? null : ctrl.setKillSwitch,
               ),
             ),
           if (supportsSystemProxy)
             _SettingRow(
-              label: '修复网络设置',
-              subtitle: '断开后无法上网时，清理或重新应用系统代理',
-              trailing: _DiagnosticButton(label: '修复', onTap: _onFixProxy),
+              label: l10n.repairNetworkSettings,
+              subtitle: l10n.repairNetworkDescription,
+              trailing: _DiagnosticButton(
+                label: l10n.repair,
+                onTap: _onFixProxy,
+              ),
             ),
           _SettingRow(
-            label: '诊断信息',
-            subtitle: '查看并复制信息，发送给管理员或客服',
+            label: l10n.diagnostics,
+            subtitle: l10n.diagnosticsDescription,
             trailing: _DiagnosticButton(
-              label: '查看',
+              label: l10n.view,
               onTap: _showDiagnosticInfo,
             ),
           ),
@@ -240,10 +262,10 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       const SizedBox(height: 16),
       _SettingsGroup(
-        title: '关于应用',
+        title: l10n.about,
         children: [
           _SettingRow(
-            label: '应用版本',
+            label: l10n.appVersion,
             trailing: Text(
               AppConfig.currentVersion,
               style: AppTextStyles.body.copyWith(
@@ -252,9 +274,9 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           _SettingRow(
-            label: '核心版本',
+            label: l10n.coreVersion,
             trailing: Text(
-              _coreVersion,
+              _coreVersion.isEmpty ? l10n.loading : _coreVersion,
               style: AppTextStyles.body.copyWith(
                 color: AppColors.of(context).textMuted,
               ),

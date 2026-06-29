@@ -123,7 +123,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     if (_selectedId == null || _checkingOut) return;
     setState(() => _checkingOut = true);
     try {
-      final result = await widget.api.checkoutOrder(widget.tradeNo, _selectedId!);
+      final result = await widget.api.checkoutOrder(
+        widget.tradeNo,
+        _selectedId!,
+      );
       if (!mounted) return;
       if (result.url.isEmpty) {
         // Balance deduction — processed server-side immediately
@@ -168,7 +171,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         }
       });
     });
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _pollStatus());
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _pollStatus(),
+    );
   }
 
   Future<void> _pollStatus() async {
@@ -209,7 +215,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     if (_selectedId == null || _refreshing) return;
     setState(() => _refreshing = true);
     try {
-      final result = await widget.api.checkoutOrder(widget.tradeNo, _selectedId!);
+      final result = await widget.api.checkoutOrder(
+        widget.tradeNo,
+        _selectedId!,
+      );
       if (!mounted) return;
       setState(() {
         _payUrl = result.url;
@@ -254,7 +263,11 @@ class _PaymentDialogState extends State<_PaymentDialog> {
             borderRadius: BorderRadius.circular(AppRadius.xl),
             border: Border.all(color: c.softBorder),
             boxShadow: [
-              BoxShadow(color: c.shadow, blurRadius: 32, offset: const Offset(0, 12))
+              BoxShadow(
+                color: c.shadow,
+                blurRadius: 32,
+                offset: const Offset(0, 12),
+              ),
             ],
           ),
           child: Column(
@@ -306,14 +319,17 @@ class _PaymentDialogState extends State<_PaymentDialog> {
             const SizedBox(width: 6),
           ],
           Expanded(
-            child: Text(titles[_stage]!,
-                style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary)),
+            child: Text(
+              titles[_stage]!,
+              style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
+            ),
           ),
           if (_stage != _Stage.success)
             IconActionBtn(
-                icon: LucideIcons.x,
-                onTap: () => Navigator.of(context).pop(),
-                c: c),
+              icon: LucideIcons.x,
+              onTap: () => Navigator.of(context).pop(),
+              c: c,
+            ),
         ],
       ),
     );
@@ -335,28 +351,40 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           ),
           child: Column(
             children: [
-              Text('应付金额',
-                  style: AppTextStyles.caption
-                      .copyWith(color: c.primary.withValues(alpha: 0.75))),
+              Text(
+                '应付金额',
+                style: AppTextStyles.caption.copyWith(
+                  color: c.primary.withValues(alpha: 0.75),
+                ),
+              ),
               const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
-                  Text(widget.currencySymbol,
-                      style: AppTextStyles.sectionTitle.copyWith(color: c.primary)),
-                  Text(widget.finalPrice.toStringAsFixed(2),
-                      style: AppTextStyles.largeNumber(fontSize: 26)
-                          .copyWith(color: c.primary)),
+                  Text(
+                    widget.currencySymbol,
+                    style: AppTextStyles.sectionTitle.copyWith(
+                      color: c.primary,
+                    ),
+                  ),
+                  Text(
+                    widget.finalPrice.toStringAsFixed(2),
+                    style: AppTextStyles.largeNumber(
+                      fontSize: 26,
+                    ).copyWith(color: c.primary),
+                  ),
                 ],
               ),
             ],
           ),
         ),
         const SizedBox(height: 20),
-        Text('选择付款方式',
-            style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary)),
+        Text(
+          '选择付款方式',
+          style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
+        ),
         const SizedBox(height: 12),
         if (_loadingMethods)
           const Padding(
@@ -366,8 +394,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         else if (_methods.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text('暂无可用支付方式',
-                style: AppTextStyles.body.copyWith(color: c.textMuted)),
+            child: Text(
+              '暂无可用支付方式',
+              style: AppTextStyles.body.copyWith(color: c.textMuted),
+            ),
           )
         else
           ...(_methods.map((m) {
@@ -380,8 +410,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 100),
                 margin: const EdgeInsets.only(bottom: 10),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: sel ? c.primarySoft : c.surfaceMuted,
                   borderRadius: BorderRadius.circular(AppRadius.md),
@@ -392,14 +424,19 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                 ),
                 child: Row(
                   children: [
-                    Icon(LucideIcons.creditCard,
-                        size: 18, color: sel ? c.primary : c.iconDefault),
+                    Icon(
+                      LucideIcons.creditCard,
+                      size: 18,
+                      color: sel ? c.primary : c.iconDefault,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(m.name,
-                          style: AppTextStyles.bodyStrong.copyWith(
-                            color: sel ? c.primary : c.textPrimary,
-                          )),
+                      child: Text(
+                        m.name,
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          color: sel ? c.primary : c.textPrimary,
+                        ),
+                      ),
                     ),
                     Icon(
                       sel ? LucideIcons.circleCheck : LucideIcons.circle,
@@ -416,10 +453,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           width: double.infinity,
           height: 44,
           child: ElevatedButton(
-            onPressed:
-                (_selectedId == null || _checkingOut || _loadingMethods)
-                    ? null
-                    : _checkout,
+            onPressed: (_selectedId == null || _checkingOut || _loadingMethods)
+                ? null
+                : _checkout,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
@@ -433,7 +469,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                 gradient: (_selectedId != null && !_loadingMethods)
                     ? AppPalette.brandGradient
                     : null,
-                color: (_selectedId == null || _loadingMethods) ? c.border : null,
+                color: (_selectedId == null || _loadingMethods)
+                    ? c.border
+                    : null,
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Center(
@@ -442,10 +480,17 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : Text('去支付',
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        '去支付',
                         style: AppTextStyles.button.copyWith(
-                            color: Colors.white, fontWeight: FontWeight.w700)),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -464,9 +509,13 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           children: [
             Icon(LucideIcons.creditCard, size: 15, color: c.textMuted),
             const SizedBox(width: 6),
-            Text(_selectedName,
-                style: AppTextStyles.body.copyWith(
-                    color: c.textSecondary, fontWeight: FontWeight.w600)),
+            Text(
+              _selectedName,
+              style: AppTextStyles.body.copyWith(
+                color: c.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -475,12 +524,19 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(widget.currencySymbol,
-                style: AppTextStyles.sectionTitle
-                    .copyWith(color: c.primary, fontSize: 18)),
-            Text(widget.finalPrice.toStringAsFixed(2),
-                style: AppTextStyles.largeNumber(fontSize: 34)
-                    .copyWith(color: c.primary)),
+            Text(
+              widget.currencySymbol,
+              style: AppTextStyles.sectionTitle.copyWith(
+                color: c.primary,
+                fontSize: 18,
+              ),
+            ),
+            Text(
+              widget.finalPrice.toStringAsFixed(2),
+              style: AppTextStyles.largeNumber(
+                fontSize: 34,
+              ).copyWith(color: c.primary),
+            ),
           ],
         ),
         const SizedBox(height: 20),
@@ -506,8 +562,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           ),
         ),
         const SizedBox(height: 16),
-        Text('使用手机扫码完成支付',
-            style: AppTextStyles.body.copyWith(color: c.textSecondary)),
+        Text(
+          '使用手机扫码完成支付',
+          style: AppTextStyles.body.copyWith(color: c.textSecondary),
+        ),
         if (_payType == 1) ...[
           const SizedBox(height: 6),
           GestureDetector(
@@ -519,9 +577,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                 children: [
                   Icon(LucideIcons.externalLink, size: 12, color: c.primary),
                   const SizedBox(width: 4),
-                  Text('或在浏览器打开',
-                      style: AppTextStyles.caption
-                          .copyWith(color: c.primary)),
+                  Text(
+                    '或在浏览器打开',
+                    style: AppTextStyles.caption.copyWith(color: c.primary),
+                  ),
                 ],
               ),
             ),
@@ -541,8 +600,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
       children: [
         Icon(LucideIcons.timer, size: 13, color: _timerColor(c)),
         const SizedBox(width: 5),
-        Text('剩余 $_countdownText',
-            style: AppTextStyles.caption.copyWith(color: _timerColor(c))),
+        Text(
+          '剩余 $_countdownText',
+          style: AppTextStyles.caption.copyWith(color: _timerColor(c)),
+        ),
       ],
     );
   }
@@ -575,11 +636,17 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : Text('我已完成支付',
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          '我已完成支付',
                           style: AppTextStyles.button.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700)),
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -597,8 +664,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
               ),
-              child: Text('取消',
-                  style: AppTextStyles.button.copyWith(color: c.textSecondary)),
+              child: Text(
+                '取消',
+                style: AppTextStyles.button.copyWith(color: c.textSecondary),
+              ),
             ),
           ),
         ),
@@ -622,11 +691,15 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           child: Icon(LucideIcons.circleCheck, size: 40, color: c.success),
         ),
         const SizedBox(height: 16),
-        Text('支付成功！',
-            style: AppTextStyles.heroTitle.copyWith(color: c.textPrimary)),
+        Text(
+          '支付成功！',
+          style: AppTextStyles.heroTitle.copyWith(color: c.textPrimary),
+        ),
         const SizedBox(height: 8),
-        Text('订单已激活，请刷新页面查看',
-            style: AppTextStyles.body.copyWith(color: c.textMuted)),
+        Text(
+          '订单已激活，请刷新页面查看',
+          style: AppTextStyles.body.copyWith(color: c.textMuted),
+        ),
         const SizedBox(height: 32),
         SizedBox(
           width: double.infinity,
@@ -647,9 +720,13 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Center(
-                child: Text('完成',
-                    style: AppTextStyles.button.copyWith(
-                        color: Colors.white, fontWeight: FontWeight.w700)),
+                child: Text(
+                  '完成',
+                  style: AppTextStyles.button.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ),
@@ -675,11 +752,15 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           child: Icon(LucideIcons.timer, size: 40, color: c.warning),
         ),
         const SizedBox(height: 16),
-        Text('二维码已过期',
-            style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary)),
+        Text(
+          '二维码已过期',
+          style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
+        ),
         const SizedBox(height: 8),
-        Text('请刷新获取新的支付二维码',
-            style: AppTextStyles.body.copyWith(color: c.textMuted)),
+        Text(
+          '请刷新获取新的支付二维码',
+          style: AppTextStyles.body.copyWith(color: c.textMuted),
+        ),
         const SizedBox(height: 32),
         Row(
           children: [
@@ -709,17 +790,26 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2))
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(LucideIcons.refreshCw,
-                                    size: 15, color: Colors.white),
+                                const Icon(
+                                  LucideIcons.refreshCw,
+                                  size: 15,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 6),
-                                Text('刷新二维码',
-                                    style: AppTextStyles.button.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700)),
+                                Text(
+                                  '刷新二维码',
+                                  style: AppTextStyles.button.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                               ],
                             ),
                     ),
@@ -739,9 +829,12 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
-                  child: Text('取消',
-                      style:
-                          AppTextStyles.button.copyWith(color: c.textSecondary)),
+                  child: Text(
+                    '取消',
+                    style: AppTextStyles.button.copyWith(
+                      color: c.textSecondary,
+                    ),
+                  ),
                 ),
               ),
             ),

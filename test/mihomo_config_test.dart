@@ -20,6 +20,11 @@ void main() {
     expect(MihomoConfig.appDataDir(), contains('Litchi'));
   });
 
+  test('uses a kernel-allocated utun device name on macOS', () {
+    expect(MihomoConfig.tunDeviceNameForPlatform(isMacOS: true), 'utun');
+    expect(MihomoConfig.tunDeviceNameForPlatform(isMacOS: false), 'Litchi');
+  });
+
   test(
     'buildFullConfig produces a config for a parseable node in global mode',
     () {

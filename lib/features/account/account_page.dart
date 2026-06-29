@@ -1009,8 +1009,8 @@ class _ProfileMenuSection extends StatelessWidget {
         for (final item in hubDestinations)
           _MenuTile(
             icon: item.icon,
-            title: item.label,
-            subtitle: item.subtitle,
+            title: item.labelFor(context),
+            subtitle: item.subtitleFor(context),
             onTap: () => ctrl.goToProfileChildPage(item.page),
           ),
       ],

@@ -38,9 +38,7 @@ class InviteController extends ChangeNotifier {
       _link = _linkForCode(_code, _link);
     }
     if (_codes.isEmpty && _code.isNotEmpty) {
-      _codes = [
-        InviteCodeModel(code: _code, link: _linkForCode(_code, _link)),
-      ];
+      _codes = [InviteCodeModel(code: _code, link: _linkForCode(_code, _link))];
     } else if (_codes.isNotEmpty) {
       _codes = _codes
           .map(

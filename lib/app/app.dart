@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../shared/theme/app_theme.dart';
 import 'app_controller.dart';
 import 'app_shell.dart';
@@ -42,6 +43,9 @@ class _LitchiAppState extends State<LitchiApp> {
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
             themeMode: _controller.themeMode,
+            locale: _controller.locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             // Transparent so the rounded window shell shows through at the
             // clipped corners (§ rounded-window spec).
             //

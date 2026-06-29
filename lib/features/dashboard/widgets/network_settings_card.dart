@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_controller.dart';
 import '../../../app/core_platform_support.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
@@ -38,7 +39,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
             final c = AppColors.of(ctx);
             return AppAdaptiveModal(
               compact: compact,
-              title: '需要管理员权限',
+              title: context.l10n.administratorRequired,
               maxWidth: 360,
               showCloseButton: false,
               child: Column(
@@ -46,8 +47,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TUN 虚拟网卡模式需要管理员权限才能创建虚拟网络接口。\n\n'
-                    '请右键点击客户端图标，选择「以管理员身份运行」后重新启动，再切换至此模式。',
+                    context.l10n.tunAdminHintWindows,
                     style: AppTextStyles.body.copyWith(
                       color: c.textSecondary,
                       height: 1.6,
@@ -69,7 +69,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
                         ),
                       ),
                       child: Text(
-                        '知道了',
+                        context.l10n.gotIt,
                         style: AppTextStyles.button.copyWith(
                           color: c.primary,
                           fontWeight: FontWeight.w700,
@@ -88,7 +88,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
 
     ctrl.setNetworkMode(mode);
     if (ctrl.coreRunning && mounted) {
-      AppToast.show(context, '网络模式已切换，重新连接后生效');
+      AppToast.show(context, context.l10n.networkModeReconnect);
     }
   }
 
@@ -111,7 +111,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '网络设置',
+            context.l10n.networkSettings,
             style: AppTextStyles.sectionTitle.copyWith(
               color: c.textPrimary,
               fontSize: 15,
@@ -119,7 +119,9 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
           ),
           const SizedBox(height: 10),
           Text(
-            mode == NetworkMode.system ? '使用系统代理接管网络请求' : '通过虚拟网卡接管全部流量',
+            mode == NetworkMode.system
+                ? context.l10n.systemProxyDescription
+                : context.l10n.tunDescription,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.body.copyWith(color: c.textMuted),
@@ -139,7 +141,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
                 if (supportsSystem)
                   Expanded(
                     child: _NetworkModeOption(
-                      label: '系统代理',
+                      label: context.l10n.systemProxy,
                       selected: mode == NetworkMode.system,
                       loading: false,
                       onTap: () => _setMode(NetworkMode.system),
@@ -148,7 +150,7 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
                 if (supportsTun)
                   Expanded(
                     child: _NetworkModeOption(
-                      label: '虚拟网卡',
+                      label: context.l10n.tunMode,
                       selected: mode == NetworkMode.tun,
                       loading: _checkingAdmin,
                       onTap: () => _setMode(NetworkMode.tun),

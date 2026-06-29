@@ -14,22 +14,21 @@ import 'credentials_storage.dart';
 /// unreachable without leaving proxy credentials in plain text on disk.
 abstract final class NodeCacheService {
   static String get _baseDirPath {
-    final base = Platform.environment['LOCALAPPDATA'] ??
+    final base =
+        Platform.environment['LOCALAPPDATA'] ??
         Platform.environment['APPDATA'] ??
         Directory.systemTemp.path;
     return '$base\\Litchi';
   }
 
   static String get _uiCachePath => '$_baseDirPath\\nodes_cache.json';
-  static String get _secureCachePath => '$_baseDirPath\\secure_nodes_cache.dpapi';
+  static String get _secureCachePath =>
+      '$_baseDirPath\\secure_nodes_cache.dpapi';
   static String get _legacyCachePath => '$_baseDirPath\\nodes_cache.json';
 
   static Future<void> save(List<NodeModel> nodes) async {
     final realNodes = nodes.where((n) => !n.isAuto).toList();
-    await Future.wait([
-      _saveUiCache(realNodes),
-      _saveSecureCache(realNodes),
-    ]);
+    await Future.wait([_saveUiCache(realNodes), _saveSecureCache(realNodes)]);
   }
 
   /// Loads secure cache first because it preserves rawUri and can be used for
@@ -131,17 +130,17 @@ abstract final class NodeCacheService {
   }
 
   static Map<String, dynamic> _toPublicJson(NodeModel n) => {
-        'id': n.id,
-        'name': n.name,
-        'flag': n.flag,
-        'code': n.code,
-        'englishName': n.englishName,
-        'tags': n.tags,
-        'favorite': n.favorite,
-        'region': n.region.name,
-        'server': '',
-        'port': 0,
-        'isAuto': n.isAuto,
-        'rawUri': '',
-      };
+    'id': n.id,
+    'name': n.name,
+    'flag': n.flag,
+    'code': n.code,
+    'englishName': n.englishName,
+    'tags': n.tags,
+    'favorite': n.favorite,
+    'region': n.region.name,
+    'server': '',
+    'port': 0,
+    'isAuto': n.isAuto,
+    'rawUri': '',
+  };
 }
