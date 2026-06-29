@@ -76,9 +76,16 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   bool _trayActive = false;
   bool? _compactWindow;
   double? _authHeight;
+  AuthScreen? _visibleAuthScreen;
+  AuthScreen? _pendingAuthScreen;
+  bool _authTransitioning = false;
+  double _authOpacity = 1;
+
+  static const Duration _authFadeOutDuration = Duration(milliseconds: 110);
+  static const Duration _authFadeInDuration = Duration(milliseconds: 150);
 
   static double _authHeightFor(AuthScreen screen) => switch (screen) {
-    AuthScreen.login => 540,
+    AuthScreen.login => 560,
     AuthScreen.register => 720,
     AuthScreen.changePassword => 620,
     AuthScreen.forgotPassword => 700,
@@ -102,11 +109,15 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     super.didChangeDependencies();
     final ctrl = AppScope.of(context);
     _ctrl = ctrl;
+    _visibleAuthScreen ??= ctrl.authScreen;
 
-    // Run after the frame so the new shell (narrow auth vs wide main) is laid
-    // out before we resize — otherwise macOS won't shrink past the old layout.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_syncWindowSize(ctrl));
+      if (!mounted) return;
+      if (!ctrl.isAuthenticated && _visibleAuthScreen != ctrl.authScreen) {
+        _queueAuthTransition(ctrl.authScreen);
+      } else {
+        unawaited(_syncWindowSize(ctrl));
+      }
     });
 
     final shouldHaveTray = _isDesktop && ctrl.isAuthenticated;
@@ -153,7 +164,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       return;
     }
 
-    final height = _authHeightFor(ctrl.authScreen);
+    final height = _authHeightFor(_visibleAuthScreen ?? ctrl.authScreen);
     if (_compactWindow == true && _authHeight == height) return;
     // Centre only when first entering the auth flow; switching between auth
     // screens just changes the height in place so a window the user has moved
@@ -165,6 +176,70 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       Size(_authWindowWidth, height),
       center: firstCompact,
     );
+  }
+
+  void _queueAuthTransition(AuthScreen target) {
+    _pendingAuthScreen = target;
+    if (_authTransitioning) return;
+    unawaited(_runAuthTransitions());
+  }
+
+  Future<void> _runAuthTransitions() async {
+    _authTransitioning = true;
+    try {
+      while (mounted && _pendingAuthScreen != null) {
+        var target = _pendingAuthScreen!;
+        _pendingAuthScreen = null;
+        if (target == _visibleAuthScreen) continue;
+
+        setState(() => _authOpacity = 0);
+        await Future<void>.delayed(_authFadeOutDuration);
+        if (!mounted || _ctrl?.isAuthenticated == true) return;
+
+        target = _pendingAuthScreen ?? _ctrl?.authScreen ?? target;
+        _pendingAuthScreen = null;
+        await _resizeForAuthScreen(target);
+        if (!mounted || _ctrl?.isAuthenticated == true) return;
+
+        final latestTarget = _pendingAuthScreen ?? _ctrl?.authScreen;
+        if (latestTarget != null && latestTarget != target) {
+          target = latestTarget;
+          _pendingAuthScreen = null;
+          await _resizeForAuthScreen(target);
+          if (!mounted || _ctrl?.isAuthenticated == true) return;
+        }
+
+        setState(() => _visibleAuthScreen = target);
+        await WidgetsBinding.instance.endOfFrame;
+        if (!mounted) return;
+        setState(() => _authOpacity = 1);
+        await Future<void>.delayed(_authFadeInDuration);
+
+        final latest = _ctrl?.authScreen;
+        if (latest != null && latest != _visibleAuthScreen) {
+          _pendingAuthScreen = latest;
+        }
+      }
+    } finally {
+      _authTransitioning = false;
+      if (mounted && _authOpacity != 1) {
+        setState(() => _authOpacity = 1);
+      }
+      if (mounted &&
+          _pendingAuthScreen != null &&
+          _ctrl?.isAuthenticated != true) {
+        _queueAuthTransition(_pendingAuthScreen!);
+      }
+    }
+  }
+
+  Future<void> _resizeForAuthScreen(AuthScreen screen) async {
+    if (!_isDesktop || await windowManager.isMaximized()) return;
+    final height = _authHeightFor(screen);
+    if (_compactWindow == true && _authHeight == height) return;
+    _compactWindow = true;
+    _authHeight = height;
+    await _applyWindowSize(Size(_authWindowWidth, height), center: false);
   }
 
   /// Applies a programmatic window size. macOS ignores a plain setSize while the
@@ -376,7 +451,10 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
         ),
         child: controller.isAuthenticated
             ? const _MainShell()
-            : const _AuthShell(),
+            : _AuthShell(
+                screen: _visibleAuthScreen ?? controller.authScreen,
+                opacity: _authOpacity,
+              ),
       ),
     );
   }
@@ -414,7 +492,12 @@ class _CompactBody extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-            child: _pageFor(ctrl.page),
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(
+                context,
+              ).copyWith(scrollbars: false),
+              child: _pageFor(ctrl.page),
+            ),
           ),
         ),
         _MobileBottomNav(bottomPadding: bottom),
@@ -427,15 +510,9 @@ class _CompactBody extends StatelessWidget {
         children: [
           if (_usesCustomChrome) const WindowControlsBar(),
           if (Platform.isMacOS) const _MacTitleBarSpacer(),
-          Expanded(
-            // Phones need the top safe-area inset; on desktop the chrome above
-            // already accounts for it, so no extra top inset there.
-            child: SafeArea(
-              top: !_isDesktop,
-              bottom: false,
-              child: content,
-            ),
-          ),
+          if (!_isDesktop)
+            const SafeArea(bottom: false, child: MobileTitleBar()),
+          Expanded(child: SafeArea(top: false, bottom: false, child: content)),
         ],
       ),
     );
@@ -444,31 +521,28 @@ class _CompactBody extends StatelessWidget {
 
 /// Logged-out layout: full-width controls strip + centered auth panel.
 class _AuthShell extends StatelessWidget {
-  const _AuthShell();
+  const _AuthShell({required this.screen, required this.opacity});
+
+  final AuthScreen screen;
+  final double opacity;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return Column(
       children: [
-        Positioned.fill(
-          child: AuthFlow(screen: AppScope.of(context).authScreen),
+        if (_usesCustomChrome) const WindowControlsBar(),
+        if (Platform.isMacOS) const _MacTitleBarSpacer(),
+        if (!_isDesktop) const SafeArea(bottom: false, child: MobileTitleBar()),
+        Expanded(
+          child: AnimatedOpacity(
+            opacity: opacity,
+            duration: opacity == 0
+                ? _AppShellState._authFadeOutDuration
+                : _AppShellState._authFadeInDuration,
+            curve: Curves.easeOutCubic,
+            child: AuthFlow(screen: screen),
+          ),
         ),
-        if (_usesCustomChrome)
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: WindowControlsBar(),
-          ),
-        // macOS: a small draggable strip up top; the native traffic lights sit
-        // in its left corner.
-        if (Platform.isMacOS)
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: _MacTitleBarSpacer(),
-          ),
       ],
     );
   }
@@ -522,10 +596,12 @@ class _MobileBottomNav extends StatelessWidget {
               Expanded(
                 child: _MobileNavButton(
                   item: item,
-                  selected: compactSelectedPrimary(
-                    ctrl.page,
-                    ctrl.mobileProfileChildPage,
-                  ) == item.page,
+                  selected:
+                      compactSelectedPrimary(
+                        ctrl.page,
+                        ctrl.mobileProfileChildPage,
+                      ) ==
+                      item.page,
                   onTap: () => ctrl.goToPage(item.page),
                 ),
               ),

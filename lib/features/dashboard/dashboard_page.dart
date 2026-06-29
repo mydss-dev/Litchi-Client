@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
+import '../../app/core_error_message_service.dart';
 import '../../config/mobile_layout.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
@@ -13,6 +16,7 @@ import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/utils/formatters.dart';
+import '../../shared/utils/latency_status.dart';
 import '../../config/app_config.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/brand_logo.dart';
@@ -86,7 +90,11 @@ class _DashboardPageState extends State<DashboardPage> {
     _syncTimer();
 
     if (mounted && error != null) {
-      AppToast.show(context, error, type: AppToastType.error);
+      AppToast.show(
+        context,
+        CoreErrorMessageService.userFacing(error),
+        type: AppToastType.error,
+      );
     } else if (mounted && ctrl.coreRunning) {
       AppToast.show(context, '连接成功', type: AppToastType.success);
     }
@@ -106,7 +114,11 @@ class _DashboardPageState extends State<DashboardPage> {
     if (!mounted) return;
 
     if (error != null && error.isNotEmpty) {
-      AppToast.show(context, error, type: AppToastType.error);
+      AppToast.show(
+        context,
+        CoreErrorMessageService.userFacing(error),
+        type: AppToastType.error,
+      );
     } else if (ctrl.coreRunning) {
       AppToast.show(context, '连接成功', type: AppToastType.success);
     }
@@ -136,14 +148,11 @@ class _DashboardPageState extends State<DashboardPage> {
           const PageHeader(title: '首页', subtitle: '查看当前连接、节点与流量状态'),
           const SizedBox(height: 12),
           ExpiryBanner(user: ctrl.user),
-          if (ctrl.dataLoadError != null) ...[
-            ErrorBanner(
-              message: ctrl.dataLoadError!,
-              onRetry: _onRefreshData,
-              warning: true,
-            ),
-            const SizedBox(height: 12),
-          ],
+          _DashboardAlerts(
+            ctrl: ctrl,
+            onConnectionRetry: _onToggle,
+            onDataRetry: _onRefreshData,
+          ),
           ValueListenableBuilder<int>(
             valueListenable: _tick,
             builder: (context, _, _) => ConnectionHeroCard(
@@ -152,11 +161,6 @@ class _DashboardPageState extends State<DashboardPage> {
               onToggle: _onToggle,
             ),
           ),
-          if (status == ConnectionStatus.error &&
-              ctrl.coreError.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ErrorBanner(message: ctrl.coreError, onRetry: _onToggle),
-          ],
           const SizedBox(height: 12),
           const _InfoMiniCardsRow(),
           const SizedBox(height: 12),
@@ -169,7 +173,6 @@ class _DashboardPageState extends State<DashboardPage> {
   // ── Compact (bottom-nav) layout ────────────────────────────────────────
   Widget _buildCompact(BuildContext context) {
     final ctrl = AppScope.of(context);
-    final c = AppColors.of(context);
 
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
@@ -177,30 +180,15 @@ class _DashboardPageState extends State<DashboardPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          _MobileHeader(connected: ctrl.coreRunning),
-          const SizedBox(height: 12),
-          if (ctrl.updateInfo != null) ...[
-            UpdateBanner(
-              info: ctrl.updateInfo!,
-              onDismiss: ctrl.dismissUpdate,
-            ),
+          if (Platform.isMacOS) ...[
+            _MobileHeader(connected: ctrl.coreRunning),
             const SizedBox(height: 12),
           ],
-          if (ctrl.hasUnreadNotice) ...[
-            NoticeBanner(
-              notice: ctrl.notices.first,
-              onDismiss: ctrl.markNoticeRead,
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (ctrl.dataLoadError != null) ...[
-            _InlineNotice(
-              icon: LucideIcons.circleAlert,
-              text: ctrl.dataLoadError!,
-              color: c.warning,
-            ),
-            const SizedBox(height: 12),
-          ],
+          _DashboardAlerts(
+            ctrl: ctrl,
+            onConnectionRetry: _toggleConnection,
+            onDataRetry: _handlePullRefresh,
+          ),
           ValueListenableBuilder<int>(
             valueListenable: _tick,
             builder: (context, _, _) => _MobileConnectionCard(
@@ -214,15 +202,6 @@ class _DashboardPageState extends State<DashboardPage> {
               onNodesTap: () => showMobileNodePicker(context),
             ),
           ),
-          if (ctrl.connectionStatus == ConnectionStatus.error &&
-              ctrl.coreError.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _InlineNotice(
-              icon: LucideIcons.circleX,
-              text: ctrl.coreError,
-              color: c.danger,
-            ),
-          ],
           const SizedBox(height: 10),
           ModeStrip(
             selected: ctrl.proxyMode,
@@ -231,11 +210,7 @@ class _DashboardPageState extends State<DashboardPage> {
               final error = await ctrl.setProxyMode(mode);
               if (!context.mounted) return;
               if (error != null) {
-                AppToast.show(
-                  context,
-                  error,
-                  type: AppToastType.error,
-                );
+                AppToast.show(context, error, type: AppToastType.error);
               } else {
                 AppToast.show(
                   context,
@@ -246,10 +221,7 @@ class _DashboardPageState extends State<DashboardPage> {
             },
           ),
           const SizedBox(height: 10),
-          _HomeCardGrid(
-            ctrl: ctrl,
-            formatTrafficGb: formatTrafficGb,
-          ),
+          _HomeCardGrid(ctrl: ctrl, formatTrafficGb: formatTrafficGb),
         ],
       ),
     );
@@ -257,6 +229,57 @@ class _DashboardPageState extends State<DashboardPage> {
 }
 
 // ── Wide-layout widgets (original desktop DashboardPage, verbatim) ────────
+
+class _DashboardAlerts extends StatelessWidget {
+  const _DashboardAlerts({
+    required this.ctrl,
+    required this.onConnectionRetry,
+    required this.onDataRetry,
+  });
+
+  final AppController ctrl;
+  final VoidCallback onConnectionRetry;
+  final VoidCallback onDataRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final alerts = <Widget>[
+      if (ctrl.connectionStatus == ConnectionStatus.error &&
+          ctrl.coreError.isNotEmpty)
+        ErrorBanner(
+          message: CoreErrorMessageService.userFacing(ctrl.coreError),
+          onRetry: onConnectionRetry,
+        ),
+      if (ctrl.dataLoadError != null)
+        ErrorBanner(
+          message: ctrl.dataLoadError!,
+          onRetry: onDataRetry,
+          warning: true,
+        ),
+      if (ctrl.updateInfo != null)
+        UpdateBanner(info: ctrl.updateInfo!, onDismiss: ctrl.dismissUpdate),
+      if (ctrl.hasUnreadNotice)
+        NoticeBanner(
+          notice: ctrl.notices.first,
+          onDismiss: ctrl.markNoticeRead,
+        ),
+    ];
+
+    if (alerts.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        children: [
+          for (var index = 0; index < alerts.length; index++) ...[
+            if (index > 0) const SizedBox(height: 8),
+            alerts[index],
+          ],
+        ],
+      ),
+    );
+  }
+}
 
 class _InfoMiniCardsRow extends StatelessWidget {
   const _InfoMiniCardsRow();
@@ -399,14 +422,7 @@ class _MobileConnectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            c.cardBg,
-            c.primarySoft,
-          ],
-        ),
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(color: c.softBorder),
         boxShadow: AppShadows.card(c),
@@ -506,13 +522,9 @@ class _LatencyBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final (label, color) = switch (latency) {
-      > 0 && < 150 => ('$latency ms', c.success),
-      > 0 && < 9999 => ('$latency ms', c.warning),
-      >= 9999 => ('超时', c.danger),
-      _ => ('', c.textMuted),
-    };
-    if (label.isEmpty) return const SizedBox.shrink();
+    final label = LatencyStatus.label(latency);
+    final color = LatencyStatus.color(latency, c);
+    if (latency <= 0) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -533,10 +545,7 @@ class _LatencyBadge extends StatelessWidget {
 }
 
 class _HomeCardGrid extends StatelessWidget {
-  const _HomeCardGrid({
-    required this.ctrl,
-    required this.formatTrafficGb,
-  });
+  const _HomeCardGrid({required this.ctrl, required this.formatTrafficGb});
 
   final AppController ctrl;
   final String Function(double) formatTrafficGb;
@@ -591,7 +600,9 @@ class _HomeConfigCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final icon = homeCardIcon(config.icon, config.type);
-    final title = config.title.isEmpty ? homeCardTitle(config.type) : config.title;
+    final title = config.title.isEmpty
+        ? homeCardTitle(config.type)
+        : config.title;
 
     if (config.type == 'downSpeed') {
       return ValueListenableBuilder<int>(
@@ -662,7 +673,7 @@ class _MetricCard extends StatelessWidget {
       height: 78,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: c.cardBg,
+        gradient: c.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.softBorder),
       ),
@@ -697,43 +708,6 @@ class _MetricCard extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InlineNotice extends StatelessWidget {
-  const _InlineNotice({
-    required this.icon,
-    required this.text,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: AppTextStyles.caption.copyWith(color: c.textPrimary),
             ),
           ),
         ],
@@ -967,10 +941,16 @@ class _NodeAvatar extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: c.softBorder),
       ),
-      child: Text(
-        node.flag.isEmpty ? '·' : node.flag,
-        style: const TextStyle(fontSize: 22),
-      ),
+      child: node.code.isNotEmpty
+          ? CountryFlag.fromCountryCode(
+              node.code,
+              theme: const ImageTheme(
+                width: 28,
+                height: 20,
+                shape: RoundedRectangle(3),
+              ),
+            )
+          : Icon(LucideIcons.globe2, color: c.iconMuted, size: 20),
     );
   }
 }
