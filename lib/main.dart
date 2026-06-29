@@ -146,10 +146,10 @@ Future<void> _boot() async {
         .any((e) => e.startsWith('https://'));
     if (!hasApiBase && !RemoteConfigService.isConfigured) {
       SecureLogger.debug(
-        '开发配置缺失：请设置 API_BASE 或 REMOTE_CONFIG_URL。'
+        '开发配置缺失：请设置 API_BASE 或完整远程配置。'
         '示例：--dart-define=API_BASE=https://your-panel.com；'
-        '如使用远程配置，还需要 --dart-define=REMOTE_CONFIG_PUBLIC_KEY=xxx。'
-        '否则客户端会是连不上的空壳。',
+        '如使用远程配置，需要同时设置 REMOTE_CONFIG_URL 和 '
+        'REMOTE_CONFIG_PUBLIC_KEY。否则客户端会是连不上的空壳。',
       );
     }
     return true;
