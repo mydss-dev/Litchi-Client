@@ -72,6 +72,8 @@ app.*.map.json
 /android/app/upload-keystore.jks
 /android/app/*.jks
 /android/signing-secrets.txt
+/android/app/src/main/assets/*.mmdb
+/android/app/src/main/assets/*.dat
 /local_test_config.json
 **/Flutter/ephemeral/
 **/ios/Flutter/Generated.xcconfig
