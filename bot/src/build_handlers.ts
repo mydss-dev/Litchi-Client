@@ -1,6 +1,6 @@
 import type { Telegraf } from 'telegraf';
 
-import { env } from './config.js';
+import { env, isAdmin } from './config.js';
 import {
   countRecentBuilds,
   createBuild,
@@ -141,16 +141,18 @@ async function startBuildFromInput(
   }
 
   // ── Rate limit ───────────────────────────────────────────────────────────
-  const { maxBuilds, windowHours } = env.buildRateLimit;
-  const recent = countRecentBuilds(profile.app_id, windowHours);
-  if (recent >= maxBuilds) {
-    const resetHint = windowHours >= 24
-      ? '明天再试'
-      : `${windowHours}小时后再试`;
-    await ctx.reply(
-      `过去${windowHours}小时内已构建 ${recent} 次（上限 ${maxBuilds} 次），${resetHint}。`,
-    );
-    return;
+  if (!isAdmin(userId)) {
+    const { maxBuilds, windowHours } = env.buildRateLimit;
+    const recent = countRecentBuilds(profile.app_id, windowHours);
+    if (recent >= maxBuilds) {
+      const resetHint = windowHours >= 24
+        ? '明天再试'
+        : `${windowHours}小时后再试`;
+      await ctx.reply(
+        `过去${windowHours}小时内已构建 ${recent} 次（上限 ${maxBuilds} 次），${resetHint}。`,
+      );
+      return;
+    }
   }
 
   // Clean up any previous group for this chat.
