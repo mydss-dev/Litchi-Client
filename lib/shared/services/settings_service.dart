@@ -8,7 +8,6 @@ class SettingsSnapshot {
     required this.proxyPort,
     required this.autoStart,
     required this.autoUpdate,
-    required this.devMode,
     required this.language,
     required this.proxyMode,
     required this.networkMode,
@@ -22,7 +21,6 @@ class SettingsSnapshot {
   final int proxyPort;
   final bool autoStart;
   final bool autoUpdate;
-  final bool devMode;
   final String language;
   final ProxyMode proxyMode;
   final NetworkMode networkMode;
@@ -45,11 +43,11 @@ abstract final class SettingsService {
     final p = await SharedPreferences.getInstance();
     await p.remove('allow_insecure_nodes');
     await p.remove('close_connections_on_switch');
+    await p.remove('dev_mode');
     return SettingsSnapshot(
       proxyPort: p.getInt('proxy_port') ?? 7890,
       autoStart: p.getBool('auto_start') ?? false,
       autoUpdate: p.getBool('auto_update') ?? true,
-      devMode: p.getBool('dev_mode') ?? false,
       language: p.getString('language') ?? '简体中文',
       proxyMode: ProxyMode.fromStorageKey(p.getString('proxy_mode')),
       networkMode: NetworkMode.fromStorageKey(p.getString('network_mode')),
@@ -76,9 +74,6 @@ abstract final class SettingsService {
 
   static void setAutoUpdate(bool v) =>
       SharedPreferences.getInstance().then((p) => p.setBool('auto_update', v));
-
-  static void setDevMode(bool v) =>
-      SharedPreferences.getInstance().then((p) => p.setBool('dev_mode', v));
 
   static void setLanguage(String v) =>
       SharedPreferences.getInstance().then((p) => p.setString('language', v));

@@ -5,8 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../config/app_config.dart';
+import '../../app/core_platform_support.dart';
 import '../../app/nav_destinations.dart';
+import '../../config/app_config.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -44,6 +45,29 @@ class _SettingsPageState extends State<SettingsPage> {
     AppToast.show(context, '网络设置已修复', type: AppToastType.success);
   }
 
+  Future<void> _setNetworkMode(NetworkMode mode) async {
+    final ctrl = AppScope.of(context);
+    if (mode == ctrl.networkMode) return;
+    if (mode == NetworkMode.tun) {
+      final isAdmin = await AppController.checkAdminPrivileges();
+      if (!mounted) return;
+      if (!isAdmin) {
+        AppToast.show(
+          context,
+          'TUN 模式需要以管理员身份运行客户端',
+          type: AppToastType.warning,
+        );
+        return;
+      }
+    }
+
+    final wasRunning = ctrl.coreRunning;
+    ctrl.setNetworkMode(mode);
+    if (wasRunning && mounted) {
+      AppToast.show(context, '正在切换连接方式');
+    }
+  }
+
   void _showDiagnosticInfo() {
     final ctrl = AppScope.of(context);
     final logs = ctrl.coreLogs
@@ -59,6 +83,7 @@ class _SettingsPageState extends State<SettingsPage> {
       '${AppConfig.appName} ${AppConfig.currentVersion}',
       '平台：${Platform.operatingSystem}',
       '连接状态：$status',
+      '本地代理端口：${ctrl.activeProxyPort}',
       '记录时间：${DateTime.now().toLocal()}',
       if (ctrl.coreError.isNotEmpty)
         '最近错误：${SecureLogRedactor.redact(ctrl.coreError)}',
@@ -91,6 +116,9 @@ class _SettingsPageState extends State<SettingsPage> {
   List<Widget> _bodyChildren(BuildContext context) {
     final ctrl = AppScope.of(context);
     final supportsSystemProxy = Platform.isWindows || Platform.isMacOS;
+    final networkModes = NetworkMode.values
+        .where(CorePlatformSupport.supportsNetworkMode)
+        .toList();
 
     return [
       if (!AppConfig.isSecureServer) ...[
@@ -152,6 +180,22 @@ class _SettingsPageState extends State<SettingsPage> {
               onChanged: ctrl.setProxyMode,
             ),
           ),
+          if (networkModes.length > 1)
+            _SettingRow(
+              label: '连接方式',
+              subtitle: ctrl.networkMode == NetworkMode.tun
+                  ? '虚拟网卡接管全部流量'
+                  : '使用系统代理接管网络请求',
+              trailing: AppSelect<NetworkMode>(
+                value: ctrl.networkMode,
+                items: networkModes,
+                labelOf: (v) => switch (v) {
+                  NetworkMode.system => '系统代理',
+                  NetworkMode.tun => 'TUN 模式',
+                },
+                onChanged: _setNetworkMode,
+              ),
+            ),
           _SettingRow(
             label: 'DNS',
             trailing: AppSelect<String>(
@@ -164,30 +208,24 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
       const SizedBox(height: 16),
-      if (supportsSystemProxy) ...[
-        _SettingsGroup(
-          title: '安全设置',
-          children: [
+      _SettingsGroup(
+        title: '高级设置',
+        children: [
+          if (supportsSystemProxy)
             _SettingRow(
               label: '连接中断保护',
-              subtitle: '连接意外中断时阻止网络直接访问，避免隐私泄漏',
+              subtitle: ctrl.networkMode == NetworkMode.tun
+                  ? 'TUN 核心异常退出时阻止非隧道流量'
+                  : '系统代理核心异常退出时阻止网络直连',
               trailing: AppSwitch(
                 value: ctrl.killSwitch,
                 onChanged: ctrl.setKillSwitch,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 16),
-      ],
-      _AdvancedSettingsGroup(
-        enabled: ctrl.devMode,
-        onChanged: ctrl.setDevMode,
-        children: [
           if (supportsSystemProxy)
             _SettingRow(
               label: '修复网络设置',
-              subtitle: '连接异常或断开后无法上网时尝试修复',
+              subtitle: '断开后无法上网时，清理或重新应用系统代理',
               trailing: _DiagnosticButton(label: '修复', onTap: _onFixProxy),
             ),
           _SettingRow(
@@ -287,87 +325,6 @@ class _SettingsGroup extends StatelessWidget {
             if (i != children.length - 1)
               Divider(color: c.softBorder, height: 1),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _AdvancedSettingsGroup extends StatelessWidget {
-  const _AdvancedSettingsGroup({
-    required this.enabled,
-    required this.onChanged,
-    required this.children,
-  });
-
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppCard(
-      radius: AppRadius.lg,
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '高级设置',
-                        style: AppTextStyles.sectionTitle.copyWith(
-                          color: c.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '开启后显示网络修复与诊断功能',
-                        style: AppTextStyles.caption.copyWith(
-                          color: c.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                AppSwitch(value: enabled, onChanged: onChanged),
-              ],
-            ),
-          ),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: enabled
-                ? Column(
-                    children: [
-                      Divider(color: c.softBorder, height: 1),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 6, 20, 16),
-                        child: Column(
-                          children: [
-                            for (
-                              var index = 0;
-                              index < children.length;
-                              index++
-                            ) ...[
-                              children[index],
-                              if (index != children.length - 1)
-                                Divider(color: c.softBorder, height: 1),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  )
-                : const SizedBox.shrink(),
-          ),
         ],
       ),
     );

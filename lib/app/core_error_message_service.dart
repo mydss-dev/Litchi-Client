@@ -4,6 +4,8 @@ abstract final class CoreErrorMessageService {
   static const restartClient = '连接失败，请重启客户端后重试';
   static const missingCore = '连接失败，请检查 mihomo 核心是否存在';
   static const permissionDenied = '权限不足，请以管理员身份运行客户端';
+  static const tunInterfaceUnavailable = 'TUN 虚拟网卡启动失败，请以管理员身份运行或重试';
+  static const tunKillSwitchUnavailable = 'TUN 中断保护启动失败，已停止连接以避免流量泄漏';
   static const androidStartFailed = 'Android 核心启动失败';
   static const unexpectedCoreExit = '核心异常退出，连接已断开，请重新连接';
   static const invalidNodeConfig = '当前节点配置无效，请切换节点后重试';

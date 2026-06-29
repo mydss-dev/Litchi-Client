@@ -51,6 +51,28 @@ void main() {
     expect(request.buildConfig(), isNotNull);
   });
 
+  test('can build a session config with an automatically selected port', () {
+    const selected = NodeModel(
+      id: 'dynamic-port',
+      name: 'dynamic-port',
+      flag: '',
+      latency: 0,
+      rawUri: 'trojan://password@example.com:443#dynamic-port',
+    );
+    const request = CoreConnectionRequest(
+      nodes: [selected],
+      currentNode: selected,
+      proxyMode: ProxyMode.rule,
+      dnsMode: '系统 DNS',
+      proxyPort: 7890,
+    );
+
+    final config = request.buildConfig(overrideProxyPort: 49152);
+
+    expect(config?['mixed-port'], 49152);
+    expect(request.proxyPort, 7890);
+  });
+
   test(
     'falls back to first valid node when current node is not connectable',
     () {

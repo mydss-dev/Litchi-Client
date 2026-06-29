@@ -60,6 +60,7 @@ class CoreConnectionRequest {
 
   Map<String, dynamic>? buildConfig({
     NetworkMode? overrideNetworkMode,
+    int? overrideProxyPort,
     int apiPort = MihomoConfig.defaultApiPort,
   }) {
     final availableNodes = validNodes;
@@ -69,7 +70,7 @@ class CoreConnectionRequest {
     return MihomoConfig.buildFullConfig(
       availableNodes,
       selectedTag: tag,
-      port: proxyPort,
+      port: overrideProxyPort ?? proxyPort,
       apiPort: apiPort,
       proxyMode: proxyMode,
       dnsMode: dnsMode,

@@ -6,6 +6,12 @@ import 'package:flutter/foundation.dart';
 abstract final class SecureLogRedactor {
   static const int maxLogTextLength = 800;
 
+  static final RegExp _dialEndpoint = RegExp(
+    r'((?:dial(?:ing)?(?:\s+(?:tcp|udp))?|connect(?:ing)?\s+to)\s+)'
+    r'(?:\[[0-9a-f:]+\]|(?:\d{1,3}\.){3}\d{1,3}|[a-z0-9.-]+):\d{1,5}',
+    caseSensitive: false,
+  );
+
   static final List<RegExp> _patterns = [
     RegExp(r'Bearer\s+[A-Za-z0-9._~+/=-]+', caseSensitive: false),
     RegExp(r'(?<=Authorization:\s*)[^\s,;]+', caseSensitive: false),
@@ -14,7 +20,9 @@ abstract final class SecureLogRedactor {
       caseSensitive: false,
     ),
     RegExp(r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}', caseSensitive: false),
-    RegExp(r'''(vmess|vless|trojan|ss|hysteria2|hy2|tuic|juicity)://[^\s"'<>]+'''),
+    RegExp(
+      r'''(vmess|vless|trojan|ss|hysteria2|hy2|tuic|juicity)://[^\s"'<>]+''',
+    ),
     RegExp(
       r'''(https?://[^\s"'<>]*?(token|sub|subscribe|subscription|auth|secret)[^\s"'<>]*)''',
       caseSensitive: false,
@@ -31,6 +39,10 @@ abstract final class SecureLogRedactor {
 
   static String redact(Object? value) {
     var text = value?.toString() ?? '';
+    text = text.replaceAllMapped(
+      _dialEndpoint,
+      (match) => '${match.group(1)}[ENDPOINT]',
+    );
     for (final pattern in _patterns) {
       text = text.replaceAllMapped(pattern, (match) {
         final prefix = match.groupCount >= 2 ? match.group(1) : null;

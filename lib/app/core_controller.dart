@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -6,10 +7,13 @@ import 'package:flutter/foundation.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/android_core_manager.dart';
 import '../shared/services/core_manager.dart';
+import '../shared/services/local_port_allocator.dart';
 import '../shared/services/proxy_setter.dart';
 import '../shared/services/mihomo_api_client.dart';
 import '../shared/services/mihomo_config.dart';
 import '../shared/services/secure_logger.dart';
+import '../shared/services/tun_interface_verifier.dart';
+import '../shared/services/windows_tun_kill_switch.dart';
 import 'core_connection_request.dart';
 import 'core_error_message_service.dart';
 
@@ -32,6 +36,8 @@ class CoreController extends ChangeNotifier {
   ConnectionStatus _status = ConnectionStatus.disconnected;
   String _coreError = '';
   int _apiPort = MihomoConfig.defaultApiPort;
+  int _activeProxyPort = 7890;
+  NetworkMode _activeNetworkMode = NetworkMode.system;
 
   bool _disposed = false;
   bool _connectionToggleInFlight = false;
@@ -40,7 +46,7 @@ class CoreController extends ChangeNotifier {
 
   Future<Map<String, int>>? _groupTestInFlight;
 
-  bool killSwitchEnabled = false;
+  bool _killSwitchEnabled = false;
 
   final ValueNotifier<int> upBpsNotifier = ValueNotifier(0);
   final ValueNotifier<int> downBpsNotifier = ValueNotifier(0);
@@ -64,6 +70,7 @@ class CoreController extends ChangeNotifier {
   bool get coreProcessRunning =>
       Platform.isAndroid ? _androidCore.isRunning : _core.isRunning;
   String get coreError => _coreError;
+  int get activeProxyPort => _activeProxyPort;
   int get upBps => upBpsNotifier.value;
   int get downBps => downBpsNotifier.value;
   Stream<String> get logStream => _core.logStream;
@@ -71,6 +78,24 @@ class CoreController extends ChangeNotifier {
   Duration get connectedDuration => _connectedAt != null
       ? DateTime.now().difference(_connectedAt!)
       : Duration.zero;
+
+  Future<bool> setKillSwitchEnabled(bool enabled) async {
+    _killSwitchEnabled = enabled;
+    if (!Platform.isWindows || _activeNetworkMode != NetworkMode.tun) {
+      return true;
+    }
+    if (!enabled) {
+      await WindowsTunKillSwitch.release();
+      return true;
+    }
+    if (_status != ConnectionStatus.connected) return true;
+    final engaged = await WindowsTunKillSwitch.engage();
+    if (!engaged) {
+      _coreError = CoreErrorMessageService.tunKillSwitchUnavailable;
+      notifyListeners();
+    }
+    return engaged;
+  }
 
   Future<void> init() async {
     if (Platform.isAndroid) {
@@ -115,6 +140,7 @@ class CoreController extends ChangeNotifier {
     unawaited(_sub?.cancel());
     unawaited(_logSub?.cancel());
     _core.dispose();
+    unawaited(WindowsTunKillSwitch.release());
     upBpsNotifier.dispose();
     downBpsNotifier.dispose();
     super.dispose();
@@ -128,6 +154,7 @@ class CoreController extends ChangeNotifier {
       return;
     }
     if (!Platform.isWindows && !Platform.isMacOS) return;
+    await WindowsTunKillSwitch.release();
     _stopTrafficMonitor();
     await _androidStatusSub?.cancel();
     await _androidCore.dispose();
@@ -175,8 +202,12 @@ class CoreController extends ChangeNotifier {
     if (req.validNodes.isEmpty) return;
 
     _apiPort = await _allocateApiPort();
+    _activeProxyPort = await LocalPortAllocator.choose(
+      preferred: req.proxyPort,
+    );
     final config = req.buildConfig(
       overrideNetworkMode: NetworkMode.system,
+      overrideProxyPort: _activeProxyPort,
       apiPort: _apiPort,
     );
     if (config == null) return;
@@ -298,6 +329,7 @@ class CoreController extends ChangeNotifier {
       if (req.networkMode == NetworkMode.tun) {
         await _core.stop();
         MihomoApiClient.resetClient();
+        await WindowsTunKillSwitch.release();
       }
       _connectedAt = null;
       _coreError = '';
@@ -312,6 +344,10 @@ class CoreController extends ChangeNotifier {
       return _coreError;
     }
 
+    if (req.networkMode == NetworkMode.system) {
+      await WindowsTunKillSwitch.release();
+    }
+
     if (_core.isRunning && req.networkMode == NetworkMode.system) {
       _status = ConnectionStatus.connecting;
       _coreError = '';
@@ -322,7 +358,7 @@ class CoreController extends ChangeNotifier {
           apiPort: _apiPort,
         );
         if (!switched) throw StateError('switch proxy failed');
-        await ProxySetter.enable(port: req.proxyPort);
+        await ProxySetter.enable(port: _activeProxyPort);
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
         _startTrafficMonitor();
@@ -335,16 +371,28 @@ class CoreController extends ChangeNotifier {
       return _coreError.isNotEmpty ? _coreError : null;
     }
 
+    if (_core.isRunning) await _core.stop();
+    if (req.networkMode == NetworkMode.tun) await ProxySetter.disable();
+
     _apiPort = await _allocateApiPort();
-    final config = req.buildConfig(apiPort: _apiPort);
+    _activeProxyPort = await LocalPortAllocator.choose(
+      preferred: req.proxyPort,
+    );
+    if (_activeProxyPort != req.proxyPort) {
+      SecureLogger.debug(
+        '首选代理端口 ${req.proxyPort} 已被占用，'
+        '本次自动切换到 $_activeProxyPort',
+      );
+    }
+    final config = req.buildConfig(
+      overrideProxyPort: _activeProxyPort,
+      apiPort: _apiPort,
+    );
     if (config == null) {
       _coreError = CoreErrorMessageService.configBuildFailed;
       notifyListeners();
       return _coreError;
     }
-
-    if (_core.isRunning) await _core.stop();
-    if (req.networkMode == NetworkMode.tun) await ProxySetter.disable();
 
     _status = ConnectionStatus.connecting;
     _coreError = '';
@@ -356,9 +404,31 @@ class CoreController extends ChangeNotifier {
 
       if (_core.isRunning) {
         await _applyInitialSelection(req);
-        if (req.networkMode == NetworkMode.system) {
-          await ProxySetter.enable(port: req.proxyPort);
+        if (req.networkMode == NetworkMode.tun) {
+          final tunReady = await TunInterfaceVerifier.waitUntilReady();
+          if (!tunReady) {
+            _coreError = CoreErrorMessageService.tunInterfaceUnavailable;
+            await _core.stop();
+            MihomoApiClient.resetClient();
+            await WindowsTunKillSwitch.release();
+            _status = ConnectionStatus.error;
+            return _coreError;
+          }
+          if (_killSwitchEnabled) {
+            final protected = await WindowsTunKillSwitch.engage();
+            if (!protected) {
+              _coreError = CoreErrorMessageService.tunKillSwitchUnavailable;
+              await _core.stop();
+              MihomoApiClient.resetClient();
+              _status = ConnectionStatus.error;
+              return _coreError;
+            }
+          }
         }
+        if (req.networkMode == NetworkMode.system) {
+          await ProxySetter.enable(port: _activeProxyPort);
+        }
+        _activeNetworkMode = req.networkMode;
         _connectedAt = DateTime.now();
         _coreError = '';
         _status = ConnectionStatus.connected;
@@ -477,6 +547,7 @@ class CoreController extends ChangeNotifier {
       return;
     }
     _stopTrafficMonitor();
+    await WindowsTunKillSwitch.release();
     // Mark this as an intentional stop before the core exits, so the stopped
     // event is not misread as an unexpected core death by _onCoreStateChanged.
     if (_status == ConnectionStatus.connected ||
@@ -568,17 +639,29 @@ class CoreController extends ChangeNotifier {
     if (!Platform.isWindows && !Platform.isMacOS) return '当前平台暂未接入核心';
     final exe = CoreManager.findExecutable();
     if (exe == null) return '未找到 mihomo 核心';
+    Process? process;
     try {
-      final r = await Process.run(exe, ['version']).timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => ProcessResult(0, 1, '', ''),
-      );
-      final out = '${r.stdout}'.trim();
+      process = await Process.start(exe, [
+        'version',
+      ], mode: ProcessStartMode.normal);
+      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
+      await process.exitCode.timeout(const Duration(seconds: 3));
+      final out = (await stdoutFuture).trim();
+      await stderrFuture;
       final m = RegExp(
         r'(?:Mihomo Meta|mihomo) ([\d.]+\S*)',
         caseSensitive: false,
       ).firstMatch(out);
       return m?.group(1) ?? out.split('\n').first.trim();
+    } on TimeoutException {
+      process?.kill();
+      try {
+        await process?.exitCode.timeout(const Duration(seconds: 1));
+      } catch (_) {
+        // Best-effort process reap; the initial kill normally completes.
+      }
+      return '获取超时';
     } catch (e) {
       SecureLogger.debug('detectCoreVersion: version parse failed', e);
       return '获取失败';
@@ -717,9 +800,15 @@ class CoreController extends ChangeNotifier {
         _coreError = CoreErrorMessageService.unexpectedCoreExit;
       }
       _status = ConnectionStatus.error;
-      if (killSwitchEnabled && wasConnected) {
-        unawaited(ProxySetter.engageKillSwitch());
+      if (_killSwitchEnabled && wasConnected) {
+        if (_activeNetworkMode == NetworkMode.tun && Platform.isWindows) {
+          // The WFP session was engaged while TUN was healthy. Keep it alive:
+          // once the adapter disappears, only loopback and mihomo stay allowed.
+        } else {
+          unawaited(ProxySetter.engageKillSwitch());
+        }
       } else {
+        unawaited(WindowsTunKillSwitch.release());
         unawaited(ProxySetter.disable());
       }
       notifyListeners();

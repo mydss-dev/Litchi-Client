@@ -39,6 +39,27 @@ void main() {
     expect(redacted, contains('"password":[REDACTED]'));
   });
 
+  test('redacts dial endpoints without hiding unrelated addresses', () {
+    final redacted = SecureLogRedactor.redact(
+      'dial tcp 1.2.3.4:443: timeout; local gateway 192.168.1.1',
+    );
+
+    expect(redacted, contains('dial tcp [ENDPOINT]'));
+    expect(redacted, isNot(contains('1.2.3.4:443')));
+    expect(redacted, contains('192.168.1.1'));
+  });
+
+  test('redacts IPv6 and domain dial endpoints', () {
+    expect(
+      SecureLogRedactor.redact('connecting to [2001:db8::1]:443'),
+      'connecting to [ENDPOINT]',
+    );
+    expect(
+      SecureLogRedactor.redact('dial udp node.example.com:53'),
+      'dial udp [ENDPOINT]',
+    );
+  });
+
   test('collapses and bounds oversized multiline log content', () {
     final redacted = SecureLogRedactor.redact('<html>\n${'x' * 1000}\n</html>');
 

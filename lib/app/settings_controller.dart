@@ -16,7 +16,6 @@ class SettingsController extends ChangeNotifier {
   String _lastNodeId = '';
   bool _autoStart = false;
   bool _autoUpdate = true;
-  bool _devMode = false;
   String _language = '简体中文';
   ProxyMode _proxyMode = ProxyMode.rule;
   NetworkMode _networkMode = NetworkMode.system;
@@ -29,7 +28,6 @@ class SettingsController extends ChangeNotifier {
   String get lastNodeId => _lastNodeId;
   bool get autoStart => _autoStart;
   bool get autoUpdate => _autoUpdate;
-  bool get devMode => _devMode;
   String get language => _language;
   ProxyMode get proxyMode => _proxyMode;
   NetworkMode get networkMode => _networkMode;
@@ -46,7 +44,6 @@ class SettingsController extends ChangeNotifier {
     _proxyPort = s.proxyPort;
     _autoStart = s.autoStart;
     _autoUpdate = s.autoUpdate;
-    _devMode = s.devMode;
     _language = s.language;
     _proxyMode = s.proxyMode;
     _networkMode = CorePlatformSupport.normalizeNetworkMode(s.networkMode);
@@ -112,13 +109,6 @@ class SettingsController extends ChangeNotifier {
     if (_autoUpdate == v) return;
     _autoUpdate = v;
     SettingsService.setAutoUpdate(v);
-    notifyListeners();
-  }
-
-  void setDevMode(bool v) {
-    if (_devMode == v) return;
-    _devMode = v;
-    SettingsService.setDevMode(v);
     notifyListeners();
   }
 

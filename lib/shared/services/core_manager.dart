@@ -348,13 +348,15 @@ class CoreManager {
           '-Command',
           "Get-CimInstance Win32_Process -Filter \"Name='mihomo.exe'\" | "
               "Where-Object { \$_.ExecutablePath -ieq '$escaped' } | "
-              "ForEach-Object { Stop-Process -Id \$_.ProcessId -Force "
-              "-ErrorAction SilentlyContinue }",
+              'ForEach-Object { Stop-Process -Id \$_.ProcessId -Force '
+              '-ErrorAction SilentlyContinue }',
         ]).timeout(const Duration(seconds: 5));
       } else {
         // Matches processes whose command line contains our exe path.
-        await Process.run('pkill', ['-f', exePath])
-            .timeout(const Duration(seconds: 5));
+        await Process.run('pkill', [
+          '-f',
+          exePath,
+        ]).timeout(const Duration(seconds: 5));
       }
       // Let the OS release the listening ports the killed cores held.
       await Future.delayed(const Duration(milliseconds: 400));

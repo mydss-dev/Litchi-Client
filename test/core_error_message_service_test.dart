@@ -8,6 +8,8 @@ void main() {
     expect(CoreErrorMessageService.restartClient, contains('连接失败'));
     expect(CoreErrorMessageService.missingCore, contains('mihomo'));
     expect(CoreErrorMessageService.permissionDenied, contains('管理员'));
+    expect(CoreErrorMessageService.tunInterfaceUnavailable, contains('TUN'));
+    expect(CoreErrorMessageService.tunKillSwitchUnavailable, contains('中断保护'));
     expect(CoreErrorMessageService.androidStartFailed, contains('Android'));
     expect(CoreErrorMessageService.unexpectedCoreExit, contains('异常退出'));
   });

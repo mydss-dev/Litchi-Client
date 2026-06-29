@@ -1,8 +1,41 @@
 #include "flutter_window.h"
 
+#include <flutter/method_channel.h>
+#include <flutter/standard_method_codec.h>
+
 #include <optional>
+#include <string>
 
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+std::wstring Utf8ToWide(const std::string& value) {
+  if (value.empty()) {
+    return {};
+  }
+  const int size = MultiByteToWideChar(CP_UTF8, 0, value.c_str(),
+                                       static_cast<int>(value.size()), nullptr,
+                                       0);
+  if (size <= 0) {
+    return {};
+  }
+  std::wstring result(size, L'\0');
+  MultiByteToWideChar(CP_UTF8, 0, value.c_str(),
+                      static_cast<int>(value.size()), result.data(), size);
+  return result;
+}
+
+const std::string* ReadStringArgument(const flutter::EncodableMap& arguments,
+                                      const char* key) {
+  const auto iterator = arguments.find(flutter::EncodableValue(key));
+  if (iterator == arguments.end()) {
+    return nullptr;
+  }
+  return std::get_if<std::string>(&iterator->second);
+}
+
+}  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -25,6 +58,55 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  auto wfp_channel =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "litchi/windows_wfp",
+          &flutter::StandardMethodCodec::GetInstance());
+  wfp_channel->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<
+                 flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() == "release") {
+          wfp_kill_switch_.Disengage();
+          result->Success(flutter::EncodableValue(true));
+          return;
+        }
+        if (call.method_name() == "isEngaged") {
+          result->Success(
+              flutter::EncodableValue(wfp_kill_switch_.IsEngaged()));
+          return;
+        }
+        if (call.method_name() != "engage") {
+          result->NotImplemented();
+          return;
+        }
+
+        const auto* arguments =
+            std::get_if<flutter::EncodableMap>(call.arguments());
+        if (arguments == nullptr) {
+          result->Error("invalid_arguments", "Expected an argument map");
+          return;
+        }
+        const std::string* mihomo_path =
+            ReadStringArgument(*arguments, "mihomoPath");
+        const std::string* interface_alias =
+            ReadStringArgument(*arguments, "interfaceAlias");
+        if (mihomo_path == nullptr || interface_alias == nullptr) {
+          result->Error("invalid_arguments",
+                        "mihomoPath and interfaceAlias are required");
+          return;
+        }
+
+        std::string error;
+        const bool engaged =
+            wfp_kill_switch_.Engage(Utf8ToWide(*mihomo_path),
+                                    Utf8ToWide(*interface_alias), &error);
+        if (!engaged) {
+          result->Error("wfp_failed", error);
+          return;
+        }
+        result->Success(flutter::EncodableValue(true));
+      });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {

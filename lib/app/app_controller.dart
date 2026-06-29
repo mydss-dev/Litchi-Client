@@ -20,6 +20,7 @@ import '../shared/services/update_service.dart';
 import 'account_controller.dart';
 import 'core_connection_request.dart';
 import 'core_controller.dart';
+import 'core_error_message_service.dart';
 import 'invite_controller.dart';
 import 'node_controller.dart';
 import 'notices_controller.dart';
@@ -98,19 +99,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get isDark => _settings.isDark;
   bool get autoStart => _settings.autoStart;
   bool get autoUpdate => _settings.autoUpdate;
-  bool get devMode => _settings.devMode;
   String get language => _settings.language;
   ProxyMode get proxyMode => _settings.proxyMode;
   NetworkMode get networkMode => _settings.networkMode;
   String get dnsMode => _settings.dnsMode;
   int get proxyPort => _settings.proxyPort;
+  int get activeProxyPort =>
+      _core.coreProcessRunning ? _core.activeProxyPort : _settings.proxyPort;
   bool get killSwitch => _settings.killSwitch;
 
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
   void setAutoStart(bool v) => _settings.setAutoStart(v);
   void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
-  void setDevMode(bool v) => _settings.setDevMode(v);
   void setLanguage(String v) => _settings.setLanguage(v);
 
   Future<void> setProxyPort(int port) async {
@@ -121,7 +122,16 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   void setKillSwitch(bool v) {
     _settings.setKillSwitch(v);
-    _core.killSwitchEnabled = _settings.killSwitch;
+    unawaited(_applyKillSwitchSetting(v));
+  }
+
+  Future<void> _applyKillSwitchSetting(bool enabled) async {
+    final applied = await _core.setKillSwitchEnabled(enabled);
+    if (!applied && enabled) {
+      _settings.setKillSwitch(false);
+      _startupMessage = CoreErrorMessageService.tunKillSwitchUnavailable;
+      notifyListeners();
+    }
   }
 
   Future<String?> setProxyMode(ProxyMode v) async {
@@ -179,7 +189,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> fixProxy() =>
-      _core.fixProxy(_settings.proxyPort, networkMode: _settings.networkMode);
+      _core.fixProxy(activeProxyPort, networkMode: _settings.networkMode);
   static Future<String> getCoreVersion() => CoreController.getCoreVersion();
 
   bool get isAuthenticated => _isAuthenticated;
@@ -251,7 +261,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     await _settings.load();
     await _notices.loadLastSeen();
     await _core.init();
-    _core.killSwitchEnabled = _settings.killSwitch;
+    await _core.setKillSwitchEnabled(_settings.killSwitch);
 
     _apiClient.configure(AppConfig.effectiveApiBases);
     _apiClient.onSessionExpired = logout;
