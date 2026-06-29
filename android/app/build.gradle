@@ -158,20 +158,20 @@ String geoSha256(File f) {
 }
 
 tasks.register("ensureGeoAssets") {
-    // mihomo needs country.mmdb (GEOIP rules) and geosite.dat (GEOSITE rules).
-    // Download them into assets at build time so a fresh install never has to
-    // fetch geo data at startup. Mirrors ensureMihomoLibraries: runs for every
-    // build, local or CI, so nobody downloads geo by hand. Each file lands in a
-    // .part temp, is SHA-256 verified, then atomically promoted — an interrupted
-    // download is never reused.
+    // Geo databases are VENDORED under runtime/geo (track with Git LFS). They are
+    // copied into assets and SHA-256 verified at build time — no network, so
+    // builds are reproducible and immune to the upstream rolling "latest" tag.
+    // A hash mismatch usually means Git LFS was not pulled (a small pointer file
+    // instead of the real binary) — run `git lfs pull`.
     def assetsDir = file("src/main/assets")
+    def vendorDir = file("../../runtime/geo")
     // geo file name -> env var holding its expected SHA-256 (blank = print only)
     def geoFiles = [
         "country.mmdb": "GEOIP_MMDB_SHA256",
         "geosite.dat" : "GEOSITE_DAT_SHA256",
     ]
 
-    // Single source of truth: tool/core_versions.env (GEO_VERSION + hashes).
+    // Expected hashes come from tool/core_versions.env (single source of truth).
     def env = [:]
     def envFile = file("../../tool/core_versions.env")
     if (envFile.exists()) {
@@ -180,65 +180,59 @@ tasks.register("ensureGeoAssets") {
             if (m.find()) { env[m.group(1)] = m.group(2).trim() }
         }
     }
-    def geoVersion = env.get("GEO_VERSION", "latest")
 
-    inputs.property("geoVersion", geoVersion)
+    inputs.files(geoFiles.keySet().collect { new File(vendorDir, it) })
     inputs.property("geoHashes", geoFiles.values().collect { env.get(it, "") })
     outputs.files(geoFiles.keySet().collect { new File(assetsDir, it) })
 
     doLast {
         assetsDir.mkdirs()
-        def base = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/${geoVersion}"
-        def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
-
         geoFiles.each { name, shaVar ->
-            def dest = new File(assetsDir, name)
-            def expected = (env.get(shaVar, "") ?: "").toLowerCase()
-
-            // A present file is always complete (atomic promotion below). When a
-            // hash is pinned, re-verify it and refetch on mismatch.
-            if (dest.exists() && dest.length() > 0) {
-                if (expected.isEmpty() || geoSha256(dest) == expected) {
-                    logger.lifecycle("geo asset OK: ${name}")
-                    return
-                }
-                logger.lifecycle("geo asset ${name} hash mismatch — refetching")
+            def src = new File(vendorDir, name)
+            if (!src.exists() || src.length() == 0L) {
+                throw new GradleException(
+                    "Missing vendored geo file: ${src} -- add it under runtime/geo and run: git lfs pull")
             }
 
-            def url = "${base}/${name}"
+            def expected = (env.get(shaVar, "") ?: "").toLowerCase()
+            def actual = geoSha256(src)
+            if (expected.isEmpty()) {
+                logger.lifecycle("  ${name} sha256 = ${actual}  (paste into core_versions.env to lock)")
+            } else if (actual != expected) {
+                throw new GradleException(
+                    "${name} sha256 mismatch: actual=${actual} expected=${expected} " +
+                    "(stale vendored file, or Git LFS not pulled)")
+            } else {
+                logger.lifecycle("  ${name} sha256 verified")
+            }
+
+            // Copy into a .part temp then promote atomically, so a present asset
+            // is always a complete, verified file.
+            def dest = new File(assetsDir, name)
             def tmp = new File(assetsDir, "${name}.part")
             tmp.delete()
-            logger.lifecycle("Downloading ${name} (${geoVersion})")
             try {
-                if (isWindows) {
-                    providers.exec {
-                        commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                            "-Command", "Invoke-WebRequest -Uri '${url}' -OutFile '${tmp.absolutePath}'"
-                    }.result.get().assertNormalExitValue()
-                } else {
-                    providers.exec {
-                        commandLine "curl", "-fsSL", url, "-o", tmp.absolutePath
-                    }.result.get().assertNormalExitValue()
-                }
-
-                if (!tmp.exists() || tmp.length() == 0L) {
-                    throw new GradleException("Empty download: ${url}")
-                }
-                def actual = geoSha256(tmp)
-                if (expected.isEmpty()) {
-                    logger.lifecycle("  ${name} sha256 = ${actual}  (paste into core_versions.env to lock)")
-                } else if (actual != expected) {
-                    throw new GradleException("${name} sha256 mismatch: actual=${actual} expected=${expected}")
-                } else {
-                    logger.lifecycle("  ${name} sha256 verified")
-                }
-
-                // Verified — promote atomically (same dir → atomic rename).
-                java.nio.file.Files.move(
+                java.nio.file.Files.copy(
+                    src.toPath(),
                     tmp.toPath(),
-                    dest.toPath(),
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING,
                 )
+                def srcPath = tmp.toPath()
+                def destPath = dest.toPath()
+                try {
+                    java.nio.file.Files.move(
+                        srcPath,
+                        destPath,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                    )
+                } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                    java.nio.file.Files.move(
+                        srcPath,
+                        destPath,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                    )
+                }
             } finally {
                 tmp.delete()
             }

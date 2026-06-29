@@ -53,37 +53,31 @@ Expand-Archive wintun.zip -DestinationPath wintun-tmp -Force
 Copy-Item "wintun-tmp\wintun\bin\amd64\wintun.dll" "$ReleaseDir\wintun.dll"
 Write-Host "wintun.dll ready"
 
-# ── geo databases ────────────────────────────────────────────────────
-# mihomo needs these to evaluate GEOIP/GEOSITE rules (the panel's Clash
-# config ends with `GEOIP,CN,DIRECT`). Ship them next to mihomo.exe so a
-# fresh install never has to download them at first launch (which fails
-# behind a firewall and leaves the core unable to start).
-$geoBase = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/$($env:GEO_VERSION)"
+# ── geo databases (vendored) ─────────────────────────────────────────
+# mihomo needs these to evaluate GEOIP/GEOSITE rules (the panel's Clash config
+# ends with GEOIP,CN,DIRECT). They are committed under runtime/geo (Git LFS);
+# copy them next to mihomo.exe and SHA-256 verify. No download: reproducible
+# and immune to the upstream rolling "latest" tag.
+$geoSrc = Join-Path (Split-Path -Parent $scriptDir) "runtime\geo"
 
-function Fetch-Geo($fileName, $expectedSha) {
-    $tmp = "$ReleaseDir\$fileName.part"
-    $final = "$ReleaseDir\$fileName"
-    Write-Host "Downloading $fileName ($($env:GEO_VERSION))"
-    Invoke-WebRequest -Uri "$geoBase/$fileName" -OutFile $tmp
-    if (-not (Test-Path $tmp) -or (Get-Item $tmp).Length -eq 0) {
-        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
-        throw "empty download: $fileName"
+function Stage-Geo($fileName, $expectedSha) {
+    $src = Join-Path $geoSrc $fileName
+    if (-not (Test-Path $src) -or (Get-Item $src).Length -eq 0) {
+        throw "Missing vendored geo file: $src (add it under runtime/geo and run: git lfs pull)"
     }
-    $actual = (Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower()
+    $actual = (Get-FileHash $src -Algorithm SHA256).Hash.ToLower()
     if ([string]::IsNullOrWhiteSpace($expectedSha)) {
         Write-Host "  $fileName sha256 = $actual  (paste into core_versions.env to lock)"
     } elseif ($actual -ne $expectedSha.ToLower()) {
-        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
-        throw "$fileName sha256 mismatch: actual=$actual expected=$expectedSha"
+        throw "$fileName sha256 mismatch: actual=$actual expected=$expectedSha (stale file or LFS not pulled)"
     } else {
         Write-Host "  $fileName sha256 verified"
     }
-    # Verified — promote atomically (same dir → rename; partial .part never used).
-    Move-Item -Path $tmp -Destination $final -Force
+    Copy-Item $src "$ReleaseDir\$fileName" -Force
 }
 
-Fetch-Geo "country.mmdb" $env:GEOIP_MMDB_SHA256
-Fetch-Geo "geosite.dat"  $env:GEOSITE_DAT_SHA256
+Stage-Geo "country.mmdb" $env:GEOIP_MMDB_SHA256
+Stage-Geo "geosite.dat"  $env:GEOSITE_DAT_SHA256
 Write-Host "geo databases ready"
 
 # Cleanup

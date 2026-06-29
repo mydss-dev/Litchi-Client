@@ -4,3 +4,7 @@
 **/generated_plugin_registrant.* text eol=lf
 **/generated_plugins.cmake       text eol=lf
 **/flutter_export_environment.sh text eol=lf
+
+# Vendored mihomo geo databases are binary and stored via Git LFS.
+runtime/geo/*.mmdb filter=lfs diff=lfs merge=lfs -text
+runtime/geo/*.dat filter=lfs diff=lfs merge=lfs -text
