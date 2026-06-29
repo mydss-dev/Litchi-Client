@@ -37,6 +37,12 @@ Write-Host "    API:     $apiBase"
 Write-Host "    Version: $version"
 Write-Host ""
 
+$env:LOGO_URL = $logoUrl
+dart run tool/prepare_brand_assets.dart
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+dart run flutter_launcher_icons
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 switch ($Platform) {
   "windows" {
     flutter build windows --release $flags

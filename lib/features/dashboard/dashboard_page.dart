@@ -67,12 +67,13 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _syncTimer() {
     final ctrl = AppScope.of(context);
-    if (ctrl.coreRunning && _tickTimer == null) {
+    final shouldRun = ctrl.page == AppPage.dashboard && ctrl.coreRunning;
+    if (shouldRun && _tickTimer == null) {
       _tickTimer = Timer.periodic(
         const Duration(seconds: 1),
         (_) => _tick.value++,
       );
-    } else if (!ctrl.coreRunning && _tickTimer != null) {
+    } else if (!shouldRun && _tickTimer != null) {
       _tickTimer!.cancel();
       _tickTimer = null;
     }
@@ -187,6 +188,7 @@ class _DashboardPageState extends State<DashboardPage> {
             builder: (context, _, _) => _MobileConnectionCard(
               status: ctrl.connectionStatus,
               node: ctrl.currentNode,
+              loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
               proxyMode: ctrl.proxyMode,
               automatic: ctrl.autoSelected,
               elapsedLabel: formatDuration(ctrl.connectedDuration),
@@ -311,6 +313,7 @@ class _MobileConnectionCard extends StatelessWidget {
   const _MobileConnectionCard({
     required this.status,
     required this.node,
+    required this.loading,
     required this.proxyMode,
     required this.automatic,
     required this.elapsedLabel,
@@ -321,6 +324,7 @@ class _MobileConnectionCard extends StatelessWidget {
 
   final ConnectionStatus status;
   final NodeModel node;
+  final bool loading;
   final ProxyMode proxyMode;
   final bool automatic;
   final String elapsedLabel;
@@ -422,7 +426,11 @@ class _MobileConnectionCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            node.name.isEmpty ? '请选择节点' : node.name,
+                            node.name.isEmpty
+                                ? loading
+                                      ? '正在同步节点...'
+                                      : '请选择节点'
+                                : node.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.bodyStrong.copyWith(
@@ -431,14 +439,24 @@ class _MobileConnectionCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            '节点模式：${automatic ? '自动选择' : '手动选择'}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption.copyWith(
-                              color: c.textMuted,
+                          if (loading && node.name.isEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                minHeight: 3,
+                                color: c.primary,
+                                backgroundColor: c.softBorder,
+                              ),
+                            )
+                          else
+                            Text(
+                              '节点模式：${automatic ? '自动选择' : '手动选择'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption.copyWith(
+                                color: c.textMuted,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -586,9 +604,22 @@ class _HomeConfigCard extends StatelessWidget {
       label: title,
       value: _homeCardValue(config.type, ctrl, formatTrafficGb),
       color: c.primary,
+      loading:
+          ctrl.isInitialLoading &&
+          !ctrl.hasAccountSummary &&
+          _isAccountMetric(config.type),
     );
   }
 }
+
+bool _isAccountMetric(String type) => switch (type) {
+  'currentPlan' ||
+  'remainTraffic' ||
+  'resetDay' ||
+  'deviceLimit' ||
+  'expireDate' => true,
+  _ => false,
+};
 
 String _homeCardValue(
   String type,
@@ -612,12 +643,14 @@ class _MetricCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.loading = false,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final Color color;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -652,14 +685,27 @@ class _MetricCard extends StatelessWidget {
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: c.textPrimary,
+                if (loading)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: SizedBox(
+                      width: 72,
+                      height: 6,
+                      child: LinearProgressIndicator(
+                        color: color,
+                        backgroundColor: c.softBorder,
+                      ),
+                    ),
+                  )
+                else
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: c.textPrimary,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

@@ -478,14 +478,37 @@ class _MainShell extends StatelessWidget {
 /// Compact (bottom-nav) layout.
 /// On desktop it keeps the window chrome (custom controls / macOS drag strip)
 /// so the window is still movable and closable.
-class _CompactBody extends StatelessWidget {
+class _CompactBody extends StatefulWidget {
   const _CompactBody();
+
+  @override
+  State<_CompactBody> createState() => _CompactBodyState();
+}
+
+class _CompactBodyState extends State<_CompactBody> {
+  late final List<AppPage> _primaryPages = compactPrimaryDestinations
+      .map((item) => item.page)
+      .toList(growable: false);
+
+  late final List<Widget> _primaryWidgets = _primaryPages
+      .map(
+        (page) => KeyedSubtree(
+          key: PageStorageKey<AppPage>(page),
+          child: _pageFor(page),
+        ),
+      )
+      .toList(growable: false);
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final bottom = MediaQuery.paddingOf(context).bottom;
+
+    final primaryIndex = _primaryPages.indexOf(ctrl.page);
+    final page = primaryIndex >= 0
+        ? IndexedStack(index: primaryIndex, children: _primaryWidgets)
+        : _pageFor(ctrl.page);
 
     final content = Column(
       children: [
@@ -496,7 +519,7 @@ class _CompactBody extends StatelessWidget {
               behavior: ScrollConfiguration.of(
                 context,
               ).copyWith(scrollbars: false),
-              child: _pageFor(ctrl.page),
+              child: page,
             ),
           ),
         ),

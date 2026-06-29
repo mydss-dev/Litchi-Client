@@ -50,6 +50,10 @@ migrate_working_dir/
 /core/mihomo/litchi-mihomo*
 /coverage/
 
+# White-label images are generated from LOGO_URL before desktop/mobile builds.
+/assets/images/*
+!/assets/images/.gitkeep
+
 # Symbolication related
 app.*.symbols
 

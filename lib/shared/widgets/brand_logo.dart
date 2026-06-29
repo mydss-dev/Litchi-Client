@@ -1,57 +1,30 @@
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
+import '../services/brand_asset_cache.dart';
 
-/// Renders the brand mark. Priority order:
-/// 1. Remote image URL in AppConfig.logoUrl (http/https)
-/// 2. Local PNG at assets/images/logo.png
-/// 3. Gradient square with AppConfig.logoUrl as a letter
+/// Renders the session-stable cloud brand mark.
+///
+/// A bundled tenant logo is intentionally never used as a fallback: white-label
+/// builds must not expose one customer's branding while another customer's
+/// cloud asset is loading.
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.size = 30, this.radius});
 
   final double size;
   final double? radius;
 
-  static const String _pngAsset = 'assets/images/logo.png';
-
-  bool get _isUrl {
-    final v = AppConfig.logoUrl;
-    return v.startsWith('http://') || v.startsWith('https://');
-  }
-
   @override
   Widget build(BuildContext context) {
     final r = radius ?? size / 2;
-
-    // Priority 1: remote URL in config
-    if (_isUrl) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(r),
-        child: Image.network(
-          AppConfig.logoUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _localPng(r),
-          loadingBuilder: (_, child, progress) =>
-              progress == null ? child : _localPng(r),
-        ),
-      );
-    }
-
-    // Priority 2: local PNG (logo.png)
-    return _localPng(r);
-  }
-
-  Widget _localPng(double r) {
+    final file = BrandAssetCache.logoFile;
     return ClipRRect(
       borderRadius: BorderRadius.circular(r),
-      child: Image.asset(
-        _pngAsset,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _letterFallback(r),
+      child: SizedBox.square(
+        dimension: size,
+        child: file == null
+            ? _letterFallback(r)
+            : Image.file(file, fit: BoxFit.cover, gaplessPlayback: true),
       ),
     );
   }
@@ -66,7 +39,7 @@ class BrandLogo extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(
-        AppConfig.logoUrl,
+        AppConfig.appName.isEmpty ? 'L' : AppConfig.appName[0].toUpperCase(),
         style: TextStyle(
           color: Colors.white,
           fontSize: size * 0.47,

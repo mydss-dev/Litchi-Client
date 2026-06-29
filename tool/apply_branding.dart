@@ -48,7 +48,7 @@ Usage:
 
 The tool reads existing remote config fields:
   app_name     -> Android label + Windows product metadata
-  logo_url  -> if http(s), download as assets/images/logo.png and app_icon.png
+  logo_url  -> if http(s), download launcher-icon assets; runtime logo stays cloud-only
 
 Examples:
   dart run tool/apply_branding.dart config.js
@@ -154,12 +154,17 @@ Future<bool> _downloadLogoIfUrl(String logo) async {
     if (bytes.isEmpty) return false;
     final dir = Directory('assets/images');
     await dir.create(recursive: true);
-    await File('${dir.path}/logo.png').writeAsBytes(bytes);
-    await File('${dir.path}/app_icon.png').writeAsBytes(bytes);
-    await File('${dir.path}/app_icon_foreground.png').writeAsBytes(bytes);
-    stdout.writeln(
-      'Downloaded logo to assets/images/logo.png, app_icon.png and app_icon_foreground.png.',
-    );
+    final source = File('${dir.path}/app_icon.png');
+    await source.writeAsBytes(bytes);
+    final result = await Process.run(Platform.resolvedExecutable, [
+      'run',
+      'tool/prepare_brand_assets.dart',
+      source.path,
+    ]);
+    if (result.exitCode != 0) {
+      throw StateError('Brand asset generation failed: ${result.stderr}');
+    }
+    stdout.writeln('Generated launcher and tray icons from the cloud logo.');
     return true;
   } catch (e) {
     stderr.writeln('Failed to download logo image: $e');

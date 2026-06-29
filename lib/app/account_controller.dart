@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/panel_api.dart';
 
@@ -21,13 +22,23 @@ class AccountController extends ChangeNotifier {
 
   UserModel _user = _emptyUser;
   TrafficModel _traffic = _emptyTraffic;
+  RemoteUser? _remoteUser;
 
   UserModel get user => _user;
   TrafficModel get traffic => _traffic;
+  RemoteUser? get remoteUser => _remoteUser;
 
   /// Applies user / traffic from a snapshot (null fields skipped).
-  void applySnapshot({UserModel? user, TrafficModel? traffic}) {
+  void applySnapshot({
+    RemoteUser? remoteUser,
+    UserModel? user,
+    TrafficModel? traffic,
+  }) {
     var changed = false;
+    if (remoteUser != null) {
+      _remoteUser = remoteUser;
+      changed = true;
+    }
     if (user != null) {
       _user = user;
       changed = true;
@@ -45,9 +56,15 @@ class AccountController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setRemoteUser(RemoteUser user) {
+    _remoteUser = user;
+    notifyListeners();
+  }
+
   void reset() {
     _user = _emptyUser;
     _traffic = _emptyTraffic;
+    _remoteUser = null;
     notifyListeners();
   }
 

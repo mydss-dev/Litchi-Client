@@ -47,6 +47,7 @@ dependencies:
   dio: ^5.7.0
   # Persistent storage for auth token + server URL
   shared_preferences: ^2.3.3
+  path_provider: ^2.1.5
   # Platform secure storage for tokens and remembered credentials
   flutter_secure_storage: ^10.3.1
   # FFI for native Win32 DPAPI (CryptProtectData) — no PowerShell shell-out

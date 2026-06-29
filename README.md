@@ -37,9 +37,14 @@ executable (`chmod +x`).
 
 ## Getting Started
 
-```bash
+```powershell
 # Install dependencies
 flutter pub get
+
+# Generate OS-level icons from the tenant's cloud logo
+$env:LOGO_URL="https://your-oss.example/logo.png"
+dart run tool/prepare_brand_assets.dart
+dart run flutter_launcher_icons
 
 # Run in debug mode
 flutter run -d windows

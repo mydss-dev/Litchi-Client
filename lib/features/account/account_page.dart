@@ -7,6 +7,7 @@ import '../../app/nav_destinations.dart';
 import '../../config/app_config.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/responsive/breakpoints.dart';
+import '../../shared/services/brand_asset_cache.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -50,19 +51,27 @@ class _AccountPageState extends State<AccountPage> {
     super.didChangeDependencies();
     if (!_initialized) {
       _initialized = true;
-      _load();
+      // The compact page renders AppController's already-loaded account
+      // snapshot. The desktop-only detail request used to rebuild the compact
+      // avatar after every navigation, producing a visible flash.
+      if (!context.isCompact) _load();
     }
   }
 
   Future<void> _load() async {
+    final ctrl = AppScope.of(context);
+    final cached = ctrl.accountDetails;
     setState(() {
-      _loading = true;
+      _user = cached;
+      _loading = cached == null;
       _error = null;
     });
+    if (cached != null) return;
     try {
-      final api = AppScope.of(context).api;
+      final api = ctrl.api;
       final user = await api.getUserInfo();
       if (!mounted) return;
+      ctrl.cacheAccountDetails(user);
       setState(() {
         _user = user;
         _loading = false;
@@ -160,6 +169,8 @@ class _AccountPageState extends State<AccountPage> {
 
   // ── Wide (sidebar) layout ──────────────────────────────────────────────
   Widget _buildWide(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final visibleUser = ctrl.accountDetails ?? _user;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,16 +183,16 @@ class _AccountPageState extends State<AccountPage> {
             ],
           ),
           const SizedBox(height: 12),
-          if (_loading)
+          if (visibleUser != null)
+            _AccountContent(
+              user: visibleUser,
+              onCopy: _copy,
+              onNavigate: ctrl.goToPage,
+            )
+          else if (_loading)
             const PageLoadingCard()
           else if (_error != null)
-            PageErrorCard(message: _error!, onRetry: _load)
-          else
-            _AccountContent(
-              user: _user!,
-              onCopy: _copy,
-              onNavigate: AppScope.of(context).goToPage,
-            ),
+            PageErrorCard(message: _error!, onRetry: _load),
         ],
       ),
     );
@@ -233,7 +244,6 @@ class _AccountContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatarUrl = AppConfig.avatarUrl.trim();
     final fallbackLetter = user.email.isNotEmpty
         ? user.email[0].toUpperCase()
         : 'L';
@@ -244,11 +254,7 @@ class _AccountContent extends StatelessWidget {
         Center(
           child: Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: _Avatar(
-              url: avatarUrl,
-              fallbackLetter: fallbackLetter,
-              size: 64,
-            ),
+            child: _Avatar(fallbackLetter: fallbackLetter, size: 64),
           ),
         ),
         _AccountInfoCard(user: user, onCopy: onCopy),
@@ -536,13 +542,8 @@ class _CopyButton extends StatelessWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({
-    required this.url,
-    required this.fallbackLetter,
-    required this.size,
-  });
+  const _Avatar({required this.fallbackLetter, required this.size});
 
-  final String url;
   final String fallbackLetter;
   final double size;
 
@@ -550,14 +551,12 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
 
-    if (url.isNotEmpty) {
+    final file = BrandAssetCache.avatarFile;
+    if (BrandAssetCache.avatarUrl.isNotEmpty && file != null) {
       return ClipOval(
-        child: Image.network(
-          url,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _letterAvatar(c),
+        child: SizedBox.square(
+          dimension: size,
+          child: Image.file(file, fit: BoxFit.cover, gaplessPlayback: true),
         ),
       );
     }
@@ -982,13 +981,13 @@ class _ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final url = AppConfig.avatarUrl.trim();
+    final file = BrandAssetCache.avatarFile;
     final fallback = Text(
       avatar.isEmpty ? 'L' : avatar,
       style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
     );
 
-    if (url.isEmpty) {
+    if (BrandAssetCache.avatarUrl.isEmpty || file == null) {
       return CircleAvatar(
         radius: 25,
         backgroundColor: c.primarySoft,
@@ -996,12 +995,14 @@ class _ProfileAvatar extends StatelessWidget {
       );
     }
 
-    return CircleAvatar(
-      radius: 25,
-      backgroundColor: c.primarySoft,
-      foregroundImage: NetworkImage(url),
-      onForegroundImageError: (_, _) {},
-      child: fallback,
+    return ClipOval(
+      child: Image.file(
+        file,
+        width: 50,
+        height: 50,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+      ),
     );
   }
 }

@@ -39,6 +39,13 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Generate brand assets
+        shell: pwsh
+        run: |
+          $env:LOGO_URL = if ("${{ secrets.LOGO_URL }}") { "${{ secrets.LOGO_URL }}" } else { "" }
+          dart run tool/prepare_brand_assets.dart
+          dart run flutter_launcher_icons
+
       - name: Build release
         shell: pwsh
         run: |

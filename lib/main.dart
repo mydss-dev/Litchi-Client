@@ -10,6 +10,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app/app.dart';
 import 'config/remote_config.dart';
 import 'config/app_config.dart';
+import 'shared/services/brand_asset_cache.dart';
 import 'shared/services/secure_logger.dart';
 
 bool get _isDesktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
@@ -138,6 +139,7 @@ Future<void> _boot() async {
   // frame already has the correct branding / API base URL.
   final prefs = await SharedPreferences.getInstance();
   await RemoteConfigService.initialize(prefs);
+  await BrandAssetCache.initialize();
 
   if (!_isDesktop) {
     runApp(const LitchiApp());

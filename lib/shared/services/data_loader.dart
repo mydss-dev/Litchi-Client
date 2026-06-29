@@ -11,6 +11,7 @@ import 'secure_logger.dart';
 /// Mutable bag populated by [DataLoader] with best-effort API results.
 /// Null fields indicate the corresponding load was skipped or failed.
 class DataSnapshot {
+  RemoteUser? remoteUser;
   UserModel? user;
   int? currentPlanId;
   TrafficModel? traffic;
@@ -58,15 +59,28 @@ class DataLoader {
 
   /// Full load: user-info first (sequential), then all others in parallel.
   Future<DataSnapshot> loadAll() async {
-    final snap = DataSnapshot();
-    await _fillUserInfo(snap);
-    await Future.wait([
-      _fillNodes(snap),
-      _fillPlans(snap),
-      _fillInvite(snap),
-      _fillTrafficLog(snap),
-    ]);
+    final snap = await loadAccountStatus();
+    await loadSupplementary(snap);
     return snap;
+  }
+
+  /// Loads data that is not required to paint the account summary.
+  ///
+  /// Keeping this separate lets the controller render user, quota and expiry
+  /// as soon as they arrive instead of waiting for every dashboard endpoint.
+  Future<DataSnapshot> loadSupplementary(DataSnapshot snap) async {
+    await Future.wait([loadPrimary(snap), loadSecondary(snap)]);
+    return snap;
+  }
+
+  /// Loads the remaining fields visible on the first dashboard frame.
+  Future<void> loadPrimary(DataSnapshot snap) async {
+    await Future.wait([_fillNodes(snap), _fillPlans(snap)]);
+  }
+
+  /// Loads non-critical detail pages without delaying first-frame content.
+  Future<void> loadSecondary(DataSnapshot snap) async {
+    await Future.wait([_fillInvite(snap), _fillTrafficLog(snap)]);
   }
 
   /// Partial load: only re-fetch nodes for [subscribeUrl].
@@ -93,6 +107,7 @@ class DataLoader {
     Future<void> loadUser() async {
       try {
         final info = await _api.getUserInfo();
+        snap.remoteUser = info;
         snap.user = ModelMappers.toUser(info);
         snap.currentPlanId = info.planId;
         snap.traffic = ModelMappers.toTraffic(info);
@@ -148,7 +163,9 @@ class DataLoader {
         snap.nodes = result.nodes.map(ModelMappers.toNode).toList();
       }
       if (result.rules.isNotEmpty) snap.rules = result.rules;
-      if (result.ruleProviders.isNotEmpty) snap.ruleProviders = result.ruleProviders;
+      if (result.ruleProviders.isNotEmpty) {
+        snap.ruleProviders = result.ruleProviders;
+      }
       final st = result.traffic;
       if (st != null && st.total > 0) {
         final total = st.total / AppConfig.bytesPerGb;

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../shared/models/api_models.dart';
 import '../shared/models/app_models.dart';
+import '../shared/services/account_summary_cache.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/network_error_classifier.dart';
@@ -84,6 +85,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool _isInitialLoading = false;
   bool _logoutInFlight = false;
   int _latencyRunId = 0;
+  String? _authData;
+  Future<void>? _accountSummarySave;
+  bool _hasAccountSummary = false;
+  int _sessionEpoch = 0;
 
   Timer? _statusRefreshTimer;
   bool _statusRefreshInFlight = false;
@@ -184,6 +189,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get mobileProfileChildPage => _mobileProfileChildPage;
 
   UserModel get user => _account.user;
+  RemoteUser? get accountDetails => _account.remoteUser;
   TrafficModel get traffic => _account.traffic;
   bool get autoSelected => _nodes.autoSelected;
   NodeModel get currentNode => _nodes.currentNode;
@@ -224,6 +230,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   int? get expiredAt => _subscription.expiredAt;
   String? get dataLoadError => _dataLoadError;
   bool get isInitialLoading => _isInitialLoading;
+  bool get hasAccountSummary => _hasAccountSummary;
   String get currencySymbol => _wallet.currencySymbol;
   String? get startupMessage => _startupMessage;
   void clearStartupMessage() => _startupMessage = null;
@@ -260,9 +267,14 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
 
     _apiClient.updateAuthData(authData);
-    await _restoreCachedNodes();
+    _authData = authData;
+    await Future.wait([
+      _restoreCachedNodes(),
+      _restoreCachedAccountSummary(authData),
+    ]);
 
     _isAuthenticated = true;
+    final sessionEpoch = ++_sessionEpoch;
     _startStatusRefresh();
     _isInitialLoading = true;
     _isInitializing = false;
@@ -271,7 +283,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     // Deferred: _refreshAfterAutoLogin() will verify the account with the
     // API before auto-reconnecting — never connect before we know the
     // session is still valid.
-    unawaited(_refreshAfterAutoLogin());
+    unawaited(_refreshAfterAutoLogin(sessionEpoch));
     unawaited(_checkForUpdate());
   }
 
@@ -290,6 +302,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (supportsCoreConnection) unawaited(_preloadCoreAndTestLatencies());
   }
 
+  Future<void> _restoreCachedAccountSummary(String authData) async {
+    final cached = await AccountSummaryCache.load(authData);
+    if (cached == null) return;
+    _hasAccountSummary = true;
+    _account.applySnapshot(user: cached.user, traffic: cached.traffic);
+    _subscription.applySnapshot(
+      aliveIp: cached.aliveIp,
+      deviceLimit: cached.deviceLimit,
+      resetDay: cached.resetDay,
+      expiredAt: cached.expiredAt,
+    );
+  }
+
   Future<void> refreshRegisterConfigCache() async {
     try {
       final config = await _api.fetchRegisterConfig();
@@ -301,10 +326,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _refreshAfterAutoLogin() async {
+  Future<void> _refreshAfterAutoLogin(int sessionEpoch) async {
     final sw = Stopwatch()..start();
     try {
-      await _loadAllData();
+      await _loadAllData(sessionEpoch);
+      if (!_isSessionCurrent(sessionEpoch)) return;
       _dataLoadError = null;
       _isInitialLoading = false;
       if (!_disposed) notifyListeners();
@@ -314,6 +340,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         unawaited(_tryAutoReconnectSafely());
       }
     } catch (e) {
+      if (!_isSessionCurrent(sessionEpoch)) return;
       SecureLogger.warn(
         'Auth background refresh failed after ${sw.elapsedMilliseconds}ms',
         e,
@@ -368,16 +395,58 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   /// Applies only the account & subscription counter fields, without touching
   /// nodes or latency state.
   void _applyAccountStatus(DataSnapshot snap) {
+    if (snap.user != null || snap.subscribeUrl != null) {
+      _hasAccountSummary = true;
+    }
     if (snap.user != null) {
-      _account.applySnapshot(user: snap.user, traffic: snap.traffic);
+      final fresh = snap.user!;
+      final previous = _account.user;
+      final merged = fresh.copyWith(
+        plan: fresh.plan.trim().isEmpty && previous.plan.trim().isNotEmpty
+            ? previous.plan
+            : fresh.plan,
+        expiry: fresh.expiry.trim().isEmpty && previous.expiry.trim().isNotEmpty
+            ? previous.expiry
+            : fresh.expiry,
+      );
+      snap.user = merged;
+      _account.applySnapshot(
+        remoteUser: snap.remoteUser,
+        user: merged,
+        traffic: snap.traffic,
+      );
     }
     _subscription.applySnapshot(
+      subscribeUrl: snap.subscribeUrl,
       aliveIp: snap.aliveIp,
       deviceLimit: snap.deviceLimit,
       resetDay: snap.resetDay,
       expiredAt: snap.expiredAt,
     );
+    _saveAccountSummary();
     if (!_disposed) notifyListeners();
+  }
+
+  void _saveAccountSummary() {
+    final authData = _authData;
+    if (authData == null || authData.isEmpty) return;
+    final user = _account.user;
+    final traffic = _account.traffic;
+    final aliveIp = _subscription.aliveIp;
+    final deviceLimit = _subscription.deviceLimit;
+    final resetDay = _subscription.resetDay;
+    final expiredAt = _subscription.expiredAt;
+    _accountSummarySave = (_accountSummarySave ?? Future<void>.value()).then(
+      (_) => AccountSummaryCache.save(
+        authData,
+        user: user,
+        traffic: traffic,
+        aliveIp: aliveIp,
+        deviceLimit: deviceLimit,
+        resetDay: resetDay,
+        expiredAt: expiredAt,
+      ),
+    );
   }
 
   void _startStatusRefresh() {
@@ -564,21 +633,29 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _completeAuthentication(String authData) async {
     await TokenStorage.saveAuthData(authData);
     _apiClient.updateAuthData(authData);
-    await _restoreCachedNodes();
+    _authData = authData;
+    await Future.wait([
+      _restoreCachedNodes(),
+      _restoreCachedAccountSummary(authData),
+    ]);
     _isAuthenticated = true;
+    final sessionEpoch = ++_sessionEpoch;
     _startStatusRefresh();
     _dataLoadError = null;
     _isInitialLoading = true;
     _page = AppPage.dashboard;
     notifyListeners();
-    unawaited(_refreshAfterAutoLogin());
+    unawaited(_refreshAfterAutoLogin(sessionEpoch));
   }
 
   Future<void> _expireSessionAndStopCore(String message) async {
+    ++_sessionEpoch;
     _stopStatusRefresh();
     await _core.stopAndReset();
     await TokenStorage.clearAuthData();
     _apiClient.updateAuthData(null);
+    _authData = null;
+    _hasAccountSummary = false;
     _isAuthenticated = false;
     _authScreen = AuthScreen.login;
     _startupMessage = message;
@@ -591,6 +668,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _dataLoadError = null;
     _notices.reset();
     await NodeCacheService.clear();
+    await _accountSummarySave;
+    await AccountSummaryCache.clear();
     _isInitialLoading = false;
     if (!_disposed) notifyListeners();
   }
@@ -598,6 +677,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> logout() async {
     if (_logoutInFlight) return;
     _logoutInFlight = true;
+    ++_sessionEpoch;
     _stopStatusRefresh();
     try {
       await _core.stopAndReset();
@@ -605,6 +685,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _authScreen = AuthScreen.login;
       await TokenStorage.clearAuthData();
       _apiClient.updateAuthData(null);
+      _authData = null;
+      _hasAccountSummary = false;
       _account.reset();
       _nodes.reset();
       _plans = const [];
@@ -614,6 +696,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _dataLoadError = null;
       _notices.reset();
       await NodeCacheService.clear();
+      await _accountSummarySave;
+      await AccountSummaryCache.clear();
       notifyListeners();
     } finally {
       _logoutInFlight = false;
@@ -643,31 +727,56 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     return checkWindowsAdminPrivilege();
   }
 
-  Future<void> _loadAllData() async {
-    final snap = await _dataLoader.loadAll();
+  bool _isSessionCurrent(int sessionEpoch) =>
+      !_disposed && _isAuthenticated && sessionEpoch == _sessionEpoch;
+
+  Future<void> _loadAllData(int sessionEpoch) async {
+    final snap = await _dataLoader.loadAccountStatus();
+    if (!_isSessionCurrent(sessionEpoch)) return;
+    _applyAccountStatus(snap);
+
+    // Start detail-page requests at the same time, but do not let them hold
+    // back nodes and plan data needed by the first dashboard frame.
+    final secondaryLoad = _dataLoader.loadSecondary(snap);
+    await _dataLoader.loadPrimary(snap);
+    if (!_isSessionCurrent(sessionEpoch)) return;
     _applySnapshot(snap);
-    try {
-      _wallet.setCurrencySymbol(await _api.getCommCurrencySymbol());
-    } catch (e) {
-      SecureLogger.warn('AppController currency load failed', e);
-    }
-    try {
-      _notices.setNotices(await _api.getNotices());
-    } catch (e) {
-      SecureLogger.warn('AppController notices load failed', e);
-    }
+    _saveAccountSummary();
     if (_nodes.isNotEmpty) {
       unawaited(NodeCacheService.save(_nodes.nodes));
       _restoreLastNode();
       if (supportsCoreConnection) unawaited(_preloadCoreAndTestLatencies());
     }
+    if (!_disposed) notifyListeners();
+
+    await secondaryLoad;
+    if (!_isSessionCurrent(sessionEpoch)) return;
+    _applySnapshot(snap);
+    try {
+      final symbol = await _api.getCommCurrencySymbol();
+      if (!_isSessionCurrent(sessionEpoch)) return;
+      _wallet.setCurrencySymbol(symbol);
+    } catch (e) {
+      SecureLogger.warn('AppController currency load failed', e);
+    }
+    try {
+      final notices = await _api.getNotices();
+      if (!_isSessionCurrent(sessionEpoch)) return;
+      _notices.setNotices(notices);
+    } catch (e) {
+      SecureLogger.warn('AppController notices load failed', e);
+    }
   }
 
+  void cacheAccountDetails(RemoteUser user) => _account.setRemoteUser(user);
+
   Future<void> refreshData() async {
+    final sessionEpoch = _sessionEpoch;
     _dataLoadError = null;
     notifyListeners();
     try {
-      await _loadAllData();
+      await _loadAllData(sessionEpoch);
+      if (!_isSessionCurrent(sessionEpoch)) return;
       _dataLoadError = null;
     } catch (e) {
       if (NetworkErrorClassifier.isNetworkError(e)) {
@@ -698,7 +807,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   );
 
   Future<void> refreshNodes() async {
+    final sessionEpoch = _sessionEpoch;
     final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
+    if (!_isSessionCurrent(sessionEpoch)) return;
     if (snap.nodes != null && snap.nodes!.isNotEmpty) {
       _invalidateLatencyRuns();
       _nodes.setNodes(snap.nodes!);
@@ -711,7 +822,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _applySnapshot(DataSnapshot snap) {
-    _account.applySnapshot(user: snap.user, traffic: snap.traffic);
+    _account.applySnapshot(
+      remoteUser: snap.remoteUser,
+      user: snap.user,
+      traffic: snap.traffic,
+    );
     _subscription.applySnapshot(subscribeUrl: snap.subscribeUrl);
     if (snap.nodes != null) {
       _invalidateLatencyRuns();

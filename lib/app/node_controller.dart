@@ -21,10 +21,22 @@ class NodeController extends ChangeNotifier {
   bool get isNotEmpty => _nodes.isNotEmpty;
   int get length => _nodes.length;
 
-  /// In auto mode, displays the best-latency node (falling back to the stored
-  /// current node); otherwise the manually-selected node.
-  NodeModel get currentNode =>
-      _autoSelected ? (_bestNode ?? _currentNode) : _currentNode;
+  /// Always resolves the selection against the authoritative node list.
+  ///
+  /// Latency tests replace list entries with updated immutable models. Keeping
+  /// the originally selected object here would leave dashboard widgets reading
+  /// its stale latency while the picker already showed the new value.
+  NodeModel get currentNode {
+    if (_autoSelected) return _bestNode ?? _canonicalCurrentNode;
+    return _canonicalCurrentNode;
+  }
+
+  NodeModel get _canonicalCurrentNode {
+    for (final node in _nodes) {
+      if (node.id == _currentNode.id) return node;
+    }
+    return _currentNode;
+  }
 
   NodeModel? get _bestNode {
     NodeModel? best;

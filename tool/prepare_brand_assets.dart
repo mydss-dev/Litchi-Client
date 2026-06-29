@@ -119,7 +119,6 @@ image.Image _centerCropSquare(image.Image source) {
 Future<void> _saveAssets(image.Image logo, Directory assets) async {
   await assets.create(recursive: true);
 
-  await File('${assets.path}/logo.png').writeAsBytes(image.encodePng(logo));
   await File('${assets.path}/app_icon.png').writeAsBytes(image.encodePng(logo));
 
   await File(
