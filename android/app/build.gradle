@@ -144,6 +144,57 @@ tasks.register("ensureMihomoLibraries") {
     }
 }
 
+tasks.register("ensureGeoAssets") {
+    // mihomo needs country.mmdb (GEOIP rules) and geosite.dat (GEOSITE rules).
+    // Download them into assets at build time so a fresh install never has to
+    // fetch geo data at startup. Mirrors ensureMihomoLibraries: runs for every
+    // build, local or CI, so nobody ever downloads geo by hand.
+    def assetsDir = file("src/main/assets")
+    def geoFiles = ["country.mmdb", "geosite.dat"]
+
+    // GEO_VERSION lives in tool/core_versions.env (single source of truth).
+    def geoVersion = "latest"
+    def envFile = file("../../tool/core_versions.env")
+    if (envFile.exists()) {
+        envFile.eachLine { line ->
+            def m = (line =~ /^\s*GEO_VERSION\s*=\s*(.+?)\s*$/)
+            if (m.find()) { geoVersion = m.group(1).trim() }
+        }
+    }
+
+    inputs.property("geoVersion", geoVersion)
+    outputs.files(geoFiles.collect { new File(assetsDir, it) })
+
+    doLast {
+        assetsDir.mkdirs()
+        def base = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/${geoVersion}"
+        def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
+        geoFiles.each { name ->
+            def dest = new File(assetsDir, name)
+            if (dest.exists() && dest.length() > 0) {
+                logger.lifecycle("geo asset already present: ${name}")
+                return
+            }
+            def url = "${base}/${name}"
+            logger.lifecycle("Downloading ${name} (${geoVersion})")
+            if (isWindows) {
+                providers.exec {
+                    commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                        "-Command", "Invoke-WebRequest -Uri '${url}' -OutFile '${dest.absolutePath}'"
+                }.result.get().assertNormalExitValue()
+            } else {
+                providers.exec {
+                    commandLine "curl", "-fsSL", url, "-o", dest.absolutePath
+                }.result.get().assertNormalExitValue()
+            }
+            if (!dest.exists() || dest.length() == 0L) {
+                throw new GradleException("Failed to download geo asset: ${url}")
+            }
+        }
+    }
+}
+
 tasks.named("preBuild") {
     dependsOn("ensureMihomoLibraries")
+    dependsOn("ensureGeoAssets")
 }
