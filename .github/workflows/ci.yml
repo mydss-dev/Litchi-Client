@@ -161,20 +161,6 @@ jobs:
           EOF
           fi
 
-<<<<<<< HEAD
-      - name: Bundle geo databases (Android assets)
-        run: |
-          set -e
-          # shellcheck source=/dev/null
-          source tool/core_versions.env
-          mkdir -p android/app/src/main/assets
-          base="https://github.com/MetaCubeX/meta-rules-dat/releases/download/${GEO_VERSION}"
-          curl -fsSL "$base/country.mmdb" -o android/app/src/main/assets/country.mmdb
-          curl -fsSL "$base/geosite.dat"  -o android/app/src/main/assets/geosite.dat
-          ls -lh android/app/src/main/assets
-
-=======
->>>>>>> fd62b00dba7bd755950fda296ecadba0b3490f91
       - name: Build release APK (universal multi-ABI)
         run: |
           api_base="${{ secrets.API_BASE }}"
