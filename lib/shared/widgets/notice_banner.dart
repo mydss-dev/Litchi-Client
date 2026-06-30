@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
@@ -45,7 +46,7 @@ class NoticeBanner extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _TextBtn(
-            label: '查看详情',
+            label: context.l10n.viewDetails,
             color: c.primary,
             onTap: () => _showDetail(context),
           ),
@@ -127,7 +128,7 @@ class _NoticeDetailDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(
-            '关闭',
+            context.l10n.close,
             style: AppTextStyles.button.copyWith(color: c.primary),
           ),
         ),

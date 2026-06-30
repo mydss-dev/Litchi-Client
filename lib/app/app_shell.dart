@@ -17,6 +17,7 @@ import '../features/settings/settings_page.dart';
 import '../features/shop/shop_page.dart';
 import '../features/tickets/tickets_page.dart';
 import '../features/traffic/traffic_page.dart';
+import '../l10n/l10n.dart';
 import 'nav_destinations.dart';
 import '../shared/models/app_models.dart';
 import '../shared/responsive/layout_scope.dart';
@@ -57,7 +58,9 @@ Widget _pageFor(AppPage page) {
 /// go square while maximized. The body inside is responsive: a sidebar layout
 /// on wide screens, a bottom-nav layout on narrow ones.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({super.key, this.launchSilently = false});
+
+  final bool launchSilently;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -79,6 +82,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   AuthScreen? _visibleAuthScreen;
   AuthScreen? _pendingAuthScreen;
   bool _authTransitioning = false;
+  bool _silentVisibilityResolved = false;
   double _authOpacity = 1;
 
   static const Duration _authFadeOutDuration = Duration(milliseconds: 110);
@@ -110,6 +114,16 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final ctrl = AppScope.of(context);
     _ctrl = ctrl;
     _visibleAuthScreen ??= ctrl.authScreen;
+
+    if (widget.launchSilently &&
+        !_silentVisibilityResolved &&
+        !ctrl.isInitializing) {
+      _silentVisibilityResolved = true;
+      if (!ctrl.isAuthenticated) {
+        unawaited(windowManager.show());
+        unawaited(windowManager.focus());
+      }
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -295,7 +309,9 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (!_isDesktop) return;
     final ctrl = _ctrl;
     if (ctrl == null) return;
-    final status = ctrl.coreRunning ? '已连接' : '未连接';
+    final status = ctrl.coreRunning
+        ? context.l10n.connected
+        : context.l10n.notConnected;
     await trayManager.setToolTip('${AppConfig.appName}  $status');
   }
 
@@ -305,33 +321,43 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (ctrl == null) return;
 
     final nodeName = ctrl.currentNode.name.isEmpty
-        ? '暂无节点'
+        ? context.l10n.noNodes
         : ctrl.currentNode.name;
     final canToggle = ctrl.nodes.isNotEmpty && !ctrl.coreConnecting;
     final isTun = ctrl.networkMode == NetworkMode.tun;
 
     final statusLabel = switch ((ctrl.coreRunning, ctrl.coreConnecting)) {
-      (_, true) => '连接中...',
-      (true, _) => isTun ? '已连接 · 虚拟网卡' : '已连接 · 系统代理',
-      _ => '未连接',
+      (_, true) => context.l10n.connecting,
+      (true, _) =>
+        isTun
+            ? context.l10n.trayConnectedTun
+            : context.l10n.trayConnectedSystemProxy,
+      _ => context.l10n.notConnected,
     };
 
     await trayManager.setContextMenu(
       Menu(
         items: [
-          MenuItem(key: 'show', label: '打开 ${AppConfig.appName}'),
+          MenuItem(key: 'show', label: context.l10n.openApp(AppConfig.appName)),
           MenuItem.separator(),
           MenuItem(key: '_status', label: statusLabel, disabled: true),
-          MenuItem(key: '_node', label: '节点：$nodeName', disabled: true),
+          MenuItem(
+            key: '_node',
+            label: context.l10n.trayNode(nodeName),
+            disabled: true,
+          ),
           MenuItem.separator(),
           MenuItem(
             key: 'toggle_connection',
-            label: ctrl.coreRunning ? '断开连接' : '立即连接',
+            label: ctrl.coreRunning
+                ? context.l10n.disconnectConnection
+                : context.l10n.connectNow,
             disabled: !canToggle,
           ),
-          if (!isTun) MenuItem(key: 'fix_proxy', label: '修复系统代理'),
+          if (!isTun)
+            MenuItem(key: 'fix_proxy', label: context.l10n.repairSystemProxy),
           MenuItem.separator(),
-          MenuItem(key: 'quit', label: '退出'),
+          MenuItem(key: 'quit', label: context.l10n.quit),
         ],
       ),
     );

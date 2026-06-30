@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
+import 'config/app_launch_options.dart';
 import 'config/app_identity.dart';
 import 'config/remote_config.dart';
 import 'config/app_config.dart';
@@ -71,20 +72,21 @@ Future<bool> _focusExistingInstance() async {
   }
 }
 
-Future<void> main() {
+Future<void> main(List<String> arguments) {
+  final launchOptions = AppLaunchOptions.parse(arguments);
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     _writeCrashLog(
       'FlutterError: ${details.exceptionAsString()}\n${details.stack}',
     );
   };
-  return runZonedGuarded(_boot, (error, stack) {
+  return runZonedGuarded(() => _boot(launchOptions), (error, stack) {
         _writeCrashLog('Uncaught: $error\n$stack');
       }) ??
       Future.value();
 }
 
-Future<void> _boot() async {
+Future<void> _boot(AppLaunchOptions launchOptions) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Single source of truth for the version: the installed package metadata
@@ -187,9 +189,11 @@ Future<void> _boot() async {
       await windowManager.setBackgroundColor(Colors.transparent);
       await windowManager.setAsFrameless();
     }
-    await windowManager.show();
-    await windowManager.focus();
+    if (!launchOptions.silent) {
+      await windowManager.show();
+      await windowManager.focus();
+    }
   });
 
-  runApp(const LitchiApp());
+  runApp(LitchiApp(launchSilently: launchOptions.silent));
 }

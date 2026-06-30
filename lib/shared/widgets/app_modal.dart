@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../l10n/l10n.dart';
 import '../responsive/breakpoints.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
@@ -146,7 +147,7 @@ class AppDialog extends StatelessWidget {
                   ),
                   if (showCloseButton)
                     IconButton(
-                      tooltip: '关闭',
+                      tooltip: context.l10n.close,
                       onPressed: () => Navigator.of(context).pop(),
                       icon: Icon(LucideIcons.x, size: 17, color: c.textMuted),
                     ),

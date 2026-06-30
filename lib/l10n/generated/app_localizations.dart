@@ -2018,6 +2018,1062 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The server is unavailable and no nodes are cached. Check the network or contact support.'**
   String get serverUnavailableNoCache;
+
+  /// No description provided for @trafficStatistics.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic statistics'**
+  String get trafficStatistics;
+
+  /// No description provided for @trafficStatisticsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View traffic, devices and plan cycle'**
+  String get trafficStatisticsSubtitle;
+
+  /// No description provided for @remainingTraffic.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} GB remaining'**
+  String remainingTraffic(String value);
+
+  /// No description provided for @onlineDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Online devices'**
+  String get onlineDevices;
+
+  /// No description provided for @currentOnlineDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices currently online'**
+  String get currentOnlineDevices;
+
+  /// No description provided for @remainingDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days remaining'**
+  String get remainingDays;
+
+  /// No description provided for @permanent.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanent'**
+  String get permanent;
+
+  /// No description provided for @daysUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'days'**
+  String get daysUnit;
+
+  /// No description provided for @subscriptionLongTerm.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription does not expire'**
+  String get subscriptionLongTerm;
+
+  /// No description provided for @expiresAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires {date}'**
+  String expiresAt(String date);
+
+  /// No description provided for @trafficResetTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic reset'**
+  String get trafficResetTime;
+
+  /// No description provided for @neverResets.
+  ///
+  /// In en, this message translates to:
+  /// **'Never resets'**
+  String get neverResets;
+
+  /// No description provided for @daysCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days'**
+  String daysCount(int count);
+
+  /// No description provided for @noTrafficReset.
+  ///
+  /// In en, this message translates to:
+  /// **'This plan has no traffic reset cycle'**
+  String get noTrafficReset;
+
+  /// No description provided for @untilNextReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Until next reset'**
+  String get untilNextReset;
+
+  /// No description provided for @trafficTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic trend'**
+  String get trafficTrend;
+
+  /// No description provided for @periodTrafficTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{period} · {total} total'**
+  String periodTrafficTotal(String period, String total);
+
+  /// No description provided for @recentDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Last {count} days'**
+  String recentDays(int count);
+
+  /// No description provided for @tooltipUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload {value}'**
+  String tooltipUpload(String value);
+
+  /// No description provided for @tooltipDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download {value}'**
+  String tooltipDownload(String value);
+
+  /// No description provided for @tooltipTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total {value}'**
+  String tooltipTotal(String value);
+
+  /// No description provided for @weekdayShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Mon,Tue,Wed,Thu,Fri,Sat,Sun'**
+  String get weekdayShort;
+
+  /// No description provided for @ticketSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket support'**
+  String get ticketSupport;
+
+  /// No description provided for @ticketSupportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit an issue and view replies'**
+  String get ticketSupportSubtitle;
+
+  /// No description provided for @tickets.
+  ///
+  /// In en, this message translates to:
+  /// **'Tickets'**
+  String get tickets;
+
+  /// No description provided for @ticketSupportCompactSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit issues and view support replies'**
+  String get ticketSupportCompactSubtitle;
+
+  /// No description provided for @newTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'New ticket'**
+  String get newTicket;
+
+  /// No description provided for @ticketLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load tickets'**
+  String get ticketLoadFailed;
+
+  /// No description provided for @noTickets.
+  ///
+  /// In en, this message translates to:
+  /// **'No tickets'**
+  String get noTickets;
+
+  /// No description provided for @noTicketsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a ticket to contact support'**
+  String get noTicketsSubtitle;
+
+  /// No description provided for @untitledTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled ticket'**
+  String get untitledTicket;
+
+  /// No description provided for @ticketFieldsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a subject and issue description'**
+  String get ticketFieldsRequired;
+
+  /// No description provided for @ticketSubjectTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'The subject must be at least 5 characters'**
+  String get ticketSubjectTooShort;
+
+  /// No description provided for @ticketMessageTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'The description must be at least 10 characters'**
+  String get ticketMessageTooShort;
+
+  /// No description provided for @ticketSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket submitted'**
+  String get ticketSubmitted;
+
+  /// No description provided for @issueSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get issueSubject;
+
+  /// No description provided for @issueSubjectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the issue in one sentence'**
+  String get issueSubjectHint;
+
+  /// No description provided for @priority.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get priority;
+
+  /// No description provided for @issueDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue description'**
+  String get issueDescription;
+
+  /// No description provided for @issueDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the issue in detail'**
+  String get issueDescriptionHint;
+
+  /// No description provided for @submitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitting...'**
+  String get submitting;
+
+  /// No description provided for @submitTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit ticket'**
+  String get submitTicket;
+
+  /// No description provided for @replyRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a reply'**
+  String get replyRequired;
+
+  /// No description provided for @replySent.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply sent'**
+  String get replySent;
+
+  /// No description provided for @ticketClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket closed'**
+  String get ticketClosed;
+
+  /// No description provided for @ticketDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Ticket details'**
+  String get ticketDetails;
+
+  /// No description provided for @replyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your reply'**
+  String get replyHint;
+
+  /// No description provided for @closing.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing...'**
+  String get closing;
+
+  /// No description provided for @closeTicket.
+  ///
+  /// In en, this message translates to:
+  /// **'Close ticket'**
+  String get closeTicket;
+
+  /// No description provided for @sendReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reply'**
+  String get sendReply;
+
+  /// No description provided for @priorityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get priorityLow;
+
+  /// No description provided for @priorityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get priorityMedium;
+
+  /// No description provided for @priorityUrgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Urgent'**
+  String get priorityUrgent;
+
+  /// No description provided for @noTicketMessages.
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get noTicketMessages;
+
+  /// No description provided for @customerSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get customerSupport;
+
+  /// No description provided for @me.
+  ///
+  /// In en, this message translates to:
+  /// **'Me'**
+  String get me;
+
+  /// No description provided for @ticketClosedStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get ticketClosedStatus;
+
+  /// No description provided for @invalidRechargeAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid recharge amount'**
+  String get invalidRechargeAmount;
+
+  /// No description provided for @noTransferableCommission.
+  ///
+  /// In en, this message translates to:
+  /// **'No commission available to transfer'**
+  String get noTransferableCommission;
+
+  /// No description provided for @withdrawalUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawals are currently unavailable'**
+  String get withdrawalUnavailable;
+
+  /// No description provided for @noWithdrawableCommission.
+  ///
+  /// In en, this message translates to:
+  /// **'No commission available to withdraw'**
+  String get noWithdrawableCommission;
+
+  /// No description provided for @noWithdrawalMethods.
+  ///
+  /// In en, this message translates to:
+  /// **'No withdrawal methods are available'**
+  String get noWithdrawalMethods;
+
+  /// No description provided for @myWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'My wallet'**
+  String get myWallet;
+
+  /// No description provided for @myWalletSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View balance, commission and recharge'**
+  String get myWalletSubtitle;
+
+  /// No description provided for @accountAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Account assets'**
+  String get accountAssets;
+
+  /// No description provided for @accountBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Account balance'**
+  String get accountBalance;
+
+  /// No description provided for @withdrawableCommission.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawable commission'**
+  String get withdrawableCommission;
+
+  /// No description provided for @transferCommission.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer commission'**
+  String get transferCommission;
+
+  /// No description provided for @requestWithdrawal.
+  ///
+  /// In en, this message translates to:
+  /// **'Request withdrawal'**
+  String get requestWithdrawal;
+
+  /// No description provided for @rechargeBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Recharge balance'**
+  String get rechargeBalance;
+
+  /// No description provided for @rechargeBalanceNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Recharged balance can only be spent and cannot be withdrawn'**
+  String get rechargeBalanceNotice;
+
+  /// No description provided for @customAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom amount'**
+  String get customAmount;
+
+  /// No description provided for @rechargeAmountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter recharge amount'**
+  String get rechargeAmountHint;
+
+  /// No description provided for @recharge.
+  ///
+  /// In en, this message translates to:
+  /// **'Recharge'**
+  String get recharge;
+
+  /// No description provided for @transferAmountRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a transfer amount'**
+  String get transferAmountRequired;
+
+  /// No description provided for @transferAmountTooHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'The transfer amount exceeds withdrawable commission'**
+  String get transferAmountTooHigh;
+
+  /// No description provided for @commissionTransferred.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission transferred to balance'**
+  String get commissionTransferred;
+
+  /// No description provided for @transferCommissionNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer withdrawable commission to your balance to purchase plans.'**
+  String get transferCommissionNotice;
+
+  /// No description provided for @transferAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer amount'**
+  String get transferAmount;
+
+  /// No description provided for @transferableAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Available: {amount}'**
+  String transferableAmount(String amount);
+
+  /// No description provided for @transferring.
+  ///
+  /// In en, this message translates to:
+  /// **'Transferring...'**
+  String get transferring;
+
+  /// No description provided for @confirmTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm transfer'**
+  String get confirmTransfer;
+
+  /// No description provided for @withdrawalAmountRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a withdrawal amount'**
+  String get withdrawalAmountRequired;
+
+  /// No description provided for @withdrawalAmountTooHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'The withdrawal amount exceeds withdrawable commission'**
+  String get withdrawalAmountTooHigh;
+
+  /// No description provided for @minimumWithdrawal.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum withdrawal: {amount}'**
+  String minimumWithdrawal(String amount);
+
+  /// No description provided for @withdrawalAccountRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a withdrawal account'**
+  String get withdrawalAccountRequired;
+
+  /// No description provided for @withdrawalSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal ticket submitted'**
+  String get withdrawalSubmitted;
+
+  /// No description provided for @withdrawalMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal method'**
+  String get withdrawalMethod;
+
+  /// No description provided for @withdrawalAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal account'**
+  String get withdrawalAccount;
+
+  /// No description provided for @withdrawalAccountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the receiving account'**
+  String get withdrawalAccountHint;
+
+  /// No description provided for @withdrawalAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawal amount'**
+  String get withdrawalAmount;
+
+  /// No description provided for @withdrawableAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawable: {amount}'**
+  String withdrawableAmount(String amount);
+
+  /// No description provided for @withdrawableWithMinimum.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawable: {amount} · Minimum: {minimum}'**
+  String withdrawableWithMinimum(String amount, String minimum);
+
+  /// No description provided for @submitWithdrawal.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit withdrawal'**
+  String get submitWithdrawal;
+
+  /// No description provided for @itemCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'{item} copied'**
+  String itemCopied(String item);
+
+  /// No description provided for @settingsUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings updated'**
+  String get settingsUpdated;
+
+  /// No description provided for @myAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'My account'**
+  String get myAccount;
+
+  /// No description provided for @myAccountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View account and subscription details'**
+  String get myAccountSubtitle;
+
+  /// No description provided for @expiredStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get expiredStatus;
+
+  /// No description provided for @suspendedStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended'**
+  String get suspendedStatus;
+
+  /// No description provided for @normalStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get normalStatus;
+
+  /// No description provided for @accountInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Account information'**
+  String get accountInformation;
+
+  /// No description provided for @accountStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Account status'**
+  String get accountStatus;
+
+  /// No description provided for @expiryTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiry time'**
+  String get expiryTime;
+
+  /// No description provided for @balanceAndRecharge.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance and recharge'**
+  String get balanceAndRecharge;
+
+  /// No description provided for @purchaseAndPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchases and payments'**
+  String get purchaseAndPayment;
+
+  /// No description provided for @usageRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage records'**
+  String get usageRecords;
+
+  /// No description provided for @contactAfterSales.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact support'**
+  String get contactAfterSales;
+
+  /// No description provided for @resetDayUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset day --'**
+  String get resetDayUnavailable;
+
+  /// No description provided for @monthlyResetDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Resets on day {day} each month'**
+  String monthlyResetDay(int day);
+
+  /// No description provided for @trafficOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic overview'**
+  String get trafficOverview;
+
+  /// No description provided for @usedPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% used'**
+  String usedPercent(String percent);
+
+  /// No description provided for @remaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get remaining;
+
+  /// No description provided for @usedTraffic.
+  ///
+  /// In en, this message translates to:
+  /// **'Used {used} / {total} GB'**
+  String usedTraffic(String used, String total);
+
+  /// No description provided for @currentPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Current plan'**
+  String get currentPlan;
+
+  /// No description provided for @noCurrentPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'No active plan'**
+  String get noCurrentPlan;
+
+  /// No description provided for @logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get logout;
+
+  /// No description provided for @logoutDataNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session and locally cached nodes will be cleared'**
+  String get logoutDataNotice;
+
+  /// No description provided for @logoutConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of this account? You will need to sign in again.'**
+  String get logoutConfirmMessage;
+
+  /// No description provided for @confirmLogout.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get confirmLogout;
+
+  /// No description provided for @currentPlanValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Current plan: {plan}'**
+  String currentPlanValue(String plan);
+
+  /// No description provided for @expiryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires: {expiry}'**
+  String expiryValue(String expiry);
+
+  /// No description provided for @manage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get manage;
+
+  /// No description provided for @accountManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Account management'**
+  String get accountManagement;
+
+  /// No description provided for @expiryReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiry reminder'**
+  String get expiryReminder;
+
+  /// No description provided for @expiryReminderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive account expiry reminders by email'**
+  String get expiryReminderSubtitle;
+
+  /// No description provided for @trafficReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic reminder'**
+  String get trafficReminder;
+
+  /// No description provided for @trafficReminderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive low-traffic reminders by email'**
+  String get trafficReminderSubtitle;
+
+  /// No description provided for @autoRenewal.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto renewal'**
+  String get autoRenewal;
+
+  /// No description provided for @autoRenewalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatically renew the plan before expiry'**
+  String get autoRenewalSubtitle;
+
+  /// No description provided for @updateLoginPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your sign-in password'**
+  String get updateLoginPassword;
+
+  /// No description provided for @logoutCurrentAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of this account'**
+  String get logoutCurrentAccount;
+
+  /// No description provided for @passwordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'The new password must be at least 8 characters'**
+  String get passwordTooShort;
+
+  /// No description provided for @currentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get currentPassword;
+
+  /// No description provided for @confirmNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm new password'**
+  String get confirmNewPassword;
+
+  /// No description provided for @confirmNewPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the new password again'**
+  String get confirmNewPasswordHint;
+
+  /// No description provided for @updating.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating...'**
+  String get updating;
+
+  /// No description provided for @confirmChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm change'**
+  String get confirmChange;
+
+  /// No description provided for @trayConnectedTun.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected · TUN'**
+  String get trayConnectedTun;
+
+  /// No description provided for @trayConnectedSystemProxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected · System proxy'**
+  String get trayConnectedSystemProxy;
+
+  /// No description provided for @openApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Open {appName}'**
+  String openApp(String appName);
+
+  /// No description provided for @trayNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Node: {node}'**
+  String trayNode(String node);
+
+  /// No description provided for @connectNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect now'**
+  String get connectNow;
+
+  /// No description provided for @repairSystemProxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair system proxy'**
+  String get repairSystemProxy;
+
+  /// No description provided for @quit.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit'**
+  String get quit;
+
+  /// No description provided for @cannotOpenUpdateUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to open the update download URL'**
+  String get cannotOpenUpdateUrl;
+
+  /// No description provided for @downloadPageOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Download page opened'**
+  String get downloadPageOpened;
+
+  /// No description provided for @downloadCompleteOpeningInstaller.
+  ///
+  /// In en, this message translates to:
+  /// **'Download complete. Opening installer...'**
+  String get downloadCompleteOpeningInstaller;
+
+  /// No description provided for @newVersionAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Version v{version} is available. Download the latest version.'**
+  String newVersionAvailable(String version);
+
+  /// No description provided for @downloadNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Download now'**
+  String get downloadNow;
+
+  /// No description provided for @refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refresh;
+
+  /// No description provided for @back.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get back;
+
+  /// No description provided for @search.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get search;
+
+  /// No description provided for @backToAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to account'**
+  String get backToAccount;
+
+  /// No description provided for @viewDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View details'**
+  String get viewDetails;
+
+  /// No description provided for @requestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Request failed. Try again later.'**
+  String get requestFailed;
+
+  /// No description provided for @sessionExpiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Sign in again.'**
+  String get sessionExpiredError;
+
+  /// No description provided for @tooManyRequestsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again later.'**
+  String get tooManyRequestsError;
+
+  /// No description provided for @invalidSubmissionError.
+  ///
+  /// In en, this message translates to:
+  /// **'Some information is invalid. Check it and try again.'**
+  String get invalidSubmissionError;
+
+  /// No description provided for @connectionTimeoutError.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection timed out. Check your network and try again.'**
+  String get connectionTimeoutError;
+
+  /// No description provided for @cannotConnectServerError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to connect to the server. Check your network.'**
+  String get cannotConnectServerError;
+
+  /// No description provided for @serverUnavailableError.
+  ///
+  /// In en, this message translates to:
+  /// **'The server is temporarily unavailable. Try again later.'**
+  String get serverUnavailableError;
+
+  /// No description provided for @invalidServerResponseError.
+  ///
+  /// In en, this message translates to:
+  /// **'The server returned an invalid response. Try again later.'**
+  String get invalidServerResponseError;
+
+  /// No description provided for @unsafeSubscriptionError.
+  ///
+  /// In en, this message translates to:
+  /// **'The subscription URL is not secure and was rejected.'**
+  String get unsafeSubscriptionError;
+
+  /// No description provided for @serverNotConfiguredError.
+  ///
+  /// In en, this message translates to:
+  /// **'The server address is not configured.'**
+  String get serverNotConfiguredError;
+
+  /// No description provided for @installerVerificationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Installer verification failed. Download it again.'**
+  String get installerVerificationError;
+
+  /// No description provided for @updateDownloadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Update download failed. Try again later.'**
+  String get updateDownloadError;
+
+  /// No description provided for @networkRequestError.
+  ///
+  /// In en, this message translates to:
+  /// **'Network request failed. Check your connection and try again.'**
+  String get networkRequestError;
+
+  /// No description provided for @invalidCredentialsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect email or password.'**
+  String get invalidCredentialsError;
+
+  /// No description provided for @invalidVerificationCodeError.
+  ///
+  /// In en, this message translates to:
+  /// **'The verification code is invalid or expired.'**
+  String get invalidVerificationCodeError;
+
+  /// No description provided for @accountDisabledError.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has been disabled. Contact support.'**
+  String get accountDisabledError;
+
+  /// No description provided for @unexpectedError.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Try again later.'**
+  String get unexpectedError;
+
+  /// No description provided for @nodeSortOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Default order'**
+  String get nodeSortOriginal;
+
+  /// No description provided for @nodeSortLatency.
+  ///
+  /// In en, this message translates to:
+  /// **'By latency'**
+  String get nodeSortLatency;
+
+  /// No description provided for @nodeSortName.
+  ///
+  /// In en, this message translates to:
+  /// **'By name'**
+  String get nodeSortName;
+
+  /// No description provided for @nodeSortRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'By region'**
+  String get nodeSortRegion;
 }
 
 class _AppLocalizationsDelegate

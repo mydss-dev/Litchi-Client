@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../models/app_models.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
@@ -29,9 +30,9 @@ class ModeStrip extends StatelessWidget {
             Expanded(
               child: _ModeButton(
                 label: switch (mode) {
-                  ProxyMode.rule => '规则',
-                  ProxyMode.global => '全局',
-                  ProxyMode.direct => '直连',
+                  ProxyMode.rule => context.l10n.ruleMode,
+                  ProxyMode.global => context.l10n.globalMode,
+                  ProxyMode.direct => context.l10n.directMode,
                 },
                 selected: selected == mode,
                 onTap: () => onChanged(mode),

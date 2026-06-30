@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../l10n/l10n.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_text_styles.dart';
 
@@ -88,9 +89,9 @@ class AuthLinkText extends StatelessWidget {
 
 /// "—— 或 ——" style divider with a centered label (§16.9).
 class AuthDivider extends StatelessWidget {
-  const AuthDivider({super.key, this.label = '或'});
+  const AuthDivider({super.key, this.label});
 
-  final String label;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +103,7 @@ class AuthDivider extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
-            label,
+            label ?? context.l10n.or,
             style: AppTextStyles.caption.copyWith(
               color: c.textMuted,
               fontSize: 12,

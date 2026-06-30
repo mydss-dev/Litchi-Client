@@ -93,7 +93,7 @@ class LitchiVpnService : VpnService() {
                 if (isRunning) {
                     startCoreForeground("${getString(R.string.app_name)} connected")
                     AndroidCoreStatus.emit("running", "vpn")
-                    return START_NOT_STICKY
+                    return START_REDELIVER_INTENT
                 }
                 registerNetworkCallback()
                 registerPowerReceiver()
@@ -112,7 +112,7 @@ class LitchiVpnService : VpnService() {
                 updateSuspendState()
                 startCoreForeground("${getString(R.string.app_name)} connected")
                 AndroidCoreStatus.emit("running", "vpn")
-                return START_NOT_STICKY
+                return START_REDELIVER_INTENT
             }
         }
         stopSelf()

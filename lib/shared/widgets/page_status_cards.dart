@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../l10n/l10n.dart';
+import '../services/app_error_message_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_text_styles.dart';
@@ -36,6 +38,10 @@ class PageErrorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final displayMessage = AppErrorMessageService.userFacing(
+      message,
+      context.l10n,
+    );
     return AppCard(
       radius: AppRadius.card,
       padding: const EdgeInsets.all(32),
@@ -44,7 +50,7 @@ class PageErrorCard extends StatelessWidget {
           Icon(LucideIcons.circleX, size: 32, color: c.danger),
           const SizedBox(height: 12),
           Text(
-            message,
+            displayMessage,
             style: AppTextStyles.body.copyWith(color: c.textMuted),
             textAlign: TextAlign.center,
           ),
@@ -63,7 +69,7 @@ class PageErrorCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Text(
-                  '重试',
+                  context.l10n.retry,
                   style: AppTextStyles.body.copyWith(color: c.primary),
                 ),
               ),
@@ -86,7 +92,7 @@ class RefreshIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PageIconButton(
       icon: LucideIcons.refreshCw,
-      tooltip: tooltip ?? '刷新',
+      tooltip: tooltip ?? context.l10n.refresh,
       onTap: onTap,
     );
   }
@@ -102,7 +108,7 @@ class PageBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PageIconButton(
       icon: LucideIcons.chevronLeft,
-      tooltip: tooltip ?? '返回',
+      tooltip: tooltip ?? context.l10n.back,
       onTap: onTap,
     );
   }

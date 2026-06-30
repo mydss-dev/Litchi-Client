@@ -1,12 +1,12 @@
 import type { Context, Telegraf } from 'telegraf';
 
-import { getAuthorizedUser } from './db.js';
+import { bumpConfigVersion, getAuthorizedUser } from './db.js';
 import {
   clearPendingAction,
   getPendingAction,
   setPendingAction,
 } from './flow_state.js';
-import { signConfigPayload } from './signer.js';
+import { signConfigPayload, withConfigVersion } from './signer.js';
 import { parseAndValidateConfig } from './validate.js';
 
 export function wireSignCommands(bot: Telegraf): void {
@@ -114,7 +114,11 @@ async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
   try {
     const payload = parseAndValidateConfig(rawConfig);
 
-    const signed = signConfigPayload(payload, profile.private_key);
+    const configVersion = bumpConfigVersion(profile.app_id);
+    const signed = signConfigPayload(
+      withConfigVersion(payload, configVersion),
+      profile.private_key,
+    );
     const fileBuffer = Buffer.from(JSON.stringify(signed, null, 2), 'utf8');
 
     await ctx.reply('配置已签名');

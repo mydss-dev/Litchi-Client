@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../l10n/l10n.dart';
 import '../models/app_models.dart';
 import '../services/update_service.dart';
 import '../services/url_opener.dart';
@@ -44,8 +45,9 @@ class _UpdateBannerState extends State<UpdateBanner> {
 
     try {
       if (Platform.isAndroid) {
+        final openError = context.l10n.cannotOpenUpdateUrl;
         final opened = await UrlOpener.open(widget.info.downloadUrl);
-        if (!opened) throw Exception('无法打开更新下载地址');
+        if (!opened) throw Exception(openError);
       } else {
         await UpdateService.downloadAndInstall(
           widget.info,
@@ -62,7 +64,9 @@ class _UpdateBannerState extends State<UpdateBanner> {
       if (mounted) {
         AppToast.show(
           context,
-          Platform.isAndroid ? '已打开下载页面' : '下载完成，正在打开安装包',
+          Platform.isAndroid
+              ? context.l10n.downloadPageOpened
+              : context.l10n.downloadCompleteOpeningInstaller,
           type: AppToastType.success,
         );
         if (Platform.isAndroid) {
@@ -106,7 +110,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '发现新版本 v${info.version}，点击下载最新版本',
+                  context.l10n.newVersionAvailable(info.version),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.body.copyWith(
@@ -117,7 +121,11 @@ class _UpdateBannerState extends State<UpdateBanner> {
               ),
               const SizedBox(width: 8),
               if (info.downloadUrl.isNotEmpty && !_downloading)
-                _TextBtn(label: '立即下载', color: c.success, onTap: _download),
+                _TextBtn(
+                  label: context.l10n.downloadNow,
+                  color: c.success,
+                  onTap: _download,
+                ),
               if (_downloading)
                 _TextBtn(
                   label: '${(_progress * 100).toStringAsFixed(0)}%',

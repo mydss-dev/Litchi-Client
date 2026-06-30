@@ -5,6 +5,7 @@ const reservedKeys = new Set([
   'owner_tg_user_id',
   'payload_b64',
   'signature',
+  'config_version',
 ]);
 
 const allowedTopLevelKeys = new Set([

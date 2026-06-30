@@ -23,6 +23,7 @@ class AndroidCoreManager {
   bool _isRunning = false;
   bool _isCoreRunning = false;
   bool _isVpnRunning = false;
+  bool _quickTileDisconnected = false;
   int _controllerPort = 9090;
   String _controllerSecret = '';
   String _lastError = '';
@@ -31,6 +32,7 @@ class AndroidCoreManager {
   bool get isRunning => _isRunning;
   bool get isCoreRunning => _isCoreRunning;
   bool get isVpnRunning => _isVpnRunning;
+  bool get quickTileDisconnected => _quickTileDisconnected;
   int get controllerPort => _controllerPort;
   String get controllerSecret => _controllerSecret;
   String get lastError => _lastError;
@@ -39,6 +41,7 @@ class AndroidCoreManager {
     _statusSub ??= statusStream.listen(_applyStatus);
     _isCoreRunning = await _invokeBool('isCoreRunning');
     _isVpnRunning = await _invokeBool('isVpnRunning');
+    _quickTileDisconnected = await _invokeBool('consumeQuickTileDisconnected');
     _controllerPort = await _invokeInt('controllerPort', fallback: 9090);
     _controllerSecret = await _invokeString('controllerSecret');
     _isRunning = _isCoreRunning || _isVpnRunning;

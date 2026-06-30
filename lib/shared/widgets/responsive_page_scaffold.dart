@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/l10n.dart';
 import '../responsive/breakpoints.dart';
 import '../theme/app_text_styles.dart';
 import 'page_header.dart';
@@ -39,10 +40,10 @@ class ResponsivePageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return context.isCompact ? _buildCompact(context) : _buildWide();
+    return context.isCompact ? _buildCompact(context) : _buildWide(context);
   }
 
-  Widget _buildWide() {
+  Widget _buildWide(BuildContext context) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,7 +51,10 @@ class ResponsivePageScaffold extends StatelessWidget {
           Row(
             children: [
               if (showWideBack) ...[
-                PageBackButton(onTap: onBack, tooltip: '返回我的'),
+                PageBackButton(
+                  onTap: onBack,
+                  tooltip: context.l10n.backToAccount,
+                ),
                 const SizedBox(width: 10),
               ],
               Expanded(

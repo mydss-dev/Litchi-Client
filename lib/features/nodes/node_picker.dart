@@ -6,12 +6,15 @@ import '../../app/app_controller.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/node_filter.dart';
+import '../../shared/services/node_sort.dart';
+import '../../shared/services/settings_service.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_modal.dart';
+import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/node_latency.dart';
@@ -53,6 +56,20 @@ class _NodePickerState extends State<_NodePicker> {
 
   int _filterIndex = 0;
   String _query = '';
+  NodeSortMode _sortMode = NodeSortMode.original;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSortMode();
+  }
+
+  Future<void> _loadSortMode() async {
+    final value = await SettingsService.loadNodeSortKey();
+    if (mounted) {
+      setState(() => _sortMode = NodeSortMode.fromStorageKey(value));
+    }
+  }
 
   List<String> _filterLabels(BuildContext context) => [
     context.l10n.all,
@@ -66,12 +83,27 @@ class _NodePickerState extends State<_NodePicker> {
       widget.compact ? _compactFilterTabs : _wideFilterTabs;
 
   List<NodeModel> _filteredNodes(AppController ctrl) {
-    return NodeFilter.apply(
-      nodes: ctrl.nodes,
-      query: _query,
-      tab: _filterTabs[_filterIndex],
+    return NodeSort.apply(
+      NodeFilter.apply(
+        nodes: ctrl.nodes,
+        query: _query,
+        tab: _filterTabs[_filterIndex],
+      ),
+      _sortMode,
     );
   }
+
+  void _setSortMode(NodeSortMode mode) {
+    setState(() => _sortMode = mode);
+    SettingsService.setNodeSortKey(mode.storageKey);
+  }
+
+  String _sortLabel(NodeSortMode mode) => switch (mode) {
+    NodeSortMode.original => context.l10n.nodeSortOriginal,
+    NodeSortMode.latency => context.l10n.nodeSortLatency,
+    NodeSortMode.name => context.l10n.nodeSortName,
+    NodeSortMode.region => context.l10n.nodeSortRegion,
+  };
 
   Future<void> _selectAuto(AppController ctrl) async {
     final error = await ctrl.selectAuto();
@@ -181,10 +213,25 @@ class _NodePickerState extends State<_NodePicker> {
             const SizedBox(height: 12),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: horizontal),
-              child: FilterTabs(
-                tabs: _filterLabels(context),
-                selectedIndex: _filterIndex,
-                onSelected: (index) => setState(() => _filterIndex = index),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilterTabs(
+                      tabs: _filterLabels(context),
+                      selectedIndex: _filterIndex,
+                      onSelected: (index) =>
+                          setState(() => _filterIndex = index),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  AppSelect<NodeSortMode>(
+                    value: _sortMode,
+                    items: NodeSortMode.values,
+                    labelOf: _sortLabel,
+                    onChanged: _setSortMode,
+                    minWidth: widget.compact ? 112 : 132,
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),

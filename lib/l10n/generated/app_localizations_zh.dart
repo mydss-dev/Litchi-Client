@@ -1015,6 +1015,576 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get serverUnavailableNoCache => '当前无法连接服务器，且暂无本地节点缓存，请检查网络或联系客服。';
+
+  @override
+  String get trafficStatistics => '流量统计';
+
+  @override
+  String get trafficStatisticsSubtitle => '查看流量、设备和套餐周期';
+
+  @override
+  String remainingTraffic(String value) {
+    return '剩余 $value GB';
+  }
+
+  @override
+  String get onlineDevices => '在线设备';
+
+  @override
+  String get currentOnlineDevices => '当前在线设备数';
+
+  @override
+  String get remainingDays => '剩余日期';
+
+  @override
+  String get permanent => '永久';
+
+  @override
+  String get daysUnit => '天';
+
+  @override
+  String get subscriptionLongTerm => '订阅长期有效';
+
+  @override
+  String expiresAt(String date) {
+    return '到期 $date';
+  }
+
+  @override
+  String get trafficResetTime => '流量重置时间';
+
+  @override
+  String get neverResets => '不重置';
+
+  @override
+  String daysCount(int count) {
+    return '$count 天';
+  }
+
+  @override
+  String get noTrafficReset => '当前套餐未配置重置周期';
+
+  @override
+  String get untilNextReset => '距下次重置';
+
+  @override
+  String get trafficTrend => '流量趋势图';
+
+  @override
+  String periodTrafficTotal(String period, String total) {
+    return '$period 共 $total';
+  }
+
+  @override
+  String recentDays(int count) {
+    return '最近$count天';
+  }
+
+  @override
+  String tooltipUpload(String value) {
+    return '上行 $value';
+  }
+
+  @override
+  String tooltipDownload(String value) {
+    return '下行 $value';
+  }
+
+  @override
+  String tooltipTotal(String value) {
+    return '合计 $value';
+  }
+
+  @override
+  String get weekdayShort => '周一,周二,周三,周四,周五,周六,周日';
+
+  @override
+  String get ticketSupport => '工单支持';
+
+  @override
+  String get ticketSupportSubtitle => '提交问题并查看回复';
+
+  @override
+  String get tickets => '工单';
+
+  @override
+  String get ticketSupportCompactSubtitle => '提交问题并查看客服回复';
+
+  @override
+  String get newTicket => '新建工单';
+
+  @override
+  String get ticketLoadFailed => '工单加载失败';
+
+  @override
+  String get noTickets => '暂无工单';
+
+  @override
+  String get noTicketsSubtitle => '有问题可以新建工单联系客服';
+
+  @override
+  String get untitledTicket => '未命名工单';
+
+  @override
+  String get ticketFieldsRequired => '请填写标题和问题描述';
+
+  @override
+  String get ticketSubjectTooShort => '问题标题至少 5 个字符';
+
+  @override
+  String get ticketMessageTooShort => '问题描述至少 10 个字符';
+
+  @override
+  String get ticketSubmitted => '工单已提交';
+
+  @override
+  String get issueSubject => '问题标题';
+
+  @override
+  String get issueSubjectHint => '用一句话描述你的问题';
+
+  @override
+  String get priority => '优先级';
+
+  @override
+  String get issueDescription => '问题描述';
+
+  @override
+  String get issueDescriptionHint => '详细描述你遇到的问题';
+
+  @override
+  String get submitting => '提交中...';
+
+  @override
+  String get submitTicket => '提交工单';
+
+  @override
+  String get replyRequired => '请输入回复内容';
+
+  @override
+  String get replySent => '回复已发送';
+
+  @override
+  String get ticketClosed => '工单已关闭';
+
+  @override
+  String get ticketDetails => '工单详情';
+
+  @override
+  String get replyHint => '输入回复内容';
+
+  @override
+  String get closing => '关闭中...';
+
+  @override
+  String get closeTicket => '关闭工单';
+
+  @override
+  String get sendReply => '发送回复';
+
+  @override
+  String get priorityLow => '低';
+
+  @override
+  String get priorityMedium => '中';
+
+  @override
+  String get priorityUrgent => '紧急';
+
+  @override
+  String get noTicketMessages => '暂无消息记录';
+
+  @override
+  String get customerSupport => '客服';
+
+  @override
+  String get me => '我';
+
+  @override
+  String get ticketClosedStatus => '已关闭';
+
+  @override
+  String get invalidRechargeAmount => '请输入有效的充值金额';
+
+  @override
+  String get noTransferableCommission => '暂无可划转佣金';
+
+  @override
+  String get withdrawalUnavailable => '提现暂未开放';
+
+  @override
+  String get noWithdrawableCommission => '暂无可提现佣金';
+
+  @override
+  String get noWithdrawalMethods => '暂无可用提现方式';
+
+  @override
+  String get myWallet => '我的钱包';
+
+  @override
+  String get myWalletSubtitle => '查看余额、佣金与充值';
+
+  @override
+  String get accountAssets => '账户资产';
+
+  @override
+  String get accountBalance => '账户余额';
+
+  @override
+  String get withdrawableCommission => '可提现佣金';
+
+  @override
+  String get transferCommission => '佣金划转';
+
+  @override
+  String get requestWithdrawal => '申请提现';
+
+  @override
+  String get rechargeBalance => '充值余额';
+
+  @override
+  String get rechargeBalanceNotice => '充值后的余额仅限消费，无法提现';
+
+  @override
+  String get customAmount => '自定义金额';
+
+  @override
+  String get rechargeAmountHint => '请输入充值金额';
+
+  @override
+  String get recharge => '充值';
+
+  @override
+  String get transferAmountRequired => '请输入划转金额';
+
+  @override
+  String get transferAmountTooHigh => '划转金额不能超过可提现佣金';
+
+  @override
+  String get commissionTransferred => '佣金已划转到余额';
+
+  @override
+  String get transferCommissionNotice => '将可提现佣金划转到账户余额，划转后可用于购买套餐。';
+
+  @override
+  String get transferAmount => '划转金额';
+
+  @override
+  String transferableAmount(String amount) {
+    return '可划转 $amount';
+  }
+
+  @override
+  String get transferring => '划转中...';
+
+  @override
+  String get confirmTransfer => '确认划转';
+
+  @override
+  String get withdrawalAmountRequired => '请输入提现金额';
+
+  @override
+  String get withdrawalAmountTooHigh => '提现金额不能超过可提现佣金';
+
+  @override
+  String minimumWithdrawal(String amount) {
+    return '最低提现金额为 $amount';
+  }
+
+  @override
+  String get withdrawalAccountRequired => '请输入提现账户';
+
+  @override
+  String get withdrawalSubmitted => '提现工单已提交';
+
+  @override
+  String get withdrawalMethod => '提现方式';
+
+  @override
+  String get withdrawalAccount => '提现账户';
+
+  @override
+  String get withdrawalAccountHint => '请输入收款账号';
+
+  @override
+  String get withdrawalAmount => '提现金额';
+
+  @override
+  String withdrawableAmount(String amount) {
+    return '可提现 $amount';
+  }
+
+  @override
+  String withdrawableWithMinimum(String amount, String minimum) {
+    return '可提现 $amount · 最低 $minimum';
+  }
+
+  @override
+  String get submitWithdrawal => '提交提现';
+
+  @override
+  String itemCopied(String item) {
+    return '$item 已复制';
+  }
+
+  @override
+  String get settingsUpdated => '设置已更新';
+
+  @override
+  String get myAccount => '我的账户';
+
+  @override
+  String get myAccountSubtitle => '查看账户信息与订阅详情';
+
+  @override
+  String get expiredStatus => '已到期';
+
+  @override
+  String get suspendedStatus => '已封禁';
+
+  @override
+  String get normalStatus => '正常';
+
+  @override
+  String get accountInformation => '账户信息';
+
+  @override
+  String get accountStatus => '账户状态';
+
+  @override
+  String get expiryTime => '到期时间';
+
+  @override
+  String get balanceAndRecharge => '余额与充值';
+
+  @override
+  String get purchaseAndPayment => '购买与支付';
+
+  @override
+  String get usageRecords => '使用记录';
+
+  @override
+  String get contactAfterSales => '联系售后';
+
+  @override
+  String get resetDayUnavailable => '重置日 --';
+
+  @override
+  String monthlyResetDay(int day) {
+    return '每月 $day 日重置';
+  }
+
+  @override
+  String get trafficOverview => '流量概览';
+
+  @override
+  String usedPercent(String percent) {
+    return '已用 $percent%';
+  }
+
+  @override
+  String get remaining => '剩余';
+
+  @override
+  String usedTraffic(String used, String total) {
+    return '已用 $used / $total GB';
+  }
+
+  @override
+  String get currentPlan => '当前套餐';
+
+  @override
+  String get noCurrentPlan => '暂无套餐';
+
+  @override
+  String get logout => '退出登录';
+
+  @override
+  String get logoutDataNotice => '当前登录状态和本地节点缓存将被清除';
+
+  @override
+  String get logoutConfirmMessage => '确认退出当前账号？退出后需要重新登录。';
+
+  @override
+  String get confirmLogout => '确认退出';
+
+  @override
+  String currentPlanValue(String plan) {
+    return '当前套餐：$plan';
+  }
+
+  @override
+  String expiryValue(String expiry) {
+    return '到期：$expiry';
+  }
+
+  @override
+  String get manage => '管理';
+
+  @override
+  String get accountManagement => '账号管理';
+
+  @override
+  String get expiryReminder => '到期提醒';
+
+  @override
+  String get expiryReminderSubtitle => '接收账户到期提醒邮件';
+
+  @override
+  String get trafficReminder => '流量提醒';
+
+  @override
+  String get trafficReminderSubtitle => '接收流量用尽提醒邮件';
+
+  @override
+  String get autoRenewal => '自动续费';
+
+  @override
+  String get autoRenewalSubtitle => '到期前自动续费套餐';
+
+  @override
+  String get updateLoginPassword => '更新登录密码';
+
+  @override
+  String get logoutCurrentAccount => '退出当前账号';
+
+  @override
+  String get passwordTooShort => '新密码至少 8 位';
+
+  @override
+  String get currentPassword => '当前密码';
+
+  @override
+  String get confirmNewPassword => '确认新密码';
+
+  @override
+  String get confirmNewPasswordHint => '请输入确认新密码';
+
+  @override
+  String get updating => '更新中...';
+
+  @override
+  String get confirmChange => '确认修改';
+
+  @override
+  String get trayConnectedTun => '已连接 · 虚拟网卡';
+
+  @override
+  String get trayConnectedSystemProxy => '已连接 · 系统代理';
+
+  @override
+  String openApp(String appName) {
+    return '打开 $appName';
+  }
+
+  @override
+  String trayNode(String node) {
+    return '节点：$node';
+  }
+
+  @override
+  String get connectNow => '立即连接';
+
+  @override
+  String get repairSystemProxy => '修复系统代理';
+
+  @override
+  String get quit => '退出';
+
+  @override
+  String get cannotOpenUpdateUrl => '无法打开更新下载地址';
+
+  @override
+  String get downloadPageOpened => '已打开下载页面';
+
+  @override
+  String get downloadCompleteOpeningInstaller => '下载完成，正在打开安装包';
+
+  @override
+  String newVersionAvailable(String version) {
+    return '发现新版本 v$version，点击下载最新版本';
+  }
+
+  @override
+  String get downloadNow => '立即下载';
+
+  @override
+  String get refresh => '刷新';
+
+  @override
+  String get back => '返回';
+
+  @override
+  String get search => '搜索';
+
+  @override
+  String get backToAccount => '返回我的';
+
+  @override
+  String get viewDetails => '查看详情';
+
+  @override
+  String get requestFailed => '请求失败，请稍后重试';
+
+  @override
+  String get sessionExpiredError => '登录已过期，请重新登录';
+
+  @override
+  String get tooManyRequestsError => '操作太频繁，请稍后再试';
+
+  @override
+  String get invalidSubmissionError => '提交内容有误，请检查后重试';
+
+  @override
+  String get connectionTimeoutError => '连接超时，请检查网络后重试';
+
+  @override
+  String get cannotConnectServerError => '无法连接到服务器，请检查网络';
+
+  @override
+  String get serverUnavailableError => '服务器暂时不可用，请稍后重试';
+
+  @override
+  String get invalidServerResponseError => '服务器响应异常，请稍后重试';
+
+  @override
+  String get unsafeSubscriptionError => '订阅地址不安全，已拒绝使用';
+
+  @override
+  String get serverNotConfiguredError => '请先配置服务器地址';
+
+  @override
+  String get installerVerificationError => '安装包校验失败，请重新下载';
+
+  @override
+  String get updateDownloadError => '更新下载失败，请稍后重试';
+
+  @override
+  String get networkRequestError => '网络请求失败，请检查网络后重试';
+
+  @override
+  String get invalidCredentialsError => '邮箱或密码错误';
+
+  @override
+  String get invalidVerificationCodeError => '验证码错误或已过期';
+
+  @override
+  String get accountDisabledError => '当前账号已被禁用，请联系客服';
+
+  @override
+  String get unexpectedError => '操作失败，请稍后重试';
+
+  @override
+  String get nodeSortOriginal => '默认顺序';
+
+  @override
+  String get nodeSortLatency => '按延迟';
+
+  @override
+  String get nodeSortName => '按名称';
+
+  @override
+  String get nodeSortRegion => '按地区';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -2028,4 +2598,574 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get serverUnavailableNoCache => '目前無法連線伺服器，且沒有本機節點快取，請檢查網路或聯絡客服。';
+
+  @override
+  String get trafficStatistics => '流量統計';
+
+  @override
+  String get trafficStatisticsSubtitle => '查看流量、裝置和方案週期';
+
+  @override
+  String remainingTraffic(String value) {
+    return '剩餘 $value GB';
+  }
+
+  @override
+  String get onlineDevices => '在線裝置';
+
+  @override
+  String get currentOnlineDevices => '目前在線裝置數';
+
+  @override
+  String get remainingDays => '剩餘天數';
+
+  @override
+  String get permanent => '永久';
+
+  @override
+  String get daysUnit => '天';
+
+  @override
+  String get subscriptionLongTerm => '訂閱長期有效';
+
+  @override
+  String expiresAt(String date) {
+    return '到期 $date';
+  }
+
+  @override
+  String get trafficResetTime => '流量重設時間';
+
+  @override
+  String get neverResets => '不重設';
+
+  @override
+  String daysCount(int count) {
+    return '$count 天';
+  }
+
+  @override
+  String get noTrafficReset => '目前方案未設定重設週期';
+
+  @override
+  String get untilNextReset => '距下次重設';
+
+  @override
+  String get trafficTrend => '流量趨勢圖';
+
+  @override
+  String periodTrafficTotal(String period, String total) {
+    return '$period 共 $total';
+  }
+
+  @override
+  String recentDays(int count) {
+    return '最近$count天';
+  }
+
+  @override
+  String tooltipUpload(String value) {
+    return '上行 $value';
+  }
+
+  @override
+  String tooltipDownload(String value) {
+    return '下行 $value';
+  }
+
+  @override
+  String tooltipTotal(String value) {
+    return '合計 $value';
+  }
+
+  @override
+  String get weekdayShort => '週一,週二,週三,週四,週五,週六,週日';
+
+  @override
+  String get ticketSupport => '工單支援';
+
+  @override
+  String get ticketSupportSubtitle => '提交問題並查看回覆';
+
+  @override
+  String get tickets => '工單';
+
+  @override
+  String get ticketSupportCompactSubtitle => '提交問題並查看客服回覆';
+
+  @override
+  String get newTicket => '新增工單';
+
+  @override
+  String get ticketLoadFailed => '工單載入失敗';
+
+  @override
+  String get noTickets => '暫無工單';
+
+  @override
+  String get noTicketsSubtitle => '有問題可以新增工單聯絡客服';
+
+  @override
+  String get untitledTicket => '未命名工單';
+
+  @override
+  String get ticketFieldsRequired => '請填寫標題和問題描述';
+
+  @override
+  String get ticketSubjectTooShort => '問題標題至少需要 5 個字元';
+
+  @override
+  String get ticketMessageTooShort => '問題描述至少需要 10 個字元';
+
+  @override
+  String get ticketSubmitted => '工單已提交';
+
+  @override
+  String get issueSubject => '問題標題';
+
+  @override
+  String get issueSubjectHint => '用一句話描述你的問題';
+
+  @override
+  String get priority => '優先級';
+
+  @override
+  String get issueDescription => '問題描述';
+
+  @override
+  String get issueDescriptionHint => '詳細描述你遇到的問題';
+
+  @override
+  String get submitting => '提交中...';
+
+  @override
+  String get submitTicket => '提交工單';
+
+  @override
+  String get replyRequired => '請輸入回覆內容';
+
+  @override
+  String get replySent => '回覆已傳送';
+
+  @override
+  String get ticketClosed => '工單已關閉';
+
+  @override
+  String get ticketDetails => '工單詳情';
+
+  @override
+  String get replyHint => '輸入回覆內容';
+
+  @override
+  String get closing => '關閉中...';
+
+  @override
+  String get closeTicket => '關閉工單';
+
+  @override
+  String get sendReply => '傳送回覆';
+
+  @override
+  String get priorityLow => '低';
+
+  @override
+  String get priorityMedium => '中';
+
+  @override
+  String get priorityUrgent => '緊急';
+
+  @override
+  String get noTicketMessages => '暫無訊息記錄';
+
+  @override
+  String get customerSupport => '客服';
+
+  @override
+  String get me => '我';
+
+  @override
+  String get ticketClosedStatus => '已關閉';
+
+  @override
+  String get invalidRechargeAmount => '請輸入有效的儲值金額';
+
+  @override
+  String get noTransferableCommission => '暫無可劃轉佣金';
+
+  @override
+  String get withdrawalUnavailable => '提現暫未開放';
+
+  @override
+  String get noWithdrawableCommission => '暫無可提現佣金';
+
+  @override
+  String get noWithdrawalMethods => '暫無可用提現方式';
+
+  @override
+  String get myWallet => '我的錢包';
+
+  @override
+  String get myWalletSubtitle => '查看餘額、佣金與儲值';
+
+  @override
+  String get accountAssets => '帳戶資產';
+
+  @override
+  String get accountBalance => '帳戶餘額';
+
+  @override
+  String get withdrawableCommission => '可提現佣金';
+
+  @override
+  String get transferCommission => '佣金劃轉';
+
+  @override
+  String get requestWithdrawal => '申請提現';
+
+  @override
+  String get rechargeBalance => '儲值餘額';
+
+  @override
+  String get rechargeBalanceNotice => '儲值後的餘額僅限消費，無法提現';
+
+  @override
+  String get customAmount => '自訂金額';
+
+  @override
+  String get rechargeAmountHint => '請輸入儲值金額';
+
+  @override
+  String get recharge => '儲值';
+
+  @override
+  String get transferAmountRequired => '請輸入劃轉金額';
+
+  @override
+  String get transferAmountTooHigh => '劃轉金額不能超過可提現佣金';
+
+  @override
+  String get commissionTransferred => '佣金已劃轉到餘額';
+
+  @override
+  String get transferCommissionNotice => '將可提現佣金劃轉到帳戶餘額，劃轉後可用於購買方案。';
+
+  @override
+  String get transferAmount => '劃轉金額';
+
+  @override
+  String transferableAmount(String amount) {
+    return '可劃轉 $amount';
+  }
+
+  @override
+  String get transferring => '劃轉中...';
+
+  @override
+  String get confirmTransfer => '確認劃轉';
+
+  @override
+  String get withdrawalAmountRequired => '請輸入提現金額';
+
+  @override
+  String get withdrawalAmountTooHigh => '提現金額不能超過可提現佣金';
+
+  @override
+  String minimumWithdrawal(String amount) {
+    return '最低提現金額為 $amount';
+  }
+
+  @override
+  String get withdrawalAccountRequired => '請輸入提現帳戶';
+
+  @override
+  String get withdrawalSubmitted => '提現工單已提交';
+
+  @override
+  String get withdrawalMethod => '提現方式';
+
+  @override
+  String get withdrawalAccount => '提現帳戶';
+
+  @override
+  String get withdrawalAccountHint => '請輸入收款帳號';
+
+  @override
+  String get withdrawalAmount => '提現金額';
+
+  @override
+  String withdrawableAmount(String amount) {
+    return '可提現 $amount';
+  }
+
+  @override
+  String withdrawableWithMinimum(String amount, String minimum) {
+    return '可提現 $amount · 最低 $minimum';
+  }
+
+  @override
+  String get submitWithdrawal => '提交提現';
+
+  @override
+  String itemCopied(String item) {
+    return '$item 已複製';
+  }
+
+  @override
+  String get settingsUpdated => '設定已更新';
+
+  @override
+  String get myAccount => '我的帳戶';
+
+  @override
+  String get myAccountSubtitle => '查看帳戶資訊與訂閱詳情';
+
+  @override
+  String get expiredStatus => '已到期';
+
+  @override
+  String get suspendedStatus => '已停權';
+
+  @override
+  String get normalStatus => '正常';
+
+  @override
+  String get accountInformation => '帳戶資訊';
+
+  @override
+  String get accountStatus => '帳戶狀態';
+
+  @override
+  String get expiryTime => '到期時間';
+
+  @override
+  String get balanceAndRecharge => '餘額與儲值';
+
+  @override
+  String get purchaseAndPayment => '購買與付款';
+
+  @override
+  String get usageRecords => '使用記錄';
+
+  @override
+  String get contactAfterSales => '聯絡售後';
+
+  @override
+  String get resetDayUnavailable => '重設日 --';
+
+  @override
+  String monthlyResetDay(int day) {
+    return '每月 $day 日重設';
+  }
+
+  @override
+  String get trafficOverview => '流量概覽';
+
+  @override
+  String usedPercent(String percent) {
+    return '已用 $percent%';
+  }
+
+  @override
+  String get remaining => '剩餘';
+
+  @override
+  String usedTraffic(String used, String total) {
+    return '已用 $used / $total GB';
+  }
+
+  @override
+  String get currentPlan => '目前方案';
+
+  @override
+  String get noCurrentPlan => '暫無方案';
+
+  @override
+  String get logout => '登出';
+
+  @override
+  String get logoutDataNotice => '目前登入狀態和本機節點快取將被清除';
+
+  @override
+  String get logoutConfirmMessage => '確認登出目前帳號？登出後需要重新登入。';
+
+  @override
+  String get confirmLogout => '確認登出';
+
+  @override
+  String currentPlanValue(String plan) {
+    return '目前方案：$plan';
+  }
+
+  @override
+  String expiryValue(String expiry) {
+    return '到期：$expiry';
+  }
+
+  @override
+  String get manage => '管理';
+
+  @override
+  String get accountManagement => '帳號管理';
+
+  @override
+  String get expiryReminder => '到期提醒';
+
+  @override
+  String get expiryReminderSubtitle => '接收帳戶到期提醒郵件';
+
+  @override
+  String get trafficReminder => '流量提醒';
+
+  @override
+  String get trafficReminderSubtitle => '接收流量用盡提醒郵件';
+
+  @override
+  String get autoRenewal => '自動續費';
+
+  @override
+  String get autoRenewalSubtitle => '到期前自動續費方案';
+
+  @override
+  String get updateLoginPassword => '更新登入密碼';
+
+  @override
+  String get logoutCurrentAccount => '登出目前帳號';
+
+  @override
+  String get passwordTooShort => '新密碼至少需要 8 位';
+
+  @override
+  String get currentPassword => '目前密碼';
+
+  @override
+  String get confirmNewPassword => '確認新密碼';
+
+  @override
+  String get confirmNewPasswordHint => '請再次輸入新密碼';
+
+  @override
+  String get updating => '更新中...';
+
+  @override
+  String get confirmChange => '確認修改';
+
+  @override
+  String get trayConnectedTun => '已連線 · 虛擬網卡';
+
+  @override
+  String get trayConnectedSystemProxy => '已連線 · 系統代理';
+
+  @override
+  String openApp(String appName) {
+    return '開啟 $appName';
+  }
+
+  @override
+  String trayNode(String node) {
+    return '節點：$node';
+  }
+
+  @override
+  String get connectNow => '立即連線';
+
+  @override
+  String get repairSystemProxy => '修復系統代理';
+
+  @override
+  String get quit => '結束';
+
+  @override
+  String get cannotOpenUpdateUrl => '無法開啟更新下載網址';
+
+  @override
+  String get downloadPageOpened => '已開啟下載頁面';
+
+  @override
+  String get downloadCompleteOpeningInstaller => '下載完成，正在開啟安裝程式';
+
+  @override
+  String newVersionAvailable(String version) {
+    return '發現新版本 v$version，點擊下載最新版本';
+  }
+
+  @override
+  String get downloadNow => '立即下載';
+
+  @override
+  String get refresh => '重新整理';
+
+  @override
+  String get back => '返回';
+
+  @override
+  String get search => '搜尋';
+
+  @override
+  String get backToAccount => '返回我的';
+
+  @override
+  String get viewDetails => '查看詳情';
+
+  @override
+  String get requestFailed => '請求失敗，請稍後重試';
+
+  @override
+  String get sessionExpiredError => '登入已過期，請重新登入';
+
+  @override
+  String get tooManyRequestsError => '操作太頻繁，請稍後再試';
+
+  @override
+  String get invalidSubmissionError => '提交內容有誤，請檢查後重試';
+
+  @override
+  String get connectionTimeoutError => '連線逾時，請檢查網路後重試';
+
+  @override
+  String get cannotConnectServerError => '無法連線到伺服器，請檢查網路';
+
+  @override
+  String get serverUnavailableError => '伺服器暫時無法使用，請稍後重試';
+
+  @override
+  String get invalidServerResponseError => '伺服器回應異常，請稍後重試';
+
+  @override
+  String get unsafeSubscriptionError => '訂閱網址不安全，已拒絕使用';
+
+  @override
+  String get serverNotConfiguredError => '請先設定伺服器位址';
+
+  @override
+  String get installerVerificationError => '安裝程式驗證失敗，請重新下載';
+
+  @override
+  String get updateDownloadError => '更新下載失敗，請稍後重試';
+
+  @override
+  String get networkRequestError => '網路請求失敗，請檢查網路後重試';
+
+  @override
+  String get invalidCredentialsError => '電子郵件或密碼錯誤';
+
+  @override
+  String get invalidVerificationCodeError => '驗證碼錯誤或已過期';
+
+  @override
+  String get accountDisabledError => '目前帳號已被停用，請聯絡客服';
+
+  @override
+  String get unexpectedError => '操作失敗，請稍後重試';
+
+  @override
+  String get nodeSortOriginal => '預設順序';
+
+  @override
+  String get nodeSortLatency => '按延遲';
+
+  @override
+  String get nodeSortName => '按名稱';
+
+  @override
+  String get nodeSortRegion => '按地區';
 }

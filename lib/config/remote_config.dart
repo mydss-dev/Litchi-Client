@@ -55,6 +55,8 @@ abstract final class RemoteConfigService {
   // ── Internal settings ─────────────────────────────────────────────────────
 
   static String get _cacheKey => AppIdentity.preferenceKey('remote_config_v1');
+  static String get _versionKey =>
+      AppIdentity.preferenceKey('remote_config_version');
   static const _timeout = Duration(seconds: 5);
 
   /// Maximum time the *first* launch will block on the remote config fetch
@@ -86,12 +88,23 @@ abstract final class RemoteConfigService {
 
     // 1. Apply trusted cache immediately so the first frame is correct.
     final cached = prefs.getString(_cacheKey);
+    var acceptedVersion = prefs.getInt(_versionKey) ?? 0;
     var applied = false;
     if (cached != null) {
       try {
         final config = await _parseTrustedConfig(cached);
-        if (config != null) {
+        if (config != null &&
+            RemoteConfigVersionPolicy.accepts(
+              candidate: config['config_version'],
+              acceptedVersion: acceptedVersion,
+            )) {
           AppConfig.applyRemote(config);
+          acceptedVersion = RemoteConfigVersionPolicy.versionOf(
+            config['config_version'],
+          );
+          if (acceptedVersion > 0) {
+            await prefs.setInt(_versionKey, acceptedVersion);
+          }
           applied = true;
         }
       } catch (_) {
@@ -137,10 +150,24 @@ abstract final class RemoteConfigService {
 
       final config = await _parseTrustedConfig(body);
       if (config == null) return;
+      final acceptedVersion = prefs.getInt(_versionKey) ?? 0;
+      if (!RemoteConfigVersionPolicy.accepts(
+        candidate: config['config_version'],
+        acceptedVersion: acceptedVersion,
+      )) {
+        SecureLogger.warn('RemoteConfig rejected a rolled-back payload');
+        return;
+      }
 
       // Persist the original trusted body for next launch. For signed config,
       // this keeps the signature wrapper so cache is re-verified on every start.
       await prefs.setString(_cacheKey, body);
+      final nextVersion = RemoteConfigVersionPolicy.versionOf(
+        config['config_version'],
+      );
+      if (nextVersion > acceptedVersion) {
+        await prefs.setInt(_versionKey, nextVersion);
+      }
 
       // Also apply to current session.
       AppConfig.applyRemote(config);
@@ -213,5 +240,29 @@ abstract final class RemoteConfigService {
       '=',
     );
     return base64.decode(padded);
+  }
+}
+
+abstract final class RemoteConfigVersionPolicy {
+  static int versionOf(Object? value) {
+    if (value is int) return value > 0 ? value : 0;
+    if (value is num) {
+      final version = value.toInt();
+      return version > 0 && value == version ? version : 0;
+    }
+    if (value is String) {
+      final version = int.tryParse(value.trim()) ?? 0;
+      return version > 0 ? version : 0;
+    }
+    return 0;
+  }
+
+  static bool accepts({
+    required Object? candidate,
+    required int acceptedVersion,
+  }) {
+    final version = versionOf(candidate);
+    if (acceptedVersion <= 0) return true;
+    return version >= acceptedVersion;
   }
 }

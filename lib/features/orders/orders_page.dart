@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/services/app_error_message_service.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -155,7 +156,7 @@ class _OrdersPageState extends State<OrdersPage> {
         PageStateCard(
           icon: LucideIcons.circleAlert,
           title: context.l10n.orderLoadFailed,
-          subtitle: _error!,
+          subtitle: AppErrorMessageService.userFacing(_error!, context.l10n),
           onTap: _load,
         ),
       ];

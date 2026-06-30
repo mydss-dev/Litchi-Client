@@ -125,8 +125,6 @@ class _SettingsPageState extends State<SettingsPage> {
     final ctrl = AppScope.of(context);
     final l10n = context.l10n;
     final supportsSystemProxy = Platform.isWindows || Platform.isMacOS;
-    final macTunWithoutProtection =
-        Platform.isMacOS && ctrl.networkMode == NetworkMode.tun;
     final networkModes = NetworkMode.values
         .where(CorePlatformSupport.supportsNetworkMode)
         .toList();
@@ -233,14 +231,12 @@ class _SettingsPageState extends State<SettingsPage> {
           if (supportsSystemProxy)
             _SettingRow(
               label: l10n.connectionProtection,
-              subtitle: macTunWithoutProtection
-                  ? l10n.macTunProtectionUnavailable
-                  : ctrl.networkMode == NetworkMode.tun
+              subtitle: ctrl.networkMode == NetworkMode.tun
                   ? l10n.tunProtectionDescription
                   : l10n.systemProtectionDescription,
               trailing: AppSwitch(
-                value: macTunWithoutProtection ? false : ctrl.killSwitch,
-                onChanged: macTunWithoutProtection ? null : ctrl.setKillSwitch,
+                value: ctrl.killSwitch,
+                onChanged: ctrl.setKillSwitch,
               ),
             ),
           if (supportsSystemProxy)

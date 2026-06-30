@@ -83,6 +83,9 @@ class MainActivity : FlutterActivity() {
                 }
                 "stopVpn" -> result.success(LitchiVpnService.stop(this))
                 "isVpnRunning" -> result.success(LitchiVpnService.isRunning)
+                "consumeQuickTileDisconnected" -> result.success(
+                    QuickTileState.consumeDisconnected(this)
+                )
                 "switchProxy" -> {
                     val args = call.arguments as? Map<*, *>
                     val group = args?.get("group") as? String

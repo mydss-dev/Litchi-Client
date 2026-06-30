@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildRunName } from './github.js';
+import { withConfigVersion } from './signer.js';
 import { parseAndValidateConfig, parseLooseConfig } from './validate.js';
 
 test('build run names include the unique request id', () => {
@@ -43,6 +44,25 @@ test('config validation accepts a normal signed-config payload', () => {
       logo_url: 'https://cdn.example.com/logo.png',
       api_base_list: ['https://api.example.com'],
     },
+  );
+});
+
+test('signing injects a monotonic config version owned by the bot', () => {
+  const payload = {
+    app_name: 'Customer Client',
+    api_base_list: ['https://api.example.com'],
+  };
+  assert.deepEqual(withConfigVersion(payload, 7), {
+    ...payload,
+    config_version: 7,
+  });
+  assert.equal('config_version' in payload, false);
+  assert.throws(() => withConfigVersion(payload, 0), /positive safe integer/);
+  assert.throws(
+    () =>
+      parseAndValidateConfig(
+        JSON.stringify({ ...payload, config_version: 99 }),
+      ),
   );
 });
 

@@ -33,3 +33,13 @@ export function signConfigPayload(
     signature: b64url(Buffer.from(signature)),
   };
 }
+
+export function withConfigVersion(
+  payload: Record<string, unknown>,
+  configVersion: number,
+): Record<string, unknown> {
+  if (!Number.isSafeInteger(configVersion) || configVersion <= 0) {
+    throw new Error('config_version must be a positive safe integer');
+  }
+  return { ...payload, config_version: configVersion };
+}

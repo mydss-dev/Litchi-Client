@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
@@ -24,13 +25,13 @@ class TrafficPage extends StatefulWidget {
 }
 
 class _TrafficPageState extends State<TrafficPage> {
-  String _period = '最近7天';
+  int _periodDays = 7;
 
   Future<void> _refresh() async {
     final ctrl = AppScope.of(context);
     await ctrl.refreshData();
     if (!mounted || ctrl.dataLoadError != null) return;
-    AppToast.show(context, '已刷新', type: AppToastType.success);
+    AppToast.show(context, context.l10n.refreshed, type: AppToastType.success);
   }
 
   Future<void> _handleRefresh() => _refresh();
@@ -38,9 +39,9 @@ class _TrafficPageState extends State<TrafficPage> {
   @override
   Widget build(BuildContext context) {
     return ResponsivePageScaffold(
-      title: '流量统计',
-      subtitle: '查看流量、设备和套餐周期',
-      compactTitle: '流量',
+      title: context.l10n.trafficStatistics,
+      subtitle: context.l10n.trafficStatisticsSubtitle,
+      compactTitle: context.l10n.usage,
       primaryCompact: isPrimaryCompactTab(AppPage.traffic),
       onRefresh: _handleRefresh,
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
@@ -55,8 +56,8 @@ class _TrafficPageState extends State<TrafficPage> {
       const _StatsGrid(),
       const SizedBox(height: 16),
       _UsageTrendCard(
-        period: _period,
-        onPeriodChanged: (v) => setState(() => _period = v),
+        periodDays: _periodDays,
+        onPeriodChanged: (v) => setState(() => _periodDays = v),
       ),
     ];
   }
@@ -105,10 +106,12 @@ class _TrafficCard extends StatelessWidget {
 
     return _StatCard(
       icon: LucideIcons.chartPie,
-      title: '流量统计',
+      title: context.l10n.trafficStatistics,
       value: '${traffic.usedGb.toStringAsFixed(0)} GB',
       unit: '/ ${traffic.totalGb.toStringAsFixed(0)} GB',
-      footer: '剩余 ${traffic.remainGb.toStringAsFixed(0)} GB',
+      footer: context.l10n.remainingTraffic(
+        traffic.remainGb.toStringAsFixed(0),
+      ),
       progress: ratio,
     );
   }
@@ -126,10 +129,10 @@ class _DevicesCard extends StatelessWidget {
 
     return _StatCard(
       icon: LucideIcons.monitorSmartphone,
-      title: '在线设备',
+      title: context.l10n.onlineDevices,
       value: '$deviceCount',
       unit: '/ ${hasLimit ? deviceLimit : '∞'}',
-      footer: '当前在线设备数',
+      footer: context.l10n.currentOnlineDevices,
       progress: hasLimit ? (deviceCount / deviceLimit).clamp(0.0, 1.0) : null,
     );
   }
@@ -151,10 +154,12 @@ class _RemainingDaysCard extends StatelessWidget {
 
     return _StatCard(
       icon: LucideIcons.calendarDays,
-      title: '剩余日期',
-      value: remainingDays == null ? '永久' : '$remainingDays',
-      unit: remainingDays == null ? '' : '天',
-      footer: remainingDays == null ? '订阅长期有效' : '到期 $expiry',
+      title: context.l10n.remainingDays,
+      value: remainingDays == null ? context.l10n.permanent : '$remainingDays',
+      unit: remainingDays == null ? '' : context.l10n.daysUnit,
+      footer: remainingDays == null
+          ? context.l10n.subscriptionLongTerm
+          : context.l10n.expiresAt(expiry),
       progress: null,
     );
   }
@@ -185,19 +190,26 @@ class _TrafficResetCard extends StatelessWidget {
     final resetDay = AppScope.of(context).resetDay;
     return _StatCard(
       icon: LucideIcons.refreshCw,
-      title: '流量重置时间',
-      value: resetDay == null ? '不重置' : '$resetDay 天',
-      footer: resetDay == null ? '当前套餐未配置重置周期' : '距下次重置',
+      title: context.l10n.trafficResetTime,
+      value: resetDay == null
+          ? context.l10n.neverResets
+          : context.l10n.daysCount(resetDay),
+      footer: resetDay == null
+          ? context.l10n.noTrafficReset
+          : context.l10n.untilNextReset,
       progress: null,
     );
   }
 }
 
 class _UsageTrendCard extends StatefulWidget {
-  const _UsageTrendCard({required this.period, required this.onPeriodChanged});
+  const _UsageTrendCard({
+    required this.periodDays,
+    required this.onPeriodChanged,
+  });
 
-  final String period;
-  final ValueChanged<String> onPeriodChanged;
+  final int periodDays;
+  final ValueChanged<int> onPeriodChanged;
 
   @override
   State<_UsageTrendCard> createState() => _UsageTrendCardState();
@@ -207,7 +219,7 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
   final _scrollController = ScrollController();
   String? _scrollKey;
 
-  String get period => widget.period;
+  int get periodDays => widget.periodDays;
 
   @override
   void dispose() {
@@ -246,24 +258,27 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '流量趋势图',
+                      context.l10n.trafficTrend,
                       style: AppTextStyles.sectionTitle.copyWith(
                         color: c.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$period 共 ${formatGb(total)}',
+                      context.l10n.periodTrafficTotal(
+                        _periodLabel(context),
+                        formatGb(total),
+                      ),
                       style: AppTextStyles.caption.copyWith(color: c.textMuted),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              AppSelect<String>(
-                value: period,
-                items: const ['最近7天', '最近30天', '最近90天'],
-                labelOf: (v) => v,
+              AppSelect<int>(
+                value: periodDays,
+                items: const [7, 30, 90],
+                labelOf: (v) => context.l10n.recentDays(v),
                 onChanged: widget.onPeriodChanged,
                 minWidth: 104,
               ),
@@ -350,7 +365,10 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
                                                 final point =
                                                     data[group.x.toInt()];
                                                 return BarTooltipItem(
-                                                  '${point.tooltipLabel}\n上行 ${formatGb(point.uploadGb)}\n下行 ${formatGb(point.downloadGb)}\n合计 ${formatGb(point.value)}',
+                                                  '${point.tooltipLabel}\n'
+                                                  '${context.l10n.tooltipUpload(formatGb(point.uploadGb))}\n'
+                                                  '${context.l10n.tooltipDownload(formatGb(point.downloadGb))}\n'
+                                                  '${context.l10n.tooltipTotal(formatGb(point.value))}',
                                                   AppTextStyles.caption
                                                       .copyWith(
                                                         color: c.cardBg,
@@ -510,18 +528,17 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
   String _monthDay(DateTime date) => '${date.month}/${date.day}';
 
   String _weekdayLabel(int weekday) {
-    const labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    final labels = context.l10n.weekdayShort.split(',');
     if (weekday < 1 || weekday > labels.length) return '';
     return labels[weekday - 1];
   }
 
   String _fallbackLabel(int index) => '${index + 1}';
 
-  int _daysForPeriod() => switch (period) {
-    '最近30天' => 30,
-    '最近90天' => 90,
-    _ => 7,
-  };
+  int _daysForPeriod() => periodDays;
+
+  String _periodLabel(BuildContext context) =>
+      context.l10n.recentDays(periodDays);
 
   double _niceMaxY(double value) {
     if (value <= 0.05) return 0.05;
@@ -553,7 +570,8 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
   }
 
   void _scrollToLatestAfterLayout(List<_ChartPoint> data) {
-    final key = '$period:${data.length}:${data.isEmpty ? '' : data.last.label}';
+    final key =
+        '$periodDays:${data.length}:${data.isEmpty ? '' : data.last.label}';
     if (_scrollKey == key) return;
     _scrollKey = key;
     WidgetsBinding.instance.addPostFrameCallback((_) {

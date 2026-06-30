@@ -10,12 +10,14 @@ import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/services/node_filter.dart';
+import '../../shared/services/node_sort.dart';
 import '../../shared/services/settings_service.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/utils/latency_status.dart';
 import '../../shared/widgets/app_toast.dart';
+import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/node_latency.dart';
 import '../../shared/widgets/page_header.dart';
@@ -36,17 +38,26 @@ class _NodesPageState extends State<NodesPage> {
   String _pendingQuery = '';
   String? _selectedId;
   Set<String> _favorites = {};
+  NodeSortMode _sortMode = NodeSortMode.original;
   Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
+    _loadSortMode();
   }
 
   Future<void> _loadFavorites() async {
     final favs = await SettingsService.loadFavorites();
     if (mounted) setState(() => _favorites = favs);
+  }
+
+  Future<void> _loadSortMode() async {
+    final value = await SettingsService.loadNodeSortKey();
+    if (mounted) {
+      setState(() => _sortMode = NodeSortMode.fromStorageKey(value));
+    }
   }
 
   @override
@@ -88,13 +99,28 @@ class _NodesPageState extends State<NodesPage> {
   }
 
   List<NodeModel> get _filtered {
-    return NodeFilter.apply(
-      nodes: AppScope.of(context).nodes,
-      query: _query,
-      tab: _selectedTab,
-      favorites: _favorites,
+    return NodeSort.apply(
+      NodeFilter.apply(
+        nodes: AppScope.of(context).nodes,
+        query: _query,
+        tab: _selectedTab,
+        favorites: _favorites,
+      ),
+      _sortMode,
     );
   }
+
+  void _setSortMode(NodeSortMode mode) {
+    setState(() => _sortMode = mode);
+    SettingsService.setNodeSortKey(mode.storageKey);
+  }
+
+  String _sortLabel(BuildContext context, NodeSortMode mode) => switch (mode) {
+    NodeSortMode.original => context.l10n.nodeSortOriginal,
+    NodeSortMode.latency => context.l10n.nodeSortLatency,
+    NodeSortMode.name => context.l10n.nodeSortName,
+    NodeSortMode.region => context.l10n.nodeSortRegion,
+  };
 
   Future<void> _handleRefresh() async {
     await AppScope.of(context).testLatencies();
@@ -327,6 +353,17 @@ class _NodesPageState extends State<NodesPage> {
         ],
         selectedIndex: _tab,
         onSelected: (i) => setState(() => _tab = i),
+      ),
+      const SizedBox(height: 10),
+      Align(
+        alignment: Alignment.centerRight,
+        child: AppSelect<NodeSortMode>(
+          value: _sortMode,
+          items: NodeSortMode.values,
+          labelOf: (mode) => _sortLabel(context, mode),
+          onChanged: _setSortMode,
+          minWidth: 144,
+        ),
       ),
       const SizedBox(height: 14),
     ];

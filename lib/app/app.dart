@@ -9,7 +9,9 @@ import 'app_shell.dart';
 /// Root widget: owns the [AppController] and rebuilds [MaterialApp] when the
 /// theme mode changes.
 class LitchiApp extends StatefulWidget {
-  const LitchiApp({super.key});
+  const LitchiApp({super.key, this.launchSilently = false});
+
+  final bool launchSilently;
 
   @override
   State<LitchiApp> createState() => _LitchiAppState();
@@ -52,9 +54,9 @@ class _LitchiAppState extends State<LitchiApp> {
             // A single responsive shell for every platform: it renders a
             // sidebar layout on wide windows and a bottom-nav layout on narrow
             // ones, chosen by width rather than by platform.
-            home: const Scaffold(
+            home: Scaffold(
               backgroundColor: Colors.transparent,
-              body: AppShell(),
+              body: AppShell(launchSilently: widget.launchSilently),
             ),
           );
         },

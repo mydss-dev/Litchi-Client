@@ -10,6 +10,7 @@ import '../shared/models/app_models.dart';
 import '../shared/services/account_summary_cache.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/data_loader.dart';
+import '../shared/services/desktop_network_monitor.dart';
 import '../shared/services/network_error_classifier.dart';
 import '../shared/services/node_cache_service.dart';
 import '../shared/services/panel_api.dart';
@@ -64,6 +65,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   final NodeController _nodes = NodeController();
   final NoticesController _notices = NoticesController();
   final SubscriptionController _subscription = SubscriptionController();
+  final DesktopNetworkMonitor _desktopNetworkMonitor = DesktopNetworkMonitor();
   late final WalletController _wallet = WalletController(_api, refreshData);
   late final InviteController _invite = InviteController(_api, refreshData);
   late final AccountController _account = AccountController(_api);
@@ -73,7 +75,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   late final DataLoader _dataLoader = DataLoader(_api);
 
   bool _isAuthenticated = false;
-  bool _isInitializing = false;
+  bool _isInitializing = true;
   AppPage _page = AppPage.dashboard;
   AuthScreen _authScreen = AuthScreen.login;
   bool _mobileProfileChildPage = false;
@@ -95,6 +97,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _statusRefreshTimer;
   bool _statusRefreshInFlight = false;
   bool _nodesRefreshInFlight = false;
+  bool _desktopRecoveryInFlight = false;
   DateTime? _lastNodesRefreshAt;
   static const Duration _statusRefreshInterval = Duration(minutes: 5);
   static const Duration _nodesRefreshMaxAge = Duration(minutes: 30);
@@ -274,7 +277,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     await _settings.load();
     await _notices.loadLastSeen();
     await _core.init();
+    if (Platform.isAndroid) {
+      if (_core.quickTileDisconnected) {
+        _settings.setWasConnected(false);
+      } else if (_core.coreRunning) {
+        _settings.setWasConnected(true);
+      }
+    }
     await _core.setKillSwitchEnabled(_settings.killSwitch);
+    await _desktopNetworkMonitor.start(_recoverDesktopConnection);
 
     _apiClient.configure(AppConfig.effectiveApiBases);
     _apiClient.onSessionExpired = logout;
@@ -514,6 +525,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _startStatusRefresh();
           unawaited(_refreshAccountStatusSilently());
           unawaited(_refreshNodesIfStale());
+          unawaited(
+            _desktopNetworkMonitor.checkNow(notifyEvenIfUnchanged: true),
+          );
         }
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
@@ -527,6 +541,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void dispose() {
     _stopStatusRefresh();
+    _desktopNetworkMonitor.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _disposed = true;
     AppConfig.revision.removeListener(_onRemoteConfigChanged);
@@ -548,6 +563,44 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _account.dispose();
     _nodes.dispose();
     super.dispose();
+  }
+
+  Future<void> _recoverDesktopConnection() async {
+    if (_desktopRecoveryInFlight ||
+        _disposed ||
+        !_isAuthenticated ||
+        !_settings.wasConnected ||
+        connectionActionLocked ||
+        _nodes.isEmpty ||
+        (!Platform.isWindows && !Platform.isMacOS)) {
+      return;
+    }
+
+    _desktopRecoveryInFlight = true;
+    try {
+      // Let the OS finish replacing routes and adapters after wake/network
+      // changes before touching the proxy or restarting the tunnel.
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      if (_disposed ||
+          !_isAuthenticated ||
+          !_settings.wasConnected ||
+          connectionActionLocked) {
+        return;
+      }
+
+      if (coreRunning) {
+        if (_settings.networkMode == NetworkMode.system) {
+          await fixProxy();
+        }
+        return;
+      }
+
+      await toggleConnection();
+    } catch (error) {
+      SecureLogger.warn('desktop connection recovery failed', error);
+    } finally {
+      _desktopRecoveryInFlight = false;
+    }
   }
 
   void _onRemoteConfigChanged() {

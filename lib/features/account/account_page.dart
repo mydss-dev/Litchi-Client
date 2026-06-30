@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
 import '../../config/app_config.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/services/brand_asset_cache.dart';
@@ -88,7 +89,11 @@ class _AccountPageState extends State<AccountPage> {
 
   void _copy(String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
-    AppToast.show(context, '$label 已复制', type: AppToastType.success);
+    AppToast.show(
+      context,
+      context.l10n.itemCopied(label),
+      type: AppToastType.success,
+    );
   }
 
   // ── Compact-branch handlers (settings / password / logout sheets) ──────
@@ -109,7 +114,7 @@ class _AccountPageState extends State<AccountPage> {
     _updating = false;
     AppToast.show(
       context,
-      error ?? '设置已更新',
+      error ?? context.l10n.settingsUpdated,
       type: error == null ? AppToastType.success : AppToastType.error,
     );
   }
@@ -144,7 +149,7 @@ class _AccountPageState extends State<AccountPage> {
     final ctrl = AppScope.of(context);
     await ctrl.refreshData();
     if (!mounted || ctrl.dataLoadError != null) return;
-    AppToast.show(context, '已刷新', type: AppToastType.success);
+    AppToast.show(context, context.l10n.refreshed, type: AppToastType.success);
   }
 
   void _showChangePasswordSheet() {
@@ -176,10 +181,13 @@ class _AccountPageState extends State<AccountPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Expanded(
-                child: PageHeader(title: '我的账户', subtitle: '查看账户信息与订阅详情'),
+                child: PageHeader(
+                  title: context.l10n.myAccount,
+                  subtitle: context.l10n.myAccountSubtitle,
+                ),
               ),
             ],
           ),
@@ -276,9 +284,9 @@ class _AccountInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final (statusLabel, statusColor) = switch (user.subscribeStatus) {
-      1 => ('已到期', c.danger),
-      2 => ('已封禁', c.warning),
-      _ => ('正常', c.success),
+      1 => (context.l10n.expiredStatus, c.danger),
+      2 => (context.l10n.suspendedStatus, c.warning),
+      _ => (context.l10n.normalStatus, c.success),
     };
 
     return AppCard(
@@ -292,16 +300,18 @@ class _AccountInfoCard extends StatelessWidget {
               Icon(LucideIcons.user, size: 15, color: c.primary),
               const SizedBox(width: 8),
               Text(
-                '账户信息',
+                context.l10n.accountInformation,
                 style: AppTextStyles.cardTitle.copyWith(color: c.textSecondary),
               ),
             ],
           ),
           const SizedBox(height: 16),
           _InfoRow(
-            label: '邮箱',
+            label: context.l10n.email,
             value: user.email,
-            trailing: _CopyButton(onTap: () => onCopy(user.email, '邮箱')),
+            trailing: _CopyButton(
+              onTap: () => onCopy(user.email, context.l10n.email),
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -309,7 +319,7 @@ class _AccountInfoCard extends StatelessWidget {
               SizedBox(
                 width: 80,
                 child: Text(
-                  '账户状态',
+                  context.l10n.accountStatus,
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
                 ),
               ),
@@ -323,7 +333,7 @@ class _AccountInfoCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _InfoRow(label: '到期时间', value: user.expiryDisplay),
+          _InfoRow(label: context.l10n.expiryTime, value: user.expiryDisplay),
         ],
       ),
     );
@@ -335,35 +345,36 @@ class _AccountShortcutGrid extends StatelessWidget {
 
   final ValueChanged<AppPage> onNavigate;
 
-  static const _items = [
+  List<_AccountShortcut> _items(BuildContext context) => [
     _AccountShortcut(
       page: AppPage.wallet,
       icon: LucideIcons.walletCards,
-      title: '我的钱包',
-      subtitle: '余额与充值',
+      title: context.l10n.myWallet,
+      subtitle: context.l10n.balanceAndRecharge,
     ),
     _AccountShortcut(
       page: AppPage.orders,
       icon: LucideIcons.clipboardList,
-      title: '订单记录',
-      subtitle: '购买与支付',
+      title: context.l10n.orders,
+      subtitle: context.l10n.purchaseAndPayment,
     ),
     _AccountShortcut(
       page: AppPage.traffic,
       icon: LucideIcons.chartNoAxesColumnIncreasing,
-      title: '流量统计',
-      subtitle: '使用记录',
+      title: context.l10n.trafficStatistics,
+      subtitle: context.l10n.usageRecords,
     ),
     _AccountShortcut(
       page: AppPage.tickets,
       icon: LucideIcons.messageSquare,
-      title: '工单支持',
-      subtitle: '联系售后',
+      title: context.l10n.ticketSupport,
+      subtitle: context.l10n.contactAfterSales,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final items = _items(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 860
@@ -380,9 +391,9 @@ class _AccountShortcutGrid extends StatelessWidget {
             mainAxisSpacing: 12,
             mainAxisExtent: 88,
           ),
-          itemCount: _items.length,
+          itemCount: items.length,
           itemBuilder: (context, index) {
-            final item = _items[index];
+            final item = items[index];
             return _AccountShortcutTile(
               item: item,
               onTap: () => onNavigate(item.page),
@@ -609,8 +620,8 @@ class _TrafficOverviewCard extends StatelessWidget {
     final progress = totalGb <= 0 ? 0.0 : (usedGb / totalGb).clamp(0.0, 1.0);
     final percent = (progress * 100).toStringAsFixed(0);
     final reset = resetDay == null || resetDay == 0
-        ? '重置日 --'
-        : '每月 $resetDay 日重置';
+        ? context.l10n.resetDayUnavailable
+        : context.l10n.monthlyResetDay(resetDay!);
 
     return AppCard(
       onTap: onTap,
@@ -624,14 +635,14 @@ class _TrafficOverviewCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '流量概览',
+                  context.l10n.trafficOverview,
                   style: AppTextStyles.bodyStrong.copyWith(
                     color: c.textPrimary,
                   ),
                 ),
               ),
               Text(
-                '已用 $percent%',
+                context.l10n.usedPercent(percent),
                 style: AppTextStyles.caption.copyWith(
                   color: c.textMuted,
                   fontWeight: FontWeight.w700,
@@ -653,7 +664,7 @@ class _TrafficOverviewCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
-                  '剩余',
+                  context.l10n.remaining,
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
                 ),
               ),
@@ -676,7 +687,10 @@ class _TrafficOverviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '已用 ${usedGb.toStringAsFixed(1)} / ${totalGb.toStringAsFixed(1)} GB',
+                  context.l10n.usedTraffic(
+                    usedGb.toStringAsFixed(1),
+                    totalGb.toStringAsFixed(1),
+                  ),
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
                 ),
               ),
@@ -703,15 +717,17 @@ class _ProfileSummaryCard extends StatelessWidget {
     if (_isPlanSummary(type)) {
       return _InfoSummaryCard(
         icon: LucideIcons.package,
-        title: '当前套餐',
-        value: ctrl.user.plan.isEmpty ? '暂无套餐' : ctrl.user.plan,
+        title: context.l10n.currentPlan,
+        value: ctrl.user.plan.isEmpty
+            ? context.l10n.noCurrentPlan
+            : ctrl.user.plan,
       );
     }
 
     if (_isExpireSummary(type)) {
       return _InfoSummaryCard(
         icon: LucideIcons.calendarClock,
-        title: '到期时间',
+        title: context.l10n.expiryTime,
         value: ctrl.user.expiry.isEmpty ? '--' : ctrl.user.expiry,
       );
     }
@@ -810,8 +826,8 @@ class _LogoutSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return AppBottomSheet(
-      title: '退出登录',
-      subtitle: '当前登录状态和本地节点缓存将被清除',
+      title: context.l10n.logout,
+      subtitle: context.l10n.logoutDataNotice,
       children: [
         Container(
           width: double.infinity,
@@ -826,7 +842,7 @@ class _LogoutSheet extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '确认退出当前账号？退出后需要重新登录。',
+                  context.l10n.logoutConfirmMessage,
                   style: AppTextStyles.caption.copyWith(
                     color: c.danger,
                     fontWeight: FontWeight.w700,
@@ -844,7 +860,7 @@ class _LogoutSheet extends StatelessWidget {
                 height: 42,
                 child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('取消'),
+                  child: Text(context.l10n.cancel),
                 ),
               ),
             ),
@@ -855,7 +871,7 @@ class _LogoutSheet extends StatelessWidget {
                 child: FilledButton(
                   onPressed: () => Navigator.of(context).pop(true),
                   style: FilledButton.styleFrom(backgroundColor: c.danger),
-                  child: const Text('确认退出'),
+                  child: Text(context.l10n.confirmLogout),
                 ),
               ),
             ),
@@ -906,12 +922,14 @@ class _ProfileHeader extends StatelessWidget {
                 const SizedBox(height: 3),
                 if (!hidePlan)
                   Text(
-                    '当前套餐：${plan.isEmpty ? '暂无套餐' : plan}',
+                    context.l10n.currentPlanValue(
+                      plan.isEmpty ? context.l10n.noCurrentPlan : plan,
+                    ),
                     style: AppTextStyles.caption.copyWith(color: c.textMuted),
                   ),
                 if (!hideExpiry && expiry.isNotEmpty)
                   Text(
-                    '到期：$expiry',
+                    context.l10n.expiryValue(expiry),
                     style: AppTextStyles.caption.copyWith(color: c.textMuted),
                   ),
               ],
@@ -940,7 +958,7 @@ class _ProfileHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '管理',
+                    context.l10n.manage,
                     style: AppTextStyles.caption.copyWith(
                       color: c.primary,
                       fontWeight: FontWeight.w800,
@@ -1096,43 +1114,43 @@ class _AccountManageSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return AppBottomSheet(
-      title: '账号管理',
+      title: context.l10n.accountManagement,
       children: [
         _SwitchRow(
           icon: LucideIcons.calendarClock,
-          title: '到期提醒',
-          subtitle: '接收账户到期提醒邮件',
+          title: context.l10n.expiryReminder,
+          subtitle: context.l10n.expiryReminderSubtitle,
           value: remindExpire,
           onChanged: onExpireChanged,
         ),
         _Divider(color: c.softBorder),
         _SwitchRow(
           icon: LucideIcons.gauge,
-          title: '流量提醒',
-          subtitle: '接收流量用尽提醒邮件',
+          title: context.l10n.trafficReminder,
+          subtitle: context.l10n.trafficReminderSubtitle,
           value: remindTraffic,
           onChanged: onTrafficChanged,
         ),
         _Divider(color: c.softBorder),
         _SwitchRow(
           icon: LucideIcons.refreshCw,
-          title: '自动续费',
-          subtitle: '到期前自动续费套餐',
+          title: context.l10n.autoRenewal,
+          subtitle: context.l10n.autoRenewalSubtitle,
           value: autoRenewal,
           onChanged: onAutoRenewalChanged,
         ),
         _Divider(color: c.softBorder),
         _ActionRow(
           icon: LucideIcons.lockKeyhole,
-          title: '修改密码',
-          subtitle: '更新登录密码',
+          title: context.l10n.changePasswordTitle,
+          subtitle: context.l10n.updateLoginPassword,
           onTap: onChangePassword,
         ),
         _Divider(color: c.softBorder),
         _ActionRow(
           icon: LucideIcons.logOut,
-          title: '退出登录',
-          subtitle: '退出当前账号',
+          title: context.l10n.logout,
+          subtitle: context.l10n.logoutCurrentAccount,
           danger: true,
           onTap: onLogout,
         ),
@@ -1269,15 +1287,27 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
     final newPassword = _newCtrl.text.trim();
     final confirm = _confirmCtrl.text.trim();
     if (oldPassword.isEmpty || newPassword.isEmpty || confirm.isEmpty) {
-      AppToast.show(context, '请填写完整密码信息', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.passwordFieldsRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (newPassword != confirm) {
-      AppToast.show(context, '两次输入的新密码不一致', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.passwordsMismatch,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (newPassword.length < 8) {
-      AppToast.show(context, '新密码至少 8 位', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.passwordTooShort,
+        type: AppToastType.warning,
+      );
       return;
     }
 
@@ -1290,7 +1320,11 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
       );
       if (!mounted) return;
       Navigator.of(context).pop();
-      AppToast.show(context, '密码已更新', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.passwordChanged,
+        type: AppToastType.success,
+      );
     } catch (e) {
       if (!mounted) return;
       AppToast.show(
@@ -1306,26 +1340,26 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
   @override
   Widget build(BuildContext context) {
     return AppBottomSheet(
-      title: '修改密码',
+      title: context.l10n.changePasswordTitle,
       children: [
         AppTextField(
           controller: _oldCtrl,
-          label: '当前密码',
-          hint: '请输入当前密码',
+          label: context.l10n.currentPassword,
+          hint: context.l10n.currentPasswordHint,
           obscureText: true,
         ),
         const SizedBox(height: 12),
         AppTextField(
           controller: _newCtrl,
-          label: '新密码',
-          hint: '请输入新密码',
+          label: context.l10n.newPassword,
+          hint: context.l10n.newPasswordHint,
           obscureText: true,
         ),
         const SizedBox(height: 12),
         AppTextField(
           controller: _confirmCtrl,
-          label: '确认新密码',
-          hint: '请输入确认新密码',
+          label: context.l10n.confirmNewPassword,
+          hint: context.l10n.confirmNewPasswordHint,
           obscureText: true,
         ),
         const SizedBox(height: 16),
@@ -1341,7 +1375,9 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(LucideIcons.lockKeyhole, size: 17),
-            label: Text(_submitting ? '更新中...' : '确认修改'),
+            label: Text(
+              _submitting ? context.l10n.updating : context.l10n.confirmChange,
+            ),
           ),
         ),
       ],

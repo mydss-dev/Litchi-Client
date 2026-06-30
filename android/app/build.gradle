@@ -14,6 +14,8 @@ def hasReleaseSigning =
     keyProperties["storePassword"] &&
     keyProperties["keyAlias"] &&
     keyProperties["keyPassword"]
+def splitPerAbi = project.hasProperty("split-per-abi") &&
+    project.property("split-per-abi").toString().toBoolean()
 
 android {
     namespace "com.litchi.client"
@@ -43,7 +45,9 @@ android {
             }
         }
         ndk {
-            abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
+            if (!splitPerAbi) {
+                abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
+            }
         }
     }
 

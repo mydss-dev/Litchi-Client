@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../l10n/l10n.dart';
+import '../services/app_error_message_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
@@ -24,9 +26,12 @@ class AppToast {
     AppToastType type = AppToastType.info,
     Duration duration = _defaultDuration,
   }) {
+    final displayMessage = type == AppToastType.error
+        ? AppErrorMessageService.userFacing(message, context.l10n)
+        : message;
     showInOverlay(
       Overlay.of(context, rootOverlay: true),
-      message,
+      displayMessage,
       type: type,
       duration: duration,
     );

@@ -117,6 +117,12 @@ abstract final class SettingsService {
     (p) => p.setString(_key('last_node_id'), id),
   );
 
+  static Future<String?> loadNodeSortKey() async =>
+      (await SharedPreferences.getInstance()).getString(_key('node_sort'));
+
+  static void setNodeSortKey(String value) => SharedPreferences.getInstance()
+      .then((prefs) => prefs.setString(_key('node_sort'), value));
+
   static Future<int> loadLastSeenNoticeId() async {
     final p = await SharedPreferences.getInstance();
     return p.getInt(_key('last_seen_notice_id')) ?? 0;

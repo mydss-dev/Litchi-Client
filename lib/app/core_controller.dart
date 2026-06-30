@@ -9,6 +9,7 @@ import '../shared/models/app_models.dart';
 import '../shared/services/android_core_manager.dart';
 import '../shared/services/core_manager.dart';
 import '../shared/services/local_port_allocator.dart';
+import '../shared/services/macos_tun_kill_switch.dart';
 import '../shared/services/proxy_setter.dart';
 import '../shared/services/mihomo_api_client.dart';
 import '../shared/services/mihomo_config.dart';
@@ -39,6 +40,7 @@ class CoreController extends ChangeNotifier {
   int _apiPort = MihomoConfig.defaultApiPort;
   int _activeProxyPort = 7890;
   NetworkMode _activeNetworkMode = NetworkMode.system;
+  Set<String> _activeTunInterfaces = const {};
 
   bool _disposed = false;
   bool _connectionToggleInFlight = false;
@@ -70,6 +72,8 @@ class CoreController extends ChangeNotifier {
 
   bool get coreProcessRunning =>
       Platform.isAndroid ? _androidCore.isRunning : _core.isRunning;
+  bool get quickTileDisconnected =>
+      Platform.isAndroid && _androidCore.quickTileDisconnected;
   String get coreError => _coreError;
   int get activeProxyPort => _activeProxyPort;
   int get upBps => upBpsNotifier.value;
@@ -82,15 +86,16 @@ class CoreController extends ChangeNotifier {
 
   Future<bool> setKillSwitchEnabled(bool enabled) async {
     _killSwitchEnabled = enabled;
-    if (!Platform.isWindows || _activeNetworkMode != NetworkMode.tun) {
+    if ((!Platform.isWindows && !Platform.isMacOS) ||
+        _activeNetworkMode != NetworkMode.tun) {
       return true;
     }
     if (!enabled) {
-      await WindowsTunKillSwitch.release();
+      await _releaseTunKillSwitch();
       return true;
     }
     if (_status != ConnectionStatus.connected) return true;
-    final engaged = await WindowsTunKillSwitch.engage();
+    final engaged = await _engageTunKillSwitch();
     if (!engaged) {
       _coreError = CoreErrorMessageService.tunKillSwitchUnavailable;
       notifyListeners();
@@ -141,7 +146,7 @@ class CoreController extends ChangeNotifier {
     unawaited(_sub?.cancel());
     unawaited(_logSub?.cancel());
     _core.dispose();
-    unawaited(WindowsTunKillSwitch.release());
+    unawaited(_releaseTunKillSwitch());
     upBpsNotifier.dispose();
     downBpsNotifier.dispose();
     super.dispose();
@@ -155,7 +160,7 @@ class CoreController extends ChangeNotifier {
       return;
     }
     if (!Platform.isWindows && !Platform.isMacOS) return;
-    await WindowsTunKillSwitch.release();
+    await _releaseTunKillSwitch();
     _stopTrafficMonitor();
     await _androidStatusSub?.cancel();
     await _androidCore.dispose();
@@ -330,7 +335,7 @@ class CoreController extends ChangeNotifier {
       if (req.networkMode == NetworkMode.tun) {
         await _core.stop();
         MihomoApiClient.resetClient();
-        await WindowsTunKillSwitch.release();
+        await _releaseTunKillSwitch();
       }
       _connectedAt = null;
       _coreError = '';
@@ -346,7 +351,7 @@ class CoreController extends ChangeNotifier {
     }
 
     if (req.networkMode == NetworkMode.system) {
-      await WindowsTunKillSwitch.release();
+      await _releaseTunKillSwitch();
     }
 
     if (_core.isRunning && req.networkMode == NetworkMode.system) {
@@ -428,16 +433,26 @@ class CoreController extends ChangeNotifier {
             _coreError = CoreErrorMessageService.tunInterfaceUnavailable;
             await _core.stop();
             MihomoApiClient.resetClient();
-            await WindowsTunKillSwitch.release();
+            await _releaseTunKillSwitch();
             _status = ConnectionStatus.error;
             return _coreError;
           }
+          final currentTunInterfaces = Platform.isMacOS
+              ? await TunInterfaceVerifier.matchingInterfaceNames(
+                  interfaceName: 'utun',
+                  matchPrefix: true,
+                )
+              : <String>{AppIdentity.tunInterfaceAlias};
+          _activeTunInterfaces = Platform.isMacOS
+              ? currentTunInterfaces.difference(existingMacTunInterfaces)
+              : currentTunInterfaces;
           if (_killSwitchEnabled) {
-            final protected = await WindowsTunKillSwitch.engage();
+            final protected = await _engageTunKillSwitch();
             if (!protected) {
               _coreError = CoreErrorMessageService.tunKillSwitchUnavailable;
               await _core.stop();
               MihomoApiClient.resetClient();
+              await _releaseTunKillSwitch();
               _status = ConnectionStatus.error;
               return _coreError;
             }
@@ -565,7 +580,7 @@ class CoreController extends ChangeNotifier {
       return;
     }
     _stopTrafficMonitor();
-    await WindowsTunKillSwitch.release();
+    await _releaseTunKillSwitch();
     // Mark this as an intentional stop before the core exits, so the stopped
     // event is not misread as an unexpected core death by _onCoreStateChanged.
     if (_status == ConnectionStatus.connected ||
@@ -820,23 +835,32 @@ class CoreController extends ChangeNotifier {
       _status = ConnectionStatus.error;
       if (_killSwitchEnabled && wasConnected) {
         if (_activeNetworkMode == NetworkMode.tun) {
-          if (Platform.isWindows) {
-            // The WFP session was engaged while TUN was healthy. Keep it alive:
-            // once the adapter disappears, only loopback and mihomo stay allowed.
-          } else {
-            // macOS TUN currently has no firewall-level kill switch. Do not
-            // pretend the system-proxy fallback protects utun traffic.
-            unawaited(ProxySetter.disable());
-          }
+          // Keep the Windows WFP or macOS PF session alive. Once the tunnel
+          // disappears, direct traffic from the signed-in user remains blocked
+          // until reconnect, disconnect, or application exit.
         } else {
           unawaited(ProxySetter.engageKillSwitch());
         }
       } else {
-        unawaited(WindowsTunKillSwitch.release());
+        unawaited(_releaseTunKillSwitch());
         unawaited(ProxySetter.disable());
       }
       notifyListeners();
     }
+  }
+
+  Future<bool> _engageTunKillSwitch() {
+    if (Platform.isWindows) return WindowsTunKillSwitch.engage();
+    if (Platform.isMacOS) {
+      return MacOsTunKillSwitch.engage(tunnelInterfaces: _activeTunInterfaces);
+    }
+    return Future<bool>.value(true);
+  }
+
+  Future<void> _releaseTunKillSwitch() async {
+    await WindowsTunKillSwitch.release();
+    await MacOsTunKillSwitch.release();
+    _activeTunInterfaces = const {};
   }
 
   void _onAndroidCoreStatusChanged(AndroidCoreStatusEvent event) {

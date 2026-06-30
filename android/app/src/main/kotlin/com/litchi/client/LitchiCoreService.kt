@@ -64,7 +64,7 @@ class LitchiCoreService : Service() {
                 if (isRunning && currentConfig == config) {
                     startCoreForeground()
                     AndroidCoreStatus.emit("running", "core")
-                    return START_NOT_STICKY
+                    return START_REDELIVER_INTENT
                 }
                 currentConfig = config
                 controllerPort = readControllerPort(config)
@@ -87,7 +87,7 @@ class LitchiCoreService : Service() {
                 isRunning = true
                 startCoreForeground()
                 AndroidCoreStatus.emit("running", "core")
-                return START_NOT_STICKY
+                return START_REDELIVER_INTENT
             }
         }
         stopSelf()
@@ -229,6 +229,8 @@ class LitchiCoreService : Service() {
 
         private var currentConfig: String = ""
         private const val DEFAULT_CONTROLLER_PORT = 9090
+
+        fun activeConfig(): String = currentConfig
 
         private fun readControllerPort(config: String): Int {
             return runCatching {

@@ -36,4 +36,23 @@ void main() {
     AppConfig.applyRemote({'app_name': changedName});
     expect(AppConfig.revision.value, before + 1);
   });
+
+  test('anti-rollback accepts migration then rejects older payloads', () {
+    expect(
+      RemoteConfigVersionPolicy.accepts(candidate: null, acceptedVersion: 0),
+      isTrue,
+    );
+    expect(
+      RemoteConfigVersionPolicy.accepts(candidate: 12, acceptedVersion: 12),
+      isTrue,
+    );
+    expect(
+      RemoteConfigVersionPolicy.accepts(candidate: 11, acceptedVersion: 12),
+      isFalse,
+    );
+    expect(
+      RemoteConfigVersionPolicy.accepts(candidate: null, acceptedVersion: 12),
+      isFalse,
+    );
+  });
 }

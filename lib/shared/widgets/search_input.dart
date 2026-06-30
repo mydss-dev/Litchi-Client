@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../l10n/l10n.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_text_styles.dart';
@@ -10,12 +11,12 @@ import '../theme/app_text_styles.dart';
 class SearchInput extends StatefulWidget {
   const SearchInput({
     super.key,
-    this.hintText = '搜索',
+    this.hintText,
     this.controller,
     this.onChanged,
   });
 
-  final String hintText;
+  final String? hintText;
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
 
@@ -75,7 +76,7 @@ class _SearchInputState extends State<SearchInput> {
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
-                hintText: widget.hintText,
+                hintText: widget.hintText ?? context.l10n.search,
                 hintStyle: AppTextStyles.caption.copyWith(
                   color: c.textMuted,
                   fontSize: 12,

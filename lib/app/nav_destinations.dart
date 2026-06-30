@@ -19,17 +19,13 @@ enum CompactPlacement {
 class NavDestination {
   const NavDestination({
     required this.page,
-    required this.label,
     required this.icon,
     required this.compact,
-    this.subtitle = '',
   });
 
   final AppPage page;
-  final String label;
   final IconData icon;
   final CompactPlacement compact;
-  final String subtitle;
 
   String labelFor(BuildContext context) {
     final l10n = context.l10n;
@@ -69,25 +65,21 @@ const List<NavDestination> kNavDestinations = [
   // ── Primary (bottom nav) ──────────────────────────────────────────────────
   NavDestination(
     page: AppPage.dashboard,
-    label: '首页',
     icon: LucideIcons.home,
     compact: CompactPlacement.primary,
   ),
   NavDestination(
     page: AppPage.shop,
-    label: '套餐',
     icon: LucideIcons.shoppingBag,
     compact: CompactPlacement.primary,
   ),
   NavDestination(
     page: AppPage.invite,
-    label: '邀请',
     icon: LucideIcons.gift,
     compact: CompactPlacement.primary,
   ),
   NavDestination(
     page: AppPage.account,
-    label: '我的',
     icon: LucideIcons.user,
     compact: CompactPlacement.primary,
   ),
@@ -95,7 +87,6 @@ const List<NavDestination> kNavDestinations = [
   // ── Sidebar only ──────────────────────────────────────────────────────────
   NavDestination(
     page: AppPage.nodes,
-    label: '节点',
     icon: LucideIcons.server,
     compact: CompactPlacement.hidden,
   ),
@@ -103,38 +94,28 @@ const List<NavDestination> kNavDestinations = [
   // ── "我的" hub ────────────────────────────────────────────────────────────
   NavDestination(
     page: AppPage.wallet,
-    label: '我的钱包',
     icon: LucideIcons.wallet,
     compact: CompactPlacement.hub,
-    subtitle: '余额、佣金与账户充值',
   ),
   NavDestination(
     page: AppPage.orders,
-    label: '订单记录',
     icon: LucideIcons.clipboardList,
     compact: CompactPlacement.hub,
-    subtitle: '查看购买记录与支付状态',
   ),
   NavDestination(
     page: AppPage.traffic,
-    label: '用量统计',
     icon: LucideIcons.chartColumn,
     compact: CompactPlacement.hub,
-    subtitle: '查看流量与近期记录',
   ),
   NavDestination(
     page: AppPage.tickets,
-    label: '工单支持',
     icon: LucideIcons.messageSquare,
     compact: CompactPlacement.hub,
-    subtitle: '联系在线客服',
   ),
   NavDestination(
     page: AppPage.settings,
-    label: '系统设置',
     icon: LucideIcons.settings,
     compact: CompactPlacement.hub,
-    subtitle: '网络、代理与外观',
   ),
 ];
 

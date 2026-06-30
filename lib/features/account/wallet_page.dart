@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -48,14 +49,22 @@ class _WalletPageState extends State<WalletPage> {
     if (!mounted) return;
     setState(() => _refreshing = false);
     if (AppScope.of(context).dataLoadError == null) {
-      AppToast.show(context, '已刷新', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.refreshed,
+        type: AppToastType.success,
+      );
     }
   }
 
   Future<void> _recharge() async {
     final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
     if (amount <= 0) {
-      AppToast.show(context, '请输入有效的充值金额', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.invalidRechargeAmount,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (_submitting) return;
@@ -91,7 +100,11 @@ class _WalletPageState extends State<WalletPage> {
   Future<void> _transferCommission() async {
     final ctrl = AppScope.of(context);
     if (ctrl.withdrawable <= 0) {
-      AppToast.show(context, '暂无可划转佣金', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.noTransferableCommission,
+        type: AppToastType.warning,
+      );
       return;
     }
     await showAppAdaptiveModal<void>(
@@ -107,15 +120,27 @@ class _WalletPageState extends State<WalletPage> {
   Future<void> _withdrawCommission() async {
     final ctrl = AppScope.of(context);
     if (!ctrl.withdrawEnabled) {
-      AppToast.show(context, '提现暂未开放', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.withdrawalUnavailable,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (ctrl.withdrawable <= 0) {
-      AppToast.show(context, '暂无可提现佣金', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.noWithdrawableCommission,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (ctrl.withdrawMethods.isEmpty) {
-      AppToast.show(context, '暂无可用提现方式', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.noWithdrawalMethods,
+        type: AppToastType.warning,
+      );
       return;
     }
     await showAppAdaptiveModal<void>(
@@ -135,10 +160,10 @@ class _WalletPageState extends State<WalletPage> {
   @override
   Widget build(BuildContext context) {
     return ResponsivePageScaffold(
-      title: '我的钱包',
-      subtitle: '查看余额、佣金与充值',
-      compactTitle: '钱包',
-      compactSubtitle: '余额、佣金与账户充值',
+      title: context.l10n.myWallet,
+      subtitle: context.l10n.myWalletSubtitle,
+      compactTitle: context.l10n.wallet,
+      compactSubtitle: context.l10n.walletSubtitle,
       primaryCompact: isPrimaryCompactTab(AppPage.wallet),
       onRefresh: _refresh,
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
@@ -269,7 +294,7 @@ class _WalletSummary extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Text(
-              '账户资产',
+              context.l10n.accountAssets,
               style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
             ),
           ],
@@ -286,8 +311,11 @@ class _WalletSummary extends StatelessWidget {
           spacing: 14,
           runSpacing: 8,
           children: [
-            _AssetLabel(label: '账户余额', value: balance),
-            _AssetLabel(label: '可提现佣金', value: commission),
+            _AssetLabel(label: context.l10n.accountBalance, value: balance),
+            _AssetLabel(
+              label: context.l10n.withdrawableCommission,
+              value: commission,
+            ),
           ],
         ),
       ],
@@ -307,13 +335,13 @@ class _WalletActions extends StatelessWidget {
       children: [
         _WalletActionButton(
           icon: LucideIcons.arrowRightLeft,
-          label: '佣金划转',
+          label: context.l10n.transferCommission,
           onTap: onTransfer,
         ),
         const SizedBox(height: 8),
         _WalletActionButton(
           icon: LucideIcons.receipt,
-          label: '申请提现',
+          label: context.l10n.requestWithdrawal,
           onTap: onWithdraw,
         ),
       ],
@@ -434,7 +462,7 @@ class _RechargeCard extends StatelessWidget {
               Icon(LucideIcons.badgePlus, color: c.primary, size: 18),
               const SizedBox(width: 8),
               Text(
-                '充值余额',
+                context.l10n.rechargeBalance,
                 style: AppTextStyles.sectionTitle.copyWith(
                   color: c.textPrimary,
                 ),
@@ -455,7 +483,7 @@ class _RechargeCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '充值后的余额仅限消费，无法提现',
+                    context.l10n.rechargeBalanceNotice,
                     style: AppTextStyles.caption.copyWith(
                       color: c.success,
                       fontWeight: FontWeight.w700,
@@ -520,7 +548,7 @@ class _RechargeAmountRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '自定义金额',
+          context.l10n.customAmount,
           style: AppTextStyles.caption.copyWith(
             color: c.textMuted,
             fontWeight: FontWeight.w700,
@@ -549,7 +577,7 @@ class _RechargeAmountRow extends StatelessWidget {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   style: AppTextStyles.input.copyWith(color: c.textPrimary),
                   decoration: InputDecoration(
-                    hintText: '请输入充值金额',
+                    hintText: context.l10n.rechargeAmountHint,
                     hintStyle: AppTextStyles.input.copyWith(color: c.textMuted),
                     border: InputBorder.none,
                     isDense: true,
@@ -582,7 +610,7 @@ class _RechargeAmountRow extends StatelessWidget {
                             ),
                           )
                         : Text(
-                            '充值',
+                            context.l10n.recharge,
                             style: AppTextStyles.button.copyWith(
                               color: Colors.white,
                               fontSize: 13,
@@ -681,11 +709,19 @@ class _TransferModalState extends State<_TransferModal> {
     if (_submitting) return;
     final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
     if (amount <= 0) {
-      AppToast.show(context, '请输入划转金额', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.transferAmountRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (amount > widget.maxAmount) {
-      AppToast.show(context, '划转金额不能超过可提现佣金', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.transferAmountTooHigh,
+        type: AppToastType.warning,
+      );
       return;
     }
 
@@ -697,7 +733,11 @@ class _TransferModalState extends State<_TransferModal> {
     setState(() => _submitting = false);
     if (error == null) {
       Navigator.of(context).pop();
-      AppToast.show(context, '佣金已划转到余额', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.commissionTransferred,
+        type: AppToastType.success,
+      );
     } else {
       AppToast.show(context, error, type: AppToastType.error);
     }
@@ -708,24 +748,26 @@ class _TransferModalState extends State<_TransferModal> {
     final c = AppColors.of(context);
     return AppAdaptiveModal(
       compact: widget.compact,
-      title: '划转佣金',
+      title: context.l10n.transferCommission,
       icon: LucideIcons.arrowRightLeft,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _HintBox(text: '将可提现佣金划转到账户余额，划转后可用于购买套餐。'),
+          _HintBox(text: context.l10n.transferCommissionNotice),
           const SizedBox(height: 14),
           AppTextField(
             controller: _amountCtrl,
-            label: '划转金额',
-            hint: '请输入划转金额',
+            label: context.l10n.transferAmount,
+            hint: context.l10n.transferAmountRequired,
             prefixText: widget.currencySymbol,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
           const SizedBox(height: 8),
           Text(
-            '可划转 ${widget.currencySymbol}${widget.maxAmount.toStringAsFixed(2)}',
+            context.l10n.transferableAmount(
+              '${widget.currencySymbol}${widget.maxAmount.toStringAsFixed(2)}',
+            ),
             style: AppTextStyles.caption.copyWith(color: c.textMuted),
           ),
           const SizedBox(height: 18),
@@ -741,7 +783,11 @@ class _TransferModalState extends State<_TransferModal> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(LucideIcons.arrowRightLeft, size: 17),
-              label: Text(_submitting ? '划转中' : '确认划转'),
+              label: Text(
+                _submitting
+                    ? context.l10n.transferring
+                    : context.l10n.confirmTransfer,
+              ),
             ),
           ),
         ],
@@ -797,23 +843,37 @@ class _WithdrawModalState extends State<_WithdrawModal> {
     if (_submitting) return;
     final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
     if (amount <= 0) {
-      AppToast.show(context, '请输入提现金额', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.withdrawalAmountRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (amount > widget.maxAmount) {
-      AppToast.show(context, '提现金额不能超过可提现佣金', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.withdrawalAmountTooHigh,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (widget.minAmount > 0 && amount < widget.minAmount) {
       AppToast.show(
         context,
-        '最低提现金额为 ${widget.currencySymbol}${widget.minAmount.toStringAsFixed(2)}',
+        context.l10n.minimumWithdrawal(
+          '${widget.currencySymbol}${widget.minAmount.toStringAsFixed(2)}',
+        ),
         type: AppToastType.warning,
       );
       return;
     }
     if (_accountCtrl.text.trim().isEmpty) {
-      AppToast.show(context, '请输入提现账户', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.withdrawalAccountRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
 
@@ -827,7 +887,11 @@ class _WithdrawModalState extends State<_WithdrawModal> {
     setState(() => _submitting = false);
     if (error == null) {
       Navigator.of(context).pop();
-      AppToast.show(context, '提现工单已提交', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.withdrawalSubmitted,
+        type: AppToastType.success,
+      );
     } else {
       AppToast.show(context, error, type: AppToastType.error);
     }
@@ -838,14 +902,14 @@ class _WithdrawModalState extends State<_WithdrawModal> {
     final c = AppColors.of(context);
     return AppAdaptiveModal(
       compact: widget.compact,
-      title: '申请提现',
+      title: context.l10n.requestWithdrawal,
       icon: LucideIcons.receipt,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '提现方式',
+            context.l10n.withdrawalMethod,
             style: AppTextStyles.caption.copyWith(
               color: c.textMuted,
               fontWeight: FontWeight.w700,
@@ -867,21 +931,27 @@ class _WithdrawModalState extends State<_WithdrawModal> {
           const SizedBox(height: 14),
           AppTextField(
             controller: _accountCtrl,
-            label: '提现账户',
-            hint: '请输入收款账号',
+            label: context.l10n.withdrawalAccount,
+            hint: context.l10n.withdrawalAccountHint,
           ),
           const SizedBox(height: 12),
           AppTextField(
             controller: _amountCtrl,
-            label: '提现金额',
-            hint: '请输入提现金额',
+            label: context.l10n.withdrawalAmount,
+            hint: context.l10n.withdrawalAmountRequired,
             prefixText: widget.currencySymbol,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
           const SizedBox(height: 8),
           Text(
-            '可提现 ${widget.currencySymbol}${widget.maxAmount.toStringAsFixed(2)}'
-            '${widget.minAmount > 0 ? ' · 最低 ${widget.currencySymbol}${widget.minAmount.toStringAsFixed(2)}' : ''}',
+            widget.minAmount > 0
+                ? context.l10n.withdrawableWithMinimum(
+                    '${widget.currencySymbol}${widget.maxAmount.toStringAsFixed(2)}',
+                    '${widget.currencySymbol}${widget.minAmount.toStringAsFixed(2)}',
+                  )
+                : context.l10n.withdrawableAmount(
+                    '${widget.currencySymbol}${widget.maxAmount.toStringAsFixed(2)}',
+                  ),
             style: AppTextStyles.caption.copyWith(color: c.textMuted),
           ),
           const SizedBox(height: 18),
@@ -890,7 +960,11 @@ class _WithdrawModalState extends State<_WithdrawModal> {
             height: 42,
             child: FilledButton(
               onPressed: _submitting ? null : _submit,
-              child: Text(_submitting ? '提交中' : '提交提现'),
+              child: Text(
+                _submitting
+                    ? context.l10n.submitting
+                    : context.l10n.submitWithdrawal,
+              ),
             ),
           ),
         ],

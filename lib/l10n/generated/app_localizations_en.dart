@@ -1056,4 +1056,600 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get serverUnavailableNoCache =>
       'The server is unavailable and no nodes are cached. Check the network or contact support.';
+
+  @override
+  String get trafficStatistics => 'Traffic statistics';
+
+  @override
+  String get trafficStatisticsSubtitle =>
+      'View traffic, devices and plan cycle';
+
+  @override
+  String remainingTraffic(String value) {
+    return '$value GB remaining';
+  }
+
+  @override
+  String get onlineDevices => 'Online devices';
+
+  @override
+  String get currentOnlineDevices => 'Devices currently online';
+
+  @override
+  String get remainingDays => 'Days remaining';
+
+  @override
+  String get permanent => 'Permanent';
+
+  @override
+  String get daysUnit => 'days';
+
+  @override
+  String get subscriptionLongTerm => 'Subscription does not expire';
+
+  @override
+  String expiresAt(String date) {
+    return 'Expires $date';
+  }
+
+  @override
+  String get trafficResetTime => 'Traffic reset';
+
+  @override
+  String get neverResets => 'Never resets';
+
+  @override
+  String daysCount(int count) {
+    return '$count days';
+  }
+
+  @override
+  String get noTrafficReset => 'This plan has no traffic reset cycle';
+
+  @override
+  String get untilNextReset => 'Until next reset';
+
+  @override
+  String get trafficTrend => 'Traffic trend';
+
+  @override
+  String periodTrafficTotal(String period, String total) {
+    return '$period · $total total';
+  }
+
+  @override
+  String recentDays(int count) {
+    return 'Last $count days';
+  }
+
+  @override
+  String tooltipUpload(String value) {
+    return 'Upload $value';
+  }
+
+  @override
+  String tooltipDownload(String value) {
+    return 'Download $value';
+  }
+
+  @override
+  String tooltipTotal(String value) {
+    return 'Total $value';
+  }
+
+  @override
+  String get weekdayShort => 'Mon,Tue,Wed,Thu,Fri,Sat,Sun';
+
+  @override
+  String get ticketSupport => 'Ticket support';
+
+  @override
+  String get ticketSupportSubtitle => 'Submit an issue and view replies';
+
+  @override
+  String get tickets => 'Tickets';
+
+  @override
+  String get ticketSupportCompactSubtitle =>
+      'Submit issues and view support replies';
+
+  @override
+  String get newTicket => 'New ticket';
+
+  @override
+  String get ticketLoadFailed => 'Failed to load tickets';
+
+  @override
+  String get noTickets => 'No tickets';
+
+  @override
+  String get noTicketsSubtitle => 'Create a ticket to contact support';
+
+  @override
+  String get untitledTicket => 'Untitled ticket';
+
+  @override
+  String get ticketFieldsRequired => 'Enter a subject and issue description';
+
+  @override
+  String get ticketSubjectTooShort =>
+      'The subject must be at least 5 characters';
+
+  @override
+  String get ticketMessageTooShort =>
+      'The description must be at least 10 characters';
+
+  @override
+  String get ticketSubmitted => 'Ticket submitted';
+
+  @override
+  String get issueSubject => 'Subject';
+
+  @override
+  String get issueSubjectHint => 'Describe the issue in one sentence';
+
+  @override
+  String get priority => 'Priority';
+
+  @override
+  String get issueDescription => 'Issue description';
+
+  @override
+  String get issueDescriptionHint => 'Describe the issue in detail';
+
+  @override
+  String get submitting => 'Submitting...';
+
+  @override
+  String get submitTicket => 'Submit ticket';
+
+  @override
+  String get replyRequired => 'Enter a reply';
+
+  @override
+  String get replySent => 'Reply sent';
+
+  @override
+  String get ticketClosed => 'Ticket closed';
+
+  @override
+  String get ticketDetails => 'Ticket details';
+
+  @override
+  String get replyHint => 'Enter your reply';
+
+  @override
+  String get closing => 'Closing...';
+
+  @override
+  String get closeTicket => 'Close ticket';
+
+  @override
+  String get sendReply => 'Send reply';
+
+  @override
+  String get priorityLow => 'Low';
+
+  @override
+  String get priorityMedium => 'Medium';
+
+  @override
+  String get priorityUrgent => 'Urgent';
+
+  @override
+  String get noTicketMessages => 'No messages yet';
+
+  @override
+  String get customerSupport => 'Support';
+
+  @override
+  String get me => 'Me';
+
+  @override
+  String get ticketClosedStatus => 'Closed';
+
+  @override
+  String get invalidRechargeAmount => 'Enter a valid recharge amount';
+
+  @override
+  String get noTransferableCommission => 'No commission available to transfer';
+
+  @override
+  String get withdrawalUnavailable => 'Withdrawals are currently unavailable';
+
+  @override
+  String get noWithdrawableCommission => 'No commission available to withdraw';
+
+  @override
+  String get noWithdrawalMethods => 'No withdrawal methods are available';
+
+  @override
+  String get myWallet => 'My wallet';
+
+  @override
+  String get myWalletSubtitle => 'View balance, commission and recharge';
+
+  @override
+  String get accountAssets => 'Account assets';
+
+  @override
+  String get accountBalance => 'Account balance';
+
+  @override
+  String get withdrawableCommission => 'Withdrawable commission';
+
+  @override
+  String get transferCommission => 'Transfer commission';
+
+  @override
+  String get requestWithdrawal => 'Request withdrawal';
+
+  @override
+  String get rechargeBalance => 'Recharge balance';
+
+  @override
+  String get rechargeBalanceNotice =>
+      'Recharged balance can only be spent and cannot be withdrawn';
+
+  @override
+  String get customAmount => 'Custom amount';
+
+  @override
+  String get rechargeAmountHint => 'Enter recharge amount';
+
+  @override
+  String get recharge => 'Recharge';
+
+  @override
+  String get transferAmountRequired => 'Enter a transfer amount';
+
+  @override
+  String get transferAmountTooHigh =>
+      'The transfer amount exceeds withdrawable commission';
+
+  @override
+  String get commissionTransferred => 'Commission transferred to balance';
+
+  @override
+  String get transferCommissionNotice =>
+      'Transfer withdrawable commission to your balance to purchase plans.';
+
+  @override
+  String get transferAmount => 'Transfer amount';
+
+  @override
+  String transferableAmount(String amount) {
+    return 'Available: $amount';
+  }
+
+  @override
+  String get transferring => 'Transferring...';
+
+  @override
+  String get confirmTransfer => 'Confirm transfer';
+
+  @override
+  String get withdrawalAmountRequired => 'Enter a withdrawal amount';
+
+  @override
+  String get withdrawalAmountTooHigh =>
+      'The withdrawal amount exceeds withdrawable commission';
+
+  @override
+  String minimumWithdrawal(String amount) {
+    return 'Minimum withdrawal: $amount';
+  }
+
+  @override
+  String get withdrawalAccountRequired => 'Enter a withdrawal account';
+
+  @override
+  String get withdrawalSubmitted => 'Withdrawal ticket submitted';
+
+  @override
+  String get withdrawalMethod => 'Withdrawal method';
+
+  @override
+  String get withdrawalAccount => 'Withdrawal account';
+
+  @override
+  String get withdrawalAccountHint => 'Enter the receiving account';
+
+  @override
+  String get withdrawalAmount => 'Withdrawal amount';
+
+  @override
+  String withdrawableAmount(String amount) {
+    return 'Withdrawable: $amount';
+  }
+
+  @override
+  String withdrawableWithMinimum(String amount, String minimum) {
+    return 'Withdrawable: $amount · Minimum: $minimum';
+  }
+
+  @override
+  String get submitWithdrawal => 'Submit withdrawal';
+
+  @override
+  String itemCopied(String item) {
+    return '$item copied';
+  }
+
+  @override
+  String get settingsUpdated => 'Settings updated';
+
+  @override
+  String get myAccount => 'My account';
+
+  @override
+  String get myAccountSubtitle => 'View account and subscription details';
+
+  @override
+  String get expiredStatus => 'Expired';
+
+  @override
+  String get suspendedStatus => 'Suspended';
+
+  @override
+  String get normalStatus => 'Active';
+
+  @override
+  String get accountInformation => 'Account information';
+
+  @override
+  String get accountStatus => 'Account status';
+
+  @override
+  String get expiryTime => 'Expiry time';
+
+  @override
+  String get balanceAndRecharge => 'Balance and recharge';
+
+  @override
+  String get purchaseAndPayment => 'Purchases and payments';
+
+  @override
+  String get usageRecords => 'Usage records';
+
+  @override
+  String get contactAfterSales => 'Contact support';
+
+  @override
+  String get resetDayUnavailable => 'Reset day --';
+
+  @override
+  String monthlyResetDay(int day) {
+    return 'Resets on day $day each month';
+  }
+
+  @override
+  String get trafficOverview => 'Traffic overview';
+
+  @override
+  String usedPercent(String percent) {
+    return '$percent% used';
+  }
+
+  @override
+  String get remaining => 'Remaining';
+
+  @override
+  String usedTraffic(String used, String total) {
+    return 'Used $used / $total GB';
+  }
+
+  @override
+  String get currentPlan => 'Current plan';
+
+  @override
+  String get noCurrentPlan => 'No active plan';
+
+  @override
+  String get logout => 'Sign out';
+
+  @override
+  String get logoutDataNotice =>
+      'Your session and locally cached nodes will be cleared';
+
+  @override
+  String get logoutConfirmMessage =>
+      'Sign out of this account? You will need to sign in again.';
+
+  @override
+  String get confirmLogout => 'Sign out';
+
+  @override
+  String currentPlanValue(String plan) {
+    return 'Current plan: $plan';
+  }
+
+  @override
+  String expiryValue(String expiry) {
+    return 'Expires: $expiry';
+  }
+
+  @override
+  String get manage => 'Manage';
+
+  @override
+  String get accountManagement => 'Account management';
+
+  @override
+  String get expiryReminder => 'Expiry reminder';
+
+  @override
+  String get expiryReminderSubtitle =>
+      'Receive account expiry reminders by email';
+
+  @override
+  String get trafficReminder => 'Traffic reminder';
+
+  @override
+  String get trafficReminderSubtitle =>
+      'Receive low-traffic reminders by email';
+
+  @override
+  String get autoRenewal => 'Auto renewal';
+
+  @override
+  String get autoRenewalSubtitle =>
+      'Automatically renew the plan before expiry';
+
+  @override
+  String get updateLoginPassword => 'Update your sign-in password';
+
+  @override
+  String get logoutCurrentAccount => 'Sign out of this account';
+
+  @override
+  String get passwordTooShort =>
+      'The new password must be at least 8 characters';
+
+  @override
+  String get currentPassword => 'Current password';
+
+  @override
+  String get confirmNewPassword => 'Confirm new password';
+
+  @override
+  String get confirmNewPasswordHint => 'Enter the new password again';
+
+  @override
+  String get updating => 'Updating...';
+
+  @override
+  String get confirmChange => 'Confirm change';
+
+  @override
+  String get trayConnectedTun => 'Connected · TUN';
+
+  @override
+  String get trayConnectedSystemProxy => 'Connected · System proxy';
+
+  @override
+  String openApp(String appName) {
+    return 'Open $appName';
+  }
+
+  @override
+  String trayNode(String node) {
+    return 'Node: $node';
+  }
+
+  @override
+  String get connectNow => 'Connect now';
+
+  @override
+  String get repairSystemProxy => 'Repair system proxy';
+
+  @override
+  String get quit => 'Quit';
+
+  @override
+  String get cannotOpenUpdateUrl => 'Unable to open the update download URL';
+
+  @override
+  String get downloadPageOpened => 'Download page opened';
+
+  @override
+  String get downloadCompleteOpeningInstaller =>
+      'Download complete. Opening installer...';
+
+  @override
+  String newVersionAvailable(String version) {
+    return 'Version v$version is available. Download the latest version.';
+  }
+
+  @override
+  String get downloadNow => 'Download now';
+
+  @override
+  String get refresh => 'Refresh';
+
+  @override
+  String get back => 'Back';
+
+  @override
+  String get search => 'Search';
+
+  @override
+  String get backToAccount => 'Back to account';
+
+  @override
+  String get viewDetails => 'View details';
+
+  @override
+  String get requestFailed => 'Request failed. Try again later.';
+
+  @override
+  String get sessionExpiredError => 'Your session has expired. Sign in again.';
+
+  @override
+  String get tooManyRequestsError => 'Too many attempts. Try again later.';
+
+  @override
+  String get invalidSubmissionError =>
+      'Some information is invalid. Check it and try again.';
+
+  @override
+  String get connectionTimeoutError =>
+      'Connection timed out. Check your network and try again.';
+
+  @override
+  String get cannotConnectServerError =>
+      'Unable to connect to the server. Check your network.';
+
+  @override
+  String get serverUnavailableError =>
+      'The server is temporarily unavailable. Try again later.';
+
+  @override
+  String get invalidServerResponseError =>
+      'The server returned an invalid response. Try again later.';
+
+  @override
+  String get unsafeSubscriptionError =>
+      'The subscription URL is not secure and was rejected.';
+
+  @override
+  String get serverNotConfiguredError =>
+      'The server address is not configured.';
+
+  @override
+  String get installerVerificationError =>
+      'Installer verification failed. Download it again.';
+
+  @override
+  String get updateDownloadError => 'Update download failed. Try again later.';
+
+  @override
+  String get networkRequestError =>
+      'Network request failed. Check your connection and try again.';
+
+  @override
+  String get invalidCredentialsError => 'Incorrect email or password.';
+
+  @override
+  String get invalidVerificationCodeError =>
+      'The verification code is invalid or expired.';
+
+  @override
+  String get accountDisabledError =>
+      'This account has been disabled. Contact support.';
+
+  @override
+  String get unexpectedError => 'Something went wrong. Try again later.';
+
+  @override
+  String get nodeSortOriginal => 'Default order';
+
+  @override
+  String get nodeSortLatency => 'By latency';
+
+  @override
+  String get nodeSortName => 'By name';
+
+  @override
+  String get nodeSortRegion => 'By region';
 }

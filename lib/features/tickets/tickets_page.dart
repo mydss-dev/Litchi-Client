@@ -5,7 +5,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
+import '../../shared/services/app_error_message_service.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
@@ -62,7 +64,7 @@ class _TicketsPageState extends State<TicketsPage> {
   Future<void> _handleRefresh() async {
     await _load();
     if (!mounted || _error != null) return;
-    AppToast.show(context, '已刷新', type: AppToastType.success);
+    AppToast.show(context, context.l10n.refreshed, type: AppToastType.success);
   }
 
   void _openNewTicket() {
@@ -87,17 +89,17 @@ class _TicketsPageState extends State<TicketsPage> {
   @override
   Widget build(BuildContext context) {
     return ResponsivePageScaffold(
-      title: '工单支持',
-      subtitle: '提交问题并查看回复',
-      compactTitle: '工单',
-      compactSubtitle: '提交问题并查看客服回复',
+      title: context.l10n.ticketSupport,
+      subtitle: context.l10n.ticketSupportSubtitle,
+      compactTitle: context.l10n.tickets,
+      compactSubtitle: context.l10n.ticketSupportCompactSubtitle,
       primaryCompact: isPrimaryCompactTab(AppPage.tickets),
       onRefresh: _handleRefresh,
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
       showWideRefresh: !_loading,
       showWideTrailing: !_loading,
       trailing: PageIconButton(
-        tooltip: '新建工单',
+        tooltip: context.l10n.newTicket,
         icon: LucideIcons.messageSquarePlus,
         filled: true,
         onTap: _openNewTicket,
@@ -116,8 +118,8 @@ class _TicketsPageState extends State<TicketsPage> {
       return [
         PageStateCard(
           icon: LucideIcons.circleAlert,
-          title: '工单加载失败',
-          subtitle: _error!,
+          title: context.l10n.ticketLoadFailed,
+          subtitle: AppErrorMessageService.userFacing(_error!, context.l10n),
           onTap: _load,
         ),
       ];
@@ -126,8 +128,8 @@ class _TicketsPageState extends State<TicketsPage> {
       return [
         PageStateCard(
           icon: LucideIcons.messageSquare,
-          title: '暂无工单',
-          subtitle: '有问题可以新建工单联系客服',
+          title: context.l10n.noTickets,
+          subtitle: context.l10n.noTicketsSubtitle,
           onTap: _openNewTicket,
         ),
       ];
@@ -178,7 +180,9 @@ class _TicketCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  ticket.subject.isEmpty ? '未命名工单' : ticket.subject,
+                  ticket.subject.isEmpty
+                      ? context.l10n.untitledTicket
+                      : ticket.subject,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodyStrong.copyWith(
@@ -187,7 +191,7 @@ class _TicketCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${ticket.levelLabel} · ${ticket.dateDisplay}',
+                  '${_ticketPriority(context, ticket.level)} · ${ticket.dateDisplay}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
@@ -197,7 +201,7 @@ class _TicketCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            ticket.statusLabel,
+            _ticketStatus(context, ticket.isOpen),
             style: AppTextStyles.caption.copyWith(
               color: statusColor,
               fontWeight: FontWeight.w700,
@@ -241,15 +245,27 @@ class _NewTicketModalState extends State<_NewTicketModal> {
     final subject = _subjectCtrl.text.trim();
     final message = _messageCtrl.text.trim();
     if (subject.isEmpty || message.isEmpty) {
-      AppToast.show(context, '请填写标题和问题描述', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.ticketFieldsRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (subject.length < 5) {
-      AppToast.show(context, '问题标题至少 5 个字符', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.ticketSubjectTooShort,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (message.length < 10) {
-      AppToast.show(context, '问题描述至少 10 个字符', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.ticketMessageTooShort,
+        type: AppToastType.warning,
+      );
       return;
     }
 
@@ -261,7 +277,11 @@ class _NewTicketModalState extends State<_NewTicketModal> {
       if (!mounted) return;
       Navigator.of(context).pop();
       widget.onCreated();
-      AppToast.show(context, '工单已提交', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.ticketSubmitted,
+        type: AppToastType.success,
+      );
     } catch (e) {
       if (!mounted) return;
       AppToast.show(
@@ -278,7 +298,7 @@ class _NewTicketModalState extends State<_NewTicketModal> {
   Widget build(BuildContext context) {
     return AppAdaptiveModal(
       compact: widget.compact,
-      title: '新建工单',
+      title: context.l10n.newTicket,
       icon: LucideIcons.messageSquarePlus,
       child: _NewTicketForm(
         subjectCtrl: _subjectCtrl,
@@ -317,24 +337,33 @@ class _NewTicketForm extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppFieldLabel('问题标题'),
+        AppFieldLabel(context.l10n.issueSubject),
         const SizedBox(height: 6),
-        AppTextField(controller: subjectCtrl, hint: '用一句话描述你的问题'),
+        AppTextField(
+          controller: subjectCtrl,
+          hint: context.l10n.issueSubjectHint,
+        ),
         const SizedBox(height: 14),
-        const AppFieldLabel('优先级'),
+        AppFieldLabel(context.l10n.priority),
         const SizedBox(height: 8),
         _PrioritySelector(value: level, onChanged: onLevelChanged),
         const SizedBox(height: 14),
-        const AppFieldLabel('问题描述'),
+        AppFieldLabel(context.l10n.issueDescription),
         const SizedBox(height: 6),
-        AppTextField(controller: messageCtrl, hint: '详细描述你遇到的问题', maxLines: 5),
+        AppTextField(
+          controller: messageCtrl,
+          hint: context.l10n.issueDescriptionHint,
+          maxLines: 5,
+        ),
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           height: 44,
           child: FilledButton(
             onPressed: submitting ? null : onSubmit,
-            child: Text(submitting ? '提交中...' : '提交工单'),
+            child: Text(
+              submitting ? context.l10n.submitting : context.l10n.submitTicket,
+            ),
           ),
         ),
       ],
@@ -403,7 +432,11 @@ class _TicketDetailModalState extends State<_TicketDetailModal> {
     if (_replying) return;
     final message = _replyCtrl.text.trim();
     if (message.isEmpty) {
-      AppToast.show(context, '请输入回复内容', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.replyRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
     setState(() => _replying = true);
@@ -415,7 +448,11 @@ class _TicketDetailModalState extends State<_TicketDetailModal> {
       await _loadDetail();
       widget.onChanged();
       if (!mounted) return;
-      AppToast.show(context, '回复已发送', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.replySent,
+        type: AppToastType.success,
+      );
     } catch (e) {
       if (!mounted) return;
       AppToast.show(
@@ -436,7 +473,11 @@ class _TicketDetailModalState extends State<_TicketDetailModal> {
       if (!mounted) return;
       Navigator.of(context).pop();
       widget.onChanged();
-      AppToast.show(context, '工单已关闭', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.ticketClosed,
+        type: AppToastType.success,
+      );
     } catch (e) {
       if (!mounted) return;
       AppToast.show(
@@ -453,8 +494,11 @@ class _TicketDetailModalState extends State<_TicketDetailModal> {
   Widget build(BuildContext context) {
     return AppAdaptiveModal(
       compact: widget.compact,
-      title: _ticket.subject.isEmpty ? '工单详情' : _ticket.subject,
-      subtitle: '${_ticket.levelLabel} · ${_ticket.statusLabel}',
+      title: _ticket.subject.isEmpty
+          ? context.l10n.ticketDetails
+          : _ticket.subject,
+      subtitle:
+          '${_ticketPriority(context, _ticket.level)} · ${_ticketStatus(context, _ticket.isOpen)}',
       icon: LucideIcons.messageSquare,
       maxWidth: 520,
       maxHeightFactor: 0.92,
@@ -514,7 +558,11 @@ class _TicketDetailBody extends StatelessWidget {
         ),
         if (isOpen) ...[
           const SizedBox(height: 12),
-          AppTextField(controller: replyCtrl, hint: '输入回复内容', maxLines: 3),
+          AppTextField(
+            controller: replyCtrl,
+            hint: context.l10n.replyHint,
+            maxLines: 3,
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -524,7 +572,9 @@ class _TicketDetailBody extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: closing ? null : onClose,
                     icon: const Icon(LucideIcons.archive, size: 16),
-                    label: Text(closing ? '关闭中...' : '关闭工单'),
+                    label: Text(
+                      closing ? context.l10n.closing : context.l10n.closeTicket,
+                    ),
                   ),
                 ),
               ),
@@ -542,7 +592,9 @@ class _TicketDetailBody extends StatelessWidget {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(LucideIcons.send, size: 16),
-                    label: Text(replying ? '发送中...' : '发送回复'),
+                    label: Text(
+                      replying ? context.l10n.sending : context.l10n.sendReply,
+                    ),
                   ),
                 ),
               ),
@@ -560,7 +612,7 @@ class _PrioritySelector extends StatelessWidget {
   final int value;
   final ValueChanged<int> onChanged;
 
-  static const _items = [(0, '低'), (1, '中'), (2, '紧急')];
+  static const _items = [0, 1, 2];
 
   @override
   Widget build(BuildContext context) {
@@ -572,21 +624,21 @@ class _PrioritySelector extends StatelessWidget {
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: () => onChanged(item.$1),
+                onTap: () => onChanged(item),
                 child: Container(
                   height: 38,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: value == item.$1 ? c.primary : c.surfaceMuted,
+                    color: value == item ? c.primary : c.surfaceMuted,
                     borderRadius: BorderRadius.circular(AppRadius.md),
                     border: Border.all(
-                      color: value == item.$1 ? c.primary : c.softBorder,
+                      color: value == item ? c.primary : c.softBorder,
                     ),
                   ),
                   child: Text(
-                    item.$2,
+                    _ticketPriority(context, item),
                     style: AppTextStyles.button.copyWith(
-                      color: value == item.$1 ? Colors.white : c.textSecondary,
+                      color: value == item ? Colors.white : c.textSecondary,
                     ),
                   ),
                 ),
@@ -610,9 +662,9 @@ class _MessageThread extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (messages.isEmpty) {
-      return const AppEmptyState(
+      return AppEmptyState(
         icon: LucideIcons.messageCircle,
-        title: '暂无消息记录',
+        title: context.l10n.noTicketMessages,
         padding: EdgeInsets.zero,
       );
     }
@@ -644,7 +696,7 @@ class _MessageBubble extends StatelessWidget {
               : MainAxisAlignment.end,
           children: [
             Text(
-              isAdmin ? '客服' : '我',
+              isAdmin ? context.l10n.customerSupport : context.l10n.me,
               style: AppTextStyles.caption.copyWith(
                 color: isAdmin ? c.primary : c.textSecondary,
                 fontWeight: FontWeight.w700,
@@ -679,3 +731,12 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 }
+
+String _ticketPriority(BuildContext context, int level) => switch (level) {
+  2 => context.l10n.priorityUrgent,
+  1 => context.l10n.priorityMedium,
+  _ => context.l10n.priorityLow,
+};
+
+String _ticketStatus(BuildContext context, bool isOpen) =>
+    isOpen ? context.l10n.processing : context.l10n.ticketClosedStatus;
