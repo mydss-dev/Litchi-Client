@@ -6,6 +6,8 @@ import 'package:litchi_client/config/app_config.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/shared/services/update_service.dart';
 
+bool get _installerDownloadSupported => Platform.isWindows || Platform.isMacOS;
+
 void main() {
   test('selects a URL and mandatory hash from update metadata', () {
     final originalVersion = AppConfig.currentVersion;
@@ -78,58 +80,70 @@ void main() {
     );
   });
 
-  test('streams a valid installer to disk and reports progress', () async {
-    final payload = List<int>.generate(128 * 1024, (index) => index % 251);
-    final server = await _serve(payload);
-    addTearDown(() => server.close(force: true));
-    var received = 0;
-    var total = -1;
-    final info = UpdateInfo(
-      version: 'stream-test',
-      downloadUrl: 'http://${server.address.host}:${server.port}/update',
-      sha256: sha256.convert(payload).toString(),
-    );
+  test(
+    'streams a valid installer to disk and reports progress',
+    () async {
+      final payload = List<int>.generate(128 * 1024, (index) => index % 251);
+      final server = await _serve(payload);
+      addTearDown(() => server.close(force: true));
+      var received = 0;
+      var total = -1;
+      final info = UpdateInfo(
+        version: 'stream-test',
+        downloadUrl: 'http://${server.address.host}:${server.port}/update',
+        sha256: sha256.convert(payload).toString(),
+      );
 
-    final path = await UpdateService.downloadVerifiedInstaller(
-      info,
-      onProgress: (current, expected) {
-        received = current;
-        total = expected;
-      },
-    );
-    final file = File(path);
-    addTearDown(() async {
+      final path = await UpdateService.downloadVerifiedInstaller(
+        info,
+        onProgress: (current, expected) {
+          received = current;
+          total = expected;
+        },
+      );
+      final file = File(path);
+      addTearDown(() async {
+        if (await file.exists()) await file.delete();
+      });
+
+      expect(await file.readAsBytes(), payload);
+      expect(received, payload.length);
+      expect(total, payload.length);
+    },
+    skip: _installerDownloadSupported
+        ? false
+        : 'Installer download is desktop-only',
+  );
+
+  test(
+    'deletes an installer whose SHA-256 does not match',
+    () async {
+      final payload = List<int>.filled(4096, 7);
+      final server = await _serve(payload);
+      addTearDown(() => server.close(force: true));
+      final ext = Platform.isWindows ? '.exe' : '.dmg';
+      final file = File(
+        '${Directory.systemTemp.path}${Platform.pathSeparator}'
+        'Client-Setup-hash-mismatch-test$ext',
+      );
       if (await file.exists()) await file.delete();
-    });
 
-    expect(await file.readAsBytes(), payload);
-    expect(received, payload.length);
-    expect(total, payload.length);
-  });
+      final info = UpdateInfo(
+        version: 'hash-mismatch-test',
+        downloadUrl: 'http://${server.address.host}:${server.port}/update',
+        sha256: List.filled(64, '0').join(),
+      );
 
-  test('deletes an installer whose SHA-256 does not match', () async {
-    final payload = List<int>.filled(4096, 7);
-    final server = await _serve(payload);
-    addTearDown(() => server.close(force: true));
-    final ext = Platform.isWindows ? '.exe' : '.dmg';
-    final file = File(
-      '${Directory.systemTemp.path}${Platform.pathSeparator}'
-      'Client-Setup-hash-mismatch-test$ext',
-    );
-    if (await file.exists()) await file.delete();
-
-    final info = UpdateInfo(
-      version: 'hash-mismatch-test',
-      downloadUrl: 'http://${server.address.host}:${server.port}/update',
-      sha256: List.filled(64, '0').join(),
-    );
-
-    await expectLater(
-      UpdateService.downloadVerifiedInstaller(info),
-      throwsA(isA<Exception>()),
-    );
-    expect(await file.exists(), isFalse);
-  });
+      await expectLater(
+        UpdateService.downloadVerifiedInstaller(info),
+        throwsA(isA<Exception>()),
+      );
+      expect(await file.exists(), isFalse);
+    },
+    skip: _installerDownloadSupported
+        ? false
+        : 'Installer download is desktop-only',
+  );
 }
 
 Future<HttpServer> _serve(List<int> payload) async {
