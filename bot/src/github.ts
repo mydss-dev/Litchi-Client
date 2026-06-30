@@ -9,6 +9,7 @@ export type BuildStatusSnapshot = {
   githubRunUrl: string;
   status: string;
   downloadUrl: string;
+  sha256: string;
 };
 
 export function buildRunName(input: {
@@ -26,12 +27,17 @@ export async function dispatchBuild(input: {
   version: string;
   remoteConfigUrl: string;
   verifier: string;
+  signedConfig: string;
 }): Promise<{ requestId: string; workflowUrl: string }> {
   if (!env.githubToken) throw new Error('Missing GITHUB_TOKEN');
 
   const { owner, repo } = repoParts();
   const octokit = new Octokit({ auth: env.githubToken });
   const requestId = nanoid(12);
+  const signedConfigB64 = Buffer.from(input.signedConfig, 'utf8').toString('base64');
+  if (signedConfigB64.length > 60_000) {
+    throw new Error('签名配置过大，无法安全传入构建任务。');
+  }
   const workflowInputs: Record<string, string> = {
     app_id: input.appId,
     platform: input.platform,
@@ -39,6 +45,7 @@ export async function dispatchBuild(input: {
     remote_config_url: input.remoteConfigUrl,
     remote_config_verifier: input.verifier,
     request_id: requestId,
+    signed_config_b64: signedConfigB64,
   };
   if (env.downloadBaseUrl) {
     workflowInputs.download_base_url = env.downloadBaseUrl;
@@ -103,18 +110,36 @@ export async function readBuildStatus(input: {
     );
   }
 
+  const downloadUrl = r2UploadSucceeded
+    ? buildDownloadUrl({
+        appId: input.appId,
+        platform: input.platform,
+        version: input.version,
+        requestId: input.requestId,
+      })
+    : '';
+
   return {
     githubRunUrl: run.html_url,
     status: normalizeRunStatus(run.status, run.conclusion),
-    downloadUrl: r2UploadSucceeded
-        ? buildDownloadUrl({
-            appId: input.appId,
-            platform: input.platform,
-            version: input.version,
-            requestId: input.requestId,
-          })
-        : '',
+    downloadUrl,
+    sha256: downloadUrl ? await readPublishedSha256(downloadUrl) : '',
   };
+}
+
+async function readPublishedSha256(url: string): Promise<string> {
+  try {
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return '';
+    const value =
+      response.headers.get('x-amz-meta-sha256')?.trim().toLowerCase() ?? '';
+    return /^[a-f0-9]{64}$/.test(value) ? value : '';
+  } catch {
+    return '';
+  }
 }
 
 export function buildDownloadUrl(input: {

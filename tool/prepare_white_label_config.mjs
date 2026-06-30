@@ -97,18 +97,29 @@ async function main() {
     throw new Error('BUILD_VERSION must be a semantic version such as 1.2.7');
   }
 
-  const response = await fetch(configUrl, {
-    headers: { Accept: 'application/json' },
-    redirect: 'follow',
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) {
-    throw new Error(`Config download failed: HTTP ${response.status}`);
+  const inlineConfig = process.env.SIGNED_CONFIG_B64?.trim() ?? '';
+  let body;
+  if (inlineConfig) {
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(inlineConfig)) {
+      throw new Error('Inline signed config is not valid base64');
+    }
+    body = Buffer.from(inlineConfig, 'base64').toString('utf8');
+  } else {
+    // Compatibility fallback for builds dispatched before the bot started
+    // storing signed configs locally.
+    const response = await fetch(configUrl, {
+      headers: { Accept: 'application/json' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) {
+      throw new Error(`Config download failed: HTTP ${response.status}`);
+    }
+    httpsUrl(response.url, 'Final config URL');
+    const contentLength = Number(response.headers.get('content-length') ?? 0);
+    if (contentLength > MAX_CONFIG_BYTES) throw new Error('Config file is too large');
+    body = await response.text();
   }
-  httpsUrl(response.url, 'Final config URL');
-  const contentLength = Number(response.headers.get('content-length') ?? 0);
-  if (contentLength > MAX_CONFIG_BYTES) throw new Error('Config file is too large');
-  const body = await response.text();
   if (Buffer.byteLength(body) > MAX_CONFIG_BYTES) throw new Error('Config file is too large');
 
   const wrapper = JSON.parse(body);

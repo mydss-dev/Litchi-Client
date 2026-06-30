@@ -16,6 +16,7 @@ abstract final class UpdateService {
   /// Returns [UpdateInfo] if the OSS config declares a newer version than the
   /// currently running one, or null when disabled / already up-to-date.
   static UpdateInfo? check() {
+    if (!AppConfig.updatesEnabled) return null;
     final latest = AppConfig.updateVersion.trim();
     if (latest.isEmpty) return null;
     final downloadUrl = AppConfig.updateDownloadUrl.trim();

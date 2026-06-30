@@ -7,6 +7,13 @@ export type KeyPairB64 = {
   publicKey: string;
 };
 
+export type ReleaseMetadata = {
+  platform: string;
+  version: string;
+  downloadUrl: string;
+  sha256: string;
+};
+
 export function generateKeyPair(): KeyPairB64 {
   const pair = nacl.sign.keyPair();
   return {
@@ -32,6 +39,115 @@ export function signConfigPayload(
     payload_b64: b64url(payloadBytes),
     signature: b64url(Buffer.from(signature)),
   };
+}
+
+export function verifyConfigPayload(
+  signedConfig: string,
+  publicKeyB64: string,
+): Record<string, unknown> {
+  const wrapper = JSON.parse(signedConfig) as {
+    payload_b64?: unknown;
+    signature?: unknown;
+  };
+  if (
+    typeof wrapper.payload_b64 !== 'string' ||
+    typeof wrapper.signature !== 'string'
+  ) {
+    throw new Error('保存的签名配置格式无效，请重新执行 /build。');
+  }
+
+  const publicKey = b64urlDecode(publicKeyB64);
+  const payloadBytes = b64urlDecode(wrapper.payload_b64);
+  const signature = b64urlDecode(wrapper.signature);
+  if (
+    publicKey.length !== 32 ||
+    signature.length !== 64 ||
+    !nacl.sign.detached.verify(payloadBytes, signature, publicKey)
+  ) {
+    throw new Error('保存的签名配置验签失败，请重新执行 /build。');
+  }
+
+  const payload = JSON.parse(payloadBytes.toString('utf8')) as unknown;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('保存的签名配置内容无效，请重新执行 /build。');
+  }
+  return payload as Record<string, unknown>;
+}
+
+export function withReleaseMetadata(
+  current: Record<string, unknown>,
+  releases: ReleaseMetadata[],
+): Record<string, unknown> {
+  const payload = { ...current };
+  delete payload.config_version;
+  if (releases.length === 0) {
+    throw new Error('没有可写入配置的安装包信息。');
+  }
+  const version = releases[0].version;
+  if (releases.some((release) => release.version !== version)) {
+    throw new Error('同一批发布包的版本号不一致。');
+  }
+
+  const sameRelease = payload.update_version === version;
+  const urls = sameRelease ? stringMap(payload.update_download_url) : {};
+  const hashes = sameRelease ? stringMap(payload.update_sha256) : {};
+  for (const release of releases) {
+    urls[release.platform] = release.downloadUrl;
+    hashes[release.platform] = release.sha256;
+  }
+
+  payload.update_version = version;
+  payload.update_download_url = urls;
+  payload.update_sha256 = hashes;
+  return payload;
+}
+
+export function withPreservedUpdateMetadata(
+  input: Record<string, unknown>,
+  previous?: Record<string, unknown>,
+): Record<string, unknown> {
+  const payload = { ...input };
+  delete payload.config_version;
+  delete payload.update_version;
+  delete payload.update_download_url;
+  delete payload.update_sha256;
+
+  if (!previous) return payload;
+
+  const version = previous.update_version;
+  const downloadUrl = previous.update_download_url;
+  const sha256 = previous.update_sha256;
+  if (
+    typeof version === 'string' &&
+    version.trim() !== '' &&
+    downloadUrl !== undefined &&
+    sha256 !== undefined
+  ) {
+    payload.update_version = version;
+    payload.update_download_url = downloadUrl;
+    payload.update_sha256 = sha256;
+  }
+  return payload;
+}
+
+export function matchesPublishedVersion(
+  payload: Record<string, unknown>,
+  targetVersion: string,
+): boolean {
+  return (
+    typeof payload.update_version === 'string' &&
+    payload.update_version.trim() === targetVersion.trim() &&
+    targetVersion.trim() !== ''
+  );
+}
+
+function stringMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  );
 }
 
 export function withConfigVersion(

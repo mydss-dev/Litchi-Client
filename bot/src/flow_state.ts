@@ -3,6 +3,12 @@ type PendingAction =
   | { type: 'bindoss' }
   | { type: 'signconfig' }
   | { type: 'build' }
+  | {
+      type: 'same_version_choice';
+      signedConfig: string;
+      remoteConfigUrl: string;
+      targetVersion: string;
+    }
   | { type: 'setlatest_platform' }
   | { type: 'setlatest_url'; platform: 'windows' | 'android' | 'macos' };
 

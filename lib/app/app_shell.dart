@@ -77,6 +77,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const Size _appWindowSize = Size(420, 760);
   bool _maximized = false;
   bool _trayActive = false;
+  bool _quitting = false;
   bool? _compactWindow;
   double? _authHeight;
   AuthScreen? _visibleAuthScreen;
@@ -380,19 +381,28 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   }
 
   Future<void> _quit() async {
-    if (_trayActive) {
-      trayManager.removeListener(this);
-      await trayManager.destroy();
-      _trayActive = false;
-    }
-    // Clean up core + system proxy, but never let a slow cleanup hang the
-    // exit — cap it and then terminate the process hard.
+    if (_quitting) return;
+    _quitting = true;
+
+    // Stop the core and restore the proxy first. Destroying the native tray can
+    // block on some Windows machines while mihomo is still connected.
     try {
       await _ctrl?.shutdown().timeout(const Duration(seconds: 5));
     } catch (_) {
       // intentional: best-effort cleanup, failure is safe to ignore
     }
-    exit(0);
+
+    try {
+      if (_trayActive) {
+        _trayActive = false;
+        trayManager.removeListener(this);
+        await trayManager.destroy().timeout(const Duration(seconds: 1));
+      }
+    } catch (_) {
+      // Never let native tray cleanup prevent an explicit Quit operation.
+    } finally {
+      exit(0);
+    }
   }
 
   Future<void> _toggleConnectionFromTray() async {

@@ -2,9 +2,12 @@ import type { Telegraf } from 'telegraf';
 
 import { env, isAdmin } from './config.js';
 import {
+  bumpConfigVersion,
   countRecentBuilds,
   createBuild,
+  getAppForUser,
   getAuthorizedUser,
+  saveSignedConfig,
   updateBuildStatus,
 } from './db.js';
 import {
@@ -18,6 +21,15 @@ import {
   readBuildStatus,
   type BuildPlatform,
 } from './github.js';
+import {
+  matchesPublishedVersion,
+  signConfigPayload,
+  verifyConfigPayload,
+  withConfigVersion,
+  withReleaseMetadata,
+} from './signer.js';
+import { startConfigFlow } from './sign_handlers.js';
+import { parseAndValidateConfig } from './validate.js';
 
 const allPlatforms: BuildPlatform[] = ['windows', 'android', 'macos'];
 const terminalStatuses = new Set([
@@ -32,11 +44,21 @@ const terminalStatuses = new Set([
 /// Each build group (one /build command) gets one entry here.  Status updates
 /// edit the same Telegram message instead of sending a new one every time.
 type BuildGroup = {
+  appId: string;
+  userId: number;
   chatId: number;
   messageId: number;
+  finalConfigSent: boolean;
   builds: Map<
     number,
-    { platform: string; version: string; requestId: string; status: string; downloadUrl: string }
+    {
+      platform: string;
+      version: string;
+      requestId: string;
+      status: string;
+      downloadUrl: string;
+      sha256: string;
+    }
   >;
 };
 
@@ -53,19 +75,7 @@ export function wireBuildCommands(bot: Telegraf): void {
 
     const [platformRaw] = splitArgs(ctx.message.text);
     if (!platformRaw) {
-      setPendingAction(userId, { type: 'build' });
-      await ctx.reply(
-        [
-          `当前版本: ${getCurrentBuildVersion()}`,
-          '',
-          '请回复数字选择打包平台:',
-          '1 — 全部 (Windows + Android + macOS)',
-          '2 — Windows',
-          '3 — Android',
-          '4 — macOS',
-          '退出请输入 /cancel',
-        ].join('\n'),
-      );
+      await startConfigFlow(ctx);
       return;
     }
 
@@ -139,6 +149,11 @@ async function startBuildFromInput(
     await ctx.reply(profile.message);
     return;
   }
+  const app = getAppForUser(profile.app_id, userId);
+  if (!app?.signed_config) {
+    await ctx.reply('还没有可用于打包的配置，请先发送 /build 并回传模板。');
+    return;
+  }
 
   // ── Rate limit ───────────────────────────────────────────────────────────
   if (!isAdmin(userId)) {
@@ -167,8 +182,28 @@ async function startBuildFromInput(
 
   try {
     const version = getCurrentBuildVersion();
+    const currentConfig = verifyConfigPayload(
+      app.signed_config,
+      app.public_key,
+    );
+    if (matchesPublishedVersion(currentConfig, version)) {
+      await ctx.reply(
+        [
+          `提醒：你正在按同版本 ${version} 重新打包。`,
+          '这只会更新之后的新下载包。',
+          '已安装用户的系统图标和原生软件名称不会变化，必须等下次提高版本并下载安装更新后才会生效。',
+        ].join('\n'),
+      );
+    }
     const groupKey = `${chatId}_${Date.now()}`;
-    const group: BuildGroup = { chatId, messageId: 0, builds: new Map() };
+    const group: BuildGroup = {
+      appId: profile.app_id,
+      userId,
+      chatId,
+      messageId: 0,
+      finalConfigSent: false,
+      builds: new Map(),
+    };
     groupMessages.set(groupKey, group);
 
     for (const platform of platforms) {
@@ -178,6 +213,7 @@ async function startBuildFromInput(
         version,
         remoteConfigUrl: profile.remote_config_url,
         verifier: profile.public_key,
+        signedConfig: app.signed_config,
       });
       const id = createBuild({
         appId: profile.app_id,
@@ -195,6 +231,7 @@ async function startBuildFromInput(
         requestId: dispatched.requestId,
         status: 'queued',
         downloadUrl: '',
+        sha256: '',
       });
     }
 
@@ -232,7 +269,13 @@ function scheduleGroupPoll(
       let allTerminal = true;
 
       for (const [buildId, build] of group.builds) {
-        if (terminalStatuses.has(build.status)) continue;
+        const waitingForPublishedHash =
+          build.status === 'success' &&
+          build.downloadUrl !== '' &&
+          build.sha256 === '';
+        if (terminalStatuses.has(build.status) && !waitingForPublishedHash) {
+          continue;
+        }
         allTerminal = false;
 
         try {
@@ -249,11 +292,17 @@ function scheduleGroupPoll(
               status: snapshot.status,
               githubRunUrl: snapshot.githubRunUrl,
               downloadUrl: snapshot.downloadUrl,
+              sha256: snapshot.sha256,
             });
 
-            if (snapshot.status !== build.status) {
+            if (
+              snapshot.status !== build.status ||
+              snapshot.downloadUrl !== build.downloadUrl ||
+              snapshot.sha256 !== build.sha256
+            ) {
               build.status = snapshot.status;
               build.downloadUrl = snapshot.downloadUrl;
+              build.sha256 = snapshot.sha256;
               changed = true;
             }
           }
@@ -280,6 +329,7 @@ function scheduleGroupPoll(
       }
 
       if (allTerminal) {
+        await sendFinalConfig(bot, group);
         groupTimers.delete(input.groupKey);
         groupMessages.delete(input.groupKey);
         return;
@@ -312,10 +362,116 @@ function formatGroupMessage(group: BuildGroup): string {
     if (build.downloadUrl) {
       line += `\n${build.downloadUrl}`;
     }
+    if (build.sha256) {
+      line += `\nSHA-256: ${build.sha256}`;
+    }
     lines.push(line);
+  }
+  if ([...group.builds.values()].some((build) => build.sha256)) {
+    lines.push('', '安装包信息已生成，机器人将自动制作最终配置。');
   }
   lines.push('', '状态持续更新中，本条消息会自动刷新。');
   return lines.join('\n');
+}
+
+async function sendFinalConfig(
+  bot: Telegraf,
+  group: BuildGroup,
+): Promise<void> {
+  if (group.finalConfigSent) return;
+
+  const successfulBuilds = [...group.builds.values()].filter(
+    (build) => build.status === 'success',
+  );
+  if (successfulBuilds.length === 0) {
+    group.finalConfigSent = true;
+    await bot.telegram.sendMessage(
+      group.chatId,
+      '本次构建没有成功的平台，因此没有生成最终配置。',
+    );
+    return;
+  }
+
+  const app = getAppForUser(group.appId, group.userId);
+  if (!app?.signed_config) {
+    throw new Error('找不到基础签名配置，请重新执行 /build。');
+  }
+  const current = verifyConfigPayload(app.signed_config, app.public_key);
+  const updatesEnabled = current.update_enabled !== false;
+  const releases = [...group.builds.values()].filter(
+    (build) =>
+      build.status === 'success' &&
+      build.downloadUrl !== '' &&
+      /^[a-f0-9]{64}$/.test(build.sha256),
+  );
+  if (releases.length === 0) {
+    group.finalConfigSent = true;
+    await bot.telegram.sendMessage(
+      group.chatId,
+      '构建已结束，但没有可发布的下载地址和 SHA-256，因此没有生成最终配置。',
+    );
+    return;
+  }
+
+  const payload = withReleaseMetadata(current, releases);
+  const validated = parseAndValidateConfig(JSON.stringify(payload));
+  const configVersion = bumpConfigVersion(group.appId);
+  const signed = signConfigPayload(
+    withConfigVersion(validated, configVersion),
+    app.private_key,
+  );
+  const signedJson = JSON.stringify(signed, null, 2);
+
+  saveSignedConfig(group.appId, JSON.stringify(signed));
+
+  await bot.telegram.sendDocument(
+    group.chatId,
+    {
+      source: Buffer.from(signedJson, 'utf8'),
+      filename: 'config.json',
+    },
+    {
+      caption: [
+        updatesEnabled
+          ? '最终发布配置已生成，版本、下载地址和 SHA-256 都已自动填好。'
+          : '最终发布配置已生成，发布信息已保存；你关闭了更新提示，客户端不会展示它。',
+        `请将文件保持名为 config.json，并上传覆盖到：${app.remote_config_url}`,
+        '上传后再按下一条消息完成交付测试。',
+      ].join('\n'),
+    },
+  );
+
+  const version = releases[0].version;
+  const sameVersionRebuild = matchesPublishedVersion(current, version);
+  const packageLines = releases.map(
+    (release) => `- ${release.platform}: ${release.downloadUrl}`,
+  );
+  await bot.telegram.sendMessage(
+    group.chatId,
+    [
+      '交付与测试步骤：',
+      '',
+      '安装包下载地址：',
+      ...packageLines,
+      '',
+      `1. 上传 config.json 覆盖到：${app.remote_config_url}`,
+      '2. 用浏览器打开该地址，应看到包含 payload_b64 和 signature 的 JSON；不能是 404、网页 HTML 或旧内容。',
+      '3. 先在测试设备或虚拟机安装上面的安装包。',
+      '4. 启动后检查软件名称、Logo、登录/API、节点获取和实际连接。',
+      updatesEnabled
+        ? `5. 更新测试：使用低于 ${version} 的旧版客户端检查更新提示；当前版本不会提示更新。`
+        : '5. 当前已关闭更新提示，旧版客户端也不应显示更新横幅。',
+      ifSameVersionWarning(sameVersionRebuild),
+    ].join('\n'),
+    { link_preview_options: { is_disabled: true } },
+  );
+  group.finalConfigSent = true;
+}
+
+function ifSameVersionWarning(sameVersionRebuild: boolean): string {
+  return sameVersionRebuild
+    ? '提醒：这是同版本重打，已安装用户不会收到更新，图标和原生名称要等下次提高版本后才会生效。'
+    : '';
 }
 
 function mapStatusText(status: string): string {

@@ -59,9 +59,9 @@ DOWNLOAD_BASE_URL=https://download.example.com
 - `R2_BUCKET`
 
 R2 API Token 只授予目标 Bucket 的 Object Read & Write 权限。构建成功后，工作流会
-上传到 `packages/<APP_ID>/<platform>/<version>/<request-id>.<ext>`，机器人随后把
-这个公开地址记录为该平台的最新下载链接。`DOWNLOAD_BASE_URL` 留空时跳过 R2 上传，
-仍保留 GitHub Artifact。
+上传到 `packages/<APP_ID>/<platform>/<version>/<request-id>.<ext>`，同时计算安装包
+SHA-256 并写入对象元数据。机器人随后返回公开下载地址和 SHA-256。
+`DOWNLOAD_BASE_URL` 留空时跳过 R2 上传，仍保留 GitHub Artifact。
 
 `BOT_ADMINS` 不能为空，否则机器人会拒绝启动。直接运行：
 
@@ -92,13 +92,26 @@ Android 正式包需要在仓库中设置以下 Actions secrets：
 
 1. 用户发送 `/myid`，管理员使用 `/authorize` 授权。
 2. 用户发送 `/bindoss`，绑定自己的 HTTPS OSS 地址。
-3. 用户发送 `/signconfig`，上传或粘贴配置。
-4. 将机器人返回的 `config.json` 上传到该用户绑定的 OSS。
-5. 用户发送 `/build`，选择 `windows`、`macos`、`android` 或 `all`。
-6. 使用 `/status` 查看精确到本次 request ID 的构建状态。
+3. 用户发送 `/build`，机器人直接发送带中文注释的 `config.template.js`。
+4. 用户填写模板并发回；机器人校验、签名，并比较后台目标版本与上次构建版本。
+5. 首次配置或版本不一致时，机器人直接进入平台打包选择，不要求再次输入命令。
+6. 版本相同时只提供两个选择：直接交付配置，或同版本重新打包。
+7. 同版本重打只更新之后的新下载包；已安装用户的系统图标和原生软件名称不会变化，
+   必须等下次提高版本并下载安装更新后才会生效。
+8. 工作流使用内联签名配置构建，上传安装包并计算 SHA-256。
+9. 机器人自动把版本、下载地址和 SHA 写入最终签名配置并发送 `config.json`。
+10. 用户只需把最终 `config.json` 上传到绑定的 OSS 一次。
 
-工作流会先使用该客户的公钥验证 OSS 配置签名。验签失败、配置字段非法或没有生成
-最终安装包时，任务会直接失败，不会上传空产物。
+模板中的 `update_enabled` 是客户唯一需要决定的更新项：`true` 时客户端对更高版本
+显示更新提示，`false` 时不显示提示。无论开关状态如何，机器人都会保存真实构建版本、
+下载地址和 SHA，供后台判断下一次配置修改是否需要重新打包。
+
+私钥始终只留在机器人。GitHub Actions 收到的是已经签名、可以公开的配置，不会收到
+签名私钥。Android 的客户下载地址只发布一个 arm64 APK；32 位兼容包仅保留在
+GitHub Artifact，不进入 R2。
+
+工作流会先使用该客户的公钥验证 Bot 随任务传入的签名配置；旧任务仍可回退读取 OSS。
+验签失败、配置字段非法或没有生成最终安装包时，任务会直接失败，不会上传空产物。
 
 ## Logo 素材规范
 

@@ -197,7 +197,6 @@ export function buildHelpText(userId?: number): string {
         '',
         '打包命令:',
         '/apps',
-        '/signconfig',
         '/build',
       );
     }
@@ -214,7 +213,6 @@ export function buildHelpText(userId?: number): string {
   return [
     '可用命令:',
     '/apps',
-    '/signconfig',
     '/build',
     '',
     '输入过程中可随时发送 /cancel。',
@@ -336,7 +334,7 @@ async function bindOssForUser(
         `REMOTE_CONFIG_URL=${bound.remote_config_url}`,
         `REMOTE_CONFIG_PUBLIC_KEY=${bound.public_key}`,
         '',
-        '下一步请发送 /signconfig，机器人会继续提示你上传或粘贴配置。',
+        '下一步请发送 /build，机器人会发送配置模板并继续打包流程。',
       ].join('\n'),
       {
         link_preview_options: { is_disabled: true },

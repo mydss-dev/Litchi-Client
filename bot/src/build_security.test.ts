@@ -1,8 +1,22 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 
 import { buildRunName } from './github.js';
-import { withConfigVersion } from './signer.js';
+import {
+  clearPendingAction,
+  getPendingAction,
+  setPendingAction,
+} from './flow_state.js';
+import {
+  generateKeyPair,
+  matchesPublishedVersion,
+  signConfigPayload,
+  verifyConfigPayload,
+  withConfigVersion,
+  withPreservedUpdateMetadata,
+  withReleaseMetadata,
+} from './signer.js';
 import { parseAndValidateConfig, parseLooseConfig } from './validate.js';
 
 test('build run names include the unique request id', () => {
@@ -47,6 +61,28 @@ test('config validation accepts a normal signed-config payload', () => {
   );
 });
 
+test('sample config leaves generated update metadata empty', () => {
+  const sample = fs.readFileSync(
+    new URL('../config.sample.json', import.meta.url),
+    'utf8',
+  );
+  const config = parseAndValidateConfig(sample);
+  assert.equal(config.update_version, '');
+  assert.equal(config.update_download_url, '');
+  assert.equal(config.update_sha256, '');
+});
+
+test('the JS template is valid and leaves release metadata to the bot', () => {
+  const template = fs.readFileSync(
+    new URL('../config.template.js', import.meta.url),
+    'utf8',
+  );
+  const config = parseAndValidateConfig(template);
+  assert.equal(config.app_name, '示例加速器');
+  assert.equal(config.update_enabled, true);
+  assert.equal('update_version' in config, false);
+});
+
 test('signing injects a monotonic config version owned by the bot', () => {
   const payload = {
     app_name: 'Customer Client',
@@ -63,6 +99,165 @@ test('signing injects a monotonic config version owned by the bot', () => {
       parseAndValidateConfig(
         JSON.stringify({ ...payload, config_version: 99 }),
       ),
+  );
+});
+
+test('saved configs can be verified and merged with build metadata', () => {
+  const keys = generateKeyPair();
+  const signed = signConfigPayload(
+    withConfigVersion(
+      {
+        app_name: 'Customer Client',
+        logo_url: 'https://cdn.example.com/logo.png',
+        api_base_list: ['https://api.example.com'],
+        update_version: '2.0.0',
+        update_download_url: { windows: 'https://cdn.example.com/windows.exe' },
+        update_sha256: { windows: 'a'.repeat(64) },
+      },
+      3,
+    ),
+    keys.privateKey,
+  );
+  const verified = verifyConfigPayload(JSON.stringify(signed), keys.publicKey);
+  const merged = withReleaseMetadata(verified, [
+    {
+      platform: 'android',
+      version: '2.0.0',
+      downloadUrl: 'https://cdn.example.com/android.apk',
+      sha256: 'b'.repeat(64),
+    },
+  ]);
+
+  assert.equal('config_version' in merged, false);
+  assert.deepEqual(merged.update_download_url, {
+    windows: 'https://cdn.example.com/windows.exe',
+    android: 'https://cdn.example.com/android.apk',
+  });
+  assert.deepEqual(merged.update_sha256, {
+    windows: 'a'.repeat(64),
+    android: 'b'.repeat(64),
+  });
+});
+
+test('disabled update prompts still retain real package metadata', () => {
+  assert.deepEqual(
+    withReleaseMetadata(
+      {
+        app_name: 'Customer Client',
+        update_enabled: false,
+        update_version: '1.0.0',
+        update_download_url: { windows: 'https://cdn.example.com/old.exe' },
+        update_sha256: { windows: 'a'.repeat(64) },
+      },
+      [
+        {
+          platform: 'android',
+          version: '2.0.0',
+          downloadUrl: 'https://cdn.example.com/android.apk',
+          sha256: 'b'.repeat(64),
+        },
+      ],
+    ),
+    {
+      app_name: 'Customer Client',
+      update_enabled: false,
+      update_version: '2.0.0',
+      update_download_url: {
+        android: 'https://cdn.example.com/android.apk',
+      },
+      update_sha256: { android: 'b'.repeat(64) },
+    },
+  );
+});
+
+test('config-only changes preserve the last published package metadata', () => {
+  const previous = {
+    app_name: 'Old name',
+    update_enabled: true,
+    update_version: '2.0.0',
+    update_download_url: { windows: 'https://cdn.example.com/windows.exe' },
+    update_sha256: { windows: 'a'.repeat(64) },
+    config_version: 4,
+  };
+  assert.deepEqual(
+    withPreservedUpdateMetadata(
+      {
+        app_name: 'New name',
+        update_enabled: true,
+        update_version: '999.0.0',
+        update_download_url: 'https://untrusted.example.com/file.exe',
+        update_sha256: 'b'.repeat(64),
+      },
+      previous,
+    ),
+    {
+      app_name: 'New name',
+      update_enabled: true,
+      update_version: '2.0.0',
+      update_download_url: { windows: 'https://cdn.example.com/windows.exe' },
+      update_sha256: { windows: 'a'.repeat(64) },
+    },
+  );
+});
+
+test('config-only changes preserve package metadata when prompts are disabled', () => {
+  assert.deepEqual(
+    withPreservedUpdateMetadata(
+      { app_name: 'New name', update_enabled: false },
+      {
+        update_version: '2.0.0',
+        update_download_url: 'https://cdn.example.com/file.exe',
+        update_sha256: 'a'.repeat(64),
+      },
+    ),
+    {
+      app_name: 'New name',
+      update_enabled: false,
+      update_version: '2.0.0',
+      update_download_url: 'https://cdn.example.com/file.exe',
+      update_sha256: 'a'.repeat(64),
+    },
+  );
+});
+
+test('the stored package version decides whether another build is required', () => {
+  assert.equal(matchesPublishedVersion({}, '2.0.0'), false);
+  assert.equal(
+    matchesPublishedVersion({ update_version: '1.9.0' }, '2.0.0'),
+    false,
+  );
+  assert.equal(
+    matchesPublishedVersion({ update_version: '2.0.0' }, '2.0.0'),
+    true,
+  );
+});
+
+test('same-version choice keeps the signed config until the user decides', () => {
+  const userId = 9_001;
+  const pending = {
+    type: 'same_version_choice' as const,
+    signedConfig: '{"payload_b64":"test","signature":"test"}',
+    remoteConfigUrl: 'https://cdn.example.com/config.json',
+    targetVersion: '2.0.0',
+  };
+  setPendingAction(userId, pending);
+  assert.deepEqual(getPendingAction(userId), pending);
+  clearPendingAction(userId);
+  assert.equal(getPendingAction(userId), undefined);
+});
+
+test('update switch accepts only a boolean', () => {
+  assert.throws(
+    () =>
+      parseAndValidateConfig(
+        JSON.stringify({
+          app_name: 'Customer Client',
+          logo_url: 'https://cdn.example.com/logo.png',
+          api_base_list: ['https://api.example.com'],
+          update_enabled: 'yes',
+        }),
+      ),
+    /true.*false/,
   );
 });
 

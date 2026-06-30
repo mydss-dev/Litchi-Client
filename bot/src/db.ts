@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS apps (
   public_key TEXT NOT NULL,
   private_key TEXT NOT NULL,
   config_version INTEGER NOT NULL DEFAULT 0,
+  signed_config TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS builds (
   version TEXT NOT NULL,
   status TEXT NOT NULL,
   download_url TEXT NOT NULL DEFAULT '',
+  sha256 TEXT NOT NULL DEFAULT '',
   github_run_url TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -60,6 +62,13 @@ const buildColumns = db.pragma('table_info(builds)') as Array<{ name: string }>;
 if (!buildColumns.some((column) => column.name === 'request_id')) {
   db.exec("ALTER TABLE builds ADD COLUMN request_id TEXT NOT NULL DEFAULT ''");
 }
+if (!buildColumns.some((column) => column.name === 'sha256')) {
+  db.exec("ALTER TABLE builds ADD COLUMN sha256 TEXT NOT NULL DEFAULT ''");
+}
+const appColumns = db.pragma('table_info(apps)') as Array<{ name: string }>;
+if (!appColumns.some((column) => column.name === 'signed_config')) {
+  db.exec("ALTER TABLE apps ADD COLUMN signed_config TEXT NOT NULL DEFAULT ''");
+}
 
 export type AppRow = {
   app_id: string;
@@ -68,6 +77,7 @@ export type AppRow = {
   public_key: string;
   private_key: string;
   config_version: number;
+  signed_config: string;
   created_at: string;
   updated_at: string;
 };
@@ -81,6 +91,7 @@ export type BuildRow = {
   version: string;
   status: string;
   download_url: string;
+  sha256: string;
   github_run_url: string;
   created_at: string;
   updated_at: string;
@@ -165,6 +176,15 @@ export function bumpConfigVersion(appId: string): number {
   return tx();
 }
 
+export function saveSignedConfig(appId: string, signedConfig: string): void {
+  const result = db.prepare(`
+    UPDATE apps
+    SET signed_config = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE app_id = ?
+  `).run(signedConfig, appId);
+  if (result.changes !== 1) throw new Error('应用不存在。');
+}
+
 export function createBuild(input: {
   appId: string;
   tgUserId: number;
@@ -213,6 +233,7 @@ export function updateBuildStatus(input: {
   status: string;
   githubRunUrl?: string;
   downloadUrl?: string;
+  sha256?: string;
 }): void {
   db.prepare(`
     UPDATE builds
@@ -226,12 +247,17 @@ export function updateBuildStatus(input: {
         WHEN @downloadUrl IS NULL OR @downloadUrl = '' THEN download_url
         ELSE @downloadUrl
       END,
+      sha256 = CASE
+        WHEN @sha256 IS NULL OR @sha256 = '' THEN sha256
+        ELSE @sha256
+      END,
       updated_at = CURRENT_TIMESTAMP
     WHERE id = @id
   `).run({
     ...input,
     githubRunUrl: input.githubRunUrl ?? '',
     downloadUrl: input.downloadUrl ?? '',
+    sha256: input.sha256 ?? '',
   });
 }
 

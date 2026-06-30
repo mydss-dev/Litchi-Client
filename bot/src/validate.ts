@@ -19,6 +19,7 @@ const allowedTopLevelKeys = new Set([
   'frontend_url',
   'site_url',
   'avatar_url',
+  'update_enabled',
   'update_version',
   'update_download_url',
   'update_sha256',
@@ -51,6 +52,7 @@ export function parseAndValidateConfig(raw: string): Record<string, unknown> {
   optionalHttpsUrl(payload, 'frontend_url');
   optionalHttpsUrl(payload, 'site_url');
   optionalHttpsUrl(payload, 'avatar_url');
+  optionalBoolean(payload, 'update_enabled');
   optionalString(payload, 'update_version', 0, 20);
   optionalUrl(payload, 'update_download_url');
   optionalSha256(payload, 'update_sha256');
@@ -329,6 +331,14 @@ function optionalPath(obj: Record<string, unknown>, key: string): void {
     throw new Error(`${key} 过长。`);
   }
   obj[key] = trimmed;
+}
+
+function optionalBoolean(obj: Record<string, unknown>, key: string): void {
+  const value = obj[key];
+  if (value === undefined) return;
+  if (typeof value !== 'boolean') {
+    throw new Error(`${key} 必须填写 true 或 false。`);
+  }
 }
 
 function optionalUrl(

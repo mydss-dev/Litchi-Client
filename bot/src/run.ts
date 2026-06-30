@@ -18,8 +18,7 @@ const baseCommands: MenuCommand[] = [
 ];
 const boundCommands: MenuCommand[] = [
   { command: 'apps', description: '查看当前 APP 绑定' },
-  { command: 'signconfig', description: '生成签名配置' },
-  { command: 'build', description: '开始打包' },
+  { command: 'build', description: '配置并生成客户端' },
   { command: 'status', description: '查看打包进度' },
   { command: 'latest', description: '获取最新安装包' },
 ];

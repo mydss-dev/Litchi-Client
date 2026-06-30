@@ -40,6 +40,24 @@ void main() {
     expect(UpdateService.check(), isNull);
   });
 
+  test('remote update switch disables an otherwise valid update', () {
+    final originalVersion = AppConfig.currentVersion;
+    final originalEnabled = AppConfig.updatesEnabled;
+    addTearDown(() {
+      AppConfig.currentVersion = originalVersion;
+      AppConfig.updatesEnabled = originalEnabled;
+    });
+    AppConfig.currentVersion = '1.0.0';
+    AppConfig.applyRemote({
+      'update_enabled': false,
+      'update_version': '2.0.0',
+      'update_download_url': 'https://cdn.example.com/setup.exe',
+      'update_sha256': List.filled(64, 'a').join(),
+    });
+
+    expect(UpdateService.check(), isNull);
+  });
+
   test('UpdateInfo accepts only a complete hexadecimal SHA-256', () {
     expect(
       const UpdateInfo(

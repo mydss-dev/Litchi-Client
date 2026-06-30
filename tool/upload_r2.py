@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import mimetypes
 import os
 from pathlib import Path
@@ -26,12 +27,21 @@ def safe_segment(value: str, label: str) -> str:
     return value
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def main() -> None:
     release_dir = Path(sys.argv[1] if len(sys.argv) > 1 else "release")
     files = [path for path in release_dir.iterdir() if path.is_file()]
     if len(files) != 1:
         raise RuntimeError(f"Expected exactly one package in {release_dir}, found {len(files)}")
     package = files[0]
+    package_sha256 = sha256_file(package)
 
     account_id = safe_segment(required_env("R2_ACCOUNT_ID"), "R2_ACCOUNT_ID")
     access_key = required_env("R2_ACCESS_KEY_ID")
@@ -71,15 +81,18 @@ def main() -> None:
         ExtraArgs={
             "ContentType": content_type,
             "ContentDisposition": f"attachment; filename*=UTF-8''{quote(package.name)}",
+            "Metadata": {"sha256": package_sha256},
         },
     )
 
     public_url = f"{base_url}/{quote(object_key, safe='/')}"
     print(f"R2 upload complete: {public_url}")
+    print(f"Package SHA-256: {package_sha256}")
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
         with open(github_output, "a", encoding="utf-8") as output:
             output.write(f"download_url={public_url}\n")
+            output.write(f"sha256={package_sha256}\n")
 
 
 if __name__ == "__main__":
