@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../config/app_identity.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/android_core_manager.dart';
 import '../shared/services/core_manager.dart';
@@ -407,13 +408,19 @@ class CoreController extends ChangeNotifier {
             )
           : const <String>{};
       final configPath = await MihomoConfig.writeConfig(config);
-      await _core.start(configPath, apiPort: _apiPort);
+      await _core.start(
+        configPath,
+        apiPort: _apiPort,
+        elevateMacTun: Platform.isMacOS && req.networkMode == NetworkMode.tun,
+      );
 
       if (_core.isRunning) {
         await _applyInitialSelection(req);
         if (req.networkMode == NetworkMode.tun) {
           final tunReady = await TunInterfaceVerifier.waitUntilReady(
-            interfaceName: Platform.isMacOS ? 'utun' : 'Litchi',
+            interfaceName: Platform.isMacOS
+                ? 'utun'
+                : AppIdentity.tunInterfaceAlias,
             matchPrefix: Platform.isMacOS,
             excludedNames: existingMacTunInterfaces,
           );

@@ -281,9 +281,13 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (!_isDesktop) return;
     final connected = _ctrl?.coreRunning ?? false;
     await trayManager.setIcon(
-      connected
-          ? 'assets/images/tray_icon.ico'
-          : 'assets/images/tray_icon_gray.ico',
+      Platform.isWindows
+          ? connected
+                ? 'assets/images/tray_icon.ico'
+                : 'assets/images/tray_icon_gray.ico'
+          : connected
+          ? 'assets/images/tray_icon.png'
+          : 'assets/images/tray_icon_gray.png',
     );
   }
 

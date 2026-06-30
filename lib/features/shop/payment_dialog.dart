@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../../shared/services/secure_logger.dart';
@@ -26,6 +27,7 @@ Future<void> showOrderPaymentDialog({
   required double finalPrice,
   required PanelApi api,
   String? currencySymbol,
+  Future<void> Function()? onPaid,
 }) async {
   String sym = currencySymbol ?? '¥';
   if (currencySymbol == null) {
@@ -44,6 +46,7 @@ Future<void> showOrderPaymentDialog({
       finalPrice: finalPrice,
       currencySymbol: sym,
       api: api,
+      onPaid: onPaid,
     ),
   );
 }
@@ -58,12 +61,14 @@ class _PaymentDialog extends StatefulWidget {
     required this.finalPrice,
     required this.currencySymbol,
     required this.api,
+    this.onPaid,
   });
 
   final String tradeNo;
   final double finalPrice;
   final String currencySymbol;
   final PanelApi api;
+  final Future<void> Function()? onPaid;
 
   @override
   State<_PaymentDialog> createState() => _PaymentDialogState();
@@ -88,6 +93,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   // actions
   bool _manualChecking = false;
   bool _refreshing = false;
+  bool _paidNotified = false;
 
   @override
   void initState() {
@@ -114,7 +120,11 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _loadingMethods = false);
-        AppToast.show(context, '获取支付方式失败：$e', type: AppToastType.error);
+        AppToast.show(
+          context,
+          context.l10n.operationFailed(context.l10n.getPaymentMethods, '$e'),
+          type: AppToastType.error,
+        );
       }
     }
   }
@@ -130,10 +140,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
       if (!mounted) return;
       if (result.url.isEmpty) {
         // Balance deduction — processed server-side immediately
-        setState(() {
-          _stage = _Stage.success;
-          _checkingOut = false;
-        });
+        _markPaid();
       } else {
         setState(() {
           _payUrl = result.url;
@@ -148,7 +155,11 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _checkingOut = false);
-        AppToast.show(context, '发起支付失败：$e', type: AppToastType.error);
+        AppToast.show(
+          context,
+          context.l10n.operationFailed(context.l10n.startPayment, '$e'),
+          type: AppToastType.error,
+        );
       }
     }
   }
@@ -184,7 +195,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
       if ((status == 3 || status == 4) && mounted) {
         _countdown?.cancel();
         _pollTimer?.cancel();
-        setState(() => _stage = _Stage.success);
+        _markPaid();
       }
     } catch (e) {
       SecureLogger.debug('payment poll failed', e);
@@ -200,15 +211,37 @@ class _PaymentDialogState extends State<_PaymentDialog> {
       if (status == 3 || status == 4) {
         _countdown?.cancel();
         _pollTimer?.cancel();
-        setState(() => _stage = _Stage.success);
+        _markPaid();
       } else {
-        AppToast.show(context, '暂未检测到支付，请稍后再试', type: AppToastType.warning);
+        AppToast.show(
+          context,
+          context.l10n.paymentNotDetected,
+          type: AppToastType.warning,
+        );
       }
     } catch (e) {
-      if (mounted) AppToast.show(context, '查询失败：$e', type: AppToastType.error);
+      if (mounted) {
+        AppToast.show(
+          context,
+          context.l10n.operationFailed(context.l10n.queryPayment, '$e'),
+          type: AppToastType.error,
+        );
+      }
     } finally {
       if (mounted) setState(() => _manualChecking = false);
     }
+  }
+
+  void _markPaid() {
+    if (!mounted) return;
+    setState(() {
+      _stage = _Stage.success;
+      _checkingOut = false;
+    });
+    if (_paidNotified) return;
+    _paidNotified = true;
+    final callback = widget.onPaid;
+    if (callback != null) unawaited(callback());
   }
 
   Future<void> _refresh() async {
@@ -232,7 +265,11 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _refreshing = false);
-        AppToast.show(context, '刷新失败：$e', type: AppToastType.error);
+        AppToast.show(
+          context,
+          context.l10n.operationFailed(context.l10n.refreshPayment, '$e'),
+          type: AppToastType.error,
+        );
       }
     }
   }
@@ -294,10 +331,14 @@ class _PaymentDialogState extends State<_PaymentDialog> {
 
   Widget _buildHeader(AppColors c) {
     final titles = {
-      _Stage.methods: '选择支付方式',
-      _Stage.qr: _payType == 1 ? '浏览器支付' : '扫码支付',
-      _Stage.success: '支付成功',
-      _Stage.expired: _payType == 1 ? '支付已超时' : '二维码已过期',
+      _Stage.methods: context.l10n.selectPaymentMethod,
+      _Stage.qr: _payType == 1
+          ? context.l10n.browserPayment
+          : context.l10n.scanToPay,
+      _Stage.success: context.l10n.paymentSuccess,
+      _Stage.expired: _payType == 1
+          ? context.l10n.paymentTimedOut
+          : context.l10n.qrExpired,
     };
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 16, 16),
@@ -352,7 +393,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           child: Column(
             children: [
               Text(
-                '应付金额',
+                context.l10n.amountDue,
                 style: AppTextStyles.caption.copyWith(
                   color: c.primary.withValues(alpha: 0.75),
                 ),
@@ -382,7 +423,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         ),
         const SizedBox(height: 20),
         Text(
-          '选择付款方式',
+          context.l10n.choosePaymentMethod,
           style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
         ),
         const SizedBox(height: 12),
@@ -395,7 +436,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Text(
-              '暂无可用支付方式',
+              context.l10n.noPaymentMethods,
               style: AppTextStyles.body.copyWith(color: c.textMuted),
             ),
           )
@@ -485,7 +526,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                         ),
                       )
                     : Text(
-                        '去支付',
+                        context.l10n.payNow,
                         style: AppTextStyles.button.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -563,7 +604,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         ),
         const SizedBox(height: 16),
         Text(
-          '使用手机扫码完成支付',
+          context.l10n.scanWithPhone,
           style: AppTextStyles.body.copyWith(color: c.textSecondary),
         ),
         if (_payType == 1) ...[
@@ -578,7 +619,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                   Icon(LucideIcons.externalLink, size: 12, color: c.primary),
                   const SizedBox(width: 4),
                   Text(
-                    '或在浏览器打开',
+                    context.l10n.openInBrowser,
                     style: AppTextStyles.caption.copyWith(color: c.primary),
                   ),
                 ],
@@ -601,7 +642,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         Icon(LucideIcons.timer, size: 13, color: _timerColor(c)),
         const SizedBox(width: 5),
         Text(
-          '剩余 $_countdownText',
+          context.l10n.remainingTime(_countdownText),
           style: AppTextStyles.caption.copyWith(color: _timerColor(c)),
         ),
       ],
@@ -641,7 +682,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                           ),
                         )
                       : Text(
-                          '我已完成支付',
+                          context.l10n.paymentCompleted,
                           style: AppTextStyles.button.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
@@ -665,7 +706,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                 ),
               ),
               child: Text(
-                '取消',
+                context.l10n.cancel,
                 style: AppTextStyles.button.copyWith(color: c.textSecondary),
               ),
             ),
@@ -692,12 +733,12 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         ),
         const SizedBox(height: 16),
         Text(
-          '支付成功！',
+          '${context.l10n.paymentSuccess}!',
           style: AppTextStyles.heroTitle.copyWith(color: c.textPrimary),
         ),
         const SizedBox(height: 8),
         Text(
-          '订单已激活，请刷新页面查看',
+          context.l10n.orderActivated,
           style: AppTextStyles.body.copyWith(color: c.textMuted),
         ),
         const SizedBox(height: 32),
@@ -721,7 +762,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
               ),
               child: Center(
                 child: Text(
-                  '完成',
+                  context.l10n.done,
                   style: AppTextStyles.button.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -753,12 +794,12 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         ),
         const SizedBox(height: 16),
         Text(
-          '二维码已过期',
+          context.l10n.qrExpired,
           style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
         ),
         const SizedBox(height: 8),
         Text(
-          '请刷新获取新的支付二维码',
+          context.l10n.refreshQrCode,
           style: AppTextStyles.body.copyWith(color: c.textMuted),
         ),
         const SizedBox(height: 32),
@@ -804,7 +845,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  '刷新二维码',
+                                  context.l10n.refreshQrCode,
                                   style: AppTextStyles.button.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
@@ -830,7 +871,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                     ),
                   ),
                   child: Text(
-                    '取消',
+                    context.l10n.cancel,
                     style: AppTextStyles.button.copyWith(
                       color: c.textSecondary,
                     ),

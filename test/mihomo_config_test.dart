@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:litchi_client/config/app_identity.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/shared/services/mihomo_config.dart';
 
@@ -22,7 +23,10 @@ void main() {
 
   test('uses a kernel-allocated utun device name on macOS', () {
     expect(MihomoConfig.tunDeviceNameForPlatform(isMacOS: true), 'utun');
-    expect(MihomoConfig.tunDeviceNameForPlatform(isMacOS: false), 'Litchi');
+    expect(
+      MihomoConfig.tunDeviceNameForPlatform(isMacOS: false),
+      AppIdentity.tunInterfaceAlias,
+    );
   });
 
   test(

@@ -80,20 +80,22 @@ class _SettingsPageState extends State<SettingsPage> {
         .where((line) => line.isNotEmpty)
         .toList();
     final status = ctrl.coreConnecting
-        ? '连接处理中'
+        ? context.l10n.connectionInProgress
         : ctrl.coreRunning
-        ? '已连接'
-        : '未连接';
+        ? context.l10n.connected
+        : context.l10n.notConnected;
     final text = [
       '${AppConfig.appName} ${AppConfig.currentVersion}',
-      '平台：${Platform.operatingSystem}',
-      '连接状态：$status',
-      '本地代理端口：${ctrl.activeProxyPort}',
-      '记录时间：${DateTime.now().toLocal()}',
+      context.l10n.diagnosticPlatform(Platform.operatingSystem),
+      context.l10n.diagnosticConnectionStatus(status),
+      context.l10n.diagnosticProxyPort(ctrl.activeProxyPort),
+      context.l10n.diagnosticRecordedAt('${DateTime.now().toLocal()}'),
       if (ctrl.coreError.isNotEmpty)
-        '最近错误：${SecureLogRedactor.redact(ctrl.coreError)}',
+        context.l10n.diagnosticRecentError(
+          SecureLogRedactor.redact(ctrl.coreError),
+        ),
       '',
-      if (logs.isEmpty) '暂无运行日志，请先尝试连接后再查看。' else ...logs,
+      if (logs.isEmpty) context.l10n.noRuntimeLogs else ...logs,
     ].join('\n');
 
     showAppBottomSheet<void>(
@@ -218,7 +220,7 @@ class _SettingsPageState extends State<SettingsPage> {
             trailing: AppSelect<String>(
               value: ctrl.dnsMode,
               items: const ['系统 DNS', 'Cloudflare', 'Google'],
-              labelOf: (v) => v,
+              labelOf: (v) => v == '系统 DNS' ? l10n.systemDns : v,
               onChanged: ctrl.setDnsMode,
             ),
           ),
@@ -309,7 +311,7 @@ class _HttpsWarningCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '当前服务器使用 HTTP 连接，数据传输未加密，存在中间人攻击风险。建议联系服务商开启 HTTPS。',
+              context.l10n.httpSecurityWarning,
               style: AppTextStyles.caption.copyWith(
                 color: c.warning,
                 height: 1.5,
@@ -445,8 +447,8 @@ class _DiagnosticInfoSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return AppBottomSheet(
-      title: '诊断信息',
-      subtitle: '复制后发送给管理员或客服，可帮助快速定位问题',
+      title: context.l10n.diagnostics,
+      subtitle: context.l10n.diagnosticCopyDescription,
       children: [
         Container(
           width: double.infinity,
@@ -478,12 +480,12 @@ class _DiagnosticInfoSheet extends StatelessWidget {
               Clipboard.setData(ClipboardData(text: text));
               AppToast.show(
                 context,
-                '诊断信息已复制，请发送给管理员或客服',
+                context.l10n.diagnosticCopied,
                 type: AppToastType.success,
               );
             },
             icon: const Icon(LucideIcons.copy, size: 17),
-            label: const Text('一键复制'),
+            label: Text(context.l10n.copyDiagnostics),
           ),
         ),
       ],

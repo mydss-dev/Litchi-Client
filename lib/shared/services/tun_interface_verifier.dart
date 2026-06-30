@@ -7,7 +7,7 @@ typedef TunInterfaceProbe = Future<Iterable<String>> Function();
 /// its API alive even when creation of the virtual adapter failed.
 abstract final class TunInterfaceVerifier {
   static Future<bool> waitUntilReady({
-    String interfaceName = 'Litchi',
+    required String interfaceName,
     bool matchPrefix = false,
     Set<String> excludedNames = const {},
     Duration timeout = const Duration(seconds: 5),

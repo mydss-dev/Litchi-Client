@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../config/app_config.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -83,11 +84,19 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _sendCode() async {
     final email = _email;
     if (_config.emailSuffixes.isNotEmpty && _prefixCtrl.text.trim().isEmpty) {
-      AppToast.show(context, '请先填写邮箱前缀', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.fillEmailPrefix,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (email.isEmpty || !email.contains('@')) {
-      AppToast.show(context, '请先填写正确的邮箱地址', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.invalidEmail,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (_sendingCode || _countdown > 0) return;
@@ -96,7 +105,11 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       await AppScope.of(context).api.sendEmailVerify(email);
       if (mounted) {
-        AppToast.show(context, '验证码已发送，请查收邮件', type: AppToastType.success);
+        AppToast.show(
+          context,
+          context.l10n.verificationCodeSent,
+          type: AppToastType.success,
+        );
         _startCountdown();
       }
     } catch (e) {
@@ -135,25 +148,46 @@ class _RegisterPageState extends State<RegisterPage> {
     final confirm = _confirmCtrl.text;
     final invite = _inviteCtrl.text.trim();
     final code = _codeCtrl.text.trim();
+    final successMessage = context.l10n.registrationSuccess(AppConfig.appName);
 
     if (_config.emailSuffixes.isNotEmpty && _prefixCtrl.text.trim().isEmpty) {
-      AppToast.show(context, '请填写邮箱前缀', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.fillEmailPrefix,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (email.isEmpty || password.isEmpty) {
-      AppToast.show(context, '请填写邮箱和密码', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.requiredCredentials,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (password != confirm) {
-      AppToast.show(context, '两次密码不一致', type: AppToastType.error);
+      AppToast.show(
+        context,
+        context.l10n.passwordsMismatch,
+        type: AppToastType.error,
+      );
       return;
     }
     if (_config.emailVerifyRequired && code.isEmpty) {
-      AppToast.show(context, '请填写邮件验证码', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.verificationCodeRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (!_agree) {
-      AppToast.show(context, '请先同意服务条款', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.acceptTermsRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
 
@@ -168,7 +202,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       AppToast.showInOverlay(
         overlay,
-        '注册成功，欢迎加入 ${AppConfig.appName}！',
+        successMessage,
         type: AppToastType.success,
       );
     } catch (e) {
@@ -185,6 +219,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final controller = AppScope.of(context);
+    final l10n = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,9 +238,9 @@ class _RegisterPageState extends State<RegisterPage> {
         else
           AuthInput(
             icon: LucideIcons.mail,
-            label: '邮箱',
+            label: l10n.email,
             requiredMark: true,
-            hintText: '请输入邮箱地址',
+            hintText: l10n.emailOrUsernameHint,
             controller: _emailCtrl,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
@@ -218,9 +253,9 @@ class _RegisterPageState extends State<RegisterPage> {
               Expanded(
                 child: AuthInput(
                   icon: LucideIcons.shieldCheck,
-                  label: '验证码',
+                  label: l10n.verificationCode,
                   requiredMark: true,
-                  hintText: '请输入邮件验证码',
+                  hintText: l10n.verificationCodeHint,
                   controller: _codeCtrl,
                   onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                 ),
@@ -237,9 +272,9 @@ class _RegisterPageState extends State<RegisterPage> {
         const SizedBox(height: 10),
         AuthInput(
           icon: LucideIcons.lock,
-          label: '密码',
+          label: l10n.password,
           requiredMark: true,
-          hintText: '请输入密码',
+          hintText: l10n.passwordHint,
           controller: _passwordCtrl,
           obscure: true,
           showRevealToggle: true,
@@ -248,9 +283,9 @@ class _RegisterPageState extends State<RegisterPage> {
         const SizedBox(height: 10),
         AuthInput(
           icon: LucideIcons.lock,
-          label: '确认密码',
+          label: l10n.confirmPassword,
           requiredMark: true,
-          hintText: '请再次输入密码',
+          hintText: l10n.confirmPasswordHint,
           controller: _confirmCtrl,
           obscure: true,
           showRevealToggle: true,
@@ -259,8 +294,8 @@ class _RegisterPageState extends State<RegisterPage> {
         const SizedBox(height: 10),
         AuthInput(
           icon: LucideIcons.ticket,
-          label: '邀请码',
-          hintText: '邀请码（可选）',
+          label: l10n.inviteCode,
+          hintText: l10n.inviteCodeOptional,
           controller: _inviteCtrl,
           onSubmitted: (_) => _submit(),
         ),
@@ -273,25 +308,29 @@ class _RegisterPageState extends State<RegisterPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '我已阅读并同意 ',
+                l10n.termsAgreementPrefix,
                 style: AppTextStyles.caption.copyWith(
                   color: c.textSecondary,
                   fontSize: 12,
                 ),
               ),
               Text(
-                '服务条款',
+                l10n.termsOfService,
                 style: AppTextStyles.button.copyWith(color: c.primary),
               ),
             ],
           ),
         ),
         const SizedBox(height: 18),
-        AuthPrimaryButton(label: '注册', isLoading: _loading, onPressed: _submit),
+        AuthPrimaryButton(
+          label: l10n.registerAccount,
+          isLoading: _loading,
+          onPressed: _submit,
+        ),
         const SizedBox(height: 16),
         AuthBottomJump(
-          leadingText: '已有账号？',
-          actionText: '登录',
+          leadingText: l10n.alreadyHaveAccount,
+          actionText: l10n.login,
           onTap: () => controller.goToAuthScreen(AuthScreen.login),
         ),
       ],
@@ -315,15 +354,16 @@ class _SendCodeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final l10n = context.l10n;
     final disabled = sending || countdown > 0;
 
     String label;
     if (sending) {
-      label = '发送中…';
+      label = l10n.sending;
     } else if (countdown > 0) {
-      label = '重新发送 (${countdown}s)';
+      label = l10n.resendIn(countdown);
     } else {
-      label = '发送验证码';
+      label = l10n.sendVerificationCode;
     }
 
     return SizedBox(
@@ -410,6 +450,7 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final l10n = context.l10n;
 
     final input = Container(
       height: 50,
@@ -438,7 +479,7 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
-                hintText: '邮箱前缀',
+                hintText: l10n.email,
                 hintStyle: AppTextStyles.input.copyWith(
                   color: c.textMuted,
                   fontWeight: FontWeight.w400,
@@ -496,7 +537,7 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
         Row(
           children: [
             Text(
-              '邮箱',
+              l10n.email,
               style: AppTextStyles.caption.copyWith(
                 color: c.textPrimary,
                 fontSize: 13,

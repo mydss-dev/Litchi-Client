@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'secure_logger.dart';
+import 'app_paths.dart';
 import 'windows_registry.dart';
 import 'wininet_notify.dart';
 
@@ -418,16 +419,7 @@ abstract final class ProxySetter {
   };
 
   static Future<File> _snapshotFile() async {
-    final base = Platform.isWindows
-        ? (Platform.environment['LOCALAPPDATA'] ??
-              Platform.environment['APPDATA'] ??
-              Directory.systemTemp.path)
-        : (Platform.environment['HOME'] != null
-              ? '${Platform.environment['HOME']}/Library/Application Support'
-              : Directory.systemTemp.path);
-    final dir = Platform.isWindows
-        ? Directory('$base\\Litchi')
-        : Directory('$base/Litchi');
+    final dir = Directory(AppPaths.dataDirectory);
     return File('${dir.path}${Platform.pathSeparator}$_snapshotName');
   }
 

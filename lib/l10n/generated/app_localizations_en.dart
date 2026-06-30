@@ -250,4 +250,810 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get or => 'or';
+
+  @override
+  String get fillEmailPrefix => 'Enter the email prefix first';
+
+  @override
+  String get invalidEmail => 'Enter a valid email address';
+
+  @override
+  String get verificationCodeSent =>
+      'Verification code sent. Check your email.';
+
+  @override
+  String get passwordsMismatch => 'The passwords do not match';
+
+  @override
+  String get verificationCodeRequired => 'Enter the email verification code';
+
+  @override
+  String get acceptTermsRequired => 'Accept the Terms of Service first';
+
+  @override
+  String registrationSuccess(String appName) {
+    return 'Welcome to $appName!';
+  }
+
+  @override
+  String get verificationCode => 'Verification code';
+
+  @override
+  String get verificationCodeHint => 'Enter the email verification code';
+
+  @override
+  String get confirmPassword => 'Confirm password';
+
+  @override
+  String get confirmPasswordHint => 'Enter the password again';
+
+  @override
+  String get inviteCode => 'Invite code';
+
+  @override
+  String get inviteCodeOptional => 'Invite code (optional)';
+
+  @override
+  String get termsAgreementPrefix => 'I have read and agree to ';
+
+  @override
+  String get termsOfService => 'Terms of Service';
+
+  @override
+  String get alreadyHaveAccount => 'Already have an account?';
+
+  @override
+  String get sendVerificationCode => 'Send code';
+
+  @override
+  String get sending => 'Sending…';
+
+  @override
+  String resendIn(int seconds) {
+    return 'Resend (${seconds}s)';
+  }
+
+  @override
+  String get resend => 'Resend';
+
+  @override
+  String get allFieldsRequired => 'Complete all fields';
+
+  @override
+  String get passwordResetSuccess => 'Password reset. Sign in again.';
+
+  @override
+  String get registeredEmailHint => 'Enter your registered email';
+
+  @override
+  String get newPassword => 'New password';
+
+  @override
+  String get newPasswordHint => 'Enter a new password';
+
+  @override
+  String get resetPassword => 'Reset password';
+
+  @override
+  String get backToLogin => 'Back to sign in';
+
+  @override
+  String get passwordFieldsRequired => 'Complete all password fields';
+
+  @override
+  String get passwordChanged => 'Password changed';
+
+  @override
+  String get currentPasswordHint => 'Enter your current password';
+
+  @override
+  String get passwordAdvice =>
+      'Use at least 8 characters with letters and numbers';
+
+  @override
+  String get saveChanges => 'Save changes';
+
+  @override
+  String get refreshed => 'Refreshed';
+
+  @override
+  String get connectionSuccess => 'Connected';
+
+  @override
+  String get dashboardSubtitle => 'View connection, node and traffic status';
+
+  @override
+  String get all => 'All';
+
+  @override
+  String get favorites => 'Favorites';
+
+  @override
+  String get asia => 'Asia';
+
+  @override
+  String get europe => 'Europe';
+
+  @override
+  String get america => 'Americas';
+
+  @override
+  String get oceania => 'Oceania';
+
+  @override
+  String get nodesSubtitle => 'Choose a fast route';
+
+  @override
+  String get selectLineAndLatency => 'Choose a route and view latency';
+
+  @override
+  String get noMatchingNodes => 'No matching nodes';
+
+  @override
+  String get tryDifferentNodeFilter => 'Try another keyword or region';
+
+  @override
+  String get searchNodes => 'Search nodes';
+
+  @override
+  String get autoSelect => 'Auto select';
+
+  @override
+  String get manualSelect => 'Manual select';
+
+  @override
+  String get autoSelectBestDescription =>
+      'Automatically use the lowest-latency route';
+
+  @override
+  String get autoSelectEnabled =>
+      'Auto select enabled. The best node will be used.';
+
+  @override
+  String switchedToNode(String node) {
+    return 'Switched to $node';
+  }
+
+  @override
+  String get noTestableNodes => 'No nodes available for testing';
+
+  @override
+  String get latencyTestComplete => 'Latency test completed';
+
+  @override
+  String get latencyTestFailed =>
+      'Latency test failed. Check the nodes and try again.';
+
+  @override
+  String get latencyTest => 'Test latency';
+
+  @override
+  String get noNodes => 'No nodes';
+
+  @override
+  String get waitForSubscription =>
+      'If you just signed in, wait for subscription data to load';
+
+  @override
+  String get chooseNode => 'Choose node';
+
+  @override
+  String nodeCountSummary(int count) {
+    return '$count nodes · Filter routes and view latency';
+  }
+
+  @override
+  String get noNodesSubscription => 'No nodes · Check subscription status';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get currentNode => 'Current node';
+
+  @override
+  String get nodeLoading => 'Loading nodes';
+
+  @override
+  String get nodeStatus => 'Node status';
+
+  @override
+  String get fetchingNodes => 'Fetching nodes...';
+
+  @override
+  String get noAvailableNodes => 'No available nodes';
+
+  @override
+  String get syncingSubscription => 'Syncing subscription data...';
+
+  @override
+  String get subscriptionLoadsAfterLogin =>
+      'Subscription nodes load automatically after sign-in';
+
+  @override
+  String get encryptionProtectionEnabled => 'Encrypted protection is active';
+
+  @override
+  String get establishingEncryptedChannel =>
+      'Establishing encrypted channel...';
+
+  @override
+  String get closingEncryptedChannel => 'Closing encrypted channel...';
+
+  @override
+  String get networkNotProtected =>
+      'Network traffic is not currently protected';
+
+  @override
+  String nodeMode(String mode) {
+    return 'Node mode · $mode';
+  }
+
+  @override
+  String get switchNode => 'Switch node';
+
+  @override
+  String get viewNodes => 'View nodes';
+
+  @override
+  String get startConnection => 'Connect';
+
+  @override
+  String get connecting => 'Connecting…';
+
+  @override
+  String get disconnectConnection => 'Disconnect';
+
+  @override
+  String get disconnecting => 'Disconnecting…';
+
+  @override
+  String get reconnect => 'Reconnect';
+
+  @override
+  String get proxyModeDescriptionRule =>
+      'Route local traffic directly and other traffic through the proxy';
+
+  @override
+  String get proxyModeDescriptionGlobal =>
+      'Route all traffic through the proxy node';
+
+  @override
+  String get proxyModeDescriptionDirect =>
+      'Connect directly without using the proxy';
+
+  @override
+  String switchedProxyMode(String mode) {
+    return 'Switched to $mode';
+  }
+
+  @override
+  String get proxyModeNextConnection =>
+      'The proxy mode applies on the next connection';
+
+  @override
+  String get ruleMode => 'Rule';
+
+  @override
+  String get globalMode => 'Global';
+
+  @override
+  String get directMode => 'Direct';
+
+  @override
+  String get currentLatency => 'Latency';
+
+  @override
+  String get downloadSpeed => 'Download';
+
+  @override
+  String get uploadSpeed => 'Upload';
+
+  @override
+  String get subscriptionExpired =>
+      'Subscription expired. Connection is unavailable.';
+
+  @override
+  String get subscriptionExpiresToday =>
+      'Subscription expires today. Renew now.';
+
+  @override
+  String subscriptionExpiresInDays(int days) {
+    return 'Subscription expires in $days days';
+  }
+
+  @override
+  String get renewNow => 'Renew →';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get businessEdition => 'Business edition';
+
+  @override
+  String get protected => 'Protected';
+
+  @override
+  String get connectionFailed => 'Connection failed';
+
+  @override
+  String get notConnected => 'Not connected';
+
+  @override
+  String get unavailable => 'Unavailable';
+
+  @override
+  String get androidLimitedNotice =>
+      'This Android version currently supports sign-in, purchases and node viewing';
+
+  @override
+  String get syncingNodes => 'Syncing nodes...';
+
+  @override
+  String get selectNodePrompt => 'Select a node';
+
+  @override
+  String nodeModeLabel(String mode) {
+    return 'Node mode: $mode';
+  }
+
+  @override
+  String get buyPlans => 'Buy plans';
+
+  @override
+  String get buyPlansSubtitle => 'Choose a plan or data pack';
+
+  @override
+  String get planPurchase => 'Plans';
+
+  @override
+  String get recurringPlan => 'Recurring';
+
+  @override
+  String get oneTime => 'One-time';
+
+  @override
+  String get dataPack => 'Data pack';
+
+  @override
+  String get noPlans => 'No plans available';
+
+  @override
+  String get refreshLater => 'Refresh and try again later';
+
+  @override
+  String get unlimitedTime => '/ No expiry';
+
+  @override
+  String get oneTimePlan => 'One-time plan';
+
+  @override
+  String devicesCount(int count) {
+    return '$count devices';
+  }
+
+  @override
+  String get unlimitedDevices => 'Unlimited devices';
+
+  @override
+  String get popular => 'Popular';
+
+  @override
+  String get recommended => 'Recommended';
+
+  @override
+  String get buyNow => 'Buy now';
+
+  @override
+  String get unavailableForPurchase => 'Unavailable';
+
+  @override
+  String get monthly => 'Monthly';
+
+  @override
+  String get quarterly => 'Quarterly';
+
+  @override
+  String get halfYear => 'Half-year';
+
+  @override
+  String get yearly => 'Yearly';
+
+  @override
+  String get perMonth => '/ month';
+
+  @override
+  String get perQuarter => '/ quarter';
+
+  @override
+  String get perHalfYear => '/ half-year';
+
+  @override
+  String get perYear => '/ year';
+
+  @override
+  String get orderHistorySubtitle => 'View purchases and payments';
+
+  @override
+  String get order => 'Order';
+
+  @override
+  String get orderLoadFailed => 'Failed to load orders';
+
+  @override
+  String get noOrders => 'No orders';
+
+  @override
+  String get ordersAppearAfterPurchase => 'Purchased plans will appear here';
+
+  @override
+  String get orderCancelled => 'Order cancelled';
+
+  @override
+  String get accountTopUp => 'Account top-up';
+
+  @override
+  String orderNumber(String number) {
+    return 'Order $number';
+  }
+
+  @override
+  String get type => 'Type';
+
+  @override
+  String get date => 'Date';
+
+  @override
+  String get amount => 'Amount';
+
+  @override
+  String get status => 'Status';
+
+  @override
+  String get cancelOrder => 'Cancel order';
+
+  @override
+  String get continuePayment => 'Continue payment';
+
+  @override
+  String get processing => 'Processing';
+
+  @override
+  String get cancelOrderConfirm =>
+      'Cancel this unpaid order? You will need to place it again.';
+
+  @override
+  String get thinkAgain => 'Keep order';
+
+  @override
+  String get confirmCancel => 'Confirm cancellation';
+
+  @override
+  String get inviteFriends => 'Invite friends';
+
+  @override
+  String get inviteSubtitle =>
+      'Share your invite link and view commission records';
+
+  @override
+  String get inviteCommission => 'Referral commission';
+
+  @override
+  String get inviteCodeCreated => 'Invite code created';
+
+  @override
+  String get inviteLink => 'Invite link';
+
+  @override
+  String get copyLink => 'Copy link';
+
+  @override
+  String get creating => 'Creating';
+
+  @override
+  String get createInviteCode => 'Create invite code';
+
+  @override
+  String inviteCodeIndex(int index) {
+    return 'Invite code $index';
+  }
+
+  @override
+  String get inviteLinkUnavailable => 'Invite link is not configured';
+
+  @override
+  String get registeredUsers => 'Registered users';
+
+  @override
+  String peopleCount(int count) {
+    return '$count users';
+  }
+
+  @override
+  String get pendingCommission => 'Pending commission';
+
+  @override
+  String get totalCommission => 'Total commission';
+
+  @override
+  String get commissionRate => 'Commission rate';
+
+  @override
+  String get commissionRecords => 'Commission records';
+
+  @override
+  String get noCommissionRecords => 'No commission records';
+
+  @override
+  String get invitedUser => 'Invited user';
+
+  @override
+  String recordOrderAmount(String date, String amount) {
+    return '$date · Order $amount';
+  }
+
+  @override
+  String get copied => 'Copied';
+
+  @override
+  String linkCopiedForApp(String app) {
+    return 'Link copied. Paste it into $app';
+  }
+
+  @override
+  String get confirmOrder => 'Confirm order';
+
+  @override
+  String get selectBillingCycle => 'Select billing cycle';
+
+  @override
+  String get couponCode => 'Coupon code';
+
+  @override
+  String get couponHint => 'Enter coupon code (optional)';
+
+  @override
+  String get remove => 'Remove';
+
+  @override
+  String get verifying => 'Verifying…';
+
+  @override
+  String get verify => 'Verify';
+
+  @override
+  String get couponApplied => 'Coupon applied';
+
+  @override
+  String get invalidCoupon => 'Invalid coupon';
+
+  @override
+  String discountAmount(String amount) {
+    return 'Discount $amount';
+  }
+
+  @override
+  String discountPercent(int percent) {
+    return '$percent% off';
+  }
+
+  @override
+  String get originalPrice => 'Original price';
+
+  @override
+  String get discount => 'Discount';
+
+  @override
+  String get totalDue => 'Total due';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get submitOrder => 'Submit order';
+
+  @override
+  String operationFailed(String operation, String error) {
+    return '$operation failed: $error';
+  }
+
+  @override
+  String get selectPaymentMethod => 'Select payment method';
+
+  @override
+  String get browserPayment => 'Browser payment';
+
+  @override
+  String get scanToPay => 'Scan to pay';
+
+  @override
+  String get paymentSuccess => 'Payment successful';
+
+  @override
+  String get paymentTimedOut => 'Payment timed out';
+
+  @override
+  String get qrExpired => 'QR code expired';
+
+  @override
+  String get amountDue => 'Amount due';
+
+  @override
+  String get choosePaymentMethod => 'Choose a payment method';
+
+  @override
+  String get noPaymentMethods => 'No payment methods available';
+
+  @override
+  String get payNow => 'Pay now';
+
+  @override
+  String get scanWithPhone => 'Scan with your phone to complete payment';
+
+  @override
+  String get openInBrowser => 'or open in a browser';
+
+  @override
+  String remainingTime(String time) {
+    return '$time remaining';
+  }
+
+  @override
+  String get paymentCompleted => 'I have completed payment';
+
+  @override
+  String get paymentNotDetected => 'Payment not detected. Try again shortly.';
+
+  @override
+  String get orderActivated => 'The order is active. Refresh to view it.';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get refreshQrCode => 'Refresh QR code';
+
+  @override
+  String get getPaymentMethods => 'Get payment methods';
+
+  @override
+  String get startPayment => 'Start payment';
+
+  @override
+  String get queryPayment => 'Check payment';
+
+  @override
+  String get refreshPayment => 'Refresh payment';
+
+  @override
+  String get orderPending => 'Pending payment';
+
+  @override
+  String get orderProcessing => 'Processing';
+
+  @override
+  String get orderCancelledStatus => 'Cancelled';
+
+  @override
+  String get orderCompleted => 'Completed';
+
+  @override
+  String get orderFailed => 'Failed';
+
+  @override
+  String get twoYears => 'Two years';
+
+  @override
+  String get threeYears => 'Three years';
+
+  @override
+  String get refunded => 'Refunded';
+
+  @override
+  String get unknown => 'Unknown';
+
+  @override
+  String get buyout => 'Lifetime';
+
+  @override
+  String get wechat => 'WeChat';
+
+  @override
+  String get connectionInProgress => 'Connection in progress';
+
+  @override
+  String get connected => 'Connected';
+
+  @override
+  String diagnosticPlatform(String platform) {
+    return 'Platform: $platform';
+  }
+
+  @override
+  String diagnosticConnectionStatus(String status) {
+    return 'Connection status: $status';
+  }
+
+  @override
+  String diagnosticProxyPort(int port) {
+    return 'Local proxy port: $port';
+  }
+
+  @override
+  String diagnosticRecordedAt(String time) {
+    return 'Recorded at: $time';
+  }
+
+  @override
+  String diagnosticRecentError(String error) {
+    return 'Recent error: $error';
+  }
+
+  @override
+  String get noRuntimeLogs => 'No runtime logs yet. Try connecting first.';
+
+  @override
+  String get systemDns => 'System DNS';
+
+  @override
+  String get httpSecurityWarning =>
+      'The current server uses HTTP. Data is not encrypted and may be intercepted. Ask the provider to enable HTTPS.';
+
+  @override
+  String get diagnosticCopyDescription =>
+      'Copy and send this to support to help diagnose the issue';
+
+  @override
+  String get diagnosticCopied => 'Diagnostics copied. Send them to support.';
+
+  @override
+  String get copyDiagnostics => 'Copy diagnostics';
+
+  @override
+  String get restartClientError =>
+      'Connection failed. Restart the client and try again.';
+
+  @override
+  String get missingCoreError =>
+      'Connection failed. The mihomo core is missing.';
+
+  @override
+  String get permissionDeniedError =>
+      'Permission denied. Run the client as administrator.';
+
+  @override
+  String get tunInterfaceUnavailableError =>
+      'TUN adapter failed to start. Check system permission and try again.';
+
+  @override
+  String get tunKillSwitchUnavailableError =>
+      'TUN interruption protection failed. Connection was stopped to prevent leaks.';
+
+  @override
+  String get androidStartFailedError => 'Android core failed to start';
+
+  @override
+  String get unexpectedCoreExitError =>
+      'The core exited unexpectedly. Reconnect to continue.';
+
+  @override
+  String get invalidNodeConfigError =>
+      'The selected node is invalid. Choose another node.';
+
+  @override
+  String get genericConnectionFailureError =>
+      'Connection failed. Change nodes or try again later.';
+
+  @override
+  String get configBuildFailedError =>
+      'Failed to generate configuration. Choose another node.';
+
+  @override
+  String get cachedModeActive =>
+      'Server connection failed. Cached mode is active and saved nodes remain available.';
+
+  @override
+  String get serverUnavailableNoCache =>
+      'The server is unavailable and no nodes are cached. Check the network or contact support.';
 }

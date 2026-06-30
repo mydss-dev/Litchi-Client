@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../../config/app_identity.dart';
 import 'core_manager.dart';
 import 'secure_logger.dart';
 
@@ -10,7 +11,7 @@ import 'secure_logger.dart';
 /// application process exits.
 abstract final class WindowsTunKillSwitch {
   static const _channel = MethodChannel('litchi/windows_wfp');
-  static const interfaceAlias = 'Litchi';
+  static String get interfaceAlias => AppIdentity.tunInterfaceAlias;
 
   static Future<bool> engage() async {
     if (!Platform.isWindows) return true;

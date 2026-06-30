@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
@@ -55,7 +56,7 @@ class _InvitePageState extends State<InvitePage> {
     setState(() => _creating = false);
     AppToast.show(
       context,
-      error ?? '邀请码已创建',
+      error ?? context.l10n.inviteCodeCreated,
       type: error == null ? AppToastType.success : AppToastType.error,
     );
   }
@@ -95,7 +96,10 @@ class _InvitePageState extends State<InvitePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageHeader(title: '邀请好友', subtitle: '分享邀请链接并查看佣金记录'),
+          PageHeader(
+            title: context.l10n.inviteFriends,
+            subtitle: context.l10n.inviteSubtitle,
+          ),
           const SizedBox(height: 12),
           _InviteLinkPanel(
             invites: invites,
@@ -151,7 +155,7 @@ class _InvitePageState extends State<InvitePage> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    '邀请返佣',
+                    context.l10n.inviteCommission,
                     style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
                   ),
                 ),
@@ -203,7 +207,7 @@ class _InvitePageState extends State<InvitePage> {
     final ctrl = AppScope.of(context);
     await ctrl.refreshData();
     if (!mounted || ctrl.dataLoadError != null) return;
-    AppToast.show(context, '已刷新', type: AppToastType.success);
+    AppToast.show(context, context.l10n.refreshed, type: AppToastType.success);
   }
 }
 
@@ -247,7 +251,7 @@ class _InviteLinkPanel extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '邀请链接',
+                  context.l10n.inviteLink,
                   style: AppTextStyles.bodyStrong.copyWith(
                     color: c.textPrimary,
                     fontSize: 15,
@@ -309,7 +313,11 @@ class _InviteLinkPanel extends StatelessWidget {
             children: [
               Expanded(child: _LinkBox(link: invite.link)),
               const SizedBox(width: 10),
-              _CopyButton(label: '复制链接', value: invite.link, filled: true),
+              _CopyButton(
+                label: context.l10n.copyLink,
+                value: invite.link,
+                filled: true,
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -318,7 +326,7 @@ class _InviteLinkPanel extends StatelessWidget {
             runSpacing: 8,
             children: [
               _ShareButton(
-                label: '微信',
+                label: context.l10n.wechat,
                 icon: LucideIcons.messageCircle,
                 onTap: () =>
                     _shareInvite(context, invite.link, _ShareTarget.wechat),
@@ -385,7 +393,9 @@ class _CreateCodeButton extends StatelessWidget {
                 Icon(LucideIcons.plus, color: c.primary, size: 15),
               const SizedBox(width: 5),
               Text(
-                creating ? '创建中' : '创建邀请码',
+                creating
+                    ? context.l10n.creating
+                    : context.l10n.createInviteCode,
                 style: AppTextStyles.caption.copyWith(
                   color: c.primary,
                   fontWeight: FontWeight.w800,
@@ -437,7 +447,7 @@ class _InviteCodeCard extends StatelessWidget {
               const Icon(LucideIcons.ticket, color: Colors.white, size: 16),
               const SizedBox(width: 8),
               Text(
-                '邀请码 $index',
+                context.l10n.inviteCodeIndex(index),
                 style: AppTextStyles.bodyStrong.copyWith(color: Colors.white),
               ),
             ],
@@ -548,7 +558,7 @@ class _LinkBox extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              value.isEmpty ? '邀请链接未配置' : value,
+              value.isEmpty ? context.l10n.inviteLinkUnavailable : value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.caption.copyWith(color: c.textSecondary),
@@ -640,22 +650,22 @@ class _InviteStatsGrid extends StatelessWidget {
               : 3.35,
           children: [
             _InviteStatTile(
-              label: '已注册用户',
-              value: '$registeredUsers 人',
+              label: context.l10n.registeredUsers,
+              value: context.l10n.peopleCount(registeredUsers),
               icon: LucideIcons.users,
             ),
             _InviteStatTile(
-              label: '确认中佣金',
+              label: context.l10n.pendingCommission,
               value: pendingCommission,
               icon: LucideIcons.circleDollarSign,
             ),
             _InviteStatTile(
-              label: '累计佣金',
+              label: context.l10n.totalCommission,
               value: earnedCommission,
               icon: LucideIcons.walletCards,
             ),
             _InviteStatTile(
-              label: '佣金比例',
+              label: context.l10n.commissionRate,
               value: commissionRate,
               icon: LucideIcons.chartNoAxesColumnIncreasing,
             ),
@@ -748,13 +758,16 @@ class _CommissionRecords extends StatelessWidget {
             children: [
               Icon(LucideIcons.receiptText, color: c.primary, size: 18),
               const SizedBox(width: 8),
-              const Text('佣金记录', style: AppTextStyles.bodyStrong),
+              Text(
+                context.l10n.commissionRecords,
+                style: AppTextStyles.bodyStrong,
+              ),
             ],
           ),
           const SizedBox(height: 12),
           if (records.isEmpty)
             Text(
-              '暂无佣金记录',
+              context.l10n.noCommissionRecords,
               style: AppTextStyles.caption.copyWith(color: c.textMuted),
             )
           else
@@ -784,7 +797,9 @@ class _CommissionRecordTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final name = record.userName.isEmpty ? '邀请用户' : record.userName;
+    final name = record.userName.isEmpty
+        ? context.l10n.invitedUser
+        : record.userName;
     return Row(
       children: [
         Container(
@@ -810,7 +825,10 @@ class _CommissionRecordTile extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                '${record.dateDisplay} · 订单 ${record.amountDisplay(currencySymbol)}',
+                context.l10n.recordOrderAmount(
+                  record.dateDisplay,
+                  record.amountDisplay(currencySymbol),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(color: c.textMuted),
@@ -848,12 +866,20 @@ class _CopyButton extends StatelessWidget {
         onTap: () async {
           final text = value.trim();
           if (text.isEmpty) {
-            AppToast.show(context, '邀请链接未配置', type: AppToastType.warning);
+            AppToast.show(
+              context,
+              context.l10n.inviteLinkUnavailable,
+              type: AppToastType.warning,
+            );
             return;
           }
           await Clipboard.setData(ClipboardData(text: text));
           if (context.mounted) {
-            AppToast.show(context, '已复制', type: AppToastType.success);
+            AppToast.show(
+              context,
+              context.l10n.copied,
+              type: AppToastType.success,
+            );
           }
         },
         child: Container(
@@ -896,17 +922,25 @@ Future<void> _shareInvite(
 ) async {
   final text = link.trim();
   if (text.isEmpty) {
-    AppToast.show(context, '邀请链接未配置', type: AppToastType.warning);
+    AppToast.show(
+      context,
+      context.l10n.inviteLinkUnavailable,
+      type: AppToastType.warning,
+    );
     return;
   }
 
   await Clipboard.setData(ClipboardData(text: text));
   if (!context.mounted) return;
   final name = switch (target) {
-    _ShareTarget.wechat => '微信',
+    _ShareTarget.wechat => context.l10n.wechat,
     _ShareTarget.qq => 'QQ',
     _ShareTarget.twitter => 'Twitter',
     _ShareTarget.telegram => 'Telegram',
   };
-  AppToast.show(context, '链接已复制，可粘贴到$name', type: AppToastType.success);
+  AppToast.show(
+    context,
+    context.l10n.linkCopiedForApp(name),
+    type: AppToastType.success,
+  );
 }

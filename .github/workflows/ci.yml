@@ -48,8 +48,10 @@ jobs:
       - name: Generate brand assets
         shell: pwsh
         run: |
+          $appName = if ("${{ secrets.APP_NAME }}") { "${{ secrets.APP_NAME }}" } else { "Litchi" }
           $env:LOGO_URL = if ("${{ secrets.LOGO_URL }}") { "${{ secrets.LOGO_URL }}" } else { "" }
           dart run tool/prepare_brand_assets.dart
+          dart run tool/apply_branding.dart "--app-name=$appName" "--logo-url=$env:LOGO_URL" --metadata-only
           dart run flutter_launcher_icons
 
       - name: Build release
@@ -60,7 +62,11 @@ jobs:
           $logoUrl   = if ("${{ secrets.LOGO_URL }}")  { "${{ secrets.LOGO_URL }}" }  else { "" }
           $version   = "${{ github.ref_name }}" -replace '^v', ''
           if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "0.0.0" }
+          if ("${{ github.ref }}" -like "refs/tags/v*" -and [string]::IsNullOrWhiteSpace($apiBase)) {
+            throw "Tagged releases require the API_BASE repository secret"
+          }
           flutter build windows --release `
+            "--build-name=$version" `
             "--dart-define=API_BASE=$apiBase" `
             "--dart-define=APP_VERSION=$version" `
             "--dart-define=APP_NAME=$appName" `
@@ -140,6 +146,16 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Generate brand assets
+        run: |
+          app_name="${{ secrets.APP_NAME }}"
+          logo_url="${{ secrets.LOGO_URL }}"
+          app_name="${app_name:-Litchi}"
+          logo_url="${logo_url:-}"
+          LOGO_URL="$logo_url" dart run tool/prepare_brand_assets.dart
+          dart run tool/apply_branding.dart "--app-name=$app_name" "--logo-url=$logo_url" --metadata-only
+          dart run flutter_launcher_icons
+
       - name: Configure Android signing
         run: |
           if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
@@ -181,6 +197,10 @@ jobs:
           logo_url="${logo_url:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* && -z "$api_base" ]]; then
+            echo "::error::Tagged releases require the API_BASE repository secret"
+            exit 1
+          fi
           IFS='.' read -r major minor patch_extra <<< "$version"
           patch="${patch_extra%%[^0-9]*}"
           major="${major:-0}"; minor="${minor:-0}"; patch="${patch:-0}"
@@ -195,6 +215,15 @@ jobs:
             "--dart-define=APP_VERSION=$version" \
             "--dart-define=APP_NAME=$app_name" \
             "--dart-define=LOGO_URL=$logo_url"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            flutter build appbundle --release \
+              "--build-name=$version" \
+              "--build-number=$version_code" \
+              "--dart-define=API_BASE=$api_base" \
+              "--dart-define=APP_VERSION=$version" \
+              "--dart-define=APP_NAME=$app_name" \
+              "--dart-define=LOGO_URL=$logo_url"
+          fi
 
       - name: Verify the core includes arm64
         run: |
@@ -205,6 +234,14 @@ jobs:
             exit 1
           fi
           echo "mihomo arm64-v8a library is packaged"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            aab="build/app/outputs/bundle/release/app-release.aab"
+            if ! unzip -l "$aab" | grep -q "base/lib/arm64-v8a/liblitchi_mihomo.so"; then
+              echo "::error::mihomo arm64-v8a library is missing from the AAB"
+              exit 1
+            fi
+            echo "mihomo arm64-v8a library is packaged in the AAB"
+          fi
 
       - name: Rename APK
         run: |
@@ -214,19 +251,27 @@ jobs:
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           mv build/app/outputs/flutter-apk/app-release.apk \
              "build/app/outputs/flutter-apk/$app_name $version.apk"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            cp build/app/outputs/bundle/release/app-release.aab \
+              "build/app/outputs/flutter-apk/$app_name $version.aab"
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: litchi-client-android-${{ github.sha }}
-          path: build/app/outputs/flutter-apk/*.apk
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/flutter-apk/*.aab
           retention-days: 30
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/*.apk
+          files: |
+            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/flutter-apk/*.aab
           generate_release_notes: true
 
   build-macos:
@@ -246,6 +291,16 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Generate brand assets
+        run: |
+          app_name="${{ secrets.APP_NAME }}"
+          logo_url="${{ secrets.LOGO_URL }}"
+          app_name="${app_name:-Litchi}"
+          logo_url="${logo_url:-}"
+          LOGO_URL="$logo_url" dart run tool/prepare_brand_assets.dart
+          dart run tool/apply_branding.dart "--app-name=$app_name" "--logo-url=$logo_url" --metadata-only
+          dart run flutter_launcher_icons
+
       - name: Build release
         run: |
           api_base="${{ secrets.API_BASE }}"
@@ -256,22 +311,23 @@ jobs:
           logo_url="${logo_url:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
+          if [[ "$GITHUB_REF" == refs/tags/v* && -z "$api_base" ]]; then
+            echo "::error::Tagged releases require the API_BASE repository secret"
+            exit 1
+          fi
           flutter build macos --release \
+            "--build-name=$version" \
             "--dart-define=API_BASE=$api_base" \
             "--dart-define=APP_VERSION=$version" \
             "--dart-define=APP_NAME=$app_name" \
             "--dart-define=LOGO_URL=$logo_url"
 
       - name: Bundle mihomo core (universal)
-        run: bash tool/bundle_macos_core.sh "build/macos/Build/Products/Release/litchi_client.app"
+        run: bash tool/bundle_macos_core.sh "build/macos/Build/Products/Release/Client.app"
 
       - name: Ad-hoc codesign
         run: |
-          app="build/macos/Build/Products/Release/litchi_client.app"
-          # Sign the embedded core first, then deep-sign the whole bundle ad-hoc.
-          # Credentials use a portable store on macOS (no Keychain), so no
-          # keychain entitlement is needed — keeping the signature plain avoids
-          # the Gatekeeper "cannot verify" hard block on ad-hoc builds.
+          app="build/macos/Build/Products/Release/Client.app"
           codesign --force --options runtime --sign - "$app/Contents/Resources/mihomo"
           codesign --force --deep --options runtime --sign - \
             --entitlements macos/Runner/Release.entitlements "$app"
@@ -279,7 +335,7 @@ jobs:
 
       - name: Build DMG
         run: |
-          app="build/macos/Build/Products/Release/litchi_client.app"
+          app="build/macos/Build/Products/Release/Client.app"
           app_name="${{ secrets.APP_NAME }}"
           app_name="${app_name:-Litchi}"
           version="${GITHUB_REF_NAME#v}"

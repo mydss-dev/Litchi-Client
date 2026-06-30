@@ -13,8 +13,9 @@ handles subscriptions, orders, and traffic statistics.
 | Android  | ✅ embedded mihomo library | VpnService | Native TUN FD bridge with socket protection |
 | Linux    | ⚠️ mihomo subprocess (scaffold) | not yet implemented | CMake/GTK scaffold present; core process management and system proxy are under development |
 
-On macOS, set the proxy mode to **system proxy** (TUN needs root + a network
-extension and is not implemented). The bundled `mihomo` binary must be
+On macOS, TUN uses a kernel-allocated `utun` interface and verifies that a new
+interface appears before reporting a successful connection. Creating routes
+still requires system privileges. The bundled `mihomo` binary must be
 executable (`chmod +x`).
 
 ## Tech Stack
@@ -51,6 +52,7 @@ flutter run -d windows
 
 # Build release
 flutter build windows --release \
+  --dart-define=APP_ID="stable-tenant-id" \
   --dart-define=REMOTE_CONFIG_URL="https://your-oss.example/config.json" \
   --dart-define=REMOTE_CONFIG_PUBLIC_KEY="<tenant-ed25519-public-key>"
 ```
@@ -58,6 +60,12 @@ flutter build windows --release \
 Remote config is fail-closed. Manual builds have no default config endpoint or
 shared signing key; both defines above are required before signed remote config
 will be fetched or cached. The white-label workflow supplies them automatically.
+Keep `APP_ID` stable for every update of the same tenant. It isolates desktop
+data, preferences, credentials, auto-start entries, and single-instance locks
+between white-label clients.
+
+Tagged releases fail when `API_BASE` is missing. Android tags publish both an
+APK for direct installation and an AAB for Google Play.
 
 ## Project Structure
 

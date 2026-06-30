@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
@@ -57,7 +58,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Future<void> _sendCode() async {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty) {
-      AppToast.show(context, '请输入邮箱地址', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.invalidEmail,
+        type: AppToastType.warning,
+      );
       return;
     }
     setState(() => _sending = true);
@@ -68,7 +73,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       if (mounted) {
         setState(() => _codeSent = true);
         _startCountdown();
-        AppToast.show(context, '验证码已发送，请查收邮件', type: AppToastType.success);
+        AppToast.show(
+          context,
+          context.l10n.verificationCodeSent,
+          type: AppToastType.success,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -86,11 +95,19 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     final confirm = _confirmCtrl.text;
 
     if (code.isEmpty || password.isEmpty || confirm.isEmpty) {
-      AppToast.show(context, '请填写所有字段', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.allFieldsRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (password != confirm) {
-      AppToast.show(context, '两次密码不一致', type: AppToastType.error);
+      AppToast.show(
+        context,
+        context.l10n.passwordsMismatch,
+        type: AppToastType.error,
+      );
       return;
     }
 
@@ -103,7 +120,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         passwordConfirmation: confirm,
       );
       if (mounted) {
-        AppToast.show(context, '密码重置成功，请重新登录', type: AppToastType.success);
+        AppToast.show(
+          context,
+          context.l10n.passwordResetSuccess,
+          type: AppToastType.success,
+        );
         await Future.delayed(const Duration(milliseconds: 600));
         if (mounted) {
           AppScope.of(context).goToAuthScreen(AuthScreen.login);
@@ -121,6 +142,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
+    final l10n = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,9 +150,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       children: [
         AuthInput(
           icon: LucideIcons.mail,
-          label: '邮箱',
+          label: l10n.email,
           requiredMark: true,
-          hintText: '请输入注册邮箱',
+          hintText: l10n.registeredEmailHint,
           controller: _emailCtrl,
           onSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
@@ -141,9 +163,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             Expanded(
               child: AuthInput(
                 icon: LucideIcons.keyRound,
-                label: '验证码',
+                label: l10n.verificationCode,
                 requiredMark: true,
-                hintText: '请输入验证码',
+                hintText: l10n.verificationCodeHint,
                 controller: _codeCtrl,
                 onSubmitted: (_) => FocusScope.of(context).nextFocus(),
               ),
@@ -160,9 +182,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         const SizedBox(height: 14),
         AuthInput(
           icon: LucideIcons.lock,
-          label: '新密码',
+          label: l10n.newPassword,
           requiredMark: true,
-          hintText: '请输入新密码',
+          hintText: l10n.newPasswordHint,
           controller: _passwordCtrl,
           obscure: true,
           showRevealToggle: true,
@@ -171,9 +193,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         const SizedBox(height: 14),
         AuthInput(
           icon: LucideIcons.lock,
-          label: '确认密码',
+          label: l10n.confirmPassword,
           requiredMark: true,
-          hintText: '请再次输入新密码',
+          hintText: l10n.confirmPasswordHint,
           controller: _confirmCtrl,
           obscure: true,
           showRevealToggle: true,
@@ -181,14 +203,14 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         const SizedBox(height: 24),
         AuthPrimaryButton(
-          label: '重置密码',
+          label: l10n.resetPassword,
           isLoading: _submitting,
           onPressed: _submit,
         ),
         const SizedBox(height: 20),
         Center(
           child: AuthLinkText(
-            text: '返回登录',
+            text: l10n.backToLogin,
             onTap: () => controller.goToAuthScreen(AuthScreen.login),
           ),
         ),
@@ -213,14 +235,15 @@ class _SendCodeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final l10n = context.l10n;
     final canSend = !sending && countdown == 0;
     final label = sending
-        ? '发送中'
+        ? l10n.sending
         : countdown > 0
         ? '${countdown}s'
         : codeSent
-        ? '重新发送'
-        : '发送验证码';
+        ? l10n.resend
+        : l10n.sendVerificationCode;
 
     return MouseRegion(
       cursor: canSend ? SystemMouseCursors.click : SystemMouseCursors.basic,

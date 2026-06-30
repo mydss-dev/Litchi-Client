@@ -8,17 +8,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
+import 'config/app_identity.dart';
 import 'config/remote_config.dart';
 import 'config/app_config.dart';
+import 'shared/services/app_paths.dart';
 import 'shared/services/brand_asset_cache.dart';
 import 'shared/services/secure_logger.dart';
 
 bool get _isDesktop =>
     Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
-const int _instanceLockPort = 54891;
-const String _instancePing = 'LITCHI_FOCUS_V1';
-const String _instancePong = 'LITCHI_FOCUS_OK_V1';
+int get _instanceLockPort => AppIdentity.instanceLockPort;
+String get _instancePing => AppIdentity.instancePing;
+String get _instancePong => AppIdentity.instancePong;
 
 // Held open for the process lifetime — binding this port prevents a second
 // instance from starting. Automatically released when the process exits.
@@ -26,12 +28,8 @@ ServerSocket? _instanceLock;
 
 void _writeCrashLog(String message) {
   try {
-    final base =
-        Platform.environment['LOCALAPPDATA'] ??
-        Platform.environment['APPDATA'] ??
-        Directory.systemTemp.path;
     final file = File(
-      '$base${Platform.pathSeparator}Litchi${Platform.pathSeparator}crash.log',
+      '${AppPaths.dataDirectory}${Platform.pathSeparator}crash.log',
     );
     file.parent.createSync(recursive: true);
     // Keep the log from growing without bound.
@@ -100,7 +98,7 @@ Future<void> _boot() async {
 
   if (_isDesktop) {
     // Single-instance enforcement: bind a loopback port as a mutex.
-    // If the port is already taken, only treat it as another Litchi instance
+    // If the port is already taken, only treat it as another client instance
     // after a tiny authenticated handshake. This avoids silently exiting when
     // some unrelated local process happens to occupy the same port.
     try {
@@ -113,7 +111,7 @@ Future<void> _boot() async {
       // intentional: port already in use, falls through to focus existing
       if (await _focusExistingInstance()) exit(0);
       _writeCrashLog(
-        'Single-instance lock port $_instanceLockPort is occupied by a non-Litchi process.',
+        'Single-instance lock port $_instanceLockPort is occupied by another process.',
       );
       exit(1);
     }

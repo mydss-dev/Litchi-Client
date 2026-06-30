@@ -47,6 +47,9 @@ abstract final class UpdateService {
     UpdateInfo info, {
     void Function(int received, int total)? onProgress,
   }) async {
+    if (!Platform.isWindows && !Platform.isMacOS) {
+      throw UnsupportedError('In-app installer launch is desktop-only');
+    }
     final path = await downloadVerifiedInstaller(info, onProgress: onProgress);
     try {
       if (Platform.isWindows) {
@@ -86,14 +89,23 @@ abstract final class UpdateService {
       }
 
       final contentLength = response.contentLength;
-      final ext = Platform.isWindows ? '.exe' : '.dmg';
+      final ext = switch (Platform.operatingSystem) {
+        'windows' => '.exe',
+        'macos' => '.dmg',
+        _ => throw UnsupportedError('Installer download is desktop-only'),
+      };
       final safeVersion = info.version.replaceAll(
         RegExp(r'[^a-zA-Z0-9._-]'),
         '_',
       );
+      final safeAppName = AppConfig.appName
+          .trim()
+          .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]+'), '-')
+          .replaceAll(RegExp(r'^[.\s-]+|[.\s-]+$'), '');
+      final installerPrefix = safeAppName.isEmpty ? 'Client' : safeAppName;
       file = File(
         '${Directory.systemTemp.path}${Platform.pathSeparator}'
-        'Litchi-Setup-$safeVersion$ext',
+        '$installerPrefix-Setup-$safeVersion$ext',
       );
       output = file.openWrite(mode: FileMode.writeOnly);
 

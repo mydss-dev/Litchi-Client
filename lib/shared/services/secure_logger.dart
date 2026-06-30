@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import 'app_paths.dart';
+
 abstract final class SecureLogRedactor {
   static const int maxLogTextLength = 800;
 
@@ -87,11 +89,7 @@ abstract final class SecureLogger {
 
   static Future<void> _append(String line) async {
     try {
-      final base =
-          Platform.environment['LOCALAPPDATA'] ??
-          Platform.environment['APPDATA'] ??
-          Directory.systemTemp.path;
-      final dir = Directory('$base${Platform.pathSeparator}Litchi');
+      final dir = Directory(AppPaths.dataDirectory);
       if (!dir.existsSync()) dir.createSync(recursive: true);
       final file = File('${dir.path}${Platform.pathSeparator}diagnostic.log');
       if (file.existsSync() && file.lengthSync() > _maxLogBytes) {

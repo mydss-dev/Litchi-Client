@@ -47,7 +47,7 @@ DWORD AddLayerFilters(HANDLE engine,
   app_condition.conditionValue.type = FWP_BYTE_BLOB_TYPE;
   app_condition.conditionValue.byteBlob = mihomo_app_id;
   DWORD result =
-      AddFilter(engine, layer, L"Litchi permit mihomo", FWP_ACTION_PERMIT, 15,
+      AddFilter(engine, layer, L"Client permit mihomo", FWP_ACTION_PERMIT, 15,
                 &app_condition, 1);
   if (result != ERROR_SUCCESS) {
     return result;
@@ -59,7 +59,7 @@ DWORD AddLayerFilters(HANDLE engine,
   interface_condition.conditionValue.type = FWP_UINT64;
   interface_condition.conditionValue.uint64 = &interface_luid;
   result =
-      AddFilter(engine, layer, L"Litchi permit TUN interface",
+      AddFilter(engine, layer, L"Client permit TUN interface",
                 FWP_ACTION_PERMIT, 14, &interface_condition, 1);
   if (result != ERROR_SUCCESS) {
     return result;
@@ -70,13 +70,13 @@ DWORD AddLayerFilters(HANDLE engine,
   loopback_condition.matchType = FWP_MATCH_FLAGS_ALL_SET;
   loopback_condition.conditionValue.type = FWP_UINT32;
   loopback_condition.conditionValue.uint32 = FWP_CONDITION_FLAG_IS_LOOPBACK;
-  result = AddFilter(engine, layer, L"Litchi permit loopback",
+  result = AddFilter(engine, layer, L"Client permit loopback",
                      FWP_ACTION_PERMIT, 13, &loopback_condition, 1);
   if (result != ERROR_SUCCESS) {
     return result;
   }
 
-  return AddFilter(engine, layer, L"Litchi block non-TUN outbound",
+  return AddFilter(engine, layer, L"Client block non-TUN outbound",
                    FWP_ACTION_BLOCK, 0, nullptr, 0);
 }
 
@@ -122,7 +122,7 @@ bool WfpKillSwitch::Engage(const std::wstring& mihomo_path,
 
   FWPM_SESSION0 session{};
   session.displayData.name =
-      const_cast<wchar_t*>(L"Litchi TUN kill switch session");
+      const_cast<wchar_t*>(L"Client TUN kill switch session");
   session.flags = FWPM_SESSION_FLAG_DYNAMIC;
   result =
       FwpmEngineOpen0(nullptr, RPC_C_AUTHN_WINNT, nullptr, &session, &engine_);
@@ -143,9 +143,9 @@ bool WfpKillSwitch::Engage(const std::wstring& mihomo_path,
     FWPM_SUBLAYER0 sublayer{};
     sublayer.subLayerKey = kLitchiSublayer;
     sublayer.displayData.name =
-        const_cast<wchar_t*>(L"Litchi TUN kill switch");
+        const_cast<wchar_t*>(L"Client TUN kill switch");
     sublayer.displayData.description =
-        const_cast<wchar_t*>(L"Blocks outbound traffic outside the Litchi TUN");
+        const_cast<wchar_t*>(L"Blocks outbound traffic outside the client TUN");
     sublayer.weight = 0x7f00;
     result = FwpmSubLayerAdd0(engine_, &sublayer, nullptr);
   }

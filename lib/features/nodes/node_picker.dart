@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/node_filter.dart';
 import '../../shared/theme/app_colors.dart';
@@ -34,7 +35,6 @@ class _NodePicker extends StatefulWidget {
 }
 
 class _NodePickerState extends State<_NodePicker> {
-  static const _wideFilterLabels = ['全部', 'VIP', '亚洲', '欧洲', '美洲', '大洋洲'];
   static const _wideFilterTabs = [
     NodeFilterTab.all,
     NodeFilterTab.premium,
@@ -43,7 +43,6 @@ class _NodePickerState extends State<_NodePicker> {
     NodeFilterTab.america,
     NodeFilterTab.oceania,
   ];
-  static const _compactFilterLabels = ['全部', '亚洲', '欧洲', '美洲', '大洋洲'];
   static const _compactFilterTabs = [
     NodeFilterTab.all,
     NodeFilterTab.asia,
@@ -55,8 +54,14 @@ class _NodePickerState extends State<_NodePicker> {
   int _filterIndex = 0;
   String _query = '';
 
-  List<String> get _filterLabels =>
-      widget.compact ? _compactFilterLabels : _wideFilterLabels;
+  List<String> _filterLabels(BuildContext context) => [
+    context.l10n.all,
+    if (!widget.compact) 'VIP',
+    context.l10n.asia,
+    context.l10n.europe,
+    context.l10n.america,
+    context.l10n.oceania,
+  ];
   List<NodeFilterTab> get _filterTabs =>
       widget.compact ? _compactFilterTabs : _wideFilterTabs;
 
@@ -74,7 +79,7 @@ class _NodePickerState extends State<_NodePicker> {
     Navigator.of(context).pop();
     AppToast.show(
       context,
-      error ?? '已开启自动选择',
+      error ?? context.l10n.autoSelectEnabled,
       type: error == null ? AppToastType.success : AppToastType.error,
     );
   }
@@ -85,21 +90,27 @@ class _NodePickerState extends State<_NodePicker> {
     Navigator.of(context).pop();
     AppToast.show(
       context,
-      error ?? '已切换到 ${node.name}',
+      error ?? context.l10n.switchedToNode(node.name),
       type: error == null ? AppToastType.success : AppToastType.error,
     );
   }
 
   Future<void> _testLatencies(AppController ctrl) async {
     if (ctrl.nodes.isEmpty) {
-      AppToast.show(context, '暂无可测速节点', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.noTestableNodes,
+        type: AppToastType.warning,
+      );
       return;
     }
     final success = await ctrl.testLatencies();
     if (!mounted) return;
     AppToast.show(
       context,
-      success ? '测速完成' : '测速失败，请稍后重试',
+      success
+          ? context.l10n.latencyTestComplete
+          : context.l10n.latencyTestFailed,
       type: success ? AppToastType.success : AppToastType.warning,
     );
   }
@@ -163,7 +174,7 @@ class _NodePickerState extends State<_NodePicker> {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: horizontal),
               child: SearchInput(
-                hintText: '搜索节点',
+                hintText: context.l10n.searchNodes,
                 onChanged: (value) => setState(() => _query = value),
               ),
             ),
@@ -171,7 +182,7 @@ class _NodePickerState extends State<_NodePicker> {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: horizontal),
               child: FilterTabs(
-                tabs: _filterLabels,
+                tabs: _filterLabels(context),
                 selectedIndex: _filterIndex,
                 onSelected: (index) => setState(() => _filterIndex = index),
               ),
@@ -208,12 +219,12 @@ class _NodePickerState extends State<_NodePicker> {
                                 ? LucideIcons.searchX
                                 : LucideIcons.globe2,
                             title: _query.trim().isNotEmpty || _filterIndex != 0
-                                ? '没有匹配的节点'
-                                : '暂无节点',
+                                ? context.l10n.noMatchingNodes
+                                : context.l10n.noNodes,
                             subtitle:
                                 _query.trim().isNotEmpty || _filterIndex != 0
-                                ? '换个关键词或分类再试试'
-                                : '如果刚登录，请稍等订阅数据加载完成',
+                                ? context.l10n.tryDifferentNodeFilter
+                                : context.l10n.waitForSubscription,
                           ),
                         ),
                       ),
@@ -327,7 +338,7 @@ class _PickerHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '选择节点',
+                  context.l10n.chooseNode,
                   style: AppTextStyles.sectionTitle.copyWith(
                     color: c.textPrimary,
                     fontSize: 18,
@@ -336,8 +347,8 @@ class _PickerHeader extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   nodeCount > 0
-                      ? '$nodeCount 个节点 · 筛选线路并查看延迟'
-                      : '暂无节点 · 请检查订阅状态',
+                      ? context.l10n.nodeCountSummary(nodeCount)
+                      : context.l10n.noNodesSubscription,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
@@ -346,7 +357,7 @@ class _PickerHeader extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: '测速',
+            tooltip: context.l10n.latencyTest,
             onPressed: testing ? null : onTest,
             icon: testing
                 ? SizedBox(
@@ -360,7 +371,7 @@ class _PickerHeader extends StatelessWidget {
                 : Icon(LucideIcons.gauge, color: c.primary, size: 19),
           ),
           IconButton(
-            tooltip: '关闭',
+            tooltip: context.l10n.close,
             onPressed: () => Navigator.of(context).pop(),
             icon: Icon(LucideIcons.x, color: c.iconMuted, size: 19),
           ),
@@ -391,14 +402,14 @@ class _AutoSelectTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '自动选择',
+                  context.l10n.autoSelect,
                   style: AppTextStyles.bodyStrong.copyWith(
                     color: c.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '根据延迟自动使用更优线路',
+                  context.l10n.autoSelectBestDescription,
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
                 ),
               ],
@@ -448,7 +459,7 @@ class _NodeTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   node.englishName.isEmpty
-                      ? _regionLabel(node.region)
+                      ? _regionLabel(context, node.region)
                       : node.englishName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -467,12 +478,13 @@ class _NodeTile extends StatelessWidget {
     );
   }
 
-  String _regionLabel(NodeRegion region) => switch (region) {
-    NodeRegion.asia => '亚洲',
-    NodeRegion.europe => '欧洲',
-    NodeRegion.america => '美洲',
-    NodeRegion.oceania => '大洋洲',
-  };
+  String _regionLabel(BuildContext context, NodeRegion region) =>
+      switch (region) {
+        NodeRegion.asia => context.l10n.asia,
+        NodeRegion.europe => context.l10n.europe,
+        NodeRegion.america => context.l10n.america,
+        NodeRegion.oceania => context.l10n.oceania,
+      };
 }
 
 class _SelectableSurface extends StatelessWidget {

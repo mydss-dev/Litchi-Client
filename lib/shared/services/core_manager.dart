@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'secure_logger.dart';
+import 'app_paths.dart';
+import 'macos_privileged_core.dart';
 import 'windows_shell.dart';
 import 'mihomo_api_client.dart';
 import 'mihomo_config.dart';
@@ -12,6 +14,9 @@ enum CoreState { stopped, starting, running, error }
 /// Manages the mihomo process lifecycle.
 class CoreManager {
   Process? _process;
+  MacOsPrivilegedCoreSession? _macPrivilegedSession;
+  Timer? _privilegedMonitor;
+  bool _privilegedCheckInFlight = false;
   CoreState _state = CoreState.stopped;
   String _lastError = '';
 
@@ -29,17 +34,9 @@ class CoreManager {
   // ── PID file ──────────────────────────────────────────────────────────────
 
   static File get _pidFile {
-    final base = Platform.isWindows
-        ? (Platform.environment['LOCALAPPDATA'] ??
-              Platform.environment['APPDATA'] ??
-              Directory.systemTemp.path)
-        : (Platform.environment['HOME'] != null
-              ? '${Platform.environment['HOME']}/Library/Application Support'
-              : Directory.systemTemp.path);
-    final dir = Platform.isWindows
-        ? '$base\\Litchi'
-        : '$base${Platform.pathSeparator}Litchi';
-    return File('$dir${Platform.pathSeparator}mihomo.pid.json');
+    return File(
+      '${AppPaths.dataDirectory}${Platform.pathSeparator}mihomo.pid.json',
+    );
   }
 
   // ── Executable discovery ──────────────────────────────────────────────────
@@ -105,7 +102,11 @@ class CoreManager {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-  Future<void> start(String configPath, {int apiPort = 9090}) async {
+  Future<void> start(
+    String configPath, {
+    int apiPort = 9090,
+    bool elevateMacTun = false,
+  }) async {
     if (_state == CoreState.running || _state == CoreState.starting) return;
 
     final exe = findExecutable();
@@ -142,16 +143,6 @@ class CoreManager {
     _emitLog('── mihomo 启动中 ──');
 
     try {
-      _process = await Process.start(exe, [
-        '-d',
-        MihomoConfig.appDataDir(),
-        '-f',
-        configPath,
-      ]);
-
-      // Save PID so the next startup can clean this process up if we crash.
-      await _writePidFile(_process!.pid, exe);
-
       final outputLines = <String>[];
       // mihomo logs a non-fatal error and keeps running when it cannot bind the
       // mixed proxy port. In system-proxy mode that means the system proxy then
@@ -175,46 +166,70 @@ class CoreManager {
         }
       }
 
-      final stdoutDone = _process!.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(handleOutput)
-          .asFuture<void>();
+      if (Platform.isMacOS && elevateMacTun) {
+        _macPrivilegedSession = await MacOsPrivilegedCoreSession.start(
+          executable: exe,
+          dataDirectory: MihomoConfig.appDataDir(),
+          configPath: configPath,
+          appPid: pid,
+        );
+        await _writePidFile(_macPrivilegedSession!.pid, exe);
+        _startPrivilegedMonitor();
+      } else {
+        _process = await Process.start(exe, [
+          '-d',
+          MihomoConfig.appDataDir(),
+          '-f',
+          configPath,
+        ]);
+        await _writePidFile(_process!.pid, exe);
 
-      final stderrDone = _process!.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(handleOutput)
-          .asFuture<void>();
+        final stdoutDone = _process!.stdout
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())
+            .listen(handleOutput)
+            .asFuture<void>();
 
-      unawaited(
-        _process!.exitCode.then((code) async {
-          // Mihomo emits some fatal startup diagnostics on stdout. Drain both
-          // streams before choosing the message so the useful line is not
-          // replaced by a generic exit code.
-          await Future.wait([stdoutDone, stderrDone]);
-          if (_state == CoreState.running || _state == CoreState.starting) {
-            if (_lastError.isEmpty && outputLines.isNotEmpty) {
-              _lastError = _stripAnsi(outputLines.last);
+        final stderrDone = _process!.stderr
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())
+            .listen(handleOutput)
+            .asFuture<void>();
+
+        unawaited(
+          _process!.exitCode.then((code) async {
+            // Mihomo emits some fatal startup diagnostics on stdout. Drain both
+            // streams before choosing the message so the useful line is not
+            // replaced by a generic exit code.
+            await Future.wait([stdoutDone, stderrDone]);
+            if (_state == CoreState.running || _state == CoreState.starting) {
+              if (_lastError.isEmpty && outputLines.isNotEmpty) {
+                _lastError = _stripAnsi(outputLines.last);
+              }
+              if (_lastError.isEmpty) _lastError = '核心进程退出 (code: $code)';
+              _setState(CoreState.error);
+              _process = null;
+              _deletePidFile();
             }
-            if (_lastError.isEmpty) _lastError = '核心进程退出 (code: $code)';
-            _setState(CoreState.error);
-            _process = null;
-            _deletePidFile();
-          }
-        }),
-      );
+          }),
+        );
+      }
 
       // Poll the controller API to confirm mihomo is actually ready.
       final ready = await _waitForApi(apiPort);
 
-      if (_process != null && _state != CoreState.error) {
+      if (_hasManagedProcess && _state != CoreState.error) {
+        if (_macPrivilegedSession != null) {
+          final log = await _macPrivilegedSession!.readLogTail();
+          for (final line in const LineSplitter().convert(log)) {
+            handleOutput(line);
+          }
+        }
         if (!ready) {
           _setError('核心启动超时 (端口 $apiPort)，请检查配置文件或重试');
           _emitLog('── 启动超时，已停止 ──');
-          _process?.kill();
-          _process = null;
-          _deletePidFile();
+          final stopped = await _stopManagedProcess();
+          if (stopped) _deletePidFile();
           _deleteConfigFile(configPath);
         } else if (proxyPortBindFailed) {
           _setError(
@@ -222,19 +237,24 @@ class CoreManager {
             '（或残留的 mihomo 进程）后重试，或在设置里更换代理端口。',
           );
           _emitLog('── 代理端口被占用，已停止 ──');
-          _process?.kill();
-          _process = null;
-          _deletePidFile();
+          final stopped = await _stopManagedProcess();
+          if (stopped) _deletePidFile();
           _deleteConfigFile(configPath);
         } else {
-          _emitLog('── mihomo 运行中 (PID ${_process!.pid}) ──');
+          _emitLog('── mihomo 运行中 (PID $_managedPid) ──');
           _setState(CoreState.running);
           _deleteConfigFile(configPath);
         }
       }
-      if (_process == null || _state == CoreState.error) {
+      if (!_hasManagedProcess || _state == CoreState.error) {
         _deleteConfigFile(configPath);
       }
+    } on MacOsPrivilegeException catch (e) {
+      _setError(e.wasCancelled ? '已取消管理员授权，TUN 未启动' : 'macOS 管理员授权失败，请重试');
+      _emitLog('── macOS TUN 授权失败: $e ──');
+      final stopped = await _stopManagedProcess();
+      if (stopped) _deletePidFile();
+      _deleteConfigFile(configPath);
     } catch (e) {
       final raw = '$e';
       final String msg;
@@ -252,29 +272,95 @@ class CoreManager {
       }
       _setError(msg);
       _emitLog('── 启动异常: $raw ──');
-      _process = null;
-      _deletePidFile();
+      final stopped = await _stopManagedProcess();
+      if (stopped) _deletePidFile();
       _deleteConfigFile(configPath);
     }
   }
 
   Future<void> stop() async {
-    final p = _process;
-    _process = null;
     _lastError = '';
     _setState(CoreState.stopped);
     _emitLog('── mihomo 已停止 ──');
-    p?.kill();
-    _deletePidFile();
+    final stopped = await _stopManagedProcess();
+    if (stopped) _deletePidFile();
     // Brief wait so the port is released before any next start().
     await Future.delayed(const Duration(milliseconds: 300));
   }
 
   void dispose() {
+    final hadPrivilegedSession = _macPrivilegedSession != null;
     _process?.kill();
+    _macPrivilegedSession?.requestStopSync();
+    _privilegedMonitor?.cancel();
     _stateCtrl.close();
     _logCtrl.close();
-    _deletePidFile();
+    if (!hadPrivilegedSession) _deletePidFile();
+  }
+
+  bool get _hasManagedProcess =>
+      _process != null || _macPrivilegedSession != null;
+
+  int? get _managedPid => _process?.pid ?? _macPrivilegedSession?.pid;
+
+  void _startPrivilegedMonitor() {
+    _privilegedMonitor?.cancel();
+    _privilegedMonitor = Timer.periodic(const Duration(milliseconds: 500), (
+      _,
+    ) async {
+      final session = _macPrivilegedSession;
+      if (session == null ||
+          _privilegedCheckInFlight ||
+          (_state != CoreState.starting && _state != CoreState.running)) {
+        return;
+      }
+      _privilegedCheckInFlight = true;
+      try {
+        if (await session.isRunning()) return;
+        final log = await session.readLogTail();
+        final lines = const LineSplitter()
+            .convert(log)
+            .map(_stripAnsi)
+            .where((line) => line.isNotEmpty)
+            .toList();
+        if (lines.isNotEmpty) _lastError = lines.last;
+        if (_lastError.isEmpty) {
+          _lastError = 'macOS TUN core exited unexpectedly';
+        }
+        _macPrivilegedSession = null;
+        _privilegedMonitor?.cancel();
+        await session.cleanupFiles();
+        _deletePidFile();
+        _setState(CoreState.error);
+      } catch (error) {
+        SecureLogger.debug('macOS TUN process monitor failed', error);
+      } finally {
+        _privilegedCheckInFlight = false;
+      }
+    });
+  }
+
+  Future<bool> _stopManagedProcess() async {
+    final process = _process;
+    final session = _macPrivilegedSession;
+    _process = null;
+    _macPrivilegedSession = null;
+    _privilegedMonitor?.cancel();
+    _privilegedMonitor = null;
+
+    var stopped = true;
+    if (session != null) {
+      stopped = await session.stop();
+    }
+    if (process != null) {
+      process.kill();
+      try {
+        await process.exitCode.timeout(const Duration(seconds: 3));
+      } catch (_) {
+        process.kill(ProcessSignal.sigkill);
+      }
+    }
+    return stopped;
   }
 
   void _emitLog(String raw) {
@@ -322,7 +408,13 @@ class CoreManager {
         await _pidFile.delete();
         return;
       }
-      Process.killPid(pid, ProcessSignal.sigkill);
+      final killed = Process.killPid(pid, ProcessSignal.sigkill);
+      if (!killed && Platform.isMacOS) {
+        // A root-owned TUN core cannot be signalled by the GUI process. Keep
+        // ownership evidence until its privileged watchdog observes the old
+        // app PID and removes the process.
+        return;
+      }
       await _pidFile.delete();
       // Give the OS a moment to release the port.
       await Future.delayed(const Duration(milliseconds: 400));

@@ -94,7 +94,7 @@ BEGIN
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "Litchi Client" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 Litchi. All rights reserved." "\0"
-            VALUE "OriginalFilename", "Litchi Client.exe" "\0"
+            VALUE "OriginalFilename", "Client.exe" "\0"
             VALUE "ProductName", "Litchi Client" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

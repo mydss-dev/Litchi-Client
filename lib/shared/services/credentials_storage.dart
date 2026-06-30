@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../config/app_identity.dart';
 import 'secure_logger.dart';
 import 'windows_dpapi.dart';
 
@@ -22,9 +23,9 @@ import 'windows_dpapi.dart';
 /// (errSecMissingEntitlement). Release builds must include the
 /// entitlement to use Keychain.
 abstract final class CredentialsStorage {
-  static const _keyEmail = 'remember_email';
-  static const _legacyKeyEmail = 'dpapi_email';
-  static const _keyPassword = 'dpapi_password';
+  static String get _keyEmail => AppIdentity.preferenceKey('remember_email');
+  static String get _legacyKeyEmail => AppIdentity.preferenceKey('dpapi_email');
+  static String get _keyPassword => AppIdentity.preferenceKey('dpapi_password');
   static const _plainPrefix = 'P:';
 
   static const _secureStorage = FlutterSecureStorage();

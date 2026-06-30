@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/app_controller.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
@@ -20,9 +21,9 @@ class ProxyModeCard extends StatelessWidget {
       selector: (ctrl) => ctrl.proxyMode,
       builder: (context, proxyMode, _) {
         final description = switch (proxyMode) {
-          ProxyMode.rule => '自动分流，国内直连、国外流量走代理',
-          ProxyMode.global => '所有流量均通过代理节点转发',
-          ProxyMode.direct => '不使用代理，直接连接目标网站',
+          ProxyMode.rule => context.l10n.proxyModeDescriptionRule,
+          ProxyMode.global => context.l10n.proxyModeDescriptionGlobal,
+          ProxyMode.direct => context.l10n.proxyModeDescriptionDirect,
         };
         return AppCard(
           radius: AppRadius.card,
@@ -31,7 +32,7 @@ class ProxyModeCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '代理模式',
+                context.l10n.proxyMode,
                 style: AppTextStyles.sectionTitle.copyWith(
                   color: c.textPrimary,
                   fontSize: 15,
@@ -58,11 +59,16 @@ class ProxyModeCard extends StatelessWidget {
                   } else if (wasRunning) {
                     AppToast.show(
                       context,
-                      '已切换至 ${mode.label}',
+                      context.l10n.switchedProxyMode(
+                        _proxyModeLabel(context, mode),
+                      ),
                       type: AppToastType.success,
                     );
                   } else {
-                    AppToast.show(context, '代理模式将在下次连接后生效');
+                    AppToast.show(
+                      context,
+                      context.l10n.proxyModeNextConnection,
+                    );
                   }
                 },
               ),
@@ -80,12 +86,6 @@ class _ProxyModeSegment extends StatelessWidget {
   final ProxyMode value;
   final ValueChanged<ProxyMode> onChanged;
 
-  static const _items = [
-    _ProxyModeItem(label: '规则', mode: ProxyMode.rule),
-    _ProxyModeItem(label: '全局', mode: ProxyMode.global),
-    _ProxyModeItem(label: '直连', mode: ProxyMode.direct),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
@@ -99,7 +99,17 @@ class _ProxyModeSegment extends StatelessWidget {
       ),
       child: Row(
         children: [
-          for (final item in _items)
+          for (final item in [
+            _ProxyModeItem(label: context.l10n.ruleMode, mode: ProxyMode.rule),
+            _ProxyModeItem(
+              label: context.l10n.globalMode,
+              mode: ProxyMode.global,
+            ),
+            _ProxyModeItem(
+              label: context.l10n.directMode,
+              mode: ProxyMode.direct,
+            ),
+          ])
             Expanded(
               child: _ProxyModeOption(
                 item: item,
@@ -112,6 +122,12 @@ class _ProxyModeSegment extends StatelessWidget {
     );
   }
 }
+
+String _proxyModeLabel(BuildContext context, ProxyMode mode) => switch (mode) {
+  ProxyMode.rule => context.l10n.ruleMode,
+  ProxyMode.global => context.l10n.globalMode,
+  ProxyMode.direct => context.l10n.directMode,
+};
 
 class _ProxyModeOption extends StatelessWidget {
   const _ProxyModeOption({

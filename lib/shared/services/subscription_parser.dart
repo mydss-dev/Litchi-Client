@@ -86,7 +86,7 @@ abstract final class SubscriptionParser {
 
   /// Parses a full Clash YAML subscription into proxy nodes, rules, and
   /// rule-providers. The server returns this when the request UA contains
-  /// "clash" (e.g. ClashMetaForLitchi/1.0).
+  /// "clash" (for example, a compatible desktop client user agent).
   static ParsedSubscriptionProfile _parseFullClashProfile(String content) {
     final nodes = <RemoteNode>[];
     final rules = <String>[];

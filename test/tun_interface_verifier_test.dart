@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:litchi_client/config/app_identity.dart';
 import 'package:litchi_client/shared/services/tun_interface_verifier.dart';
 
 void main() {
   test('returns true when the requested TUN interface appears', () async {
     var attempts = 0;
     final ready = await TunInterfaceVerifier.waitUntilReady(
+      interfaceName: AppIdentity.tunInterfaceAlias,
       timeout: const Duration(milliseconds: 100),
       pollInterval: Duration.zero,
       probe: () async {
@@ -19,6 +21,7 @@ void main() {
 
   test('returns false when the TUN interface never appears', () async {
     final ready = await TunInterfaceVerifier.waitUntilReady(
+      interfaceName: AppIdentity.tunInterfaceAlias,
       timeout: Duration.zero,
       pollInterval: Duration.zero,
       probe: () async => const ['Ethernet'],

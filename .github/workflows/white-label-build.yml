@@ -136,6 +136,7 @@ jobs:
         run: |
           defines=(
             "--dart-define=APP_NAME=$APP_NAME"
+            "--dart-define=APP_ID=$TENANT_ID"
             "--dart-define=LOGO_URL=$LOGO_URL"
             "--dart-define=API_BASE=$API_BASE"
             "--dart-define=APP_VERSION=$BUILD_VERSION"
@@ -163,17 +164,43 @@ jobs:
         shell: pwsh
         run: .\tool\bundle_windows_runtime.ps1 -ReleaseDir "build\windows\x64\runner\Release"
 
+      - name: Verify Windows white-label identity
+        if: inputs.platform == 'windows'
+        shell: pwsh
+        env:
+          APP_NAME: ${{ steps.config.outputs.app_name }}
+        run: |
+          $exe = "build\windows\x64\runner\Release\Client.exe"
+          if (-not (Test-Path $exe)) { throw "Neutral client executable is missing: $exe" }
+          $productName = (Get-Item $exe).VersionInfo.ProductName
+          if ($productName -ne $env:APP_NAME) {
+            throw "Windows ProductName '$productName' does not match OSS app_name '$env:APP_NAME'"
+          }
+
       - name: Bundle macOS core
         if: inputs.platform == 'macos'
         shell: bash
-        run: bash tool/bundle_macos_core.sh "build/macos/Build/Products/Release/litchi_client.app"
+        run: bash tool/bundle_macos_core.sh "build/macos/Build/Products/Release/Client.app"
+
+      - name: Verify macOS white-label identity
+        if: inputs.platform == 'macos'
+        shell: bash
+        env:
+          APP_NAME: ${{ steps.config.outputs.app_name }}
+        run: |
+          app="build/macos/Build/Products/Release/Client.app"
+          actual=$(/usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$app/Contents/Info.plist")
+          [[ "$actual" == "$APP_NAME" ]] || {
+            echo "::error::macOS display name '$actual' does not match OSS app_name '$APP_NAME'"
+            exit 1
+          }
 
       - name: Ad-hoc codesign
         if: inputs.platform == 'macos'
         shell: bash
         run: |
           set -euo pipefail
-          app="build/macos/Build/Products/Release/litchi_client.app"
+          app="build/macos/Build/Products/Release/Client.app"
           codesign --force --options runtime --sign - "$app/Contents/Resources/mihomo"
           codesign --force --deep --options runtime --sign - \
             --entitlements macos/Runner/Release.entitlements "$app"
@@ -219,7 +246,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release dmg-stage
-          cp -R "build/macos/Build/Products/Release/litchi_client.app" \
+          cp -R "build/macos/Build/Products/Release/Client.app" \
             "dmg-stage/$PACKAGE_NAME.app"
           ln -s /Applications dmg-stage/Applications
           hdiutil create -volname "$PACKAGE_NAME" -srcfolder dmg-stage \

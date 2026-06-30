@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/services/node_filter.dart';
@@ -30,7 +31,6 @@ class NodesPage extends StatefulWidget {
 }
 
 class _NodesPageState extends State<NodesPage> {
-  static const _tabs = ['全部', '收藏', '亚洲', '欧洲', '美洲', '大洋洲'];
   int _tab = 0;
   String _query = '';
   String _pendingQuery = '';
@@ -100,7 +100,11 @@ class _NodesPageState extends State<NodesPage> {
     await AppScope.of(context).testLatencies();
     await _loadFavorites();
     if (mounted) {
-      AppToast.show(context, '已刷新', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.refreshed,
+        type: AppToastType.success,
+      );
     }
   }
 
@@ -113,7 +117,11 @@ class _NodesPageState extends State<NodesPage> {
       return;
     }
     setState(() => _selectedId = null);
-    AppToast.show(context, '已开启自动选择，将使用最优节点', type: AppToastType.success);
+    AppToast.show(
+      context,
+      context.l10n.autoSelectEnabled,
+      type: AppToastType.success,
+    );
   }
 
   Future<void> _selectNode(NodeModel node) async {
@@ -125,7 +133,11 @@ class _NodesPageState extends State<NodesPage> {
       return;
     }
     setState(() => _selectedId = node.id);
-    AppToast.show(context, '已切换至 ${node.name}', type: AppToastType.success);
+    AppToast.show(
+      context,
+      context.l10n.switchedToNode(node.name),
+      type: AppToastType.success,
+    );
   }
 
   @override
@@ -152,7 +164,10 @@ class _NodesPageState extends State<NodesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const PageHeader(title: '节点', subtitle: '选择适合你的高速线路'),
+        PageHeader(
+          title: context.l10n.nodes,
+          subtitle: context.l10n.nodesSubtitle,
+        ),
         const SizedBox(height: 12),
         ..._bodyChildren(context),
         const SizedBox(height: 14),
@@ -163,10 +178,10 @@ class _NodesPageState extends State<NodesPage> {
               final cols = w >= 620 ? 3 : (w >= 440 ? 2 : 1);
               final nodes = _filtered;
               if (nodes.isEmpty) {
-                return const AppEmptyState(
+                return AppEmptyState(
                   icon: LucideIcons.searchX,
-                  title: '没有匹配的节点',
-                  subtitle: '换个关键词或分区再试试',
+                  title: context.l10n.noMatchingNodes,
+                  subtitle: context.l10n.tryDifferentNodeFilter,
                 );
               }
               return GridView.builder(
@@ -215,7 +230,10 @@ class _NodesPageState extends State<NodesPage> {
         padding: EdgeInsets.zero,
         children: [
           if (asPrimary)
-            const CompactPageHeader(title: '节点', subtitle: '选择线路并查看延迟')
+            CompactPageHeader(
+              title: context.l10n.nodes,
+              subtitle: context.l10n.selectLineAndLatency,
+            )
           else
             Row(
               children: [
@@ -228,7 +246,7 @@ class _NodesPageState extends State<NodesPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '节点',
+                        context.l10n.nodes,
                         style: AppTextStyles.pageTitle.copyWith(
                           color: c.textPrimary,
                           fontSize: 26,
@@ -236,7 +254,7 @@ class _NodesPageState extends State<NodesPage> {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '选择线路并查看延迟',
+                        context.l10n.selectLineAndLatency,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(
@@ -252,12 +270,12 @@ class _NodesPageState extends State<NodesPage> {
           const SizedBox(height: 16),
           ..._bodyChildren(context),
           if (nodes.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 48),
+            Padding(
+              padding: const EdgeInsets.only(top: 48),
               child: AppEmptyState(
                 icon: LucideIcons.searchX,
-                title: '没有匹配的节点',
-                subtitle: '换个关键词或分区再试试',
+                title: context.l10n.noMatchingNodes,
+                subtitle: context.l10n.tryDifferentNodeFilter,
               ),
             )
           else
@@ -286,7 +304,10 @@ class _NodesPageState extends State<NodesPage> {
       Row(
         children: [
           Expanded(
-            child: SearchInput(hintText: '搜索节点', onChanged: _onSearchChanged),
+            child: SearchInput(
+              hintText: context.l10n.searchNodes,
+              onChanged: _onSearchChanged,
+            ),
           ),
           const SizedBox(width: 12),
           _LatencyTestButton(ctrl: ctrl),
@@ -296,7 +317,14 @@ class _NodesPageState extends State<NodesPage> {
       _AutoCard(ctrl: ctrl, selected: isAuto, onTap: _toggleAutoSelect),
       const SizedBox(height: 12),
       FilterTabs(
-        tabs: _tabs,
+        tabs: [
+          context.l10n.all,
+          context.l10n.favorites,
+          context.l10n.asia,
+          context.l10n.europe,
+          context.l10n.america,
+          context.l10n.oceania,
+        ],
         selectedIndex: _tab,
         onSelected: (i) => setState(() => _tab = i),
       ),
@@ -376,7 +404,7 @@ class _AutoCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '自动选择',
+                      context.l10n.autoSelect,
                       style: AppTextStyles.bodyStrong.copyWith(
                         color: selected ? c.primary : c.textPrimary,
                       ),
@@ -405,7 +433,7 @@ class _AutoCard extends StatelessWidget {
                       )
                     else
                       Text(
-                        '根据延迟自动使用最优线路',
+                        context.l10n.autoSelectBestDescription,
                         style: AppTextStyles.caption.copyWith(
                           color: c.textMuted,
                         ),
@@ -462,7 +490,7 @@ class _LatencyTestButtonState extends State<_LatencyTestButton> {
   Future<void> _onTap() async {
     if (_loading) return;
     if (widget.ctrl.nodes.isEmpty) {
-      AppToast.show(context, '暂无可测速节点');
+      AppToast.show(context, context.l10n.noTestableNodes);
       return;
     }
     setState(() => _loading = true);
@@ -471,7 +499,9 @@ class _LatencyTestButtonState extends State<_LatencyTestButton> {
     setState(() => _loading = false);
     AppToast.show(
       context,
-      success ? '测速完成' : '测速失败，请检查节点后重试',
+      success
+          ? context.l10n.latencyTestComplete
+          : context.l10n.latencyTestFailed,
       type: success ? AppToastType.success : AppToastType.warning,
     );
   }
@@ -480,7 +510,7 @@ class _LatencyTestButtonState extends State<_LatencyTestButton> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Tooltip(
-      message: '测速',
+      message: context.l10n.latencyTest,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/app_models.dart';
+import 'app_paths.dart';
 import 'credentials_storage.dart';
 
 /// Stores node caches in two tiers:
@@ -13,18 +14,14 @@ import 'credentials_storage.dart';
 /// cache lets the client still connect when the panel/API is temporarily
 /// unreachable without leaving proxy credentials in plain text on disk.
 abstract final class NodeCacheService {
-  static String get _baseDirPath {
-    final base =
-        Platform.environment['LOCALAPPDATA'] ??
-        Platform.environment['APPDATA'] ??
-        Directory.systemTemp.path;
-    return '$base\\Litchi';
-  }
+  static String get _baseDirPath => AppPaths.dataDirectory;
 
-  static String get _uiCachePath => '$_baseDirPath\\nodes_cache.json';
+  static String get _uiCachePath =>
+      '$_baseDirPath${Platform.pathSeparator}nodes_cache.json';
   static String get _secureCachePath =>
-      '$_baseDirPath\\secure_nodes_cache.dpapi';
-  static String get _legacyCachePath => '$_baseDirPath\\nodes_cache.json';
+      '$_baseDirPath${Platform.pathSeparator}secure_nodes_cache.dpapi';
+  static String get _legacyCachePath =>
+      '$_baseDirPath${Platform.pathSeparator}nodes_cache.json';
 
   static Future<void> save(List<NodeModel> nodes) async {
     final realNodes = nodes.where((n) => !n.isAuto).toList();

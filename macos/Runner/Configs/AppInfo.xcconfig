@@ -5,7 +5,8 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = litchi_client
+PRODUCT_NAME = Client
+APP_DISPLAY_NAME = Litchi Client
 
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = com.litchi.litchiClient

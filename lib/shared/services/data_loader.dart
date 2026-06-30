@@ -154,7 +154,7 @@ class DataLoader {
     final sw = Stopwatch()..start();
     final url = snap.subscribeUrl;
     if (url == null || url.isEmpty) {
-      debugPrint('[Litchi] _fillNodes: no subscribe URL, skipping');
+      debugPrint('[Client] _fillNodes: no subscribe URL, skipping');
       return;
     }
     try {

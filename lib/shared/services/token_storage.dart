@@ -1,10 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../config/app_identity.dart';
 import 'credentials_storage.dart';
 
 class TokenStorage {
   // Legacy key — plain-text SharedPreferences from before DPAPI migration.
-  static const _keyAuthData = 'auth_data';
+  static String get _keyAuthData => AppIdentity.preferenceKey('auth_data');
 
   static Future<String?> getAuthData() async {
     // Try DPAPI-encrypted token first.

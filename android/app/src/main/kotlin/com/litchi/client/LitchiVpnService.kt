@@ -91,13 +91,13 @@ class LitchiVpnService : VpnService() {
             ACTION_START -> {
                 stopHandled = false
                 if (isRunning) {
-                    startCoreForeground("Litchi connected")
+                    startCoreForeground("${getString(R.string.app_name)} connected")
                     AndroidCoreStatus.emit("running", "vpn")
                     return START_NOT_STICKY
                 }
                 registerNetworkCallback()
                 registerPowerReceiver()
-                startCoreForeground("Litchi connecting")
+                startCoreForeground("${getString(R.string.app_name)} connecting")
                 AndroidCoreStatus.emit("starting", "vpn")
                 val fd = openTun()
                 // Attach TUN to already-running core — does NOT restart the core.
@@ -110,7 +110,7 @@ class LitchiVpnService : VpnService() {
                 }
                 isRunning = true
                 updateSuspendState()
-                startCoreForeground("Litchi connected")
+                startCoreForeground("${getString(R.string.app_name)} connected")
                 AndroidCoreStatus.emit("running", "vpn")
                 return START_NOT_STICKY
             }
@@ -167,7 +167,7 @@ class LitchiVpnService : VpnService() {
     private fun openTun(): Int {
         if (tunFd >= 0) return tunFd
         val builder = Builder()
-            .setSession("Litchi")
+            .setSession(getString(R.string.app_name))
             .setMtu(DEFAULT_MTU)
             .addAddress("172.19.0.1", 30)
             .addDnsServer("172.19.0.2")
@@ -204,7 +204,7 @@ class LitchiVpnService : VpnService() {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Litchi")
+                .setContentTitle(getString(R.string.app_name))
                 .setContentText(text)
                 .setContentIntent(contentIntent)
                 .setOngoing(true)
@@ -214,7 +214,7 @@ class LitchiVpnService : VpnService() {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Litchi")
+                .setContentTitle(getString(R.string.app_name))
                 .setContentText(text)
                 .setContentIntent(contentIntent)
                 .setOngoing(true)
@@ -241,7 +241,7 @@ class LitchiVpnService : VpnService() {
         val manager = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Litchi Core",
+            "${getString(R.string.app_name)} Core",
             NotificationManager.IMPORTANCE_LOW
         )
         manager.createNotificationChannel(channel)

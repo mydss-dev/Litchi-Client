@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../app/app_controller.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/models/app_models.dart' show UserModel;
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
@@ -31,10 +32,10 @@ class ExpiryBanner extends StatelessWidget {
     final ctrl = AppScope.read(context);
     final color = daysLeft <= 0 ? c.danger : c.warning;
     final message = daysLeft < 0
-        ? '订阅已过期，连接将无法使用'
+        ? context.l10n.subscriptionExpired
         : daysLeft == 0
-        ? '订阅今日到期，请及时续费'
-        : '订阅将在 $daysLeft 天后到期';
+        ? context.l10n.subscriptionExpiresToday
+        : context.l10n.subscriptionExpiresInDays(daysLeft);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -64,7 +65,7 @@ class ExpiryBanner extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '去续费 →',
+                  context.l10n.renewNow,
                   style: AppTextStyles.button.copyWith(
                     color: color,
                     fontSize: 12,

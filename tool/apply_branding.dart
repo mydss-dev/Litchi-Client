@@ -10,7 +10,12 @@ Future<void> main(List<String> args) async {
   final source = args.first;
   final generateIcons = !args.contains('--no-generate-icons');
   final metadataOnly = args.contains('--metadata-only');
-  final payload = await _loadPayload(source);
+  final payload = source.startsWith('--app-name=')
+      ? <String, dynamic>{
+          'app_name': source.substring('--app-name='.length),
+          'logo_url': _argumentValue(args, '--logo-url='),
+        }
+      : await _loadPayload(source);
   if (payload == null) {
     exitCode = 65;
     return;
@@ -25,6 +30,7 @@ Future<void> main(List<String> args) async {
 
   await _writeAndroidName(appName);
   await _writeWindowsName(appName);
+  await _writeMacOsName(appName);
 
   if (!metadataOnly) {
     final downloadedIcon = await _downloadLogoIfUrl(logo);
@@ -45,6 +51,7 @@ void _usage() {
   stdout.writeln('''
 Usage:
   dart run tool/apply_branding.dart <config.js|payload.json|oss_config.json|https_url> [--no-generate-icons] [--metadata-only]
+  dart run tool/apply_branding.dart --app-name="My Client" [--logo-url=https://example.com/logo.png] [--metadata-only]
 
 The tool reads existing remote config fields:
   app_name     -> Android label + Windows product metadata
@@ -55,6 +62,13 @@ Examples:
   dart run tool/apply_branding.dart oss_config.json
   dart run tool/apply_branding.dart https://example.com/config.json
 ''');
+}
+
+String _argumentValue(List<String> args, String prefix) {
+  for (final argument in args) {
+    if (argument.startsWith(prefix)) return argument.substring(prefix.length);
+  }
+  return '';
 }
 
 Future<Map<String, dynamic>?> _loadPayload(String source) async {
@@ -132,7 +146,7 @@ Future<void> _writeWindowsName(String appName) async {
   text = _replaceRcValue(text, 'FileDescription', escaped);
   text = _replaceRcValue(text, 'InternalName', escaped);
   text = _replaceRcValue(text, 'ProductName', escaped);
-  text = _replaceRcValue(text, 'OriginalFilename', 'LitchiClient.exe');
+  text = _replaceRcValue(text, 'OriginalFilename', 'Client.exe');
   text = _replaceRcValue(
     text,
     'LegalCopyright',
@@ -141,6 +155,21 @@ Future<void> _writeWindowsName(String appName) async {
 
   await file.writeAsString(text);
   stdout.writeln('Windows product metadata updated.');
+}
+
+Future<void> _writeMacOsName(String appName) async {
+  final file = File('macos/Runner/Configs/AppInfo.xcconfig');
+  if (!await file.exists()) return;
+  var text = await file.readAsString();
+  final safeName = appName.replaceAll(RegExp(r'[\r\n]'), ' ').trim();
+  final pattern = RegExp(r'^APP_DISPLAY_NAME\s*=.*$', multiLine: true);
+  if (pattern.hasMatch(text)) {
+    text = text.replaceFirst(pattern, 'APP_DISPLAY_NAME = $safeName');
+  } else {
+    text = '${text.trimRight()}\nAPP_DISPLAY_NAME = $safeName\n';
+  }
+  await file.writeAsString(text);
+  stdout.writeln('macOS display name updated.');
 }
 
 Future<bool> _downloadLogoIfUrl(String logo) async {
@@ -246,7 +275,7 @@ Future<List<int>> _httpGetBytes(Uri uri) async {
   client.connectionTimeout = const Duration(seconds: 15);
   try {
     final request = await client.getUrl(uri);
-    request.headers.set(HttpHeaders.userAgentHeader, 'LitchiBuild/1.0');
+    request.headers.set(HttpHeaders.userAgentHeader, 'WhiteLabelBuild/1.0');
     final response = await request.close();
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpException('HTTP ${response.statusCode}', uri: uri);

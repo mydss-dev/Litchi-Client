@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import '../../config/app_identity.dart';
 import '../models/app_models.dart';
+import 'app_paths.dart';
 import 'outbound_parser.dart';
 
 /// Generates a native mihomo configuration.
@@ -20,7 +22,7 @@ abstract final class MihomoConfig {
   static String apiSecret = _generateSecret();
 
   static String tunDeviceNameForPlatform({required bool isMacOS}) {
-    return isMacOS ? 'utun' : 'Litchi';
+    return isMacOS ? 'utun' : AppIdentity.tunInterfaceAlias;
   }
 
   /// Restores the secret owned by an already-running Android core after the
@@ -30,15 +32,7 @@ abstract final class MihomoConfig {
   }
 
   static String appDataDir() {
-    final sep = Platform.pathSeparator;
-    final base = Platform.isWindows
-        ? (Platform.environment['LOCALAPPDATA'] ??
-              Platform.environment['APPDATA'] ??
-              Directory.systemTemp.path)
-        : (Platform.environment['HOME'] != null
-              ? '${Platform.environment['HOME']}/Library/Application Support'
-              : Directory.systemTemp.path);
-    return '$base${sep}Litchi';
+    return AppPaths.dataDirectory;
   }
 
   static Map<String, dynamic>? buildFullConfig(
@@ -395,8 +389,7 @@ abstract final class MihomoConfig {
 
     final nonce = Random.secure().nextInt(1 << 32).toRadixString(16);
     final name =
-        'litchi_core_'
-        '${DateTime.now().microsecondsSinceEpoch}_$nonce.yaml';
+        'client_core_${DateTime.now().microsecondsSinceEpoch}_$nonce.yaml';
     final file = File('${dir.path}${Platform.pathSeparator}$name');
     await file.writeAsString(encodeConfig(config), flush: true);
     if (!Platform.isWindows) {
@@ -409,7 +402,7 @@ abstract final class MihomoConfig {
     return file.path;
   }
 
-  /// Removes any leftover `litchi_core_*.yaml` files from a previous crash.
+  /// Removes leftover one-time config files from current and legacy builds.
   /// Called at app startup and again inside [writeConfig].
   static Future<void> cleanupStaleConfigFiles() async {
     try {
@@ -420,7 +413,9 @@ abstract final class MihomoConfig {
         final name = entity.uri.pathSegments.isNotEmpty
             ? entity.uri.pathSegments.last
             : '';
-        if (!name.startsWith('litchi_core_') || !name.endsWith('.yaml')) {
+        final isCoreConfig =
+            name.startsWith('client_core_') || name.startsWith('litchi_core_');
+        if (!isCoreConfig || !name.endsWith('.yaml')) {
           continue;
         }
         try {

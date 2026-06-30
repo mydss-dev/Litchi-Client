@@ -22,10 +22,12 @@ APP_NAME=$(jq -r '.app_name // empty' "$CONFIG")
 LOGO_URL=$(jq -r '.logo_url // empty' "$CONFIG")
 API_BASE=$(jq -r '.api_base_list[0] // empty' "$CONFIG")
 VERSION=$(jq -r '.update_version // empty' "$CONFIG")
+APP_ID=$(jq -r '.app_id // empty' "$CONFIG")
 
 # Build the dart-define flags
 FLAGS=()
 [ -n "$APP_NAME" ] && FLAGS+=("--dart-define=APP_NAME=$APP_NAME")
+[ -n "$APP_ID" ]   && FLAGS+=("--dart-define=APP_ID=$APP_ID")
 [ -n "$LOGO_URL" ] && FLAGS+=("--dart-define=LOGO_URL=$LOGO_URL")
 [ -n "$API_BASE" ] && FLAGS+=("--dart-define=API_BASE=$API_BASE")
 [ -n "$VERSION" ]  && FLAGS+=("--dart-define=APP_VERSION=$VERSION")
@@ -36,6 +38,10 @@ echo "    Logo:   ${LOGO_URL:-'(not set)'}"
 echo "    API:    ${API_BASE:-'(not set)'}"
 echo "    Version: ${VERSION:-'(not set)'}"
 echo ""
+
+LOGO_URL="$LOGO_URL" dart run tool/prepare_brand_assets.dart
+dart run tool/apply_branding.dart "$CONFIG" --metadata-only
+dart run flutter_launcher_icons
 
 case "$PLATFORM" in
   windows)

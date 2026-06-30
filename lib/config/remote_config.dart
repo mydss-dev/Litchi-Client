@@ -6,6 +6,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_config.dart';
+import 'app_identity.dart';
 import '../shared/services/secure_logger.dart';
 
 /// Fetches brand/API config from OSS and applies it to [AppConfig].
@@ -53,7 +54,7 @@ abstract final class RemoteConfigService {
 
   // ── Internal settings ─────────────────────────────────────────────────────
 
-  static const _cacheKey = 'remote_config_v1';
+  static String get _cacheKey => AppIdentity.preferenceKey('remote_config_v1');
   static const _timeout = Duration(seconds: 5);
 
   /// Maximum time the *first* launch will block on the remote config fetch

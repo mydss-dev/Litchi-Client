@@ -23,9 +23,11 @@ $appName = if ($config.app_name) { $config.app_name } else { "" }
 $logoUrl = if ($config.logo_url) { $config.logo_url } else { "" }
 $apiBase = if ($config.api_base_list -and $config.api_base_list[0]) { $config.api_base_list[0] } else { "" }
 $version = if ($config.update_version) { $config.update_version } else { "" }
+$appId = if ($config.app_id) { $config.app_id } else { "" }
 
 $flags = @()
 if ($appName) { $flags += "--dart-define=APP_NAME=$appName" }
+if ($appId) { $flags += "--dart-define=APP_ID=$appId" }
 if ($logoUrl) { $flags += "--dart-define=LOGO_URL=$logoUrl" }
 if ($apiBase) { $flags += "--dart-define=API_BASE=$apiBase" }
 if ($version) { $flags += "--dart-define=APP_VERSION=$version" }
@@ -39,6 +41,8 @@ Write-Host ""
 
 $env:LOGO_URL = $logoUrl
 dart run tool/prepare_brand_assets.dart
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+dart run tool/apply_branding.dart $configPath --metadata-only
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 dart run flutter_launcher_icons
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

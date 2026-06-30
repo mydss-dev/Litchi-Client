@@ -1,3 +1,5 @@
+import '../l10n/generated/app_localizations.dart';
+
 abstract final class CoreErrorMessageService {
   static const noAvailableNodes = '没有可用节点，请刷新节点列表后重试';
   static const configBuildFailed = '生成配置失败，请选择其他节点后重试';
@@ -28,20 +30,40 @@ abstract final class CoreErrorMessageService {
   }
 
   /// Converts low-level core output into a short message suitable for UI.
-  static String userFacing(String error) {
+  static String userFacing(String error, {AppLocalizations? l10n}) {
     final raw = error.trim();
-    if (raw.isEmpty) return genericConnectionFailure;
+    if (raw.isEmpty) {
+      return l10n?.genericConnectionFailureError ?? genericConnectionFailure;
+    }
+
+    if (l10n != null) {
+      final exact = switch (raw) {
+        noAvailableNodes => l10n.noAvailableNodes,
+        configBuildFailed => l10n.configBuildFailedError,
+        restartClient => l10n.restartClientError,
+        missingCore => l10n.missingCoreError,
+        permissionDenied => l10n.permissionDeniedError,
+        tunInterfaceUnavailable => l10n.tunInterfaceUnavailableError,
+        tunKillSwitchUnavailable => l10n.tunKillSwitchUnavailableError,
+        androidStartFailed => l10n.androidStartFailedError,
+        unexpectedCoreExit => l10n.unexpectedCoreExitError,
+        invalidNodeConfig => l10n.invalidNodeConfigError,
+        genericConnectionFailure => l10n.genericConnectionFailureError,
+        _ => null,
+      };
+      if (exact != null) return exact;
+    }
 
     final lower = raw.toLowerCase();
     if (lower.contains('proxy') && lower.contains('not found')) {
-      return invalidNodeConfig;
+      return l10n?.invalidNodeConfigError ?? invalidNodeConfig;
     }
     if (lower.contains('parse config') || lower.contains('config error')) {
-      return configBuildFailed;
+      return l10n?.configBuildFailedError ?? configBuildFailed;
     }
     if (lower.contains('access denied') ||
         lower.contains('permission denied')) {
-      return permissionDenied;
+      return l10n?.permissionDeniedError ?? permissionDenied;
     }
 
     final looksLikeRawLog =
@@ -50,6 +72,8 @@ abstract final class CoreErrorMessageService {
         lower.contains('time=') ||
         lower.contains('level=') ||
         lower.contains('msg=');
-    return looksLikeRawLog ? genericConnectionFailure : raw;
+    return looksLikeRawLog
+        ? (l10n?.genericConnectionFailureError ?? genericConnectionFailure)
+        : raw;
   }
 }

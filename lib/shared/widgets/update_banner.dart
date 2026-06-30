@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/app_models.dart';
 import '../services/update_service.dart';
+import '../services/url_opener.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_text_styles.dart';
@@ -40,19 +43,31 @@ class _UpdateBannerState extends State<UpdateBanner> {
     });
 
     try {
-      await UpdateService.downloadAndInstall(
-        widget.info,
-        onProgress: (received, total) {
-          if (mounted) {
-            setState(() {
-              _received = received;
-              _total = total;
-            });
-          }
-        },
-      );
+      if (Platform.isAndroid) {
+        final opened = await UrlOpener.open(widget.info.downloadUrl);
+        if (!opened) throw Exception('无法打开更新下载地址');
+      } else {
+        await UpdateService.downloadAndInstall(
+          widget.info,
+          onProgress: (received, total) {
+            if (mounted) {
+              setState(() {
+                _received = received;
+                _total = total;
+              });
+            }
+          },
+        );
+      }
       if (mounted) {
-        AppToast.show(context, '下载完成，正在打开安装包', type: AppToastType.success);
+        AppToast.show(
+          context,
+          Platform.isAndroid ? '已打开下载页面' : '下载完成，正在打开安装包',
+          type: AppToastType.success,
+        );
+        if (Platform.isAndroid) {
+          setState(() => _downloading = false);
+        }
       }
     } catch (e) {
       if (mounted) {

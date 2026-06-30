@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
@@ -26,17 +27,23 @@ class ShopPage extends StatefulWidget {
 }
 
 class _ShopPageState extends State<ShopPage> {
-  static const _tabs = ['全部', '周期套餐', '一次性', '流量包'];
-  static const _compactTabs = ['全部', '周期性', '一次性', '流量包'];
-  static const _emptyPlans = SizedBox(
+  int _tab = 0;
+
+  List<String> _tabs(BuildContext context) => [
+    context.l10n.all,
+    context.l10n.recurringPlan,
+    context.l10n.oneTime,
+    context.l10n.dataPack,
+  ];
+
+  Widget _emptyPlans(BuildContext context) => SizedBox(
     height: 220,
     child: AppEmptyState(
       icon: LucideIcons.packageOpen,
-      title: '暂无套餐信息',
-      subtitle: '请稍后刷新重试',
+      title: context.l10n.noPlans,
+      subtitle: context.l10n.refreshLater,
     ),
   );
-  int _tab = 0;
 
   List<PlanModel> _filtered(List<PlanModel> plans) {
     return plans.where((plan) {
@@ -53,7 +60,7 @@ class _ShopPageState extends State<ShopPage> {
     final ctrl = AppScope.of(context);
     await ctrl.refreshData();
     if (!mounted || ctrl.dataLoadError != null) return;
-    AppToast.show(context, '已刷新', type: AppToastType.success);
+    AppToast.show(context, context.l10n.refreshed, type: AppToastType.success);
   }
 
   @override
@@ -70,16 +77,19 @@ class _ShopPageState extends State<ShopPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageHeader(title: '购买套餐', subtitle: '选择适合你的套餐和流量包'),
+          PageHeader(
+            title: context.l10n.buyPlans,
+            subtitle: context.l10n.buyPlansSubtitle,
+          ),
           const SizedBox(height: 12),
           _ShopTabs(
-            tabs: _tabs,
+            tabs: _tabs(context),
             selected: _tab,
             onSelected: (index) => setState(() => _tab = index),
           ),
           const SizedBox(height: 14),
           if (plans.isEmpty)
-            _emptyPlans
+            _emptyPlans(context)
           else
             LayoutBuilder(
               builder: (context, constraints) {
@@ -130,7 +140,7 @@ class _ShopPageState extends State<ShopPage> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    '套餐购买',
+                    context.l10n.planPurchase,
                     style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
                   ),
                 ),
@@ -139,13 +149,13 @@ class _ShopPageState extends State<ShopPage> {
             const SizedBox(height: 14),
           ],
           _ShopTabs(
-            tabs: _compactTabs,
+            tabs: _tabs(context),
             selected: _tab,
             onSelected: (index) => setState(() => _tab = index),
           ),
           const SizedBox(height: 14),
           if (plans.isEmpty)
-            _emptyPlans
+            _emptyPlans(context)
           else
             for (var i = 0; i < plans.length; i++) ...[
               _PlanCard(
@@ -281,24 +291,28 @@ class _PlanCardState extends State<_PlanCard> {
         plan.yearlyPrice;
   }
 
-  String get _unit => switch (plan.category) {
-    PlanCategory.recurring => _cycleUnit(_cycle),
-    PlanCategory.oneTime => '/ 不限时',
+  String _unit(BuildContext context) => switch (plan.category) {
+    PlanCategory.recurring => _cycleUnit(context, _cycle),
+    PlanCategory.oneTime => context.l10n.unlimitedTime,
     PlanCategory.dataPack => '',
   };
 
-  String get _categoryLabel => switch (plan.category) {
-    PlanCategory.recurring => '周期套餐',
-    PlanCategory.oneTime => '一次性套餐',
-    PlanCategory.dataPack => '流量包',
+  String _categoryLabel(BuildContext context) => switch (plan.category) {
+    PlanCategory.recurring => context.l10n.recurringPlan,
+    PlanCategory.oneTime => context.l10n.oneTimePlan,
+    PlanCategory.dataPack => context.l10n.dataPack,
   };
 
-  String get _metaText {
-    final parts = <String>[_categoryLabel];
+  String _metaText(BuildContext context) {
+    final parts = <String>[_categoryLabel(context)];
     final capacity = plan.capacity.trim();
     if (_hasCapacity(plan)) parts.add(capacity);
     if (plan.deviceLimit != null) {
-      parts.add(plan.deviceLimit! > 0 ? '${plan.deviceLimit} 台设备' : '不限设备');
+      parts.add(
+        plan.deviceLimit! > 0
+            ? context.l10n.devicesCount(plan.deviceLimit!)
+            : context.l10n.unlimitedDevices,
+      );
     }
     return parts.join(' · ');
   }
@@ -356,7 +370,7 @@ class _PlanCardState extends State<_PlanCard> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _metaText,
+                      _metaText(context),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption.copyWith(color: c.textMuted),
@@ -365,13 +379,17 @@ class _PlanCardState extends State<_PlanCard> {
                 ),
               ),
               if (plan.hot)
-                _MiniBadge(text: '热门', color: c.danger)
+                _MiniBadge(text: context.l10n.popular, color: c.danger)
               else if (plan.featured)
-                _MiniBadge(text: '推荐', color: c.primary),
+                _MiniBadge(text: context.l10n.recommended, color: c.primary),
             ],
           ),
           SizedBox(height: widget.compact ? 20 : 14),
-          _PricePanel(symbol: ctrl.currencySymbol, price: price, unit: _unit),
+          _PricePanel(
+            symbol: ctrl.currencySymbol,
+            price: price,
+            unit: _unit(context),
+          ),
           if (_cycleOptions.isNotEmpty) ...[
             const SizedBox(height: 12),
             _CycleSelector(
@@ -395,6 +413,7 @@ class _PlanCardState extends State<_PlanCard> {
                     plan: plan,
                     cycle: _cycle,
                     api: ctrl.api,
+                    onPaid: ctrl.refreshData,
                   ),
           ),
         ],
@@ -482,7 +501,7 @@ class _CycleChip extends StatelessWidget {
             border: Border.all(color: borderColor),
           ),
           child: Text(
-            _cycleLabel(cycle),
+            _cycleLabel(context, cycle),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.caption.copyWith(
@@ -627,7 +646,7 @@ class _BuyButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Text(
-            enabled ? '立即购买' : '暂不可购买',
+            enabled ? context.l10n.buyNow : context.l10n.unavailableForPurchase,
             style: AppTextStyles.button.copyWith(
               color: enabled ? Colors.white : c.textMuted,
               fontWeight: FontWeight.w800,
@@ -639,18 +658,18 @@ class _BuyButton extends StatelessWidget {
   }
 }
 
-String _cycleLabel(BillingCycle cycle) => switch (cycle) {
-  BillingCycle.monthly => '月付',
-  BillingCycle.quarterly => '季付',
-  BillingCycle.halfYear => '半年',
-  BillingCycle.yearly => '年付',
+String _cycleLabel(BuildContext context, BillingCycle cycle) => switch (cycle) {
+  BillingCycle.monthly => context.l10n.monthly,
+  BillingCycle.quarterly => context.l10n.quarterly,
+  BillingCycle.halfYear => context.l10n.halfYear,
+  BillingCycle.yearly => context.l10n.yearly,
 };
 
-String _cycleUnit(BillingCycle cycle) => switch (cycle) {
-  BillingCycle.monthly => '/ 月',
-  BillingCycle.quarterly => '/ 季',
-  BillingCycle.halfYear => '/ 半年',
-  BillingCycle.yearly => '/ 年',
+String _cycleUnit(BuildContext context, BillingCycle cycle) => switch (cycle) {
+  BillingCycle.monthly => context.l10n.perMonth,
+  BillingCycle.quarterly => context.l10n.perQuarter,
+  BillingCycle.halfYear => context.l10n.perHalfYear,
+  BillingCycle.yearly => context.l10n.perYear,
 };
 
 String _cleanFeature(String value) {

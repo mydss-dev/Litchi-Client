@@ -94,7 +94,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Timer? _statusRefreshTimer;
   bool _statusRefreshInFlight = false;
+  bool _nodesRefreshInFlight = false;
+  DateTime? _lastNodesRefreshAt;
   static const Duration _statusRefreshInterval = Duration(minutes: 5);
+  static const Duration _nodesRefreshMaxAge = Duration(minutes: 30);
 
   ThemeMode get themeMode => _settings.themeMode;
   bool get isDark => _settings.isDark;
@@ -113,7 +116,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
   void setAutoStart(bool v) => _settings.setAutoStart(v);
-  void setAutoUpdate(bool v) => _settings.setAutoUpdate(v);
+  void setAutoUpdate(bool v) {
+    _settings.setAutoUpdate(v);
+    if (!v) {
+      dismissUpdate();
+    } else {
+      unawaited(_checkForUpdate());
+    }
+  }
+
   void setLanguage(AppLocalePreference v) => _settings.setLanguage(v);
 
   Future<void> setProxyPort(int port) async {
@@ -395,6 +406,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _checkForUpdate() async {
+    if (!_settings.autoUpdate) return;
     final info = UpdateService.check();
     if (info != null && !_disposed) {
       _updateInfo = info;
@@ -501,6 +513,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         if (_isAuthenticated) {
           _startStatusRefresh();
           unawaited(_refreshAccountStatusSilently());
+          unawaited(_refreshNodesIfStale());
         }
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:
@@ -755,6 +768,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _applySnapshot(snap);
     _saveAccountSummary();
     if (_nodes.isNotEmpty) {
+      _lastNodesRefreshAt = DateTime.now();
       unawaited(NodeCacheService.save(_nodes.nodes));
       _restoreLastNode();
       if (supportsCoreConnection) unawaited(_preloadCoreAndTestLatencies());
@@ -819,18 +833,40 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   );
 
   Future<void> refreshNodes() async {
+    if (_nodesRefreshInFlight || !_isAuthenticated) return;
+    _nodesRefreshInFlight = true;
     final sessionEpoch = _sessionEpoch;
-    final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
-    if (!_isSessionCurrent(sessionEpoch)) return;
-    if (snap.nodes != null && snap.nodes!.isNotEmpty) {
-      _invalidateLatencyRuns();
-      _nodes.setNodes(snap.nodes!);
-      _restoreLastNode();
-      _account.setTraffic(snap.traffic);
-      unawaited(NodeCacheService.save(_nodes.nodes));
-      if (supportsCoreConnection) await _reloadCoreConfig(startIfStopped: true);
+    try {
+      final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
+      if (!_isSessionCurrent(sessionEpoch)) return;
+      if (snap.nodes != null && snap.nodes!.isNotEmpty) {
+        _invalidateLatencyRuns();
+        _nodes.setNodes(snap.nodes!);
+        _restoreLastNode();
+        _account.setTraffic(snap.traffic);
+        _lastNodesRefreshAt = DateTime.now();
+        unawaited(NodeCacheService.save(_nodes.nodes));
+        if (supportsCoreConnection) {
+          await _reloadCoreConfig(startIfStopped: true);
+        }
+      }
+      notifyListeners();
+    } finally {
+      _nodesRefreshInFlight = false;
     }
-    notifyListeners();
+  }
+
+  Future<void> _refreshNodesIfStale() async {
+    final refreshedAt = _lastNodesRefreshAt;
+    if (refreshedAt != null &&
+        DateTime.now().difference(refreshedAt) < _nodesRefreshMaxAge) {
+      return;
+    }
+    try {
+      await refreshNodes();
+    } catch (e) {
+      SecureLogger.debug('stale node refresh failed', e);
+    }
   }
 
   void _applySnapshot(DataSnapshot snap) {

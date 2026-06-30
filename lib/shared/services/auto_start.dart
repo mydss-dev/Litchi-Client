@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../config/app_identity.dart';
 import 'secure_logger.dart';
 import 'windows_registry.dart';
 
@@ -9,7 +10,7 @@ import 'windows_registry.dart';
 ///   HKCU\Software\Microsoft\Windows\CurrentVersion\Run
 abstract final class AutoStart {
   static const _key = r'Software\Microsoft\Windows\CurrentVersion\Run';
-  static const _name = 'LitchiClient';
+  static String get _name => AppIdentity.autoStartValueName;
 
   static String get _exePath => Platform.resolvedExecutable;
 

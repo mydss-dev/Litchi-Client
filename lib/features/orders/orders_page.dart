@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
@@ -70,19 +71,21 @@ class _OrdersPageState extends State<OrdersPage> {
   Future<void> _handleRefresh() async {
     await _load();
     if (!mounted || _error != null) return;
-    AppToast.show(context, '已刷新', type: AppToastType.success);
+    AppToast.show(context, context.l10n.refreshed, type: AppToastType.success);
   }
 
   Future<void> _payOrder(RemoteOrder order) async {
     if (_activeTradeNo != null) return;
     setState(() => _activeTradeNo = order.tradeNo);
-    final api = AppScope.of(context).api;
+    final ctrl = AppScope.of(context);
+    final api = ctrl.api;
     try {
       await showOrderPaymentDialog(
         context: context,
         tradeNo: order.tradeNo,
         finalPrice: order.totalAmount / 100,
         api: api,
+        onPaid: ctrl.refreshData,
       );
       if (mounted) unawaited(_load());
     } finally {
@@ -108,7 +111,11 @@ class _OrdersPageState extends State<OrdersPage> {
     try {
       await AppScope.of(context).api.cancelOrder(order.tradeNo);
       if (!mounted) return;
-      AppToast.show(context, '订单已取消', type: AppToastType.info);
+      AppToast.show(
+        context,
+        context.l10n.orderCancelled,
+        type: AppToastType.info,
+      );
       unawaited(_load());
     } catch (e) {
       if (!mounted) return;
@@ -125,10 +132,10 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   Widget build(BuildContext context) {
     return ResponsivePageScaffold(
-      title: '订单记录',
-      subtitle: '查看购买与支付记录',
-      compactTitle: '订单',
-      compactSubtitle: '查看购买记录与支付状态',
+      title: context.l10n.orders,
+      subtitle: context.l10n.orderHistorySubtitle,
+      compactTitle: context.l10n.order,
+      compactSubtitle: context.l10n.ordersSubtitle,
       primaryCompact: isPrimaryCompactTab(AppPage.orders),
       onRefresh: _handleRefresh,
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
@@ -147,18 +154,18 @@ class _OrdersPageState extends State<OrdersPage> {
       return [
         PageStateCard(
           icon: LucideIcons.circleAlert,
-          title: '订单加载失败',
+          title: context.l10n.orderLoadFailed,
           subtitle: _error!,
           onTap: _load,
         ),
       ];
     }
     if (_orders.isEmpty) {
-      return const [
+      return [
         PageStateCard(
           icon: LucideIcons.receipt,
-          title: '暂无订单',
-          subtitle: '购买套餐后会显示在这里',
+          title: context.l10n.noOrders,
+          subtitle: context.l10n.ordersAppearAfterPurchase,
         ),
       ];
     }
@@ -202,7 +209,9 @@ class _OrderCard extends StatelessWidget {
     };
     final orderNo = order.tradeNo.isEmpty ? '--' : order.tradeNo;
     final isDeposit = order.period == 'deposit';
-    final typeValue = isDeposit ? '账户充值' : order.periodLabel;
+    final typeValue = isDeposit
+        ? context.l10n.accountTopUp
+        : _localizedPeriod(context, order.period, order.periodLabel);
 
     return AppCard(
       padding: const EdgeInsets.all(16),
@@ -225,7 +234,7 @@ class _OrderCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '订单号 $orderNo',
+                  context.l10n.orderNumber(orderNo),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodyStrong.copyWith(
@@ -245,18 +254,24 @@ class _OrderCard extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: _OrderMeta(label: '类型', value: typeValue),
-                ),
-                Expanded(
-                  child: _OrderMeta(label: '日期', value: order.dateDisplay),
-                ),
-                Expanded(
-                  child: _OrderMeta(label: '金额', value: order.amountDisplay),
+                  child: _OrderMeta(label: context.l10n.type, value: typeValue),
                 ),
                 Expanded(
                   child: _OrderMeta(
-                    label: '状态',
-                    value: order.statusLabel,
+                    label: context.l10n.date,
+                    value: order.dateDisplay,
+                  ),
+                ),
+                Expanded(
+                  child: _OrderMeta(
+                    label: context.l10n.amount,
+                    value: order.amountDisplay,
+                  ),
+                ),
+                Expanded(
+                  child: _OrderMeta(
+                    label: context.l10n.status,
+                    value: _localizedOrderStatus(context, order.status),
                     valueColor: statusColor,
                   ),
                 ),
@@ -270,7 +285,7 @@ class _OrderCard extends StatelessWidget {
                 if (onCancel != null)
                   Expanded(
                     child: _OrderActionButton(
-                      label: '取消订单',
+                      label: context.l10n.cancelOrder,
                       icon: LucideIcons.x,
                       color: c.textMuted,
                       onTap: busy ? null : onCancel,
@@ -282,7 +297,7 @@ class _OrderCard extends StatelessWidget {
                   Expanded(
                     flex: 2,
                     child: _OrderActionButton(
-                      label: '继续支付',
+                      label: context.l10n.continuePayment,
                       icon: LucideIcons.creditCard,
                       color: c.primary,
                       filled: true,
@@ -382,7 +397,7 @@ class _OrderActionButton extends StatelessWidget {
                 Icon(icon, size: 16, color: filled ? Colors.white : color),
               const SizedBox(width: 6),
               Text(
-                loading ? '处理中' : label,
+                loading ? context.l10n.processing : label,
                 style: AppTextStyles.button.copyWith(
                   color: filled ? Colors.white : color,
                   fontWeight: FontWeight.w800,
@@ -423,7 +438,7 @@ class _CancelOrderBody extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '确认取消该待支付订单？取消后需要重新下单。',
+                  context.l10n.cancelOrderConfirm,
                   style: AppTextStyles.caption.copyWith(
                     color: c.danger,
                     fontWeight: FontWeight.w700,
@@ -441,7 +456,7 @@ class _CancelOrderBody extends StatelessWidget {
                 height: 42,
                 child: OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('再想想'),
+                  child: Text(context.l10n.thinkAgain),
                 ),
               ),
             ),
@@ -452,7 +467,11 @@ class _CancelOrderBody extends StatelessWidget {
                 child: FilledButton(
                   onPressed: submitting ? null : onConfirm,
                   style: FilledButton.styleFrom(backgroundColor: c.danger),
-                  child: Text(submitting ? '处理中' : '确认取消'),
+                  child: Text(
+                    submitting
+                        ? context.l10n.processing
+                        : context.l10n.confirmCancel,
+                  ),
                 ),
               ),
             ),
@@ -486,11 +505,35 @@ class _CancelOrderModalState extends State<_CancelOrderModal> {
   Widget build(BuildContext context) {
     return AppAdaptiveModal(
       compact: widget.compact,
-      title: '取消订单',
-      subtitle: widget.orderNo.isEmpty ? null : '订单号 ${widget.orderNo}',
+      title: context.l10n.cancelOrder,
+      subtitle: widget.orderNo.isEmpty
+          ? null
+          : context.l10n.orderNumber(widget.orderNo),
       maxWidth: 420,
       showCloseButton: false,
       child: _CancelOrderBody(submitting: _submitting, onConfirm: _confirm),
     );
   }
 }
+
+String _localizedOrderStatus(BuildContext context, int status) =>
+    switch (status) {
+      0 => context.l10n.orderPending,
+      1 => context.l10n.orderProcessing,
+      2 => context.l10n.orderCancelledStatus,
+      3 => context.l10n.orderCompleted,
+      4 => context.l10n.refunded,
+      _ => context.l10n.unknown,
+    };
+
+String _localizedPeriod(BuildContext context, String period, String fallback) =>
+    switch (period) {
+      'month_price' => context.l10n.monthly,
+      'quarter_price' => context.l10n.quarterly,
+      'half_year_price' => context.l10n.halfYear,
+      'year_price' => context.l10n.yearly,
+      'two_year_price' => context.l10n.twoYears,
+      'three_year_price' => context.l10n.threeYears,
+      'onetime_price' => context.l10n.buyout,
+      _ => fallback,
+    };

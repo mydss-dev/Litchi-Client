@@ -243,7 +243,7 @@ class PanelApi {
       headers: {
         // UA containing "clash" triggers many subscription providers to return
         // Clash YAML instead of a plain Base64 URI list.
-        'User-Agent': 'ClashMetaForLitchi/1.0',
+        'User-Agent': 'ClashMetaDesktop/1.0',
       },
     );
     final body = (res.data ?? '').trim();

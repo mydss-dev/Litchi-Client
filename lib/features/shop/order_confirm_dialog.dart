@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/panel_api.dart';
@@ -39,16 +40,6 @@ String periodKey(BillingCycle? cycle, PlanModel plan) {
   return 'month_price';
 }
 
-const _periodLabels = {
-  'month_price': '月付',
-  'quarter_price': '季付',
-  'half_year_price': '半年付',
-  'year_price': '年付',
-  'two_year_price': '两年付',
-  'three_year_price': '三年付',
-  'onetime_price': '一次性',
-};
-
 // ── public entry-point ────────────────────────────────────────────────────────
 
 Future<void> showOrderConfirmDialog({
@@ -56,6 +47,7 @@ Future<void> showOrderConfirmDialog({
   required PlanModel plan,
   required BillingCycle cycle,
   required PanelApi api,
+  Future<void> Function()? onPaid,
 }) {
   return showAppAdaptiveModal<void>(
     context: context,
@@ -63,10 +55,22 @@ Future<void> showOrderConfirmDialog({
       plan: plan,
       cycle: cycle,
       api: api,
+      onPaid: onPaid,
       compact: compact,
     ),
   );
 }
+
+String _periodLabel(BuildContext context, String key) => switch (key) {
+  'month_price' => context.l10n.monthly,
+  'quarter_price' => context.l10n.quarterly,
+  'half_year_price' => context.l10n.halfYear,
+  'year_price' => context.l10n.yearly,
+  'two_year_price' => context.l10n.twoYears,
+  'three_year_price' => context.l10n.threeYears,
+  'onetime_price' => context.l10n.oneTime,
+  _ => key,
+};
 
 // ── Order confirm dialog ──────────────────────────────────────────────────────
 
@@ -76,12 +80,14 @@ class _OrderConfirmDialog extends StatefulWidget {
     required this.cycle,
     required this.api,
     required this.compact,
+    this.onPaid,
   });
 
   final PlanModel plan;
   final BillingCycle cycle;
   final PanelApi api;
   final bool compact;
+  final Future<void> Function()? onPaid;
 
   @override
   State<_OrderConfirmDialog> createState() => _OrderConfirmDialogState();
@@ -172,12 +178,26 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
           _coupon = result;
           _couponApplied = true;
         });
-        AppToast.show(context, '优惠码已生效', type: AppToastType.success);
+        AppToast.show(
+          context,
+          context.l10n.couponApplied,
+          type: AppToastType.success,
+        );
       } else {
-        AppToast.show(context, '优惠码无效', type: AppToastType.error);
+        AppToast.show(
+          context,
+          context.l10n.invalidCoupon,
+          type: AppToastType.error,
+        );
       }
     } catch (e) {
-      if (mounted) AppToast.show(context, '验证失败：$e', type: AppToastType.error);
+      if (mounted) {
+        AppToast.show(
+          context,
+          context.l10n.operationFailed(context.l10n.verify, '$e'),
+          type: AppToastType.error,
+        );
+      }
     } finally {
       if (mounted) setState(() => _verifying = false);
     }
@@ -208,9 +228,16 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
         finalPrice: _finalPrice,
         api: widget.api,
         currencySymbol: _currencySymbol,
+        onPaid: widget.onPaid,
       );
     } catch (e) {
-      if (mounted) AppToast.show(context, '提交失败：$e', type: AppToastType.error);
+      if (mounted) {
+        AppToast.show(
+          context,
+          context.l10n.operationFailed(context.l10n.submitOrder, '$e'),
+          type: AppToastType.error,
+        );
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -221,7 +248,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
     final c = AppColors.of(context);
     if (widget.compact) {
       return AppBottomSheet(
-        title: '确认订单',
+        title: context.l10n.confirmOrder,
         subtitle: widget.plan.title,
         maxHeightFactor: 0.92,
         children: [_buildContent(c)],
@@ -290,7 +317,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '确认订单',
+                  context.l10n.confirmOrder,
                   style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
                 ),
                 const SizedBox(height: 4),
@@ -319,7 +346,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
       children: [
         const SizedBox(height: 4),
         Text(
-          '选择周期',
+          context.l10n.selectBillingCycle,
           style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
         ),
         const SizedBox(height: 12),
@@ -352,7 +379,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      _periodLabels[e.key] ?? e.key,
+                      _periodLabel(context, e.key),
                       style: AppTextStyles.bodyStrong.copyWith(
                         color: selected ? c.primary : c.textSecondary,
                       ),
@@ -382,7 +409,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '优惠码',
+          context.l10n.couponCode,
           style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
         ),
         const SizedBox(height: 12),
@@ -405,7 +432,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
                   enabled: !_couponApplied,
                   style: AppTextStyles.body.copyWith(color: c.textPrimary),
                   decoration: InputDecoration(
-                    hintText: '输入优惠码（可选）',
+                    hintText: context.l10n.couponHint,
                     hintStyle: AppTextStyles.body.copyWith(color: c.textMuted),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14),
@@ -416,14 +443,16 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
             const SizedBox(width: 10),
             if (_couponApplied)
               _SmallBtn(
-                label: '移除',
+                label: context.l10n.remove,
                 color: c.danger,
                 onTap: _removeCoupon,
                 c: c,
               )
             else
               _SmallBtn(
-                label: _verifying ? '验证中…' : '验证',
+                label: _verifying
+                    ? context.l10n.verifying
+                    : context.l10n.verify,
                 color: c.primary,
                 onTap: _verifying ? null : _verifyCoupon,
                 c: c,
@@ -438,8 +467,10 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
               const SizedBox(width: 6),
               Text(
                 _coupon!.type == 1
-                    ? '已优惠 $_currencySymbol${(_coupon!.value / 100).toStringAsFixed(2)}'
-                    : '已优惠 ${_coupon!.value}%',
+                    ? context.l10n.discountAmount(
+                        '$_currencySymbol${(_coupon!.value / 100).toStringAsFixed(2)}',
+                      )
+                    : context.l10n.discountPercent(_coupon!.value),
                 style: AppTextStyles.caption.copyWith(color: c.success),
               ),
             ],
@@ -460,14 +491,14 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
       child: Column(
         children: [
           _SummaryRow(
-            label: '套餐原价',
+            label: context.l10n.originalPrice,
             value: '$_currencySymbol${_originalPrice.toStringAsFixed(2)}',
             c: c,
           ),
           if (_discountCents > 0) ...[
             const SizedBox(height: 8),
             _SummaryRow(
-              label: '优惠减免',
+              label: context.l10n.discount,
               value:
                   '-$_currencySymbol${(_discountCents / 100).toStringAsFixed(2)}',
               valueColor: c.danger,
@@ -476,7 +507,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
           ],
           Divider(color: c.border, height: 20),
           _SummaryRow(
-            label: '应付总计',
+            label: context.l10n.totalDue,
             value: '$_currencySymbol${_finalPrice.toStringAsFixed(2)}',
             valueStyle: AppTextStyles.largeNumber(
               fontSize: 20,
@@ -503,7 +534,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
                 ),
               ),
               child: Text(
-                '取消',
+                context.l10n.cancel,
                 style: AppTextStyles.button.copyWith(color: c.textSecondary),
               ),
             ),
@@ -540,7 +571,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
                           ),
                         )
                       : Text(
-                          '提交订单',
+                          context.l10n.submitOrder,
                           style: AppTextStyles.button.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,

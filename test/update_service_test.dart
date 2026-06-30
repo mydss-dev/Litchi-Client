@@ -114,7 +114,7 @@ void main() {
     final ext = Platform.isWindows ? '.exe' : '.dmg';
     final file = File(
       '${Directory.systemTemp.path}${Platform.pathSeparator}'
-      'Litchi-Setup-hash-mismatch-test$ext',
+      'Client-Setup-hash-mismatch-test$ext',
     );
     if (await file.exists()) await file.delete();
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/app_controller.dart';
+import '../../../l10n/l10n.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_text_styles.dart';
@@ -41,19 +42,19 @@ class ConnectionStatsRow extends StatelessWidget {
               final running = ctrl.coreRunning;
               final cards = [
                 _ConnectionStatCard(
-                  label: '当前延迟',
+                  label: context.l10n.currentLatency,
                   value: latencyValue,
                   unit: 'ms',
                   dimmed: !running,
                 ),
                 _ConnectionStatCard(
-                  label: '下载速度',
+                  label: context.l10n.downloadSpeed,
                   value: downValue,
                   unit: downUnit,
                   dimmed: !running,
                 ),
                 _ConnectionStatCard(
-                  label: '上传速度',
+                  label: context.l10n.uploadSpeed,
                   value: upValue,
                   unit: upUnit,
                   dimmed: !running,

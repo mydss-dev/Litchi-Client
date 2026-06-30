@@ -1,12 +1,15 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../config/app_identity.dart';
 import '../models/api_models.dart';
 
 abstract final class RegisterConfigCache {
-  static const _keyApiBase = 'register_config_api_base';
-  static const _keyEmailSuffixes = 'register_config_email_suffixes';
-  static const _keyEmailVerifyRequired =
-      'register_config_email_verify_required';
+  static String get _keyApiBase =>
+      AppIdentity.preferenceKey('register_config_api_base');
+  static String get _keyEmailSuffixes =>
+      AppIdentity.preferenceKey('register_config_email_suffixes');
+  static String get _keyEmailVerifyRequired =>
+      AppIdentity.preferenceKey('register_config_email_verify_required');
 
   static Future<RegisterConfig?> load(String apiBase) async {
     final prefs = await SharedPreferences.getInstance();

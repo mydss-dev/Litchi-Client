@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/core_error_message_service.dart';
+import 'package:litchi_client/l10n/generated/app_localizations_en.dart';
 
 void main() {
   test('constants contain expected Chinese keywords', () {
@@ -72,5 +73,23 @@ void main() {
 
   test('preserves short readable core errors', () {
     expect(CoreErrorMessageService.userFacing('节点连接超时，请稍后重试'), '节点连接超时，请稍后重试');
+  });
+
+  test('localizes known connection failures for English UI', () {
+    final l10n = AppLocalizationsEn();
+    expect(
+      CoreErrorMessageService.userFacing(
+        CoreErrorMessageService.tunInterfaceUnavailable,
+        l10n: l10n,
+      ),
+      l10n.tunInterfaceUnavailableError,
+    );
+    expect(
+      CoreErrorMessageService.userFacing(
+        'time=x level=fatal msg="unexpected failure"',
+        l10n: l10n,
+      ),
+      l10n.genericConnectionFailureError,
+    );
   });
 }

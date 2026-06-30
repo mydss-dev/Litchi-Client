@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../app/app_controller.dart';
 import '../../../app/core_controller.dart' show ConnectionStatus;
+import '../../../l10n/l10n.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_palette.dart';
@@ -48,7 +49,11 @@ class ConnectionHeroCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        hasNode ? '当前节点' : (isLoading ? '节点加载中' : '节点状态'),
+                        hasNode
+                            ? context.l10n.currentNode
+                            : (isLoading
+                                  ? context.l10n.nodeLoading
+                                  : context.l10n.nodeStatus),
                         style: AppTextStyles.heroTitle.copyWith(
                           color: c.textPrimary,
                           fontSize: 21,
@@ -77,7 +82,7 @@ class ConnectionHeroCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '正在获取节点...',
+                        context.l10n.fetchingNodes,
                         style: AppTextStyles.heroTitle.copyWith(
                           color: c.textMuted,
                           fontSize: 22,
@@ -93,7 +98,7 @@ class ConnectionHeroCard extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          hasNode ? node.name : '暂无可用节点',
+                          hasNode ? node.name : context.l10n.noAvailableNodes,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.heroTitle.copyWith(
@@ -108,7 +113,9 @@ class ConnectionHeroCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 if (!hasNode)
                   Text(
-                    isLoading ? '正在同步订阅数据...' : '登录后会自动拉取订阅节点',
+                    isLoading
+                        ? context.l10n.syncingSubscription
+                        : context.l10n.subscriptionLoadsAfterLogin,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.caption.copyWith(color: c.textMuted),
@@ -198,20 +205,24 @@ class _SecurityBadge extends StatelessWidget {
     final (icon, text, color) = switch (status) {
       ConnectionStatus.connected => (
         LucideIcons.shieldCheck,
-        '军事级加密保护已开启',
+        context.l10n.encryptionProtectionEnabled,
         c.success,
       ),
       ConnectionStatus.connecting => (
         LucideIcons.shield,
-        '正在建立加密通道...',
+        context.l10n.establishingEncryptedChannel,
         c.primary,
       ),
       ConnectionStatus.disconnecting => (
         LucideIcons.shield,
-        '正在关闭加密通道...',
+        context.l10n.closingEncryptedChannel,
         c.textMuted,
       ),
-      _ => (LucideIcons.shieldOff, '网络暂未受到加密保护', c.textMuted),
+      _ => (
+        LucideIcons.shieldOff,
+        context.l10n.networkNotProtected,
+        c.textMuted,
+      ),
     };
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
@@ -244,7 +255,9 @@ class _NodeMetaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Text(
-      '节点模式 · ${automatic ? '自动选择' : '手动选择'}',
+      context.l10n.nodeMode(
+        automatic ? context.l10n.autoSelect : context.l10n.manualSelect,
+      ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: AppTextStyles.body.copyWith(
@@ -283,7 +296,7 @@ class _NodeInlineAction extends StatelessWidget {
               Icon(LucideIcons.chevronsUpDown, size: 14, color: c.primary),
               const SizedBox(width: 6),
               Text(
-                hasNodes ? '切换节点' : '查看节点',
+                hasNodes ? context.l10n.switchNode : context.l10n.viewNodes,
                 style: AppTextStyles.button.copyWith(
                   color: c.primary,
                   fontSize: 12,
@@ -492,11 +505,20 @@ class _ConnectionActionText extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final (text, color) = switch (status) {
-      ConnectionStatus.disconnected => ('开始连接', c.primary),
-      ConnectionStatus.connecting => ('连接中…', c.primary),
-      ConnectionStatus.connected => ('断开连接', c.success),
-      ConnectionStatus.disconnecting => ('断开中…', c.textMuted),
-      ConnectionStatus.error => ('重新连接', c.danger),
+      ConnectionStatus.disconnected => (
+        context.l10n.startConnection,
+        c.primary,
+      ),
+      ConnectionStatus.connecting => (context.l10n.connecting, c.primary),
+      ConnectionStatus.connected => (
+        context.l10n.disconnectConnection,
+        c.success,
+      ),
+      ConnectionStatus.disconnecting => (
+        context.l10n.disconnecting,
+        c.textMuted,
+      ),
+      ConnectionStatus.error => (context.l10n.reconnect, c.danger),
     };
 
     return AnimatedSwitcher(

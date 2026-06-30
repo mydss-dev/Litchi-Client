@@ -8,6 +8,7 @@ import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
 import '../../app/core_error_message_service.dart';
 import '../../config/mobile_layout.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
@@ -91,11 +92,15 @@ class _DashboardPageState extends State<DashboardPage> {
     if (mounted && error != null) {
       AppToast.show(
         context,
-        CoreErrorMessageService.userFacing(error),
+        CoreErrorMessageService.userFacing(error, l10n: context.l10n),
         type: AppToastType.error,
       );
     } else if (mounted && ctrl.coreRunning) {
-      AppToast.show(context, '连接成功', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.connectionSuccess,
+        type: AppToastType.success,
+      );
     }
   }
 
@@ -115,11 +120,15 @@ class _DashboardPageState extends State<DashboardPage> {
     if (error != null && error.isNotEmpty) {
       AppToast.show(
         context,
-        CoreErrorMessageService.userFacing(error),
+        CoreErrorMessageService.userFacing(error, l10n: context.l10n),
         type: AppToastType.error,
       );
     } else if (ctrl.coreRunning) {
-      AppToast.show(context, '连接成功', type: AppToastType.success);
+      AppToast.show(
+        context,
+        context.l10n.connectionSuccess,
+        type: AppToastType.success,
+      );
     }
   }
 
@@ -127,7 +136,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final ctrl = AppScope.of(context);
     await ctrl.refreshData();
     if (!mounted || ctrl.dataLoadError != null) return;
-    AppToast.show(context, '已刷新', type: AppToastType.success);
+    AppToast.show(context, context.l10n.refreshed, type: AppToastType.success);
   }
 
   @override
@@ -144,7 +153,10 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PageHeader(title: '首页', subtitle: '查看当前连接、节点与流量状态'),
+          PageHeader(
+            title: context.l10n.home,
+            subtitle: context.l10n.dashboardSubtitle,
+          ),
           const SizedBox(height: 12),
           ExpiryBanner(user: ctrl.user),
           _DashboardAlerts(
@@ -243,12 +255,17 @@ class _DashboardAlerts extends StatelessWidget {
       if (ctrl.connectionStatus == ConnectionStatus.error &&
           ctrl.coreError.isNotEmpty)
         ErrorBanner(
-          message: CoreErrorMessageService.userFacing(ctrl.coreError),
+          message: CoreErrorMessageService.userFacing(
+            ctrl.coreError,
+            l10n: context.l10n,
+          ),
           onRetry: onConnectionRetry,
         ),
       if (ctrl.dataLoadError != null)
         ErrorBanner(
-          message: ctrl.dataLoadError!,
+          message: ctrl.nodes.isNotEmpty
+              ? context.l10n.cachedModeActive
+              : context.l10n.serverUnavailableNoCache,
           onRetry: onDataRetry,
           warning: true,
         ),
@@ -340,22 +357,28 @@ class _MobileConnectionCard extends StatelessWidget {
         status == ConnectionStatus.connecting ||
         status == ConnectionStatus.disconnecting;
     final (statusText, statusColor) = !supportsConnection
-        ? ('业务版', c.textMuted)
+        ? (context.l10n.businessEdition, c.textMuted)
         : switch (status) {
-            ConnectionStatus.connected => ('保护中', c.success),
-            ConnectionStatus.connecting => ('连接中', c.primary),
-            ConnectionStatus.disconnecting => ('断开中', c.textMuted),
-            ConnectionStatus.error => ('连接失败', c.danger),
-            ConnectionStatus.disconnected => ('未连接', c.textMuted),
+            ConnectionStatus.connected => (context.l10n.protected, c.success),
+            ConnectionStatus.connecting => (context.l10n.connecting, c.primary),
+            ConnectionStatus.disconnecting => (
+              context.l10n.disconnecting,
+              c.textMuted,
+            ),
+            ConnectionStatus.error => (context.l10n.connectionFailed, c.danger),
+            ConnectionStatus.disconnected => (
+              context.l10n.notConnected,
+              c.textMuted,
+            ),
           };
     final actionText = !supportsConnection
-        ? '暂未开放'
+        ? context.l10n.unavailable
         : switch (status) {
-            ConnectionStatus.connected => '断开连接',
-            ConnectionStatus.connecting => '正在连接',
-            ConnectionStatus.disconnecting => '正在断开',
-            ConnectionStatus.error => '重新连接',
-            ConnectionStatus.disconnected => '开始连接',
+            ConnectionStatus.connected => context.l10n.disconnectConnection,
+            ConnectionStatus.connecting => context.l10n.connecting,
+            ConnectionStatus.disconnecting => context.l10n.disconnecting,
+            ConnectionStatus.error => context.l10n.reconnect,
+            ConnectionStatus.disconnected => context.l10n.startConnection,
           };
     return AppCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
@@ -393,7 +416,7 @@ class _MobileConnectionCard extends StatelessWidget {
                 status == ConnectionStatus.connected
                     ? elapsedLabel
                     : !supportsConnection
-                    ? '当前 Android 版本先提供登录、购买和节点查看'
+                    ? context.l10n.androidLimitedNotice
                     : '',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.caption.copyWith(color: c.textMuted),
@@ -424,8 +447,8 @@ class _MobileConnectionCard extends StatelessWidget {
                           Text(
                             node.name.isEmpty
                                 ? loading
-                                      ? '正在同步节点...'
-                                      : '请选择节点'
+                                      ? context.l10n.syncingNodes
+                                      : context.l10n.selectNodePrompt
                                 : node.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -446,7 +469,11 @@ class _MobileConnectionCard extends StatelessWidget {
                             )
                           else
                             Text(
-                              '节点模式：${automatic ? '自动选择' : '手动选择'}',
+                              context.l10n.nodeModeLabel(
+                                automatic
+                                    ? context.l10n.autoSelect
+                                    : context.l10n.manualSelect,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.caption.copyWith(

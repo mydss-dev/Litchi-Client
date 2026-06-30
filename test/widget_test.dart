@@ -31,6 +31,17 @@ void main() {
     expect(c.themeMode, ThemeMode.dark);
   });
 
+  test('AppController persists the automatic update preference', () async {
+    final c = AppController();
+
+    c.setAutoUpdate(false);
+    await Future<void>.delayed(Duration.zero);
+    final prefs = await SharedPreferences.getInstance();
+
+    expect(c.autoUpdate, isFalse);
+    expect(prefs.getBool('auto_update'), isFalse);
+  });
+
   test('AppController clearStartupMessage is a safe no-op when empty', () {
     final c = AppController();
     var notified = false;

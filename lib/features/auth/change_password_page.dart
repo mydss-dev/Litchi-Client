@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
@@ -38,11 +39,19 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     final confirm = _confirmCtrl.text;
 
     if (old.isEmpty || newPwd.isEmpty || confirm.isEmpty) {
-      AppToast.show(context, '请填写所有密码字段', type: AppToastType.warning);
+      AppToast.show(
+        context,
+        context.l10n.passwordFieldsRequired,
+        type: AppToastType.warning,
+      );
       return;
     }
     if (newPwd != confirm) {
-      AppToast.show(context, '新密码两次输入不一致', type: AppToastType.error);
+      AppToast.show(
+        context,
+        context.l10n.passwordsMismatch,
+        type: AppToastType.error,
+      );
       return;
     }
 
@@ -54,7 +63,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         passwordConfirmation: confirm,
       );
       if (mounted) {
-        AppToast.show(context, '密码修改成功', type: AppToastType.success);
+        AppToast.show(
+          context,
+          context.l10n.passwordChanged,
+          type: AppToastType.success,
+        );
         await Future.delayed(const Duration(milliseconds: 600));
         if (mounted) controller.goToAuthScreen(AuthScreen.login);
       }
@@ -71,6 +84,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final controller = AppScope.of(context);
+    final l10n = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,7 +92,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       children: [
         AuthInput(
           icon: LucideIcons.lock,
-          hintText: '请输入当前密码',
+          hintText: l10n.currentPasswordHint,
           controller: _oldCtrl,
           obscure: true,
           showRevealToggle: true,
@@ -87,7 +101,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         const SizedBox(height: 14),
         AuthInput(
           icon: LucideIcons.lock,
-          hintText: '请输入新密码',
+          hintText: l10n.newPasswordHint,
           controller: _newCtrl,
           obscure: true,
           showRevealToggle: true,
@@ -96,7 +110,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         const SizedBox(height: 14),
         AuthInput(
           icon: LucideIcons.lock,
-          hintText: '请再次输入新密码',
+          hintText: l10n.confirmPasswordHint,
           controller: _confirmCtrl,
           obscure: true,
           showRevealToggle: true,
@@ -108,7 +122,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             Icon(LucideIcons.shieldCheck, size: 14, color: c.textSecondary),
             const SizedBox(width: 6),
             Text(
-              '建议使用 8 位以上字母、数字组合',
+              l10n.passwordAdvice,
               style: AppTextStyles.caption.copyWith(
                 color: c.textSecondary,
                 fontSize: 12,
@@ -118,14 +132,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
         const SizedBox(height: 24),
         AuthPrimaryButton(
-          label: '保存修改',
+          label: l10n.saveChanges,
           isLoading: _loading,
           onPressed: _submit,
         ),
         const SizedBox(height: 20),
         Center(
           child: AuthLinkText(
-            text: '返回登录',
+            text: l10n.backToLogin,
             onTap: () => controller.goToAuthScreen(AuthScreen.login),
           ),
         ),

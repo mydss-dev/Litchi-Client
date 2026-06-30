@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../config/app_identity.dart';
 import '../models/app_models.dart';
 
 /// Small, session-bound cache for the values rendered on the home screen.
@@ -27,7 +28,8 @@ class AccountSummaryCache {
   final int? resetDay;
   final int? expiredAt;
 
-  static const _key = 'account_summary_cache_v1';
+  static String get _key =>
+      AppIdentity.preferenceKey('account_summary_cache_v1');
 
   static Future<AccountSummaryCache?> load(String authData) async {
     try {

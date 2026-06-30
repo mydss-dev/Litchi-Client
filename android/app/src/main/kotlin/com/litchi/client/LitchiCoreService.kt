@@ -168,8 +168,9 @@ class LitchiCoreService : Service() {
 
     private fun buildNotification(): Notification {
         ensureNotificationChannel()
-        val text = if (LitchiVpnService.isRunning) "Litchi VPN connected"
-            else "Litchi core ready"
+        val appName = getString(R.string.app_name)
+        val text = if (LitchiVpnService.isRunning) "$appName VPN connected"
+            else "$appName core ready"
         val contentIntent = PendingIntent.getActivity(
             this,
             NOTIFICATION_ID,
@@ -179,7 +180,7 @@ class LitchiCoreService : Service() {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Litchi")
+                .setContentTitle(appName)
                 .setContentText(text)
                 .setContentIntent(contentIntent)
                 .setOngoing(true)
@@ -188,7 +189,7 @@ class LitchiCoreService : Service() {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Litchi")
+                .setContentTitle(appName)
                 .setContentText(text)
                 .setContentIntent(contentIntent)
                 .setOngoing(true)
@@ -201,7 +202,7 @@ class LitchiCoreService : Service() {
         val manager = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Litchi Core",
+            "${getString(R.string.app_name)} Core",
             NotificationManager.IMPORTANCE_LOW
         )
         manager.createNotificationChannel(channel)

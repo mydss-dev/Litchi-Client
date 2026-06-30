@@ -11,7 +11,7 @@
   #define MyAppPublisher MyAppName
 #endif
 #ifndef MyAppExeName
-  #define MyAppExeName "LitchiClient.exe"
+  #define MyAppExeName "Client.exe"
 #endif
 #ifndef MyOutputDir
   #define MyOutputDir "installer_output"

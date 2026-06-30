@@ -75,7 +75,7 @@ Future<Uint8List> _download(Uri uri) async {
         .getUrl(uri)
         .timeout(const Duration(seconds: 20));
     request.headers
-      ..set(HttpHeaders.userAgentHeader, 'LitchiBuild/1.0')
+      ..set(HttpHeaders.userAgentHeader, 'WhiteLabelBuild/1.0')
       ..set(HttpHeaders.acceptHeader, 'image/png,image/*');
     final response = await request.close().timeout(const Duration(seconds: 20));
     if (response.statusCode < 200 || response.statusCode >= 300) {
