@@ -20,7 +20,11 @@ void main() {
       AppIdentity.autoStartValueNameFor('tenant-a'),
       isNot(contains('Litchi')),
     );
-    expect(AppIdentity.tunInterfaceAliasFor('tenant-a'), 'VPN-tenant-a');
+    expect(AppIdentity.tunInterfaceAliasFor('tenant-a'), 'TUN-A');
+    expect(
+      AppIdentity.tunInterfaceAliasFor('tenant_8f3a91c2d46e7788'),
+      'TUN-8F3A91C2D46E',
+    );
   });
 
   test('gives different tenants stable private lock ports', () {

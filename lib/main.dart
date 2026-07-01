@@ -169,7 +169,8 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
 
   // macOS keeps its native window (traffic lights, native rounded corners +
   // shadow); only the hidden title bar lets content run full-height. Windows /
-  // Linux go fully frameless + transparent and draw custom window controls.
+  // Linux uses a transparent Flutter clip. Windows stays opaque and lets the
+  // native runner shape the window, avoiding black transparent corner pixels.
   final windowOptions = WindowOptions(
     size: const Size(900, 700),
     // Small floor so the shell can shrink the window to a compact card-sized
@@ -177,7 +178,11 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
     // via setResizable(false); this only gates programmatic setSize.
     minimumSize: const Size(380, 480),
     center: true,
-    backgroundColor: Platform.isMacOS ? null : Colors.transparent,
+    backgroundColor: Platform.isLinux
+        ? Colors.transparent
+        : Platform.isWindows
+        ? const Color(0xFFF7F9FC)
+        : null,
     titleBarStyle: TitleBarStyle.hidden,
     title: AppConfig.appName,
   );
@@ -185,8 +190,10 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.setResizable(false);
     await windowManager.setMaximizable(true);
-    if (!Platform.isMacOS) {
+    if (Platform.isLinux) {
       await windowManager.setBackgroundColor(Colors.transparent);
+      await windowManager.setAsFrameless();
+    } else if (Platform.isWindows) {
       await windowManager.setAsFrameless();
     }
     if (!launchOptions.silent) {

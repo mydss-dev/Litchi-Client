@@ -24,13 +24,19 @@ abstract final class AppIdentity {
 
   /// Stable, OS-visible TUN adapter name for this build.
   ///
-  /// White-label builds use APP_ID instead of the remotely changeable app
-  /// name so an OSS rename cannot invalidate an active adapter or WFP rule.
+  /// APP_ID is an opaque public tenant id. Keep both the brand and any account
+  /// identifier out of the adapter name while retaining a stable suffix for
+  /// TUN readiness checks and WFP rules.
   static String tunInterfaceAliasFor(String value) {
     final key = storageKeyFor(value);
-    if (key == 'litchi') return 'Litchi';
-    final suffix = key.length > 48 ? key.substring(0, 48) : key;
-    return 'VPN-$suffix';
+    if (key == 'litchi') return 'TUN-LOCAL';
+    final withoutPrefix = key.replaceFirst(RegExp(r'^tenant[_-]'), '');
+    final normalized = withoutPrefix
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '')
+        .toUpperCase();
+    final source = normalized.isEmpty ? 'CLIENT' : normalized;
+    final suffix = source.length > 12 ? source.substring(0, 12) : source;
+    return 'TUN-$suffix';
   }
 
   static String get tunInterfaceAlias => tunInterfaceAliasFor(buildId);

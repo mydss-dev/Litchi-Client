@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { createHash } from 'node:crypto';
 import { nanoid } from 'nanoid';
 
 import { env, repoParts } from './config.js';
@@ -11,6 +12,16 @@ export type BuildStatusSnapshot = {
   downloadUrl: string;
   sha256: string;
 };
+
+/// Returns the stable public identity used by build artifacts and client code.
+/// It is derived from the per-app random signing key, never from Telegram IDs.
+export function publicTenantId(publicKey: string): string {
+  const digest = createHash('sha256')
+    .update(publicKey.trim(), 'utf8')
+    .digest('hex')
+    .slice(0, 16);
+  return `tenant_${digest}`;
+}
 
 export function buildRunName(input: {
   appId: string;

@@ -45,11 +45,21 @@ function tenantSegment(appId) {
 }
 
 function packageFileName(appName, appId) {
-  const cleaned = appName
+  return windowsFileBaseName(appName, appId);
+}
+
+export function windowsFileBaseName(appName, appId) {
+  let cleaned = appName
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    .replace(/\s+/g, ' ')
     .replace(/[. ]+$/g, '')
     .trim();
-  return (cleaned || appId).slice(0, 60);
+  cleaned = Array.from(cleaned).slice(0, 60).join('').replace(/[. ]+$/g, '');
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(cleaned)) {
+    cleaned += '-App';
+  }
+  if (cleaned) return cleaned;
+  return 'Client-App';
 }
 
 function writeOutput(name, value) {
@@ -89,8 +99,8 @@ export function verifySignedPayload(wrapper, verifier) {
 async function main() {
   const configUrl = httpsUrl(requiredEnv('REMOTE_CONFIG_URL'), 'REMOTE_CONFIG_URL');
   const verifier = requiredEnv('REMOTE_CONFIG_VERIFIER');
-  // Internal bot id only. It derives stable native package identities and is
-  // never compiled into Dart application code.
+  // Opaque public tenant id. It derives stable native identities and may be
+  // compiled into the client; Telegram/account identifiers must never be used.
   const appId = cleanText(requiredEnv('TENANT_ID'), 'TENANT_ID', 80);
   const version = cleanText(requiredEnv('BUILD_VERSION'), 'BUILD_VERSION', 30);
   if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
@@ -148,6 +158,7 @@ async function main() {
   writeOutput('app_name', appName);
   writeOutput('config_path', configPath);
   writeOutput('package_name', packageFileName(appName, appId));
+  writeOutput('windows_exe_name', `${windowsFileBaseName(appName, appId)}.exe`);
   writeOutput('logo_url', logoUrl);
   writeOutput('api_base', apiBase);
   writeOutput('android_application_id', `com.litchi.whitelabel.${segment}`);

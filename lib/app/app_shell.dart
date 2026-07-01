@@ -36,6 +36,7 @@ bool get _isDesktop =>
 /// macOS uses its native window (traffic lights + native corners/shadow), so it
 /// gets neither the custom controls nor the rounded clip.
 bool get _usesCustomChrome => Platform.isWindows || Platform.isLinux;
+bool get _usesFlutterWindowClip => Platform.isLinux;
 
 /// All pages are now responsive — each handles its own compact / wide layout
 /// internally, so the shell just picks the widget directly.
@@ -386,22 +387,28 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (_quitting) return;
     _quitting = true;
 
-    // Stop the core and restore the proxy first. Destroying the native tray can
-    // block on some Windows machines while mihomo is still connected.
+    // A user-requested quit must feel immediate. Remove visible UI first, then
+    // perform the bounded network cleanup with no tray icon left behind.
     try {
-      await _ctrl?.shutdown().timeout(const Duration(seconds: 5));
+      await windowManager.hide().timeout(const Duration(milliseconds: 300));
     } catch (_) {
-      // intentional: best-effort cleanup, failure is safe to ignore
+      // Best effort; process exit remains the final fallback.
     }
 
     try {
       if (_trayActive) {
         _trayActive = false;
         trayManager.removeListener(this);
-        await trayManager.destroy().timeout(const Duration(seconds: 1));
+        await trayManager.destroy().timeout(const Duration(milliseconds: 500));
       }
     } catch (_) {
-      // Never let native tray cleanup prevent an explicit Quit operation.
+      // WM_DESTROY also asks the tray plugin to remove its icon.
+    }
+
+    try {
+      await _ctrl?.shutdown().timeout(const Duration(seconds: 4));
+    } catch (_) {
+      // Never let network cleanup prevent an explicit Quit operation.
     } finally {
       exit(0);
     }
@@ -473,7 +480,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final controller = AppScope.of(context);
     // Only the custom (Windows/Linux) chrome draws the rounded clip, border and
     // window shadow — macOS gets those from its native window.
-    final radius = _usesCustomChrome && !_maximized ? _radius : 0.0;
+    final radius = _usesFlutterWindowClip && !_maximized ? _radius : 0.0;
     // On the custom chrome the compact logged-out window IS the login card:
     // give it the card surface + border so there's a single frame.
     final asCard =
@@ -487,7 +494,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
           color: asCard ? c.cardBg : c.appBg,
           borderRadius: BorderRadius.circular(radius),
           border: asCard ? Border.all(color: c.softBorder) : null,
-          boxShadow: _usesCustomChrome && !_maximized
+          boxShadow: _usesFlutterWindowClip && !_maximized
               ? AppShadows.window
               : null,
         ),

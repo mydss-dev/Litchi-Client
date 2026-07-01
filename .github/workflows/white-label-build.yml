@@ -176,12 +176,18 @@ jobs:
         shell: pwsh
         env:
           APP_NAME: ${{ steps.config.outputs.app_name }}
+          WINDOWS_EXE_NAME: ${{ steps.config.outputs.windows_exe_name }}
         run: |
           $exe = "build\windows\x64\runner\Release\Client.exe"
           if (-not (Test-Path $exe)) { throw "Neutral client executable is missing: $exe" }
           $productName = (Get-Item $exe).VersionInfo.ProductName
           if ($productName -ne $env:APP_NAME) {
             throw "Windows ProductName '$productName' does not match OSS app_name '$env:APP_NAME'"
+          }
+          $renamed = Join-Path (Split-Path $exe) $env:WINDOWS_EXE_NAME
+          Rename-Item -LiteralPath $exe -NewName $env:WINDOWS_EXE_NAME
+          if (-not (Test-Path -LiteralPath $renamed)) {
+            throw "Branded Windows executable was not created: $renamed"
           }
 
       - name: Bundle macOS core
@@ -228,6 +234,7 @@ jobs:
         shell: pwsh
         env:
           PACKAGE_NAME: ${{ steps.config.outputs.package_name }}
+          WINDOWS_EXE_NAME: ${{ steps.config.outputs.windows_exe_name }}
           INSTALLER_APP_ID: ${{ steps.config.outputs.android_application_id }}
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
@@ -237,6 +244,7 @@ jobs:
             "/DMyAppId=$env:INSTALLER_APP_ID" `
             "/DMyAppName=$env:PACKAGE_NAME" `
             "/DMyAppPublisher=$env:PACKAGE_NAME" `
+            "/DMyAppExeName=$env:WINDOWS_EXE_NAME" `
             "/DMyAppVersion=$env:BUILD_VERSION" `
             "/DMyOutputDir=release" `
             "/DMyOutputBaseFilename=$outputName" `

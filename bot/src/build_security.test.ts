@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { buildRunName } from './github.js';
+import { buildRunName, publicTenantId } from './github.js';
 import {
   generateKeyPair,
   signConfigPayload,
@@ -25,6 +25,14 @@ test('build run names include the unique request id', () => {
     }),
     'client_123 android v1.2.7 [request-abc]',
   );
+});
+
+test('public tenant ids are stable and do not expose account identifiers', () => {
+  const first = publicTenantId('random-signing-public-key');
+  assert.equal(first, publicTenantId('random-signing-public-key'));
+  assert.match(first, /^tenant_[a-f0-9]{16}$/);
+  assert.doesNotMatch(first, /6197401242|client/i);
+  assert.notEqual(first, publicTenantId('another-public-key'));
 });
 
 test('config validation rejects shell-friendly control characters', () => {

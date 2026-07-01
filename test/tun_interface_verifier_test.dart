@@ -11,7 +11,9 @@ void main() {
       pollInterval: Duration.zero,
       probe: () async {
         attempts += 1;
-        return attempts < 2 ? const ['Ethernet'] : const ['Ethernet', 'Litchi'];
+        return attempts < 2
+            ? const ['Ethernet']
+            : ['Ethernet', AppIdentity.tunInterfaceAlias];
       },
     );
 

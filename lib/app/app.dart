@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
@@ -55,7 +57,7 @@ class _LitchiAppState extends State<LitchiApp> {
             // sidebar layout on wide windows and a bottom-nav layout on narrow
             // ones, chosen by width rather than by platform.
             home: Scaffold(
-              backgroundColor: Colors.transparent,
+              backgroundColor: Platform.isWindows ? null : Colors.transparent,
               body: AppShell(launchSilently: widget.launchSilently),
             ),
           );

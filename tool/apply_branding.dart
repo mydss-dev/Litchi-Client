@@ -22,6 +22,7 @@ Future<void> main(List<String> args) async {
   }
 
   final appName = _string(payload['app_name'], fallback: 'Litchi Client');
+  final windowsExeName = '${sanitizeWindowsExecutableBaseName(appName)}.exe';
   final logo = _string(payload['logo_url']);
 
   stdout.writeln('Branding source: $source');
@@ -29,7 +30,7 @@ Future<void> main(List<String> args) async {
   stdout.writeln('Logo: ${logo.isEmpty ? '(empty)' : logo}');
 
   await _writeAndroidName(appName);
-  await _writeWindowsName(appName);
+  await _writeWindowsName(appName, windowsExeName);
   await _writeMacOsName(appName);
 
   if (!metadataOnly) {
@@ -135,7 +136,7 @@ Future<void> _writeAndroidName(String appName) async {
   stdout.writeln('Android app label updated.');
 }
 
-Future<void> _writeWindowsName(String appName) async {
+Future<void> _writeWindowsName(String appName, String executableName) async {
   final file = File('windows/runner/Runner.rc');
   if (!await file.exists()) return;
   var text = await file.readAsString();
@@ -146,7 +147,7 @@ Future<void> _writeWindowsName(String appName) async {
   text = _replaceRcValue(text, 'FileDescription', escaped);
   text = _replaceRcValue(text, 'InternalName', escaped);
   text = _replaceRcValue(text, 'ProductName', escaped);
-  text = _replaceRcValue(text, 'OriginalFilename', 'Client.exe');
+  text = _replaceRcValue(text, 'OriginalFilename', executableName);
   text = _replaceRcValue(
     text,
     'LegalCopyright',
@@ -155,6 +156,23 @@ Future<void> _writeWindowsName(String appName) async {
 
   await file.writeAsString(text);
   stdout.writeln('Windows product metadata updated.');
+}
+
+String sanitizeWindowsExecutableBaseName(String appName) {
+  var cleaned = appName
+      .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '_')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim()
+      .replaceAll(RegExp(r'[. ]+$'), '');
+  final runes = cleaned.runes.take(60).toList(growable: false);
+  cleaned = String.fromCharCodes(runes).replaceAll(RegExp(r'[. ]+$'), '');
+  if (RegExp(
+    r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])$',
+    caseSensitive: false,
+  ).hasMatch(cleaned)) {
+    cleaned = '$cleaned-App';
+  }
+  return cleaned.isEmpty ? 'Client-App' : cleaned;
 }
 
 Future<void> _writeMacOsName(String appName) async {

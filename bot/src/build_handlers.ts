@@ -21,6 +21,7 @@ import {
 import {
   dispatchBuild,
   getCurrentBuildVersion,
+  publicTenantId,
   readBuildStatus,
   type BuildPlatform,
 } from "./github.js";
@@ -46,6 +47,7 @@ const terminalStatuses = new Set([
 type BuildGroup = {
   groupId: string;
   appId: string;
+  publicAppId: string;
   userId: number;
   chatId: number;
   messageId: number;
@@ -294,6 +296,7 @@ async function startBuildFromInput(
     const group: BuildGroup = {
       groupId: groupKey,
       appId: profile.app_id,
+      publicAppId: publicTenantId(app.public_key),
       userId,
       chatId,
       messageId: 0,
@@ -306,7 +309,7 @@ async function startBuildFromInput(
     for (const platform of platforms) {
       try {
         const dispatched = await dispatchBuild({
-          appId: profile.app_id,
+          appId: group.publicAppId,
           platform,
           version,
           remoteConfigUrl: profile.remote_config_url,
@@ -355,7 +358,7 @@ async function startBuildFromInput(
 
     scheduleGroupPoll(bot, {
       groupKey,
-      appId: profile.app_id,
+      appId: group.publicAppId,
       delayMs: 20000,
       attempt: 0,
     });
@@ -517,6 +520,7 @@ export async function resumeBuildTracking(bot: Telegraf): Promise<void> {
     const group: BuildGroup = {
       groupId,
       appId: first.app_id,
+      publicAppId: '',
       userId: first.tg_user_id,
       chatId: first.chat_id || first.tg_user_id,
       messageId: 0,
@@ -535,6 +539,13 @@ export async function resumeBuildTracking(bot: Telegraf): Promise<void> {
         ]),
       ),
     };
+    const app = getAppForUser(group.appId, group.userId);
+    if (!app) {
+      markBuildGroupFinalized(group.groupId);
+      groupMessages.delete(groupId);
+      continue;
+    }
+    group.publicAppId = publicTenantId(app.public_key);
     groupMessages.set(groupId, group);
     try {
       const sent = await bot.telegram.sendMessage(
@@ -552,7 +563,7 @@ export async function resumeBuildTracking(bot: Telegraf): Promise<void> {
     }
     scheduleGroupPoll(bot, {
       groupKey: groupId,
-      appId: group.appId,
+      appId: group.publicAppId,
       delayMs: 1000,
       attempt: 0,
     });
@@ -563,16 +574,9 @@ function formatGroupMessage(group: BuildGroup): string {
   const lines: string[] = [];
   for (const [id, build] of group.builds) {
     const statusText = mapStatusText(build.status);
-    let line = `#${id} ${build.platform} ${build.version} ${statusText}`;
-    if (build.downloadUrl) {
-      line += `\n${build.downloadUrl}`;
-    }
-    if (build.sha256) {
-      line += `\nSHA-256: ${build.sha256}`;
-    }
-    lines.push(line);
+    lines.push(`#${id} ${build.platform} ${build.version} ${statusText}`);
   }
-  lines.push("", "状态持续更新中，本条消息会自动刷新。");
+  lines.push("", "构建进度会在本条消息中更新。");
   return lines.join("\n");
 }
 
@@ -627,6 +631,9 @@ async function sendFinalConfig(
   const payload = withReleaseMetadata({}, releases);
   const signed = signConfigPayload(payload, app.private_key);
   const signedJson = JSON.stringify(signed, null, 2);
+  const packageLines = releases.map(
+    (release) => `- ${release.platform}: ${release.downloadUrl}`,
+  );
 
   await bot.telegram.sendDocument(
     group.chatId,
@@ -636,30 +643,16 @@ async function sendFinalConfig(
     },
     {
       caption: [
-        "打包完成，更新文件已生成。",
+        "打包完成，update.json 已生成。",
+        "",
+        "安装包下载地址：",
+        ...packageLines,
+        "",
         `请保持文件名 update.json，并上传到：${updateManifestUrl(app.remote_config_url)}`,
         "上传后本次更新才会生效；不上传则不会向已有用户发布更新。",
         "不需要重新上传 config.json。",
       ].join("\n"),
     },
-  );
-
-  const packageLines = releases.map(
-    (release) => `- ${release.platform}: ${release.downloadUrl}`,
-  );
-  await bot.telegram.sendMessage(
-    group.chatId,
-    [
-      "构建完成，update.json 已发送。",
-      "",
-      "安装包下载地址：",
-      ...packageLines,
-      "",
-      `1. 上传 update.json 覆盖到：${updateManifestUrl(app.remote_config_url)}`,
-      "2. 浏览器打开该地址，确认不是 404、HTML，才算成功。",
-      "3. 在测试设备安装上面的安装包，检查名称、Logo、登录、节点和连接。",
-    ].join("\n"),
-    { link_preview_options: { is_disabled: true } },
   );
   group.finalConfigSent = true;
 }

@@ -169,6 +169,10 @@ class CoreController extends ChangeNotifier {
     await _logSub?.cancel();
     _sub = null;
     _logSub = null;
+    if (_core.isRunning) {
+      await _core.stop();
+      MihomoApiClient.resetClient();
+    }
     _core.dispose();
     try {
       await ProxySetter.disable(notify: false);

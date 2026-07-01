@@ -37,6 +37,27 @@ int Scale(int source, double scale_factor) {
   return static_cast<int>(source * scale_factor);
 }
 
+void ApplyRoundedWindowRegion(HWND window) {
+  if (IsZoomed(window)) {
+    SetWindowRgn(window, nullptr, TRUE);
+    return;
+  }
+
+  RECT bounds{};
+  if (!GetWindowRect(window, &bounds)) {
+    return;
+  }
+  const int width = bounds.right - bounds.left;
+  const int height = bounds.bottom - bounds.top;
+  const UINT dpi = GetDpiForWindow(window);
+  const int radius = MulDiv(18, dpi == 0 ? 96 : dpi, 96);
+  HRGN region =
+      CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
+  if (region != nullptr && SetWindowRgn(window, region, TRUE) == 0) {
+    DeleteObject(region);
+  }
+}
+
 // Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
 // This API is only needed for PerMonitor V1 awareness mode.
 void EnableFullDpiSupportIfAvailable(HWND hwnd) {
@@ -145,6 +166,7 @@ bool Win32Window::Create(const std::wstring& title,
   }
 
   UpdateTheme(window);
+  ApplyRoundedWindowRegion(window);
 
   return OnCreate();
 }
@@ -198,6 +220,7 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
     }
     case WM_SIZE: {
+      ApplyRoundedWindowRegion(hwnd);
       RECT rect = GetClientArea();
       if (child_content_ != nullptr) {
         // Size and position the child window.
