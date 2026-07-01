@@ -184,8 +184,9 @@ async function startBuildFromInput(
 
   try {
     const version = getCurrentBuildVersion();
+    const baseSignedConfig = app.signed_config;
     const currentConfig = verifyConfigPayload(
-      app.signed_config,
+      baseSignedConfig,
       app.public_key,
     );
 
@@ -228,7 +229,7 @@ async function startBuildFromInput(
         version,
         remoteConfigUrl: profile.remote_config_url,
         verifier: profile.public_key,
-        signedConfig: app.signed_config,
+        signedConfig: baseSignedConfig,
       });
       const id = createBuild({
         appId: profile.app_id,
