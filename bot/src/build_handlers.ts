@@ -1,4 +1,5 @@
 import type { Telegraf } from 'telegraf';
+import { nanoid } from 'nanoid';
 
 import { env, isAdmin } from './config.js';
 import {
@@ -16,6 +17,7 @@ import {
   setPendingAction,
 } from './flow_state.js';
 import {
+  buildDownloadUrl,
   dispatchBuild,
   getCurrentBuildVersion,
   readBuildStatus,
@@ -61,6 +63,16 @@ type BuildGroup = {
     }
   >;
 };
+
+type PlannedRelease = {
+  platform: BuildPlatform;
+  version: string;
+  requestId: string;
+  downloadUrl: string;
+  sha256: string;
+};
+
+const PENDING_SHA256 = '0'.repeat(64);
 
 const groupMessages = new Map<string, BuildGroup>();
 const groupTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -154,6 +166,10 @@ async function startBuildFromInput(
     await ctx.reply('还没有可用于打包的配置，请先发送 /build 并回传模板。');
     return;
   }
+  if (!env.downloadBaseUrl) {
+    await ctx.reply('缺少 DOWNLOAD_BASE_URL，无法提前生成安装包下载地址。');
+    return;
+  }
 
   // ── Rate limit ───────────────────────────────────────────────────────────
   if (!isAdmin(userId)) {
@@ -186,6 +202,45 @@ async function startBuildFromInput(
       app.signed_config,
       app.public_key,
     );
+    const plannedReleases = platforms.map((platform) => {
+      const requestId = nanoid(12);
+      return {
+        platform,
+        version,
+        requestId,
+        downloadUrl: buildDownloadUrl({
+          appId: profile.app_id,
+          platform,
+          version,
+          requestId,
+        }),
+        sha256: PENDING_SHA256,
+      };
+    });
+
+    const plannedSignedConfig = signPlannedReleaseConfig({
+      appId: profile.app_id,
+      privateKey: app.private_key,
+      currentConfig,
+      releases: plannedReleases,
+    });
+    saveSignedConfig(profile.app_id, plannedSignedConfig.compactJson);
+
+    await bot.telegram.sendDocument(
+      chatId,
+      {
+        source: Buffer.from(plannedSignedConfig.prettyJson, 'utf8'),
+        filename: 'config.json',
+      },
+      {
+        caption: [
+          '最终配置已提前生成，里面已经写入本次安装包的固定下载地址。',
+          `请保持文件名 config.json，并上传覆盖到：${profile.remote_config_url}`,
+          '说明：安装包还在构建中，下载地址会在构建完成后生效。',
+        ].join('\n'),
+      },
+    );
+
     if (matchesPublishedVersion(currentConfig, version)) {
       await ctx.reply(
         [
@@ -206,31 +261,32 @@ async function startBuildFromInput(
     };
     groupMessages.set(groupKey, group);
 
-    for (const platform of platforms) {
+    for (const planned of plannedReleases) {
       const dispatched = await dispatchBuild({
         appId: profile.app_id,
-        platform,
+        platform: planned.platform,
         version,
         remoteConfigUrl: profile.remote_config_url,
         verifier: profile.public_key,
-        signedConfig: app.signed_config,
+        signedConfig: plannedSignedConfig.compactJson,
+        requestId: planned.requestId,
       });
       const id = createBuild({
         appId: profile.app_id,
         tgUserId: userId,
         requestId: dispatched.requestId,
-        platform,
+        platform: planned.platform,
         version,
         status: 'queued',
         githubRunUrl: dispatched.workflowUrl,
       });
 
       group.builds.set(id, {
-        platform,
+        platform: planned.platform,
         version,
         requestId: dispatched.requestId,
         status: 'queued',
-        downloadUrl: '',
+        downloadUrl: planned.downloadUrl,
         sha256: '',
       });
     }
@@ -249,6 +305,25 @@ async function startBuildFromInput(
   } catch (error) {
     await ctx.reply(error instanceof Error ? error.message : String(error));
   }
+}
+
+function signPlannedReleaseConfig(input: {
+  appId: string;
+  privateKey: string;
+  currentConfig: ReturnType<typeof verifyConfigPayload>;
+  releases: PlannedRelease[];
+}): { compactJson: string; prettyJson: string } {
+  const payload = withReleaseMetadata(input.currentConfig, input.releases);
+  const validated = parseAndValidateConfig(JSON.stringify(payload));
+  const configVersion = bumpConfigVersion(input.appId);
+  const signed = signConfigPayload(
+    withConfigVersion(validated, configVersion),
+    input.privateKey,
+  );
+  return {
+    compactJson: JSON.stringify(signed),
+    prettyJson: JSON.stringify(signed, null, 2),
+  };
 }
 
 function scheduleGroupPoll(
@@ -301,7 +376,7 @@ function scheduleGroupPoll(
               snapshot.sha256 !== build.sha256
             ) {
               build.status = snapshot.status;
-              build.downloadUrl = snapshot.downloadUrl;
+              build.downloadUrl = snapshot.downloadUrl || build.downloadUrl;
               build.sha256 = snapshot.sha256;
               changed = true;
             }
@@ -338,6 +413,10 @@ function scheduleGroupPoll(
       if (input.attempt < 60) {
         scheduleGroupPoll(bot, { ...input, delayMs: 30000, attempt: input.attempt + 1 });
       } else {
+        await bot.telegram.sendMessage(
+          group.chatId,
+          '构建状态轮询超时：config.json 已提前发送，下载地址固定不变；请到 GitHub Actions 或 R2 检查安装包是否上传成功。',
+        );
         groupTimers.delete(input.groupKey);
         groupMessages.delete(input.groupKey);
       }
@@ -367,10 +446,7 @@ function formatGroupMessage(group: BuildGroup): string {
     }
     lines.push(line);
   }
-  if ([...group.builds.values()].some((build) => build.sha256)) {
-    lines.push('', '安装包信息已生成，机器人将自动制作最终配置。');
-  }
-  lines.push('', '状态持续更新中，本条消息会自动刷新。');
+  lines.push('', 'config.json 已提前发送；状态持续更新中，本条消息会自动刷新。');
   return lines.join('\n');
 }
 
@@ -387,91 +463,28 @@ async function sendFinalConfig(
     group.finalConfigSent = true;
     await bot.telegram.sendMessage(
       group.chatId,
-      '本次构建没有成功的平台，因此没有生成最终配置。',
+      '本次构建没有成功的平台；config.json 已经提前发送，但对应安装包不会生效。',
     );
     return;
   }
 
-  const app = getAppForUser(group.appId, group.userId);
-  if (!app?.signed_config) {
-    throw new Error('找不到基础签名配置，请重新执行 /build。');
-  }
-  const current = verifyConfigPayload(app.signed_config, app.public_key);
-  const updatesEnabled = current.update_enabled !== false;
-  const releases = [...group.builds.values()].filter(
-    (build) =>
-      build.status === 'success' &&
-      build.downloadUrl !== '' &&
-      /^[a-f0-9]{64}$/.test(build.sha256),
-  );
-  if (releases.length === 0) {
-    group.finalConfigSent = true;
-    await bot.telegram.sendMessage(
-      group.chatId,
-      '构建已结束，但没有可发布的下载地址和 SHA-256，因此没有生成最终配置。',
-    );
-    return;
-  }
-
-  const payload = withReleaseMetadata(current, releases);
-  const validated = parseAndValidateConfig(JSON.stringify(payload));
-  const configVersion = bumpConfigVersion(group.appId);
-  const signed = signConfigPayload(
-    withConfigVersion(validated, configVersion),
-    app.private_key,
-  );
-  const signedJson = JSON.stringify(signed, null, 2);
-
-  saveSignedConfig(group.appId, JSON.stringify(signed));
-
-  await bot.telegram.sendDocument(
-    group.chatId,
-    {
-      source: Buffer.from(signedJson, 'utf8'),
-      filename: 'config.json',
-    },
-    {
-      caption: [
-        updatesEnabled
-          ? '最终发布配置已生成，版本、下载地址和 SHA-256 都已自动填好。'
-          : '最终发布配置已生成，发布信息已保存；你关闭了更新提示，客户端不会展示它。',
-        `请将文件保持名为 config.json，并上传覆盖到：${app.remote_config_url}`,
-        '上传后再按下一条消息完成交付测试。',
-      ].join('\n'),
-    },
-  );
-
-  const version = releases[0].version;
-  const sameVersionRebuild = matchesPublishedVersion(current, version);
-  const packageLines = releases.map(
+  const packageLines = successfulBuilds.map(
     (release) => `- ${release.platform}: ${release.downloadUrl}`,
   );
   await bot.telegram.sendMessage(
     group.chatId,
     [
-      '交付与测试步骤：',
+      '构建完成。',
       '',
       '安装包下载地址：',
       ...packageLines,
       '',
-      `1. 上传 config.json 覆盖到：${app.remote_config_url}`,
-      '2. 用浏览器打开该地址，应看到包含 payload_b64 和 signature 的 JSON；不能是 404、网页 HTML 或旧内容。',
-      '3. 先在测试设备或虚拟机安装上面的安装包。',
-      '4. 启动后检查软件名称、Logo、登录/API、节点获取和实际连接。',
-      updatesEnabled
-        ? `5. 更新测试：使用低于 ${version} 的旧版客户端检查更新提示；当前版本不会提示更新。`
-        : '5. 当前已关闭更新提示，旧版客户端也不应显示更新横幅。',
-      ifSameVersionWarning(sameVersionRebuild),
+      'config.json 已在构建开始时发送过，无需因为构建完成再上传第二次。',
+      '测试时请确认 OSS 上的 config.json 可以访问，并安装上面的安装包。',
     ].join('\n'),
     { link_preview_options: { is_disabled: true } },
   );
   group.finalConfigSent = true;
-}
-
-function ifSameVersionWarning(sameVersionRebuild: boolean): string {
-  return sameVersionRebuild
-    ? '提醒：这是同版本重打，已安装用户不会收到更新，图标和原生名称要等下次提高版本后才会生效。'
-    : '';
 }
 
 function mapStatusText(status: string): string {
