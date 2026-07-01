@@ -521,7 +521,7 @@ export async function resumeBuildTracking(bot: Telegraf): Promise<void> {
     const group: BuildGroup = {
       groupId,
       appId: first.app_id,
-      publicAppId: '',
+      publicAppId: "",
       userId: first.tg_user_id,
       chatId: first.chat_id || first.tg_user_id,
       messageId: 0,
@@ -649,6 +649,7 @@ async function sendFinalConfig(
         "请保持文件名 update.json，并上传到：",
         updateManifestUrl(app.remote_config_url),
         "",
+        "上传后浏览器打开该地址，确认不是 404、HTML，才算成功。",
         "上传后本次更新才会生效；不上传则不会向已有用户发布更新。",
       ].join("\n"),
     },
