@@ -526,28 +526,26 @@ class _CompactBody extends StatefulWidget {
 }
 
 class _CompactBodyState extends State<_CompactBody> {
-  late final List<AppPage> _primaryPages = compactPrimaryDestinations
-      .map((item) => item.page)
-      .toList(growable: false);
-
-  late final List<Widget> _primaryWidgets = _primaryPages
-      .map(
-        (page) => KeyedSubtree(
-          key: PageStorageKey<AppPage>(page),
-          child: _pageFor(page),
-        ),
-      )
-      .toList(growable: false);
-
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final primaryPages = compactPrimaryDestinations
+        .map((item) => item.page)
+        .toList(growable: false);
+    final primaryWidgets = primaryPages
+        .map(
+          (page) => KeyedSubtree(
+            key: PageStorageKey<AppPage>(page),
+            child: _pageFor(page),
+          ),
+        )
+        .toList(growable: false);
 
-    final primaryIndex = _primaryPages.indexOf(ctrl.page);
+    final primaryIndex = primaryPages.indexOf(ctrl.page);
     final page = primaryIndex >= 0
-        ? IndexedStack(index: primaryIndex, children: _primaryWidgets)
+        ? IndexedStack(index: primaryIndex, children: primaryWidgets)
         : _pageFor(ctrl.page);
 
     final content = Column(

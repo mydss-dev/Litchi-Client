@@ -4,6 +4,7 @@
   "settingsSubtitle": "配置客户端偏好和网络选项",
   "systemSettings": "系统设置",
   "launchAtStartup": "开机启动",
+  "silentStartup": "静默启动到托盘",
   "automaticUpdates": "自动更新",
   "appearance": "外观模式",
   "language": "语言",

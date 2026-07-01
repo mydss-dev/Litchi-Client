@@ -21,6 +21,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get launchAtStartup => '开机启动';
 
   @override
+  String get silentStartup => '静默启动到托盘';
+
+  @override
   String get automaticUpdates => '自动更新';
 
   @override
@@ -1602,6 +1605,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get launchAtStartup => '開機啟動';
+
+  @override
+  String get silentStartup => '靜默啟動到系統匣';
 
   @override
   String get automaticUpdates => '自動更新';

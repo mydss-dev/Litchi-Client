@@ -4,6 +4,7 @@
   "settingsSubtitle": "Configure client preferences and network options",
   "systemSettings": "System",
   "launchAtStartup": "Launch at startup",
+  "silentStartup": "Start silently in tray",
   "automaticUpdates": "Automatic updates",
   "appearance": "Appearance",
   "language": "Language",

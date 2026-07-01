@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
+import '../../config/app_config.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
@@ -85,7 +86,8 @@ class _StatsGrid extends StatelessWidget {
           children: [
             SizedBox(width: cardWidth, child: const _TrafficCard()),
             SizedBox(width: cardWidth, child: const _RemainingDaysCard()),
-            SizedBox(width: cardWidth, child: const _DevicesCard()),
+            if (AppConfig.panelFeatures.onlineDevices)
+              SizedBox(width: cardWidth, child: const _DevicesCard()),
             SizedBox(width: cardWidth, child: const _TrafficResetCard()),
           ],
         );

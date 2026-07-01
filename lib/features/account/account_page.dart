@@ -370,7 +370,7 @@ class _AccountShortcutGrid extends StatelessWidget {
       title: context.l10n.ticketSupport,
       subtitle: context.l10n.contactAfterSales,
     ),
-  ];
+  ].where((item) => isPageEnabled(item.page)).toList(growable: false);
 
   @override
   Widget build(BuildContext context) {
@@ -612,7 +612,7 @@ class _TrafficOverviewCard extends StatelessWidget {
   final double totalGb;
   final double remainGb;
   final int? resetDay;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -737,7 +737,9 @@ class _ProfileSummaryCard extends StatelessWidget {
       totalGb: ctrl.traffic.totalGb,
       remainGb: ctrl.traffic.remainGb,
       resetDay: ctrl.resetDay,
-      onTap: () => ctrl.goToPage(AppPage.traffic),
+      onTap: isPageEnabled(AppPage.traffic)
+          ? () => ctrl.goToPage(AppPage.traffic)
+          : null,
     );
   }
 }

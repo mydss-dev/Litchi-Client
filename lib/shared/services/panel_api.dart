@@ -20,7 +20,7 @@ class PanelApi {
       data: {'email': email, 'password': password},
     );
     _check(res);
-    return AuthResult.fromJson(_dataMap(res));
+    return AuthResult.fromJson(_dataMapOrSelf(res));
   }
 
   Future<AuthResult> register({
@@ -43,7 +43,7 @@ class PanelApi {
     }
     final res = await _client.post('/passport/auth/register', data: body);
     _check(res);
-    return AuthResult.fromJson(_dataMap(res));
+    return AuthResult.fromJson(_dataMapOrSelf(res));
   }
 
   Future<void> changePassword({
@@ -540,6 +540,14 @@ class PanelApi {
     final data = res['data'];
     if (data is Map<String, dynamic>) return data;
     if (data is Map) return Map<String, dynamic>.from(data);
+    throw const ApiException('服务器返回数据格式异常');
+  }
+
+  static Map<String, dynamic> _dataMapOrSelf(Map<String, dynamic> res) {
+    final data = res['data'];
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    if (res.containsKey('auth_data') || res.containsKey('token')) return res;
     throw const ApiException('服务器返回数据格式异常');
   }
 

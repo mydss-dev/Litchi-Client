@@ -2,6 +2,8 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 
+import 'panel_backend.dart';
+
 /// All configurable values — compile-time defaults from dart-define that can be
 /// overridden at runtime by the Ed25519-signed OSS remote config.
 ///
@@ -78,6 +80,8 @@ abstract final class AppConfig {
       apiBaseList.isNotEmpty ? apiBaseList : [apiBase];
 
   static String apiPrefix = '';
+  static PanelType panelType = PanelType.v2board;
+  static PanelFeatures panelFeatures = PanelFeatures.legacy;
 
   // ── Brand ──────────────────────────────────────────────────────────────────
 
@@ -103,6 +107,12 @@ abstract final class AppConfig {
     final before = _runtimeFingerprint();
 
     _str(json, 'api_prefix', (v) => apiPrefix = v);
+    final configuredPanelType = PanelType.tryParse(json['panel_type']);
+    if (configuredPanelType != null) {
+      panelType = configuredPanelType;
+      panelFeatures = PanelFeatures.defaultsFor(panelType);
+    }
+    panelFeatures = panelFeatures.apply(json['panel_features']);
 
     final bases = json['api_base_list'];
     if (bases is List) {
@@ -146,6 +156,8 @@ abstract final class AppConfig {
     apiBase,
     ...apiBaseList,
     apiPrefix,
+    panelType.configValue,
+    panelFeatures.fingerprint,
     appName,
     logoUrl,
     avatarUrl,

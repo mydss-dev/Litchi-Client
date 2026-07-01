@@ -23,10 +23,14 @@ abstract final class AutoStart {
   }
 
   /// Register the current executable to launch at Windows startup.
-  static Future<void> enable() async {
+  static Future<void> enable({bool silent = false}) async {
     try {
       if (Platform.isWindows) {
-        WindowsRegistry.writeString(_key, _name, '"$_exePath" --silent');
+        WindowsRegistry.writeString(
+          _key,
+          _name,
+          windowsRunCommand(executable: _exePath, silent: silent),
+        );
       } else if (Platform.isMacOS) {
         final path = _macLaunchAgentPath;
         if (path == null) return;
@@ -36,6 +40,7 @@ abstract final class AutoStart {
           macLaunchAgentPlist(
             label: _macLaunchAgentLabel,
             executable: _exePath,
+            silent: silent,
           ),
           flush: true,
         );
@@ -64,6 +69,7 @@ abstract final class AutoStart {
   static String macLaunchAgentPlist({
     required String label,
     required String executable,
+    bool silent = false,
   }) {
     final escapedLabel = _xmlEscape(label);
     final escapedExecutable = _xmlEscape(executable);
@@ -76,7 +82,7 @@ abstract final class AutoStart {
   <key>ProgramArguments</key>
   <array>
     <string>$escapedExecutable</string>
-    <string>--silent</string>
+${silent ? '    <string>--silent</string>' : ''}
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -84,6 +90,11 @@ abstract final class AutoStart {
 </plist>
 ''';
   }
+
+  static String windowsRunCommand({
+    required String executable,
+    bool silent = false,
+  }) => '"$executable"${silent ? ' --silent' : ''}';
 
   static String _xmlEscape(String value) => value
       .replaceAll('&', '&amp;')

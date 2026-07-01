@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
 import '../../config/app_config.dart';
+import 'panel_backend_adapter.dart';
 import 'secure_logger.dart';
 
 typedef SessionExpiredCallback = FutureOr<void> Function();
@@ -383,10 +384,14 @@ class ApiClient {
     var tried = 0;
     while (true) {
       try {
+        final backend = PanelBackendAdapter(AppConfig.panelType);
         final res = await _dio!.post(
           path,
-          data: data,
-          options: Options(headers: headers),
+          data: backend.preparePostData(path, data),
+          options: Options(
+            headers: headers,
+            contentType: backend.postContentType,
+          ),
         );
         return _parse(res);
       } on DioException catch (e) {

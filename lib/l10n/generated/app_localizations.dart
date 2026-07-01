@@ -123,6 +123,12 @@ abstract class AppLocalizations {
   /// **'Launch at startup'**
   String get launchAtStartup;
 
+  /// No description provided for @silentStartup.
+  ///
+  /// In en, this message translates to:
+  /// **'Start silently in tray'**
+  String get silentStartup;
+
   /// No description provided for @automaticUpdates.
   ///
   /// In en, this message translates to:

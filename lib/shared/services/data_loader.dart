@@ -75,12 +75,18 @@ class DataLoader {
 
   /// Loads the remaining fields visible on the first dashboard frame.
   Future<void> loadPrimary(DataSnapshot snap) async {
-    await Future.wait([_fillNodes(snap), _fillPlans(snap)]);
+    await Future.wait([
+      _fillNodes(snap),
+      if (AppConfig.panelFeatures.shop) _fillPlans(snap),
+    ]);
   }
 
   /// Loads non-critical detail pages without delaying first-frame content.
   Future<void> loadSecondary(DataSnapshot snap) async {
-    await Future.wait([_fillInvite(snap), _fillTrafficLog(snap)]);
+    await Future.wait([
+      if (AppConfig.panelFeatures.invite) _fillInvite(snap),
+      if (AppConfig.panelFeatures.traffic) _fillTrafficLog(snap),
+    ]);
   }
 
   /// Partial load: only re-fetch nodes for [subscribeUrl].
@@ -124,8 +130,10 @@ class DataLoader {
       try {
         final subscribe = await _api.getSubscribeInfo();
         snap.subscribeUrl = subscribe.subscribeUrl;
-        snap.aliveIp = subscribe.aliveIp;
-        snap.deviceLimit = subscribe.deviceLimit;
+        if (AppConfig.panelFeatures.onlineDevices) {
+          snap.aliveIp = subscribe.aliveIp;
+          snap.deviceLimit = subscribe.deviceLimit;
+        }
         snap.resetDay = subscribe.resetDay;
         snap.expiredAt = subscribe.expiredAt;
         if (subscribe.transferEnable > 0) {

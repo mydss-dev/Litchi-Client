@@ -39,4 +39,14 @@ void main() {
       expect(snapshot.language, preference);
     }
   });
+
+  test(
+    'silent startup defaults off and loads an explicit preference',
+    () async {
+      expect((await SettingsService.load()).silentStart, isFalse);
+
+      SharedPreferences.setMockInitialValues({'silent_start': true});
+      expect((await SettingsService.load()).silentStart, isTrue);
+    },
+  );
 }

@@ -22,6 +22,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get launchAtStartup => 'Launch at startup';
 
   @override
+  String get silentStartup => 'Start silently in tray';
+
+  @override
   String get automaticUpdates => 'Automatic updates';
 
   @override

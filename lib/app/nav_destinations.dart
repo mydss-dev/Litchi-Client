@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../l10n/l10n.dart';
+import '../config/app_config.dart';
 import 'app_controller.dart'; // AppPage
 
 /// Where a destination lives in the compact (narrow-screen) layout.
@@ -26,6 +27,16 @@ class NavDestination {
   final AppPage page;
   final IconData icon;
   final CompactPlacement compact;
+
+  bool get isEnabled => switch (page) {
+    AppPage.shop => AppConfig.panelFeatures.shop,
+    AppPage.invite => AppConfig.panelFeatures.invite,
+    AppPage.wallet => AppConfig.panelFeatures.wallet,
+    AppPage.orders => AppConfig.panelFeatures.orders,
+    AppPage.traffic => AppConfig.panelFeatures.traffic,
+    AppPage.tickets => AppConfig.panelFeatures.tickets,
+    _ => true,
+  };
 
   String labelFor(BuildContext context) {
     final l10n = context.l10n;
@@ -121,14 +132,23 @@ const List<NavDestination> kNavDestinations = [
 
 // ── Derived subsets ──────────────────────────────────────────────────────────
 
-Iterable<NavDestination> get sidebarDestinations => kNavDestinations;
+Iterable<NavDestination> get sidebarDestinations =>
+    kNavDestinations.where((item) => item.isEnabled);
 
 List<NavDestination> get compactPrimaryDestinations => kNavDestinations
-    .where((d) => d.compact == CompactPlacement.primary)
+    .where((d) => d.compact == CompactPlacement.primary && d.isEnabled)
     .toList();
 
-List<NavDestination> get hubDestinations =>
-    kNavDestinations.where((d) => d.compact == CompactPlacement.hub).toList();
+List<NavDestination> get hubDestinations => kNavDestinations
+    .where((d) => d.compact == CompactPlacement.hub && d.isEnabled)
+    .toList();
+
+bool isPageEnabled(AppPage page) =>
+    kNavDestinations
+        .where((item) => item.page == page)
+        .firstOrNull
+        ?.isEnabled ??
+    true;
 
 /// Returns true when [page] is a primary bottom-nav tab (should show a
 /// compact page header rather than a back-button row).

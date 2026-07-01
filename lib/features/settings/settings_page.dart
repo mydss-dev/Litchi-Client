@@ -137,12 +137,20 @@ class _SettingsPageState extends State<SettingsPage> {
       _SettingsGroup(
         title: l10n.systemSettings,
         children: [
-          if (Platform.isWindows)
+          if (Platform.isWindows || Platform.isMacOS)
             _SettingRow(
               label: l10n.launchAtStartup,
               trailing: AppSwitch(
                 value: ctrl.autoStart,
                 onChanged: ctrl.setAutoStart,
+              ),
+            ),
+          if (Platform.isWindows || Platform.isMacOS)
+            _SettingRow(
+              label: l10n.silentStartup,
+              trailing: AppSwitch(
+                value: ctrl.silentStart,
+                onChanged: ctrl.setSilentStart,
               ),
             ),
           _SettingRow(

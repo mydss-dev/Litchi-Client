@@ -4,6 +4,7 @@
   "settingsSubtitle": "設定用戶端偏好與網路選項",
   "systemSettings": "系統設定",
   "launchAtStartup": "開機啟動",
+  "silentStartup": "靜默啟動到系統匣",
   "automaticUpdates": "自動更新",
   "appearance": "外觀模式",
   "language": "語言",

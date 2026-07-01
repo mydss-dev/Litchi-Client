@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../app/app_controller.dart';
+import '../../../app/nav_destinations.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/models/app_models.dart' show UserModel;
 import '../../../shared/theme/app_colors.dart';
@@ -36,13 +37,16 @@ class ExpiryBanner extends StatelessWidget {
         : daysLeft == 0
         ? context.l10n.subscriptionExpiresToday
         : context.l10n.subscriptionExpiresInDays(daysLeft);
+    final canRenew = isPageEnabled(AppPage.shop);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: GestureDetector(
-        onTap: () => ctrl.goToPage(AppPage.shop),
+        onTap: canRenew ? () => ctrl.goToPage(AppPage.shop) : null,
         child: MouseRegion(
-          cursor: SystemMouseCursors.click,
+          cursor: canRenew
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
           child: Container(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
             decoration: BoxDecoration(
@@ -63,15 +67,17 @@ class ExpiryBanner extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  context.l10n.renewNow,
-                  style: AppTextStyles.button.copyWith(
-                    color: color,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                if (canRenew) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    context.l10n.renewNow,
+                    style: AppTextStyles.button.copyWith(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

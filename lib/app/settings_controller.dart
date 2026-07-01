@@ -16,6 +16,7 @@ class SettingsController extends ChangeNotifier {
   bool _wasConnected = false;
   String _lastNodeId = '';
   bool _autoStart = false;
+  bool _silentStart = false;
   bool _autoUpdate = true;
   AppLocalePreference _language = AppLocalePreference.system;
   ProxyMode _proxyMode = ProxyMode.rule;
@@ -28,6 +29,7 @@ class SettingsController extends ChangeNotifier {
   bool get wasConnected => _wasConnected;
   String get lastNodeId => _lastNodeId;
   bool get autoStart => _autoStart;
+  bool get silentStart => _silentStart;
   bool get autoUpdate => _autoUpdate;
   AppLocalePreference get language => _language;
   ProxyMode get proxyMode => _proxyMode;
@@ -44,6 +46,7 @@ class SettingsController extends ChangeNotifier {
     final s = await SettingsService.load();
     _proxyPort = s.proxyPort;
     _autoStart = s.autoStart;
+    _silentStart = s.silentStart;
     _autoUpdate = s.autoUpdate;
     _language = s.language;
     _proxyMode = s.proxyMode;
@@ -59,7 +62,7 @@ class SettingsController extends ChangeNotifier {
     // Sync registry to match the saved preference (also refreshes exe path
     // if the app was updated and moved to a new location).
     if (_autoStart) {
-      unawaited(AutoStart.enable());
+      unawaited(AutoStart.enable(silent: _silentStart));
     } else {
       unawaited(AutoStart.disable());
     }
@@ -99,9 +102,19 @@ class SettingsController extends ChangeNotifier {
     _autoStart = v;
     SettingsService.setAutoStart(v);
     if (v) {
-      unawaited(AutoStart.enable());
+      unawaited(AutoStart.enable(silent: _silentStart));
     } else {
       unawaited(AutoStart.disable());
+    }
+    notifyListeners();
+  }
+
+  void setSilentStart(bool v) {
+    if (_silentStart == v) return;
+    _silentStart = v;
+    SettingsService.setSilentStart(v);
+    if (_autoStart) {
+      unawaited(AutoStart.enable(silent: v));
     }
     notifyListeners();
   }

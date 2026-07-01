@@ -9,6 +9,7 @@ class SettingsSnapshot {
   const SettingsSnapshot({
     required this.proxyPort,
     required this.autoStart,
+    required this.silentStart,
     required this.autoUpdate,
     required this.language,
     required this.proxyMode,
@@ -22,6 +23,7 @@ class SettingsSnapshot {
 
   final int proxyPort;
   final bool autoStart;
+  final bool silentStart;
   final bool autoUpdate;
   final AppLocalePreference language;
   final ProxyMode proxyMode;
@@ -51,6 +53,7 @@ abstract final class SettingsService {
     return SettingsSnapshot(
       proxyPort: p.getInt(_key('proxy_port')) ?? 7890,
       autoStart: p.getBool(_key('auto_start')) ?? false,
+      silentStart: p.getBool(_key('silent_start')) ?? false,
       autoUpdate: p.getBool(_key('auto_update')) ?? true,
       language: AppLocalePreference.fromStorage(p.getString(_key('language'))),
       proxyMode: ProxyMode.fromStorageKey(p.getString(_key('proxy_mode'))),
@@ -79,6 +82,10 @@ abstract final class SettingsService {
 
   static void setAutoStart(bool v) => SharedPreferences.getInstance().then(
     (p) => p.setBool(_key('auto_start'), v),
+  );
+
+  static void setSilentStart(bool v) => SharedPreferences.getInstance().then(
+    (p) => p.setBool(_key('silent_start'), v),
   );
 
   static void setAutoUpdate(bool v) => SharedPreferences.getInstance().then(

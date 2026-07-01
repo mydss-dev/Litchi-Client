@@ -61,6 +61,78 @@ test('config validation accepts a normal signed-config payload', () => {
   );
 });
 
+test('config validation accepts panel type and capability switches', () => {
+  const config = parseAndValidateConfig(
+    JSON.stringify({
+      app_name: 'Customer Client',
+      logo_url: 'https://cdn.example.com/logo.png',
+      api_base_list: ['https://api.example.com'],
+      panel_type: 'XIAO_V2BOARD',
+      panel_features: {
+        shop: true,
+        invite: true,
+        wallet: true,
+        orders: true,
+        traffic: false,
+        tickets: false,
+        online_devices: true,
+      },
+    }),
+  );
+
+  assert.equal(config.panel_type, 'xiao_v2board');
+  assert.deepEqual(config.panel_features, {
+    shop: true,
+    invite: true,
+    wallet: true,
+    orders: true,
+    traffic: false,
+    tickets: false,
+    online_devices: true,
+  });
+});
+
+test('config validation rejects unknown panel capabilities', () => {
+  assert.throws(
+    () =>
+      parseAndValidateConfig(
+        JSON.stringify({
+          app_name: 'Customer Client',
+          logo_url: 'https://cdn.example.com/logo.png',
+          api_base_list: ['https://api.example.com'],
+          panel_type: 'other',
+        }),
+      ),
+    /panel_type/,
+  );
+  assert.throws(
+    () =>
+      parseAndValidateConfig(
+        JSON.stringify({
+          app_name: 'Customer Client',
+          logo_url: 'https://cdn.example.com/logo.png',
+          api_base_list: ['https://api.example.com'],
+          panel_features: { diagnostics: true },
+        }),
+      ),
+    /未知功能/,
+  );
+});
+
+test('panel capability overrides may contain only deployment differences', () => {
+  const config = parseAndValidateConfig(
+    JSON.stringify({
+      app_name: 'Customer Client',
+      logo_url: 'https://cdn.example.com/logo.png',
+      api_base_list: ['https://api.example.com'],
+      panel_type: 'v2board',
+      panel_features: { tickets: false },
+    }),
+  );
+
+  assert.deepEqual(config.panel_features, { tickets: false });
+});
+
 test('sample config leaves generated update metadata empty', () => {
   const sample = fs.readFileSync(
     new URL('../config.sample.json', import.meta.url),

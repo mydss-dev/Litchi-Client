@@ -20,6 +20,20 @@ const payload = {
   // 可选：API 路径前缀。面板接口没有前缀时填写空字符串。
   api_prefix: "/api/v1",
 
+  // 必填：后端面板类型，只能填写以下三种之一：
+  // "v2board"、"xiao_v2board"、"xboard"
+  // Xiao-V2Board 和 XBoard 的 POST 请求会自动使用表单格式。
+  panel_type: "v2board",
+
+  // 高级可选：正常面板不需要填写，客户端会根据 panel_type 自动判断。
+  // 只有魔改后端缺少某个接口时，才取消下面注释并覆盖对应功能：
+  // panel_features: {
+  //   wallet: false,         // 余额充值
+  //   traffic: false,        // 流量明细
+  //   tickets: false,        // 工单系统
+  //   online_devices: false, // 在线设备数/设备限制
+  // },
+
   // 必填：软件 Logo 的公开 HTTPS 地址。
   // 推荐 1024×1024 PNG、透明背景、文件不超过 10 MB。
   logo_url: "https://cdn.example.com/logo.png",

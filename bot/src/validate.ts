@@ -13,6 +13,8 @@ const allowedTopLevelKeys = new Set([
   'logo_url',
   'api_base_list',
   'api_prefix',
+  'panel_type',
+  'panel_features',
   'invite_url_base',
   'invite_base_url',
   'invite_url',
@@ -46,6 +48,8 @@ export function parseAndValidateConfig(raw: string): Record<string, unknown> {
   requireHttpsUrlList(payload);
   requireHttpsUrl(payload, 'logo_url');
   optionalPath(payload, 'api_prefix');
+  optionalPanelType(payload);
+  optionalPanelFeatures(payload);
   optionalHttpsUrl(payload, 'invite_url_base');
   optionalHttpsUrl(payload, 'invite_base_url');
   optionalHttpsUrl(payload, 'invite_url');
@@ -60,6 +64,44 @@ export function parseAndValidateConfig(raw: string): Record<string, unknown> {
   requireUpdateIntegrity(payload);
 
   return payload;
+}
+
+const panelTypes = new Set(['v2board', 'xiao_v2board', 'xboard']);
+const panelFeatureKeys = new Set([
+  'shop',
+  'invite',
+  'wallet',
+  'orders',
+  'traffic',
+  'tickets',
+  'online_devices',
+]);
+
+function optionalPanelType(obj: Record<string, unknown>): void {
+  const value = obj.panel_type;
+  if (value === undefined) return;
+  if (typeof value !== 'string' || !panelTypes.has(value.toLowerCase())) {
+    throw new Error(
+      'panel_type 只能填写 v2board、xiao_v2board 或 xboard。',
+    );
+  }
+  obj.panel_type = value.toLowerCase();
+}
+
+function optionalPanelFeatures(obj: Record<string, unknown>): void {
+  const value = obj.panel_features;
+  if (value === undefined) return;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('panel_features 必须是功能开关对象。');
+  }
+  for (const [key, enabled] of Object.entries(value)) {
+    if (!panelFeatureKeys.has(key)) {
+      throw new Error(`panel_features 存在未知功能: ${key}`);
+    }
+    if (typeof enabled !== 'boolean') {
+      throw new Error(`panel_features.${key} 必须填写 true 或 false。`);
+    }
+  }
 }
 
 /// Strips `//` line comments and `/* … */` block comments from a JSON-like

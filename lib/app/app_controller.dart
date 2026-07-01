@@ -105,6 +105,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   ThemeMode get themeMode => _settings.themeMode;
   bool get isDark => _settings.isDark;
   bool get autoStart => _settings.autoStart;
+  bool get silentStart => _settings.silentStart;
   bool get autoUpdate => _settings.autoUpdate;
   AppLocalePreference get language => _settings.language;
   Locale? get locale => _settings.language.locale;
@@ -119,6 +120,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   void setThemeMode(ThemeMode mode) => _settings.setThemeMode(mode);
   void toggleDarkMode(bool enabled) => _settings.toggleDarkMode(enabled);
   void setAutoStart(bool v) => _settings.setAutoStart(v);
+  void setSilentStart(bool v) => _settings.setSilentStart(v);
   void setAutoUpdate(bool v) {
     _settings.setAutoUpdate(v);
     if (!v) {
@@ -611,10 +613,24 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       AppConfig.effectiveApiBases,
       forceRebuild: true,
     );
+    if (!_isPageEnabled(_page)) {
+      _page = AppPage.dashboard;
+      _mobileProfileChildPage = false;
+    }
     unawaited(refreshRegisterConfigCache());
     unawaited(_checkForUpdate());
     notifyListeners();
   }
+
+  bool _isPageEnabled(AppPage page) => switch (page) {
+    AppPage.shop => AppConfig.panelFeatures.shop,
+    AppPage.invite => AppConfig.panelFeatures.invite,
+    AppPage.wallet => AppConfig.panelFeatures.wallet,
+    AppPage.orders => AppConfig.panelFeatures.orders,
+    AppPage.traffic => AppConfig.panelFeatures.traffic,
+    AppPage.tickets => AppConfig.panelFeatures.tickets,
+    _ => true,
+  };
 
   void _onCoreChanged() {
     final status = _core.connectionStatus;
@@ -628,6 +644,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void goToPage(AppPage page) {
+    if (!_isPageEnabled(page)) return;
     _mobileProfileChildPage = false;
     if (_page == page) return;
     _page = page;
@@ -635,6 +652,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void goToProfileChildPage(AppPage page) {
+    if (!_isPageEnabled(page)) return;
     _mobileProfileChildPage = page != AppPage.account;
     if (_page == page) {
       notifyListeners();
@@ -831,12 +849,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     await secondaryLoad;
     if (!_isSessionCurrent(sessionEpoch)) return;
     _applySnapshot(snap);
-    try {
-      final symbol = await _api.getCommCurrencySymbol();
-      if (!_isSessionCurrent(sessionEpoch)) return;
-      _wallet.setCurrencySymbol(symbol);
-    } catch (e) {
-      SecureLogger.warn('AppController currency load failed', e);
+    final features = AppConfig.panelFeatures;
+    if (features.shop || features.invite || features.wallet) {
+      try {
+        final symbol = await _api.getCommCurrencySymbol();
+        if (!_isSessionCurrent(sessionEpoch)) return;
+        _wallet.setCurrencySymbol(symbol);
+      } catch (e) {
+        SecureLogger.warn('AppController currency load failed', e);
+      }
     }
     try {
       final notices = await _api.getNotices();
