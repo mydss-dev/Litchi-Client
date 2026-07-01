@@ -9,7 +9,7 @@ import 'package:litchi_client/shared/services/update_service.dart';
 bool get _installerDownloadSupported => Platform.isWindows || Platform.isMacOS;
 
 void main() {
-  test('selects a URL and mandatory hash from update metadata', () {
+  test('selects a URL and mandatory hash from update metadata', () async {
     final originalVersion = AppConfig.currentVersion;
     addTearDown(() => AppConfig.currentVersion = originalVersion);
     AppConfig.currentVersion = '1.0.0';
@@ -20,14 +20,14 @@ void main() {
       'update_sha256': hash,
     });
 
-    final info = UpdateService.check();
+    final info = await UpdateService.check();
 
     expect(info, isNotNull);
     expect(info!.downloadUrl, 'https://cdn.example.com/setup.exe');
     expect(info.sha256, hash);
   });
 
-  test('does not advertise an update with invalid hash metadata', () {
+  test('does not advertise an update with invalid hash metadata', () async {
     final originalVersion = AppConfig.currentVersion;
     addTearDown(() => AppConfig.currentVersion = originalVersion);
     AppConfig.currentVersion = '1.0.0';
@@ -37,10 +37,10 @@ void main() {
       'update_sha256': 'invalid',
     });
 
-    expect(UpdateService.check(), isNull);
+    expect(await UpdateService.check(), isNull);
   });
 
-  test('remote update switch disables an otherwise valid update', () {
+  test('remote update switch disables an otherwise valid update', () async {
     final originalVersion = AppConfig.currentVersion;
     final originalEnabled = AppConfig.updatesEnabled;
     addTearDown(() {
@@ -55,7 +55,27 @@ void main() {
       'update_sha256': List.filled(64, 'a').join(),
     });
 
-    expect(UpdateService.check(), isNull);
+    expect(await UpdateService.check(), isNull);
+  });
+
+  test('selects the current platform from a split update manifest', () {
+    final originalVersion = AppConfig.currentVersion;
+    addTearDown(() => AppConfig.currentVersion = originalVersion);
+    AppConfig.currentVersion = '1.0.0';
+    final platform = Platform.operatingSystem;
+    final hash = List.filled(64, 'b').join();
+
+    final info = UpdateService.parseManifestForCurrentPlatform({
+      'update_version': '2.0.0',
+      'update_download_url': {platform: 'https://cdn.example.com/package'},
+      'update_sha256': {platform: hash},
+      'update_changelog': 'split manifest',
+    });
+
+    expect(info, isNotNull);
+    expect(info!.downloadUrl, 'https://cdn.example.com/package');
+    expect(info.sha256, hash);
+    expect(info.changelog, 'split manifest');
   });
 
   test('UpdateInfo accepts only a complete hexadecimal SHA-256', () {

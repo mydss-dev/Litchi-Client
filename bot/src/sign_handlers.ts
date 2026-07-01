@@ -5,6 +5,7 @@ import {
   bumpConfigVersion,
   getAppForUser,
   getAuthorizedUser,
+  latestSuccessfulVersion,
   saveSignedConfig,
 } from './db.js';
 import {
@@ -19,11 +20,12 @@ import {
   verifyConfigPayload,
   withConfigVersion,
   withPreservedUpdateMetadata,
+  withUpdateManifestUrl,
 } from './signer.js';
 import { parseAndValidateConfig } from './validate.js';
 
 const configTemplate = fs.readFileSync(
-  new URL('../config.template.js', import.meta.url),
+  new URL('../config.template.json', import.meta.url),
 );
 
 export function wireSignCommands(bot: Telegraf): void {
@@ -76,6 +78,7 @@ export function wireSignCommands(bot: Telegraf): void {
       caption.includes('/signconfig') ||
       fileName === 'config.js' ||
       fileName === 'config.json' ||
+      fileName === 'config.template.json' ||
       fileName === 'config.template.js' ||
       fileName.endsWith('.config.js') ||
       fileName.endsWith('.config.json');
@@ -121,15 +124,31 @@ export async function startConfigFlow(ctx: Context): Promise<void> {
   await ctx.replyWithDocument(
     {
       source: configTemplate,
-      filename: 'config.template.js',
+      filename: 'config.template.json',
     },
     {
       caption: [
-        '请下载模板，按注释填写后把 JS 文件直接发回来。',
-        '机器人会先校验配置，再根据历史版本自动进入配置发布或打包流程。',
-        '版本、下载地址和 SHA-256 不用填写；退出请输入 /cancel。',
+        '请下载并填写 JSON 模板，然后把文件直接发回机器人。',
+        '不要添加注释，也不要填写版本、下载地址或 SHA-256。',
       ].join('\n'),
     },
+  );
+  await ctx.reply(
+    [
+      '字段说明：',
+      'app_name：软件名称。',
+      'api_base_list：面板 HTTPS API，可按优先级填写多个。',
+      'api_prefix：API 路径前缀；没有就填空字符串。',
+      'panel_type：v2board、xiao_v2board 或 xboard。',
+      'logo_url：公开 HTTPS Logo，推荐 1024×1024 PNG。',
+      'avatar_url：可选，账户页品牌图片；不用可删除该行。',
+      'invite_url_base：可选，官网或邀请注册地址。',
+      'update_enabled：是否读取独立 update.json 并提示更新。',
+      'update_changelog：更新说明，最多 200 字。',
+      '',
+      '机器人校验后立即生成 config.json；打包成功后另行生成已签名的 update.json。',
+      '退出请输入 /cancel。',
+    ].join('\n'),
   );
 }
 
@@ -156,8 +175,11 @@ async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
     const previous = app?.signed_config
       ? verifyConfigPayload(app.signed_config, profile.public_key)
       : undefined;
-    const payload = parseAndValidateConfig(
-      JSON.stringify(withPreservedUpdateMetadata(input, previous)),
+    const payload = withUpdateManifestUrl(
+      parseAndValidateConfig(
+        JSON.stringify(withPreservedUpdateMetadata(input, previous)),
+      ),
+      profile.remote_config_url,
     );
 
     const configVersion = bumpConfigVersion(profile.app_id);
@@ -170,10 +192,29 @@ async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
 
     const targetVersion = getCurrentBuildVersion();
     const publishedVersion =
-      typeof payload.update_version === 'string'
-        ? payload.update_version.trim()
-        : '';
-    const versionMatches = matchesPublishedVersion(payload, targetVersion);
+      latestSuccessfulVersion(profile.app_id) ||
+      (typeof previous?.update_version === 'string'
+        ? previous.update_version.trim()
+        : '');
+    const versionMatches =
+      publishedVersion !== '' &&
+      (publishedVersion === targetVersion ||
+        matchesPublishedVersion(previous ?? {}, targetVersion));
+
+    await ctx.replyWithDocument(
+      {
+        source: Buffer.from(signedJson, 'utf8'),
+        filename: 'config.json',
+      },
+      {
+        caption: [
+          '基础配置校验完成并已签名。',
+          `请保持文件名为 config.json，并上传到：${profile.remote_config_url}`,
+          '这个文件以后修改 API、Logo 或文案时才需要重新上传；安装包更新信息会单独生成 update.json。',
+        ].join('\n'),
+      },
+    );
+
     if (!versionMatches) {
       setPendingAction(userId, { type: 'build' });
       await ctx.reply(
@@ -228,18 +269,12 @@ async function handleSameVersionChoice(
 ): Promise<void> {
   if (choice === '1') {
     clearPendingAction(userId);
-    await ctx.replyWithDocument(
-      {
-        source: Buffer.from(pending.signedConfig, 'utf8'),
-        filename: 'config.json',
-      },
-      {
-        caption: [
-          '已选择只发布热配置，不重新打包。',
-          `请保持文件名为 config.json，并上传覆盖到：${pending.remoteConfigUrl}`,
-          '上传后用浏览器打开该地址，应看到包含 payload_b64 和 signature 的 JSON；然后重启客户端检查 API、头像、邀请地址或文案是否生效。',
-        ].join('\n'),
-      },
+    await ctx.reply(
+      [
+        '已选择只发布热配置，不重新打包。',
+        `请上传刚才收到的 config.json 覆盖到：${pending.remoteConfigUrl}`,
+        '上传后重启客户端检查 API、头像、邀请地址或文案是否生效。',
+      ].join('\n'),
     );
     return;
   }

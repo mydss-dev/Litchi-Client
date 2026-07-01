@@ -16,6 +16,8 @@ import {
   withConfigVersion,
   withPreservedUpdateMetadata,
   withReleaseMetadata,
+  updateManifestUrl,
+  withUpdateManifestUrl,
 } from './signer.js';
 import { parseAndValidateConfig, parseLooseConfig } from './validate.js';
 
@@ -133,20 +135,20 @@ test('panel capability overrides may contain only deployment differences', () =>
   assert.deepEqual(config.panel_features, { tickets: false });
 });
 
-test('sample config leaves generated update metadata empty', () => {
+test('sample config leaves release metadata to update.json', () => {
   const sample = fs.readFileSync(
     new URL('../config.sample.json', import.meta.url),
     'utf8',
   );
   const config = parseAndValidateConfig(sample);
-  assert.equal(config.update_version, '');
-  assert.equal(config.update_download_url, '');
-  assert.equal(config.update_sha256, '');
+  assert.equal('update_version' in config, false);
+  assert.equal('update_download_url' in config, false);
+  assert.equal('update_sha256' in config, false);
 });
 
-test('the JS template is valid and leaves release metadata to the bot', () => {
+test('the JSON template is valid and leaves release metadata to the bot', () => {
   const template = fs.readFileSync(
-    new URL('../config.template.js', import.meta.url),
+    new URL('../config.template.json', import.meta.url),
     'utf8',
   );
   const config = parseAndValidateConfig(template);
@@ -242,7 +244,7 @@ test('disabled update prompts still retain real package metadata', () => {
   );
 });
 
-test('config-only changes preserve the last published package metadata', () => {
+test('base config strips release metadata owned by update.json', () => {
   const previous = {
     app_name: 'Old name',
     update_enabled: true,
@@ -265,14 +267,38 @@ test('config-only changes preserve the last published package metadata', () => {
     {
       app_name: 'New name',
       update_enabled: true,
-      update_version: '2.0.0',
-      update_download_url: { windows: 'https://cdn.example.com/windows.exe' },
-      update_sha256: { windows: 'a'.repeat(64) },
     },
   );
 });
 
-test('config-only changes preserve package metadata when prompts are disabled', () => {
+test('update.json is signed and tampering is rejected', () => {
+  const keys = generateKeyPair();
+  const manifest = withReleaseMetadata({}, [
+    {
+      platform: 'windows',
+      version: '2.0.0',
+      downloadUrl: 'https://cdn.example.com/client.exe',
+      sha256: 'a'.repeat(64),
+    },
+  ]);
+  const signed = signConfigPayload(manifest, keys.privateKey);
+  const verified = verifyConfigPayload(JSON.stringify(signed), keys.publicKey);
+  assert.deepEqual(verified, manifest);
+
+  assert.throws(
+    () =>
+      verifyConfigPayload(
+        JSON.stringify({
+          ...signed,
+          payload_b64: `${signed.payload_b64.slice(0, -1)}A`,
+        }),
+        keys.publicKey,
+      ),
+    /验签失败/,
+  );
+});
+
+test('disabled prompts also keep release metadata out of base config', () => {
   assert.deepEqual(
     withPreservedUpdateMetadata(
       { app_name: 'New name', update_enabled: false },
@@ -285,9 +311,23 @@ test('config-only changes preserve package metadata when prompts are disabled', 
     {
       app_name: 'New name',
       update_enabled: false,
-      update_version: '2.0.0',
-      update_download_url: 'https://cdn.example.com/file.exe',
-      update_sha256: 'a'.repeat(64),
+    },
+  );
+});
+
+test('update manifest URL is derived beside config.json', () => {
+  assert.equal(
+    updateManifestUrl('https://cdn.example.com/client/config.json'),
+    'https://cdn.example.com/client/update.json',
+  );
+  assert.deepEqual(
+    withUpdateManifestUrl(
+      { app_name: 'Customer Client' },
+      'https://cdn.example.com/client/config.json',
+    ),
+    {
+      app_name: 'Customer Client',
+      update_manifest_url: 'https://cdn.example.com/client/update.json',
     },
   );
 });

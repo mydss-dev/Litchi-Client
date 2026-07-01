@@ -42,9 +42,15 @@ async function syncPrivateMenu(input: {
 
   const state = commands.map((item) => item.command).join(',');
   if (menuStates.get(input.chatId) === state) return;
-  await bot.telegram.setMyCommands(commands, {
-    scope: { type: 'chat', chat_id: input.chatId },
-  });
+  await Promise.all([
+    bot.telegram.setMyCommands(commands, {
+      scope: { type: 'chat', chat_id: input.chatId },
+    }),
+    bot.telegram.setChatMenuButton({
+      chatId: input.chatId,
+      menuButton: { type: 'commands' },
+    }),
+  ]);
   menuStates.set(input.chatId, state);
 }
 
@@ -116,6 +122,11 @@ void bot.telegram
   .setMyCommands(baseCommands)
   .catch((error) => {
     console.error('Failed to set bot commands', error);
+  });
+void bot.telegram
+  .setChatMenuButton({ menuButton: { type: 'commands' } })
+  .catch((error) => {
+    console.error('Failed to set default command menu button', error);
   });
 
 bot.launch();

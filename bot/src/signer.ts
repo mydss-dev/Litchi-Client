@@ -104,30 +104,31 @@ export function withReleaseMetadata(
 
 export function withPreservedUpdateMetadata(
   input: Record<string, unknown>,
-  previous?: Record<string, unknown>,
+  _previous?: Record<string, unknown>,
 ): Record<string, unknown> {
   const payload = { ...input };
   delete payload.config_version;
+  delete payload.update_manifest_url;
   delete payload.update_version;
   delete payload.update_download_url;
   delete payload.update_sha256;
-
-  if (!previous) return payload;
-
-  const version = previous.update_version;
-  const downloadUrl = previous.update_download_url;
-  const sha256 = previous.update_sha256;
-  if (
-    typeof version === 'string' &&
-    version.trim() !== '' &&
-    downloadUrl !== undefined &&
-    sha256 !== undefined
-  ) {
-    payload.update_version = version;
-    payload.update_download_url = downloadUrl;
-    payload.update_sha256 = sha256;
-  }
   return payload;
+}
+
+export function updateManifestUrl(remoteConfigUrl: string): string {
+  const url = new URL(remoteConfigUrl);
+  url.pathname = url.pathname.replace(/\/[^/]*$/, '/update.json');
+  return url.toString();
+}
+
+export function withUpdateManifestUrl(
+  payload: Record<string, unknown>,
+  remoteConfigUrl: string,
+): Record<string, unknown> {
+  return {
+    ...payload,
+    update_manifest_url: updateManifestUrl(remoteConfigUrl),
+  };
 }
 
 export function matchesPublishedVersion(

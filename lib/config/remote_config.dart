@@ -180,6 +180,35 @@ abstract final class RemoteConfigService {
     }
   }
 
+  /// Fetches and verifies another signed JSON payload with the tenant's
+  /// compiled trust key. Used by the independently published update manifest.
+  static Future<Map<String, dynamic>?> fetchTrustedPayload(String url) async {
+    if (!isConfigured) return null;
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.scheme != 'https' || !uri.hasAuthority) return null;
+
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = _timeout;
+      final request = await client.getUrl(uri).timeout(_timeout);
+      request.headers
+        ..set('Accept', 'application/json')
+        ..set('Cache-Control', 'no-cache');
+      final response = await request.close().timeout(_timeout);
+      if (response.statusCode != 200) return null;
+      final body = await response
+          .transform(const Utf8Decoder())
+          .join()
+          .timeout(_timeout);
+      return _parseTrustedConfig(body);
+    } catch (e) {
+      SecureLogger.warn('Signed payload fetch failed', e);
+      return null;
+    } finally {
+      client?.close(force: true);
+    }
+  }
+
   /// Parses a signed config wrapper.
   ///
   /// Signed format:

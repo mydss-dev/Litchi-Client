@@ -1,14 +1,11 @@
 import type { Telegraf } from 'telegraf';
-import { nanoid } from 'nanoid';
-
 import { env, isAdmin } from './config.js';
 import {
-  bumpConfigVersion,
   countRecentBuilds,
   createBuild,
   getAppForUser,
   getAuthorizedUser,
-  saveSignedConfig,
+  latestBuild,
   updateBuildStatus,
 } from './db.js';
 import {
@@ -17,7 +14,6 @@ import {
   setPendingAction,
 } from './flow_state.js';
 import {
-  buildDownloadUrl,
   dispatchBuild,
   getCurrentBuildVersion,
   readBuildStatus,
@@ -27,11 +23,10 @@ import {
   matchesPublishedVersion,
   signConfigPayload,
   verifyConfigPayload,
-  withConfigVersion,
   withReleaseMetadata,
+  updateManifestUrl,
 } from './signer.js';
 import { startConfigFlow } from './sign_handlers.js';
-import { parseAndValidateConfig } from './validate.js';
 
 const allPlatforms: BuildPlatform[] = ['windows', 'android', 'macos'];
 const terminalStatuses = new Set([
@@ -63,16 +58,6 @@ type BuildGroup = {
     }
   >;
 };
-
-type PlannedRelease = {
-  platform: BuildPlatform;
-  version: string;
-  requestId: string;
-  downloadUrl: string;
-  sha256: string;
-};
-
-const PENDING_SHA256 = '0'.repeat(64);
 
 const groupMessages = new Map<string, BuildGroup>();
 const groupTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -202,45 +187,6 @@ async function startBuildFromInput(
       app.signed_config,
       app.public_key,
     );
-    const plannedReleases = platforms.map((platform) => {
-      const requestId = nanoid(12);
-      return {
-        platform,
-        version,
-        requestId,
-        downloadUrl: buildDownloadUrl({
-          appId: profile.app_id,
-          platform,
-          version,
-          requestId,
-        }),
-        sha256: PENDING_SHA256,
-      };
-    });
-
-    const plannedSignedConfig = signPlannedReleaseConfig({
-      appId: profile.app_id,
-      privateKey: app.private_key,
-      currentConfig,
-      releases: plannedReleases,
-    });
-    saveSignedConfig(profile.app_id, plannedSignedConfig.compactJson);
-
-    await bot.telegram.sendDocument(
-      chatId,
-      {
-        source: Buffer.from(plannedSignedConfig.prettyJson, 'utf8'),
-        filename: 'config.json',
-      },
-      {
-        caption: [
-          '最终配置已提前生成，里面已经写入本次安装包的固定下载地址。',
-          `请保持文件名 config.json，并上传覆盖到：${profile.remote_config_url}`,
-          '说明：安装包还在构建中，下载地址会在构建完成后生效。',
-        ].join('\n'),
-      },
-    );
-
     if (matchesPublishedVersion(currentConfig, version)) {
       await ctx.reply(
         [
@@ -261,32 +207,31 @@ async function startBuildFromInput(
     };
     groupMessages.set(groupKey, group);
 
-    for (const planned of plannedReleases) {
+    for (const platform of platforms) {
       const dispatched = await dispatchBuild({
         appId: profile.app_id,
-        platform: planned.platform,
+        platform,
         version,
         remoteConfigUrl: profile.remote_config_url,
         verifier: profile.public_key,
-        signedConfig: plannedSignedConfig.compactJson,
-        requestId: planned.requestId,
+        signedConfig: app.signed_config,
       });
       const id = createBuild({
         appId: profile.app_id,
         tgUserId: userId,
         requestId: dispatched.requestId,
-        platform: planned.platform,
+        platform,
         version,
         status: 'queued',
         githubRunUrl: dispatched.workflowUrl,
       });
 
       group.builds.set(id, {
-        platform: planned.platform,
+        platform,
         version,
         requestId: dispatched.requestId,
         status: 'queued',
-        downloadUrl: planned.downloadUrl,
+        downloadUrl: dispatched.downloadUrl,
         sha256: '',
       });
     }
@@ -305,25 +250,6 @@ async function startBuildFromInput(
   } catch (error) {
     await ctx.reply(error instanceof Error ? error.message : String(error));
   }
-}
-
-function signPlannedReleaseConfig(input: {
-  appId: string;
-  privateKey: string;
-  currentConfig: ReturnType<typeof verifyConfigPayload>;
-  releases: PlannedRelease[];
-}): { compactJson: string; prettyJson: string } {
-  const payload = withReleaseMetadata(input.currentConfig, input.releases);
-  const validated = parseAndValidateConfig(JSON.stringify(payload));
-  const configVersion = bumpConfigVersion(input.appId);
-  const signed = signConfigPayload(
-    withConfigVersion(validated, configVersion),
-    input.privateKey,
-  );
-  return {
-    compactJson: JSON.stringify(signed),
-    prettyJson: JSON.stringify(signed, null, 2),
-  };
 }
 
 function scheduleGroupPoll(
@@ -415,7 +341,7 @@ function scheduleGroupPoll(
       } else {
         await bot.telegram.sendMessage(
           group.chatId,
-          '构建状态轮询超时：config.json 已提前发送，下载地址固定不变；请到 GitHub Actions 或 R2 检查安装包是否上传成功。',
+          '构建状态轮询超时：config.json 不受影响，但 update.json 尚未生成。请检查 GitHub Actions、R2 安装包和 .sha256 文件。',
         );
         groupTimers.delete(input.groupKey);
         groupMessages.delete(input.groupKey);
@@ -446,7 +372,7 @@ function formatGroupMessage(group: BuildGroup): string {
     }
     lines.push(line);
   }
-  lines.push('', 'config.json 已提前发送；状态持续更新中，本条消息会自动刷新。');
+  lines.push('', '构建成功后会自动生成 update.json，不会要求重新上传 config.json。');
   return lines.join('\n');
 }
 
@@ -463,24 +389,82 @@ async function sendFinalConfig(
     group.finalConfigSent = true;
     await bot.telegram.sendMessage(
       group.chatId,
-      '本次构建没有成功的平台；config.json 已经提前发送，但对应安装包不会生效。',
+      '本次构建没有成功的平台，因此没有生成 update.json；原 config.json 不受影响。',
     );
     return;
   }
 
-  const packageLines = successfulBuilds.map(
+  const app = getAppForUser(group.appId, group.userId);
+  if (!app?.signed_config) {
+    throw new Error('找不到基础签名配置，请重新执行 /build。');
+  }
+  const current = verifyConfigPayload(app.signed_config, app.public_key);
+  const version = successfulBuilds[0].version;
+  const releases = allPlatforms
+    .map((platform) => latestBuild(group.appId, platform))
+    .filter(
+      (build): build is NonNullable<typeof build> =>
+        build != null &&
+        build.version === version &&
+        build.download_url !== '' &&
+        /^[a-f0-9]{64}$/.test(build.sha256),
+    )
+    .map((build) => ({
+      platform: build.platform,
+      version: build.version,
+      downloadUrl: build.download_url,
+      sha256: build.sha256,
+    }));
+  if (releases.length === 0) {
+    group.finalConfigSent = true;
+    await bot.telegram.sendMessage(
+      group.chatId,
+      '构建已成功，但暂时没有读取到安装包 SHA-256，因此没有生成 update.json。请检查 R2 中安装包旁边的 .sha256 文件。',
+    );
+    return;
+  }
+
+  const releasePayload = withReleaseMetadata({}, releases);
+  const payload = {
+    ...releasePayload,
+    update_changelog:
+      typeof current.update_changelog === 'string'
+        ? current.update_changelog
+        : '',
+  };
+  const signed = signConfigPayload(payload, app.private_key);
+  const signedJson = JSON.stringify(signed, null, 2);
+
+  await bot.telegram.sendDocument(
+    group.chatId,
+    {
+      source: Buffer.from(signedJson, 'utf8'),
+      filename: 'update.json',
+    },
+    {
+      caption: [
+        '更新文件已生成，版本、下载地址和真实 SHA-256 都已自动填好。',
+        `请保持文件名 update.json，并上传到：${updateManifestUrl(app.remote_config_url)}`,
+        '首次交付没有旧用户需要更新，可以先不上传；以后向已安装旧版本用户推送更新时再上传。',
+        '不需要重新上传 config.json；不上传 update.json 就不会发布本次更新。',
+      ].join('\n'),
+    },
+  );
+
+  const packageLines = releases.map(
     (release) => `- ${release.platform}: ${release.downloadUrl}`,
   );
   await bot.telegram.sendMessage(
     group.chatId,
     [
-      '构建完成。',
+      '构建完成，update.json 已发送。',
       '',
       '安装包下载地址：',
       ...packageLines,
       '',
-      'config.json 已在构建开始时发送过，无需因为构建完成再上传第二次。',
-      '测试时请确认 OSS 上的 config.json 可以访问，并安装上面的安装包。',
+      `1. 上传 update.json 覆盖到：${updateManifestUrl(app.remote_config_url)}`,
+      '2. 浏览器打开该地址，确认不是 404、HTML 或旧内容。',
+      '3. 在测试设备安装上面的安装包，检查名称、Logo、登录、节点和连接。',
     ].join('\n'),
     { link_preview_options: { is_disabled: true } },
   );

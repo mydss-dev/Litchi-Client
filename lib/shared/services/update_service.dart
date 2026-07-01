@@ -1,27 +1,77 @@
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../config/app_config.dart';
+import '../../config/remote_config.dart';
 import '../models/app_models.dart';
 import 'secure_logger.dart';
 
-/// Checks for updates by reading [AppConfig.updateVersion] — which is set by
-/// the OSS remote config. If the OSS payload includes `update_version`,
-/// `update_download_url`, and `update_sha256`, the app shows an update banner.
-///
-/// No separate HTTP fetch. One OSS config file delivers both brand/api config
-/// and the latest version info.
+/// Checks the independently signed update manifest when configured. Older
+/// one-file configurations remain supported as a migration fallback.
 abstract final class UpdateService {
   /// Returns [UpdateInfo] if the OSS config declares a newer version than the
   /// currently running one, or null when disabled / already up-to-date.
-  static UpdateInfo? check() {
+  static Future<UpdateInfo?> check() async {
     if (!AppConfig.updatesEnabled) return null;
-    final latest = AppConfig.updateVersion.trim();
+    final manifestUrl = AppConfig.updateManifestUrl.trim();
+    if (manifestUrl.isNotEmpty) {
+      final manifest = await RemoteConfigService.fetchTrustedPayload(
+        manifestUrl,
+      );
+      if (manifest == null) return null;
+      return _fromManifest(manifest);
+    }
+
+    return _fromValues(
+      latest: AppConfig.updateVersion,
+      downloadUrl: AppConfig.updateDownloadUrl,
+      expectedHash: AppConfig.updateSha256,
+      changelog: AppConfig.updateChangelog,
+    );
+  }
+
+  static UpdateInfo? _fromManifest(Map<String, dynamic> manifest) {
+    final platform = Platform.operatingSystem;
+    return _fromValues(
+      latest: manifest['update_version']?.toString() ?? '',
+      downloadUrl: _platformValue(manifest['update_download_url'], platform),
+      expectedHash: _platformValue(manifest['update_sha256'], platform),
+      changelog:
+          manifest['update_changelog']?.toString() ?? AppConfig.updateChangelog,
+    );
+  }
+
+  @visibleForTesting
+  static UpdateInfo? parseManifestForCurrentPlatform(
+    Map<String, dynamic> manifest,
+  ) => _fromManifest(manifest);
+
+  static String _platformValue(Object? value, String platform) {
+    if (value is String) return value;
+    if (value is Map) {
+      final selected = value[platform] ?? value['default'];
+      return selected is String ? selected : '';
+    }
+    return '';
+  }
+
+  static UpdateInfo? _fromValues({
+    required String latest,
+    required String downloadUrl,
+    required String expectedHash,
+    required String changelog,
+  }) {
+    latest = latest.trim();
     if (latest.isEmpty) return null;
-    final downloadUrl = AppConfig.updateDownloadUrl.trim();
+    downloadUrl = downloadUrl.trim();
     if (downloadUrl.isEmpty) return null;
-    final expectedHash = AppConfig.updateSha256.trim().toLowerCase();
+    final safeUrl = Uri.tryParse(downloadUrl);
+    if (safeUrl == null || safeUrl.scheme != 'https' || !safeUrl.hasAuthority) {
+      return null;
+    }
+    expectedHash = expectedHash.trim().toLowerCase();
     if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(expectedHash)) {
       SecureLogger.warn(
         'Update metadata ignored: update_sha256 is missing or invalid',
@@ -34,7 +84,7 @@ abstract final class UpdateService {
     return UpdateInfo(
       version: latest,
       downloadUrl: downloadUrl,
-      changelog: AppConfig.updateChangelog.trim(),
+      changelog: changelog.trim(),
       sha256: expectedHash,
     );
   }

@@ -420,7 +420,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _checkForUpdate() async {
     if (!_settings.autoUpdate) return;
-    final info = UpdateService.check();
+    final info = await UpdateService.check();
     if (info != null && !_disposed) {
       _updateInfo = info;
       notifyListeners();

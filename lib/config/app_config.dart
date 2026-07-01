@@ -27,6 +27,7 @@ abstract final class AppConfig {
   static String currentVersion = const String.fromEnvironment('APP_VERSION');
 
   static bool updatesEnabled = true;
+  static String updateManifestUrl = '';
   static String updateVersion = '';
   static final Map<String, String> _updateDownloadUrls = {};
   static final Map<String, String> _updateSha256s = {};
@@ -142,6 +143,7 @@ abstract final class AppConfig {
 
     final updateEnabled = json['update_enabled'];
     updatesEnabled = updateEnabled is bool ? updateEnabled : true;
+    _url(json, 'update_manifest_url', (v) => updateManifestUrl = v);
     _str(json, 'update_version', (v) => updateVersion = v);
     _updateDownloadUrlsFromJson(json['update_download_url']);
     _str(json, 'update_changelog', (v) => updateChangelog = v);
@@ -163,6 +165,7 @@ abstract final class AppConfig {
     avatarUrl,
     inviteUrlBase,
     updatesEnabled,
+    updateManifestUrl,
     updateVersion,
     for (final entry
         in (_updateDownloadUrls.entries.toList()

@@ -287,6 +287,16 @@ export function latestBuild(appId: string, platform: string): BuildRow | undefin
   })[0];
 }
 
+export function latestSuccessfulVersion(appId: string): string {
+  const rows = db.prepare(`
+    SELECT version FROM builds
+    WHERE app_id = ? AND status = 'success' AND download_url != '' AND sha256 != ''
+  `).all(appId) as Array<{ version: string }>;
+  return rows
+    .map((row) => row.version)
+    .sort((a, b) => compareVersions(b, a))[0] ?? '';
+}
+
 export function authorizeUser(input: {
   tgUserId: number;
   authorizedBy: number;
