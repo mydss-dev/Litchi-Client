@@ -65,7 +65,7 @@ abstract final class MihomoConfig {
 
     final selected = names.contains(selectedTag) ? selectedTag : autoSelectTag;
     final safeRules = rules.map(_repairRulePolicyReference).toList();
-    final fallbackRules = <String>[
+    final privateDirectRules = <String>[
       'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve',
       'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
       'IP-CIDR,172.16.0.0/12,DIRECT,no-resolve',
@@ -75,8 +75,11 @@ abstract final class MihomoConfig {
       'IP-CIDR6,::1/128,DIRECT,no-resolve',
       'IP-CIDR6,fc00::/7,DIRECT,no-resolve',
       'IP-CIDR6,fe80::/10,DIRECT,no-resolve',
-      'MATCH,$selectorTag',
     ];
+    final fallbackRules = <String>[...privateDirectRules, 'MATCH,$selectorTag'];
+    final rulesOut = safeRules.isEmpty
+        ? fallbackRules
+        : _withRuleFallbacks(safeRules, privateDirectRules);
 
     final (nameserver, fallback) = switch (dnsMode) {
       'Google' => (
@@ -172,9 +175,34 @@ abstract final class MihomoConfig {
         },
       ],
       if (ruleProviders.isNotEmpty) 'rule-providers': ruleProviders,
-      'rules': safeRules.isNotEmpty ? safeRules : fallbackRules,
+      'rules': rulesOut,
       'litchi-selected-proxy': selected,
     };
+  }
+
+  static List<String> _withRuleFallbacks(
+    List<String> rules,
+    List<String> privateDirectRules,
+  ) {
+    final existingSignatures = rules.map(_ruleMatchSignature).toSet();
+    final missingPrivateRules = privateDirectRules.where(
+      (rule) => !existingSignatures.contains(_ruleMatchSignature(rule)),
+    );
+    final hasTerminalRule = rules.any((rule) {
+      final type = rule.split(',').first.trim().toUpperCase();
+      return type == 'MATCH' || type == 'FINAL';
+    });
+    return [
+      ...missingPrivateRules,
+      ...rules,
+      if (!hasTerminalRule) 'MATCH,$selectorTag',
+    ];
+  }
+
+  static String _ruleMatchSignature(String rule) {
+    final parts = rule.split(',');
+    if (parts.length < 2) return rule.trim().toUpperCase();
+    return '${parts[0].trim().toUpperCase()},${parts[1].trim().toUpperCase()}';
   }
 
   static Map<String, dynamic>? _proxyFor(

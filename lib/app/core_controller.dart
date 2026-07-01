@@ -13,6 +13,7 @@ import '../shared/services/macos_tun_kill_switch.dart';
 import '../shared/services/proxy_setter.dart';
 import '../shared/services/mihomo_api_client.dart';
 import '../shared/services/mihomo_config.dart';
+import '../shared/services/mixed_proxy_port_verifier.dart';
 import '../shared/services/secure_logger.dart';
 import '../shared/services/tun_interface_verifier.dart';
 import '../shared/services/windows_tun_kill_switch.dart';
@@ -364,6 +365,17 @@ class CoreController extends ChangeNotifier {
           apiPort: _apiPort,
         );
         if (!switched) throw StateError('switch proxy failed');
+        if (!await MixedProxyPortVerifier.waitUntilReady(
+          port: _activeProxyPort,
+        )) {
+          await ProxySetter.disable();
+          await _core.stop();
+          MihomoApiClient.resetClient();
+          _coreError = CoreErrorMessageService.proxyPortUnavailable;
+          _status = ConnectionStatus.error;
+          notifyListeners();
+          return _coreError;
+        }
         await ProxySetter.enable(port: _activeProxyPort);
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
@@ -421,6 +433,16 @@ class CoreController extends ChangeNotifier {
 
       if (_core.isRunning) {
         await _applyInitialSelection(req);
+        if (req.networkMode == NetworkMode.system &&
+            !await MixedProxyPortVerifier.waitUntilReady(
+              port: _activeProxyPort,
+            )) {
+          _coreError = CoreErrorMessageService.proxyPortUnavailable;
+          await _core.stop();
+          MihomoApiClient.resetClient();
+          _status = ConnectionStatus.error;
+          return _coreError;
+        }
         if (req.networkMode == NetworkMode.tun) {
           final tunReady = await TunInterfaceVerifier.waitUntilReady(
             interfaceName: Platform.isMacOS

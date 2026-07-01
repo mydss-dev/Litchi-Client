@@ -12,6 +12,9 @@ class AndroidCoreException implements Exception {
 }
 
 class AndroidCoreManager {
+  AndroidCoreManager({this.vpnPermissionTimeout = const Duration(seconds: 45)});
+
+  final Duration vpnPermissionTimeout;
   static const _channel = MethodChannel('litchi/android_core');
   static const _statusChannel = EventChannel('litchi/android_core/status');
 
@@ -47,7 +50,15 @@ class AndroidCoreManager {
     _isRunning = _isCoreRunning || _isVpnRunning;
   }
 
-  Future<bool> prepareVpn() => _invokeBool('prepareVpn');
+  Future<bool> prepareVpn() async {
+    _lastError = '';
+    try {
+      return await _invokeBool('prepareVpn').timeout(vpnPermissionTimeout);
+    } on TimeoutException {
+      _lastError = 'VPN 授权等待超时，请返回客户端后重新连接';
+      return false;
+    }
+  }
 
   /// Starts the mihomo core without VPN — no permission prompt, no TUN.
   /// Used for latency tests, node switching, and mode changes before
@@ -70,7 +81,9 @@ class AndroidCoreManager {
   Future<bool> startVpn(String configJson) async {
     final prepared = await prepareVpn();
     if (!prepared) {
-      _lastError = '需要允许 VPN 权限后才能连接，请重新点击连接并授权';
+      if (_lastError.isEmpty) {
+        _lastError = '需要允许 VPN 权限后才能连接，请重新点击连接并授权';
+      }
       return false;
     }
     final launched = await _invokeBool('startVpn', {'config': configJson});
@@ -89,7 +102,9 @@ class AndroidCoreManager {
   Future<bool> start(String configJson) async {
     final prepared = await prepareVpn();
     if (!prepared) {
-      _lastError = '需要允许 VPN 权限后才能连接，请重新点击连接并授权';
+      if (_lastError.isEmpty) {
+        _lastError = '需要允许 VPN 权限后才能连接，请重新点击连接并授权';
+      }
       return false;
     }
     final launched = await _invokeBool('start', {'config': configJson});

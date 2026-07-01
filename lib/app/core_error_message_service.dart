@@ -4,6 +4,7 @@ abstract final class CoreErrorMessageService {
   static const noAvailableNodes = '没有可用节点，请刷新节点列表后重试';
   static const configBuildFailed = '生成配置失败，请选择其他节点后重试';
   static const restartClient = '连接失败，请重启客户端后重试';
+  static const proxyPortUnavailable = '本地代理端口启动失败，请关闭其他代理软件后重试';
   static const missingCore = '连接失败，请检查 mihomo 核心是否存在';
   static const permissionDenied = '权限不足，请以管理员身份运行客户端';
   static const tunInterfaceUnavailable = 'TUN 虚拟网卡启动失败，请以管理员身份运行或重试';
@@ -41,6 +42,7 @@ abstract final class CoreErrorMessageService {
         noAvailableNodes => l10n.noAvailableNodes,
         configBuildFailed => l10n.configBuildFailedError,
         restartClient => l10n.restartClientError,
+        proxyPortUnavailable => l10n.proxyPortUnavailableError,
         missingCore => l10n.missingCoreError,
         permissionDenied => l10n.permissionDeniedError,
         tunInterfaceUnavailable => l10n.tunInterfaceUnavailableError,

@@ -162,7 +162,48 @@ void main() {
       ],
     )!;
 
-    expect(config['rules'], ['DOMAIN-SUFFIX,example.com,PROXY', 'MATCH,PROXY']);
+    final rules = (config['rules'] as List).cast<String>();
+    expect(rules, contains('DOMAIN-SUFFIX,example.com,PROXY'));
+    expect(rules.last, 'MATCH,PROXY');
+  });
+
+  test('adds missing private and terminal fallbacks to subscription rules', () {
+    const node = NodeModel(
+      id: 'n1',
+      name: 'hk',
+      flag: '',
+      latency: 0,
+      rawUri: 'trojan://password@example.com:443#hk',
+    );
+    final config = MihomoConfig.buildFullConfig(
+      [node],
+      selectedTag: MihomoConfig.nodeTagFor(node),
+      rules: const ['DOMAIN-SUFFIX,example.com,PROXY'],
+    )!;
+    final rules = (config['rules'] as List).cast<String>();
+
+    expect(rules, contains('IP-CIDR,192.168.0.0/16,DIRECT,no-resolve'));
+    expect(rules, contains('DOMAIN-SUFFIX,example.com,PROXY'));
+    expect(rules.last, 'MATCH,PROXY');
+  });
+
+  test('preserves an explicit private-network policy', () {
+    const node = NodeModel(
+      id: 'n1',
+      name: 'hk',
+      flag: '',
+      latency: 0,
+      rawUri: 'trojan://password@example.com:443#hk',
+    );
+    final config = MihomoConfig.buildFullConfig(
+      [node],
+      selectedTag: MihomoConfig.nodeTagFor(node),
+      rules: const ['IP-CIDR,10.0.0.0/8,PROXY,no-resolve', 'MATCH,PROXY'],
+    )!;
+    final rules = (config['rules'] as List).cast<String>();
+
+    expect(rules, contains('IP-CIDR,10.0.0.0/8,PROXY,no-resolve'));
+    expect(rules, isNot(contains('IP-CIDR,10.0.0.0/8,DIRECT,no-resolve')));
   });
 
   test('generated config passes the bundled mihomo validator', () async {

@@ -987,6 +987,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restartClientError => '连接失败，请重启客户端后重试';
 
   @override
+  String get proxyPortUnavailableError => '本地代理端口启动失败，请关闭其他代理软件后重试';
+
+  @override
   String get missingCoreError => '连接失败，请检查 mihomo 核心是否存在';
 
   @override
@@ -2571,6 +2574,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get restartClientError => '連線失敗，請重新啟動用戶端後再試';
+
+  @override
+  String get proxyPortUnavailableError => '本機代理連接埠啟動失敗，請關閉其他代理軟體後再試';
 
   @override
   String get missingCoreError => '連線失敗，找不到 mihomo 核心';

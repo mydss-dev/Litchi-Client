@@ -1018,6 +1018,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Connection failed. Restart the client and try again.';
 
   @override
+  String get proxyPortUnavailableError =>
+      'The local proxy port did not start. Close other proxy apps and try again.';
+
+  @override
   String get missingCoreError =>
       'Connection failed. The mihomo core is missing.';
 

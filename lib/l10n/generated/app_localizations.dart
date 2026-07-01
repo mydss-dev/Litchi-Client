@@ -1959,6 +1959,12 @@ abstract class AppLocalizations {
   /// **'Connection failed. Restart the client and try again.'**
   String get restartClientError;
 
+  /// No description provided for @proxyPortUnavailableError.
+  ///
+  /// In en, this message translates to:
+  /// **'The local proxy port did not start. Close other proxy apps and try again.'**
+  String get proxyPortUnavailableError;
+
   /// No description provided for @missingCoreError.
   ///
   /// In en, this message translates to:

@@ -341,6 +341,7 @@
   "diagnosticCopied": "Diagnostics copied. Send them to support.",
   "copyDiagnostics": "Copy diagnostics",
   "restartClientError": "Connection failed. Restart the client and try again.",
+  "proxyPortUnavailableError": "The local proxy port did not start. Close other proxy apps and try again.",
   "missingCoreError": "Connection failed. The mihomo core is missing.",
   "permissionDeniedError": "Permission denied. Run the client as administrator.",
   "tunInterfaceUnavailableError": "TUN adapter failed to start. Check system permission and try again.",
