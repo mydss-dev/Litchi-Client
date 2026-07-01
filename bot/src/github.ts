@@ -28,12 +28,13 @@ export async function dispatchBuild(input: {
   remoteConfigUrl: string;
   verifier: string;
   signedConfig: string;
-}): Promise<{ requestId: string; workflowUrl: string }> {
+  requestId?: string;
+}): Promise<{ requestId: string; workflowUrl: string; downloadUrl: string }> {
   if (!env.githubToken) throw new Error('Missing GITHUB_TOKEN');
 
   const { owner, repo } = repoParts();
   const octokit = new Octokit({ auth: env.githubToken });
-  const requestId = nanoid(12);
+  const requestId = input.requestId ?? nanoid(12);
   const signedConfigB64 = Buffer.from(input.signedConfig, 'utf8').toString('base64');
   if (signedConfigB64.length > 60_000) {
     throw new Error('签名配置过大，无法安全传入构建任务。');
@@ -62,6 +63,12 @@ export async function dispatchBuild(input: {
   return {
     requestId,
     workflowUrl: `https://github.com/${owner}/${repo}/actions/workflows/${env.githubWorkflowId}`,
+    downloadUrl: buildDownloadUrl({
+      appId: input.appId,
+      platform: input.platform,
+      version: input.version,
+      requestId,
+    }),
   };
 }
 
