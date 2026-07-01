@@ -203,7 +203,7 @@ class LitchiVpnService : VpnService() {
         )
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.mipmap.launcher_icon)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(text)
                 .setContentIntent(contentIntent)
@@ -213,7 +213,7 @@ class LitchiVpnService : VpnService() {
         } else {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.mipmap.launcher_icon)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(text)
                 .setContentIntent(contentIntent)
