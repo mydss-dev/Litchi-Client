@@ -213,6 +213,10 @@ Future<void> _patchLauncherIconPaths() async {
     RegExp(r'adaptive_icon_foreground:\s*"assets/images/[^"]+"'),
     'adaptive_icon_foreground: "assets/images/app_icon_foreground.png"',
   );
+  text = text.replaceAll(
+    RegExp(r'adaptive_icon_background:\s*(?:"[^"]+"|#[A-Fa-f0-9]+)'),
+    'adaptive_icon_background: "assets/images/app_icon_background.png"',
+  );
   await file.writeAsString(text);
   stdout.writeln('Launcher icon paths updated in pubspec.yaml.');
 }

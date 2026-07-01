@@ -24,7 +24,7 @@ class BrandLogo extends StatelessWidget {
         dimension: size,
         child: file == null
             ? _letterFallback(r)
-            : Image.file(file, fit: BoxFit.cover, gaplessPlayback: true),
+            : Image.file(file, fit: BoxFit.contain, gaplessPlayback: true),
       ),
     );
   }

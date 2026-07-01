@@ -36,6 +36,8 @@ const payload = {
 
   // 必填：软件 Logo 的公开 HTTPS 地址。
   // 推荐 1024×1024 PNG、透明背景、文件不超过 10 MB。
+  // 打包时会自动生成圆角桌面图标、Android 自适应图标和托盘图标；
+  // 透明 Logo 与自带背景的完整方形图标都支持，无需手工制作多套尺寸。
   logo_url: "https://cdn.example.com/logo.png",
 
   // 可选：账户页面头像或品牌图片；不需要时删除这一行。

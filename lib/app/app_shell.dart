@@ -26,6 +26,7 @@ import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
 import '../shared/theme/app_text_styles.dart';
 import 'app_controller.dart';
+import 'core_controller.dart';
 import 'app_window_bar.dart';
 
 bool get _isDesktop =>
@@ -294,7 +295,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
 
   Future<void> _updateTrayIcon() async {
     if (!_isDesktop) return;
-    final connected = _ctrl?.coreRunning ?? false;
+    final connected = _ctrl?.connectionStatus == ConnectionStatus.connected;
     await trayManager.setIcon(
       Platform.isWindows
           ? connected
@@ -310,7 +311,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (!_isDesktop) return;
     final ctrl = _ctrl;
     if (ctrl == null) return;
-    final status = ctrl.coreRunning
+    final status = ctrl.connectionStatus == ConnectionStatus.connected
         ? context.l10n.connected
         : context.l10n.notConnected;
     await trayManager.setToolTip('${AppConfig.appName}  $status');
@@ -327,7 +328,8 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final canToggle = ctrl.nodes.isNotEmpty && !ctrl.coreConnecting;
     final isTun = ctrl.networkMode == NetworkMode.tun;
 
-    final statusLabel = switch ((ctrl.coreRunning, ctrl.coreConnecting)) {
+    final connected = ctrl.connectionStatus == ConnectionStatus.connected;
+    final statusLabel = switch ((connected, ctrl.coreConnecting)) {
       (_, true) => context.l10n.connecting,
       (true, _) =>
         isTun
@@ -350,7 +352,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
           MenuItem.separator(),
           MenuItem(
             key: 'toggle_connection',
-            label: ctrl.coreRunning
+            label: connected
                 ? context.l10n.disconnectConnection
                 : context.l10n.connectNow,
             disabled: !canToggle,

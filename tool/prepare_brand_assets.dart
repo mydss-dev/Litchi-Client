@@ -6,8 +6,9 @@ import 'dart:typed_data';
 
 import 'package:image/image.dart' as image;
 
+import 'brand_asset_processor.dart';
+
 const _maxDownloadBytes = 10 * 1024 * 1024;
-const _canvasSize = 1024;
 const _icoSizes = [256, 128, 64, 48, 40, 32, 24, 20, 16];
 
 // Built-in fallback icon used only when the tenant logo URL is missing or broken.
@@ -32,23 +33,17 @@ Future<void> main(List<String> args) async {
     );
   }
 
-  final squared = _centerCropSquare(decoded);
-  final canonical = image.copyResize(
-    squared,
-    width: _canvasSize,
-    height: _canvasSize,
-    interpolation: image.Interpolation.cubic,
-  );
+  final processed = processBrandLogo(decoded);
   final outputDir = Platform.environment['BRAND_ASSET_DIR']?.trim();
   await _saveAssets(
-    canonical,
+    processed,
     Directory(
       outputDir == null || outputDir.isEmpty ? 'assets/images' : outputDir,
     ),
   );
   stdout.writeln(
-    'Brand assets generated: in-app PNG, launcher source, connected tray ICO, '
-    'disconnected grayscale tray ICO.',
+    'Brand assets generated: rounded desktop icon, Android adaptive layers, '
+    'and optimized connected/disconnected tray icons.',
   );
 }
 
@@ -56,14 +51,18 @@ Future<Uint8List> _loadLogoFromEnvironmentOrFallback() async {
   final logoUrl = (Platform.environment['LOGO_URL'] ?? '').trim();
   final uri = Uri.tryParse(logoUrl);
   if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
-    stdout.writeln('LOGO_URL is empty or invalid; using built-in fallback icon.');
+    stdout.writeln(
+      'LOGO_URL is empty or invalid; using built-in fallback icon.',
+    );
     return base64Decode(_fallbackLogoPngBase64);
   }
 
   try {
     return await _download(uri);
   } catch (error) {
-    stdout.writeln('Logo download failed ($error); using built-in fallback icon.');
+    stdout.writeln(
+      'Logo download failed ($error); using built-in fallback icon.',
+    );
     return base64Decode(_fallbackLogoPngBase64);
   }
 }
@@ -100,60 +99,38 @@ Future<Uint8List> _download(Uri uri) async {
   }
 }
 
-image.Image _centerCropSquare(image.Image source) {
-  final rgba = source.convert(numChannels: 4);
-  if (rgba.width == rgba.height) {
-    return rgba;
-  }
-
-  final size = math.min(rgba.width, rgba.height);
-  final x = ((rgba.width - size) / 2).round();
-  final y = ((rgba.height - size) / 2).round();
-  stdout.writeln(
-    'Logo is not square (${rgba.width}x${rgba.height}); center-cropping to '
-    '${size}x$size for app icons.',
-  );
-  return image.copyCrop(rgba, x: x, y: y, width: size, height: size);
-}
-
-Future<void> _saveAssets(image.Image logo, Directory assets) async {
+Future<void> _saveAssets(
+  ProcessedBrandAssets processed,
+  Directory assets,
+) async {
   await assets.create(recursive: true);
 
-  await File('${assets.path}/app_icon.png').writeAsBytes(image.encodePng(logo));
+  await File(
+    '${assets.path}/app_icon.png',
+  ).writeAsBytes(image.encodePng(processed.appIcon));
 
   await File(
     '${assets.path}/app_icon_foreground.png',
-  ).writeAsBytes(image.encodePng(logo));
+  ).writeAsBytes(image.encodePng(processed.adaptiveForeground));
+
+  await File(
+    '${assets.path}/app_icon_background.png',
+  ).writeAsBytes(image.encodePng(processed.adaptiveBackground));
 
   await File(
     '${assets.path}/tray_icon.ico',
-  ).writeAsBytes(_encodeVerifiedIco(logo));
+  ).writeAsBytes(_encodeVerifiedIco(processed.trayConnected));
 
-  final gray = image.grayscale(image.Image.from(logo));
   await File(
     '${assets.path}/tray_icon_gray.ico',
-  ).writeAsBytes(_encodeVerifiedIco(gray));
+  ).writeAsBytes(_encodeVerifiedIco(processed.trayDisconnected));
 
-  await File('${assets.path}/tray_icon.png').writeAsBytes(
-    image.encodePng(
-      image.copyResize(
-        logo,
-        width: 64,
-        height: 64,
-        interpolation: image.Interpolation.cubic,
-      ),
-    ),
-  );
-  await File('${assets.path}/tray_icon_gray.png').writeAsBytes(
-    image.encodePng(
-      image.copyResize(
-        gray,
-        width: 64,
-        height: 64,
-        interpolation: image.Interpolation.cubic,
-      ),
-    ),
-  );
+  await File(
+    '${assets.path}/tray_icon.png',
+  ).writeAsBytes(image.encodePng(processed.trayConnected));
+  await File(
+    '${assets.path}/tray_icon_gray.png',
+  ).writeAsBytes(image.encodePng(processed.trayDisconnected));
 }
 
 image.Image _multiSizeIcon(image.Image source) {
