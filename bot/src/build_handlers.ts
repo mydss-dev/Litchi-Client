@@ -646,14 +646,18 @@ async function sendFinalConfig(
       caption: [
         "打包完成，update.json 已生成。",
         "",
-        "安装包下载地址：",
-        ...packageLines,
+        "请保持文件名 update.json，并上传到：",
+        updateManifestUrl(app.remote_config_url),
         "",
-        `请保持文件名 update.json，并上传到：${updateManifestUrl(app.remote_config_url)}`,
         "上传后本次更新才会生效；不上传则不会向已有用户发布更新。",
-        "不需要重新上传 config.json。",
       ].join("\n"),
     },
+  );
+
+  await bot.telegram.sendMessage(
+    group.chatId,
+    ["安装包下载地址：", ...packageLines].join("\n"),
+    { link_preview_options: { is_disabled: true } },
   );
   group.finalConfigSent = true;
 }
