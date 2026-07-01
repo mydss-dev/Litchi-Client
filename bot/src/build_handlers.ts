@@ -186,6 +186,19 @@ async function startBuildFromInput(
       app.signed_config,
       app.public_key,
     );
+
+    // Send the deployable remote config immediately. The client only needs this
+    // base config to start normally; package download URLs/SHA are release
+    // metadata and can be filled after GitHub Actions finishes.
+    await sendImmediateBaseConfig(bot, {
+      chatId,
+      appId: profile.app_id,
+      remoteConfigUrl: profile.remote_config_url,
+      publicKey: app.public_key,
+      privateKey: app.private_key,
+      currentConfig,
+    });
+
     if (matchesPublishedVersion(currentConfig, version)) {
       await ctx.reply(
         [
@@ -249,6 +262,43 @@ async function startBuildFromInput(
   } catch (error) {
     await ctx.reply(error instanceof Error ? error.message : String(error));
   }
+}
+
+async function sendImmediateBaseConfig(
+  bot: Telegraf,
+  input: {
+    chatId: number;
+    appId: string;
+    remoteConfigUrl: string;
+    publicKey: string;
+    privateKey: string;
+    currentConfig: unknown;
+  },
+): Promise<void> {
+  const configVersion = bumpConfigVersion(input.appId);
+  const validated = parseAndValidateConfig(JSON.stringify(input.currentConfig));
+  const signed = signConfigPayload(
+    withConfigVersion(validated, configVersion),
+    input.privateKey,
+  );
+  const signedJson = JSON.stringify(signed, null, 2);
+  saveSignedConfig(input.appId, JSON.stringify(signed));
+
+  await bot.telegram.sendDocument(
+    input.chatId,
+    {
+      source: Buffer.from(signedJson, 'utf8'),
+      filename: 'config.json',
+    },
+    {
+      caption: [
+        '基础配置已生成，可以先上传到 OSS，不用等安装包构建完成。',
+        `请保持文件名 config.json，并上传覆盖到：${input.remoteConfigUrl}`,
+        `客户端内置公钥：${input.publicKey}`,
+        '安装包构建完成后，机器人会继续发送下载地址；更新发布信息会另行生成。',
+      ].join('\n'),
+    },
+  );
 }
 
 function scheduleGroupPoll(
@@ -338,6 +388,10 @@ function scheduleGroupPoll(
       if (input.attempt < 60) {
         scheduleGroupPoll(bot, { ...input, delayMs: 30000, attempt: input.attempt + 1 });
       } else {
+        await bot.telegram.sendMessage(
+          group.chatId,
+          '构建状态轮询超时：基础 config.json 已经提前发送；安装包可能已成功，但机器人没有拿到完整发布信息。请检查 R2 下载地址和 SHA-256。',
+        );
         groupTimers.delete(input.groupKey);
         groupMessages.delete(input.groupKey);
       }
@@ -368,9 +422,9 @@ function formatGroupMessage(group: BuildGroup): string {
     lines.push(line);
   }
   if ([...group.builds.values()].some((build) => build.sha256)) {
-    lines.push('', '安装包信息已生成，机器人将自动制作最终配置。');
+    lines.push('', '安装包信息已生成，机器人将自动制作最终发布配置。');
   }
-  lines.push('', '状态持续更新中，本条消息会自动刷新。');
+  lines.push('', '基础 config.json 已提前发送；状态持续更新中，本条消息会自动刷新。');
   return lines.join('\n');
 }
 
@@ -387,7 +441,7 @@ async function sendFinalConfig(
     group.finalConfigSent = true;
     await bot.telegram.sendMessage(
       group.chatId,
-      '本次构建没有成功的平台，因此没有生成最终配置。',
+      '本次构建没有成功的平台，因此没有生成最终发布配置。基础 config.json 仍然可用。',
     );
     return;
   }
@@ -408,7 +462,11 @@ async function sendFinalConfig(
     group.finalConfigSent = true;
     await bot.telegram.sendMessage(
       group.chatId,
-      '构建已结束，但没有可发布的下载地址和 SHA-256，因此没有生成最终配置。',
+      [
+        '构建已结束，基础 config.json 已经提前发送。',
+        '但机器人没有拿到可发布的下载地址和 SHA-256，因此没有生成带更新信息的最终配置。',
+        '这不影响新安装包启动；只影响旧客户端检查更新。',
+      ].join('\n'),
     );
     return;
   }
@@ -435,8 +493,7 @@ async function sendFinalConfig(
         updatesEnabled
           ? '最终发布配置已生成，版本、下载地址和 SHA-256 都已自动填好。'
           : '最终发布配置已生成，发布信息已保存；你关闭了更新提示，客户端不会展示它。',
-        `请将文件保持名为 config.json，并上传覆盖到：${app.remote_config_url}`,
-        '上传后再按下一条消息完成交付测试。',
+        `如需让旧客户端检测到更新，请上传覆盖到：${app.remote_config_url}`,
       ].join('\n'),
     },
   );
@@ -454,9 +511,9 @@ async function sendFinalConfig(
       '安装包下载地址：',
       ...packageLines,
       '',
-      `1. 上传 config.json 覆盖到：${app.remote_config_url}`,
+      `1. 基础 config.json 已提前发送；如需更新检测，请上传最新这份 config.json 覆盖到：${app.remote_config_url}`,
       '2. 用浏览器打开该地址，应看到包含 payload_b64 和 signature 的 JSON；不能是 404、网页 HTML 或旧内容。',
-      '3. 先在测试设备或虚拟机安装上面的安装包。',
+      '3. 在测试设备或虚拟机安装上面的安装包。',
       '4. 启动后检查软件名称、Logo、登录/API、节点获取和实际连接。',
       updatesEnabled
         ? `5. 更新测试：使用低于 ${version} 的旧版客户端检查更新提示；当前版本不会提示更新。`
