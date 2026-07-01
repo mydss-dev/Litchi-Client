@@ -1,35 +1,35 @@
-import type { Context, Telegraf } from 'telegraf';
-import fs from 'node:fs';
+import type { Context, Telegraf } from "telegraf";
+import fs from "node:fs";
 
 import {
   bumpConfigVersion,
   getAppForUser,
   getAuthorizedUser,
   saveSignedConfig,
-} from './db.js';
+} from "./db.js";
 import {
   clearPendingAction,
   getPendingAction,
   setPendingAction,
-} from './flow_state.js';
+} from "./flow_state.js";
 import {
   signConfigPayload,
   verifyConfigPayload,
   withConfigVersion,
   withPreservedUpdateMetadata,
   withUpdateManifestUrl,
-} from './signer.js';
-import { parseAndValidateConfig } from './validate.js';
+} from "./signer.js";
+import { parseAndValidateConfig } from "./validate.js";
 
 const configTemplate = fs.readFileSync(
-  new URL('../config.template.json', import.meta.url),
+  new URL("../config.template.json", import.meta.url),
 );
 
 export function wireSignCommands(bot: Telegraf): void {
-  bot.command('config', startConfigFlow);
+  bot.command("config", startConfigFlow);
 
-  bot.command('signconfig', async (ctx) => {
-    const text = ctx.message.text ?? '';
+  bot.command("signconfig", async (ctx) => {
+    const text = ctx.message.text ?? "";
     const rawConfig = extractConfigFromCommandText(text);
     if (!rawConfig) {
       await startConfigFlow(ctx);
@@ -39,10 +39,10 @@ export function wireSignCommands(bot: Telegraf): void {
     await signAndReply(ctx, rawConfig);
   });
 
-  bot.on('text', async (ctx, next) => {
+  bot.on("text", async (ctx, next) => {
     const userId = ctx.from?.id;
-    const text = ctx.message.text?.trim() ?? '';
-    if (!userId || !text || text.startsWith('/')) {
+    const text = ctx.message.text?.trim() ?? "";
+    if (!userId || !text || text.startsWith("/")) {
       await next();
       return;
     }
@@ -53,7 +53,7 @@ export function wireSignCommands(bot: Telegraf): void {
       return;
     }
 
-    if (pending.type === 'signconfig') {
+    if (pending.type === "signconfig") {
       clearPendingAction(userId);
       await signAndReply(ctx, text);
       return;
@@ -62,27 +62,27 @@ export function wireSignCommands(bot: Telegraf): void {
     await next();
   });
 
-  bot.on('document', async (ctx, next) => {
+  bot.on("document", async (ctx, next) => {
     const userId = ctx.from?.id;
-    const caption = ctx.message.caption ?? '';
-    const fileName = (ctx.message.document.file_name ?? '').toLowerCase();
+    const caption = ctx.message.caption ?? "";
+    const fileName = (ctx.message.document.file_name ?? "").toLowerCase();
     const pending = userId ? getPendingAction(userId) : undefined;
     const shouldHandle =
-      pending?.type === 'signconfig' ||
-      caption.includes('/signconfig') ||
-      fileName === 'config.js' ||
-      fileName === 'config.json' ||
-      fileName === 'config.template.json' ||
-      fileName === 'config.template.js' ||
-      fileName.endsWith('.config.js') ||
-      fileName.endsWith('.config.json');
+      pending?.type === "signconfig" ||
+      caption.includes("/signconfig") ||
+      fileName === "config.js" ||
+      fileName === "config.json" ||
+      fileName === "config.template.json" ||
+      fileName === "config.template.js" ||
+      fileName.endsWith(".config.js") ||
+      fileName.endsWith(".config.json");
 
     if (!shouldHandle) {
       await next();
       return;
     }
 
-    if (userId && pending?.type === 'signconfig') {
+    if (userId && pending?.type === "signconfig") {
       clearPendingAction(userId);
     }
 
@@ -95,12 +95,12 @@ export function wireSignCommands(bot: Telegraf): void {
 
       const rawConfig = await response.text();
       if (!rawConfig.trim()) {
-        throw new Error('上传的配置文件是空的。');
+        throw new Error("上传的配置文件是空的。");
       }
 
       await signAndReply(ctx, rawConfig);
     } catch (error) {
-      if (userId) setPendingAction(userId, { type: 'signconfig' });
+      if (userId) setPendingAction(userId, { type: "signconfig" });
       await ctx.reply(error instanceof Error ? error.message : String(error));
     }
   });
@@ -110,7 +110,7 @@ export async function startConfigFlow(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   const profile = userId ? getAuthorizedUser(userId) : undefined;
   if (!userId || !profile?.app_id) {
-    await ctx.reply('你还没有绑定 OSS，请先发送 /bindoss');
+    await ctx.reply("你还没有绑定 OSS，请先发送 /bindoss");
     return;
   }
 
@@ -119,13 +119,10 @@ export async function startConfigFlow(ctx: Context): Promise<void> {
   try {
     const app = getAppForUser(profile.app_id, userId);
     if (app?.signed_config) {
-      const current = verifyConfigPayload(
-        app.signed_config,
-        app.public_key,
-      );
+      const current = verifyConfigPayload(app.signed_config, app.public_key);
       source = Buffer.from(
         JSON.stringify(withPreservedUpdateMetadata(current), null, 2),
-        'utf8',
+        "utf8",
       );
       isExistingConfig = true;
     }
@@ -134,42 +131,42 @@ export async function startConfigFlow(ctx: Context): Promise<void> {
     return;
   }
 
-  setPendingAction(userId, { type: 'signconfig' });
+  setPendingAction(userId, { type: "signconfig" });
   await ctx.replyWithDocument(
     {
       source,
-      filename: 'config.template.json',
+      filename: "config.template.json",
     },
     {
       caption: [
         isExistingConfig
-          ? '已自动填入你当前使用的配置；修改需要变更的字段后直接发回。'
-          : '请下载并填写 JSON 模板，然后把文件直接发回机器人。',
-        '保持标准 JSON 格式，不要添加注释。',
-      ].join('\n'),
+          ? "已自动填入你当前使用的配置；修改需要变更的字段后直接发回。"
+          : "请下载并填写 JSON 模板，然后把文件直接发回机器人。",
+        "保持标准 JSON 格式，不要添加注释。",
+      ].join("\n"),
     },
   );
   await ctx.reply(
     [
-      '字段说明：',
-      'panel_type：后端类型，填写 v2board、xiao_v2board 或 xboard。',
-      'app_name：软件名称。',
-      'api_base_list：面板 HTTPS API，可按优先级填写多个。',
-      'api_prefix：API 路径前缀；没有就填空字符串。',
-      'logo_url：公开 HTTPS Logo，推荐 1024×1024 PNG。',
-      'avatar_url：可选，账户页品牌图片；不用可删除该行。',
-      'invite_url_base：可选，官网或邀请注册地址。',
-      '',
-      '机器人校验后会立即生成 config.json。',
-      '退出请输入 /cancel。',
-    ].join('\n'),
+      "字段说明：",
+      "panel_type：后端类型，填写 v2board、xiao_v2board 或 xboard。",
+      "app_name：软件名称。",
+      "api_base_list：面板 HTTPS API，可按优先级填写多个。",
+      "api_prefix：API 路径前缀；没有就填空字符串。",
+      "logo_url：公开 HTTPS Logo，推荐 1024×1024 PNG。",
+      "avatar_url：可选，账户页品牌图片；不用可删除该行。",
+      "invite_url_base：可选，官网或邀请注册地址。",
+      "",
+      "机器人校验后会立即生成 config.json。",
+      "退出请输入 /cancel。",
+    ].join("\n"),
   );
 }
 
 async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) {
-    await ctx.reply('无法识别当前用户。');
+    await ctx.reply("无法识别当前用户。");
     return;
   }
 
@@ -179,7 +176,7 @@ async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
     return;
   }
   if (!profile.private_key || !profile.public_key || !profile.app_id) {
-    await ctx.reply('你还没有绑定 OSS，请先发送 /bindoss');
+    await ctx.reply("你还没有绑定 OSS，请先发送 /bindoss");
     return;
   }
 
@@ -202,36 +199,37 @@ async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
 
     await ctx.replyWithDocument(
       {
-        source: Buffer.from(signedJson, 'utf8'),
-        filename: 'config.json',
+        source: Buffer.from(signedJson, "utf8"),
+        filename: "config.json",
       },
       {
         caption: [
-          '基础配置校验完成并已签名。',
+          "基础配置校验完成并已签名。",
           `请保持文件名为 config.json，并上传到：${profile.remote_config_url}`,
-          '以后修改 API、Logo 或文案时，再重新生成并上传这个文件。',
-          '需要生成安装包时，请发送 /build。',
-        ].join('\n'),
+          "上传后浏览器打开该地址，确认不是 404、HTML，才算成功。",
+          "以后修改 API、Logo 或文案时，再重新生成并上传这个文件。",
+          "需要生成安装包时，请发送 /build。",
+        ].join("\n"),
       },
     );
     clearPendingAction(userId);
   } catch (error) {
-    setPendingAction(userId, { type: 'signconfig' });
+    setPendingAction(userId, { type: "signconfig" });
     await ctx.reply(error instanceof Error ? error.message : String(error));
   }
 }
 
 function extractConfigFromCommandText(text: string): string {
   const trimmed = text.trim();
-  if (!trimmed.startsWith('/signconfig')) {
-    return '';
+  if (!trimmed.startsWith("/signconfig")) {
+    return "";
   }
 
-  const sameLine = trimmed.replace(/^\/signconfig(?:@\S+)?\s*/, '');
+  const sameLine = trimmed.replace(/^\/signconfig(?:@\S+)?\s*/, "");
   if (sameLine && sameLine !== trimmed) {
     return sameLine.trim();
   }
 
-  const lines = text.split('\n');
-  return lines.slice(1).join('\n').trim();
+  const lines = text.split("\n");
+  return lines.slice(1).join("\n").trim();
 }
