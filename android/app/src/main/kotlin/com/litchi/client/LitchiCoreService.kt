@@ -179,7 +179,7 @@ class LitchiCoreService : Service() {
         )
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.mipmap.launcher_icon)
                 .setContentTitle(appName)
                 .setContentText(text)
                 .setContentIntent(contentIntent)
@@ -188,7 +188,7 @@ class LitchiCoreService : Service() {
         } else {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.mipmap.launcher_icon)
                 .setContentTitle(appName)
                 .setContentText(text)
                 .setContentIntent(contentIntent)
