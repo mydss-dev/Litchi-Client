@@ -7,5 +7,6 @@
   "api_prefix": "/api/v1",
   "logo_url": "https://cdn.example.com/logo.png",
   "avatar_url": "https://cdn.example.com/avatar.png",
-  "invite_url_base": "https://www.example.com"
+  "invite_url_base": "https://www.example.com",
+  "update_enabled": true
 }
