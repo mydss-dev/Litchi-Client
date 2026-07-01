@@ -64,6 +64,7 @@ def main() -> None:
         f"packages/{tenant_id}/{requested_platform}/{version}/"
         f"{request_id}.{extension}"
     )
+    sha_key = f"{object_key}.sha256"
 
     client = boto3.client(
         "s3",
@@ -84,15 +85,24 @@ def main() -> None:
             "Metadata": {"sha256": package_sha256},
         },
     )
+    client.put_object(
+        Bucket=bucket,
+        Key=sha_key,
+        Body=f"{package_sha256}\n".encode("utf-8"),
+        ContentType="text/plain; charset=utf-8",
+    )
 
     public_url = f"{base_url}/{quote(object_key, safe='/')}"
+    sha_url = f"{base_url}/{quote(sha_key, safe='/')}"
     print(f"R2 upload complete: {public_url}")
     print(f"Package SHA-256: {package_sha256}")
+    print(f"Package SHA-256 URL: {sha_url}")
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output:
         with open(github_output, "a", encoding="utf-8") as output:
             output.write(f"download_url={public_url}\n")
             output.write(f"sha256={package_sha256}\n")
+            output.write(f"sha256_url={sha_url}\n")
 
 
 if __name__ == "__main__":
