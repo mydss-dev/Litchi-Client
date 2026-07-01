@@ -4,7 +4,7 @@ export const env = {
   botToken: process.env.BOT_TOKEN ?? '',
   botAdmins: parseAdmins(process.env.BOT_ADMINS ?? ''),
   githubToken: process.env.GITHUB_TOKEN ?? '',
-  githubRepo: process.env.GITHUB_REPO ?? 'Kimibit7/Litchi-Client',
+  githubRepo: process.env.GITHUB_REPO ?? 'mydss-dev/Litchi-Client',
   githubRef: process.env.GITHUB_REF ?? 'main',
   githubWorkflowId: process.env.GITHUB_WORKFLOW_ID ?? 'white-label-build.yml',
   buildVersion: process.env.BUILD_VERSION ?? '',
@@ -45,15 +45,30 @@ export function requireAdminConfig(): void {
   if (env.botAdmins.size === 0) {
     throw new Error('BOT_ADMINS must contain at least one Telegram user id');
   }
+  if (!env.githubToken) throw new Error('Missing GITHUB_TOKEN');
+  repoParts();
+  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(env.buildVersion)) {
+    throw new Error('BUILD_VERSION must be a semantic version such as 1.2.7');
+  }
+  if (!env.downloadBaseUrl) {
+    throw new Error('Missing DOWNLOAD_BASE_URL');
+  }
+  if (!/^[a-fA-F0-9]{64}$/.test(env.keyEncryptionKey)) {
+    throw new Error('KEY_ENCRYPTION_KEY must be 64 hexadecimal characters');
+  }
+  if (
+    !Number.isSafeInteger(env.buildRateLimit.maxBuilds) ||
+    env.buildRateLimit.maxBuilds <= 0 ||
+    !Number.isFinite(env.buildRateLimit.windowHours) ||
+    env.buildRateLimit.windowHours <= 0
+  ) {
+    throw new Error('Build rate limit values must be positive numbers');
+  }
 }
 
 export function isAdmin(userId?: number): boolean {
   if (!userId) return false;
   return env.botAdmins.has(userId);
-}
-
-export function isAllowedUser(userId?: number): boolean {
-  return isAdmin(userId);
 }
 
 export function repoParts(): { owner: string; repo: string } {

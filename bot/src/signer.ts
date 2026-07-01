@@ -53,7 +53,7 @@ export function verifyConfigPayload(
     typeof wrapper.payload_b64 !== 'string' ||
     typeof wrapper.signature !== 'string'
   ) {
-    throw new Error('保存的签名配置格式无效，请重新执行 /build。');
+    throw new Error('保存的签名配置格式无效，请重新执行 /config。');
   }
 
   const publicKey = b64urlDecode(publicKeyB64);
@@ -64,12 +64,12 @@ export function verifyConfigPayload(
     signature.length !== 64 ||
     !nacl.sign.detached.verify(payloadBytes, signature, publicKey)
   ) {
-    throw new Error('保存的签名配置验签失败，请重新执行 /build。');
+    throw new Error('保存的签名配置验签失败，请重新执行 /config。');
   }
 
   const payload = JSON.parse(payloadBytes.toString('utf8')) as unknown;
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    throw new Error('保存的签名配置内容无效，请重新执行 /build。');
+    throw new Error('保存的签名配置内容无效，请重新执行 /config。');
   }
   return payload as Record<string, unknown>;
 }

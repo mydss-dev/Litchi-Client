@@ -2,7 +2,10 @@ import { Telegraf } from 'telegraf';
 
 import { isAdmin, requireAdminConfig, requireBotToken } from './config.js';
 import { getAuthorizedUser } from './db.js';
-import { wireBuildCommands } from './build_handlers.js';
+import {
+  resumeBuildTracking,
+  wireBuildCommands,
+} from './build_handlers.js';
 import { buildHelpText, buildStartText, wireCommands } from './handlers.js';
 import { wireSignCommands } from './sign_handlers.js';
 
@@ -18,9 +21,8 @@ const baseCommands: MenuCommand[] = [
 ];
 const boundCommands: MenuCommand[] = [
   { command: 'apps', description: '查看当前 APP 绑定' },
-  { command: 'build', description: '配置并生成客户端' },
-  { command: 'status', description: '查看打包进度' },
-  { command: 'latest', description: '获取最新安装包' },
+  { command: 'config', description: '生成或修改基础配置' },
+  { command: 'build', description: '使用已保存配置打包' },
 ];
 const adminCommands: MenuCommand[] = [
   { command: 'authorize', description: '授权用户' },
@@ -36,7 +38,11 @@ async function syncPrivateMenu(input: {
   const commands = [...baseCommands];
   if (isAdmin(input.userId)) commands.push(...adminCommands);
   if (input.authorized && !input.bound) {
-    commands.push({ command: 'bindoss', description: '绑定 OSS 地址' });
+    commands.push(
+      { command: 'bindoss', description: '绑定 OSS 地址' },
+      { command: 'config', description: '生成或修改基础配置' },
+      { command: 'build', description: '使用已保存配置打包' },
+    );
   }
   if (input.bound) commands.push(...boundCommands);
 
@@ -65,6 +71,10 @@ bot.use(async (ctx, next) => {
 
   if (!userId) {
     await ctx.reply('无法识别当前用户。');
+    return;
+  }
+  if (ctx.chat && ctx.chat.type !== 'private') {
+    await ctx.reply('为保护客户配置和安装包信息，请私聊机器人操作。');
     return;
   }
 
@@ -129,8 +139,17 @@ void bot.telegram
     console.error('Failed to set default command menu button', error);
   });
 
-bot.launch();
-console.log('Litchi bot started');
+void bot
+  .launch(() => {
+    console.log('Litchi bot started');
+    void resumeBuildTracking(bot).catch((error) => {
+      console.error('Failed to resume build tracking', error);
+    });
+  })
+  .catch((error) => {
+    console.error('Bot launch failed', error);
+    process.exitCode = 1;
+  });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));

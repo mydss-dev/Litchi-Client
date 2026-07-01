@@ -2,15 +2,7 @@ type PendingAction =
   | { type: 'authorize' }
   | { type: 'bindoss' }
   | { type: 'signconfig' }
-  | { type: 'build' }
-  | {
-      type: 'same_version_choice';
-      signedConfig: string;
-      remoteConfigUrl: string;
-      targetVersion: string;
-    }
-  | { type: 'setlatest_platform' }
-  | { type: 'setlatest_url'; platform: 'windows' | 'android' | 'macos' };
+  | { type: 'build' };
 
 const pendingActions = new Map<number, PendingAction>();
 

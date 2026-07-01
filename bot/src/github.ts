@@ -91,7 +91,7 @@ export async function readBuildStatus(input: {
     repo,
     workflow_id: env.githubWorkflowId,
     event: 'workflow_dispatch',
-    per_page: 50,
+    per_page: 100,
   });
 
   const run = response.data.workflow_runs.find((item) => {

@@ -197,6 +197,7 @@ export function buildHelpText(userId?: number): string {
         '',
         '打包命令:',
         '/apps',
+        '/config',
         '/build',
       );
     }
@@ -208,11 +209,20 @@ export function buildHelpText(userId?: number): string {
     return ['可用命令:', '/myid', '', '请把 ID 发给管理员授权。'].join('\n');
   }
   if (!profile.app_id) {
-    return ['可用命令:', '/myid', '/bindoss'].join('\n');
+    return [
+      '可用命令:',
+      '/myid',
+      '/bindoss',
+      '/config',
+      '/build',
+      '',
+      '未绑定 OSS 时，配置和打包入口会引导你先完成绑定。',
+    ].join('\n');
   }
   return [
     '可用命令:',
     '/apps',
+    '/config',
     '/build',
     '',
     '输入过程中可随时发送 /cancel。',
@@ -281,9 +291,14 @@ async function authorizeTarget(
   targetIdRaw: string,
   adminId: number,
 ): Promise<void> {
-  const targetId = Number.parseInt(targetIdRaw ?? '', 10);
-  if (!Number.isFinite(targetId) || targetId <= 0) {
+  const normalizedTargetId = targetIdRaw.trim();
+  if (!/^\d+$/.test(normalizedTargetId)) {
     await ctx.reply('Telegram ID 格式不对，请重新输入纯数字 ID，例如 6197401242。');
+    return;
+  }
+  const targetId = Number(normalizedTargetId);
+  if (!Number.isSafeInteger(targetId) || targetId <= 0) {
+    await ctx.reply('Telegram ID 超出有效范围，请重新输入。');
     return;
   }
 
@@ -334,7 +349,7 @@ async function bindOssForUser(
         `REMOTE_CONFIG_URL=${bound.remote_config_url}`,
         `REMOTE_CONFIG_PUBLIC_KEY=${bound.public_key}`,
         '',
-        '下一步请发送 /build，机器人会发送配置模板并继续打包流程。',
+        '下一步请发送 /config 生成基础配置；配置完成后再发送 /build 打包。',
       ].join('\n'),
       {
         link_preview_options: { is_disabled: true },

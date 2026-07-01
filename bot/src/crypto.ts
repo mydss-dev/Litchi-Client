@@ -55,8 +55,8 @@ export function decryptKey(ciphertext: string): string {
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
   } catch {
-    // If decryption fails (corrupted data, wrong key), return as-is so the
-    // caller sees garbage rather than crashing the bot.
-    return ciphertext;
+    throw new Error(
+      'Stored signing key cannot be decrypted. Check KEY_ENCRYPTION_KEY before continuing.',
+    );
   }
 }

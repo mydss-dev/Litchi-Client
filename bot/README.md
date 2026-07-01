@@ -32,12 +32,15 @@ npm ci
 BOT_TOKEN=Telegram Bot Token
 BOT_ADMINS=管理员的 Telegram 数字 ID
 GITHUB_TOKEN=可触发 Actions 的 GitHub Token
-GITHUB_REPO=Kimibit7/Litchi-Client
+GITHUB_REPO=mydss-dev/Litchi-Client
 GITHUB_REF=main
 GITHUB_WORKFLOW_ID=white-label-build.yml
 BUILD_VERSION=1.2.7
 DOWNLOAD_BASE_URL=https://download.example.com
 DB_PATH=./data/bot.sqlite
+KEY_ENCRYPTION_KEY=使用 openssl rand -hex 32 生成的 64 位十六进制密钥
+BUILD_RATE_LIMIT_MAX=2
+BUILD_RATE_LIMIT_HOURS=24
 ```
 
 `BUILD_VERSION` 是必填项，机器人直接把它交给 GitHub Actions，不读取
@@ -61,7 +64,7 @@ DOWNLOAD_BASE_URL=https://download.example.com
 R2 API Token 只授予目标 Bucket 的 Object Read & Write 权限。构建成功后，工作流会
 上传到 `packages/<APP_ID>/<platform>/<version>/<request-id>.<ext>`，同时计算安装包
 SHA-256 并写入对象元数据。机器人随后返回公开下载地址和 SHA-256。
-`DOWNLOAD_BASE_URL` 留空时跳过 R2 上传，仍保留 GitHub Artifact。
+`DOWNLOAD_BASE_URL` 是机器人生成下载地址和 `update.json` 的必要配置，不能为空。
 
 `BOT_ADMINS` 不能为空，否则机器人会拒绝启动。直接运行：
 
@@ -92,13 +95,12 @@ Android 正式包需要在仓库中设置以下 Actions secrets：
 
 1. 用户发送 `/myid`，管理员使用 `/authorize` 授权。
 2. 用户发送 `/bindoss`，绑定自己的 HTTPS OSS 地址。
-3. 用户发送 `/build`，机器人发送标准 `config.template.json`，并在消息中逐项说明字段。
-4. 用户填写模板并发回；机器人校验、签名，并比较后台目标版本与上次构建版本。
-5. 首次配置或版本不一致时，机器人直接进入平台打包选择，不要求再次输入命令。
-6. 版本相同时只提供两个选择：直接交付配置，或同版本重新打包。
-7. 同版本重打只更新之后的新下载包；已安装用户的系统图标和原生软件名称不会变化，
+3. 用户发送 `/config`，机器人发送标准 `config.template.json`，并在消息中逐项说明字段。
+4. 用户填写模板并发回；机器人校验、签名并立即发送基础 `config.json`。
+5. 用户需要生成安装包时发送 `/build`，机器人使用已保存配置并询问打包平台。
+6. 同版本重打只更新之后的新下载包；已安装用户的系统图标和原生软件名称不会变化，
    必须等下次提高版本并下载安装更新后才会生效。
-8. 工作流使用内联签名配置构建，上传安装包并计算 SHA-256。
+7. 工作流使用内联签名配置构建，上传安装包并计算 SHA-256。
 9. 配置校验后机器人立即发送签名 `config.json`，用户上传一次即可。
 10. 打包成功后机器人把版本、下载地址和 SHA 写入独立签名 `update.json`。
 11. 首个版本无需上传 `update.json`；以后需要向旧版本用户推送更新时才上传它，

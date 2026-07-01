@@ -14,6 +14,24 @@ permissions:
   contents: read
 
 jobs:
+  bot-check:
+    name: Bot Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: bot/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+
   analyze:
     name: Analyze
     runs-on: ubuntu-latest

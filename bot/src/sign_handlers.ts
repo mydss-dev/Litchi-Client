@@ -3,9 +3,7 @@ import fs from 'node:fs';
 
 import {
   bumpConfigVersion,
-  getAppForUser,
   getAuthorizedUser,
-  latestSuccessfulVersion,
   saveSignedConfig,
 } from './db.js';
 import {
@@ -13,11 +11,8 @@ import {
   getPendingAction,
   setPendingAction,
 } from './flow_state.js';
-import { getCurrentBuildVersion } from './github.js';
 import {
   signConfigPayload,
-  matchesPublishedVersion,
-  verifyConfigPayload,
   withConfigVersion,
   withPreservedUpdateMetadata,
   withUpdateManifestUrl,
@@ -29,6 +24,8 @@ const configTemplate = fs.readFileSync(
 );
 
 export function wireSignCommands(bot: Telegraf): void {
+  bot.command('config', startConfigFlow);
+
   bot.command('signconfig', async (ctx) => {
     const text = ctx.message.text ?? '';
     const rawConfig = extractConfigFromCommandText(text);
@@ -57,11 +54,6 @@ export function wireSignCommands(bot: Telegraf): void {
     if (pending.type === 'signconfig') {
       clearPendingAction(userId);
       await signAndReply(ctx, text);
-      return;
-    }
-
-    if (pending.type === 'same_version_choice') {
-      await handleSameVersionChoice(ctx, userId, text, pending);
       return;
     }
 
@@ -171,13 +163,9 @@ async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
 
   try {
     const input = parseAndValidateConfig(rawConfig);
-    const app = getAppForUser(profile.app_id, userId);
-    const previous = app?.signed_config
-      ? verifyConfigPayload(app.signed_config, profile.public_key)
-      : undefined;
     const payload = withUpdateManifestUrl(
       parseAndValidateConfig(
-        JSON.stringify(withPreservedUpdateMetadata(input, previous)),
+        JSON.stringify(withPreservedUpdateMetadata(input)),
       ),
       profile.remote_config_url,
     );
@@ -190,17 +178,6 @@ async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
     const signedJson = JSON.stringify(signed, null, 2);
     saveSignedConfig(profile.app_id, JSON.stringify(signed));
 
-    const targetVersion = getCurrentBuildVersion();
-    const publishedVersion =
-      latestSuccessfulVersion(profile.app_id) ||
-      (typeof previous?.update_version === 'string'
-        ? previous.update_version.trim()
-        : '');
-    const versionMatches =
-      publishedVersion !== '' &&
-      (publishedVersion === targetVersion ||
-        matchesPublishedVersion(previous ?? {}, targetVersion));
-
     await ctx.replyWithDocument(
       {
         source: Buffer.from(signedJson, 'utf8'),
@@ -211,95 +188,15 @@ async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
           '基础配置校验完成并已签名。',
           `请保持文件名为 config.json，并上传到：${profile.remote_config_url}`,
           '这个文件以后修改 API、Logo 或文案时才需要重新上传；安装包更新信息会单独生成 update.json。',
+          '需要生成安装包时，请发送 /build。',
         ].join('\n'),
       },
     );
-
-    if (!versionMatches) {
-      setPendingAction(userId, { type: 'build' });
-      await ctx.reply(
-        [
-          '配置校验完成，已签名并保存。',
-          publishedVersion
-            ? `构建版本不一致：上次 ${publishedVersion}，后台目标 ${targetVersion}。`
-            : '首次配置还没有已构建版本。',
-          '需要生成安装包，请回复数字选择平台：',
-          '1 — 全部 (Windows + Android + macOS)',
-          '2 — Windows',
-          '3 — Android',
-          '4 — macOS',
-          '退出请输入 /cancel',
-        ].join('\n'),
-      );
-      return;
-    }
-    setPendingAction(userId, {
-      type: 'same_version_choice',
-      signedConfig: signedJson,
-      remoteConfigUrl: profile.remote_config_url,
-      targetVersion,
-    });
-    await ctx.reply(
-      [
-        '配置校验完成，已签名并保存。',
-        `当前后台版本与上次构建版本相同（${targetVersion}）。`,
-        'API、头像、邀请地址和文案等热配置可以直接发布，无需重新打包。',
-        'Logo、系统图标和原生应用名称等安装包素材发生变化时才需要重新打包。',
-        '请回复数字选择：',
-        '1 — 直接发布配置，不打包',
-        `2 — 同版本 ${targetVersion} 重新打包（只更新之后的新下载包；已安装用户的系统图标和原生软件名称不会变化，必须等下次提高版本并下载安装更新后才会生效）`,
-        '退出请输入 /cancel',
-      ].join('\n'),
-    );
+    clearPendingAction(userId);
   } catch (error) {
     setPendingAction(userId, { type: 'signconfig' });
     await ctx.reply(error instanceof Error ? error.message : String(error));
   }
-}
-
-async function handleSameVersionChoice(
-  ctx: Context,
-  userId: number,
-  choice: string,
-  pending: {
-    signedConfig: string;
-    remoteConfigUrl: string;
-    targetVersion: string;
-  },
-): Promise<void> {
-  if (choice === '1') {
-    clearPendingAction(userId);
-    await ctx.reply(
-      [
-        '已选择只发布热配置，不重新打包。',
-        `请上传刚才收到的 config.json 覆盖到：${pending.remoteConfigUrl}`,
-        '上传后重启客户端检查 API、头像、邀请地址或文案是否生效。',
-      ].join('\n'),
-    );
-    return;
-  }
-
-  if (choice === '2') {
-    setPendingAction(userId, { type: 'build' });
-    await ctx.reply(
-      [
-        `将按同版本 ${pending.targetVersion} 重新打包。`,
-        '这只会更新之后的新下载包。',
-        '已安装用户的系统图标和原生软件名称不会变化，必须等下次提高版本并下载安装更新后才会生效。',
-        '',
-        '请回复数字选择打包平台：',
-        '1 — 全部 (Windows + Android + macOS)',
-        '2 — Windows',
-        '3 — Android',
-        '4 — macOS',
-        '退出请输入 /cancel',
-      ].join('\n'),
-    );
-    return;
-  }
-
-  setPendingAction(userId, { type: 'same_version_choice', ...pending });
-  await ctx.reply('请输入 1 或 2；退出请输入 /cancel。');
 }
 
 function extractConfigFromCommandText(text: string): string {

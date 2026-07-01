@@ -4,11 +4,6 @@ import test from 'node:test';
 
 import { buildRunName } from './github.js';
 import {
-  clearPendingAction,
-  getPendingAction,
-  setPendingAction,
-} from './flow_state.js';
-import {
   generateKeyPair,
   matchesPublishedVersion,
   signConfigPayload,
@@ -342,20 +337,6 @@ test('the stored package version decides whether another build is required', () 
     matchesPublishedVersion({ update_version: '2.0.0' }, '2.0.0'),
     true,
   );
-});
-
-test('same-version choice keeps the signed config until the user decides', () => {
-  const userId = 9_001;
-  const pending = {
-    type: 'same_version_choice' as const,
-    signedConfig: '{"payload_b64":"test","signature":"test"}',
-    remoteConfigUrl: 'https://cdn.example.com/config.json',
-    targetVersion: '2.0.0',
-  };
-  setPendingAction(userId, pending);
-  assert.deepEqual(getPendingAction(userId), pending);
-  clearPendingAction(userId);
-  assert.equal(getPendingAction(userId), undefined);
 });
 
 test('update switch accepts only a boolean', () => {

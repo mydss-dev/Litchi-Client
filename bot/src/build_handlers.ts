@@ -1,11 +1,16 @@
 import type { Telegraf } from 'telegraf';
+import { nanoid } from 'nanoid';
 import { env, isAdmin } from './config.js';
 import {
   countRecentBuilds,
   createBuild,
   getAppForUser,
   getAuthorizedUser,
+  hasActiveBuildGroup,
   latestBuild,
+  latestSuccessfulVersion,
+  listRecoverableBuilds,
+  markBuildGroupFinalized,
   updateBuildStatus,
 } from './db.js';
 import {
@@ -20,13 +25,11 @@ import {
   type BuildPlatform,
 } from './github.js';
 import {
-  matchesPublishedVersion,
   signConfigPayload,
   verifyConfigPayload,
   withReleaseMetadata,
   updateManifestUrl,
 } from './signer.js';
-import { startConfigFlow } from './sign_handlers.js';
 
 const allPlatforms: BuildPlatform[] = ['windows', 'android', 'macos'];
 const terminalStatuses = new Set([
@@ -41,6 +44,7 @@ const terminalStatuses = new Set([
 /// Each build group (one /build command) gets one entry here.  Status updates
 /// edit the same Telegram message instead of sending a new one every time.
 type BuildGroup = {
+  groupId: string;
   appId: string;
   userId: number;
   chatId: number;
@@ -61,6 +65,8 @@ type BuildGroup = {
 
 const groupMessages = new Map<string, BuildGroup>();
 const groupTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const startingApps = new Set<string>();
+const maxPollAttempts = 200;
 
 export function wireBuildCommands(bot: Telegraf): void {
   bot.command('build', async (ctx) => {
@@ -72,7 +78,18 @@ export function wireBuildCommands(bot: Telegraf): void {
 
     const [platformRaw] = splitArgs(ctx.message.text);
     if (!platformRaw) {
-      await startConfigFlow(ctx);
+      const profile = requireBoundProfile(userId);
+      if (profile instanceof Error) {
+        await ctx.reply(profile.message);
+        return;
+      }
+      const app = getAppForUser(profile.app_id, userId);
+      if (!app?.signed_config) {
+        await ctx.reply('还没有基础配置，请先发送 /config。');
+        return;
+      }
+      setPendingAction(userId, { type: 'build' });
+      await ctx.reply(buildPlatformPrompt());
       return;
     }
 
@@ -148,14 +165,13 @@ async function startBuildFromInput(
   }
   const app = getAppForUser(profile.app_id, userId);
   if (!app?.signed_config) {
-    await ctx.reply('还没有可用于打包的配置，请先发送 /build 并回传模板。');
+    await ctx.reply('还没有可用于打包的配置，请先发送 /config。');
     return;
   }
   if (!env.downloadBaseUrl) {
     await ctx.reply('缺少 DOWNLOAD_BASE_URL，无法提前生成安装包下载地址。');
     return;
   }
-
   // ── Rate limit ───────────────────────────────────────────────────────────
   if (!isAdmin(userId)) {
     const { maxBuilds, windowHours } = env.buildRateLimit;
@@ -170,24 +186,19 @@ async function startBuildFromInput(
       return;
     }
   }
-
-  // Clean up any previous group for this chat.
-  for (const [key, group] of groupMessages) {
-    if (group.chatId === chatId) {
-      const timer = groupTimers.get(key);
-      if (timer) clearTimeout(timer);
-      groupTimers.delete(key);
-      groupMessages.delete(key);
-    }
+  if (
+    startingApps.has(profile.app_id) ||
+    hasActiveBuildGroup(profile.app_id)
+  ) {
+    await ctx.reply('当前已有打包任务正在进行，请等待完成后再发起新的打包。');
+    return;
   }
+  startingApps.add(profile.app_id);
 
   try {
     const version = getCurrentBuildVersion();
-    const currentConfig = verifyConfigPayload(
-      app.signed_config,
-      app.public_key,
-    );
-    if (matchesPublishedVersion(currentConfig, version)) {
+    verifyConfigPayload(app.signed_config, app.public_key);
+    if (latestSuccessfulVersion(profile.app_id) === version) {
       await ctx.reply(
         [
           `提醒：你正在按同版本 ${version} 重新打包。`,
@@ -196,8 +207,9 @@ async function startBuildFromInput(
         ].join('\n'),
       );
     }
-    const groupKey = `${chatId}_${Date.now()}`;
+    const groupKey = `build-${nanoid()}`;
     const group: BuildGroup = {
+      groupId: groupKey,
       appId: profile.app_id,
       userId,
       chatId,
@@ -207,39 +219,56 @@ async function startBuildFromInput(
     };
     groupMessages.set(groupKey, group);
 
+    let dispatchError: unknown;
     for (const platform of platforms) {
-      const dispatched = await dispatchBuild({
-        appId: profile.app_id,
-        platform,
-        version,
-        remoteConfigUrl: profile.remote_config_url,
-        verifier: profile.public_key,
-        signedConfig: app.signed_config,
-      });
-      const id = createBuild({
-        appId: profile.app_id,
-        tgUserId: userId,
-        requestId: dispatched.requestId,
-        platform,
-        version,
-        status: 'queued',
-        githubRunUrl: dispatched.workflowUrl,
-      });
+      try {
+        const dispatched = await dispatchBuild({
+          appId: profile.app_id,
+          platform,
+          version,
+          remoteConfigUrl: profile.remote_config_url,
+          verifier: profile.public_key,
+          signedConfig: app.signed_config,
+        });
+        const id = createBuild({
+          appId: profile.app_id,
+          tgUserId: userId,
+          buildGroupId: groupKey,
+          chatId,
+          requestId: dispatched.requestId,
+          platform,
+          version,
+          status: 'queued',
+          githubRunUrl: dispatched.workflowUrl,
+        });
 
-      group.builds.set(id, {
-        platform,
-        version,
-        requestId: dispatched.requestId,
-        status: 'queued',
-        downloadUrl: dispatched.downloadUrl,
-        sha256: '',
-      });
+        group.builds.set(id, {
+          platform,
+          version,
+          requestId: dispatched.requestId,
+          status: 'queued',
+          downloadUrl: '',
+          sha256: '',
+        });
+      } catch (error) {
+        dispatchError = error;
+        break;
+      }
     }
 
-    const sent = await ctx.reply(formatGroupMessage(group), {
-      link_preview_options: { is_disabled: true },
-    });
-    group.messageId = sent.message_id;
+    if (group.builds.size === 0) {
+      groupMessages.delete(groupKey);
+      throw dispatchError ?? new Error('没有成功派发任何打包任务。');
+    }
+
+    try {
+      const sent = await ctx.reply(formatGroupMessage(group), {
+        link_preview_options: { is_disabled: true },
+      });
+      group.messageId = sent.message_id;
+    } catch (error) {
+      console.error('Failed to send initial build status', error);
+    }
 
     scheduleGroupPoll(bot, {
       groupKey,
@@ -247,9 +276,31 @@ async function startBuildFromInput(
       delayMs: 20000,
       attempt: 0,
     });
+    if (dispatchError) {
+      await ctx.reply(
+        `部分平台派发失败，已成功派发的任务会继续跟踪：${
+          dispatchError instanceof Error
+            ? dispatchError.message
+            : String(dispatchError)
+        }`,
+      );
+    }
   } catch (error) {
     await ctx.reply(error instanceof Error ? error.message : String(error));
+  } finally {
+    startingApps.delete(profile.app_id);
   }
+}
+
+function buildPlatformPrompt(): string {
+  return [
+    '请选择打包平台：',
+    '1 — 全部 (Windows + Android + macOS)',
+    '2 — Windows',
+    '3 — Android',
+    '4 — macOS',
+    '退出请输入 /cancel',
+  ].join('\n');
 }
 
 function scheduleGroupPoll(
@@ -312,7 +363,7 @@ function scheduleGroupPoll(
         }
       }
 
-      if (changed) {
+      if (changed && group.messageId > 0) {
         try {
           await bot.telegram.editMessageText(
             group.chatId,
@@ -321,33 +372,34 @@ function scheduleGroupPoll(
             formatGroupMessage(group),
             { link_preview_options: { is_disabled: true } },
           );
-        } catch {
-          // Message may have been deleted — stop tracking.
-          groupTimers.delete(input.groupKey);
-          groupMessages.delete(input.groupKey);
-          return;
+        } catch (error) {
+          // Telegram UI failures must not stop build tracking or delivery.
+          console.error('Failed to edit build status message', error);
+          group.messageId = 0;
         }
       }
 
       if (allTerminal) {
         await sendFinalConfig(bot, group);
+        markBuildGroupFinalized(group.groupId);
         groupTimers.delete(input.groupKey);
         groupMessages.delete(input.groupKey);
         return;
       }
 
-      if (input.attempt < 60) {
+      if (input.attempt < maxPollAttempts) {
         scheduleGroupPoll(bot, { ...input, delayMs: 30000, attempt: input.attempt + 1 });
       } else {
         await bot.telegram.sendMessage(
           group.chatId,
           '构建状态轮询超时：config.json 不受影响，但 update.json 尚未生成。请检查 GitHub Actions、R2 安装包和 .sha256 文件。',
         );
+        markBuildGroupFinalized(group.groupId);
         groupTimers.delete(input.groupKey);
         groupMessages.delete(input.groupKey);
       }
     } catch {
-      if (input.attempt < 60) {
+      if (input.attempt < maxPollAttempts) {
         scheduleGroupPoll(bot, { ...input, delayMs: 30000, attempt: input.attempt + 1 });
       } else {
         groupTimers.delete(input.groupKey);
@@ -357,6 +409,63 @@ function scheduleGroupPoll(
   }, input.delayMs);
 
   groupTimers.set(input.groupKey, timer);
+}
+
+export async function resumeBuildTracking(bot: Telegraf): Promise<void> {
+  const rows = listRecoverableBuilds();
+  const grouped = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const groupRows = grouped.get(row.build_group_id) ?? [];
+    groupRows.push(row);
+    grouped.set(row.build_group_id, groupRows);
+  }
+
+  for (const [groupId, groupRows] of grouped) {
+    if (groupRows.length === 0 || groupMessages.has(groupId)) continue;
+    const first = groupRows[0];
+    const group: BuildGroup = {
+      groupId,
+      appId: first.app_id,
+      userId: first.tg_user_id,
+      chatId: first.chat_id || first.tg_user_id,
+      messageId: 0,
+      finalConfigSent: false,
+      builds: new Map(
+        groupRows.map((row) => [
+          row.id,
+          {
+            platform: row.platform,
+            version: row.version,
+            requestId: row.request_id,
+            status: row.status,
+            downloadUrl: row.download_url,
+            sha256: row.sha256,
+          },
+        ]),
+      ),
+    };
+    groupMessages.set(groupId, group);
+    try {
+      const sent = await bot.telegram.sendMessage(
+        group.chatId,
+        [
+          '机器人已重启，正在恢复打包任务跟踪。',
+          '',
+          formatGroupMessage(group),
+        ].join('\n'),
+        { link_preview_options: { is_disabled: true } },
+      );
+      group.messageId = sent.message_id;
+    } catch (error) {
+      console.error('Failed to announce resumed build tracking', error);
+    }
+    scheduleGroupPoll(bot, {
+      groupKey: groupId,
+      appId: group.appId,
+      delayMs: 1000,
+      attempt: 0,
+    });
+  }
 }
 
 function formatGroupMessage(group: BuildGroup): string {

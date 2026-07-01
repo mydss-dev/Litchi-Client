@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS builds (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   app_id TEXT NOT NULL,
   tg_user_id INTEGER NOT NULL,
+  build_group_id TEXT NOT NULL DEFAULT '',
+  chat_id INTEGER NOT NULL DEFAULT 0,
   request_id TEXT NOT NULL DEFAULT '',
   platform TEXT NOT NULL,
   version TEXT NOT NULL,
@@ -39,6 +41,7 @@ CREATE TABLE IF NOT EXISTS builds (
   download_url TEXT NOT NULL DEFAULT '',
   sha256 TEXT NOT NULL DEFAULT '',
   github_run_url TEXT NOT NULL DEFAULT '',
+  finalized INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(app_id) REFERENCES apps(app_id)
@@ -65,6 +68,26 @@ if (!buildColumns.some((column) => column.name === 'request_id')) {
 if (!buildColumns.some((column) => column.name === 'sha256')) {
   db.exec("ALTER TABLE builds ADD COLUMN sha256 TEXT NOT NULL DEFAULT ''");
 }
+if (!buildColumns.some((column) => column.name === 'build_group_id')) {
+  db.exec("ALTER TABLE builds ADD COLUMN build_group_id TEXT NOT NULL DEFAULT ''");
+}
+if (!buildColumns.some((column) => column.name === 'chat_id')) {
+  db.exec("ALTER TABLE builds ADD COLUMN chat_id INTEGER NOT NULL DEFAULT 0");
+}
+if (!buildColumns.some((column) => column.name === 'finalized')) {
+  db.exec("ALTER TABLE builds ADD COLUMN finalized INTEGER NOT NULL DEFAULT 0");
+}
+db.exec(`
+  UPDATE builds
+  SET
+    build_group_id = CASE
+      WHEN build_group_id = '' THEN
+        'legacy-' || app_id || '-' || version || '-' ||
+        strftime('%Y%m%d%H%M', created_at)
+      ELSE build_group_id
+    END,
+    chat_id = CASE WHEN chat_id = 0 THEN tg_user_id ELSE chat_id END
+`);
 const appColumns = db.pragma('table_info(apps)') as Array<{ name: string }>;
 if (!appColumns.some((column) => column.name === 'signed_config')) {
   db.exec("ALTER TABLE apps ADD COLUMN signed_config TEXT NOT NULL DEFAULT ''");
@@ -86,6 +109,8 @@ export type BuildRow = {
   id: number;
   app_id: string;
   tg_user_id: number;
+  build_group_id: string;
+  chat_id: number;
   request_id: string;
   platform: string;
   version: string;
@@ -93,6 +118,7 @@ export type BuildRow = {
   download_url: string;
   sha256: string;
   github_run_url: string;
+  finalized: number;
   created_at: string;
   updated_at: string;
 };
@@ -188,6 +214,8 @@ export function saveSignedConfig(appId: string, signedConfig: string): void {
 export function createBuild(input: {
   appId: string;
   tgUserId: number;
+  buildGroupId: string;
+  chatId: number;
   requestId: string;
   platform: string;
   version: string;
@@ -196,10 +224,12 @@ export function createBuild(input: {
 }): number {
   const result = db.prepare(`
     INSERT INTO builds (
-      app_id, tg_user_id, request_id, platform, version, status, github_run_url
+      app_id, tg_user_id, build_group_id, chat_id, request_id,
+      platform, version, status, github_run_url
     )
     VALUES (
-      @appId, @tgUserId, @requestId, @platform, @version, @status, @githubRunUrl
+      @appId, @tgUserId, @buildGroupId, @chatId, @requestId,
+      @platform, @version, @status, @githubRunUrl
     )
   `).run({ ...input, githubRunUrl: input.githubRunUrl ?? '' });
   return Number(result.lastInsertRowid);
@@ -267,7 +297,7 @@ export function updateBuildStatus(input: {
  */
 export function countRecentBuilds(appId: string, windowHours: number): number {
   const row = db.prepare(`
-    SELECT COUNT(*) as cnt FROM builds
+    SELECT COUNT(DISTINCT build_group_id) as cnt FROM builds
     WHERE app_id = ?
       AND created_at >= datetime('now', '-' || ? || ' hours')
   `).get(appId, String(windowHours)) as { cnt: number } | undefined;
@@ -285,6 +315,34 @@ export function latestBuild(appId: string, platform: string): BuildRow | undefin
     if (versionDiff !== 0) return versionDiff;
     return String(b.created_at).localeCompare(String(a.created_at));
   })[0];
+}
+
+export function hasActiveBuildGroup(appId: string, maxAgeHours = 2): boolean {
+  const row = db.prepare(`
+    SELECT 1 FROM builds
+    WHERE app_id = ?
+      AND finalized = 0
+      AND created_at >= datetime('now', '-' || ? || ' hours')
+    LIMIT 1
+  `).get(appId, String(maxAgeHours)) as { 1: number } | undefined;
+  return Boolean(row);
+}
+
+export function listRecoverableBuilds(maxAgeHours = 4): BuildRow[] {
+  return db.prepare(`
+    SELECT * FROM builds
+    WHERE finalized = 0
+      AND created_at >= datetime('now', '-' || ? || ' hours')
+    ORDER BY id ASC
+  `).all(String(maxAgeHours)) as BuildRow[];
+}
+
+export function markBuildGroupFinalized(buildGroupId: string): void {
+  db.prepare(`
+    UPDATE builds
+    SET finalized = 1, updated_at = CURRENT_TIMESTAMP
+    WHERE build_group_id = ?
+  `).run(buildGroupId);
 }
 
 export function latestSuccessfulVersion(appId: string): string {
