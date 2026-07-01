@@ -62,6 +62,8 @@ type BuildGroup = {
   >;
 };
 
+type SignedConfigPayload = ReturnType<typeof verifyConfigPayload>;
+
 const groupMessages = new Map<string, BuildGroup>();
 const groupTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -272,7 +274,7 @@ async function sendImmediateBaseConfig(
     remoteConfigUrl: string;
     publicKey: string;
     privateKey: string;
-    currentConfig: unknown;
+    currentConfig: SignedConfigPayload;
   },
 ): Promise<void> {
   const configVersion = bumpConfigVersion(input.appId);
