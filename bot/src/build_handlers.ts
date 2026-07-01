@@ -310,6 +310,7 @@ async function startBuildFromInput(
       try {
         const dispatched = await dispatchBuild({
           appId: group.publicAppId,
+          nativeAppId: profile.app_id,
           platform,
           version,
           remoteConfigUrl: profile.remote_config_url,

@@ -30,6 +30,7 @@ if ($Action -eq "core") {
 }
 
 $env:TENANT_ID = $testConfig.TENANT_ID
+$env:NATIVE_APP_ID = if ($testConfig.NATIVE_APP_ID) { $testConfig.NATIVE_APP_ID } else { $testConfig.TENANT_ID }
 $env:BUILD_VERSION = $testConfig.BUILD_VERSION
 $env:REMOTE_CONFIG_URL = $testConfig.REMOTE_CONFIG_URL
 $env:REMOTE_CONFIG_VERIFIER = $testConfig.REMOTE_CONFIG_VERIFIER
@@ -62,6 +63,8 @@ try {
 
   $defines = @(
     "--dart-define=APP_NAME=$($outputs.app_name)",
+    "--dart-define=APP_ID=$env:NATIVE_APP_ID",
+    "--dart-define=PUBLIC_APP_ID=$env:TENANT_ID",
     "--dart-define=LOGO_URL=$($outputs.logo_url)",
     "--dart-define=API_BASE=$($outputs.api_base)",
     "--dart-define=APP_VERSION=$($testConfig.BUILD_VERSION)",

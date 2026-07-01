@@ -99,9 +99,14 @@ export function verifySignedPayload(wrapper, verifier) {
 async function main() {
   const configUrl = httpsUrl(requiredEnv('REMOTE_CONFIG_URL'), 'REMOTE_CONFIG_URL');
   const verifier = requiredEnv('REMOTE_CONFIG_VERIFIER');
-  // Opaque public tenant id. It derives stable native identities and may be
-  // compiled into the client; Telegram/account identifiers must never be used.
-  const appId = cleanText(requiredEnv('TENANT_ID'), 'TENANT_ID', 80);
+  // Public identity is safe for TUN names and artifact URLs. Native identity
+  // remains stable for in-place upgrades of already-issued applications.
+  const publicAppId = cleanText(requiredEnv('TENANT_ID'), 'TENANT_ID', 80);
+  const nativeAppId = cleanText(
+    requiredEnv('NATIVE_APP_ID'),
+    'NATIVE_APP_ID',
+    80,
+  );
   const version = cleanText(requiredEnv('BUILD_VERSION'), 'BUILD_VERSION', 30);
   if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
     throw new Error('BUILD_VERSION must be a semantic version such as 1.2.7');
@@ -145,7 +150,7 @@ async function main() {
   const apiBase = httpsUrl(payload.api_base_list[0], 'api_base_list[0]');
   const logoUrl = httpsUrl(payload.logo_url, 'logo_url');
 
-  const segment = tenantSegment(appId);
+  const segment = tenantSegment(nativeAppId);
   const [major, minor, patch] = version.split(/[.+-]/, 3).map(Number);
   const versionCode = major * 1_000_000 + minor * 1_000 + patch;
   if (!Number.isSafeInteger(versionCode) || versionCode <= 0 || versionCode > 2_100_000_000) {
@@ -157,8 +162,11 @@ async function main() {
 
   writeOutput('app_name', appName);
   writeOutput('config_path', configPath);
-  writeOutput('package_name', packageFileName(appName, appId));
-  writeOutput('windows_exe_name', `${windowsFileBaseName(appName, appId)}.exe`);
+  writeOutput('package_name', packageFileName(appName, publicAppId));
+  writeOutput(
+    'windows_exe_name',
+    `${windowsFileBaseName(appName, publicAppId)}.exe`,
+  );
   writeOutput('logo_url', logoUrl);
   writeOutput('api_base', apiBase);
   writeOutput('android_application_id', `com.litchi.whitelabel.${segment}`);

@@ -8,15 +8,18 @@ Telegram 机器人负责授权、绑定客户 OSS、签名远程配置并触发
 
 每个客户在机器人内部固定拥有：
 
-- 内部 `APP_ID`（只用于数据库索引、任务和派生原生安装身份）
+- 稳定原生 `APP_ID`（用于数据库索引、本地数据隔离和原生安装身份）
+- 匿名公开租户 ID（由随机签名公钥派生，用于 TUN 名称、构建名和下载路径）
 - `REMOTE_CONFIG_URL`
 - Ed25519 配置签名密钥
 - Android applicationId
 - macOS Bundle ID
 - GitHub Actions request ID
 
-客户端本身只编入该客户的 `REMOTE_CONFIG_URL` 和 Ed25519 公钥；名称、Logo、
-API 地址等业务配置全部从客户 OSS 获取。内部 `APP_ID` 不会写入 Dart 客户端。
+客户端会编入稳定原生 `APP_ID`、匿名公开 ID、`REMOTE_CONFIG_URL` 和 Ed25519
+公钥；名称、Logo、API 地址等业务配置从客户 OSS 获取。新客户的原生 `APP_ID`
+为随机值，不使用 Telegram ID。已经交付的旧客户保留原生 ID，确保 Android、
+macOS 和 Windows 可以原位升级，但其 TUN 名称和公开下载路径只使用匿名 ID。
 
 ## 配置
 
@@ -62,8 +65,9 @@ DOWNLOAD_BASE_URL=https://download.example.com
 - `R2_BUCKET`
 
 R2 API Token 只授予目标 Bucket 的 Object Read & Write 权限。构建成功后，工作流会
-上传到 `packages/<APP_ID>/<platform>/<version>/<request-id>.<ext>`，同时计算安装包
-SHA-256 并写入对象元数据。机器人随后返回公开下载地址和 SHA-256。
+上传到 `packages/<匿名公开ID>/<platform>/<version>/<request-id>.<ext>`，同时计算
+安装包 SHA-256 并写入对象元数据。机器人把公开下载地址写入最终说明，SHA-256
+保留在签名 `update.json` 中用于客户端校验，不在聊天状态消息中展示。
 `DOWNLOAD_BASE_URL` 是机器人生成下载地址和 `update.json` 的必要配置，不能为空。
 
 `BOT_ADMINS` 不能为空，否则机器人会拒绝启动。直接运行：

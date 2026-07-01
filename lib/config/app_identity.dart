@@ -3,6 +3,10 @@ abstract final class AppIdentity {
     'APP_ID',
     defaultValue: 'litchi',
   );
+  static const String publicBuildId = String.fromEnvironment(
+    'PUBLIC_APP_ID',
+    defaultValue: 'litchi',
+  );
 
   static String storageKeyFor(String value) {
     final normalized = value
@@ -39,7 +43,7 @@ abstract final class AppIdentity {
     return 'TUN-$suffix';
   }
 
-  static String get tunInterfaceAlias => tunInterfaceAliasFor(buildId);
+  static String get tunInterfaceAlias => tunInterfaceAliasFor(publicBuildId);
 
   static String get instancePing => 'LITCHI_FOCUS_V1:$storageKey';
   static String get instancePong => 'LITCHI_FOCUS_OK_V1:$storageKey';

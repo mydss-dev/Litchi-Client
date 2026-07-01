@@ -28,6 +28,7 @@ Future<void> main(List<String> args) async {
   stdout.writeln('Branding source: $source');
   stdout.writeln('App name: $appName');
   stdout.writeln('Logo: ${logo.isEmpty ? '(empty)' : logo}');
+  _writeGitHubOutput('windows_exe_name', windowsExeName);
 
   await _writeAndroidName(appName);
   await _writeWindowsName(appName, windowsExeName);
@@ -46,6 +47,12 @@ Future<void> main(List<String> args) async {
   }
 
   stdout.writeln('Branding applied.');
+}
+
+void _writeGitHubOutput(String name, String value) {
+  final outputPath = Platform.environment['GITHUB_OUTPUT'];
+  if (outputPath == null || outputPath.isEmpty) return;
+  File(outputPath).writeAsStringSync('$name=$value\n', mode: FileMode.append);
 }
 
 void _usage() {

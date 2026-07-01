@@ -1,5 +1,7 @@
 import type { Telegraf } from "telegraf";
 
+import { randomBytes } from "node:crypto";
+
 import { isAdmin } from "./config.js";
 import {
   authorizeUser,
@@ -316,8 +318,8 @@ export function buildStartText(userId?: number): string {
   ].join("\n");
 }
 
-export function buildAppId(userId: number): string {
-  return `client_${userId}`;
+export function buildAppId(_userId: number): string {
+  return `app_${randomBytes(12).toString("hex")}`;
 }
 
 export function normalizeOssDomain(raw: string): string {

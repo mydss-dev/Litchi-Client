@@ -34,6 +34,7 @@ export function buildRunName(input: {
 
 export async function dispatchBuild(input: {
   appId: string;
+  nativeAppId: string;
   platform: BuildPlatform;
   version: string;
   remoteConfigUrl: string;
@@ -54,6 +55,7 @@ export async function dispatchBuild(input: {
   }
   const workflowInputs: Record<string, string> = {
     app_id: input.appId,
+    native_app_id: input.nativeAppId,
     platform: input.platform,
     version: input.version,
     remote_config_url: input.remoteConfigUrl,

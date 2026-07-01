@@ -169,16 +169,19 @@ class CoreController extends ChangeNotifier {
     await _logSub?.cancel();
     _sub = null;
     _logSub = null;
+    // Restore the user's proxy before waiting for the core process. If process
+    // shutdown reaches the outer quit timeout, Windows must not be left
+    // pointing at a listener that is about to disappear.
+    try {
+      await ProxySetter.disable(notify: false);
+    } catch (_) {
+      // Best-effort cleanup during explicit application exit.
+    }
     if (_core.isRunning) {
       await _core.stop();
       MihomoApiClient.resetClient();
     }
     _core.dispose();
-    try {
-      await ProxySetter.disable(notify: false);
-    } catch (_) {
-      // intentional: best-effort cleanup during dispose, failure is safe to ignore
-    }
   }
 
   Future<void> startCoreOnly(CoreConnectionRequest req) async {

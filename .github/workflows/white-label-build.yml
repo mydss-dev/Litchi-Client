@@ -7,6 +7,9 @@ on:
       app_id:
         required: true
         type: string
+      native_app_id:
+        required: true
+        type: string
       platform:
         required: true
         type: choice
@@ -42,6 +45,7 @@ jobs:
     timeout-minutes: 90
     env:
       TENANT_ID: ${{ inputs.app_id }}
+      NATIVE_APP_ID: ${{ inputs.native_app_id }}
       BUILD_VERSION: ${{ inputs.version }}
       REMOTE_CONFIG_URL: ${{ inputs.remote_config_url }}
       REMOTE_CONFIG_VERIFIER: ${{ inputs.remote_config_verifier }}
@@ -141,7 +145,8 @@ jobs:
         run: |
           defines=(
             "--dart-define=APP_NAME=$APP_NAME"
-            "--dart-define=APP_ID=$TENANT_ID"
+            "--dart-define=APP_ID=$NATIVE_APP_ID"
+            "--dart-define=PUBLIC_APP_ID=$TENANT_ID"
             "--dart-define=LOGO_URL=$LOGO_URL"
             "--dart-define=API_BASE=$API_BASE"
             "--dart-define=APP_VERSION=$BUILD_VERSION"

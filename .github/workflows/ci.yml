@@ -64,6 +64,7 @@ jobs:
       - run: flutter pub get
 
       - name: Generate brand assets
+        id: branding
         shell: pwsh
         run: |
           $appName = if ("${{ secrets.APP_NAME }}") { "${{ secrets.APP_NAME }}" } else { "Litchi" }
@@ -94,12 +95,25 @@ jobs:
         shell: pwsh
         run: .\tool\bundle_windows_runtime.ps1 -ReleaseDir "build\windows\x64\runner\Release"
 
+      - name: Apply branded Windows executable name
+        shell: pwsh
+        env:
+          WINDOWS_EXE_NAME: ${{ steps.branding.outputs.windows_exe_name }}
+        run: |
+          $source = "build\windows\x64\runner\Release\Client.exe"
+          if (-not (Test-Path -LiteralPath $source)) {
+            throw "Windows executable is missing: $source"
+          }
+          Rename-Item -LiteralPath $source -NewName $env:WINDOWS_EXE_NAME
+
       - name: Install Inno Setup
         shell: pwsh
         run: .\tool\install_inno_chinese.ps1
 
       - name: Build installer
         shell: pwsh
+        env:
+          WINDOWS_EXE_NAME: ${{ steps.branding.outputs.windows_exe_name }}
         run: |
           # 从 tag 提取版本号（v1.2.0 → 1.2.0），非 tag 构建用 0.0.0
           $version = "${{ github.ref_name }}" -replace '^v', ''
@@ -112,6 +126,7 @@ jobs:
             /DMyAppVersion=$version `
             "/DMyAppName=$appName" `
             "/DMyAppPublisher=$publisher" `
+            "/DMyAppExeName=$env:WINDOWS_EXE_NAME" `
             litchi_setup.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host "Installer ready: installer_output\$setupName"
