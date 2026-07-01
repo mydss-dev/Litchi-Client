@@ -174,7 +174,11 @@ export function wireCommands(bot: Telegraf): void {
     if (!ossRaw) {
       setPendingAction(userId, { type: 'bindoss' });
       await ctx.reply(
-        ['请发送你的 OSS 地址。', '例如: https://oss.litchi.cfd', '退出请输入 /cancel'].join('\n'),
+        [
+          '请发送你的 OSS 地址。',
+          '例如: https://oss.example.com/client-name',
+          '退出请输入 /cancel',
+        ].join('\n'),
       );
       return;
     }
