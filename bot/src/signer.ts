@@ -109,7 +109,6 @@ export function withPreservedUpdateMetadata(
   const payload = { ...input };
   delete payload.config_version;
   delete payload.update_manifest_url;
-  delete payload.update_enabled;
   delete payload.update_version;
   delete payload.update_download_url;
   delete payload.update_sha256;
