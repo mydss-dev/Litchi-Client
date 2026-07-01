@@ -109,9 +109,11 @@ export function withPreservedUpdateMetadata(
   const payload = { ...input };
   delete payload.config_version;
   delete payload.update_manifest_url;
+  delete payload.update_enabled;
   delete payload.update_version;
   delete payload.update_download_url;
   delete payload.update_sha256;
+  delete payload.update_changelog;
   return payload;
 }
 
@@ -129,17 +131,6 @@ export function withUpdateManifestUrl(
     ...payload,
     update_manifest_url: updateManifestUrl(remoteConfigUrl),
   };
-}
-
-export function matchesPublishedVersion(
-  payload: Record<string, unknown>,
-  targetVersion: string,
-): boolean {
-  return (
-    typeof payload.update_version === 'string' &&
-    payload.update_version.trim() === targetVersion.trim() &&
-    targetVersion.trim() !== ''
-  );
 }
 
 function stringMap(value: unknown): Record<string, string> {

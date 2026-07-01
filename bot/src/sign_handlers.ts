@@ -145,24 +145,22 @@ export async function startConfigFlow(ctx: Context): Promise<void> {
         isExistingConfig
           ? '已自动填入你当前使用的配置；修改需要变更的字段后直接发回。'
           : '请下载并填写 JSON 模板，然后把文件直接发回机器人。',
-        '不要添加注释，也不要填写版本、下载地址或 SHA-256。',
+        '保持标准 JSON 格式，不要添加注释。',
       ].join('\n'),
     },
   );
   await ctx.reply(
     [
       '字段说明：',
+      'panel_type：后端类型，填写 v2board、xiao_v2board 或 xboard。',
       'app_name：软件名称。',
       'api_base_list：面板 HTTPS API，可按优先级填写多个。',
       'api_prefix：API 路径前缀；没有就填空字符串。',
-      'panel_type：v2board、xiao_v2board 或 xboard。',
       'logo_url：公开 HTTPS Logo，推荐 1024×1024 PNG。',
       'avatar_url：可选，账户页品牌图片；不用可删除该行。',
       'invite_url_base：可选，官网或邀请注册地址。',
-      'update_enabled：是否读取独立 update.json 并提示更新。',
-      'update_changelog：更新说明，最多 200 字。',
       '',
-      '机器人校验后立即生成 config.json；打包成功后另行生成已签名的 update.json。',
+      '机器人校验后会立即生成 config.json。',
       '退出请输入 /cancel。',
     ].join('\n'),
   );
@@ -211,7 +209,7 @@ async function signAndReply(ctx: Context, rawConfig: string): Promise<void> {
         caption: [
           '基础配置校验完成并已签名。',
           `请保持文件名为 config.json，并上传到：${profile.remote_config_url}`,
-          '这个文件以后修改 API、Logo 或文案时才需要重新上传；安装包更新信息会单独生成 update.json。',
+          '以后修改 API、Logo 或文案时，再重新生成并上传这个文件。',
           '需要生成安装包时，请发送 /build。',
         ].join('\n'),
       },

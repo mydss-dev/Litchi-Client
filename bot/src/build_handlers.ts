@@ -201,7 +201,7 @@ async function requestBuildConfirmation(
         `平台：${platforms.map(platformLabel).join('、')}`,
         sameVersion
           ? '提醒：这是同版本重打，只影响之后新下载安装的用户。'
-          : '将生成新的安装包；构建成功后机器人会发送 update.json。',
+          : '将生成新的安装包。',
         '',
         '回复 1 确认打包',
         '回复 2 取消',
@@ -562,7 +562,7 @@ function formatGroupMessage(group: BuildGroup): string {
     }
     lines.push(line);
   }
-  lines.push('', '构建成功后会自动生成 update.json，不会要求重新上传 config.json。');
+  lines.push('', '状态持续更新中，本条消息会自动刷新。');
   return lines.join('\n');
 }
 
@@ -588,7 +588,7 @@ async function sendFinalConfig(
   if (!app?.signed_config) {
     throw new Error('找不到基础签名配置，请重新执行 /build。');
   }
-  const current = verifyConfigPayload(app.signed_config, app.public_key);
+  verifyConfigPayload(app.signed_config, app.public_key);
   const version = successfulBuilds[0].version;
   const releases = allPlatforms
     .map((platform) => latestBuild(group.appId, platform))
@@ -614,14 +614,7 @@ async function sendFinalConfig(
     return;
   }
 
-  const releasePayload = withReleaseMetadata({}, releases);
-  const payload = {
-    ...releasePayload,
-    update_changelog:
-      typeof current.update_changelog === 'string'
-        ? current.update_changelog
-        : '',
-  };
+  const payload = withReleaseMetadata({}, releases);
   const signed = signConfigPayload(payload, app.private_key);
   const signedJson = JSON.stringify(signed, null, 2);
 
@@ -633,10 +626,10 @@ async function sendFinalConfig(
     },
     {
       caption: [
-        '更新文件已生成，版本、下载地址和真实 SHA-256 都已自动填好。',
+        '打包完成，更新文件已生成。',
         `请保持文件名 update.json，并上传到：${updateManifestUrl(app.remote_config_url)}`,
-        '首次交付没有旧用户需要更新，可以先不上传；以后向已安装旧版本用户推送更新时再上传。',
-        '不需要重新上传 config.json；不上传 update.json 就不会发布本次更新。',
+        '上传后本次更新才会生效；不上传则不会向已有用户发布更新。',
+        '不需要重新上传 config.json。',
       ].join('\n'),
     },
   );

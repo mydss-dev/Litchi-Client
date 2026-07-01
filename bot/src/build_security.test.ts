@@ -5,7 +5,6 @@ import test from 'node:test';
 import { buildRunName } from './github.js';
 import {
   generateKeyPair,
-  matchesPublishedVersion,
   signConfigPayload,
   verifyConfigPayload,
   withConfigVersion,
@@ -147,8 +146,10 @@ test('the JSON template is valid and leaves release metadata to the bot', () => 
     'utf8',
   );
   const config = parseAndValidateConfig(template);
+  assert.equal(Object.keys(config)[0], 'panel_type');
   assert.equal(config.app_name, '示例加速器');
-  assert.equal(config.update_enabled, true);
+  assert.equal('update_enabled' in config, false);
+  assert.equal('update_changelog' in config, false);
   assert.equal('update_version' in config, false);
 });
 
@@ -208,37 +209,6 @@ test('saved configs can be verified and merged with build metadata', () => {
   });
 });
 
-test('disabled update prompts still retain real package metadata', () => {
-  assert.deepEqual(
-    withReleaseMetadata(
-      {
-        app_name: 'Customer Client',
-        update_enabled: false,
-        update_version: '1.0.0',
-        update_download_url: { windows: 'https://cdn.example.com/old.exe' },
-        update_sha256: { windows: 'a'.repeat(64) },
-      },
-      [
-        {
-          platform: 'android',
-          version: '2.0.0',
-          downloadUrl: 'https://cdn.example.com/android.apk',
-          sha256: 'b'.repeat(64),
-        },
-      ],
-    ),
-    {
-      app_name: 'Customer Client',
-      update_enabled: false,
-      update_version: '2.0.0',
-      update_download_url: {
-        android: 'https://cdn.example.com/android.apk',
-      },
-      update_sha256: { android: 'b'.repeat(64) },
-    },
-  );
-});
-
 test('base config strips release metadata owned by update.json', () => {
   const previous = {
     app_name: 'Old name',
@@ -261,7 +231,6 @@ test('base config strips release metadata owned by update.json', () => {
     ),
     {
       app_name: 'New name',
-      update_enabled: true,
     },
   );
 });
@@ -293,7 +262,7 @@ test('update.json is signed and tampering is rejected', () => {
   );
 });
 
-test('disabled prompts also keep release metadata out of base config', () => {
+test('legacy update settings stay out of base config', () => {
   assert.deepEqual(
     withPreservedUpdateMetadata(
       { app_name: 'New name', update_enabled: false },
@@ -305,7 +274,6 @@ test('disabled prompts also keep release metadata out of base config', () => {
     ),
     {
       app_name: 'New name',
-      update_enabled: false,
     },
   );
 });
@@ -324,18 +292,6 @@ test('update manifest URL is derived beside config.json', () => {
       app_name: 'Customer Client',
       update_manifest_url: 'https://cdn.example.com/client/update.json',
     },
-  );
-});
-
-test('the stored package version decides whether another build is required', () => {
-  assert.equal(matchesPublishedVersion({}, '2.0.0'), false);
-  assert.equal(
-    matchesPublishedVersion({ update_version: '1.9.0' }, '2.0.0'),
-    false,
-  );
-  assert.equal(
-    matchesPublishedVersion({ update_version: '2.0.0' }, '2.0.0'),
-    true,
   );
 });
 
