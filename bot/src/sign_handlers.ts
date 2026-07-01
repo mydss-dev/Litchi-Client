@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 import {
   bumpConfigVersion,
+  getAppForUser,
   getAuthorizedUser,
   saveSignedConfig,
 } from './db.js';
@@ -13,6 +14,7 @@ import {
 } from './flow_state.js';
 import {
   signConfigPayload,
+  verifyConfigPayload,
   withConfigVersion,
   withPreservedUpdateMetadata,
   withUpdateManifestUrl,
@@ -112,15 +114,37 @@ export async function startConfigFlow(ctx: Context): Promise<void> {
     return;
   }
 
+  let source = configTemplate;
+  let isExistingConfig = false;
+  try {
+    const app = getAppForUser(profile.app_id, userId);
+    if (app?.signed_config) {
+      const current = verifyConfigPayload(
+        app.signed_config,
+        app.public_key,
+      );
+      source = Buffer.from(
+        JSON.stringify(withPreservedUpdateMetadata(current), null, 2),
+        'utf8',
+      );
+      isExistingConfig = true;
+    }
+  } catch (error) {
+    await ctx.reply(error instanceof Error ? error.message : String(error));
+    return;
+  }
+
   setPendingAction(userId, { type: 'signconfig' });
   await ctx.replyWithDocument(
     {
-      source: configTemplate,
+      source,
       filename: 'config.template.json',
     },
     {
       caption: [
-        '请下载并填写 JSON 模板，然后把文件直接发回机器人。',
+        isExistingConfig
+          ? '已自动填入你当前使用的配置；修改需要变更的字段后直接发回。'
+          : '请下载并填写 JSON 模板，然后把文件直接发回机器人。',
         '不要添加注释，也不要填写版本、下载地址或 SHA-256。',
       ].join('\n'),
     },

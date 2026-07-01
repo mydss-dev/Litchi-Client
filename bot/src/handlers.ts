@@ -6,6 +6,8 @@ import {
   bindAuthorizedUser,
   getAuthorizedUser,
   listAuthorizedUsers,
+  rebindAuthorizedUser,
+  revokeAuthorizedUser,
 } from './db.js';
 import {
   clearPendingAction,
@@ -60,13 +62,63 @@ export function wireCommands(bot: Telegraf): void {
     const text = rows
       .slice(0, 50)
       .map((row) => {
-        const status = row.oss_domain ? '已绑定' : '待绑定';
+        const status = row.is_revoked
+          ? '已停用'
+          : row.oss_domain
+            ? '已绑定'
+            : '待绑定';
         const username = row.username ? ` @${row.username}` : '';
         return `${row.tg_user_id}${username} ${status}`;
       })
       .join('\n');
 
     await ctx.reply(text);
+  });
+
+  bot.command('revoke', async (ctx) => {
+    const adminId = ctx.from?.id;
+    if (!isAdmin(adminId)) {
+      await ctx.reply('只有管理员可以停用授权。');
+      return;
+    }
+    const [targetIdRaw] = splitArgs(ctx.message.text);
+    const targetId = parseTelegramId(targetIdRaw);
+    if (!targetId) {
+      await ctx.reply('用法：/revoke Telegram数字ID');
+      return;
+    }
+    if (!revokeAuthorizedUser(targetId)) {
+      await ctx.reply('该用户未授权或已经停用。');
+      return;
+    }
+    await ctx.reply(
+      `已停用用户 ${targetId}，客户配置和签名密钥仍保留；重新 /authorize 可恢复。`,
+    );
+  });
+
+  bot.command('rebindoss', async (ctx) => {
+    const adminId = ctx.from?.id;
+    if (!adminId || !isAdmin(adminId)) {
+      await ctx.reply('只有管理员可以纠正 OSS 地址。');
+      return;
+    }
+    const [targetIdRaw, ossRaw] = splitArgs(ctx.message.text);
+    const targetId = parseTelegramId(targetIdRaw);
+    if (!targetId) {
+      await ctx.reply('用法：/rebindoss Telegram数字ID https://新的OSS地址');
+      return;
+    }
+    if (!ossRaw) {
+      setPendingAction(adminId, {
+        type: 'rebindoss',
+        targetUserId: targetId,
+      });
+      await ctx.reply(
+        '请发送新的 HTTPS OSS 地址；该操作保留原 APP_ID 和签名密钥。退出请输入 /cancel',
+      );
+      return;
+    }
+    await rebindOssForAdmin(ctx, targetId, ossRaw);
   });
 
   bot.command('myid', async (ctx) => {
@@ -163,7 +215,10 @@ export function wireCommands(bot: Telegraf): void {
     }
 
     const pending = getPendingAction(userId);
-    if (!pending || (pending.type !== 'authorize' && pending.type !== 'bindoss')) {
+    if (
+      !pending ||
+      !['authorize', 'bindoss', 'rebindoss'].includes(pending.type)
+    ) {
       await next();
       return;
     }
@@ -179,6 +234,15 @@ export function wireCommands(bot: Telegraf): void {
       await bindOssForUser(ctx, text, userId);
       return;
     }
+    if (pending.type === 'rebindoss') {
+      clearPendingAction(userId);
+      if (!isAdmin(userId)) {
+        await ctx.reply('只有管理员可以纠正 OSS 地址。');
+        return;
+      }
+      await rebindOssForAdmin(ctx, pending.targetUserId, text);
+      return;
+    }
 
     await next();
   });
@@ -190,6 +254,8 @@ export function buildHelpText(userId?: number): string {
       '管理员命令:',
       '/authorize',
       '/authorized',
+      '/revoke',
+      '/rebindoss',
     ];
     const profile = userId ? getAuthorizedUser(userId) : undefined;
     if (profile?.app_id) {
@@ -291,14 +357,9 @@ async function authorizeTarget(
   targetIdRaw: string,
   adminId: number,
 ): Promise<void> {
-  const normalizedTargetId = targetIdRaw.trim();
-  if (!/^\d+$/.test(normalizedTargetId)) {
+  const targetId = parseTelegramId(targetIdRaw);
+  if (!targetId) {
     await ctx.reply('Telegram ID 格式不对，请重新输入纯数字 ID，例如 6197401242。');
-    return;
-  }
-  const targetId = Number(normalizedTargetId);
-  if (!Number.isSafeInteger(targetId) || targetId <= 0) {
-    await ctx.reply('Telegram ID 超出有效范围，请重新输入。');
     return;
   }
 
@@ -314,6 +375,45 @@ async function authorizeTarget(
       '然后再发送 /bindoss 按提示绑定 OSS。',
     ].join('\n'),
   );
+}
+
+function parseTelegramId(raw = ''): number | undefined {
+  const normalized = raw.trim();
+  if (!/^\d+$/.test(normalized)) return undefined;
+  const value = Number(normalized);
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
+async function rebindOssForAdmin(
+  ctx: {
+    reply(
+      text: string,
+      extra?: { link_preview_options: { is_disabled: boolean } },
+    ): Promise<unknown>;
+  },
+  targetUserId: number,
+  rawOss: string,
+): Promise<void> {
+  try {
+    const ossDomain = normalizeOssDomain(rawOss);
+    const updated = rebindAuthorizedUser({
+      tgUserId: targetUserId,
+      ossDomain,
+      remoteConfigUrl: `${ossDomain}/config.json`,
+    });
+    await ctx.reply(
+      [
+        `用户 ${targetUserId} 的 OSS 地址已更新。`,
+        `REMOTE_CONFIG_URL=${updated.remote_config_url}`,
+        'APP_ID 和签名密钥没有变化。',
+        '请让用户重新执行 /config 并上传到新地址后再打包。',
+        '提醒：已经安装的旧客户端仍固定请求原地址；此功能主要用于首次交付前纠错。',
+      ].join('\n'),
+      { link_preview_options: { is_disabled: true } },
+    );
+  } catch (error) {
+    await ctx.reply(error instanceof Error ? error.message : String(error));
+  }
 }
 
 async function bindOssForUser(

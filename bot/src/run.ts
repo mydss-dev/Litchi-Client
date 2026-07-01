@@ -1,6 +1,11 @@
 import { Telegraf } from 'telegraf';
 
-import { isAdmin, requireAdminConfig, requireBotToken } from './config.js';
+import {
+  env,
+  isAdmin,
+  requireAdminConfig,
+  requireBotToken,
+} from './config.js';
 import { getAuthorizedUser } from './db.js';
 import {
   resumeBuildTracking,
@@ -27,6 +32,8 @@ const boundCommands: MenuCommand[] = [
 const adminCommands: MenuCommand[] = [
   { command: 'authorize', description: '授权用户' },
   { command: 'authorized', description: '查看授权用户' },
+  { command: 'revoke', description: '停用用户授权' },
+  { command: 'rebindoss', description: '纠正用户 OSS 地址' },
 ];
 
 async function syncPrivateMenu(input: {
@@ -142,6 +149,9 @@ void bot.telegram
 void bot
   .launch(() => {
     console.log('Litchi bot started');
+    console.warn(
+      `Backup required: keep ${env.dbPath} and KEY_ENCRYPTION_KEY in separate secure backups. Losing either prevents future updates for existing clients.`,
+    );
     void resumeBuildTracking(bot).catch((error) => {
       console.error('Failed to resume build tracking', error);
     });

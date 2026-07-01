@@ -16,9 +16,11 @@ test('build groups are counted once and remain recoverable until finalized', {
 
   const store = await import(`./db.js?lifecycle=${Date.now()}`);
   try {
-    store.createApp({
+    store.authorizeUser({ tgUserId: 1001, authorizedBy: 9001 });
+    store.bindAuthorizedUser({
       appId: 'client_test',
       tgUserId: 1001,
+      ossDomain: 'https://cdn.example.com',
       remoteConfigUrl: 'https://cdn.example.com/config.json',
       publicKey: 'public',
       privateKey: 'private',
@@ -60,6 +62,27 @@ test('build groups are counted once and remain recoverable until finalized', {
     store.markBuildGroupFinalized('group-b');
     assert.equal(store.hasActiveBuildGroup('client_test'), false);
     assert.equal(store.listRecoverableBuilds().length, 0);
+
+    assert.equal(store.revokeAuthorizedUser(1001), true);
+    assert.equal(store.getAuthorizedUser(1001), undefined);
+    store.authorizeUser({ tgUserId: 1001, authorizedBy: 9001 });
+    assert.equal(
+      store.getAuthorizedUser(1001)?.remote_config_url,
+      'https://cdn.example.com/config.json',
+    );
+    const rebound = store.rebindAuthorizedUser({
+      tgUserId: 1001,
+      ossDomain: 'https://new.example.com',
+      remoteConfigUrl: 'https://new.example.com/config.json',
+    });
+    assert.equal(
+      rebound.remote_config_url,
+      'https://new.example.com/config.json',
+    );
+    assert.equal(
+      store.getAppForUser('client_test', 1001)?.remote_config_url,
+      'https://new.example.com/config.json',
+    );
   } finally {
     store.db.close();
     fs.rmSync(directory, { recursive: true, force: true });

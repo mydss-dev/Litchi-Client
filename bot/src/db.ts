@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS builds (
 CREATE TABLE IF NOT EXISTS authorized_users (
   tg_user_id INTEGER PRIMARY KEY,
   authorized_by INTEGER NOT NULL,
+  is_revoked INTEGER NOT NULL DEFAULT 0,
   username TEXT NOT NULL DEFAULT '',
   oss_domain TEXT NOT NULL DEFAULT '',
   app_id TEXT NOT NULL DEFAULT '',
@@ -92,6 +93,14 @@ const appColumns = db.pragma('table_info(apps)') as Array<{ name: string }>;
 if (!appColumns.some((column) => column.name === 'signed_config')) {
   db.exec("ALTER TABLE apps ADD COLUMN signed_config TEXT NOT NULL DEFAULT ''");
 }
+const authorizedUserColumns = db.pragma(
+  'table_info(authorized_users)',
+) as Array<{ name: string }>;
+if (!authorizedUserColumns.some((column) => column.name === 'is_revoked')) {
+  db.exec(
+    "ALTER TABLE authorized_users ADD COLUMN is_revoked INTEGER NOT NULL DEFAULT 0",
+  );
+}
 
 export type AppRow = {
   app_id: string;
@@ -126,6 +135,7 @@ export type BuildRow = {
 export type AuthorizedUserRow = {
   tg_user_id: number;
   authorized_by: number;
+  is_revoked: number;
   username: string;
   oss_domain: string;
   app_id: string;
@@ -365,6 +375,7 @@ export function authorizeUser(input: {
     VALUES (@tgUserId, @authorizedBy, @username)
     ON CONFLICT(tg_user_id) DO UPDATE SET
       authorized_by = excluded.authorized_by,
+      is_revoked = 0,
       username = CASE
         WHEN excluded.username != '' THEN excluded.username
         ELSE authorized_users.username
@@ -385,9 +396,63 @@ export function listAuthorizedUsers(): AuthorizedUserRow[] {
   return rows;
 }
 
+export function revokeAuthorizedUser(tgUserId: number): boolean {
+  const result = db.prepare(`
+    UPDATE authorized_users
+    SET is_revoked = 1, updated_at = CURRENT_TIMESTAMP
+    WHERE tg_user_id = ? AND is_revoked = 0
+  `).run(tgUserId);
+  return result.changes === 1;
+}
+
+export function rebindAuthorizedUser(input: {
+  tgUserId: number;
+  ossDomain: string;
+  remoteConfigUrl: string;
+}): AuthorizedUserRow {
+  const tx = db.transaction(() => {
+    const current = getAuthorizedUser(input.tgUserId);
+    if (!current) throw new Error('用户未授权或授权已停用。');
+    if (!current.app_id || !current.public_key || !current.private_key) {
+      throw new Error('用户还没有完成首次 OSS 绑定，请让用户执行 /bindoss。');
+    }
+    if (hasActiveBuildGroup(current.app_id)) {
+      throw new Error('该用户当前有打包任务，完成后才能修改 OSS 地址。');
+    }
+
+    db.prepare(`
+      UPDATE authorized_users
+      SET
+        oss_domain = @ossDomain,
+        remote_config_url = @remoteConfigUrl,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE tg_user_id = @tgUserId AND is_revoked = 0
+    `).run(input);
+    const appResult = db.prepare(`
+      UPDATE apps
+      SET
+        remote_config_url = @remoteConfigUrl,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE app_id = @appId AND tg_user_id = @tgUserId
+    `).run({
+      appId: current.app_id,
+      tgUserId: input.tgUserId,
+      remoteConfigUrl: input.remoteConfigUrl,
+    });
+    if (appResult.changes !== 1) {
+      throw new Error('找不到用户对应的应用记录，OSS 地址没有修改。');
+    }
+
+    const updated = getAuthorizedUser(input.tgUserId);
+    if (!updated) throw new Error('OSS 地址更新失败。');
+    return updated;
+  });
+  return tx();
+}
+
 export function getAuthorizedUser(tgUserId: number): AuthorizedUserRow | undefined {
   const row = db.prepare(`
-    SELECT * FROM authorized_users WHERE tg_user_id = ?
+    SELECT * FROM authorized_users WHERE tg_user_id = ? AND is_revoked = 0
   `).get(tgUserId) as AuthorizedUserRow | undefined;
   if (row) row.private_key = decryptKey(row.private_key);
   return row;
@@ -395,7 +460,9 @@ export function getAuthorizedUser(tgUserId: number): AuthorizedUserRow | undefin
 
 export function isAuthorizedUser(tgUserId: number): boolean {
   const row = db.prepare(`
-    SELECT 1 FROM authorized_users WHERE tg_user_id = ? LIMIT 1
+    SELECT 1 FROM authorized_users
+    WHERE tg_user_id = ? AND is_revoked = 0
+    LIMIT 1
   `).get(tgUserId) as { 1: number } | undefined;
   return Boolean(row);
 }

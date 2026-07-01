@@ -93,7 +93,7 @@ export function wireBuildCommands(bot: Telegraf): void {
       return;
     }
 
-    await startBuildFromInput(bot, ctx, platformRaw);
+    await requestBuildConfirmation(ctx, platformRaw);
   });
 
   bot.on('text', async (ctx, next) => {
@@ -112,7 +112,22 @@ export function wireBuildCommands(bot: Telegraf): void {
 
     if (pending.type === 'build') {
       clearPendingAction(userId);
-      await startBuildFromInput(bot, ctx, text);
+      await requestBuildConfirmation(ctx, text);
+      return;
+    }
+
+    if (pending.type === 'confirm_build') {
+      if (text === '1' || text === '确认') {
+        clearPendingAction(userId);
+        await startBuildFromInput(bot, ctx, pending.platformRaw);
+        return;
+      }
+      if (text === '2' || text === '取消') {
+        clearPendingAction(userId);
+        await ctx.reply('已取消本次打包。');
+        return;
+      }
+      await ctx.reply('请回复 1 确认打包，或回复 2 取消。');
       return;
     }
 
@@ -129,6 +144,72 @@ function requireBoundProfile(userId: number) {
     return new Error('你还没有绑定 OSS，请先发送 /bindoss');
   }
   return profile;
+}
+
+async function requestBuildConfirmation(
+  ctx: {
+    from?: { id?: number };
+    message: { text?: string; message_id?: number };
+    reply(text: string): Promise<unknown>;
+  },
+  platformRaw: string,
+): Promise<void> {
+  const userId = ctx.from?.id;
+  if (!userId) {
+    await ctx.reply('无法识别当前会话。');
+    return;
+  }
+  const platforms = parsePlatforms(platformRaw);
+  if (platforms.length === 0) {
+    setPendingAction(userId, { type: 'build' });
+    await ctx.reply('平台输入不对，请回复 1-4 (1=全部, 2=Windows, 3=Android, 4=macOS)。');
+    return;
+  }
+  const profile = requireBoundProfile(userId);
+  if (profile instanceof Error) {
+    await ctx.reply(profile.message);
+    return;
+  }
+  const app = getAppForUser(profile.app_id, userId);
+  if (!app?.signed_config) {
+    await ctx.reply('还没有可用于打包的配置，请先发送 /config。');
+    return;
+  }
+
+  try {
+    const config = verifyConfigPayload(app.signed_config, app.public_key);
+    if (
+      config.update_manifest_url !==
+      updateManifestUrl(profile.remote_config_url)
+    ) {
+      await ctx.reply('OSS 地址已变化，请先执行 /config 重新生成并上传基础配置。');
+      return;
+    }
+    const version = getCurrentBuildVersion();
+    const appName =
+      typeof config.app_name === 'string' ? config.app_name : profile.app_id;
+    const sameVersion = latestSuccessfulVersion(profile.app_id) === version;
+    setPendingAction(userId, {
+      type: 'confirm_build',
+      platformRaw: platformRaw.trim(),
+    });
+    await ctx.reply(
+      [
+        '请确认本次打包：',
+        `软件名称：${appName}`,
+        `版本：${version}`,
+        `平台：${platforms.map(platformLabel).join('、')}`,
+        sameVersion
+          ? '提醒：这是同版本重打，只影响之后新下载安装的用户。'
+          : '将生成新的安装包；构建成功后机器人会发送 update.json。',
+        '',
+        '回复 1 确认打包',
+        '回复 2 取消',
+      ].join('\n'),
+    );
+  } catch (error) {
+    await ctx.reply(error instanceof Error ? error.message : String(error));
+  }
 }
 
 async function startBuildFromInput(
@@ -197,15 +278,15 @@ async function startBuildFromInput(
 
   try {
     const version = getCurrentBuildVersion();
-    verifyConfigPayload(app.signed_config, app.public_key);
-    if (latestSuccessfulVersion(profile.app_id) === version) {
-      await ctx.reply(
-        [
-          `提醒：你正在按同版本 ${version} 重新打包。`,
-          '这只会更新之后的新下载包。',
-          '已安装用户的系统图标和原生软件名称不会变化，必须等下次提高版本并下载安装更新后才会生效。',
-        ].join('\n'),
-      );
+    const verifiedConfig = verifyConfigPayload(
+      app.signed_config,
+      app.public_key,
+    );
+    if (
+      verifiedConfig.update_manifest_url !==
+      updateManifestUrl(profile.remote_config_url)
+    ) {
+      throw new Error('OSS 地址已变化，请先执行 /config 重新生成基础配置。');
     }
     const groupKey = `build-${nanoid()}`;
     const group: BuildGroup = {
@@ -625,4 +706,10 @@ function parseSinglePlatform(raw?: string): BuildPlatform | undefined {
   if (trimmed === '3' || trimmed === 'android') return 'android';
   if (trimmed === '4' || trimmed === 'macos') return 'macos';
   return undefined;
+}
+
+function platformLabel(platform: BuildPlatform): string {
+  if (platform === 'windows') return 'Windows';
+  if (platform === 'android') return 'Android';
+  return 'macOS';
 }

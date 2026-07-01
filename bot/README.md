@@ -78,6 +78,25 @@ npm run bot
 docker compose up -d --build
 ```
 
+## 签名密钥备份
+
+客户签名私钥使用 `KEY_ENCRYPTION_KEY` 加密后保存在 SQLite。必须分别备份：
+
+- `bot/data/bot.sqlite`
+- `.env` 中的 `KEY_ENCRYPTION_KEY`
+
+丢失任意一项，已经交付的客户端都无法再接受新的 `config.json` 或 `update.json`。
+Docker 部署可在升级前执行：
+
+```bash
+cd bot
+docker compose stop bot
+cp data/bot.sqlite "data/bot.sqlite.backup-$(date +%F-%H%M%S)"
+docker compose start bot
+```
+
+数据库备份和 `.env` 应复制到服务器之外的受控存储，不要只留在同一块磁盘。
+
 ## GitHub Actions 准备
 
 Android 正式包需要在仓库中设置以下 Actions secrets：
@@ -98,9 +117,10 @@ Android 正式包需要在仓库中设置以下 Actions secrets：
 3. 用户发送 `/config`，机器人发送标准 `config.template.json`，并在消息中逐项说明字段。
 4. 用户填写模板并发回；机器人校验、签名并立即发送基础 `config.json`。
 5. 用户需要生成安装包时发送 `/build`，机器人使用已保存配置并询问打包平台。
-6. 同版本重打只更新之后的新下载包；已安装用户的系统图标和原生软件名称不会变化，
+6. 机器人展示软件名、版本和平台，用户确认后才触发 GitHub Actions。
+7. 同版本重打只更新之后的新下载包；已安装用户的系统图标和原生软件名称不会变化，
    必须等下次提高版本并下载安装更新后才会生效。
-7. 工作流使用内联签名配置构建，上传安装包并计算 SHA-256。
+8. 工作流使用内联签名配置构建，上传安装包并计算 SHA-256。
 9. 配置校验后机器人立即发送签名 `config.json`，用户上传一次即可。
 10. 打包成功后机器人把版本、下载地址和 SHA 写入独立签名 `update.json`。
 11. 首个版本无需上传 `update.json`；以后需要向旧版本用户推送更新时才上传它，
