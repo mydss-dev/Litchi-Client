@@ -1,6 +1,6 @@
-import type { Telegraf } from 'telegraf';
+import type { Telegraf } from "telegraf";
 
-import { isAdmin } from './config.js';
+import { isAdmin } from "./config.js";
 import {
   authorizeUser,
   bindAuthorizedUser,
@@ -8,38 +8,42 @@ import {
   listAuthorizedUsers,
   rebindAuthorizedUser,
   revokeAuthorizedUser,
-} from './db.js';
+} from "./db.js";
 import {
   clearPendingAction,
   getPendingAction,
   setPendingAction,
-} from './flow_state.js';
-import { generateKeyPair } from './signer.js';
+} from "./flow_state.js";
+import { generateKeyPair } from "./signer.js";
 
 export function wireCommands(bot: Telegraf): void {
-  bot.command('cancel', async (ctx) => {
+  bot.command("cancel", async (ctx) => {
     const userId = ctx.from?.id;
     if (!userId) {
-      await ctx.reply('无法识别当前用户。');
+      await ctx.reply("无法识别当前用户。");
       return;
     }
 
     clearPendingAction(userId);
-    await ctx.reply('已取消当前输入流程。');
+    await ctx.reply("已取消当前输入流程。");
   });
 
-  bot.command('authorize', async (ctx) => {
+  bot.command("authorize", async (ctx) => {
     const adminId = ctx.from?.id;
     if (!isAdmin(adminId) || !adminId) {
-      await ctx.reply('只有管理员可以授权用户。');
+      await ctx.reply("只有管理员可以授权用户。");
       return;
     }
 
     const [targetIdRaw] = splitArgs(ctx.message.text);
     if (!targetIdRaw) {
-      setPendingAction(adminId, { type: 'authorize' });
+      setPendingAction(adminId, { type: "authorize" });
       await ctx.reply(
-        ['请发送要授权的 Telegram 数字 ID。', '例如: 6197401242', '退出请输入 /cancel'].join('\n'),
+        [
+          "请发送要授权的 Telegram 数字 ID。",
+          "例如: 6197401242",
+          "退出请输入 /cancel",
+        ].join("\n"),
       );
       return;
     }
@@ -47,15 +51,15 @@ export function wireCommands(bot: Telegraf): void {
     await authorizeTarget(ctx, targetIdRaw, adminId);
   });
 
-  bot.command('authorized', async (ctx) => {
+  bot.command("authorized", async (ctx) => {
     if (!isAdmin(ctx.from?.id)) {
-      await ctx.reply('只有管理员可以查看授权列表。');
+      await ctx.reply("只有管理员可以查看授权列表。");
       return;
     }
 
     const rows = listAuthorizedUsers();
     if (rows.length === 0) {
-      await ctx.reply('当前还没有已授权用户。');
+      await ctx.reply("当前还没有已授权用户。");
       return;
     }
 
@@ -63,32 +67,32 @@ export function wireCommands(bot: Telegraf): void {
       .slice(0, 50)
       .map((row) => {
         const status = row.is_revoked
-          ? '已停用'
+          ? "已停用"
           : row.oss_domain
-            ? '已绑定'
-            : '待绑定';
-        const username = row.username ? ` @${row.username}` : '';
+            ? "已绑定"
+            : "待绑定";
+        const username = row.username ? ` @${row.username}` : "";
         return `${row.tg_user_id}${username} ${status}`;
       })
-      .join('\n');
+      .join("\n");
 
     await ctx.reply(text);
   });
 
-  bot.command('revoke', async (ctx) => {
+  bot.command("revoke", async (ctx) => {
     const adminId = ctx.from?.id;
     if (!isAdmin(adminId)) {
-      await ctx.reply('只有管理员可以停用授权。');
+      await ctx.reply("只有管理员可以停用授权。");
       return;
     }
     const [targetIdRaw] = splitArgs(ctx.message.text);
     const targetId = parseTelegramId(targetIdRaw);
     if (!targetId) {
-      await ctx.reply('用法：/revoke Telegram数字ID');
+      await ctx.reply("用法：/revoke Telegram数字ID");
       return;
     }
     if (!revokeAuthorizedUser(targetId)) {
-      await ctx.reply('该用户未授权或已经停用。');
+      await ctx.reply("该用户未授权或已经停用。");
       return;
     }
     await ctx.reply(
@@ -96,54 +100,56 @@ export function wireCommands(bot: Telegraf): void {
     );
   });
 
-  bot.command('rebindoss', async (ctx) => {
+  bot.command("rebindoss", async (ctx) => {
     const adminId = ctx.from?.id;
     if (!adminId || !isAdmin(adminId)) {
-      await ctx.reply('只有管理员可以纠正 OSS 地址。');
+      await ctx.reply("只有管理员可以纠正 OSS 地址。");
       return;
     }
     const [targetIdRaw, ossRaw] = splitArgs(ctx.message.text);
     const targetId = parseTelegramId(targetIdRaw);
     if (!targetId) {
-      await ctx.reply('用法：/rebindoss Telegram数字ID https://新的OSS地址');
+      await ctx.reply("用法：/rebindoss Telegram数字ID https://新的OSS地址");
       return;
     }
     if (!ossRaw) {
       setPendingAction(adminId, {
-        type: 'rebindoss',
+        type: "rebindoss",
         targetUserId: targetId,
       });
       await ctx.reply(
-        '请发送新的 HTTPS OSS 地址；该操作保留原 APP_ID 和签名密钥。退出请输入 /cancel',
+        "请发送新的 HTTPS OSS 地址；该操作保留原 APP_ID 和签名密钥。退出请输入 /cancel",
       );
       return;
     }
     await rebindOssForAdmin(ctx, targetId, ossRaw);
   });
 
-  bot.command('myid', async (ctx) => {
+  bot.command("myid", async (ctx) => {
     const userId = ctx.from?.id;
     if (!userId) {
-      await ctx.reply('无法识别当前用户。');
+      await ctx.reply("无法识别当前用户。");
       return;
     }
 
-    const username = ctx.from?.username ? `@${ctx.from.username}` : '未设置用户名';
+    const username = ctx.from?.username
+      ? `@${ctx.from.username}`
+      : "未设置用户名";
     await ctx.reply(
       [
-        '你的 Telegram 信息如下:',
+        "你的 Telegram 信息如下:",
         `ID: ${userId}`,
         `用户名: ${username}`,
-        '',
-        '把这个 ID 发给管理员授权即可。',
-      ].join('\n'),
+        "",
+        "把这个 ID 发给管理员授权即可。",
+      ].join("\n"),
     );
   });
 
-  bot.command('bindoss', async (ctx) => {
+  bot.command("bindoss", async (ctx) => {
     const userId = ctx.from?.id;
     if (!userId) {
-      await ctx.reply('无法识别当前用户。');
+      await ctx.reply("无法识别当前用户。");
       return;
     }
 
@@ -151,10 +157,10 @@ export function wireCommands(bot: Telegraf): void {
     if (!profile) {
       await ctx.reply(
         [
-          '未授权，请联系管理员授权。',
+          "未授权，请联系管理员授权。",
           `你的 Telegram ID 是: ${userId}`,
-          '你也可以发送 /myid 再查看一次。',
-        ].join('\n'),
+          "你也可以发送 /myid 再查看一次。",
+        ].join("\n"),
       );
       return;
     }
@@ -162,23 +168,23 @@ export function wireCommands(bot: Telegraf): void {
     if (profile.oss_domain) {
       await ctx.reply(
         [
-          'OSS 地址已经绑定，不能修改。',
+          "OSS 地址已经绑定，不能修改。",
           `当前 OSS: ${profile.oss_domain}`,
           `APP_ID: ${profile.app_id}`,
-        ].join('\n'),
+        ].join("\n"),
       );
       return;
     }
 
     const [ossRaw] = splitArgs(ctx.message.text);
     if (!ossRaw) {
-      setPendingAction(userId, { type: 'bindoss' });
+      setPendingAction(userId, { type: "bindoss" });
       await ctx.reply(
         [
-          '请发送你的 OSS 地址。',
-          '例如: https://oss.example.com/client-name',
-          '退出请输入 /cancel',
-        ].join('\n'),
+          "请发送你的 OSS 地址。",
+          "例如: https://oss.example.com",
+          "退出请输入 /cancel",
+        ].join("\n"),
       );
       return;
     }
@@ -186,22 +192,22 @@ export function wireCommands(bot: Telegraf): void {
     await bindOssForUser(ctx, ossRaw, userId);
   });
 
-  bot.command('apps', async (ctx) => {
+  bot.command("apps", async (ctx) => {
     const userId = ctx.from?.id;
     const profile = userId ? getAuthorizedUser(userId) : undefined;
     if (!profile) {
       await ctx.reply(
         [
-          '未授权，请联系管理员授权。',
-          `你的 Telegram ID 是: ${userId ?? '未知'}`,
-          '发送 /myid 可以再次查看。',
-        ].join('\n'),
+          "未授权，请联系管理员授权。",
+          `你的 Telegram ID 是: ${userId ?? "未知"}`,
+          "发送 /myid 可以再次查看。",
+        ].join("\n"),
       );
       return;
     }
 
     if (!profile.app_id) {
-      await ctx.reply('你已获得授权，但还没有绑定 OSS。请先发送 /bindoss');
+      await ctx.reply("你已获得授权，但还没有绑定 OSS。请先发送 /bindoss");
       return;
     }
 
@@ -210,10 +216,10 @@ export function wireCommands(bot: Telegraf): void {
     });
   });
 
-  bot.on('text', async (ctx, next) => {
+  bot.on("text", async (ctx, next) => {
     const userId = ctx.from?.id;
-    const text = ctx.message.text?.trim() ?? '';
-    if (!userId || !text || text.startsWith('/')) {
+    const text = ctx.message.text?.trim() ?? "";
+    if (!userId || !text || text.startsWith("/")) {
       await next();
       return;
     }
@@ -221,27 +227,27 @@ export function wireCommands(bot: Telegraf): void {
     const pending = getPendingAction(userId);
     if (
       !pending ||
-      !['authorize', 'bindoss', 'rebindoss'].includes(pending.type)
+      !["authorize", "bindoss", "rebindoss"].includes(pending.type)
     ) {
       await next();
       return;
     }
 
-    if (pending.type === 'authorize') {
+    if (pending.type === "authorize") {
       clearPendingAction(userId);
       await authorizeTarget(ctx, text, userId);
       return;
     }
 
-    if (pending.type === 'bindoss') {
+    if (pending.type === "bindoss") {
       clearPendingAction(userId);
       await bindOssForUser(ctx, text, userId);
       return;
     }
-    if (pending.type === 'rebindoss') {
+    if (pending.type === "rebindoss") {
       clearPendingAction(userId);
       if (!isAdmin(userId)) {
-        await ctx.reply('只有管理员可以纠正 OSS 地址。');
+        await ctx.reply("只有管理员可以纠正 OSS 地址。");
         return;
       }
       await rebindOssForAdmin(ctx, pending.targetUserId, text);
@@ -255,65 +261,59 @@ export function wireCommands(bot: Telegraf): void {
 export function buildHelpText(userId?: number): string {
   if (isAdmin(userId)) {
     const lines = [
-      '管理员命令:',
-      '/authorize',
-      '/authorized',
-      '/revoke',
-      '/rebindoss',
+      "管理员命令:",
+      "/authorize",
+      "/authorized",
+      "/revoke",
+      "/rebindoss",
     ];
     const profile = userId ? getAuthorizedUser(userId) : undefined;
     if (profile?.app_id) {
-      lines.push(
-        '',
-        '打包命令:',
-        '/apps',
-        '/config',
-        '/build',
-      );
+      lines.push("", "打包命令:", "/apps", "/config", "/build");
     }
-    return [...lines, '', '输入过程中可随时发送 /cancel。'].join('\n');
+    return [...lines, "", "输入过程中可随时发送 /cancel。"].join("\n");
   }
 
   const profile = userId ? getAuthorizedUser(userId) : undefined;
   if (!profile) {
-    return ['可用命令:', '/myid', '', '请把 ID 发给管理员授权。'].join('\n');
+    return ["可用命令:", "/myid", "", "请把 ID 发给管理员授权。"].join("\n");
   }
   if (!profile.app_id) {
     return [
-      '可用命令:',
-      '/myid',
-      '/bindoss',
-      '/config',
-      '/build',
-      '',
-      '未绑定 OSS 时，配置和打包入口会引导你先完成绑定。',
-    ].join('\n');
+      "可用命令:",
+      "/myid",
+      "/bindoss",
+      "/config",
+      "/build",
+      "",
+      "未绑定 OSS 时，配置和打包入口会引导你先完成绑定。",
+    ].join("\n");
   }
   return [
-    '可用命令:',
-    '/apps',
-    '/config',
-    '/build',
-    '',
-    '输入过程中可随时发送 /cancel。',
-  ].join('\n');
+    "可用命令:",
+    "/apps",
+    "/config",
+    "/build",
+    "",
+    "输入过程中可随时发送 /cancel。",
+  ].join("\n");
 }
 
 export function buildStartText(userId?: number): string {
   const adminText = isAdmin(userId)
-    ? '你是管理员，可以先发送 /authorize，然后按提示输入用户 ID。'
+    ? "你是管理员，可以先发送 /authorize，然后按提示输入用户 ID。"
     : [
-        `你的 Telegram ID 是: ${userId ?? '未知'}`,
-        '如果提示未授权，请把这个 ID 发给管理员。',
-        '你也可以随时发送 /myid 再查看一次。',
-      ].join('\n');
+        `你的 Telegram ID 是: ${userId ?? "未知"}`,
+        "如果提示未授权，请把这个 ID 发给管理员。",
+        "你也可以随时发送 /myid 再查看一次。",
+      ].join("\n");
 
   return [
-    'Litchi 打包机器人已启动。',
+    "Litchi 打包机器人已启动。",
     adminText,
-    '首次授权后的用户请先发送 /bindoss，然后按提示绑定 OSS。',
-    '查看命令帮助请发送 /help',
-  ].join('\n');
+    "首次授权后的用户请先发送 /bindoss，然后按提示绑定 OSS。",
+    "查看命令帮助请发送 /help",
+  ].join("\n");
 }
 
 export function buildAppId(userId: number): string {
@@ -323,16 +323,16 @@ export function buildAppId(userId: number): string {
 export function normalizeOssDomain(raw: string): string {
   const input = raw.trim();
   const url = new URL(input);
-  if (url.protocol !== 'https:' || !url.hostname) {
-    throw new Error('OSS 地址必须是 https 域名或 https 路径。');
+  if (url.protocol !== "https:" || !url.hostname) {
+    throw new Error("OSS 地址必须是 https 域名或 https 路径。");
   }
   if (url.search || url.hash) {
-    throw new Error('OSS 地址不能带查询参数或锚点。');
+    throw new Error("OSS 地址不能带查询参数或锚点。");
   }
 
-  let path = url.pathname.replace(/\/+$/, '');
-  if (path.toLowerCase().endsWith('/config.json')) {
-    path = path.slice(0, -'/config.json'.length);
+  let path = url.pathname.replace(/\/+$/, "");
+  if (path.toLowerCase().endsWith("/config.json")) {
+    path = path.slice(0, -"/config.json".length);
   }
 
   return `${url.origin}${path}`;
@@ -345,12 +345,12 @@ function formatProfile(profile: {
 }): string {
   return [
     `APP_ID=${profile.app_id}`,
-    `REMOTE_CONFIG_URL=${profile.remote_config_url || '-'}`,
-    `REMOTE_CONFIG_PUBLIC_KEY=${profile.public_key || '-'}`,
-  ].join('\n');
+    `REMOTE_CONFIG_URL=${profile.remote_config_url || "-"}`,
+    `REMOTE_CONFIG_PUBLIC_KEY=${profile.public_key || "-"}`,
+  ].join("\n");
 }
 
-function splitArgs(text = ''): string[] {
+function splitArgs(text = ""): string[] {
   return text.trim().split(/\s+/).slice(1);
 }
 
@@ -363,7 +363,9 @@ async function authorizeTarget(
 ): Promise<void> {
   const targetId = parseTelegramId(targetIdRaw);
   if (!targetId) {
-    await ctx.reply('Telegram ID 格式不对，请重新输入纯数字 ID，例如 6197401242。');
+    await ctx.reply(
+      "Telegram ID 格式不对，请重新输入纯数字 ID，例如 6197401242。",
+    );
     return;
   }
 
@@ -375,13 +377,13 @@ async function authorizeTarget(
   await ctx.reply(
     [
       `已授权用户 ${targetId}`,
-      '让对方第一次先发送 /myid 确认自己的 ID，',
-      '然后再发送 /bindoss 按提示绑定 OSS。',
-    ].join('\n'),
+      "让对方第一次先发送 /myid 确认自己的 ID，",
+      "然后再发送 /bindoss 按提示绑定 OSS。",
+    ].join("\n"),
   );
 }
 
-function parseTelegramId(raw = ''): number | undefined {
+function parseTelegramId(raw = ""): number | undefined {
   const normalized = raw.trim();
   if (!/^\d+$/.test(normalized)) return undefined;
   const value = Number(normalized);
@@ -409,10 +411,10 @@ async function rebindOssForAdmin(
       [
         `用户 ${targetUserId} 的 OSS 地址已更新。`,
         `REMOTE_CONFIG_URL=${updated.remote_config_url}`,
-        'APP_ID 和签名密钥没有变化。',
-        '请让用户重新执行 /config 并上传到新地址后再打包。',
-        '提醒：已经安装的旧客户端仍固定请求原地址；此功能主要用于首次交付前纠错。',
-      ].join('\n'),
+        "APP_ID 和签名密钥没有变化。",
+        "请让用户重新执行 /config 并上传到新地址后再打包。",
+        "提醒：已经安装的旧客户端仍固定请求原地址；此功能主要用于首次交付前纠错。",
+      ].join("\n"),
       { link_preview_options: { is_disabled: true } },
     );
   } catch (error) {
@@ -448,13 +450,13 @@ async function bindOssForUser(
 
     await ctx.reply(
       [
-        '绑定成功，以下信息已经固定，请妥善保存。',
+        "绑定成功，以下信息已经固定，请妥善保存。",
         `APP_ID=${bound.app_id}`,
         `REMOTE_CONFIG_URL=${bound.remote_config_url}`,
         `REMOTE_CONFIG_PUBLIC_KEY=${bound.public_key}`,
-        '',
-        '下一步请发送 /config 生成基础配置；配置完成后再发送 /build 打包。',
-      ].join('\n'),
+        "",
+        "下一步请发送 /config 生成基础配置；配置完成后再发送 /build 打包。",
+      ].join("\n"),
       {
         link_preview_options: { is_disabled: true },
       },
