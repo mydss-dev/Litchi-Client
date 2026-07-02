@@ -156,7 +156,7 @@ export async function startConfigFlow(ctx: Context): Promise<void> {
       "logo_url：软件图标+应用内Logo，推荐 1024×1024 PNG。",
       "avatar_url：可选，头像图片；不填写默认首字母。",
       "invite_url_base：邀请地址，不填写默认后端返回域名。",
-      "update_enabled：更新开关，默认 true，需上传update.json；改成 false 则不更新也无需上传update.json。",
+      "update_enabled：更新开关，默认 true，打包后会生成更新配置；改成 false 则不更新也无需上传配置。",
       "",
       "机器人校验后会立即生成 config.json。",
       "退出请输入 /cancel。",

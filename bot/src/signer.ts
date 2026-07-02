@@ -122,14 +122,20 @@ export function updateManifestUrl(remoteConfigUrl: string): string {
   return url.toString();
 }
 
+export function updatesEnabled(payload: Record<string, unknown>): boolean {
+  return payload.update_enabled !== false;
+}
+
 export function withUpdateManifestUrl(
   payload: Record<string, unknown>,
   remoteConfigUrl: string,
 ): Record<string, unknown> {
-  return {
-    ...payload,
-    update_manifest_url: updateManifestUrl(remoteConfigUrl),
-  };
+  const next = { ...payload };
+  delete next.update_manifest_url;
+  if (updatesEnabled(next)) {
+    next.update_manifest_url = updateManifestUrl(remoteConfigUrl);
+  }
+  return next;
 }
 
 function stringMap(value: unknown): Record<string, string> {

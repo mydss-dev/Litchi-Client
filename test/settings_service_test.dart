@@ -12,12 +12,14 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'close_connections_on_switch': false,
       'dev_mode': true,
+      'node_sort': 'latency',
     });
 
     await SettingsService.load();
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.containsKey('close_connections_on_switch'), isFalse);
     expect(prefs.containsKey('dev_mode'), isFalse);
+    expect(prefs.containsKey('node_sort'), isFalse);
   });
 
   test('migrates the legacy localized language label', () async {

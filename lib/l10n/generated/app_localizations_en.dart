@@ -883,6 +883,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get amountDue => 'Amount due';
 
   @override
+  String get balanceApplied => 'Balance applied';
+
+  @override
+  String get subscriptionCredit => 'Old subscription credit';
+
+  @override
+  String get refundAmountLabel => 'Refund amount';
+
+  @override
+  String get paymentHandlingFee => 'Payment handling fee';
+
+  @override
+  String paymentFeeDescription(String value) {
+    return 'Fee: $value';
+  }
+
+  @override
+  String get balancePayment => 'Balance payment';
+
+  @override
+  String get activateWithBalance => 'Activate with balance';
+
+  @override
   String get choosePaymentMethod => 'Choose a payment method';
 
   @override
@@ -907,6 +930,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paymentNotDetected => 'Payment not detected. Try again shortly.';
+
+  @override
+  String get paymentProcessing =>
+      'Payment is being processed. The status will update automatically.';
 
   @override
   String get orderActivated => 'The order is active. Refresh to view it.';
@@ -951,7 +978,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get threeYears => 'Three years';
 
   @override
-  String get refunded => 'Refunded';
+  String get perTwoYears => '/ 2 years';
+
+  @override
+  String get perThreeYears => '/ 3 years';
+
+  @override
+  String get orderDiscounted => 'Discounted';
+
+  @override
+  String get soldOut => 'Sold out';
+
+  @override
+  String lowStockRemaining(int count) {
+    return '$count left';
+  }
+
+  @override
+  String existingPlanSwitchWarning(String current, String target) {
+    return 'Your active plan is $current. Purchasing $target may replace or offset the current subscription.';
+  }
 
   @override
   String get unknown => 'Unknown';
@@ -1647,16 +1693,4 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unexpectedError => 'Something went wrong. Try again later.';
-
-  @override
-  String get nodeSortOriginal => 'Default order';
-
-  @override
-  String get nodeSortLatency => 'By latency';
-
-  @override
-  String get nodeSortName => 'By name';
-
-  @override
-  String get nodeSortRegion => 'By region';
 }

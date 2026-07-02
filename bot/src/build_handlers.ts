@@ -30,6 +30,7 @@ import {
   verifyConfigPayload,
   withReleaseMetadata,
   updateManifestUrl,
+  updatesEnabled,
 } from "./signer.js";
 
 const allPlatforms: BuildPlatform[] = ["windows", "android", "macos"];
@@ -183,6 +184,7 @@ async function requestBuildConfirmation(
   try {
     const config = verifyConfigPayload(app.signed_config, app.public_key);
     if (
+      updatesEnabled(config) &&
       config.update_manifest_url !==
       updateManifestUrl(profile.remote_config_url)
     ) {
@@ -287,6 +289,7 @@ async function startBuildFromInput(
       app.public_key,
     );
     if (
+      updatesEnabled(verifiedConfig) &&
       verifiedConfig.update_manifest_url !==
       updateManifestUrl(profile.remote_config_url)
     ) {
@@ -603,7 +606,7 @@ async function sendFinalConfig(
   if (!app?.signed_config) {
     throw new Error("找不到基础签名配置，请重新执行 /build。");
   }
-  verifyConfigPayload(app.signed_config, app.public_key);
+  const config = verifyConfigPayload(app.signed_config, app.public_key);
   const version = successfulBuilds[0].version;
   const releases = allPlatforms
     .map((platform) => latestBuild(group.appId, platform))
@@ -629,12 +632,28 @@ async function sendFinalConfig(
     return;
   }
 
-  const payload = withReleaseMetadata({}, releases);
-  const signed = signConfigPayload(payload, app.private_key);
-  const signedJson = JSON.stringify(signed, null, 2);
   const packageLines = releases.map(
     (release) => `- ${release.platform}: ${release.downloadUrl}`,
   );
+
+  if (!updatesEnabled(config)) {
+    await bot.telegram.sendMessage(
+      group.chatId,
+      [
+        "打包完成；当前配置已关闭自动更新，因此未生成 update.json。",
+        "",
+        "安装包下载地址：",
+        ...packageLines,
+      ].join("\n"),
+      { link_preview_options: { is_disabled: true } },
+    );
+    group.finalConfigSent = true;
+    return;
+  }
+
+  const payload = withReleaseMetadata({}, releases);
+  const signed = signConfigPayload(payload, app.private_key);
+  const signedJson = JSON.stringify(signed, null, 2);
 
   await bot.telegram.sendDocument(
     group.chatId,

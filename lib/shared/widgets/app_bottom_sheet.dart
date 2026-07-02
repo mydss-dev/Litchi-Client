@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -40,17 +42,23 @@ class AppBottomSheet extends StatelessWidget {
     final c = AppColors.of(context);
     final view = MediaQuery.sizeOf(context);
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    final roundAllCorners =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    final sheetRadius = roundAllCorners
+        ? BorderRadius.circular(AppRadius.xl)
+        : const BorderRadius.vertical(top: Radius.circular(AppRadius.xl));
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
+        clipBehavior: Clip.antiAlias,
         constraints: BoxConstraints(maxHeight: view.height * maxHeightFactor),
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
         decoration: BoxDecoration(
           color: c.cardBg,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
-          ),
-          border: Border(top: BorderSide(color: c.softBorder)),
+          borderRadius: sheetRadius,
+          border: roundAllCorners
+              ? Border.all(color: c.softBorder)
+              : Border(top: BorderSide(color: c.softBorder)),
           boxShadow: AppShadows.soft(c),
         ),
         child: SafeArea(

@@ -854,6 +854,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get amountDue => '应付金额';
 
   @override
+  String get balanceApplied => '余额已抵扣';
+
+  @override
+  String get subscriptionCredit => '旧订阅折抵';
+
+  @override
+  String get refundAmountLabel => '退款金额';
+
+  @override
+  String get paymentHandlingFee => '支付手续费';
+
+  @override
+  String paymentFeeDescription(String value) {
+    return '手续费：$value';
+  }
+
+  @override
+  String get balancePayment => '余额支付';
+
+  @override
+  String get activateWithBalance => '使用余额激活';
+
+  @override
   String get choosePaymentMethod => '选择付款方式';
 
   @override
@@ -878,6 +901,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get paymentNotDetected => '暂未检测到支付，请稍后再试';
+
+  @override
+  String get paymentProcessing => '订单正在处理中，状态会自动更新';
 
   @override
   String get orderActivated => '订单已激活，请刷新页面查看';
@@ -922,7 +948,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get threeYears => '三年';
 
   @override
-  String get refunded => '已退款';
+  String get perTwoYears => '/ 两年';
+
+  @override
+  String get perThreeYears => '/ 三年';
+
+  @override
+  String get orderDiscounted => '已折抵';
+
+  @override
+  String get soldOut => '已售罄';
+
+  @override
+  String lowStockRemaining(int count) {
+    return '仅剩 $count 份';
+  }
+
+  @override
+  String existingPlanSwitchWarning(String current, String target) {
+    return '你当前正在使用“$current”。购买“$target”可能替换或折抵现有订阅，请确认后再继续。';
+  }
 
   @override
   String get unknown => '未知';
@@ -1579,18 +1624,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get unexpectedError => '操作失败，请稍后重试';
-
-  @override
-  String get nodeSortOriginal => '默认顺序';
-
-  @override
-  String get nodeSortLatency => '按延迟';
-
-  @override
-  String get nodeSortName => '按名称';
-
-  @override
-  String get nodeSortRegion => '按地区';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -2443,6 +2476,29 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get amountDue => '應付金額';
 
   @override
+  String get balanceApplied => '餘額已折抵';
+
+  @override
+  String get subscriptionCredit => '舊訂閱折抵';
+
+  @override
+  String get refundAmountLabel => '退款金額';
+
+  @override
+  String get paymentHandlingFee => '付款手續費';
+
+  @override
+  String paymentFeeDescription(String value) {
+    return '手續費：$value';
+  }
+
+  @override
+  String get balancePayment => '餘額付款';
+
+  @override
+  String get activateWithBalance => '使用餘額啟用';
+
+  @override
   String get choosePaymentMethod => '選擇付款方式';
 
   @override
@@ -2467,6 +2523,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get paymentNotDetected => '暫未偵測到付款，請稍後再試';
+
+  @override
+  String get paymentProcessing => '訂單正在處理中，狀態會自動更新';
 
   @override
   String get orderActivated => '訂單已啟用，請重新整理頁面查看';
@@ -2511,7 +2570,26 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get threeYears => '三年';
 
   @override
-  String get refunded => '已退款';
+  String get perTwoYears => '/ 兩年';
+
+  @override
+  String get perThreeYears => '/ 三年';
+
+  @override
+  String get orderDiscounted => '已折抵';
+
+  @override
+  String get soldOut => '已售罄';
+
+  @override
+  String lowStockRemaining(int count) {
+    return '僅剩 $count 份';
+  }
+
+  @override
+  String existingPlanSwitchWarning(String current, String target) {
+    return '你目前正在使用「$current」。購買「$target」可能取代或折抵現有訂閱，請確認後再繼續。';
+  }
 
   @override
   String get unknown => '未知';
@@ -3168,16 +3246,4 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get unexpectedError => '操作失敗，請稍後重試';
-
-  @override
-  String get nodeSortOriginal => '預設順序';
-
-  @override
-  String get nodeSortLatency => '按延遲';
-
-  @override
-  String get nodeSortName => '按名稱';
-
-  @override
-  String get nodeSortRegion => '按地區';
 }

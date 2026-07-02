@@ -1719,6 +1719,48 @@ abstract class AppLocalizations {
   /// **'Amount due'**
   String get amountDue;
 
+  /// No description provided for @balanceApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance applied'**
+  String get balanceApplied;
+
+  /// No description provided for @subscriptionCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Old subscription credit'**
+  String get subscriptionCredit;
+
+  /// No description provided for @refundAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund amount'**
+  String get refundAmountLabel;
+
+  /// No description provided for @paymentHandlingFee.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment handling fee'**
+  String get paymentHandlingFee;
+
+  /// No description provided for @paymentFeeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Fee: {value}'**
+  String paymentFeeDescription(String value);
+
+  /// No description provided for @balancePayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance payment'**
+  String get balancePayment;
+
+  /// No description provided for @activateWithBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate with balance'**
+  String get activateWithBalance;
+
   /// No description provided for @choosePaymentMethod.
   ///
   /// In en, this message translates to:
@@ -1766,6 +1808,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Payment not detected. Try again shortly.'**
   String get paymentNotDetected;
+
+  /// No description provided for @paymentProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment is being processed. The status will update automatically.'**
+  String get paymentProcessing;
 
   /// No description provided for @orderActivated.
   ///
@@ -1851,11 +1899,41 @@ abstract class AppLocalizations {
   /// **'Three years'**
   String get threeYears;
 
-  /// No description provided for @refunded.
+  /// No description provided for @perTwoYears.
   ///
   /// In en, this message translates to:
-  /// **'Refunded'**
-  String get refunded;
+  /// **'/ 2 years'**
+  String get perTwoYears;
+
+  /// No description provided for @perThreeYears.
+  ///
+  /// In en, this message translates to:
+  /// **'/ 3 years'**
+  String get perThreeYears;
+
+  /// No description provided for @orderDiscounted.
+  ///
+  /// In en, this message translates to:
+  /// **'Discounted'**
+  String get orderDiscounted;
+
+  /// No description provided for @soldOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sold out'**
+  String get soldOut;
+
+  /// No description provided for @lowStockRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} left'**
+  String lowStockRemaining(int count);
+
+  /// No description provided for @existingPlanSwitchWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Your active plan is {current}. Purchasing {target} may replace or offset the current subscription.'**
+  String existingPlanSwitchWarning(String current, String target);
 
   /// No description provided for @unknown.
   ///
@@ -3062,30 +3140,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong. Try again later.'**
   String get unexpectedError;
-
-  /// No description provided for @nodeSortOriginal.
-  ///
-  /// In en, this message translates to:
-  /// **'Default order'**
-  String get nodeSortOriginal;
-
-  /// No description provided for @nodeSortLatency.
-  ///
-  /// In en, this message translates to:
-  /// **'By latency'**
-  String get nodeSortLatency;
-
-  /// No description provided for @nodeSortName.
-  ///
-  /// In en, this message translates to:
-  /// **'By name'**
-  String get nodeSortName;
-
-  /// No description provided for @nodeSortRegion.
-  ///
-  /// In en, this message translates to:
-  /// **'By region'**
-  String get nodeSortRegion;
 }
 
 class _AppLocalizationsDelegate

@@ -81,6 +81,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool _mobileProfileChildPage = false;
 
   List<PlanModel> _plans = const [];
+  int? _currentPlanId;
   String? _dataLoadError;
   String? _startupMessage;
   UpdateInfo? _updateInfo;
@@ -223,6 +224,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   NodeModel get currentNode => _nodes.currentNode;
   List<NodeModel> get nodes => _nodes.nodes;
   List<PlanModel> get plans => _plans;
+  int? get currentPlanId => _currentPlanId;
   List<InviteCodeModel> get inviteCodes => _invite.inviteCodes;
   String get inviteCode => _invite.inviteCode;
   String get inviteLink => _invite.inviteLink;
@@ -436,6 +438,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _hasAccountSummary = true;
     }
     if (snap.user != null) {
+      if (snap.remoteUser != null) _currentPlanId = snap.currentPlanId;
       final fresh = snap.user!;
       final previous = _account.user;
       final merged = fresh.copyWith(
@@ -758,6 +761,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _account.reset();
     _nodes.reset();
     _plans = const [];
+    _currentPlanId = null;
     _invite.reset();
     _wallet.reset();
     _subscription.reset();
@@ -786,6 +790,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _account.reset();
       _nodes.reset();
       _plans = const [];
+      _currentPlanId = null;
       _invite.reset();
       _wallet.reset();
       _subscription.reset();
@@ -955,6 +960,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _nodes.setNodes(snap.nodes!);
     }
     if (snap.plans != null) _plans = snap.plans!;
+    if (snap.remoteUser != null) _currentPlanId = snap.currentPlanId;
     _invite.applySnapshot(
       codes: snap.inviteCodes,
       code: snap.inviteCode,

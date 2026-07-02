@@ -415,14 +415,26 @@ class PanelApi {
     return _dataList(res).map(RemotePaymentMethod.fromJson).toList();
   }
 
+  Future<RemoteOrderPaymentDetail> getOrderPaymentDetail(String tradeNo) async {
+    final res = await _client.get(
+      '/user/order/detail',
+      params: {'trade_no': tradeNo},
+    );
+    _check(res);
+    return RemoteOrderPaymentDetail.fromJson(_dataMap(res));
+  }
+
   /// Returns checkout result with URL and type.
   /// type=0: QR code content — encode as QR.
   /// type=1: Redirect URL — open in browser.
-  /// Empty URL means balance deduction — poll for completion.
-  Future<CheckoutResult> checkoutOrder(String tradeNo, int methodId) async {
+  /// Empty URL means no external payment page was created; verify the order
+  /// status before treating checkout as complete.
+  Future<CheckoutResult> checkoutOrder(String tradeNo, int? methodId) async {
+    final data = <String, dynamic>{'trade_no': tradeNo};
+    if (methodId != null) data['method'] = methodId;
     final res = await _client.post(
       '/user/order/checkout',
-      data: {'trade_no': tradeNo, 'method': methodId},
+      data: data,
       headers: {'Idempotency-Key': _idempotencyKey('checkout-order')},
     );
     _check(res);
@@ -445,7 +457,7 @@ class PanelApi {
     _check(res);
   }
 
-  /// Status: 0=pending, 1=processing, 2=cancelled, 3=complete, 4=refunded.
+  /// Status: 0=pending, 1=processing, 2=cancelled, 3=complete, 4=discounted.
   Future<int> checkOrderStatus(String tradeNo) async {
     final res = await _client.get(
       '/user/order/check',

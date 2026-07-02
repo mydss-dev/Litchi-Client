@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../app/app_controller.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
@@ -29,6 +30,8 @@ String periodKey(BillingCycle? cycle, PlanModel plan) {
       BillingCycle.quarterly => 'quarter_price',
       BillingCycle.halfYear => 'half_year_price',
       BillingCycle.yearly => 'year_price',
+      BillingCycle.twoYears => 'two_year_price',
+      BillingCycle.threeYears => 'three_year_price',
     };
     if (plan.priceForCycle(cycle) != null) return key;
   }
@@ -116,6 +119,8 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
     add('quarter_price', widget.plan.quarterlyPrice);
     add('half_year_price', widget.plan.halfYearPrice);
     add('year_price', widget.plan.yearlyPrice);
+    add('two_year_price', widget.plan.twoYearPrice);
+    add('three_year_price', widget.plan.threeYearPrice);
     add('onetime_price', widget.plan.oneTimePrice);
     return entries;
   }
@@ -290,9 +295,49 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
   }
 
   Widget _buildContent(AppColors c) {
+    final ctrl = AppScope.of(context);
+    final currentPlanId = ctrl.currentPlanId;
+    final expiresAt = ctrl.expiredAt;
+    final hasActivePlan =
+        currentPlanId != null &&
+        (expiresAt == null ||
+            expiresAt == 0 ||
+            expiresAt * 1000 > DateTime.now().millisecondsSinceEpoch);
+    final switchingPlan =
+        hasActivePlan && currentPlanId != int.tryParse(widget.plan.id);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (switchingPlan) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: c.warning.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: c.warning.withValues(alpha: 0.28)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(LucideIcons.triangleAlert, size: 19, color: c.warning),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    context.l10n.existingPlanSwitchWarning(
+                      ctrl.user.plan.isEmpty
+                          ? context.l10n.currentPlan
+                          : ctrl.user.plan,
+                      widget.plan.title,
+                    ),
+                    style: AppTextStyles.body.copyWith(color: c.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
         _buildPeriodSelector(c),
         const SizedBox(height: 20),
         _buildCouponRow(c),

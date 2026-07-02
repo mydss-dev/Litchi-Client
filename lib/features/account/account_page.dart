@@ -605,14 +605,12 @@ class _TrafficOverviewCard extends StatelessWidget {
     required this.totalGb,
     required this.remainGb,
     required this.resetDay,
-    required this.onTap,
   });
 
   final double usedGb;
   final double totalGb;
   final double remainGb;
   final int? resetDay;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -624,7 +622,6 @@ class _TrafficOverviewCard extends StatelessWidget {
         : context.l10n.monthlyResetDay(resetDay!);
 
     return AppCard(
-      onTap: onTap,
       shadow: AppCardShadow.soft,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -737,9 +734,6 @@ class _ProfileSummaryCard extends StatelessWidget {
       totalGb: ctrl.traffic.totalGb,
       remainGb: ctrl.traffic.remainGb,
       resetDay: ctrl.resetDay,
-      onTap: isPageEnabled(AppPage.traffic)
-          ? () => ctrl.goToPage(AppPage.traffic)
-          : null,
     );
   }
 }

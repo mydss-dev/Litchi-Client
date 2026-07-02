@@ -78,6 +78,8 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   // method selection
   List<RemotePaymentMethod> _methods = [];
   bool _loadingMethods = true;
+  bool _loadingOrderDetail = true;
+  RemoteOrderPaymentDetail? _orderDetail;
   int? _selectedId;
   String _selectedName = '';
   bool _checkingOut = false;
@@ -99,6 +101,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   void initState() {
     super.initState();
     _loadMethods();
+    _loadOrderDetail();
   }
 
   @override
@@ -129,18 +132,98 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     }
   }
 
+  Future<void> _loadOrderDetail() async {
+    try {
+      final detail = await widget.api.getOrderPaymentDetail(widget.tradeNo);
+      if (!mounted) return;
+      setState(() {
+        _orderDetail = detail;
+        _loadingOrderDetail = false;
+      });
+      if (detail.status == 3 || detail.status == 4) {
+        _markPaid();
+      }
+    } catch (e) {
+      // This doubles as a capability probe. Older compatible backends can
+      // continue with the caller-provided amount and normal payment methods.
+      SecureLogger.debug('get order payment detail failed', e);
+      if (mounted) setState(() => _loadingOrderDetail = false);
+    }
+  }
+
+  double get _amountDue =>
+      (_orderDetail?.totalAmount ?? (widget.finalPrice * 100).round()) / 100;
+
+  int get _balanceAmount => _orderDetail?.balanceAmount ?? 0;
+
+  int get _discountAmount => _orderDetail?.discountAmount ?? 0;
+
+  int get _surplusAmount => _orderDetail?.surplusAmount ?? 0;
+
+  int get _refundAmount => _orderDetail?.refundAmount ?? 0;
+
+  int get _preHandlingAmount => _orderDetail?.preHandlingAmount ?? 0;
+
+  RemotePaymentMethod? get _selectedMethod {
+    final selectedId = _selectedId;
+    if (selectedId == null) return null;
+    for (final method in _methods) {
+      if (method.id == selectedId) return method;
+    }
+    return null;
+  }
+
+  int get _selectedFeeAmount {
+    final method = _selectedMethod;
+    if (method == null) return 0;
+    final subtotalCents = (_amountDue * 100).round();
+    return method.feeForAmount(subtotalCents);
+  }
+
+  int get _displayFeeAmount =>
+      _selectedFeeAmount > 0 ? _selectedFeeAmount : _preHandlingAmount;
+
+  double get _payableAmount => _amountDue + _selectedFeeAmount / 100;
+
+  String _feeDescription(RemotePaymentMethod method) {
+    final parts = <String>[];
+    final percent = method.handlingFeePercent ?? 0;
+    final fixed = method.handlingFeeFixed ?? 0;
+    if (percent > 0) {
+      parts.add('${percent.toStringAsFixed(percent % 1 == 0 ? 0 : 2)}%');
+    }
+    if (fixed > 0) {
+      parts.add('${widget.currencySymbol}${(fixed / 100).toStringAsFixed(2)}');
+    }
+    if (parts.isEmpty) return '';
+    return context.l10n.paymentFeeDescription(parts.join(' + '));
+  }
+
+  bool get _hasAdjustments =>
+      _discountAmount > 0 ||
+      _surplusAmount > 0 ||
+      _balanceAmount > 0 ||
+      _refundAmount > 0 ||
+      _displayFeeAmount > 0;
+
+  bool get _balanceOnly => _orderDetail?.balanceOnly ?? false;
+
   Future<void> _checkout() async {
-    if (_selectedId == null || _checkingOut) return;
+    if ((!_balanceOnly && _selectedId == null) ||
+        _loadingOrderDetail ||
+        _checkingOut) {
+      return;
+    }
     setState(() => _checkingOut = true);
     try {
       final result = await widget.api.checkoutOrder(
         widget.tradeNo,
-        _selectedId!,
+        _balanceOnly && _methods.isNotEmpty ? _methods.first.id : _selectedId,
       );
       if (!mounted) return;
       if (result.url.isEmpty) {
-        // Balance deduction — processed server-side immediately
-        _markPaid();
+        // Common for balance checkout; verify status before showing success.
+        await _verifyCompletedCheckout();
       } else {
         setState(() {
           _payUrl = result.url;
@@ -161,6 +244,36 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           type: AppToastType.error,
         );
       }
+    }
+  }
+
+  Future<void> _verifyCompletedCheckout() async {
+    try {
+      final status = await widget.api.checkOrderStatus(widget.tradeNo);
+      if (!mounted) return;
+      if (status == 3 || status == 4) {
+        _markPaid();
+        return;
+      }
+      setState(() => _checkingOut = false);
+      AppToast.show(
+        context,
+        context.l10n.paymentProcessing,
+        type: AppToastType.info,
+      );
+      _pollTimer?.cancel();
+      _pollTimer = Timer.periodic(
+        const Duration(seconds: 3),
+        (_) => _pollStatus(),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _checkingOut = false);
+      AppToast.show(
+        context,
+        context.l10n.paymentNotDetected,
+        type: AppToastType.warning,
+      );
     }
   }
 
@@ -379,6 +492,10 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   // ── Stage 1: method selection ─────────────────────────────────────────────
 
   Widget _buildMethods(AppColors c) {
+    final ready =
+        !_loadingOrderDetail &&
+        !_checkingOut &&
+        (_balanceOnly || (!_loadingMethods && _selectedId != null));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -411,7 +528,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                     ),
                   ),
                   Text(
-                    widget.finalPrice.toStringAsFixed(2),
+                    _payableAmount.toStringAsFixed(2),
                     style: AppTextStyles.largeNumber(
                       fontSize: 26,
                     ).copyWith(color: c.primary),
@@ -421,16 +538,90 @@ class _PaymentDialogState extends State<_PaymentDialog> {
             ],
           ),
         ),
+        if (_hasAdjustments) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: c.success.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: c.success.withValues(alpha: 0.18)),
+            ),
+            child: Column(
+              children: [
+                if (_discountAmount > 0)
+                  _PaymentAdjustmentRow(
+                    label: context.l10n.discount,
+                    amountCents: _discountAmount,
+                    currencySymbol: widget.currencySymbol,
+                    prefix: '-',
+                  ),
+                if (_surplusAmount > 0)
+                  _PaymentAdjustmentRow(
+                    label: context.l10n.subscriptionCredit,
+                    amountCents: _surplusAmount,
+                    currencySymbol: widget.currencySymbol,
+                    prefix: '-',
+                  ),
+                if (_balanceAmount > 0)
+                  _PaymentAdjustmentRow(
+                    label: context.l10n.balanceApplied,
+                    amountCents: _balanceAmount,
+                    currencySymbol: widget.currencySymbol,
+                    prefix: '-',
+                  ),
+                if (_refundAmount > 0)
+                  _PaymentAdjustmentRow(
+                    label: context.l10n.refundAmountLabel,
+                    amountCents: _refundAmount,
+                    currencySymbol: widget.currencySymbol,
+                  ),
+                if (_displayFeeAmount > 0)
+                  _PaymentAdjustmentRow(
+                    label: context.l10n.paymentHandlingFee,
+                    amountCents: _displayFeeAmount,
+                    currencySymbol: widget.currencySymbol,
+                    prefix: '+',
+                    fee: true,
+                  ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         Text(
           context.l10n.choosePaymentMethod,
           style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
         ),
         const SizedBox(height: 12),
-        if (_loadingMethods)
+        if (_loadingOrderDetail || (!_balanceOnly && _loadingMethods))
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (_balanceOnly)
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: c.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: c.primary, width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Icon(LucideIcons.walletCards, size: 18, color: c.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    context.l10n.balancePayment,
+                    style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
+                  ),
+                ),
+                Icon(LucideIcons.circleCheck, size: 18, color: c.primary),
+              ],
+            ),
           )
         else if (_methods.isEmpty)
           Padding(
@@ -465,18 +656,31 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      LucideIcons.creditCard,
-                      size: 18,
+                    _PaymentMethodIcon(
+                      method: m,
                       color: sel ? c.primary : c.iconDefault,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        m.name,
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          color: sel ? c.primary : c.textPrimary,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            m.name,
+                            style: AppTextStyles.bodyStrong.copyWith(
+                              color: sel ? c.primary : c.textPrimary,
+                            ),
+                          ),
+                          if (_feeDescription(m).isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              _feeDescription(m),
+                              style: AppTextStyles.caption.copyWith(
+                                color: c.textMuted,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     Icon(
@@ -494,9 +698,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           width: double.infinity,
           height: 44,
           child: ElevatedButton(
-            onPressed: (_selectedId == null || _checkingOut || _loadingMethods)
-                ? null
-                : _checkout,
+            onPressed: ready ? _checkout : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.transparent,
               shadowColor: Colors.transparent,
@@ -507,12 +709,8 @@ class _PaymentDialogState extends State<_PaymentDialog> {
             ),
             child: Ink(
               decoration: BoxDecoration(
-                gradient: (_selectedId != null && !_loadingMethods)
-                    ? AppPalette.brandGradient
-                    : null,
-                color: (_selectedId == null || _loadingMethods)
-                    ? c.border
-                    : null,
+                gradient: ready ? AppPalette.brandGradient : null,
+                color: ready ? null : c.border,
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Center(
@@ -526,7 +724,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
                         ),
                       )
                     : Text(
-                        context.l10n.payNow,
+                        _balanceOnly
+                            ? context.l10n.activateWithBalance
+                            : context.l10n.payNow,
                         style: AppTextStyles.button.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
@@ -573,7 +773,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
               ),
             ),
             Text(
-              widget.finalPrice.toStringAsFixed(2),
+              _payableAmount.toStringAsFixed(2),
               style: AppTextStyles.largeNumber(
                 fontSize: 34,
               ).copyWith(color: c.primary),
@@ -883,6 +1083,71 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         ),
         const SizedBox(height: 8),
       ],
+    );
+  }
+}
+
+class _PaymentAdjustmentRow extends StatelessWidget {
+  const _PaymentAdjustmentRow({
+    required this.label,
+    required this.amountCents,
+    required this.currencySymbol,
+    this.prefix = '',
+    this.fee = false,
+  });
+
+  final String label;
+  final int amountCents;
+  final String currencySymbol;
+  final String prefix;
+  final bool fee;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final color = fee ? c.warning : c.success;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: AppTextStyles.body.copyWith(color: c.textSecondary),
+            ),
+          ),
+          Text(
+            '$prefix$currencySymbol${(amountCents / 100).toStringAsFixed(2)}',
+            style: AppTextStyles.bodyStrong.copyWith(color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PaymentMethodIcon extends StatelessWidget {
+  const _PaymentMethodIcon({required this.method, required this.color});
+
+  final RemotePaymentMethod method;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final uri = Uri.tryParse(method.iconUrl ?? '');
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
+      return Icon(LucideIcons.creditCard, size: 18, color: color);
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.network(
+        uri.toString(),
+        width: 20,
+        height: 20,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) =>
+            Icon(LucideIcons.creditCard, size: 18, color: color),
+      ),
     );
   }
 }

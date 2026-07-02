@@ -11,6 +11,7 @@ import {
   withPreservedUpdateMetadata,
   withReleaseMetadata,
   updateManifestUrl,
+  updatesEnabled,
   withUpdateManifestUrl,
 } from './signer.js';
 import { parseAndValidateConfig, parseLooseConfig } from './validate.js';
@@ -156,7 +157,7 @@ test('the JSON template is valid and leaves release metadata to the bot', () => 
   const config = parseAndValidateConfig(template);
   assert.equal(Object.keys(config)[0], 'panel_type');
   assert.equal(config.app_name, '示例加速器');
-  assert.equal('update_enabled' in config, false);
+  assert.equal(config.update_enabled, true);
   assert.equal('update_changelog' in config, false);
   assert.equal('update_version' in config, false);
 });
@@ -239,6 +240,7 @@ test('base config strips release metadata owned by update.json', () => {
     ),
     {
       app_name: 'New name',
+      update_enabled: true,
     },
   );
 });
@@ -270,7 +272,7 @@ test('update.json is signed and tampering is rejected', () => {
   );
 });
 
-test('legacy update settings stay out of base config', () => {
+test('base config preserves a disabled update switch', () => {
   assert.deepEqual(
     withPreservedUpdateMetadata(
       { app_name: 'New name', update_enabled: false },
@@ -282,6 +284,7 @@ test('legacy update settings stay out of base config', () => {
     ),
     {
       app_name: 'New name',
+      update_enabled: false,
     },
   );
 });
@@ -299,6 +302,23 @@ test('update manifest URL is derived beside config.json', () => {
     {
       app_name: 'Customer Client',
       update_manifest_url: 'https://cdn.example.com/client/update.json',
+    },
+  );
+  assert.equal(updatesEnabled({}), true);
+  assert.equal(updatesEnabled({ update_enabled: true }), true);
+  assert.equal(updatesEnabled({ update_enabled: false }), false);
+  assert.deepEqual(
+    withUpdateManifestUrl(
+      {
+        app_name: 'Customer Client',
+        update_enabled: false,
+        update_manifest_url: 'https://stale.example.com/update.json',
+      },
+      'https://cdn.example.com/client/config.json',
+    ),
+    {
+      app_name: 'Customer Client',
+      update_enabled: false,
     },
   );
 });

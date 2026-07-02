@@ -180,8 +180,11 @@ class RemotePlan {
   final int? quarterPrice;
   final int? halfYearPrice;
   final int? yearPrice;
+  final int? twoYearPrice;
+  final int? threeYearPrice;
   final int? onetimePrice;
   final int? deviceLimit;
+  final int? capacityLimit;
   final int show;
 
   const RemotePlan({
@@ -193,8 +196,11 @@ class RemotePlan {
     this.quarterPrice,
     this.halfYearPrice,
     this.yearPrice,
+    this.twoYearPrice,
+    this.threeYearPrice,
     this.onetimePrice,
     this.deviceLimit,
+    this.capacityLimit,
     required this.show,
   });
 
@@ -209,8 +215,11 @@ class RemotePlan {
       quarterPrice: _int(json, 'quarter_price'),
       halfYearPrice: _int(json, 'half_year_price'),
       yearPrice: _int(json, 'year_price'),
+      twoYearPrice: _int(json, 'two_year_price'),
+      threeYearPrice: _int(json, 'three_year_price'),
       onetimePrice: _int(json, 'onetime_price'),
       deviceLimit: _int(json, 'device_limit'),
+      capacityLimit: _int(json, 'capacity_limit'),
       show: _int(json, 'show') ?? 1,
     );
   }
@@ -670,6 +679,12 @@ class RemotePaymentMethod {
       handlingFeePercent: (json['handling_fee_percent'] as num?)?.toDouble(),
     );
   }
+
+  int feeForAmount(int amountCents) {
+    final fixed = handlingFeeFixed ?? 0;
+    final percent = handlingFeePercent ?? 0;
+    return fixed + (amountCents * percent / 100).round();
+  }
 }
 
 class CouponResult {
@@ -693,7 +708,7 @@ class CouponResult {
 }
 
 /// A single order from /user/order/fetch.
-/// status: 0=pending 1=processing 2=cancelled 3=complete 4=refunded
+/// status: 0=pending 1=processing 2=cancelled 3=complete 4=discounted
 class RemoteOrder {
   final String tradeNo;
   final String? planName;
@@ -727,7 +742,7 @@ class RemoteOrder {
     1 => '处理中',
     2 => '已取消',
     3 => '已完成',
-    4 => '已退款',
+    4 => '已折抵',
     _ => '未知',
   };
 
@@ -742,9 +757,9 @@ class RemoteOrder {
     _ => period,
   };
 
-  String get amountDisplay {
+  String amountDisplay(String currencySymbol) {
     final yuan = totalAmount / 100.0;
-    return '¥${yuan.toStringAsFixed(2)}';
+    return '$currencySymbol${yuan.toStringAsFixed(2)}';
   }
 
   String get dateDisplay {
@@ -756,10 +771,65 @@ class RemoteOrder {
   }
 }
 
+/// Detailed payment amounts returned by GET /user/order/detail.
+///
+/// Some V2Board-compatible backends reserve account balance while creating an
+/// order and expose that deduction as [balanceAmount]. A null value means the
+/// backend does not advertise this capability; zero means it is supported but
+/// no balance was used for this order.
+class RemoteOrderPaymentDetail {
+  const RemoteOrderPaymentDetail({
+    required this.totalAmount,
+    required this.discountAmount,
+    required this.surplusAmount,
+    required this.balanceAmount,
+    required this.refundAmount,
+    required this.preHandlingAmount,
+    required this.status,
+  });
+
+  final int? totalAmount; // remaining amount due, in cents
+  final int? discountAmount; // coupon / promotion discount, in cents
+  final int? surplusAmount; // old subscription credit, in cents
+  final int? balanceAmount; // reserved balance, in cents
+  final int? refundAmount; // amount returned by a plan change, in cents
+  final int? preHandlingAmount; // backend-estimated payment fee, in cents
+  final int status;
+
+  bool get usedBalance => (balanceAmount ?? 0) > 0;
+  bool get balanceOnly =>
+      usedBalance && totalAmount != null && totalAmount! <= 0;
+
+  factory RemoteOrderPaymentDetail.fromJson(Map<String, dynamic> json) {
+    return RemoteOrderPaymentDetail(
+      totalAmount: json.containsKey('total_amount')
+          ? (json['total_amount'] as num?)?.toInt()
+          : null,
+      discountAmount: json.containsKey('discount_amount')
+          ? (json['discount_amount'] as num?)?.toInt() ?? 0
+          : null,
+      surplusAmount: json.containsKey('surplus_amount')
+          ? (json['surplus_amount'] as num?)?.toInt() ?? 0
+          : null,
+      balanceAmount: json.containsKey('balance_amount')
+          ? (json['balance_amount'] as num?)?.toInt() ?? 0
+          : null,
+      refundAmount: json.containsKey('refund_amount')
+          ? (json['refund_amount'] as num?)?.toInt() ?? 0
+          : null,
+      preHandlingAmount: json.containsKey('pre_handling_amount')
+          ? (json['pre_handling_amount'] as num?)?.toInt() ?? 0
+          : null,
+      status: (json['status'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 /// Result from POST /user/order/checkout.
 /// type=0: [url] is QR code content (WeChat/Alipay scheme) — show as QR.
 /// type=1: [url] is a web redirect link — open in browser and optionally show QR.
-/// Empty [url] means balance deduction — order processed immediately.
+/// Empty [url] means no external payment page was created (commonly a balance
+/// checkout); callers must still verify the order status before showing success.
 class CheckoutResult {
   const CheckoutResult(this.url, this.type);
   final String url;

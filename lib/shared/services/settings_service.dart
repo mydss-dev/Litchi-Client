@@ -50,6 +50,7 @@ abstract final class SettingsService {
     await p.remove(_key('allow_insecure_nodes'));
     await p.remove(_key('close_connections_on_switch'));
     await p.remove(_key('dev_mode'));
+    await p.remove(_key('node_sort'));
     return SettingsSnapshot(
       proxyPort: p.getInt(_key('proxy_port')) ?? 7890,
       autoStart: p.getBool(_key('auto_start')) ?? false,
@@ -123,12 +124,6 @@ abstract final class SettingsService {
   static void setLastNodeId(String id) => SharedPreferences.getInstance().then(
     (p) => p.setString(_key('last_node_id'), id),
   );
-
-  static Future<String?> loadNodeSortKey() async =>
-      (await SharedPreferences.getInstance()).getString(_key('node_sort'));
-
-  static void setNodeSortKey(String value) => SharedPreferences.getInstance()
-      .then((prefs) => prefs.setString(_key('node_sort'), value));
 
   static Future<int> loadLastSeenNoticeId() async {
     final p = await SharedPreferences.getInstance();

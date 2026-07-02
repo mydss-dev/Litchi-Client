@@ -49,7 +49,10 @@ abstract final class ModelMappers {
     PlanCategory category;
     if (plan.monthPrice == null &&
         plan.quarterPrice == null &&
-        plan.yearPrice == null) {
+        plan.halfYearPrice == null &&
+        plan.yearPrice == null &&
+        plan.twoYearPrice == null &&
+        plan.threeYearPrice == null) {
       category = plan.onetimePrice != null
           ? PlanCategory.oneTime
           : PlanCategory.dataPack;
@@ -85,10 +88,17 @@ abstract final class ModelMappers {
           ? plan.halfYearPrice! / 100.0
           : null,
       yearlyPrice: plan.yearPrice != null ? plan.yearPrice! / 100.0 : null,
+      twoYearPrice: plan.twoYearPrice != null
+          ? plan.twoYearPrice! / 100.0
+          : null,
+      threeYearPrice: plan.threeYearPrice != null
+          ? plan.threeYearPrice! / 100.0
+          : null,
       oneTimePrice: plan.onetimePrice != null
           ? plan.onetimePrice! / 100.0
           : null,
       deviceLimit: plan.deviceLimit,
+      capacityLimit: plan.capacityLimit,
       features: features,
     );
   }

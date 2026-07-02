@@ -269,6 +269,8 @@ class _PlanCardState extends State<_PlanCard> {
       BillingCycle.quarterly,
       BillingCycle.halfYear,
       BillingCycle.yearly,
+      BillingCycle.twoYears,
+      BillingCycle.threeYears,
     ];
   }
 
@@ -282,13 +284,17 @@ class _PlanCardState extends State<_PlanCard> {
           plan.monthlyPrice ??
           plan.quarterlyPrice ??
           plan.halfYearPrice ??
-          plan.yearlyPrice;
+          plan.yearlyPrice ??
+          plan.twoYearPrice ??
+          plan.threeYearPrice;
     }
     return plan.oneTimePrice ??
         plan.monthlyPrice ??
         plan.quarterlyPrice ??
         plan.halfYearPrice ??
-        plan.yearlyPrice;
+        plan.yearlyPrice ??
+        plan.twoYearPrice ??
+        plan.threeYearPrice;
   }
 
   String _unit(BuildContext context) => switch (plan.category) {
@@ -378,7 +384,16 @@ class _PlanCardState extends State<_PlanCard> {
                   ],
                 ),
               ),
-              if (plan.hot)
+              if (plan.soldOut)
+                _MiniBadge(text: context.l10n.soldOut, color: c.danger)
+              else if (plan.capacityLimit != null &&
+                  plan.capacityLimit! > 0 &&
+                  plan.capacityLimit! < 5)
+                _MiniBadge(
+                  text: context.l10n.lowStockRemaining(plan.capacityLimit!),
+                  color: c.warning,
+                )
+              else if (plan.hot)
                 _MiniBadge(text: context.l10n.popular, color: c.danger)
               else if (plan.featured)
                 _MiniBadge(text: context.l10n.recommended, color: c.primary),
@@ -405,8 +420,9 @@ class _PlanCardState extends State<_PlanCard> {
           ],
           if (widget.compact) const SizedBox(height: 14) else const Spacer(),
           _BuyButton(
-            enabled: price != null,
-            onTap: price == null
+            enabled: price != null && !plan.soldOut,
+            disabledLabel: plan.soldOut ? context.l10n.soldOut : null,
+            onTap: price == null || plan.soldOut
                 ? null
                 : () => showOrderConfirmDialog(
                     context: context,
@@ -625,10 +641,15 @@ class _MiniBadge extends StatelessWidget {
 }
 
 class _BuyButton extends StatelessWidget {
-  const _BuyButton({required this.enabled, required this.onTap});
+  const _BuyButton({
+    required this.enabled,
+    required this.onTap,
+    this.disabledLabel,
+  });
 
   final bool enabled;
   final VoidCallback? onTap;
+  final String? disabledLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -646,7 +667,9 @@ class _BuyButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
           child: Text(
-            enabled ? context.l10n.buyNow : context.l10n.unavailableForPurchase,
+            enabled
+                ? context.l10n.buyNow
+                : disabledLabel ?? context.l10n.unavailableForPurchase,
             style: AppTextStyles.button.copyWith(
               color: enabled ? Colors.white : c.textMuted,
               fontWeight: FontWeight.w800,
@@ -663,6 +686,8 @@ String _cycleLabel(BuildContext context, BillingCycle cycle) => switch (cycle) {
   BillingCycle.quarterly => context.l10n.quarterly,
   BillingCycle.halfYear => context.l10n.halfYear,
   BillingCycle.yearly => context.l10n.yearly,
+  BillingCycle.twoYears => context.l10n.twoYears,
+  BillingCycle.threeYears => context.l10n.threeYears,
 };
 
 String _cycleUnit(BuildContext context, BillingCycle cycle) => switch (cycle) {
@@ -670,6 +695,8 @@ String _cycleUnit(BuildContext context, BillingCycle cycle) => switch (cycle) {
   BillingCycle.quarterly => context.l10n.perQuarter,
   BillingCycle.halfYear => context.l10n.perHalfYear,
   BillingCycle.yearly => context.l10n.perYear,
+  BillingCycle.twoYears => context.l10n.perTwoYears,
+  BillingCycle.threeYears => context.l10n.perThreeYears,
 };
 
 String _cleanFeature(String value) {

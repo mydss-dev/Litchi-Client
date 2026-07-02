@@ -203,7 +203,7 @@ class DeviceModel {
 enum PlanCategory { recurring, oneTime, dataPack }
 
 /// Billing cycle, only meaningful for [PlanCategory.recurring].
-enum BillingCycle { monthly, quarterly, halfYear, yearly }
+enum BillingCycle { monthly, quarterly, halfYear, yearly, twoYears, threeYears }
 
 /// Proxy routing mode. Replaces the old Chinese magic-string constants.
 enum ProxyMode {
@@ -273,8 +273,11 @@ class PlanModel {
     this.quarterlyPrice,
     this.halfYearPrice,
     this.yearlyPrice,
+    this.twoYearPrice,
+    this.threeYearPrice,
     this.oneTimePrice,
     this.deviceLimit,
+    this.capacityLimit,
     this.features = const [],
     this.hot = false,
     this.featured = false,
@@ -290,11 +293,14 @@ class PlanModel {
   final double? quarterlyPrice;
   final double? halfYearPrice;
   final double? yearlyPrice;
+  final double? twoYearPrice;
+  final double? threeYearPrice;
 
   // One-time / data-pack price.
   final double? oneTimePrice;
 
   final int? deviceLimit;
+  final int? capacityLimit;
   final List<String> features;
   final bool hot;
   final bool featured;
@@ -309,8 +315,14 @@ class PlanModel {
         return halfYearPrice;
       case BillingCycle.yearly:
         return yearlyPrice;
+      case BillingCycle.twoYears:
+        return twoYearPrice;
+      case BillingCycle.threeYears:
+        return threeYearPrice;
     }
   }
+
+  bool get soldOut => capacityLimit == 0;
 }
 
 class LoginRecord {

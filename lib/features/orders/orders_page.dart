@@ -200,12 +200,13 @@ class _OrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final currencySymbol = AppScope.of(context).currencySymbol;
     final statusColor = switch (order.status) {
       0 => c.warning,
       1 => c.primary,
       2 => c.textMuted,
       3 => c.success,
-      4 => c.danger,
+      4 => c.success,
       _ => c.textMuted,
     };
     final orderNo = order.tradeNo.isEmpty ? '--' : order.tradeNo;
@@ -266,7 +267,7 @@ class _OrderCard extends StatelessWidget {
                 Expanded(
                   child: _OrderMeta(
                     label: context.l10n.amount,
-                    value: order.amountDisplay,
+                    value: order.amountDisplay(currencySymbol),
                   ),
                 ),
                 Expanded(
@@ -523,7 +524,7 @@ String _localizedOrderStatus(BuildContext context, int status) =>
       1 => context.l10n.orderProcessing,
       2 => context.l10n.orderCancelledStatus,
       3 => context.l10n.orderCompleted,
-      4 => context.l10n.refunded,
+      4 => context.l10n.orderDiscounted,
       _ => context.l10n.unknown,
     };
 
