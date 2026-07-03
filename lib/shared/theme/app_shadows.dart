@@ -23,11 +23,6 @@ class AppShadows {
     ),
   ];
 
-  /// Outer window shell shadow: 0 16px 40px rgba(15,23,42,0.12).
-  static const List<BoxShadow> window = [
-    BoxShadow(color: Color(0x1F0F172A), offset: Offset(0, 16), blurRadius: 40),
-  ];
-
   /// Brand-emphasis glow: 0 12px 28px rgba(37,99,235,0.25).
   static const List<BoxShadow> brand = [
     BoxShadow(color: Color(0x402563EB), offset: Offset(0, 12), blurRadius: 28),

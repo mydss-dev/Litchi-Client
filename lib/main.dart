@@ -197,9 +197,8 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
       await windowManager.setAsFrameless();
     } else if (Platform.isWindows) {
       await windowManager.setAsFrameless();
-      // Let DWM render the outer shadow. The native runner requests Windows
-      // 11's anti-aliased rounded corners and falls back to a shaped region on
-      // older Windows versions.
+      // The opaque native runner owns one exact 18-DIP window region on
+      // Windows 10 and 11. DWM remains responsible only for the outer shadow.
       await windowManager.setHasShadow(true);
     }
     if (!launchOptions.silent) {

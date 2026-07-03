@@ -19,13 +19,11 @@ void main() {
     expect(c.page, AppPage.nodes);
   });
 
-  testWidgets('desktop window clip wraps the Navigator overlay', (
-    tester,
-  ) async {
+  testWidgets('Linux window clip wraps the Navigator overlay', (tester) async {
     await tester.pumpWidget(
       Directionality(
         textDirection: TextDirection.ltr,
-        child: DesktopRouteClip(
+        child: LinuxWindowClip(
           child: Navigator(
             onGenerateRoute: (_) => MaterialPageRoute<void>(
               builder: (_) => const SizedBox.expand(),
@@ -37,7 +35,7 @@ void main() {
     await tester.pump();
 
     final windowClip = find.descendant(
-      of: find.byType(DesktopRouteClip),
+      of: find.byType(LinuxWindowClip),
       matching: find.byWidgetPredicate(
         (widget) =>
             widget is ClipRRect &&

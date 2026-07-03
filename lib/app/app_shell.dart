@@ -33,11 +33,10 @@ import 'app_window_bar.dart';
 bool get _isDesktop =>
     Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
-/// Windows/Linux draw a custom frameless window (rounded clip, custom controls).
-/// macOS uses its native window (traffic lights + native corners/shadow), so it
-/// gets neither the custom controls nor the rounded clip.
+/// Windows/Linux draw custom controls. The Windows runner owns the final window
+/// shape; Linux clips the Navigator against its transparent host window.
+/// macOS uses its native traffic lights, corners and shadow.
 bool get _usesCustomChrome => Platform.isWindows || Platform.isLinux;
-bool get _usesFlutterWindowClip => Platform.isLinux;
 
 /// All pages are now responsive — each handles its own compact / wide layout
 /// internally, so the shell just picks the widget directly.
@@ -545,35 +544,22 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final controller = AppScope.of(context);
-    // Only the custom (Windows/Linux) chrome draws the rounded clip, border and
-    // window shadow — macOS gets those from its native window.
-    final radius = _usesFlutterWindowClip && !_maximized
-        ? AppRadius.window
-        : 0.0;
     // On the custom chrome the compact logged-out window IS the login card:
     // give it the card surface + border so there's a single frame.
     final asCard =
         _usesCustomChrome && !controller.isAuthenticated && !_maximized;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          color: asCard ? c.cardBg : c.appBg,
-          borderRadius: BorderRadius.circular(radius),
-          border: asCard ? Border.all(color: c.softBorder) : null,
-          boxShadow: _usesFlutterWindowClip && !_maximized
-              ? AppShadows.window
-              : null,
-        ),
-        child: controller.isAuthenticated
-            ? const _MainShell()
-            : _AuthShell(
-                screen: _visibleAuthScreen ?? controller.authScreen,
-                opacity: _authOpacity,
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: asCard ? c.cardBg : c.appBg,
+        border: asCard ? Border.all(color: c.softBorder) : null,
       ),
+      child: controller.isAuthenticated
+          ? const _MainShell()
+          : _AuthShell(
+              screen: _visibleAuthScreen ?? controller.authScreen,
+              opacity: _authOpacity,
+            ),
     );
   }
 }

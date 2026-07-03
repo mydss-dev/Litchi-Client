@@ -53,12 +53,12 @@ class _LitchiAppState extends State<LitchiApp> {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             // Linux needs a Flutter-owned transparent shape around the entire
-            // Navigator. Windows uses DWM to clip the final HWND, including all
+            // Navigator. The Windows runner clips the final HWND, including all
             // dialogs, modal barriers, bottom sheets and toasts.
             builder: (context, child) {
               final content = child ?? const SizedBox.shrink();
               if (!Platform.isLinux) return content;
-              return DesktopRouteClip(child: content);
+              return LinuxWindowClip(child: content);
             },
             // Transparent so the rounded window shell shows through at the
             // clipped corners (§ rounded-window spec).
@@ -80,18 +80,17 @@ class _LitchiAppState extends State<LitchiApp> {
 /// Clips the complete Navigator rather than only its home route.
 ///
 /// Modal routes render above [AppShell], so Linux clips the entire Navigator
-/// against its transparent host window. Windows delegates this to native DWM.
-class DesktopRouteClip extends StatefulWidget {
-  const DesktopRouteClip({super.key, required this.child});
+/// against its transparent host window.
+class LinuxWindowClip extends StatefulWidget {
+  const LinuxWindowClip({super.key, required this.child});
 
   final Widget child;
 
   @override
-  State<DesktopRouteClip> createState() => _DesktopRouteClipState();
+  State<LinuxWindowClip> createState() => _LinuxWindowClipState();
 }
 
-class _DesktopRouteClipState extends State<DesktopRouteClip>
-    with WindowListener {
+class _LinuxWindowClipState extends State<LinuxWindowClip> with WindowListener {
   bool _maximized = false;
 
   @override
