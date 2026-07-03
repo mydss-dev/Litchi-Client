@@ -991,7 +991,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Column(
+          Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (onRenew != null) ...[
@@ -1001,7 +1001,7 @@ class _ProfileHeader extends StatelessWidget {
                   onTap: onRenew!,
                   filled: true,
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(width: 6),
               ],
               _ProfileActionButton(
                 icon: LucideIcons.slidersHorizontal,

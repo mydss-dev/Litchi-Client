@@ -47,7 +47,7 @@ void ApplyRoundedWindowRegion(HWND window, BOOL redraw = TRUE) {
   }
 
   // Keep one source of truth for the outer shape. The Windows 11 system radius
-  // is visibly smaller than the app's original 18 logical pixels, so disable
+  // is visibly smaller than the app's 24 logical pixels, so disable
   // compositor rounding and apply the same custom radius on every version.
   // DWM still owns the shadow and dark/light appearance.
   const int corner_preference = kDwmWindowCornerDoNotRound;
@@ -62,7 +62,7 @@ void ApplyRoundedWindowRegion(HWND window, BOOL redraw = TRUE) {
   const int width = bounds.right - bounds.left;
   const int height = bounds.bottom - bounds.top;
   const UINT dpi = GetDpiForWindow(window);
-  const int radius = MulDiv(18, dpi == 0 ? 96 : dpi, 96);
+  const int radius = MulDiv(24, dpi == 0 ? 96 : dpi, 96);
   HRGN region =
       CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
   if (region != nullptr && SetWindowRgn(window, region, redraw) == 0) {
