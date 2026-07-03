@@ -180,11 +180,7 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
     // via setResizable(false); this only gates programmatic setSize.
     minimumSize: const Size(380, 480),
     center: true,
-    backgroundColor: Platform.isLinux
-        ? Colors.transparent
-        : Platform.isWindows
-        ? const Color(0xFFF7F9FC)
-        : null,
+    backgroundColor: Platform.isLinux ? Colors.transparent : null,
     titleBarStyle: TitleBarStyle.hidden,
     title: AppConfig.appName,
   );
@@ -196,9 +192,9 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
       await windowManager.setBackgroundColor(Colors.transparent);
       await windowManager.setAsFrameless();
     } else if (Platform.isWindows) {
-      await windowManager.setAsFrameless();
-      // The opaque native runner owns one exact 18-DIP window region on
-      // Windows 10 and 11. DWM remains responsible only for the outer shadow.
+      // Match FlClash's stable Windows setup: hidden title bar, but not
+      // setAsFrameless(). This leaves the standard Win32/DWM frame available
+      // for official Windows 11 corners and shadows.
       await windowManager.setHasShadow(true);
     }
     if (!launchOptions.silent) {

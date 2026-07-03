@@ -53,8 +53,7 @@ class _LitchiAppState extends State<LitchiApp> {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             // Linux needs a Flutter-owned transparent shape around the entire
-            // Navigator. The Windows runner clips the final HWND, including all
-            // dialogs, modal barriers, bottom sheets and toasts.
+            // Navigator. Windows and macOS use their official system shapes.
             builder: (context, child) {
               final content = child ?? const SizedBox.shrink();
               if (!Platform.isLinux) return content;

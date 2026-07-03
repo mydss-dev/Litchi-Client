@@ -17,7 +17,7 @@ namespace {
 #endif
 
 constexpr DWORD kDwmWindowCornerPreference = 33;
-constexpr int kDwmWindowCornerDoNotRound = 1;
+constexpr int kDwmWindowCornerRound = 2;
 
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 
@@ -40,33 +40,15 @@ int Scale(int source, double scale_factor) {
   return static_cast<int>(source * scale_factor);
 }
 
-void ApplyRoundedWindowRegion(HWND window, BOOL redraw = TRUE) {
-  // Use one exact, opaque 18-DIP shape on both Windows 10 and 11. DWM does not
-  // expose a numeric radius, so its own rounding must be disabled while a
-  // window region owns the final HWND boundary. DWM still supplies the shadow.
-  const int corner_preference = kDwmWindowCornerDoNotRound;
+void ApplySystemWindowCorners(HWND window, BOOL redraw = TRUE) {
+  // Never combine a custom region with compositor rounding. Windows 11 applies
+  // its official system radius; Windows 10 does not support this attribute and
+  // therefore keeps its official square window shape.
+  SetWindowRgn(window, nullptr, redraw);
+  const int corner_preference = kDwmWindowCornerRound;
   DwmSetWindowAttribute(
       window, static_cast<DWMWINDOWATTRIBUTE>(kDwmWindowCornerPreference),
       &corner_preference, sizeof(corner_preference));
-
-  if (IsZoomed(window)) {
-    SetWindowRgn(window, nullptr, redraw);
-    return;
-  }
-
-  RECT bounds{};
-  if (!GetWindowRect(window, &bounds)) {
-    return;
-  }
-  const int width = bounds.right - bounds.left;
-  const int height = bounds.bottom - bounds.top;
-  const UINT dpi = GetDpiForWindow(window);
-  const int radius = MulDiv(18, dpi == 0 ? 96 : dpi, 96);
-  HRGN region =
-      CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
-  if (region != nullptr && SetWindowRgn(window, region, redraw) == 0) {
-    DeleteObject(region);
-  }
 }
 
 // Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
@@ -177,7 +159,7 @@ bool Win32Window::Create(const std::wstring& title,
   }
 
   UpdateTheme(window);
-  ApplyRoundedWindowRegion(window);
+  ApplySystemWindowCorners(window);
 
   return OnCreate();
 }
@@ -227,7 +209,7 @@ Win32Window::MessageHandler(HWND hwnd,
 
       SetWindowPos(hwnd, nullptr, newRectSize->left, newRectSize->top, newWidth,
                    newHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-      ApplyRoundedWindowRegion(hwnd, FALSE);
+      ApplySystemWindowCorners(hwnd, FALSE);
 
       return 0;
     }
@@ -240,7 +222,7 @@ Win32Window::MessageHandler(HWND hwnd,
         MoveWindow(child_content_, rect.left, rect.top, rect.right - rect.left,
                    rect.bottom - rect.top, FALSE);
       }
-      ApplyRoundedWindowRegion(hwnd, FALSE);
+      ApplySystemWindowCorners(hwnd, FALSE);
       RedrawWindow(hwnd, nullptr, nullptr,
                    RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
       return 0;
@@ -251,7 +233,7 @@ Win32Window::MessageHandler(HWND hwnd,
         // A hidden tray window keeps its HWND, but plugins may update its
         // frameless style while it is hidden. Reapply the region on every
         // restore so no square frame/shadow can leak around the corners.
-        ApplyRoundedWindowRegion(hwnd, FALSE);
+        ApplySystemWindowCorners(hwnd, FALSE);
         RedrawWindow(hwnd, nullptr, nullptr,
                      RDW_INVALIDATE | RDW_FRAME | RDW_ALLCHILDREN);
       }
