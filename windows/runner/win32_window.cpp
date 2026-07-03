@@ -17,7 +17,7 @@ namespace {
 #endif
 
 constexpr DWORD kDwmWindowCornerPreference = 33;
-constexpr int kDwmWindowCornerRound = 2;
+constexpr int kDwmWindowCornerDoNotRound = 1;
 
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 
@@ -41,21 +41,16 @@ int Scale(int source, double scale_factor) {
 }
 
 void ApplyRoundedWindowRegion(HWND window, BOOL redraw = TRUE) {
-  // A window region and DWM rounding are mutually exclusive. Prefer the
-  // compositor-owned Windows 11 shape: it is anti-aliased, owns the matching
-  // shadow, and automatically becomes square while maximized or snapped.
-  SetWindowRgn(window, nullptr, redraw);
-  const int corner_preference = kDwmWindowCornerRound;
-  const HRESULT corner_result = DwmSetWindowAttribute(
+  // Use one exact, opaque 18-DIP shape on both Windows 10 and 11. DWM does not
+  // expose a numeric radius, so its own rounding must be disabled while a
+  // window region owns the final HWND boundary. DWM still supplies the shadow.
+  const int corner_preference = kDwmWindowCornerDoNotRound;
+  DwmSetWindowAttribute(
       window, static_cast<DWMWINDOWATTRIBUTE>(kDwmWindowCornerPreference),
       &corner_preference, sizeof(corner_preference));
-  if (SUCCEEDED(corner_result)) {
-    return;
-  }
 
-  // DWMWA_WINDOW_CORNER_PREFERENCE is unavailable before Windows 11. Keep a
-  // shaped-region fallback there so older systems retain rounded corners.
   if (IsZoomed(window)) {
+    SetWindowRgn(window, nullptr, redraw);
     return;
   }
 
