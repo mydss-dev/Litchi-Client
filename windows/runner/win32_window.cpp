@@ -228,6 +228,7 @@ Win32Window::MessageHandler(HWND hwnd,
 
       SetWindowPos(hwnd, nullptr, newRectSize->left, newRectSize->top, newWidth,
                    newHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+      ApplyRoundedWindowRegion(hwnd, FALSE);
 
       return 0;
     }

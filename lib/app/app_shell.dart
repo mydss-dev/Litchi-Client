@@ -70,7 +70,6 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
-  static const double _radius = 18;
   static const MethodChannel _windowsProcessChannel = MethodChannel(
     'litchi/windows_process',
   );
@@ -548,7 +547,9 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final controller = AppScope.of(context);
     // Only the custom (Windows/Linux) chrome draws the rounded clip, border and
     // window shadow — macOS gets those from its native window.
-    final radius = _usesFlutterWindowClip && !_maximized ? _radius : 0.0;
+    final radius = _usesFlutterWindowClip && !_maximized
+        ? AppRadius.window
+        : 0.0;
     // On the custom chrome the compact logged-out window IS the login card:
     // give it the card surface + border so there's a single frame.
     final asCard =

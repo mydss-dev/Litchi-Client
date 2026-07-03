@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:litchi_client/app/app.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/shared/services/node_selection_service.dart';
+import 'package:litchi_client/shared/theme/app_radius.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -15,6 +17,40 @@ void main() {
     expect(c.page, AppPage.dashboard);
     c.goToPage(AppPage.nodes);
     expect(c.page, AppPage.nodes);
+  });
+
+  testWidgets('desktop window clip wraps the Navigator overlay', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: DesktopRouteClip(
+          child: Navigator(
+            onGenerateRoute: (_) => MaterialPageRoute<void>(
+              builder: (_) => const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final windowClip = find.descendant(
+      of: find.byType(DesktopRouteClip),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is ClipRRect &&
+            widget.borderRadius == BorderRadius.circular(AppRadius.window),
+      ),
+    );
+    final clippedNavigator = find.descendant(
+      of: windowClip,
+      matching: find.byType(Navigator),
+    );
+
+    expect(windowClip, findsOneWidget);
+    expect(clippedNavigator, findsOneWidget);
   });
 
   test('AppController logout resets auth state', () {
