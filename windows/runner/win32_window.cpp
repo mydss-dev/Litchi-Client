@@ -66,7 +66,7 @@ void ApplyRoundedWindowRegion(HWND window, BOOL redraw = TRUE) {
   const int width = bounds.right - bounds.left;
   const int height = bounds.bottom - bounds.top;
   const UINT dpi = GetDpiForWindow(window);
-  const int radius = MulDiv(24, dpi == 0 ? 96 : dpi, 96);
+  const int radius = MulDiv(18, dpi == 0 ? 96 : dpi, 96);
   HRGN region =
       CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
   if (region != nullptr && SetWindowRgn(window, region, redraw) == 0) {

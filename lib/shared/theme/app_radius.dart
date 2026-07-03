@@ -10,7 +10,7 @@ class AppRadius {
   static const double user = 14; // user card
   static const double card = 16; // normal cards / status bar
   static const double lg = 18; // large cards / hero
-  static const double window = 24; // desktop window and every overlay route
+  static const double window = 18; // desktop window and every overlay route
   static const double xl = 20; // connection main card / auth panel
   static const double pill = 999; // capsules / circles
 
