@@ -13,6 +13,7 @@ import 'secure_logger.dart';
 class DataSnapshot {
   RemoteUser? remoteUser;
   UserModel? user;
+  bool? hasPlan;
   int? currentPlanId;
   TrafficModel? traffic;
   String? subscribeUrl;
@@ -109,10 +110,14 @@ class DataLoader {
 
   Future<void> _fillUserInfo(DataSnapshot snap) async {
     final sw = Stopwatch()..start();
+    var userLoaded = false;
+    var subscribeLoaded = false;
+    var subscribeHasPlanEvidence = false;
 
     Future<void> loadUser() async {
       try {
         final info = await _api.getUserInfo();
+        userLoaded = true;
         snap.remoteUser = info;
         snap.user = ModelMappers.toUser(info);
         snap.currentPlanId = info.planId;
@@ -129,8 +134,13 @@ class DataLoader {
     Future<void> loadSubscribe() async {
       try {
         final subscribe = await _api.getSubscribeInfo();
+        subscribeLoaded = true;
         snap.subscribeUrl = subscribe.subscribeUrl;
         snap.currentPlanId ??= subscribe.planId;
+        subscribeHasPlanEvidence =
+            (subscribe.planId != null && subscribe.planId! > 0) ||
+            subscribe.subscribeUrl.trim().isNotEmpty ||
+            subscribe.transferEnable > 0;
         if (AppConfig.panelFeatures.onlineDevices) {
           snap.aliveIp = subscribe.aliveIp;
           snap.deviceLimit = subscribe.deviceLimit;
@@ -157,6 +167,24 @@ class DataLoader {
     }
 
     await Future.wait([loadUser(), loadSubscribe()]);
+
+    if (userLoaded || subscribeLoaded) {
+      snap.hasPlan =
+          (snap.currentPlanId != null && snap.currentPlanId! > 0) ||
+          (snap.remoteUser?.hasPlanEvidence ?? false) ||
+          subscribeHasPlanEvidence;
+      if (snap.hasPlan == false) {
+        // An explicit no-plan response must clear any cached subscription
+        // values instead of leaving the previous plan visible indefinitely.
+        snap.currentPlanId = null;
+        snap.subscribeUrl = '';
+        snap.traffic = const TrafficModel(totalGb: 0, usedGb: 0, remainGb: 0);
+        snap.aliveIp = null;
+        snap.deviceLimit = null;
+        snap.resetDay = null;
+        snap.expiredAt = null;
+      }
+    }
   }
 
   Future<void> _fillNodes(DataSnapshot snap) async {

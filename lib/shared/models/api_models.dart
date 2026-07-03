@@ -119,7 +119,13 @@ class RemoteUser {
     return false;
   }
 
+  bool get hasPlanEvidence =>
+      (planId != null && planId! > 0) ||
+      planName.trim().isNotEmpty ||
+      transferEnable > 0;
+
   String get expiryDisplay {
+    if (!hasPlanEvidence) return '';
     if (expiredAt == null || expiredAt == 0) return '永久';
     final dt = DateTime.fromMillisecondsSinceEpoch(expiredAt! * 1000);
     final m = dt.month.toString().padLeft(2, '0');
@@ -130,7 +136,7 @@ class RemoteUser {
   String get planLabel {
     final name = planName.trim();
     if (name.isNotEmpty) return name;
-    if (subscribeStatus == 1) return '已到期';
+    if (hasPlanEvidence && subscribeStatus == 1) return '已到期';
     return '';
   }
 }

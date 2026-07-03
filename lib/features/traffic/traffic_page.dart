@@ -16,6 +16,7 @@ import '../../shared/utils/formatters.dart';
 import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/responsive_page_scaffold.dart';
+import '../../shared/widgets/no_plan_card.dart';
 
 /// Statistics page (§13): compact traffic, device, and subscription stats.
 class TrafficPage extends StatefulWidget {
@@ -53,6 +54,16 @@ class _TrafficPageState extends State<TrafficPage> {
   // ── Shared body ────────────────────────────────────────────────────────────
 
   List<Widget> _bodyChildren(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    if (ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan) {
+      return [
+        NoPlanCard(
+          onPurchase: isPageEnabled(AppPage.shop)
+              ? () => ctrl.goToPage(AppPage.shop)
+              : null,
+        ),
+      ];
+    }
     return [
       const _StatsGrid(),
       const SizedBox(height: 16),

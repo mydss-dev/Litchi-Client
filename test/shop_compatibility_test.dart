@@ -60,6 +60,33 @@ void main() {
     expect(subscribe.planId, 24);
   });
 
+  test('does not mistake a no-plan account for a permanent subscription', () {
+    final user = RemoteUser.fromJson({
+      'id': 1,
+      'email': 'user@example.com',
+      'plan_id': 0,
+      'transfer_enable': 0,
+      'expired_at': null,
+      'subscribe_status': 1,
+    });
+
+    expect(user.hasPlanEvidence, isFalse);
+    expect(user.planLabel, isEmpty);
+    expect(user.expiryDisplay, isEmpty);
+  });
+
+  test('keeps a permanent plan when the backend provides plan evidence', () {
+    final user = RemoteUser.fromJson({
+      'id': 1,
+      'email': 'user@example.com',
+      'plan_id': 7,
+      'expired_at': null,
+    });
+
+    expect(user.hasPlanEvidence, isTrue);
+    expect(user.expiryDisplay, '永久');
+  });
+
   test('formats order amounts with the backend currency symbol', () {
     const order = RemoteOrder(
       tradeNo: 'T1',

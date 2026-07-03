@@ -5,8 +5,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
 import '../../config/app_config.dart';
+import '../shop/order_confirm_dialog.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
+import '../../shared/models/app_models.dart';
 import '../../shared/responsive/breakpoints.dart';
 import '../../shared/services/brand_asset_cache.dart';
 import '../../shared/theme/app_colors.dart';
@@ -20,6 +22,7 @@ import '../../shared/widgets/app_switch.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_header.dart';
+import '../../shared/widgets/no_plan_card.dart';
 import '../../shared/widgets/page_status_cards.dart';
 
 /// Account / Profile — a single responsive page.
@@ -126,6 +129,7 @@ class _AccountPageState extends State<AccountPage> {
       builder: (_) => AnimatedBuilder(
         animation: ctrl,
         builder: (context, _) => _AccountManageSheet(
+          hasPlan: ctrl.hasPlan,
           remindExpire: ctrl.user.remindExpire,
           remindTraffic: ctrl.user.remindTraffic,
           autoRenewal: ctrl.user.autoRenewal,
@@ -150,6 +154,44 @@ class _AccountPageState extends State<AccountPage> {
     await ctrl.refreshData();
     if (!mounted || ctrl.dataLoadError != null) return;
     AppToast.show(context, context.l10n.refreshed, type: AppToastType.success);
+  }
+
+  Future<void> _renewCurrentPlan() async {
+    final ctrl = AppScope.of(context);
+    final currentPlanId = ctrl.currentPlanId;
+    PlanModel? currentPlan;
+    if (currentPlanId != null) {
+      for (final plan in ctrl.plans) {
+        if (int.tryParse(plan.id) == currentPlanId) {
+          currentPlan = plan;
+          break;
+        }
+      }
+    }
+
+    if (currentPlan == null) {
+      ctrl.goToPage(AppPage.shop);
+      return;
+    }
+
+    final plan = currentPlan;
+    var cycle = BillingCycle.monthly;
+    if (plan.category == PlanCategory.recurring) {
+      for (final candidate in BillingCycle.values) {
+        if (plan.priceForCycle(candidate) != null) {
+          cycle = candidate;
+          break;
+        }
+      }
+    }
+
+    await showOrderConfirmDialog(
+      context: context,
+      plan: plan,
+      cycle: cycle,
+      api: ctrl.api,
+      onPaid: ctrl.refreshData,
+    );
   }
 
   void _showChangePasswordSheet() {
@@ -212,6 +254,7 @@ class _AccountPageState extends State<AccountPage> {
     final ctrl = AppScope.of(context);
     final user = ctrl.user;
     const summaryType = 'traffic';
+    final canRenew = isPageEnabled(AppPage.shop) && ctrl.hasPlan;
 
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
@@ -226,6 +269,7 @@ class _AccountPageState extends State<AccountPage> {
             avatar: user.avatarLetter,
             hidePlan: _isPlanSummary(summaryType),
             hideExpiry: _isExpireSummary(summaryType),
+            onRenew: canRenew ? _renewCurrentPlan : null,
             onManage: _showAccountSheet,
           ),
           const SizedBox(height: 12),
@@ -283,11 +327,13 @@ class _AccountInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final (statusLabel, statusColor) = switch (user.subscribeStatus) {
-      1 => (context.l10n.expiredStatus, c.danger),
-      2 => (context.l10n.suspendedStatus, c.warning),
-      _ => (context.l10n.normalStatus, c.success),
-    };
+    final (statusLabel, statusColor) = !user.hasPlanEvidence
+        ? (context.l10n.noCurrentPlan, c.textMuted)
+        : switch (user.subscribeStatus) {
+            1 => (context.l10n.expiredStatus, c.danger),
+            2 => (context.l10n.suspendedStatus, c.warning),
+            _ => (context.l10n.normalStatus, c.success),
+          };
 
     return AppCard(
       radius: AppRadius.card,
@@ -333,7 +379,12 @@ class _AccountInfoCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _InfoRow(label: context.l10n.expiryTime, value: user.expiryDisplay),
+          _InfoRow(
+            label: context.l10n.expiryTime,
+            value: user.hasPlanEvidence
+                ? user.expiryDisplay
+                : context.l10n.noCurrentPlan,
+          ),
         ],
       ),
     );
@@ -711,6 +762,13 @@ class _ProfileSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!ctrl.hasPlan) {
+      return NoPlanCard(
+        onPurchase: isPageEnabled(AppPage.shop)
+            ? () => ctrl.goToPage(AppPage.shop)
+            : null,
+      );
+    }
     if (_isPlanSummary(type)) {
       return _InfoSummaryCard(
         icon: LucideIcons.package,
@@ -886,6 +944,7 @@ class _ProfileHeader extends StatelessWidget {
     required this.avatar,
     required this.hidePlan,
     required this.hideExpiry,
+    this.onRenew,
     required this.onManage,
   });
 
@@ -895,6 +954,7 @@ class _ProfileHeader extends StatelessWidget {
   final String avatar;
   final bool hidePlan;
   final bool hideExpiry;
+  final VoidCallback? onRenew;
   final VoidCallback onManage;
 
   @override
@@ -932,39 +992,79 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(
-            onTap: onManage,
-            child: Container(
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: c.cardBg,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                border: Border.all(color: c.primary.withValues(alpha: 0.20)),
-                boxShadow: AppShadows.soft(c),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onRenew != null) ...[
+                _ProfileActionButton(
+                  icon: LucideIcons.shoppingCart,
+                  label: context.l10n.renewPlan,
+                  onTap: onRenew!,
+                  filled: true,
+                ),
+                const SizedBox(height: 6),
+              ],
+              _ProfileActionButton(
+                icon: LucideIcons.slidersHorizontal,
+                label: context.l10n.manage,
+                onTap: onManage,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    LucideIcons.slidersHorizontal,
-                    color: c.primary,
-                    size: 15,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    context.l10n.manage,
-                    style: AppTextStyles.caption.copyWith(
-                      color: c.primary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileActionButton extends StatelessWidget {
+  const _ProfileActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.filled = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final foreground = filled ? Colors.white : c.primary;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: filled ? c.primary : c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(
+              color: filled ? c.primary : c.primary.withValues(alpha: 0.20),
+            ),
+            boxShadow: AppShadows.soft(c),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: foreground, size: 14),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: AppTextStyles.caption.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1087,6 +1187,7 @@ class _MenuTile extends StatelessWidget {
 
 class _AccountManageSheet extends StatelessWidget {
   const _AccountManageSheet({
+    required this.hasPlan,
     required this.remindExpire,
     required this.remindTraffic,
     required this.autoRenewal,
@@ -1097,6 +1198,7 @@ class _AccountManageSheet extends StatelessWidget {
     required this.onLogout,
   });
 
+  final bool hasPlan;
   final bool remindExpire;
   final bool remindTraffic;
   final bool autoRenewal;
@@ -1112,30 +1214,32 @@ class _AccountManageSheet extends StatelessWidget {
     return AppBottomSheet(
       title: context.l10n.accountManagement,
       children: [
-        _SwitchRow(
-          icon: LucideIcons.calendarClock,
-          title: context.l10n.expiryReminder,
-          subtitle: context.l10n.expiryReminderSubtitle,
-          value: remindExpire,
-          onChanged: onExpireChanged,
-        ),
-        _Divider(color: c.softBorder),
-        _SwitchRow(
-          icon: LucideIcons.gauge,
-          title: context.l10n.trafficReminder,
-          subtitle: context.l10n.trafficReminderSubtitle,
-          value: remindTraffic,
-          onChanged: onTrafficChanged,
-        ),
-        _Divider(color: c.softBorder),
-        _SwitchRow(
-          icon: LucideIcons.refreshCw,
-          title: context.l10n.autoRenewal,
-          subtitle: context.l10n.autoRenewalSubtitle,
-          value: autoRenewal,
-          onChanged: onAutoRenewalChanged,
-        ),
-        _Divider(color: c.softBorder),
+        if (hasPlan) ...[
+          _SwitchRow(
+            icon: LucideIcons.calendarClock,
+            title: context.l10n.expiryReminder,
+            subtitle: context.l10n.expiryReminderSubtitle,
+            value: remindExpire,
+            onChanged: onExpireChanged,
+          ),
+          _Divider(color: c.softBorder),
+          _SwitchRow(
+            icon: LucideIcons.gauge,
+            title: context.l10n.trafficReminder,
+            subtitle: context.l10n.trafficReminderSubtitle,
+            value: remindTraffic,
+            onChanged: onTrafficChanged,
+          ),
+          _Divider(color: c.softBorder),
+          _SwitchRow(
+            icon: LucideIcons.refreshCw,
+            title: context.l10n.autoRenewal,
+            subtitle: context.l10n.autoRenewalSubtitle,
+            value: autoRenewal,
+            onChanged: onAutoRenewalChanged,
+          ),
+          _Divider(color: c.softBorder),
+        ],
         _ActionRow(
           icon: LucideIcons.lockKeyhole,
           title: context.l10n.changePasswordTitle,

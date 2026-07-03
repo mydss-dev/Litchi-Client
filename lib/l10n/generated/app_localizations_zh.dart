@@ -543,6 +543,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get renewNow => '去续费 →';
 
   @override
+  String get renewPlan => '续费套餐';
+
+  @override
   String get retry => '重试';
 
   @override
@@ -1451,6 +1454,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noCurrentPlan => '暂无套餐';
 
   @override
+  String get noPlanDescription => '当前没有有效套餐，购买套餐后即可获取节点和流量。';
+
+  @override
   String get logout => '退出登录';
 
   @override
@@ -2166,6 +2172,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get renewNow => '前往續費 →';
+
+  @override
+  String get renewPlan => '續費套餐';
 
   @override
   String get retry => '重試';
@@ -3074,6 +3083,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get noCurrentPlan => '暫無方案';
+
+  @override
+  String get noPlanDescription => '目前沒有有效方案，購買方案後即可取得節點和流量。';
 
   @override
   String get logout => '登出';

@@ -569,6 +569,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renewNow => 'Renew →';
 
   @override
+  String get renewPlan => 'Renew plan';
+
+  @override
   String get retry => 'Retry';
 
   @override
@@ -1501,6 +1504,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noCurrentPlan => 'No active plan';
+
+  @override
+  String get noPlanDescription =>
+      'You do not have an active plan. Buy one to access nodes and traffic.';
 
   @override
   String get logout => 'Sign out';

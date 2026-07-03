@@ -1137,6 +1137,12 @@ abstract class AppLocalizations {
   /// **'Renew →'**
   String get renewNow;
 
+  /// No description provided for @renewPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Renew plan'**
+  String get renewPlan;
+
   /// No description provided for @retry.
   ///
   /// In en, this message translates to:
@@ -2810,6 +2816,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No active plan'**
   String get noCurrentPlan;
+
+  /// No description provided for @noPlanDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have an active plan. Buy one to access nodes and traffic.'**
+  String get noPlanDescription;
 
   /// No description provided for @logout.
   ///

@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
 import '../../app/core_error_message_service.dart';
+import '../../app/nav_destinations.dart';
 import '../../config/mobile_layout.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
@@ -19,6 +20,7 @@ import '../../shared/utils/formatters.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/mode_strip.dart';
+import '../../shared/widgets/no_plan_card.dart';
 import '../../shared/widgets/node_latency.dart';
 import '../../shared/widgets/notice_banner.dart';
 import '../../shared/widgets/update_banner.dart';
@@ -148,6 +150,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildWide(BuildContext context) {
     final ctrl = AppScope.of(context);
     final status = ctrl.connectionStatus;
+    final noPlan =
+        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
 
     return SingleChildScrollView(
       child: Column(
@@ -164,18 +168,26 @@ class _DashboardPageState extends State<DashboardPage> {
             onConnectionRetry: _onToggle,
             onDataRetry: _onRefreshData,
           ),
-          ValueListenableBuilder<int>(
-            valueListenable: _tick,
-            builder: (context, _, _) => ConnectionHeroCard(
-              status: status,
-              elapsedLabel: formatDuration(ctrl.connectedDuration),
-              onToggle: _onToggle,
+          if (noPlan)
+            NoPlanCard(
+              onPurchase: isPageEnabled(AppPage.shop)
+                  ? () => ctrl.goToPage(AppPage.shop)
+                  : null,
+            )
+          else ...[
+            ValueListenableBuilder<int>(
+              valueListenable: _tick,
+              builder: (context, _, _) => ConnectionHeroCard(
+                status: status,
+                elapsedLabel: formatDuration(ctrl.connectedDuration),
+                onToggle: _onToggle,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          const _InfoMiniCardsRow(),
-          const SizedBox(height: 12),
-          const ConnectionStatsRow(),
+            const SizedBox(height: 12),
+            const _InfoMiniCardsRow(),
+            const SizedBox(height: 12),
+            const ConnectionStatsRow(),
+          ],
         ],
       ),
     );
@@ -184,6 +196,8 @@ class _DashboardPageState extends State<DashboardPage> {
   // ── Compact (bottom-nav) layout ────────────────────────────────────────
   Widget _buildCompact(BuildContext context) {
     final ctrl = AppScope.of(context);
+    final noPlan =
+        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
 
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
@@ -196,40 +210,48 @@ class _DashboardPageState extends State<DashboardPage> {
             onConnectionRetry: _toggleConnection,
             onDataRetry: _handlePullRefresh,
           ),
-          ValueListenableBuilder<int>(
-            valueListenable: _tick,
-            builder: (context, _, _) => _MobileConnectionCard(
-              status: ctrl.connectionStatus,
-              node: ctrl.currentNode,
-              loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
-              proxyMode: ctrl.proxyMode,
-              automatic: ctrl.autoSelected,
-              elapsedLabel: formatDuration(ctrl.connectedDuration),
-              supportsConnection: ctrl.supportsCoreConnection,
-              onToggle: _toggleConnection,
-              onNodesTap: () => showNodePicker(context),
+          if (noPlan)
+            NoPlanCard(
+              onPurchase: isPageEnabled(AppPage.shop)
+                  ? () => ctrl.goToPage(AppPage.shop)
+                  : null,
+            )
+          else ...[
+            ValueListenableBuilder<int>(
+              valueListenable: _tick,
+              builder: (context, _, _) => _MobileConnectionCard(
+                status: ctrl.connectionStatus,
+                node: ctrl.currentNode,
+                loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
+                proxyMode: ctrl.proxyMode,
+                automatic: ctrl.autoSelected,
+                elapsedLabel: formatDuration(ctrl.connectedDuration),
+                supportsConnection: ctrl.supportsCoreConnection,
+                onToggle: _toggleConnection,
+                onNodesTap: () => showNodePicker(context),
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          ModeStrip(
-            selected: ctrl.proxyMode,
-            onChanged: (mode) async {
-              if (mode == ctrl.proxyMode) return;
-              final error = await ctrl.setProxyMode(mode);
-              if (!context.mounted) return;
-              if (error != null) {
-                AppToast.show(context, error, type: AppToastType.error);
-              } else {
-                AppToast.show(
-                  context,
-                  mode.switchToast,
-                  type: AppToastType.success,
-                );
-              }
-            },
-          ),
-          const SizedBox(height: 10),
-          _HomeCardGrid(ctrl: ctrl, formatTrafficGb: formatTrafficGb),
+            const SizedBox(height: 10),
+            ModeStrip(
+              selected: ctrl.proxyMode,
+              onChanged: (mode) async {
+                if (mode == ctrl.proxyMode) return;
+                final error = await ctrl.setProxyMode(mode);
+                if (!context.mounted) return;
+                if (error != null) {
+                  AppToast.show(context, error, type: AppToastType.error);
+                } else {
+                  AppToast.show(
+                    context,
+                    mode.switchToast,
+                    type: AppToastType.success,
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+            _HomeCardGrid(ctrl: ctrl, formatTrafficGb: formatTrafficGb),
+          ],
         ],
       ),
     );

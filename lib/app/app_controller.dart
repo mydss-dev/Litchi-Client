@@ -225,6 +225,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   List<NodeModel> get nodes => _nodes.nodes;
   List<PlanModel> get plans => _plans;
   int? get currentPlanId => _currentPlanId;
+  bool get hasPlan =>
+      _currentPlanId != null ||
+      _account.user.plan.trim().isNotEmpty ||
+      _subscription.subscribeUrl.trim().isNotEmpty;
   List<InviteCodeModel> get inviteCodes => _invite.inviteCodes;
   String get inviteCode => _invite.inviteCode;
   String get inviteLink => _invite.inviteLink;
@@ -437,18 +441,36 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (snap.user != null || snap.subscribeUrl != null) {
       _hasAccountSummary = true;
     }
-    if (snap.currentPlanId != null) _currentPlanId = snap.currentPlanId;
+    final confirmedNoPlan = snap.hasPlan == false;
+    if (confirmedNoPlan) {
+      final hadSubscriptionState =
+          hasPlan || _nodes.isNotEmpty || _core.coreProcessRunning;
+      _currentPlanId = null;
+      _subscription.reset();
+      if (_nodes.isNotEmpty) {
+        _invalidateLatencyRuns();
+        _nodes.setNodes(const []);
+      }
+      _settings.setWasConnected(false);
+      if (hadSubscriptionState) unawaited(_core.stopAndReset());
+    } else if (snap.currentPlanId != null) {
+      _currentPlanId = snap.currentPlanId;
+    }
     if (snap.user != null) {
       final fresh = snap.user!;
       final previous = _account.user;
-      final merged = fresh.copyWith(
-        plan: fresh.plan.trim().isEmpty && previous.plan.trim().isNotEmpty
-            ? previous.plan
-            : fresh.plan,
-        expiry: fresh.expiry.trim().isEmpty && previous.expiry.trim().isNotEmpty
-            ? previous.expiry
-            : fresh.expiry,
-      );
+      final merged = confirmedNoPlan
+          ? fresh.copyWith(plan: '', expiry: '')
+          : fresh.copyWith(
+              plan: fresh.plan.trim().isEmpty && previous.plan.trim().isNotEmpty
+                  ? previous.plan
+                  : fresh.plan,
+              expiry:
+                  fresh.expiry.trim().isEmpty &&
+                      previous.expiry.trim().isNotEmpty
+                  ? previous.expiry
+                  : fresh.expiry,
+            );
       snap.user = merged;
       _account.applySnapshot(
         remoteUser: snap.remoteUser,
@@ -960,7 +982,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _nodes.setNodes(snap.nodes!);
     }
     if (snap.plans != null) _plans = snap.plans!;
-    if (snap.currentPlanId != null) _currentPlanId = snap.currentPlanId;
+    if (snap.hasPlan == false) {
+      _currentPlanId = null;
+    } else if (snap.currentPlanId != null) {
+      _currentPlanId = snap.currentPlanId;
+    }
     _invite.applySnapshot(
       codes: snap.inviteCodes,
       code: snap.inviteCode,

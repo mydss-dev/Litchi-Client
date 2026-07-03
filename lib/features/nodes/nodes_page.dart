@@ -18,6 +18,7 @@ import '../../shared/utils/latency_status.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/node_latency.dart';
+import '../../shared/widgets/no_plan_card.dart';
 import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
 import '../../shared/widgets/search_input.dart';
@@ -154,6 +155,8 @@ class _NodesPageState extends State<NodesPage> {
 
   Widget _buildWide(BuildContext context) {
     final ctrl = AppScope.of(context);
+    final noPlan =
+        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
     final isAuto = ctrl.autoSelected;
     final effectiveId = isAuto
         ? '__auto__'
@@ -167,44 +170,57 @@ class _NodesPageState extends State<NodesPage> {
           subtitle: context.l10n.nodesSubtitle,
         ),
         const SizedBox(height: 12),
-        ..._bodyChildren(context),
-        const SizedBox(height: 14),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              final cols = w >= 620 ? 3 : (w >= 440 ? 2 : 1);
-              final nodes = _filtered;
-              if (nodes.isEmpty) {
-                return AppEmptyState(
-                  icon: LucideIcons.searchX,
-                  title: context.l10n.noMatchingNodes,
-                  subtitle: context.l10n.tryDifferentNodeFilter,
-                );
-              }
-              return GridView.builder(
-                padding: EdgeInsets.zero,
-                itemCount: nodes.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: cols,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  mainAxisExtent: 118,
-                ),
-                itemBuilder: (context, i) {
-                  final n = nodes[i];
-                  return _NodeCard(
-                    node: n,
-                    selected: !isAuto && n.id == effectiveId,
-                    favorite: _favorites.contains(n.id),
-                    onTap: () => _selectNode(n),
-                    onToggleFavorite: () => _toggleFavorite(n.id),
+        if (noPlan)
+          Expanded(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: NoPlanCard(
+                onPurchase: isPageEnabled(AppPage.shop)
+                    ? () => ctrl.goToPage(AppPage.shop)
+                    : null,
+              ),
+            ),
+          )
+        else ...[
+          ..._bodyChildren(context),
+          const SizedBox(height: 14),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                final cols = w >= 620 ? 3 : (w >= 440 ? 2 : 1);
+                final nodes = _filtered;
+                if (nodes.isEmpty) {
+                  return AppEmptyState(
+                    icon: LucideIcons.searchX,
+                    title: context.l10n.noMatchingNodes,
+                    subtitle: context.l10n.tryDifferentNodeFilter,
                   );
-                },
-              );
-            },
+                }
+                return GridView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: nodes.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    mainAxisExtent: 118,
+                  ),
+                  itemBuilder: (context, i) {
+                    final n = nodes[i];
+                    return _NodeCard(
+                      node: n,
+                      selected: !isAuto && n.id == effectiveId,
+                      favorite: _favorites.contains(n.id),
+                      onTap: () => _selectNode(n),
+                      onToggleFavorite: () => _toggleFavorite(n.id),
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -220,6 +236,8 @@ class _NodesPageState extends State<NodesPage> {
         : (_selectedId ?? ctrl.currentNode.id);
     final asPrimary = isPrimaryCompactTab(AppPage.nodes);
     final nodes = _filtered;
+    final noPlan =
+        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
 
     return RefreshIndicator(
       onRefresh: _handleRefresh,
@@ -266,27 +284,35 @@ class _NodesPageState extends State<NodesPage> {
               ],
             ),
           const SizedBox(height: 16),
-          ..._bodyChildren(context),
-          if (nodes.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 48),
-              child: AppEmptyState(
-                icon: LucideIcons.searchX,
-                title: context.l10n.noMatchingNodes,
-                subtitle: context.l10n.tryDifferentNodeFilter,
-              ),
+          if (noPlan)
+            NoPlanCard(
+              onPurchase: isPageEnabled(AppPage.shop)
+                  ? () => ctrl.goToPage(AppPage.shop)
+                  : null,
             )
-          else
-            for (final n in nodes) ...[
-              _NodeCard(
-                node: n,
-                selected: !isAuto && n.id == effectiveId,
-                favorite: _favorites.contains(n.id),
-                onTap: () => _selectNode(n),
-                onToggleFavorite: () => _toggleFavorite(n.id),
-              ),
-              const SizedBox(height: 10),
-            ],
+          else ...[
+            ..._bodyChildren(context),
+            if (nodes.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 48),
+                child: AppEmptyState(
+                  icon: LucideIcons.searchX,
+                  title: context.l10n.noMatchingNodes,
+                  subtitle: context.l10n.tryDifferentNodeFilter,
+                ),
+              )
+            else
+              for (final n in nodes) ...[
+                _NodeCard(
+                  node: n,
+                  selected: !isAuto && n.id == effectiveId,
+                  favorite: _favorites.contains(n.id),
+                  onTap: () => _selectNode(n),
+                  onToggleFavorite: () => _toggleFavorite(n.id),
+                ),
+                const SizedBox(height: 10),
+              ],
+          ],
         ],
       ),
     );
