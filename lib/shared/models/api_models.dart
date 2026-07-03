@@ -593,10 +593,12 @@ class RemoteSubscribe {
       transferEnable: (json['transfer_enable'] as num?)?.toDouble() ?? 0,
       upload: (json['u'] as num?)?.toDouble() ?? 0,
       download: (json['d'] as num?)?.toDouble() ?? 0,
-      expiredAt: (json['expired_at'] as num?)?.toInt(),
-      resetDay: (json['reset_day'] as num?)?.toInt(),
-      deviceLimit: (json['device_limit'] as num?)?.toInt(),
-      aliveIp: (json['alive_ip'] as num?)?.toInt(),
+      expiredAt: _parseOptionalInt(json['expired_at'] ?? json['expiredAt']),
+      resetDay: _parseOptionalInt(json['reset_day'] ?? json['resetDay']),
+      deviceLimit: _parseOptionalInt(
+        json['device_limit'] ?? json['deviceLimit'],
+      ),
+      aliveIp: _parseOptionalInt(json['alive_ip'] ?? json['aliveIp']),
     );
   }
 

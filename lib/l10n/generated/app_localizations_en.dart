@@ -569,7 +569,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renewNow => 'Renew →';
 
   @override
-  String get renewPlan => 'Renew plan';
+  String get renewPlan => 'Renew';
 
   @override
   String get retry => 'Retry';
@@ -1342,7 +1342,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transferCommission => 'Transfer commission';
 
   @override
+  String get transferShort => 'Transfer';
+
+  @override
   String get requestWithdrawal => 'Request withdrawal';
+
+  @override
+  String get withdrawShort => 'Withdraw';
 
   @override
   String get rechargeBalance => 'Recharge balance';

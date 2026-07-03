@@ -1140,7 +1140,7 @@ abstract class AppLocalizations {
   /// No description provided for @renewPlan.
   ///
   /// In en, this message translates to:
-  /// **'Renew plan'**
+  /// **'Renew'**
   String get renewPlan;
 
   /// No description provided for @retry.
@@ -2529,11 +2529,23 @@ abstract class AppLocalizations {
   /// **'Transfer commission'**
   String get transferCommission;
 
+  /// No description provided for @transferShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer'**
+  String get transferShort;
+
   /// No description provided for @requestWithdrawal.
   ///
   /// In en, this message translates to:
   /// **'Request withdrawal'**
   String get requestWithdrawal;
+
+  /// No description provided for @withdrawShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get withdrawShort;
 
   /// No description provided for @rechargeBalance.
   ///

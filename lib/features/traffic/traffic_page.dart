@@ -4,7 +4,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
-import '../../config/app_config.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
@@ -97,9 +96,8 @@ class _StatsGrid extends StatelessWidget {
           children: [
             SizedBox(width: cardWidth, child: const _TrafficCard()),
             SizedBox(width: cardWidth, child: const _RemainingDaysCard()),
-            if (AppConfig.panelFeatures.onlineDevices)
-              SizedBox(width: cardWidth, child: const _DevicesCard()),
-            SizedBox(width: cardWidth, child: const _TrafficResetCard()),
+            if ((AppScope.of(context).resetDay ?? 0) > 0)
+              SizedBox(width: cardWidth, child: const _TrafficResetCard()),
           ],
         );
       },
@@ -126,27 +124,6 @@ class _TrafficCard extends StatelessWidget {
         traffic.remainGb.toStringAsFixed(0),
       ),
       progress: ratio,
-    );
-  }
-}
-
-class _DevicesCard extends StatelessWidget {
-  const _DevicesCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    final deviceCount = ctrl.aliveIp ?? 0;
-    final deviceLimit = ctrl.deviceLimit;
-    final hasLimit = deviceLimit != null && deviceLimit > 0;
-
-    return _StatCard(
-      icon: LucideIcons.monitorSmartphone,
-      title: context.l10n.onlineDevices,
-      value: '$deviceCount',
-      unit: '/ ${hasLimit ? deviceLimit : '∞'}',
-      footer: context.l10n.currentOnlineDevices,
-      progress: hasLimit ? (deviceCount / deviceLimit).clamp(0.0, 1.0) : null,
     );
   }
 }

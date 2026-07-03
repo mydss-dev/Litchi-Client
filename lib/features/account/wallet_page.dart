@@ -226,38 +226,17 @@ class _WalletHero extends StatelessWidget {
     return AppCard(
       radius: AppRadius.lg,
       padding: const EdgeInsets.all(18),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 520;
-          final summary = _WalletSummary(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _WalletSummary(
             total: total,
             balance: balance,
             commission: commission,
-          );
-          final actions = _WalletActions(
-            onTransfer: onTransfer,
-            onWithdraw: onWithdraw,
-          );
-
-          if (!wide) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [summary, const SizedBox(height: 14), actions],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(child: summary),
-              const SizedBox(width: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: SizedBox(width: 148, child: actions),
-              ),
-            ],
-          );
-        },
+          ),
+          const SizedBox(height: 16),
+          _WalletActions(onTransfer: onTransfer, onWithdraw: onWithdraw),
+        ],
       ),
     );
   }
@@ -331,18 +310,22 @@ class _WalletActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       children: [
-        _WalletActionButton(
-          icon: LucideIcons.arrowRightLeft,
-          label: context.l10n.transferCommission,
-          onTap: onTransfer,
+        Expanded(
+          child: _WalletActionButton(
+            icon: LucideIcons.arrowRightLeft,
+            label: context.l10n.transferShort,
+            onTap: onTransfer,
+          ),
         ),
-        const SizedBox(height: 8),
-        _WalletActionButton(
-          icon: LucideIcons.receipt,
-          label: context.l10n.requestWithdrawal,
-          onTap: onWithdraw,
+        const SizedBox(width: 10),
+        Expanded(
+          child: _WalletActionButton(
+            icon: LucideIcons.receipt,
+            label: context.l10n.withdrawShort,
+            onTap: onWithdraw,
+          ),
         ),
       ],
     );
@@ -395,30 +378,27 @@ class _WalletActionButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 38,
+          height: 52,
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: c.surfaceMuted,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: c.softBorder),
+            color: c.primarySoft,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: c.primary.withValues(alpha: 0.18)),
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 15, color: c.primary),
+              Icon(icon, size: 18, color: c.primary),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(
-                    color: c.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
+              Text(
+                label,
+                style: AppTextStyles.bodyStrong.copyWith(
+                  color: c.primary,
+                  fontSize: 16,
                 ),
               ),
-              Icon(LucideIcons.chevronRight, size: 14, color: c.iconMuted),
             ],
           ),
         ),

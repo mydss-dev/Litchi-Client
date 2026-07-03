@@ -405,10 +405,10 @@ class _PlanCardState extends State<_PlanCard> {
             price: price,
             unit: _unit(context),
           ),
-          if (_cycleOptions.isNotEmpty) ...[
+          if (_availableCycles.isNotEmpty) ...[
             const SizedBox(height: 12),
             _CycleSelector(
-              cycles: _cycleOptions,
+              cycles: _availableCycles,
               enabledCycles: _availableCycles,
               selected: _cycle,
               onChanged: (cycle) => setState(() => _cycle = cycle),

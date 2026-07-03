@@ -668,9 +668,7 @@ class _TrafficOverviewCard extends StatelessWidget {
     final c = AppColors.of(context);
     final progress = totalGb <= 0 ? 0.0 : (usedGb / totalGb).clamp(0.0, 1.0);
     final percent = (progress * 100).toStringAsFixed(0);
-    final reset = resetDay == null || resetDay == 0
-        ? context.l10n.resetDayUnavailable
-        : context.l10n.monthlyResetDay(resetDay!);
+    final hasResetDay = resetDay != null && resetDay! > 0;
 
     return AppCard(
       shadow: AppCardShadow.soft,
@@ -742,10 +740,11 @@ class _TrafficOverviewCard extends StatelessWidget {
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
                 ),
               ),
-              Text(
-                reset,
-                style: AppTextStyles.caption.copyWith(color: c.textMuted),
-              ),
+              if (hasResetDay)
+                Text(
+                  context.l10n.monthlyResetDay(resetDay!),
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
             ],
           ),
         ],

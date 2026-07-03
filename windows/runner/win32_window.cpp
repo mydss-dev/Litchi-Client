@@ -17,7 +17,7 @@ namespace {
 #endif
 
 constexpr DWORD kDwmWindowCornerPreference = 33;
-constexpr int kDwmWindowCornerRound = 2;
+constexpr int kDwmWindowCornerDoNotRound = 1;
 
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 
@@ -46,17 +46,14 @@ void ApplyRoundedWindowRegion(HWND window, BOOL redraw = TRUE) {
     return;
   }
 
-  // Windows 11's compositor produces anti-aliased corners and a matching DWM
-  // shadow. Older Windows versions reject this attribute, in which case the
-  // shaped-region fallback below keeps the same geometry.
-  const int corner_preference = kDwmWindowCornerRound;
-  if (SUCCEEDED(DwmSetWindowAttribute(
-          window,
-          static_cast<DWMWINDOWATTRIBUTE>(kDwmWindowCornerPreference),
-          &corner_preference, sizeof(corner_preference)))) {
-    SetWindowRgn(window, nullptr, redraw);
-    return;
-  }
+  // Keep one source of truth for the outer shape. The Windows 11 system radius
+  // is visibly smaller than the app's original 18 logical pixels, so disable
+  // compositor rounding and apply the same custom radius on every version.
+  // DWM still owns the shadow and dark/light appearance.
+  const int corner_preference = kDwmWindowCornerDoNotRound;
+  DwmSetWindowAttribute(
+      window, static_cast<DWMWINDOWATTRIBUTE>(kDwmWindowCornerPreference),
+      &corner_preference, sizeof(corner_preference));
 
   RECT bounds{};
   if (!GetWindowRect(window, &bounds)) {

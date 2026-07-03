@@ -54,10 +54,12 @@ void main() {
     final subscribe = RemoteSubscribe.fromJson({
       'subscribe_url': 'https://example.com/sub',
       'plan': {'id': 24},
+      'reset_day': '25',
     });
 
     expect(user.planId, 23);
     expect(subscribe.planId, 24);
+    expect(subscribe.resetDay, 25);
   });
 
   test('does not mistake a no-plan account for a permanent subscription', () {

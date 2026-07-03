@@ -543,7 +543,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get renewNow => '去续费 →';
 
   @override
-  String get renewPlan => '续费套餐';
+  String get renewPlan => '续费';
 
   @override
   String get retry => '重试';
@@ -1294,7 +1294,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get transferCommission => '佣金划转';
 
   @override
+  String get transferShort => '划转';
+
+  @override
   String get requestWithdrawal => '申请提现';
+
+  @override
+  String get withdrawShort => '提现';
 
   @override
   String get rechargeBalance => '充值余额';
@@ -2174,7 +2180,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get renewNow => '前往續費 →';
 
   @override
-  String get renewPlan => '續費套餐';
+  String get renewPlan => '續費';
 
   @override
   String get retry => '重試';
@@ -2925,7 +2931,13 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get transferCommission => '佣金劃轉';
 
   @override
+  String get transferShort => '劃轉';
+
+  @override
   String get requestWithdrawal => '申請提現';
+
+  @override
+  String get withdrawShort => '提現';
 
   @override
   String get rechargeBalance => '儲值餘額';
