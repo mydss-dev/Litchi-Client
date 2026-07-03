@@ -52,11 +52,12 @@ class _LitchiAppState extends State<LitchiApp> {
             locale: _controller.locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            // This sits above Navigator, so modal barriers, dialogs, bottom
-            // sheets and toasts cannot paint outside the desktop window shape.
+            // Linux needs a Flutter-owned transparent shape around the entire
+            // Navigator. Windows uses DWM to clip the final HWND, including all
+            // dialogs, modal barriers, bottom sheets and toasts.
             builder: (context, child) {
               final content = child ?? const SizedBox.shrink();
-              if (!Platform.isWindows && !Platform.isLinux) return content;
+              if (!Platform.isLinux) return content;
               return DesktopRouteClip(child: content);
             },
             // Transparent so the rounded window shell shows through at the
@@ -78,9 +79,8 @@ class _LitchiAppState extends State<LitchiApp> {
 
 /// Clips the complete Navigator rather than only its home route.
 ///
-/// Modal routes render above [AppShell], so clipping inside AppShell alone lets
-/// their barrier paint square corners. Windows also applies the matching native
-/// region; this clip supplies the anti-aliased content edge.
+/// Modal routes render above [AppShell], so Linux clips the entire Navigator
+/// against its transparent host window. Windows delegates this to native DWM.
 class DesktopRouteClip extends StatefulWidget {
   const DesktopRouteClip({super.key, required this.child});
 
