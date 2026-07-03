@@ -2,7 +2,9 @@
 #define RUNNER_FLUTTER_WINDOW_H_
 
 #include <flutter/dart_project.h>
+#include <flutter/encodable_value.h>
 #include <flutter/flutter_view_controller.h>
+#include <flutter/method_channel.h>
 
 #include <memory>
 
@@ -29,6 +31,11 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // Keep platform channels alive for the lifetime of the Flutter engine.
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      process_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> wfp_channel_;
 
   WfpKillSwitch wfp_kill_switch_;
 };

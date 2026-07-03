@@ -10,6 +10,11 @@
 
 namespace {
 
+// Posted only after the Dart side has removed the tray icon and shut down the
+// proxy. Handling this in the runner bypasses window-manager close interception
+// and guarantees that HWND receives WM_DESTROY before the process exits.
+constexpr UINT kDestroyForProcessExit = WM_APP + 0x2A;
+
 std::wstring Utf8ToWide(const std::string& value) {
   if (value.empty()) {
     return {};
@@ -58,11 +63,34 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
-  auto wfp_channel =
+  process_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "litchi/windows_process",
+          &flutter::StandardMethodCodec::GetInstance());
+  process_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<
+                 flutter::MethodResult<flutter::EncodableValue>> result) {
+        if (call.method_name() != "quit") {
+          result->NotImplemented();
+          return;
+        }
+
+        // Complete the method call while the engine is still alive, then let
+        // the window procedure perform the native teardown.
+        result->Success(flutter::EncodableValue(true));
+        const HWND window = GetHandle();
+        if (window != nullptr) {
+          PostMessage(window, kDestroyForProcessExit, 0, 0);
+        }
+      });
+
+  wfp_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           flutter_controller_->engine()->messenger(), "litchi/windows_wfp",
           &flutter::StandardMethodCodec::GetInstance());
-  wfp_channel->SetMethodCallHandler(
+  wfp_channel_->SetMethodCallHandler(
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<
                  flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -122,6 +150,8 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  process_channel_.reset();
+  wfp_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
@@ -133,6 +163,11 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (message == kDestroyForProcessExit) {
+    DestroyWindow(hwnd);
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

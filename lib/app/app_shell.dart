@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -70,6 +71,9 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const double _radius = 18;
+  static const MethodChannel _windowsProcessChannel = MethodChannel(
+    'litchi/windows_process',
+  );
   // Compact card-sized window for the logged-out (auth) screens; the full app
   // window once authenticated. Each auth screen gets a fixed height that hugs
   // its content, applied in didChangeDependencies the moment the screen changes
@@ -457,13 +461,25 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
 
     try {
       await windowManager.setPreventClose(false);
-      // Graceful native termination lets both the Windows notification-area
-      // plugin and macOS status item receive their normal teardown callbacks.
-      await windowManager.destroy().timeout(const Duration(seconds: 1));
+      if (Platform.isWindows) {
+        // Ask the runner to destroy the actual HWND. This guarantees WM_DESTROY
+        // runs (and gives the tray plugin a final NIM_DELETE) instead of relying
+        // on window_manager's Windows implementation, which only posts WM_QUIT.
+        await _windowsProcessChannel
+            .invokeMethod<bool>('quit')
+            .timeout(const Duration(seconds: 1));
+      } else {
+        await windowManager.destroy().timeout(const Duration(seconds: 1));
+      }
     } catch (_) {
-      // Last-resort fallback when the native window channel is unavailable.
-      exit(0);
+      // The hard-exit fallback below is intentional and unconditional.
     }
+
+    // If a plugin swallowed the native close message, never leave a headless
+    // process (and its notification icon) behind. The tray delete and network
+    // cleanup above have already completed or hit their bounded timeouts.
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    exit(0);
   }
 
   Future<void> _toggleConnectionFromTray() async {
