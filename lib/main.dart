@@ -172,7 +172,9 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
   // Linux uses a transparent Flutter clip. Windows stays opaque and lets the
   // native runner shape the window, avoiding black transparent corner pixels.
   final windowOptions = WindowOptions(
-    size: const Size(900, 700),
+    // Match the first logged-out frame. Starting large and shrinking after
+    // Flutter paints can leave a duplicated surface on Windows with DPI scale.
+    size: const Size(400, 560),
     // Small floor so the shell can shrink the window to a compact card-sized
     // login window (see _AppShellState._syncWindowSize). User resize stays off
     // via setResizable(false); this only gates programmatic setSize.
@@ -195,6 +197,10 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
       await windowManager.setAsFrameless();
     } else if (Platform.isWindows) {
       await windowManager.setAsFrameless();
+      // Let DWM render the outer shadow. The native runner requests Windows
+      // 11's anti-aliased rounded corners and falls back to a shaped region on
+      // older Windows versions.
+      await windowManager.setHasShadow(true);
     }
     if (!launchOptions.silent) {
       await windowManager.show();

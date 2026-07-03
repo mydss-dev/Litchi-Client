@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -42,11 +40,11 @@ class AppBottomSheet extends StatelessWidget {
     final c = AppColors.of(context);
     final view = MediaQuery.sizeOf(context);
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
-    final roundAllCorners =
-        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
-    final sheetRadius = roundAllCorners
-        ? BorderRadius.circular(AppRadius.xl)
-        : const BorderRadius.vertical(top: Radius.circular(AppRadius.xl));
+    // The sheet is attached to the bottom edge. The outer app window owns its
+    // bottom corners, so giving the sheet another pair creates an inset card.
+    const sheetRadius = BorderRadius.vertical(
+      top: Radius.circular(AppRadius.xl),
+    );
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
@@ -56,9 +54,7 @@ class AppBottomSheet extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.cardBg,
           borderRadius: sheetRadius,
-          border: roundAllCorners
-              ? Border.all(color: c.softBorder)
-              : Border(top: BorderSide(color: c.softBorder)),
+          border: Border(top: BorderSide(color: c.softBorder)),
           boxShadow: AppShadows.soft(c),
         ),
         child: SafeArea(

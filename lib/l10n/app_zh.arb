@@ -412,6 +412,7 @@
   "ticketSubjectTooShort": "问题标题至少 5 个字符",
   "ticketMessageTooShort": "问题描述至少 10 个字符",
   "ticketSubmitted": "工单已提交",
+  "ticketSubscriptionMismatch": "当前套餐有效，但工单接口未同步套餐状态，请稍后重试或联系管理员",
   "issueSubject": "问题标题",
   "issueSubjectHint": "用一句话描述你的问题",
   "priority": "优先级",

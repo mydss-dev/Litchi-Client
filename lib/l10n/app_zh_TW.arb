@@ -412,6 +412,7 @@
   "ticketSubjectTooShort": "問題標題至少需要 5 個字元",
   "ticketMessageTooShort": "問題描述至少需要 10 個字元",
   "ticketSubmitted": "工單已提交",
+  "ticketSubscriptionMismatch": "目前套餐有效，但工單介面未同步套餐狀態，請稍後重試或聯絡管理員",
   "issueSubject": "問題標題",
   "issueSubjectHint": "用一句話描述你的問題",
   "priority": "優先級",

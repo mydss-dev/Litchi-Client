@@ -8,6 +8,7 @@ import '../../app/nav_destinations.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/app_error_message_service.dart';
+import '../../shared/services/ticket_access.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
@@ -270,10 +271,17 @@ class _NewTicketModalState extends State<_NewTicketModal> {
     }
 
     setState(() => _submitting = true);
+    final api = AppScope.of(context).api;
+    // EZ refreshes both account and subscription details before creating a
+    // ticket. Keep the refresh best-effort: backends configured to allow every
+    // registered user must still accept tickets from users without a plan.
+    final userFuture = ticketBestEffort(api.getUserInfo());
+    final subscribeFuture = ticketBestEffort(api.getSubscribeInfo());
+    final freshUser = await userFuture;
+    final freshSubscribe = await subscribeFuture;
+    if (!mounted) return;
     try {
-      await AppScope.of(
-        context,
-      ).api.createTicket(subject: subject, level: _level, message: message);
+      await api.createTicket(subject: subject, level: _level, message: message);
       if (!mounted) return;
       Navigator.of(context).pop();
       widget.onCreated();
@@ -284,11 +292,15 @@ class _NewTicketModalState extends State<_NewTicketModal> {
       );
     } catch (e) {
       if (!mounted) return;
-      AppToast.show(
-        context,
-        e.toString().replaceFirst('ApiException: ', ''),
-        type: AppToastType.error,
-      );
+      final message =
+          isTicketSubscriptionRequiredError(e) &&
+              ticketAccountHasActiveSubscription(
+                user: freshUser,
+                subscribe: freshSubscribe,
+              )
+          ? context.l10n.ticketSubscriptionMismatch
+          : e.toString().replaceFirst('ApiException: ', '');
+      AppToast.show(context, message, type: AppToastType.error);
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

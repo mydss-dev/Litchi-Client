@@ -64,6 +64,9 @@ class RemoteUser {
           _int(json['current_plan_id']) ??
           _int(json['currentPlanId']) ??
           _int(planMap?['id']) ??
+          _int(subscribeMap?['plan_id']) ??
+          _int(subscribeMap?['planId']) ??
+          _int(subscribeMap?['id']) ??
           _int(json['plan']),
       planName:
           _firstString(json, [
@@ -211,13 +214,13 @@ class RemotePlan {
       description:
           json['content']?.toString() ?? json['description']?.toString(),
       transferEnable: _number(json['transfer_enable']),
-      monthPrice: _int(json, 'month_price'),
-      quarterPrice: _int(json, 'quarter_price'),
-      halfYearPrice: _int(json, 'half_year_price'),
-      yearPrice: _int(json, 'year_price'),
-      twoYearPrice: _int(json, 'two_year_price'),
-      threeYearPrice: _int(json, 'three_year_price'),
-      onetimePrice: _int(json, 'onetime_price'),
+      monthPrice: _enabledPrice(json, 'month_price'),
+      quarterPrice: _enabledPrice(json, 'quarter_price'),
+      halfYearPrice: _enabledPrice(json, 'half_year_price'),
+      yearPrice: _enabledPrice(json, 'year_price'),
+      twoYearPrice: _enabledPrice(json, 'two_year_price'),
+      threeYearPrice: _enabledPrice(json, 'three_year_price'),
+      onetimePrice: _enabledPrice(json, 'onetime_price'),
       deviceLimit: _int(json, 'device_limit'),
       capacityLimit: _int(json, 'capacity_limit'),
       show: _int(json, 'show') ?? 1,
@@ -237,6 +240,12 @@ class RemotePlan {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
     return null;
+  }
+
+  // Some compatible panels serialize a disabled period as 0 rather than null.
+  static int? _enabledPrice(Map<String, dynamic> json, String key) {
+    final value = _int(json, key);
+    return value != null && value > 0 ? value : null;
   }
 
   static double _number(Object? value) {
@@ -546,6 +555,7 @@ class RemoteTrafficLog {
 
 class RemoteSubscribe {
   final String subscribeUrl;
+  final int? planId;
   final double transferEnable; // bytes
   final double upload; // bytes
   final double download; // bytes
@@ -556,6 +566,7 @@ class RemoteSubscribe {
 
   const RemoteSubscribe({
     required this.subscribeUrl,
+    this.planId,
     required this.transferEnable,
     required this.upload,
     required this.download,
@@ -566,8 +577,13 @@ class RemoteSubscribe {
   });
 
   factory RemoteSubscribe.fromJson(Map<String, dynamic> json) {
+    final plan = json['plan'];
     return RemoteSubscribe(
       subscribeUrl: json['subscribe_url']?.toString() ?? '',
+      planId:
+          _parseOptionalInt(json['plan_id']) ??
+          _parseOptionalInt(json['planId']) ??
+          (plan is Map ? _parseOptionalInt(plan['id']) : null),
       transferEnable: (json['transfer_enable'] as num?)?.toDouble() ?? 0,
       upload: (json['u'] as num?)?.toDouble() ?? 0,
       download: (json['d'] as num?)?.toDouble() ?? 0,
@@ -576,6 +592,11 @@ class RemoteSubscribe {
       deviceLimit: (json['device_limit'] as num?)?.toInt(),
       aliveIp: (json['alive_ip'] as num?)?.toInt(),
     );
+  }
+
+  static int? _parseOptionalInt(Object? value) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
   }
 }
 

@@ -2319,6 +2319,12 @@ abstract class AppLocalizations {
   /// **'Ticket submitted'**
   String get ticketSubmitted;
 
+  /// No description provided for @ticketSubscriptionMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Your subscription is active, but the ticket service has not synchronized its status. Try again later or contact the administrator.'**
+  String get ticketSubscriptionMismatch;
+
   /// No description provided for @issueSubject.
   ///
   /// In en, this message translates to:

@@ -412,6 +412,7 @@
   "ticketSubjectTooShort": "The subject must be at least 5 characters",
   "ticketMessageTooShort": "The description must be at least 10 characters",
   "ticketSubmitted": "Ticket submitted",
+  "ticketSubscriptionMismatch": "Your subscription is active, but the ticket service has not synchronized its status. Try again later or contact the administrator.",
   "issueSubject": "Subject",
   "issueSubjectHint": "Describe the issue in one sentence",
   "priority": "Priority",

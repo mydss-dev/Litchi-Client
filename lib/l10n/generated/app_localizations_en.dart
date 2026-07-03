@@ -1236,6 +1236,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ticketSubmitted => 'Ticket submitted';
 
   @override
+  String get ticketSubscriptionMismatch =>
+      'Your subscription is active, but the ticket service has not synchronized its status. Try again later or contact the administrator.';
+
+  @override
   String get issueSubject => 'Subject';
 
   @override

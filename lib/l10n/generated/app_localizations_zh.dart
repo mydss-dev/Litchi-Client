@@ -1189,6 +1189,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ticketSubmitted => '工单已提交';
 
   @override
+  String get ticketSubscriptionMismatch => '当前套餐有效，但工单接口未同步套餐状态，请稍后重试或联系管理员';
+
+  @override
   String get issueSubject => '问题标题';
 
   @override
@@ -2809,6 +2812,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get ticketSubmitted => '工單已提交';
+
+  @override
+  String get ticketSubscriptionMismatch => '目前套餐有效，但工單介面未同步套餐狀態，請稍後重試或聯絡管理員';
 
   @override
   String get issueSubject => '問題標題';

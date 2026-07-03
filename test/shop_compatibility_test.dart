@@ -22,6 +22,44 @@ void main() {
     expect(plan.soldOut, isTrue);
   });
 
+  test('hides billing periods serialized as zero by compatible panels', () {
+    final remote = RemotePlan.fromJson({
+      'id': 8,
+      'name': 'Annual only',
+      'transfer_enable': 100,
+      'month_price': 0,
+      'quarter_price': '0',
+      'half_year_price': null,
+      'year_price': 12000,
+      'two_year_price': 0,
+      'three_year_price': 0,
+      'onetime_price': 0,
+      'show': 1,
+    });
+    final plan = ModelMappers.toPlan(remote);
+
+    expect(plan.category, PlanCategory.recurring);
+    expect(plan.monthlyPrice, isNull);
+    expect(plan.quarterlyPrice, isNull);
+    expect(plan.yearlyPrice, 120);
+    expect(plan.oneTimePrice, isNull);
+  });
+
+  test('reads plan id from nested user and subscription payloads', () {
+    final user = RemoteUser.fromJson({
+      'id': 1,
+      'email': 'user@example.com',
+      'subscribe': {'plan_id': '23'},
+    });
+    final subscribe = RemoteSubscribe.fromJson({
+      'subscribe_url': 'https://example.com/sub',
+      'plan': {'id': 24},
+    });
+
+    expect(user.planId, 23);
+    expect(subscribe.planId, 24);
+  });
+
   test('formats order amounts with the backend currency symbol', () {
     const order = RemoteOrder(
       tradeNo: 'T1',

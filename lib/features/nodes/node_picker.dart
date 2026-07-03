@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -148,26 +146,18 @@ class _NodePickerState extends State<_NodePicker> {
     final nodes = _filteredNodes(ctrl);
     final testing = ctrl.nodes.any((node) => node.latency < 0);
     final horizontal = widget.compact ? 18.0 : 20.0;
-    // A compact desktop window is still a floating rounded window, not a
-    // phone viewport. Keep all four sheet corners visible there; mobile bottom
-    // sheets intentionally remain attached to the bottom edge.
-    final roundAllCorners =
-        !widget.compact ||
-        Platform.isWindows ||
-        Platform.isMacOS ||
-        Platform.isLinux;
-    final surfaceRadius = roundAllCorners
-        ? BorderRadius.circular(AppRadius.xl)
-        : const BorderRadius.vertical(top: Radius.circular(AppRadius.xl));
+    final surfaceRadius = widget.compact
+        ? const BorderRadius.vertical(top: Radius.circular(AppRadius.xl))
+        : BorderRadius.circular(AppRadius.xl);
 
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: surfaceRadius,
-        border: roundAllCorners
-            ? Border.all(color: c.softBorder)
-            : Border(top: BorderSide(color: c.softBorder)),
+        border: widget.compact
+            ? Border(top: BorderSide(color: c.softBorder))
+            : Border.all(color: c.softBorder),
         boxShadow: widget.compact ? AppShadows.soft(c) : AppShadows.card(c),
       ),
       child: SafeArea(

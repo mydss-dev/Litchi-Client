@@ -437,8 +437,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (snap.user != null || snap.subscribeUrl != null) {
       _hasAccountSummary = true;
     }
+    if (snap.currentPlanId != null) _currentPlanId = snap.currentPlanId;
     if (snap.user != null) {
-      if (snap.remoteUser != null) _currentPlanId = snap.currentPlanId;
       final fresh = snap.user!;
       final previous = _account.user;
       final merged = fresh.copyWith(
@@ -960,7 +960,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _nodes.setNodes(snap.nodes!);
     }
     if (snap.plans != null) _plans = snap.plans!;
-    if (snap.remoteUser != null) _currentPlanId = snap.currentPlanId;
+    if (snap.currentPlanId != null) _currentPlanId = snap.currentPlanId;
     _invite.applySnapshot(
       codes: snap.inviteCodes,
       code: snap.inviteCode,

@@ -16,6 +16,9 @@ namespace {
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
 #endif
 
+constexpr DWORD kDwmWindowCornerPreference = 33;
+constexpr int kDwmWindowCornerRound = 2;
+
 constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 
 /// Registry key for app theme preference.
@@ -37,9 +40,21 @@ int Scale(int source, double scale_factor) {
   return static_cast<int>(source * scale_factor);
 }
 
-void ApplyRoundedWindowRegion(HWND window) {
+void ApplyRoundedWindowRegion(HWND window, BOOL redraw = TRUE) {
   if (IsZoomed(window)) {
-    SetWindowRgn(window, nullptr, TRUE);
+    SetWindowRgn(window, nullptr, redraw);
+    return;
+  }
+
+  // Windows 11's compositor produces anti-aliased corners and a matching DWM
+  // shadow. Older Windows versions reject this attribute, in which case the
+  // shaped-region fallback below keeps the same geometry.
+  const int corner_preference = kDwmWindowCornerRound;
+  if (SUCCEEDED(DwmSetWindowAttribute(
+          window,
+          static_cast<DWMWINDOWATTRIBUTE>(kDwmWindowCornerPreference),
+          &corner_preference, sizeof(corner_preference)))) {
+    SetWindowRgn(window, nullptr, redraw);
     return;
   }
 
@@ -53,7 +68,7 @@ void ApplyRoundedWindowRegion(HWND window) {
   const int radius = MulDiv(18, dpi == 0 ? 96 : dpi, 96);
   HRGN region =
       CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
-  if (region != nullptr && SetWindowRgn(window, region, TRUE) == 0) {
+  if (region != nullptr && SetWindowRgn(window, region, redraw) == 0) {
     DeleteObject(region);
   }
 }
@@ -220,15 +235,30 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
     }
     case WM_SIZE: {
-      ApplyRoundedWindowRegion(hwnd);
       RECT rect = GetClientArea();
       if (child_content_ != nullptr) {
-        // Size and position the child window.
+        // Resize Flutter before redrawing the outer region. Doing this in the
+        // opposite order briefly composites the old surface like a second
+        // overlapping window.
         MoveWindow(child_content_, rect.left, rect.top, rect.right - rect.left,
-                   rect.bottom - rect.top, TRUE);
+                   rect.bottom - rect.top, FALSE);
       }
+      ApplyRoundedWindowRegion(hwnd, FALSE);
+      RedrawWindow(hwnd, nullptr, nullptr,
+                   RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
       return 0;
     }
+
+    case WM_SHOWWINDOW:
+      if (wparam != FALSE) {
+        // A hidden tray window keeps its HWND, but plugins may update its
+        // frameless style while it is hidden. Reapply the region on every
+        // restore so no square frame/shadow can leak around the corners.
+        ApplyRoundedWindowRegion(hwnd, FALSE);
+        RedrawWindow(hwnd, nullptr, nullptr,
+                     RDW_INVALIDATE | RDW_FRAME | RDW_ALLCHILDREN);
+      }
+      break;
 
     case WM_ACTIVATE:
       if (child_content_ != nullptr) {

@@ -79,7 +79,10 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const Size _appWindowSize = Size(420, 760);
   bool _maximized = false;
   bool _trayActive = false;
+  bool _trayListenerAttached = false;
   bool _quitting = false;
+  Future<void> _trayOperationTail = Future<void>.value();
+  Brightness? _nativeBrightness;
   bool? _compactWindow;
   double? _authHeight;
   AuthScreen? _visibleAuthScreen;
@@ -118,6 +121,14 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     _ctrl = ctrl;
     _visibleAuthScreen ??= ctrl.authScreen;
 
+    if (_isDesktop) {
+      final brightness = Theme.of(context).brightness;
+      if (_nativeBrightness != brightness) {
+        _nativeBrightness = brightness;
+        unawaited(windowManager.setBrightness(brightness));
+      }
+    }
+
     if (widget.launchSilently &&
         !_silentVisibilityResolved &&
         !ctrl.isInitializing) {
@@ -155,8 +166,8 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       windowManager.removeListener(this);
     }
     if (_trayActive) {
-      trayManager.removeListener(this);
-      unawaited(trayManager.destroy());
+      _trayActive = false;
+      unawaited(_destroyTray());
     }
     super.dispose();
   }
@@ -281,18 +292,45 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
 
   // ── Tray ─────────────────────────────────────────────────────────────────
 
-  Future<void> _initTray() async {
-    if (!_isDesktop) return;
-    await _updateTrayIcon();
-    await _syncTrayState();
-    trayManager.addListener(this);
+  Future<void> _enqueueTrayOperation(Future<void> Function() operation) {
+    final result = _trayOperationTail.then<void>((_) => operation());
+    // A failed plugin call must not poison the queue and prevent a later
+    // destroy from removing the icon.
+    _trayOperationTail = result.catchError((Object _, StackTrace _) {});
+    return result;
   }
 
-  Future<void> _syncTrayState() async {
+  Future<void> _initTray() => _enqueueTrayOperation(() async {
+    if (!_isDesktop || !_trayActive || _quitting) return;
     await _updateTrayIcon();
+    if (!_trayActive || _quitting) {
+      await trayManager.destroy();
+      return;
+    }
     await _updateTrayTooltip();
+    if (!_trayActive || _quitting) {
+      await trayManager.destroy();
+      return;
+    }
     await _updateTrayMenu();
-  }
+    if (!_trayActive || _quitting) {
+      await trayManager.destroy();
+      return;
+    }
+    if (!_trayListenerAttached) {
+      trayManager.addListener(this);
+      _trayListenerAttached = true;
+    }
+  });
+
+  Future<void> _syncTrayState() => _enqueueTrayOperation(() async {
+    if (!_isDesktop || !_trayActive || _quitting) return;
+    await _updateTrayIcon();
+    if (!_trayActive || _quitting) return;
+    await _updateTrayTooltip();
+    if (!_trayActive || _quitting) return;
+    await _updateTrayMenu();
+  });
 
   Future<void> _updateTrayIcon() async {
     if (!_isDesktop) return;
@@ -367,11 +405,14 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     );
   }
 
-  Future<void> _destroyTray() async {
+  Future<void> _destroyTray() => _enqueueTrayOperation(() async {
     if (!_isDesktop) return;
-    trayManager.removeListener(this);
+    if (_trayListenerAttached) {
+      trayManager.removeListener(this);
+      _trayListenerAttached = false;
+    }
     await trayManager.destroy();
-  }
+  });
 
   Future<void> _toggleWindow() async {
     if (!_isDesktop) return;
@@ -386,6 +427,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   Future<void> _quit() async {
     if (_quitting) return;
     _quitting = true;
+    _trayActive = false;
 
     // A user-requested quit must feel immediate. Remove visible UI first, then
     // perform the bounded network cleanup with no tray icon left behind.
@@ -396,11 +438,13 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     }
 
     try {
-      if (_trayActive) {
-        _trayActive = false;
+      if (_trayListenerAttached) {
         trayManager.removeListener(this);
-        await trayManager.destroy().timeout(const Duration(milliseconds: 500));
+        _trayListenerAttached = false;
       }
+      // This is queued behind every pending icon/menu update, so destroy is
+      // guaranteed to be the final tray operation.
+      await _destroyTray().timeout(const Duration(seconds: 2));
     } catch (_) {
       // WM_DESTROY also asks the tray plugin to remove its icon.
     }
@@ -409,7 +453,15 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       await _ctrl?.shutdown().timeout(const Duration(seconds: 4));
     } catch (_) {
       // Never let network cleanup prevent an explicit Quit operation.
-    } finally {
+    }
+
+    try {
+      await windowManager.setPreventClose(false);
+      // Graceful native termination lets both the Windows notification-area
+      // plugin and macOS status item receive their normal teardown callbacks.
+      await windowManager.destroy().timeout(const Duration(seconds: 1));
+    } catch (_) {
+      // Last-resort fallback when the native window channel is unavailable.
       exit(0);
     }
   }

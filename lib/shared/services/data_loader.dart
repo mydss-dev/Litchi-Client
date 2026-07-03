@@ -130,6 +130,7 @@ class DataLoader {
       try {
         final subscribe = await _api.getSubscribeInfo();
         snap.subscribeUrl = subscribe.subscribeUrl;
+        snap.currentPlanId ??= subscribe.planId;
         if (AppConfig.panelFeatures.onlineDevices) {
           snap.aliveIp = subscribe.aliveIp;
           snap.deviceLimit = subscribe.deviceLimit;
