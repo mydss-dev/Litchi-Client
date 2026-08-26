@@ -15,7 +15,7 @@ class WfpKillSwitch {
   WfpKillSwitch(const WfpKillSwitch&) = delete;
   WfpKillSwitch& operator=(const WfpKillSwitch&) = delete;
 
-  bool Engage(const std::wstring& mihomo_path,
+  bool Engage(const std::wstring& app_path,
               const std::wstring& interface_alias,
               std::string* error);
   void Disengage();

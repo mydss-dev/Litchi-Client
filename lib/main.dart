@@ -151,10 +151,7 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
         .any((e) => e.startsWith('https://'));
     if (!hasApiBase && !RemoteConfigService.isConfigured) {
       SecureLogger.debug(
-        '开发配置缺失：请设置 API_BASE 或完整远程配置。'
-        '示例：--dart-define=API_BASE=https://your-panel.com；'
-        '如使用远程配置，需要同时设置 REMOTE_CONFIG_URL 和 '
-        'REMOTE_CONFIG_PUBLIC_KEY。否则客户端会是连不上的空壳。',
+        '开发配置缺失：请在 remote_config.dart 填写 OSS 地址和公钥。',
       );
     }
     return true;
@@ -192,7 +189,7 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
       await windowManager.setBackgroundColor(Colors.transparent);
       await windowManager.setAsFrameless();
     } else if (Platform.isWindows) {
-      // Match FlClash's stable Windows setup: hidden title bar, but not
+      // Use a hidden title bar while retaining the native window frame.
       // setAsFrameless(). This leaves the standard Win32/DWM frame available
       // for official Windows 11 corners and shadows.
       await windowManager.setHasShadow(true);

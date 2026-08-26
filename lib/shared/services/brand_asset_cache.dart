@@ -12,8 +12,8 @@ import 'secure_logger.dart';
 
 /// Resolves cloud branding to a session-stable, persistent local file.
 ///
-/// Branding is prepared before `runApp`, so widgets never paint one tenant's
-/// bundled image and then replace it with another tenant's cloud image.
+/// Branding is prepared before `runApp`, so widgets do not paint a stale
+/// bundled image and then replace it with the current cloud image.
 abstract final class BrandAssetCache {
   static const _timeout = Duration(seconds: 5);
   static const _maxBytes = 5 * 1024 * 1024;

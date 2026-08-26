@@ -1,5 +1,5 @@
 import '../shared/models/app_models.dart';
-import '../shared/services/mihomo_config.dart';
+import '../shared/services/sing_box_config.dart';
 
 class CoreConnectionRequest {
   const CoreConnectionRequest({
@@ -10,8 +10,6 @@ class CoreConnectionRequest {
     required this.proxyPort,
     this.networkMode = NetworkMode.system,
     this.allowInsecure = false,
-    this.rules = const [],
-    this.ruleProviders = const {},
   });
 
   final List<NodeModel> nodes;
@@ -25,13 +23,6 @@ class CoreConnectionRequest {
   /// certificates are always validated.
   final bool allowInsecure;
 
-  /// Server-supplied Clash rules (e.g. from V2Board subscription YAML).
-  /// Each entry is a raw rule line like "DOMAIN-SUFFIX,google.com,PROXY".
-  final List<String> rules;
-
-  /// Server-supplied rule-providers (from Clash YAML `rule-providers`).
-  final Map<String, dynamic> ruleProviders;
-
   List<NodeModel> get validNodes => nodes.where((n) => n.hasConfig).toList();
 
   NodeModel? get selectedNode {
@@ -40,9 +31,9 @@ class CoreConnectionRequest {
     return availableNodes.isEmpty ? null : availableNodes.first;
   }
 
-  String get selectedTag {
+  String get selectedSingBoxTag {
     final node = selectedNode;
-    return node == null ? '' : MihomoConfig.nodeTagFor(node);
+    return node == null ? '' : SingBoxConfig.nodeTagFor(node);
   }
 
   CoreConnectionRequest withNetworkMode(NetworkMode mode) =>
@@ -54,30 +45,24 @@ class CoreConnectionRequest {
         proxyPort: proxyPort,
         networkMode: mode,
         allowInsecure: allowInsecure,
-        rules: rules,
-        ruleProviders: ruleProviders,
       );
 
-  Map<String, dynamic>? buildConfig({
+  Map<String, dynamic>? buildSingBoxConfig({
     NetworkMode? overrideNetworkMode,
     int? overrideProxyPort,
-    int apiPort = MihomoConfig.defaultApiPort,
+    int apiPort = SingBoxConfig.defaultApiPort,
   }) {
     final availableNodes = validNodes;
-    if (availableNodes.isEmpty) return null;
-    final tag = selectedTag;
-    if (tag.isEmpty) return null;
-    return MihomoConfig.buildFullConfig(
+    if (availableNodes.isEmpty || selectedSingBoxTag.isEmpty) return null;
+    return SingBoxConfig.buildFullConfig(
       availableNodes,
-      selectedTag: tag,
+      selectedTag: selectedSingBoxTag,
       port: overrideProxyPort ?? proxyPort,
       apiPort: apiPort,
       proxyMode: proxyMode,
       dnsMode: dnsMode,
       networkMode: overrideNetworkMode ?? networkMode,
       allowInsecure: allowInsecure,
-      rules: rules,
-      ruleProviders: ruleProviders,
     );
   }
 }

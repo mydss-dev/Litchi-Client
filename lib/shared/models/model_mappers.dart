@@ -40,7 +40,6 @@ abstract final class ModelMappers {
       tags: node.rate > 1.0 ? ['Premium'] : [],
       server: node.server,
       port: node.port,
-      rawUri: node.rawUri,
       rawOutbound: node.rawOutbound,
     );
   }

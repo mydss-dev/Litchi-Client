@@ -5,7 +5,7 @@ import '../services/brand_asset_cache.dart';
 
 /// Renders the session-stable cloud brand mark.
 ///
-/// A bundled tenant logo is intentionally never used as a fallback: white-label
+/// A bundled remote logo is intentionally never used as a fallback: branded
 /// builds must not expose one customer's branding while another customer's
 /// cloud asset is loading.
 class BrandLogo extends StatelessWidget {

@@ -115,19 +115,19 @@ bool FlutterWindow::OnCreate() {
           result->Error("invalid_arguments", "Expected an argument map");
           return;
         }
-        const std::string* mihomo_path =
-            ReadStringArgument(*arguments, "mihomoPath");
+        const std::string* app_path =
+            ReadStringArgument(*arguments, "appPath");
         const std::string* interface_alias =
             ReadStringArgument(*arguments, "interfaceAlias");
-        if (mihomo_path == nullptr || interface_alias == nullptr) {
+        if (app_path == nullptr || interface_alias == nullptr) {
           result->Error("invalid_arguments",
-                        "mihomoPath and interfaceAlias are required");
+                        "appPath and interfaceAlias are required");
           return;
         }
 
         std::string error;
         const bool engaged =
-            wfp_kill_switch_.Engage(Utf8ToWide(*mihomo_path),
+            wfp_kill_switch_.Engage(Utf8ToWide(*app_path),
                                     Utf8ToWide(*interface_alias), &error);
         if (!engaged) {
           result->Error("wfp_failed", error);

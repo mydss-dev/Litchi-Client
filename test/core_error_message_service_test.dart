@@ -7,7 +7,7 @@ void main() {
     expect(CoreErrorMessageService.noAvailableNodes, contains('没有可用节点'));
     expect(CoreErrorMessageService.configBuildFailed, contains('生成配置失败'));
     expect(CoreErrorMessageService.restartClient, contains('连接失败'));
-    expect(CoreErrorMessageService.missingCore, contains('mihomo'));
+    expect(CoreErrorMessageService.missingCore, contains('sing-box'));
     expect(CoreErrorMessageService.permissionDenied, contains('管理员'));
     expect(CoreErrorMessageService.tunInterfaceUnavailable, contains('TUN'));
     expect(CoreErrorMessageService.tunKillSwitchUnavailable, contains('中断保护'));

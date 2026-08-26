@@ -3,12 +3,21 @@ import 'package:litchi_client/app/core_platform_support.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 
 void main() {
-  test('supports Windows, macOS and Android core platforms', () {
+  test('supports Windows, macOS, Linux and Android core platforms', () {
     expect(
       CorePlatformSupport.supportsPlatform(
         isWindows: true,
         isMacOS: false,
         isAndroid: false,
+      ),
+      isTrue,
+    );
+    expect(
+      CorePlatformSupport.supportsPlatform(
+        isWindows: false,
+        isMacOS: false,
+        isAndroid: false,
+        isLinux: true,
       ),
       isTrue,
     );
@@ -63,16 +72,19 @@ void main() {
       bool windows = false,
       bool macos = false,
       bool android = false,
+      bool linux = false,
     }) => CorePlatformSupport.normalizeNetworkModeForPlatform(
       requested: requested,
       isWindows: windows,
       isMacOS: macos,
       isAndroid: android,
+      isLinux: linux,
     );
 
     expect(normalize(NetworkMode.system, android: true), NetworkMode.tun);
     expect(normalize(NetworkMode.tun, macos: true), NetworkMode.tun);
     expect(normalize(NetworkMode.tun, windows: true), NetworkMode.tun);
     expect(normalize(NetworkMode.system, windows: true), NetworkMode.system);
+    expect(normalize(NetworkMode.system, linux: true), NetworkMode.tun);
   });
 }

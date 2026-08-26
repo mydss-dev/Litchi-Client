@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/shared/utils/latency_status.dart';
 
 void main() {
-  test('classifies latency using FlClash-compatible thresholds', () {
+  test('classifies latency using client display thresholds', () {
     expect(LatencyStatus.quality(0), LatencyQuality.untested);
     expect(LatencyStatus.quality(-1), LatencyQuality.testing);
     expect(LatencyStatus.quality(1), LatencyQuality.good);

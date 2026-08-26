@@ -359,7 +359,7 @@
   "copyDiagnostics": "一鍵複製",
   "restartClientError": "連線失敗，請重新啟動用戶端後再試",
   "proxyPortUnavailableError": "本機代理連接埠啟動失敗，請關閉其他代理軟體後再試",
-  "missingCoreError": "連線失敗，找不到 mihomo 核心",
+  "missingCoreError": "連線失敗，找不到 sing-box 核心",
   "permissionDeniedError": "權限不足，請以管理員身分執行用戶端",
   "tunInterfaceUnavailableError": "TUN 虛擬網卡啟動失敗，請檢查系統權限後再試",
   "tunKillSwitchUnavailableError": "TUN 中斷保護啟動失敗，已停止連線以避免流量外洩",

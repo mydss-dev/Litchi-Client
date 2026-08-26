@@ -1,21 +1,11 @@
 # Android
 
-Android 原生平台目录。
+Android uses sing-box through the generated `libbox.aar`. Kotlin owns the
+foreground services and `VpnService`; libbox requests the TUN descriptor and
+protects outbound sockets through `AndroidSingBoxPlatform`.
 
-这里用于放置 Android 专用工程文件，例如：
+The pinned source version and commit live in `tool/core_versions.env`. Gradle
+builds the AAR through `tool/build_libbox_android.ps1` on Windows or
+`tool/build_libbox_android.sh` on Unix hosts.
 
-- Gradle 配置
-- AndroidManifest.xml
-- Kotlin / Java 原生代码
-- VpnService
-- mihomo 共享库与 TUN 接入
-- 通知栏和后台服务
-
-Flutter 移动端 UI 不放在这里，移动端 UI 放在：
-
-```text
-lib/app/mobile_app_shell.dart
-lib/features/mobile/
-```
-
-当前阶段先提交目录标记，后续再提交完整 Flutter Android 平台工程。
+iOS is intentionally outside the current migration scope.

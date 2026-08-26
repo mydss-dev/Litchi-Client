@@ -47,10 +47,10 @@ class MainActivity : FlutterActivity() {
                         result.error("invalid_config", "核心配置为空", null)
                         return@setMethodCallHandler
                     }
-                    if (!AndroidMihomoEngine.isAvailable()) {
+                    if (!AndroidSingBoxEngine.isAvailable()) {
                         result.error(
                             "missing_core",
-                            AndroidMihomoEngine.lastError(),
+                            AndroidSingBoxEngine.lastError(),
                             null
                         )
                         return@setMethodCallHandler
@@ -71,10 +71,10 @@ class MainActivity : FlutterActivity() {
                         result.error("invalid_config", "核心配置为空", null)
                         return@setMethodCallHandler
                     }
-                    if (!AndroidMihomoEngine.isAvailable()) {
+                    if (!AndroidSingBoxEngine.isAvailable()) {
                         result.error(
                             "missing_core",
-                            AndroidMihomoEngine.lastError(),
+                            AndroidSingBoxEngine.lastError(),
                             null
                         )
                         return@setMethodCallHandler
@@ -93,7 +93,7 @@ class MainActivity : FlutterActivity() {
                     if (group.isNullOrBlank() || proxy.isNullOrBlank()) {
                         result.error("invalid_proxy", "代理组或节点为空", null)
                     } else {
-                        result.success(AndroidMihomoEngine.switchProxy(group, proxy))
+                        result.success(false)
                     }
                 }
                 "setMode" -> {
@@ -101,18 +101,16 @@ class MainActivity : FlutterActivity() {
                     if (mode.isNullOrBlank()) {
                         result.error("invalid_mode", "代理模式为空", null)
                     } else {
-                        result.success(AndroidMihomoEngine.setMode(mode))
+                        result.success(false)
                     }
                 }
-                "closeConnections" -> result.success(
-                    AndroidMihomoEngine.closeConnections()
-                )
+                "closeConnections" -> result.success(false)
                 "reloadConfig" -> {
                     val config = (call.arguments as? Map<*, *>)?.get("config") as? String
                     if (config.isNullOrBlank()) {
                         result.error("invalid_config", "核心配置为空", null)
                     } else {
-                        result.success(AndroidMihomoEngine.reloadConfig(config))
+                        result.success(AndroidSingBoxEngine.reloadConfig(config))
                     }
                 }
                 // ── Legacy / shared ──────────────────────────────────────
@@ -122,10 +120,10 @@ class MainActivity : FlutterActivity() {
                         result.error("invalid_config", "核心配置为空", null)
                         return@setMethodCallHandler
                     }
-                    if (!AndroidMihomoEngine.isAvailable()) {
+                    if (!AndroidSingBoxEngine.isAvailable()) {
                         result.error(
                             "missing_core",
-                            AndroidMihomoEngine.lastError(),
+                            AndroidSingBoxEngine.lastError(),
                             null
                         )
                         return@setMethodCallHandler
@@ -145,8 +143,8 @@ class MainActivity : FlutterActivity() {
                 "isRunning" -> result.success(
                     LitchiCoreService.isRunning || LitchiVpnService.isRunning
                 )
-                "lastError" -> result.success(AndroidMihomoEngine.lastError())
-                "version" -> result.success(AndroidMihomoEngine.version())
+                "lastError" -> result.success(AndroidSingBoxEngine.lastError())
+                "version" -> result.success(AndroidSingBoxEngine.version())
                 else -> result.notImplemented()
             }
         }

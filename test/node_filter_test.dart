@@ -67,11 +67,12 @@ void main() {
 
   test('preserves raw outbound during node cache serialization', () {
     const node = NodeModel(
-      id: 'yaml-1',
-      name: 'YAML Node',
+      id: 'sing-box-1',
+      name: 'sing-box Node',
       flag: '',
       latency: 0,
       rawOutbound: {
+        '_litchi_format': 'sing-box',
         'type': 'trojan',
         'server': 'example.com',
         'port': 443,

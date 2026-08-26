@@ -1,22 +1,21 @@
 # Litchi Client
 
 Cross-platform VPN/proxy client built with Flutter.
-Connects to V2Board-compatible panels, manages a local mihomo core, and
+Connects to V2Board-compatible panels, manages an embedded sing-box core, and
 handles subscriptions, orders, and traffic statistics.
 
 ## Platform support
 
 | Platform | Core connection | System proxy | Notes |
 |----------|-----------------|--------------|-------|
-| Windows  | ✅ mihomo subprocess | registry + WinInet | System proxy and TUN configuration supported |
-| macOS    | ✅ mihomo subprocess | `networksetup` | Bundles a universal mihomo executable; desktop TUN still requires system privileges |
-| Android  | ✅ embedded mihomo library | VpnService | Native TUN FD bridge with socket protection |
-| Linux    | ⚠️ mihomo subprocess (scaffold) | not yet implemented | CMake/GTK scaffold present; core process management and system proxy are under development |
+| Windows  | sing-box dynamic library | registry + WinInet | System proxy and TUN configuration supported |
+| macOS    | sing-box dynamic library | `networksetup` | Universal dynamic library; desktop TUN still requires system privileges |
+| Android  | libbox AAR | VpnService | Native TUN FD integration with socket protection |
+| Linux    | sing-box dynamic library | TUN | Desktop integration is under development |
 
 On macOS, TUN uses a kernel-allocated `utun` interface and verifies that a new
 interface appears before reporting a successful connection. Creating routes
-still requires system privileges. The bundled `mihomo` binary must be
-executable (`chmod +x`).
+still requires system privileges.
 
 ## Tech Stack
 
@@ -24,7 +23,7 @@ executable (`chmod +x`).
 |-------|-----------|
 | UI | Flutter (Windows, macOS, Android) |
 | Panel API | V2Board-compatible REST (Dio) |
-| Proxy core | mihomo (managed subprocess / Android shared library) |
+| Proxy core | sing-box (desktop dynamic library / Android libbox AAR) |
 | Runtime switching | Clash-compatible REST API |
 | Settings persistence | SharedPreferences |
 | Credential storage | Windows DPAPI (via PowerShell) |
@@ -34,7 +33,7 @@ executable (`chmod +x`).
 
 - Flutter SDK ≥ 3.12 (`flutter --version`)
 - Windows 10 / 11 (64-bit)
-- `mihomo.exe` placed next to the built Windows executable for local runs
+- Go 1.24.7 for building the pinned sing-box libraries
 
 ## Getting Started
 
@@ -42,7 +41,7 @@ executable (`chmod +x`).
 # Install dependencies
 flutter pub get
 
-# Generate OS-level icons from the tenant's cloud logo
+# Generate OS-level icons from the configured cloud logo
 $env:LOGO_URL="https://your-oss.example/logo.png"
 dart run tool/prepare_brand_assets.dart
 dart run flutter_launcher_icons
@@ -51,21 +50,21 @@ dart run flutter_launcher_icons
 flutter run -d windows
 
 # Build release
-flutter build windows --release \
-  --dart-define=APP_ID="stable-tenant-id" \
-  --dart-define=REMOTE_CONFIG_URL="https://your-oss.example/config.json" \
-  --dart-define=REMOTE_CONFIG_PUBLIC_KEY="<tenant-ed25519-public-key>"
+flutter build windows --release
 ```
 
-Remote config is fail-closed. Manual builds have no default config endpoint or
-shared signing key; both defines above are required before signed remote config
-will be fetched or cached. The white-label workflow supplies them automatically.
-Keep `APP_ID` stable for every update of the same tenant. It isolates desktop
-data, preferences, credentials, auto-start entries, and single-instance locks
-between white-label clients.
+Set the OSS config URL and Ed25519 public key once in
+`lib/config/remote_config.dart`. The client rejects unsigned or invalid remote
+configuration. The application identity is fixed so updates continue using the
+same data, credentials, auto-start entry, and single-instance lock.
 
 Tagged releases fail when `API_BASE` is missing. Android tags publish both an
 APK for direct installation and an AAB for Google Play.
+
+The signed `config.json` is maintained manually. Tagged CI releases build all
+platform packages, generate and sign `update.json`, and upload the packages and
+manifest to Cloudflare R2. `tool/publish_release.ps1` provides the same update
+publishing flow for a local package when needed.
 
 ## Project Structure
 
@@ -74,7 +73,7 @@ lib/
 ├── app/
 │   ├── app_controller.dart       # Top-level coordinator (nav, auth, data)
 │   ├── settings_controller.dart  # Settings state + SharedPrefs persistence
-│   ├── core_controller.dart      # mihomo process + connection lifecycle
+│   ├── core_controller.dart      # sing-box connection lifecycle
 │   ├── app_shell.dart            # Root widget (auth vs main shell)
 │   └── app_window_bar.dart       # Custom window title bar
 │
@@ -92,7 +91,7 @@ lib/
 ├── shared/
 │   ├── config/                   # AppConfig (API base URL, constants)
 │   ├── models/                   # Data models + mappers
-│   ├── services/                 # API client, mihomo config, parsers
+│   ├── services/                 # API client, sing-box config, parsers
 │   ├── theme/                    # Colors, text styles, radius, shadows
 │   └── widgets/                  # Reusable UI components
 │
@@ -105,11 +104,10 @@ lib/
 |------|---------------|
 | `services/panel_api.dart` | V2Board REST endpoints |
 | `services/api_client.dart` | Dio HTTP client with auth |
-| `services/subscription_parser.dart` | Base64 URI list + Clash YAML parsing |
-| `services/outbound_parser.dart` | VMess / VLESS / Trojan / SS / Hysteria URI normalization |
-| `services/mihomo_config.dart` | Builds native mihomo configuration |
-| `services/core_manager.dart` | Spawns / monitors the mihomo subprocess |
-| `services/mihomo_api_client.dart` | mihomo REST API (switching, group delay, traffic) |
+| `services/subscription_parser.dart` | Native sing-box JSON subscription parsing |
+| `services/sing_box_config.dart` | Builds native sing-box JSON configuration |
+| `services/sing_box_core_manager.dart` | Manages the desktop dynamic library lifecycle |
+| `services/clash_api_client.dart` | Clash-compatible API (switching, group delay, traffic) |
 | `services/proxy_setter.dart` | Windows system proxy via registry |
 | `services/credentials_storage.dart` | DPAPI-encrypted password storage |
 
@@ -143,7 +141,7 @@ Format: `<type>(<scope>): <subject>`
 Examples:
 ```
 feat(shop): add coupon code field to order confirmation
-fix(core): handle mihomo startup timeout on slow machines
+fix(core): handle sing-box startup timeout on slow machines
 refactor(controller): extract SettingsController from AppController
 chore(deps): upgrade dio to 5.8.0
 ```

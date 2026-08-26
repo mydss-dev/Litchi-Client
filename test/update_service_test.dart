@@ -9,6 +9,23 @@ import 'package:litchi_client/shared/services/update_service.dart';
 bool get _installerDownloadSupported => Platform.isWindows || Platform.isMacOS;
 
 void main() {
+  test('defaults update manifest to config.json sibling', () {
+    expect(
+      UpdateService.resolveManifestUrl(
+        declaredUrl: '',
+        configUrl: 'https://cdn.example.com/litchi/config.json',
+      ),
+      'https://cdn.example.com/litchi/update.json',
+    );
+    expect(
+      UpdateService.resolveManifestUrl(
+        declaredUrl: 'https://updates.example.com/latest.json',
+        configUrl: 'https://cdn.example.com/litchi/config.json',
+      ),
+      'https://updates.example.com/latest.json',
+    );
+  });
+
   test('selects a URL and mandatory hash from update metadata', () async {
     final originalVersion = AppConfig.currentVersion;
     addTearDown(() => AppConfig.currentVersion = originalVersion);

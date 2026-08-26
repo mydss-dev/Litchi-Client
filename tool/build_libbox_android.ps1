@@ -1,9 +1,23 @@
 param(
-  [string]$Ref = $(if ($env:LIBBOX_REF) { $env:LIBBOX_REF } else { "v1.13.13" }),
+  [string]$Ref = $(if ($env:LIBBOX_REF) { $env:LIBBOX_REF } else { "" }),
   [string]$WorkDir = "$PSScriptRoot\..\build\sing-box-src"
 )
 
 $ErrorActionPreference = "Stop"
+$versionsFile = Join-Path $PSScriptRoot "core_versions.env"
+
+if (-not $Ref) {
+  $versionLine = Get-Content $versionsFile | Where-Object {
+    $_ -match '^SING_BOX_VERSION='
+  } | Select-Object -First 1
+  if (-not $versionLine) { throw "SING_BOX_VERSION is missing from $versionsFile" }
+  $Ref = ($versionLine -split '=', 2)[1].Trim()
+}
+$commitLine = Get-Content $versionsFile | Where-Object {
+  $_ -match '^SING_BOX_COMMIT='
+} | Select-Object -First 1
+if (-not $commitLine) { throw "SING_BOX_COMMIT is missing from $versionsFile" }
+$expectedCommit = ($commitLine -split '=', 2)[1].Trim()
 
 function Require-Command($Name) {
   if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
@@ -78,6 +92,9 @@ if (-not (Test-Path $WorkDir)) {
 Push-Location $WorkDir
 try {
   $resolved = (git rev-parse HEAD).Trim()
+  if ($resolved -ne $expectedCommit) {
+    throw "sing-box commit mismatch: resolved=$resolved expected=$expectedCommit"
+  }
   Write-Host "Building sing-box libbox from ref $Ref ($resolved)"
 } finally {
   Pop-Location

@@ -1,9 +1,6 @@
-# Android Core
+# Android sing-box core
 
-Android uses a source-built mihomo shared library rather than an AAR. Gradle
-invokes `tool/build_mihomo_android.ps1` or `tool/build_mihomo_android.sh`,
-then packages the generated libraries from `src/main/jniLibs`.
-
-The Kotlin VPN service creates the TUN interface. A small JNI bridge passes its
-file descriptor to mihomo and calls `VpnService.protect()` for every outbound
-socket, following the integration model used by FlClash.
+Gradle invokes `tool/build_libbox_android.ps1` or
+`tool/build_libbox_android.sh` and places the reproducibly pinned
+`libbox.aar` in this directory. The AAR contains the gomobile API and native
+`libbox.so` libraries; it is intentionally not committed.

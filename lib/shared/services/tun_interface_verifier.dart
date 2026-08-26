@@ -3,7 +3,7 @@ import 'dart:io';
 typedef TunInterfaceProbe = Future<Iterable<String>> Function();
 
 /// Waits until the operating system exposes the TUN interface requested by
-/// mihomo. A responsive controller alone is not sufficient: mihomo can keep
+/// sing-box. A responsive controller alone is not sufficient: sing-box can keep
 /// its API alive even when creation of the virtual adapter failed.
 abstract final class TunInterfaceVerifier {
   static Future<bool> waitUntilReady({

@@ -59,7 +59,6 @@ class NodeModel {
     this.server = '',
     this.port = 0,
     this.isAuto = false,
-    this.rawUri = '',
     this.rawOutbound,
   });
 
@@ -84,13 +83,10 @@ class NodeModel {
   /// True for the virtual "自动选择" entry.
   final bool isAuto;
 
-  /// Original proxy URI used for core config generation.
-  final String rawUri;
-
-  /// Original Clash proxy object for YAML subscriptions.
+  /// Native sing-box proxy outbound returned by the panel.
   final Map<String, dynamic>? rawOutbound;
 
-  bool get hasConfig => rawUri.isNotEmpty || rawOutbound != null;
+  bool get hasConfig => rawOutbound?['_litchi_format'] == 'sing-box';
 
   NodeModel copyWith({int? latency}) => NodeModel(
     id: id,
@@ -105,7 +101,6 @@ class NodeModel {
     server: server,
     port: port,
     isAuto: isAuto,
-    rawUri: rawUri,
     rawOutbound: rawOutbound,
   );
 
@@ -121,7 +116,6 @@ class NodeModel {
     'server': server,
     'port': port,
     'isAuto': isAuto,
-    'rawUri': rawUri,
     'rawOutbound': rawOutbound,
   };
 
@@ -140,7 +134,6 @@ class NodeModel {
     server: j['server'] as String? ?? '',
     port: j['port'] as int? ?? 0,
     isAuto: j['isAuto'] as bool? ?? false,
-    rawUri: j['rawUri'] as String? ?? '',
     rawOutbound: j['rawOutbound'] is Map
         ? Map<String, dynamic>.from(j['rawOutbound'] as Map)
         : null,
@@ -224,15 +217,15 @@ enum ProxyMode {
     ProxyMode.direct => '\u5df2\u5207\u6362\u5230\u76f4\u8fde\u6a21\u5f0f',
   };
 
-  /// Value sent to the mihomo `/configs` endpoint.
-  String get clashValue => switch (this) {
+  /// Value sent to the sing-box runtime controller.
+  String get controllerValue => switch (this) {
     ProxyMode.rule => 'rule',
     ProxyMode.global => 'global',
     ProxyMode.direct => 'direct',
   };
 
   /// Stable key used when persisting to SharedPreferences.
-  String get storageKey => clashValue;
+  String get storageKey => controllerValue;
 
   /// Deserialises from storage key or the old Chinese label strings.
   static ProxyMode fromStorageKey(String? key) => switch (key) {
@@ -242,7 +235,7 @@ enum ProxyMode {
   };
 }
 
-/// Network interception mode — controls how mihomo captures traffic.
+/// Network interception mode — controls how sing-box captures traffic.
 enum NetworkMode {
   system,
   tun;

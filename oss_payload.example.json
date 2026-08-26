@@ -1,0 +1,15 @@
+{
+  "panel_type": "xiao_v2board",
+  "app_name": "Litchi VPN",
+  "api_base_list": [
+    "https://litchia.cfd",
+    "https://litchib.cfd",
+    "https://litchic.cfd",
+    "https://litchid.cfd"
+  ],
+  "api_prefix": "/x7f3a9k",
+  "logo_url": "https://i.czl.net/b2/img/6a4486114ad28.png",
+  "avatar_url": "https://t.alcy.cc/tx",
+  "invite_url_base": "https://litchia.cfd",
+  "update_enabled": true
+}

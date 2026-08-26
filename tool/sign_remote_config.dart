@@ -28,6 +28,31 @@ Future<void> main(List<String> args) async {
         publicKeyB64: args[3],
       );
       return;
+    case 'sign-env':
+      if (args.length != 2) {
+        stderr.writeln('sign-env requires: <config.js|payload.json>');
+        _usage();
+        exitCode = 64;
+        return;
+      }
+      final privateKey = Platform.environment['LITCHI_CONFIG_PRIVATE_KEY'];
+      final publicKey = Platform.environment['LITCHI_CONFIG_PUBLIC_KEY'];
+      if (privateKey == null ||
+          privateKey.isEmpty ||
+          publicKey == null ||
+          publicKey.isEmpty) {
+        stderr.writeln(
+          'Set LITCHI_CONFIG_PRIVATE_KEY and LITCHI_CONFIG_PUBLIC_KEY.',
+        );
+        exitCode = 64;
+        return;
+      }
+      await _sign(
+        payloadPath: args[1],
+        privateKeyB64: privateKey,
+        publicKeyB64: publicKey,
+      );
+      return;
     default:
       stderr.writeln('Unknown command: ${args.first}');
       _usage();
@@ -45,7 +70,7 @@ Future<void> _generate() async {
   stdout.writeln('PUBLIC_KEY=${_b64(publicKey.bytes)}');
   stdout.writeln('');
   stdout.writeln(
-    'Put PUBLIC_KEY into RemoteConfigVerifier._publicKeyBase64Url.',
+    'Put PUBLIC_KEY into RemoteConfigService.publicKeyBase64Url.',
   );
   stdout.writeln('Keep PRIVATE_KEY offline. Never commit it.');
 }
@@ -105,8 +130,10 @@ void _usage() {
 Usage:
   dart run tool/sign_remote_config.dart generate
   dart run tool/sign_remote_config.dart sign <config.js|payload.json> <private_key> <public_key>
+  dart run tool/sign_remote_config.dart sign-env <config.js|payload.json>
 
 config.js can contain comments as long as it prints JSON to stdout.
+sign-env reads LITCHI_CONFIG_PRIVATE_KEY and LITCHI_CONFIG_PUBLIC_KEY.
 ''');
 }
 

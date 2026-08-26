@@ -9,11 +9,8 @@ def keyPropertiesFile = rootProject.file("key.properties")
 if (keyPropertiesFile.exists()) {
     keyProperties.load(new FileInputStream(keyPropertiesFile))
 }
-def hasReleaseSigning =
-    keyProperties["storeFile"] &&
-    keyProperties["storePassword"] &&
-    keyProperties["keyAlias"] &&
-    keyProperties["keyPassword"]
+def hasReleaseSigning = keyProperties["storeFile"] && keyProperties["storePassword"] &&
+    keyProperties["keyAlias"] && keyProperties["keyPassword"]
 def splitPerAbi = project.hasProperty("split-per-abi") &&
     project.property("split-per-abi").toString().toBoolean()
 
@@ -26,24 +23,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    kotlinOptions { jvmTarget = "17" }
 
     defaultConfig {
-        // White-label CI supplies a stable per-tenant id. Keep the original id
-        // for normal local builds.
         applicationId System.getenv("ANDROID_APPLICATION_ID") ?: "com.litchi.client"
         minSdkVersion flutter.minSdkVersion
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode
         versionName flutter.versionName
-        externalNativeBuild {
-            cmake {
-                cppFlags "-std=c++17"
-            }
-        }
         ndk {
             if (!splitPerAbi) {
                 abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
@@ -64,187 +51,38 @@ android {
 
     buildTypes {
         release {
-            if (hasReleaseSigning) {
-                signingConfig signingConfigs.release
-            }
+            if (hasReleaseSigning) signingConfig signingConfigs.release
             minifyEnabled true
             shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
-                'proguard-rules.pro'
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path file("src/main/cpp/CMakeLists.txt")
-            version "3.22.1"
-        }
-    }
-
-    sourceSets {
-        main {
-            jniLibs.srcDirs = ["src/main/jniLibs"]
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
 
-flutter {
-    source "../.."
+flutter { source "../.." }
+
+dependencies {
+    implementation files("libs/libbox.aar")
 }
 
-tasks.register("ensureMihomoLibraries") {
-    def libraries = [
-        file("src/main/jniLibs/arm64-v8a/liblitchi_mihomo.so"),
-        file("src/main/jniLibs/armeabi-v7a/liblitchi_mihomo.so"),
-    ]
-    def headers = [
-        file("src/main/cpp/includes/arm64-v8a/liblitchi_mihomo.h"),
-        file("src/main/cpp/includes/arm64-v8a/bridge.h"),
-        file("src/main/cpp/includes/armeabi-v7a/liblitchi_mihomo.h"),
-        file("src/main/cpp/includes/armeabi-v7a/bridge.h"),
-    ]
-    def psScript = file("../../tool/build_mihomo_android.ps1")
-    def shScript = file("../../tool/build_mihomo_android.sh")
-    inputs.files(fileTree("../../core/mihomo"), psScript, shScript)
-    outputs.files(libraries + headers)
+tasks.register("ensureLibboxAar") {
+    def aar = file("libs/libbox.aar")
+    def psScript = file("../../tool/build_libbox_android.ps1")
+    def shScript = file("../../tool/build_libbox_android.sh")
+    inputs.files(psScript, shScript, file("../../tool/core_versions.env"))
+    outputs.file(aar)
     doLast {
-        def requestedTasks = gradle.startParameter.taskNames.collect { it.toLowerCase() }
-        def allowMissingForDebug = requestedTasks.any {
-            it.contains("debug") || it.contains("profile")
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            if (!psScript.exists()) throw new GradleException("Missing libbox build script: ${psScript}")
+            providers.exec {
+                commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
+            }.result.get().assertNormalExitValue()
+        } else {
+            if (!shScript.exists()) throw new GradleException("Missing libbox build script: ${shScript}")
+            providers.exec { commandLine "bash", shScript.absolutePath }.result.get().assertNormalExitValue()
         }
-        def buildMihomo = {
-            if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-                if (!psScript.exists()) {
-                    throw new GradleException("Missing mihomo build script: ${psScript}")
-                }
-                providers.exec {
-                    commandLine "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psScript.absolutePath
-                }.result.get().assertNormalExitValue()
-            } else {
-                if (!shScript.exists()) {
-                    throw new GradleException("Missing mihomo build script: ${shScript}")
-                }
-                providers.exec {
-                    commandLine "bash", shScript.absolutePath
-                }.result.get().assertNormalExitValue()
-            }
-        }
-        try {
-            buildMihomo()
-        } catch (Exception error) {
-            if (allowMissingForDebug) {
-                logger.warn("Skipping mihomo native build for debug/profile: ${error.message}")
-                return
-            }
-            throw error
-        }
-        if (!libraries.every { it.exists() }) {
-            if (allowMissingForDebug) {
-                logger.warn("Skipping missing mihomo libraries for debug/profile")
-                return
-            }
-            throw new GradleException("mihomo Android libraries were not generated")
-        }
+        if (!aar.exists()) throw new GradleException("libbox.aar was not generated")
     }
 }
 
-// SHA-256 of a file as a lowercase hex string (used to verify geo downloads).
-String geoSha256(File f) {
-    def md = java.security.MessageDigest.getInstance("SHA-256")
-    f.withInputStream { input ->
-        byte[] buf = new byte[65536]
-        int n
-        while ((n = input.read(buf)) > 0) {
-            md.update(buf, 0, n)
-        }
-    }
-    return md.digest().encodeHex().toString()
-}
-
-tasks.register("ensureGeoAssets") {
-    // Geo databases are VENDORED under runtime/geo (track with Git LFS). They are
-    // copied into assets and SHA-256 verified at build time — no network, so
-    // builds are reproducible and immune to the upstream rolling "latest" tag.
-    // A hash mismatch usually means Git LFS was not pulled (a small pointer file
-    // instead of the real binary) — run `git lfs pull`.
-    def assetsDir = file("src/main/assets")
-    def vendorDir = file("../../runtime/geo")
-    // geo file name -> env var holding its expected SHA-256 (blank = print only)
-    def geoFiles = [
-        "country.mmdb": "GEOIP_MMDB_SHA256",
-        "geosite.dat" : "GEOSITE_DAT_SHA256",
-    ]
-
-    // Expected hashes come from tool/core_versions.env (single source of truth).
-    def env = [:]
-    def envFile = file("../../tool/core_versions.env")
-    if (envFile.exists()) {
-        envFile.eachLine { line ->
-            def m = (line =~ /^\s*([A-Za-z0-9_]+)\s*=\s*(.*?)\s*$/)
-            if (m.find()) { env[m.group(1)] = m.group(2).trim() }
-        }
-    }
-
-    inputs.files(geoFiles.keySet().collect { new File(vendorDir, it) })
-    inputs.property("geoHashes", geoFiles.values().collect { env.get(it, "") })
-    outputs.files(geoFiles.keySet().collect { new File(assetsDir, it) })
-
-    doLast {
-        assetsDir.mkdirs()
-        geoFiles.each { name, shaVar ->
-            def src = new File(vendorDir, name)
-            if (!src.exists() || src.length() == 0L) {
-                throw new GradleException(
-                    "Missing vendored geo file: ${src} -- add it under runtime/geo and run: git lfs pull")
-            }
-
-            def expected = (env.get(shaVar, "") ?: "").toLowerCase()
-            def actual = geoSha256(src)
-            if (expected.isEmpty()) {
-                logger.lifecycle("  ${name} sha256 = ${actual}  (paste into core_versions.env to lock)")
-            } else if (actual != expected) {
-                throw new GradleException(
-                    "${name} sha256 mismatch: actual=${actual} expected=${expected} " +
-                    "(stale vendored file, or Git LFS not pulled)")
-            } else {
-                logger.lifecycle("  ${name} sha256 verified")
-            }
-
-            // Copy into a .part temp then promote atomically, so a present asset
-            // is always a complete, verified file.
-            def dest = new File(assetsDir, name)
-            def tmp = new File(assetsDir, "${name}.part")
-            tmp.delete()
-            try {
-                java.nio.file.Files.copy(
-                    src.toPath(),
-                    tmp.toPath(),
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                )
-                def srcPath = tmp.toPath()
-                def destPath = dest.toPath()
-                try {
-                    java.nio.file.Files.move(
-                        srcPath,
-                        destPath,
-                        java.nio.file.StandardCopyOption.ATOMIC_MOVE,
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                    )
-                } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
-                    java.nio.file.Files.move(
-                        srcPath,
-                        destPath,
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                    )
-                }
-            } finally {
-                tmp.delete()
-            }
-        }
-    }
-}
-
-tasks.named("preBuild") {
-    dependsOn("ensureMihomoLibraries")
-    dependsOn("ensureGeoAssets")
-}
+tasks.named("preBuild") { dependsOn("ensureLibboxAar") }

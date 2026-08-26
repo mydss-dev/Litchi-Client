@@ -1,6 +1,7 @@
 import '../models/api_models.dart';
 import 'api_client.dart';
 import 'secure_logger.dart';
+import 'sing_box_config.dart';
 import 'subscription_parser.dart';
 
 /// Generic subscription panel API client.
@@ -241,9 +242,10 @@ class PanelApi {
     final res = await _client.getPlainUrl(
       subscribeUrl,
       headers: {
-        // UA containing "clash" triggers many subscription providers to return
-        // Clash YAML instead of a plain Base64 URI list.
-        'User-Agent': 'ClashMetaDesktop/1.0',
+        // This V2Board backend selects its modern native JSON generator only
+        // when the sing-box version is present in the user agent.
+        'User-Agent': SingBoxConfig.subscriptionUserAgent,
+        'Accept': 'application/json, text/plain;q=0.9, */*;q=0.8',
       },
     );
     final body = (res.data ?? '').trim();
@@ -258,8 +260,6 @@ class PanelApi {
     return SubscriptionResult(
       nodes: profile.nodes,
       traffic: traffic,
-      rules: profile.rules,
-      ruleProviders: profile.ruleProviders,
     );
   }
 

@@ -1,17 +1,11 @@
 # macOS
 
-macOS 支持系统代理与 TUN 两种连接方式。
+macOS 通过进程内 sing-box 通用动态库运行。
 
-- 系统代理模式以当前用户身份运行 mihomo。
-- TUN 模式通过 macOS 系统授权启动一次性的管理员进程。
-- 开启连接中断保护后，客户端通过动态 PF anchor 阻止当前用户绕过
-  TUN 直接出站；核心异常退出时规则继续生效，断开连接或客户端退出后
-  root watchdog 自动清理规则，不修改用户已有的 PF 配置。
-- 管理员进程运行在隔离的临时目录，不会在用户数据目录留下 root 文件。
-- root 看门狗同时监听客户端 PID 和停止文件；正常断开无需再次输入密码，
-  客户端强退后也会自动结束 mihomo。
+- 系统代理模式使用 `networksetup`。
+- TUN 模式需要应用具备对应网络权限。
 - 客户端只有在控制 API 可用且检测到新 `utun` 接口后才显示已连接。
+- 发布脚本会把 Intel/Apple Silicon 核心合并为通用动态库。
 
-当前方案面向官网 DMG 分发，不依赖 App Sandbox、Network Extension entitlement
-或常驻特权 Helper。正式发布前仍需在 Intel 与 Apple Silicon 真机验证系统授权、
-睡眠唤醒、切网和强退清理。
+正式发布前需在 Intel 与 Apple Silicon 真机验证 TUN 权限、睡眠唤醒、
+切网和异常退出清理。

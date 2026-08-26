@@ -8,7 +8,7 @@ import 'credentials_storage.dart';
 /// Stores node caches in two tiers:
 ///
 /// 1. UI cache: non-sensitive fields only, safe to keep as plain JSON.
-/// 2. Secure cache: complete node payload including rawUri, DPAPI-encrypted.
+/// 2. Secure cache: complete native outbound payload, DPAPI-encrypted.
 ///
 /// The UI cache keeps the app responsive for display-only fallback. The secure
 /// cache lets the client still connect when the panel/API is temporarily
@@ -28,7 +28,7 @@ abstract final class NodeCacheService {
     await Future.wait([_saveUiCache(realNodes), _saveSecureCache(realNodes)]);
   }
 
-  /// Loads secure cache first because it preserves rawUri and can be used for
+  /// Loads secure cache first because it preserves native outbounds for
   /// actual core startup. Falls back to display-only UI cache when DPAPI cannot
   /// decrypt or the secure cache does not exist.
   static Future<List<NodeModel>> load() async {
@@ -102,16 +102,14 @@ abstract final class NodeCacheService {
     }
   }
 
-  /// One-time migration from the old plain JSON cache. If it contains rawUri,
-  /// immediately write it to the secure cache and overwrite the UI cache with
-  /// redacted data.
+  /// One-time migration from the old plain JSON cache.
   static Future<List<NodeModel>> _migrateLegacyPlainCacheIfPresent() async {
     try {
       final file = File(_legacyCachePath);
       if (!file.existsSync()) return [];
       final nodes = _decodeNodeList(await file.readAsString());
       if (nodes.isEmpty) return [];
-      if (nodes.any((n) => n.rawUri.isNotEmpty)) await save(nodes);
+      if (nodes.any((n) => n.hasConfig)) await save(nodes);
       return nodes;
     } catch (_) {
       // intentional: best-effort cache, failure is safe to ignore
@@ -138,6 +136,5 @@ abstract final class NodeCacheService {
     'server': '',
     'port': 0,
     'isAuto': n.isAuto,
-    'rawUri': '',
   };
 }

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 
 import '../../config/app_identity.dart';
-import 'core_manager.dart';
 import 'secure_logger.dart';
 
 /// Controls the runner-owned dynamic WFP session used by the Windows TUN
@@ -15,11 +14,11 @@ abstract final class WindowsTunKillSwitch {
 
   static Future<bool> engage() async {
     if (!Platform.isWindows) return true;
-    final mihomoPath = CoreManager.findExecutable();
-    if (mihomoPath == null || mihomoPath.isEmpty) return false;
+    final appPath = Platform.resolvedExecutable;
+    if (appPath.isEmpty || !File(appPath).existsSync()) return false;
     try {
       return await _channel.invokeMethod<bool>('engage', {
-            'mihomoPath': mihomoPath,
+            'appPath': appPath,
             'interfaceAlias': interfaceAlias,
           }) ??
           false;

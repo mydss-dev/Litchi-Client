@@ -9,7 +9,14 @@ void main() {
       name: 'usable',
       flag: '',
       latency: 0,
-      rawUri: 'trojan://password@example.com:443#usable',
+      rawOutbound: {
+        'type': 'trojan',
+        'tag': 'source',
+        'server': 'example.com',
+        'server_port': 443,
+        'password': 'password',
+        '_litchi_format': 'sing-box',
+      },
     );
     const request = CoreConnectionRequest(
       nodes: [
@@ -23,20 +30,21 @@ void main() {
     );
 
     expect(request.validNodes.map((node) => node.id), ['1']);
-    expect(request.selectedTag, 'node-1');
+    expect(request.selectedSingBoxTag, 'node-1');
   });
 
-  test('accepts Clash YAML raw outbound nodes as connectable', () {
+  test('accepts native outbound nodes as connectable', () {
     const selected = NodeModel(
-      id: 'yaml',
-      name: 'yaml',
+      id: 'sing-box-native',
+      name: 'sing-box native',
       flag: '',
       latency: 0,
       rawOutbound: {
         'type': 'trojan',
         'server': 'example.com',
-        'port': 443,
+        'server_port': 443,
         'password': 'secret',
+        '_litchi_format': 'sing-box',
       },
     );
     const request = CoreConnectionRequest(
@@ -48,7 +56,7 @@ void main() {
     );
 
     expect(request.validNodes, hasLength(1));
-    expect(request.buildConfig(), isNotNull);
+    expect(request.buildSingBoxConfig(), isNotNull);
   });
 
   test('can build a session config with an automatically selected port', () {
@@ -57,7 +65,14 @@ void main() {
       name: 'dynamic-port',
       flag: '',
       latency: 0,
-      rawUri: 'trojan://password@example.com:443#dynamic-port',
+      rawOutbound: {
+        'type': 'trojan',
+        'tag': 'source',
+        'server': 'example.com',
+        'server_port': 443,
+        'password': 'password',
+        '_litchi_format': 'sing-box',
+      },
     );
     const request = CoreConnectionRequest(
       nodes: [selected],
@@ -67,9 +82,13 @@ void main() {
       proxyPort: 7890,
     );
 
-    final config = request.buildConfig(overrideProxyPort: 49152);
+    final config = request.buildSingBoxConfig(overrideProxyPort: 49152);
 
-    expect(config?['mixed-port'], 49152);
+    final inbounds = config?['inbounds'] as List<dynamic>;
+    final mixed = inbounds.whereType<Map<String, dynamic>>().firstWhere(
+      (inbound) => inbound['type'] == 'mixed',
+    );
+    expect(mixed['listen_port'], 49152);
     expect(request.proxyPort, 7890);
   });
 
@@ -81,7 +100,14 @@ void main() {
         name: 'fallback',
         flag: '',
         latency: 0,
-        rawUri: 'trojan://password@example.com:443#fallback',
+        rawOutbound: {
+          'type': 'trojan',
+          'tag': 'source',
+          'server': 'example.com',
+          'server_port': 443,
+          'password': 'password',
+          '_litchi_format': 'sing-box',
+        },
       );
       const request = CoreConnectionRequest(
         nodes: [
@@ -100,8 +126,8 @@ void main() {
       );
 
       expect(request.selectedNode, fallback);
-      expect(request.selectedTag, 'node-fallback');
-      expect(request.buildConfig(), isNotNull);
+      expect(request.selectedSingBoxTag, 'node-fallback');
+      expect(request.buildSingBoxConfig(), isNotNull);
     },
   );
 }

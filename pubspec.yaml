@@ -56,8 +56,6 @@ dependencies:
   ffi: ^2.1.0
   # Ed25519 signature verification for remote OSS config
   cryptography: ^2.7.0
-  # Robust YAML parser for Clash subscription format
-  yaml: ^3.1.2
   country_flags: ^4.1.2
   # In-app QR code rendering for payment display
   qr_flutter: ^4.1.0

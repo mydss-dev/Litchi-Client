@@ -2,16 +2,13 @@
 installer_output/
 # OSS config (contains api_base, keep off git)
 oss_config.json
-# Local working copy of the config template
-bot/config.json
 
 # mihomo runtime cache — may contain DNS/fake-IP history
-cache.db
 *.pid
-mihomo.pid.json
 
-# Embedded mihomo libraries are built from source for every Android release.
+# Generated Android libraries.
 android/app/src/main/jniLibs/
+android/app/libs/*.aar
 android/app/src/main/cpp/includes/
 
 # Miscellaneous
@@ -47,7 +44,6 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
-/core/mihomo/litchi-mihomo*
 /coverage/
 
 # White-label images are generated from LOGO_URL before desktop/mobile builds.
@@ -91,18 +87,6 @@ config.js
 # Local update manifest — upload to OSS, do not commit
 version.json
 
-# ── Bot ──────────────────────────────────────────────────────────────────
-bot/.env
-bot/data/
-bot/node_modules/
-bot/*.sqlite
-bot/*.sqlite-shm
-bot/*.sqlite-wal
-
-# OSS hosting (aaPanel auto-generated)
-bot/.htaccess
-bot/.user.ini
-bot/404.html
-bot/502.html
-bot/index.html
-bot/.well-known/
+# Local self-hosted release inputs and generated output
+/oss_payload.json
+/release_output/

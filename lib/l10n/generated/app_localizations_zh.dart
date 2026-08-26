@@ -1038,7 +1038,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get proxyPortUnavailableError => '本地代理端口启动失败，请关闭其他代理软件后重试';
 
   @override
-  String get missingCoreError => '连接失败，请检查 mihomo 核心是否存在';
+  String get missingCoreError => '连接失败，请检查 sing-box 核心是否存在';
 
   @override
   String get permissionDeniedError => '权限不足，请以管理员身份运行客户端';
@@ -2675,7 +2675,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get proxyPortUnavailableError => '本機代理連接埠啟動失敗，請關閉其他代理軟體後再試';
 
   @override
-  String get missingCoreError => '連線失敗，找不到 mihomo 核心';
+  String get missingCoreError => '連線失敗，找不到 sing-box 核心';
 
   @override
   String get permissionDeniedError => '權限不足，請以管理員身分執行用戶端';

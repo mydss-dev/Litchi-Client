@@ -17,7 +17,7 @@ import android.os.Build
 import org.json.JSONObject
 
 /**
- * Non-VPN foreground service that runs the mihomo core without TUN.
+ * Non-VPN foreground service that runs sing-box without TUN.
  *
  * The core is always loaded on Android so that latency tests, node switching,
  * and mode changes work instantly without a VPN permission prompt.  When the
@@ -73,14 +73,9 @@ class LitchiCoreService : Service() {
                 startCoreForeground()
                 AndroidCoreStatus.emit("starting", "core")
                 updateSystemDns()
-                // Copy bundled geo databases into the core home dir (filesDir)
-                // before the core parses the config, so GEOIP/GEOSITE rules
-                // resolve without an at-startup download (which fails behind a
-                // firewall and would stop the core from starting).
-                GeoAssets.stage(this)
-                val ok = AndroidMihomoEngine.startCoreOnly(config, filesDir.absolutePath)
+                val ok = AndroidSingBoxEngine.startCoreOnly(this, config)
                 if (!ok) {
-                    AndroidCoreStatus.emit("error", "core", AndroidMihomoEngine.lastError())
+                    AndroidCoreStatus.emit("error", "core", AndroidSingBoxEngine.lastError())
                     stopCore(emitStopped = false)
                     return START_NOT_STICKY
                 }
@@ -111,7 +106,7 @@ class LitchiCoreService : Service() {
         if (stopHandled) return
         stopHandled = true
         unregisterNetworkCallback()
-        AndroidMihomoEngine.stop()
+        AndroidSingBoxEngine.stop()
         currentConfig = ""
         controllerPort = DEFAULT_CONTROLLER_PORT
         controllerSecret = ""
@@ -127,7 +122,7 @@ class LitchiCoreService : Service() {
     }
 
     private fun updateSystemDns() {
-        AndroidMihomoEngine.updateDns(this)
+        // libbox receives DNS changes through its platform interface.
     }
 
     private fun registerNetworkCallback() {

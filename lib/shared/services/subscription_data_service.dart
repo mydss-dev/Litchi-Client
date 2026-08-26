@@ -8,14 +8,10 @@ class SubscriptionNodesResult {
   const SubscriptionNodesResult({
     this.nodes = const [],
     this.traffic,
-    this.rules = const [],
-    this.ruleProviders = const {},
   });
 
   final List<NodeModel> nodes;
   final TrafficModel? traffic;
-  final List<String> rules;
-  final Map<String, dynamic> ruleProviders;
 }
 
 class SubscriptionDataService {
@@ -30,8 +26,6 @@ class SubscriptionDataService {
     return SubscriptionNodesResult(
       nodes: result.nodes.map(ModelMappers.toNode).toList(),
       traffic: trafficFromSubTraffic(result.traffic),
-      rules: result.rules,
-      ruleProviders: result.ruleProviders,
     );
   }
 

@@ -148,12 +148,7 @@ class RemoteNode {
   final String server; // hostname / IP
   final int port; // TCP port (0 = unknown)
 
-  /// Original proxy URI (vmess://, vless://, trojan://, ss://, hy2://).
-  /// Empty for nodes parsed from Clash YAML without URI reconstruction.
-  final String rawUri;
-
-  /// Original Clash proxy object for YAML subscriptions. This preserves the
-  /// protocol-specific fields from a native Clash subscription entry.
+  /// Native sing-box proxy outbound returned by the panel.
   final Map<String, dynamic>? rawOutbound;
 
   const RemoteNode({
@@ -162,7 +157,6 @@ class RemoteNode {
     required this.rate,
     this.server = '',
     this.port = 0,
-    this.rawUri = '',
     this.rawOutbound,
   });
 
@@ -659,29 +653,18 @@ class SubTraffic {
 class SubscriptionResult {
   final List<RemoteNode> nodes;
   final SubTraffic? traffic; // null if header absent
-  final List<String> rules;
-  final Map<String, dynamic>
-  ruleProviders; // rule-provider name → {type, url, …}
 
   const SubscriptionResult({
     required this.nodes,
     this.traffic,
-    this.rules = const [],
-    this.ruleProviders = const {},
   });
 }
 
-/// Full profile parsed from a subscription (Clash YAML or URI list).
+/// Full profile parsed from a native sing-box JSON subscription.
 class ParsedSubscriptionProfile {
-  const ParsedSubscriptionProfile({
-    required this.nodes,
-    this.rules = const [],
-    this.ruleProviders = const {},
-  });
+  const ParsedSubscriptionProfile({required this.nodes});
 
   final List<RemoteNode> nodes;
-  final List<String> rules;
-  final Map<String, dynamic> ruleProviders;
 }
 
 class RemotePaymentMethod {

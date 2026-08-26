@@ -15,7 +15,10 @@ abstract final class UpdateService {
   /// currently running one, or null when disabled / already up-to-date.
   static Future<UpdateInfo?> check() async {
     if (!AppConfig.updatesEnabled) return null;
-    final manifestUrl = AppConfig.updateManifestUrl.trim();
+    final manifestUrl = resolveManifestUrl(
+      declaredUrl: AppConfig.updateManifestUrl,
+      configUrl: RemoteConfigService.configUrl,
+    );
     if (manifestUrl.isNotEmpty) {
       final manifest = await RemoteConfigService.fetchTrustedPayload(
         manifestUrl,
@@ -30,6 +33,20 @@ abstract final class UpdateService {
       expectedHash: AppConfig.updateSha256,
       changelog: AppConfig.updateChangelog,
     );
+  }
+
+  @visibleForTesting
+  static String resolveManifestUrl({
+    required String declaredUrl,
+    required String configUrl,
+  }) {
+    final declared = declaredUrl.trim();
+    if (declared.isNotEmpty) return declared;
+    final source = Uri.tryParse(configUrl.trim());
+    if (source == null || source.scheme != 'https' || !source.hasAuthority) {
+      return '';
+    }
+    return source.resolve('update.json').toString();
   }
 
   static UpdateInfo? _fromManifest(Map<String, dynamic> manifest) {

@@ -38,8 +38,6 @@ class DataSnapshot {
   int? aliveIp;
   int? deviceLimit;
   int? resetDay;
-  List<String>? rules;
-  Map<String, dynamic>? ruleProviders;
   int? expiredAt;
 
   /// Non-null when a critical load (user info) failed.
@@ -198,10 +196,6 @@ class DataLoader {
       final result = await _api.fetchSubscription(url);
       if (result.nodes.isNotEmpty) {
         snap.nodes = result.nodes.map(ModelMappers.toNode).toList();
-      }
-      if (result.rules.isNotEmpty) snap.rules = result.rules;
-      if (result.ruleProviders.isNotEmpty) {
-        snap.ruleProviders = result.ruleProviders;
       }
       final st = result.traffic;
       if (st != null && st.total > 0) {

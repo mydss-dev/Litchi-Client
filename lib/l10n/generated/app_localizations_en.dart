@@ -1072,7 +1072,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get missingCoreError =>
-      'Connection failed. The mihomo core is missing.';
+      'Connection failed. The sing-box core is missing.';
 
   @override
   String get permissionDeniedError =>

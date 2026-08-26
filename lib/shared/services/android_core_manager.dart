@@ -60,7 +60,7 @@ class AndroidCoreManager {
     }
   }
 
-  /// Starts the mihomo core without VPN — no permission prompt, no TUN.
+  /// Starts sing-box without VPN — no permission prompt and no TUN.
   /// Used for latency tests, node switching, and mode changes before
   /// the user explicitly connects.
   Future<bool> startCoreOnly(String configJson) async {

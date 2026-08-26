@@ -14,43 +14,20 @@ import '../shared/services/secure_logger.dart';
 /// Only this file needs to be edited when changing the OSS config URL or
 /// installing the Ed25519 public key used to verify signed remote config.
 abstract final class RemoteConfigService {
+  // Self-hosted setup: only edit these two values. Everything else is read
+  // from the signed JSON stored at [configUrl].
+  static const configUrl = '';
+  static const publicKeyBase64Url = '';
+
   // ── Editable settings ─────────────────────────────────────────────────────
 
-  /// HTTPS config URL compiled into this tenant's package.
-  ///
-  /// Deliberately empty by default: every tenant must provide its own endpoint.
-  static const configUrl = String.fromEnvironment(
-    'REMOTE_CONFIG_URL',
-    defaultValue: '',
-  );
-
-  /// Ed25519 public key, encoded with base64url without padding.
+  /// [publicKeyBase64Url] is an Ed25519 public key encoded with base64url
+  /// without padding.
   ///
   /// Generate once with:
   ///   dart run tool/sign_remote_config.dart generate
   ///
-  /// Supply this through `REMOTE_CONFIG_PUBLIC_KEY`. Keep the private key
-  /// offline. There is deliberately no shared default trust anchor.
-  static const publicKeyBase64Url = String.fromEnvironment(
-    'REMOTE_CONFIG_PUBLIC_KEY',
-    defaultValue: '',
-  );
-
-  /// Fallback key for key-rotation scenarios.  When the primary key is
-  /// compromised and must be replaced, follow this procedure:
-  ///
-  /// 1. Generate a new key pair; set the new public key as
-  ///    [fallbackPublicKeyBase64Url] and ship a client update.
-  /// 2. After enough clients have updated, switch the bot to the new key
-  ///    and move the new public key to [publicKeyBase64Url] in the next
-  ///    client release.
-  /// 3. Clear [fallbackPublicKeyBase64Url] once the old key is fully retired.
-  ///
-  /// An empty value disables the fallback.
-  static const fallbackPublicKeyBase64Url = String.fromEnvironment(
-    'REMOTE_CONFIG_FALLBACK_PUBLIC_KEY',
-    defaultValue: '',
-  );
+  /// Keep the private key offline. Never put it in the client repository.
 
   // ── Internal settings ─────────────────────────────────────────────────────
 
@@ -81,7 +58,7 @@ abstract final class RemoteConfigService {
   static Future<void> initialize(SharedPreferences prefs) async {
     if (!isConfigured) {
       SecureLogger.warn(
-        'Remote config disabled: tenant HTTPS URL or Ed25519 key is missing',
+        'Remote config disabled: OSS HTTPS URL or Ed25519 key is missing',
       );
       return;
     }
@@ -180,7 +157,7 @@ abstract final class RemoteConfigService {
     }
   }
 
-  /// Fetches and verifies another signed JSON payload with the tenant's
+  /// Fetches and verifies another signed JSON payload with the configured
   /// compiled trust key. Used by the independently published update manifest.
   static Future<Map<String, dynamic>?> fetchTrustedPayload(String url) async {
     if (!isConfigured) return null;
@@ -237,20 +214,12 @@ abstract final class RemoteConfigService {
       final payloadBytes = _base64UrlDecode(payloadB64);
       final signatureBytes = _base64UrlDecode(signatureB64);
 
-      final algorithm = Ed25519();
-      final keys = [
+      final publicKey = SimplePublicKey(
         _base64UrlDecode(publicKeyBase64Url),
-        if (fallbackPublicKeyBase64Url.isNotEmpty)
-          _base64UrlDecode(fallbackPublicKeyBase64Url),
-      ];
-
-      var ok = false;
-      for (final keyBytes in keys) {
-        final publicKey = SimplePublicKey(keyBytes, type: KeyPairType.ed25519);
-        final signature = Signature(signatureBytes, publicKey: publicKey);
-        ok = await algorithm.verify(payloadBytes, signature: signature);
-        if (ok) break;
-      }
+        type: KeyPairType.ed25519,
+      );
+      final signature = Signature(signatureBytes, publicKey: publicKey);
+      final ok = await Ed25519().verify(payloadBytes, signature: signature);
       if (!ok) return null;
 
       final payload = jsonDecode(utf8.decode(payloadBytes));

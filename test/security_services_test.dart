@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/config/app_config.dart';
 import 'package:litchi_client/shared/models/api_models.dart';
@@ -74,37 +76,22 @@ void main() {
     expect(SubscriptionParser.parse(body), isEmpty);
   });
 
-  test('caps parsed uri list size', () {
-    final lines = List.filled(
+  test('caps native sing-box outbound list size', () {
+    final outbounds = List.generate(
       SubscriptionParser.maxNodes + 5,
-      'trojan://password@example.com:443#node',
-    ).join('\n');
+      (index) => {
+        'type': 'trojan',
+        'tag': 'node-$index',
+        'server': 'example.com',
+        'server_port': 443,
+        'password': 'secret',
+      },
+    );
 
     expect(
-      SubscriptionParser.parse(lines),
+      SubscriptionParser.parse(jsonEncode({'outbounds': outbounds})),
       hasLength(SubscriptionParser.maxNodes),
     );
-  });
-
-  test('skips unsupported uri protocols instead of showing dead nodes', () {
-    final nodes = SubscriptionParser.parse(
-      'shadowtls://password@example.com:443#unsupported\n'
-      'VLESS://uuid@example.com:443?security=tls#ok',
-    );
-
-    expect(nodes, hasLength(1));
-    expect(nodes.single.name, 'ok');
-    expect(nodes.single.rawUri.toLowerCase(), startsWith('vless://'));
-  });
-
-  test('parses IPv6 host and case-insensitive schemes', () {
-    final nodes = SubscriptionParser.parse(
-      'Trojan://password@[2001:db8::1]:443#ipv6',
-    );
-
-    expect(nodes, hasLength(1));
-    expect(nodes.single.server, '2001:db8::1');
-    expect(nodes.single.port, 443);
   });
 
   test('maps subscription traffic header into app traffic model', () {

@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../tool/apply_branding.dart' show sanitizeWindowsExecutableBaseName;
 
 void main() {
-  test('keeps valid Unicode white-label executable names', () {
+  test('keeps valid Unicode executable names', () {
     expect(sanitizeWindowsExecutableBaseName('荔枝 VPN'), '荔枝 VPN');
   });
 

@@ -2052,7 +2052,7 @@ abstract class AppLocalizations {
   /// No description provided for @missingCoreError.
   ///
   /// In en, this message translates to:
-  /// **'Connection failed. The mihomo core is missing.'**
+  /// **'Connection failed. The sing-box core is missing.'**
   String get missingCoreError;
 
   /// No description provided for @permissionDeniedError.

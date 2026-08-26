@@ -100,7 +100,7 @@ class NodeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Applies a single result by index (Clash API streaming path).
+  /// Applies a single result by index during controller delay testing.
   void applyLatencyAt(int index, NodeModel updated) {
     if (index < 0 || index >= _nodes.length) return;
     final list = List<NodeModel>.from(_nodes);

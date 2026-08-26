@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -7,12 +6,13 @@ import 'package:flutter/foundation.dart';
 import '../config/app_identity.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/android_core_manager.dart';
-import '../shared/services/core_manager.dart';
+import '../shared/services/core_state.dart';
 import '../shared/services/local_port_allocator.dart';
 import '../shared/services/macos_tun_kill_switch.dart';
 import '../shared/services/proxy_setter.dart';
-import '../shared/services/mihomo_api_client.dart';
-import '../shared/services/mihomo_config.dart';
+import '../shared/services/clash_api_client.dart';
+import '../shared/services/sing_box_config.dart';
+import '../shared/services/sing_box_core_manager.dart';
 import '../shared/services/mixed_proxy_port_verifier.dart';
 import '../shared/services/secure_logger.dart';
 import '../shared/services/tun_interface_verifier.dart';
@@ -29,7 +29,7 @@ enum ConnectionStatus {
 }
 
 class CoreController extends ChangeNotifier {
-  final CoreManager _core = CoreManager();
+  final SingBoxCoreManager _core = SingBoxCoreManager();
   final AndroidCoreManager _androidCore = AndroidCoreManager();
   StreamSubscription<CoreState>? _sub;
   StreamSubscription<String>? _logSub;
@@ -38,7 +38,7 @@ class CoreController extends ChangeNotifier {
   DateTime? _connectedAt;
   ConnectionStatus _status = ConnectionStatus.disconnected;
   String _coreError = '';
-  int _apiPort = MihomoConfig.defaultApiPort;
+  int _apiPort = SingBoxConfig.defaultApiPort;
   int _activeProxyPort = 7890;
   NetworkMode _activeNetworkMode = NetworkMode.system;
   Set<String> _activeTunInterfaces = const {};
@@ -111,7 +111,6 @@ class CoreController extends ChangeNotifier {
       );
       await _androidCore.init();
       _apiPort = _androidCore.controllerPort;
-      MihomoConfig.restoreApiSecret(_androidCore.controllerSecret);
       if (_androidCore.isVpnRunning) {
         _status = ConnectionStatus.connected;
         _connectedAt = DateTime.now();
@@ -122,11 +121,11 @@ class CoreController extends ChangeNotifier {
       }
       return;
     }
-    if (!Platform.isWindows && !Platform.isMacOS) return;
+    if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) return;
     if (_sub != null || _logSub != null) return;
 
     if (!_core.isRunning) {
-      await CoreManager.cleanupOnStartup();
+      await SingBoxCoreManager.cleanupOnStartup();
       await ProxySetter.disableIfStale();
     }
 
@@ -160,7 +159,7 @@ class CoreController extends ChangeNotifier {
       _androidStatusSub = null;
       return;
     }
-    if (!Platform.isWindows && !Platform.isMacOS) return;
+    if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) return;
     await _releaseTunKillSwitch();
     _stopTrafficMonitor();
     await _androidStatusSub?.cancel();
@@ -179,7 +178,7 @@ class CoreController extends ChangeNotifier {
     }
     if (_core.isRunning) {
       await _core.stop();
-      MihomoApiClient.resetClient();
+      ClashApiClient.resetClient();
     }
     _core.dispose();
   }
@@ -190,14 +189,12 @@ class CoreController extends ChangeNotifier {
       if (req.validNodes.isEmpty) return;
 
       _apiPort = await _allocateApiPort();
-      final config = req.buildConfig(
+      final config = req.buildSingBoxConfig(
         overrideNetworkMode: NetworkMode.system,
         apiPort: _apiPort,
       );
       if (config == null) return;
-      (config['tun'] as Map<String, dynamic>)['enable'] = false;
-
-      final configJson = MihomoConfig.encodeConfig(config);
+      final configJson = SingBoxConfig.encodeConfig(config);
       final ok = await _androidCore.startCoreOnly(configJson);
       if (ok) {
         final ready = await _waitForController();
@@ -219,7 +216,7 @@ class CoreController extends ChangeNotifier {
     _activeProxyPort = await LocalPortAllocator.choose(
       preferred: req.proxyPort,
     );
-    final config = req.buildConfig(
+    final config = req.buildSingBoxConfig(
       overrideNetworkMode: NetworkMode.system,
       overrideProxyPort: _activeProxyPort,
       apiPort: _apiPort,
@@ -227,7 +224,7 @@ class CoreController extends ChangeNotifier {
     if (config == null) return;
 
     try {
-      final configPath = await MihomoConfig.writeConfig(config);
+      final configPath = await SingBoxConfig.writeConfig(config);
       await _core.start(configPath, apiPort: _apiPort);
       if (_core.isRunning) {
         await _applyInitialSelection(req);
@@ -252,18 +249,21 @@ class CoreController extends ChangeNotifier {
       }
 
       // Core is running — reload config via API to avoid full restart.
-      final vpnConfig = req.buildConfig(
+      final vpnConfig = req.buildSingBoxConfig(
         overrideNetworkMode: NetworkMode.tun,
         apiPort: _apiPort,
       );
       if (vpnConfig == null) return null;
 
       // Core-only config: same as VPN but with TUN disabled.
-      final coreConfig = Map<String, dynamic>.from(vpnConfig);
-      coreConfig['tun'] = {'enable': false};
+      final coreConfig = req.buildSingBoxConfig(
+        overrideNetworkMode: NetworkMode.system,
+        apiPort: _apiPort,
+      );
+      if (coreConfig == null) return null;
 
       final ok = await _androidCore.reloadConfig(
-        MihomoConfig.encodeConfig(coreConfig),
+        SingBoxConfig.encodeConfig(coreConfig),
       );
       if (!ok) {
         _coreError = CoreErrorMessageService.androidStartFailure(
@@ -277,7 +277,7 @@ class CoreController extends ChangeNotifier {
       if (wasVpnConnected) {
         await _androidCore.stopVpn();
         final vpnOk = await _androidCore.startVpn(
-          MihomoConfig.encodeConfig(vpnConfig),
+          SingBoxConfig.encodeConfig(vpnConfig),
         );
         if (!vpnOk) {
           _coreError = CoreErrorMessageService.androidStartFailure(
@@ -311,7 +311,7 @@ class CoreController extends ChangeNotifier {
       // intentional: best-effort cleanup during stop, failure is safe to ignore
     }
     await _core.stop();
-    MihomoApiClient.resetClient();
+    ClashApiClient.resetClient();
     _connectedAt = null;
     _coreError = '';
     _status = ConnectionStatus.disconnected;
@@ -342,7 +342,7 @@ class CoreController extends ChangeNotifier {
       await ProxySetter.disable();
       if (req.networkMode == NetworkMode.tun) {
         await _core.stop();
-        MihomoApiClient.resetClient();
+        ClashApiClient.resetClient();
         await _releaseTunKillSwitch();
       }
       _connectedAt = null;
@@ -367,8 +367,9 @@ class CoreController extends ChangeNotifier {
       _coreError = '';
       notifyListeners();
       try {
-        final switched = await MihomoApiClient.switchProxy(
-          req.selectedTag,
+        final switched = await ClashApiClient.switchProxy(
+          req.selectedSingBoxTag,
+          group: SingBoxConfig.selectorTag,
           apiPort: _apiPort,
         );
         if (!switched) throw StateError('switch proxy failed');
@@ -377,7 +378,7 @@ class CoreController extends ChangeNotifier {
         )) {
           await ProxySetter.disable();
           await _core.stop();
-          MihomoApiClient.resetClient();
+          ClashApiClient.resetClient();
           _coreError = CoreErrorMessageService.proxyPortUnavailable;
           _status = ConnectionStatus.error;
           notifyListeners();
@@ -409,7 +410,7 @@ class CoreController extends ChangeNotifier {
         '本次自动切换到 $_activeProxyPort',
       );
     }
-    final config = req.buildConfig(
+    final config = req.buildSingBoxConfig(
       overrideProxyPort: _activeProxyPort,
       apiPort: _apiPort,
     );
@@ -431,7 +432,7 @@ class CoreController extends ChangeNotifier {
               matchPrefix: true,
             )
           : const <String>{};
-      final configPath = await MihomoConfig.writeConfig(config);
+      final configPath = await SingBoxConfig.writeConfig(config);
       await _core.start(
         configPath,
         apiPort: _apiPort,
@@ -446,7 +447,7 @@ class CoreController extends ChangeNotifier {
             )) {
           _coreError = CoreErrorMessageService.proxyPortUnavailable;
           await _core.stop();
-          MihomoApiClient.resetClient();
+          ClashApiClient.resetClient();
           _status = ConnectionStatus.error;
           return _coreError;
         }
@@ -461,7 +462,7 @@ class CoreController extends ChangeNotifier {
           if (!tunReady) {
             _coreError = CoreErrorMessageService.tunInterfaceUnavailable;
             await _core.stop();
-            MihomoApiClient.resetClient();
+            ClashApiClient.resetClient();
             await _releaseTunKillSwitch();
             _status = ConnectionStatus.error;
             return _coreError;
@@ -480,7 +481,7 @@ class CoreController extends ChangeNotifier {
             if (!protected) {
               _coreError = CoreErrorMessageService.tunKillSwitchUnavailable;
               await _core.stop();
-              MihomoApiClient.resetClient();
+              ClashApiClient.resetClient();
               await _releaseTunKillSwitch();
               _status = ConnectionStatus.error;
               return _coreError;
@@ -535,7 +536,7 @@ class CoreController extends ChangeNotifier {
     if (!_androidCore.isCoreRunning) {
       _apiPort = await _allocateApiPort();
     }
-    final config = req.buildConfig(
+    final config = req.buildSingBoxConfig(
       overrideNetworkMode: NetworkMode.tun,
       apiPort: _apiPort,
     );
@@ -553,10 +554,13 @@ class CoreController extends ChangeNotifier {
     try {
       // Step 1: start (or reuse) core-only so external-controller is up.
       if (!_androidCore.isCoreRunning) {
-        final coreConfig = Map<String, dynamic>.from(config);
-        coreConfig['tun'] = {'enable': false};
+        final coreConfig = req.buildSingBoxConfig(
+          overrideNetworkMode: NetworkMode.system,
+          apiPort: _apiPort,
+        );
+        if (coreConfig == null) return CoreErrorMessageService.configBuildFailed;
         final coreOk = await _androidCore.startCoreOnly(
-          MihomoConfig.encodeConfig(coreConfig),
+          SingBoxConfig.encodeConfig(coreConfig),
         );
         if (!coreOk) {
           _coreError = CoreErrorMessageService.androidStartFailure(
@@ -577,7 +581,7 @@ class CoreController extends ChangeNotifier {
       }
 
       // Step 2: start VPN layer on top.
-      final configJson = MihomoConfig.encodeConfig(config);
+      final configJson = SingBoxConfig.encodeConfig(config);
       final ok = await _androidCore.startVpn(configJson);
       if (ok) {
         _connectedAt = DateTime.now();
@@ -618,7 +622,7 @@ class CoreController extends ChangeNotifier {
     }
     if (_core.isRunning) {
       await _core.stop();
-      MihomoApiClient.resetClient();
+      ClashApiClient.resetClient();
     }
     await ProxySetter.disable();
     _connectedAt = null;
@@ -627,10 +631,12 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<bool> switchNode(NodeModel node) async {
-    final tag = MihomoConfig.nodeTagFor(node);
-    final changed = Platform.isAndroid
-        ? await _androidCore.switchProxy(MihomoConfig.selectorTag, tag)
-        : await MihomoApiClient.switchProxy(tag, apiPort: _apiPort);
+    final tag = SingBoxConfig.nodeTagFor(node);
+    final changed = await ClashApiClient.switchProxy(
+      tag,
+      group: SingBoxConfig.selectorTag,
+      apiPort: _apiPort,
+    );
     if (changed) {
       await _closeConnections();
     }
@@ -638,15 +644,11 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<bool> switchToAuto() async {
-    final changed = Platform.isAndroid
-        ? await _androidCore.switchProxy(
-            MihomoConfig.selectorTag,
-            MihomoConfig.autoSelectTag,
-          )
-        : await MihomoApiClient.switchProxy(
-            MihomoConfig.autoSelectTag,
-            apiPort: _apiPort,
-          );
+    final changed = await ClashApiClient.switchProxy(
+      SingBoxConfig.autoSelectTag,
+      group: SingBoxConfig.selectorTag,
+      apiPort: _apiPort,
+    );
     if (changed) {
       await _closeConnections();
     }
@@ -654,30 +656,16 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<bool> _closeConnections() {
-    if (Platform.isAndroid) {
-      return _androidCore.closeConnections();
-    }
-    return MihomoApiClient.closeConnections(apiPort: _apiPort);
+    return ClashApiClient.closeConnections(apiPort: _apiPort);
   }
 
   Future<bool> setMode(ProxyMode proxyMode) async {
     if (!coreProcessRunning) return true;
     bool changed;
-    if (Platform.isAndroid) {
-      changed = await _androidCore.setMode(proxyMode.clashValue);
-      if (!changed) return false;
-      if (proxyMode == ProxyMode.global) {
-        changed = await _androidCore.switchProxy(
-          MihomoConfig.globalTag,
-          MihomoConfig.selectorTag,
-        );
-      }
-    } else {
-      changed = await MihomoApiClient.setMode(
-        proxyMode.clashValue,
-        apiPort: _apiPort,
-      );
-    }
+    changed = await ClashApiClient.setMode(
+      proxyMode.controllerValue,
+      apiPort: _apiPort,
+    );
     if (changed) {
       await _closeConnections();
     }
@@ -698,41 +686,15 @@ class CoreController extends ChangeNotifier {
 
   static Future<String> getCoreVersion() async {
     if (Platform.isAndroid) return AndroidCoreManager().version();
-    if (!Platform.isWindows && !Platform.isMacOS) return '当前平台暂未接入核心';
-    final exe = CoreManager.findExecutable();
-    if (exe == null) return '未找到 mihomo 核心';
-    Process? process;
-    try {
-      process = await Process.start(exe, [
-        'version',
-      ], mode: ProcessStartMode.normal);
-      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
-      final stderrFuture = process.stderr.transform(utf8.decoder).join();
-      await process.exitCode.timeout(const Duration(seconds: 3));
-      final out = (await stdoutFuture).trim();
-      await stderrFuture;
-      final m = RegExp(
-        r'(?:Mihomo Meta|mihomo) ([\d.]+\S*)',
-        caseSensitive: false,
-      ).firstMatch(out);
-      return m?.group(1) ?? out.split('\n').first.trim();
-    } on TimeoutException {
-      process?.kill();
-      try {
-        await process?.exitCode.timeout(const Duration(seconds: 1));
-      } catch (_) {
-        // Best-effort process reap; the initial kill normally completes.
-      }
-      return '获取超时';
-    } catch (e) {
-      SecureLogger.debug('detectCoreVersion: version parse failed', e);
-      return '获取失败';
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      return SingBoxCoreManager().version();
     }
+    return '当前平台暂未接入核心';
   }
 
   void _startTrafficMonitor() {
     _stopTrafficMonitor();
-    _trafficSub = MihomoApiClient.trafficStream(apiPort: _apiPort).listen((t) {
+    _trafficSub = ClashApiClient.trafficStream(apiPort: _apiPort).listen((t) {
       downBpsNotifier.value = t.downBps;
       upBpsNotifier.value = t.upBps;
     });
@@ -761,40 +723,37 @@ class CoreController extends ChangeNotifier {
 
     for (var i = 0; i < nodes.length; i++) {
       final node = nodes[i];
-      final ms = history[MihomoConfig.nodeTagFor(node)] ?? 9999;
+      final tag = SingBoxConfig.nodeTagFor(node);
+      final ms = history[tag] ?? 9999;
       onResult(i, node.copyWith(latency: ms));
     }
   }
 
   Future<Map<String, int>> _runGroupTest() async {
     try {
-      return await MihomoApiClient.testGroup(apiPort: _apiPort);
+      return await ClashApiClient.testGroup(
+        group: SingBoxConfig.selectorTag,
+        apiPort: _apiPort,
+      );
     } finally {
       _groupTestInFlight = null;
     }
   }
 
   Future<void> _applyInitialSelection(CoreConnectionRequest req) async {
-    if (Platform.isAndroid) {
-      await _androidCore.switchProxy(MihomoConfig.selectorTag, req.selectedTag);
-      if (req.proxyMode == ProxyMode.global) {
-        await _androidCore.setMode('global');
-        await _androidCore.switchProxy(
-          MihomoConfig.globalTag,
-          MihomoConfig.selectorTag,
-        );
-      }
-      return;
-    }
-    await MihomoApiClient.switchProxy(req.selectedTag, apiPort: _apiPort);
+    await ClashApiClient.switchProxy(
+      req.selectedSingBoxTag,
+      group: SingBoxConfig.selectorTag,
+      apiPort: _apiPort,
+    );
     if (req.proxyMode == ProxyMode.global) {
-      await MihomoApiClient.setMode('global', apiPort: _apiPort);
+      await ClashApiClient.setMode('global', apiPort: _apiPort);
     }
   }
 
   Future<bool> _waitForController() async {
     for (var i = 0; i < 30; i++) {
-      if (await MihomoApiClient.isReady(apiPort: _apiPort)) return true;
+      if (await ClashApiClient.isReady(apiPort: _apiPort)) return true;
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
     return false;
@@ -835,7 +794,7 @@ class CoreController extends ChangeNotifier {
       return socket.port;
     } catch (e) {
       SecureLogger.debug('_allocatePort: bind failed, using default', e);
-      return MihomoConfig.defaultApiPort;
+      return SingBoxConfig.defaultApiPort;
     } finally {
       await socket?.close();
     }
@@ -853,7 +812,7 @@ class CoreController extends ChangeNotifier {
       // traffic would otherwise fall back to the physical link with the user
       // believing they were still protected.
       final wasConnected = _status == ConnectionStatus.connected;
-      MihomoApiClient.resetClient();
+      ClashApiClient.resetClient();
       _stopTrafficMonitor();
       _connectedAt = null;
       if (state == CoreState.error && _core.lastError.isNotEmpty) {

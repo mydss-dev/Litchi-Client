@@ -39,15 +39,15 @@ DWORD AddFilter(HANDLE engine,
 
 DWORD AddLayerFilters(HANDLE engine,
                       const GUID& layer,
-                      FWP_BYTE_BLOB* mihomo_app_id,
+                      FWP_BYTE_BLOB* app_id,
                       UINT64 interface_luid) {
   FWPM_FILTER_CONDITION0 app_condition{};
   app_condition.fieldKey = FWPM_CONDITION_ALE_APP_ID;
   app_condition.matchType = FWP_MATCH_EQUAL;
   app_condition.conditionValue.type = FWP_BYTE_BLOB_TYPE;
-  app_condition.conditionValue.byteBlob = mihomo_app_id;
+  app_condition.conditionValue.byteBlob = app_id;
   DWORD result =
-      AddFilter(engine, layer, L"Client permit mihomo", FWP_ACTION_PERMIT, 15,
+      AddFilter(engine, layer, L"Client permit embedded sing-box", FWP_ACTION_PERMIT, 15,
                 &app_condition, 1);
   if (result != ERROR_SUCCESS) {
     return result;
@@ -86,7 +86,7 @@ WfpKillSwitch::~WfpKillSwitch() {
   Disengage();
 }
 
-bool WfpKillSwitch::Engage(const std::wstring& mihomo_path,
+bool WfpKillSwitch::Engage(const std::wstring& app_path,
                            const std::wstring& interface_alias,
                            std::string* error) {
   if (IsEngaged()) {
@@ -94,9 +94,9 @@ bool WfpKillSwitch::Engage(const std::wstring& mihomo_path,
     // session so the permit rule always targets the current TUN instance.
     Disengage();
   }
-  if (mihomo_path.empty() || interface_alias.empty()) {
+  if (app_path.empty() || interface_alias.empty()) {
     if (error) {
-      *error = "mihomo path and TUN interface are required";
+      *error = "application path and TUN interface are required";
     }
     return false;
   }
@@ -112,7 +112,7 @@ bool WfpKillSwitch::Engage(const std::wstring& mihomo_path,
   }
 
   FWP_BYTE_BLOB* app_id = nullptr;
-  result = FwpmGetAppIdFromFileName0(mihomo_path.c_str(), &app_id);
+  result = FwpmGetAppIdFromFileName0(app_path.c_str(), &app_id);
   if (result != ERROR_SUCCESS) {
     if (error) {
       *error = ErrorMessage("FwpmGetAppIdFromFileName0", result);

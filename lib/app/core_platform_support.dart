@@ -6,22 +6,25 @@ abstract final class CorePlatformSupport {
   static bool get isAndroid => Platform.isAndroid;
   static bool get isWindows => Platform.isWindows;
   static bool get isMacOS => Platform.isMacOS;
+  static bool get isLinux => Platform.isLinux;
 
-  /// Desktop platforms that manage a bundled mihomo subprocess + system proxy.
-  static bool get isDesktop => isWindows || isMacOS;
+  /// Desktop platforms that load the bundled sing-box dynamic library.
+  static bool get isDesktop => isWindows || isMacOS || isLinux;
 
   static bool get supportsCurrentPlatform => supportsPlatform(
     isWindows: isWindows,
     isMacOS: isMacOS,
     isAndroid: isAndroid,
+    isLinux: isLinux,
   );
 
   static bool supportsPlatform({
     required bool isWindows,
     required bool isMacOS,
     required bool isAndroid,
+    bool isLinux = false,
   }) {
-    return isWindows || isMacOS || isAndroid;
+    return isWindows || isMacOS || isAndroid || isLinux;
   }
 
   static bool processRunningFor({
@@ -37,8 +40,11 @@ abstract final class CorePlatformSupport {
     required bool isWindows,
     required bool isMacOS,
     required bool isAndroid,
+    bool isLinux = false,
   }) {
     if (isAndroid) return NetworkMode.tun;
+    // Linux system-proxy integration is not implemented; TUN is functional.
+    if (isLinux) return NetworkMode.tun;
     return requested;
   }
 
@@ -48,6 +54,7 @@ abstract final class CorePlatformSupport {
         isWindows: isWindows,
         isMacOS: isMacOS,
         isAndroid: isAndroid,
+        isLinux: isLinux,
       );
 
   static bool supportsNetworkMode(NetworkMode mode) =>

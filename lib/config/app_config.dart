@@ -4,16 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'panel_backend.dart';
 
-/// All configurable values — compile-time defaults from dart-define that can be
-/// overridden at runtime by the Ed25519-signed OSS remote config.
-///
-/// Build a white-label version:
-///   flutter build windows --release
-///     --dart-define=APP_NAME="MyVPN"
-///     --dart-define=LOGO_URL="https://oss.example.com/logo.png"
-///     --dart-define=API_BASE="https://your-panel.com"
-///     --dart-define=REMOTE_CONFIG_URL="https://oss.example.com/config.json"
-///     --dart-define=REMOTE_CONFIG_PUBLIC_KEY="tenant-ed25519-public-key"
+/// Runtime values populated from the Ed25519-signed OSS configuration.
 
 abstract final class AppConfig {
   /// Increments after a trusted remote config changes effective runtime values.
