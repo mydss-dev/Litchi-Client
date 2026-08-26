@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -22,6 +23,7 @@ import '../l10n/l10n.dart';
 import 'nav_destinations.dart';
 import '../shared/models/app_models.dart';
 import '../shared/responsive/layout_scope.dart';
+import '../shared/services/secure_logger.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
@@ -72,6 +74,10 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const MethodChannel _windowsProcessChannel = MethodChannel(
     'litchi/windows_process',
   );
+  // macOS Cmd+Q / Dock > Quit is intercepted in AppDelegate.swift and routed
+  // here so `_quit()` can shut the core down and restore the system proxy
+  // before the process exits (see macos/Runner/AppDelegate.swift).
+  static const MethodChannel _macQuitChannel = MethodChannel('litchi/quit');
   // Compact card-sized window for the logged-out (auth) screens; the full app
   // window once authenticated. Each auth screen gets a fixed height that hugs
   // its content, applied in didChangeDependencies the moment the screen changes
@@ -81,6 +87,8 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const Size _appWindowSize = Size(420, 760);
   bool _maximized = false;
   bool _trayActive = false;
+  bool _trayReady = false;
+  bool? _trayIconsPresent;
   bool _trayListenerAttached = false;
   bool _quitting = false;
   Future<void> _trayOperationTail = Future<void>.value();
@@ -113,6 +121,13 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       windowManager.addListener(this);
       unawaited(windowManager.setPreventClose(true));
       _sync();
+    }
+    if (Platform.isMacOS) {
+      // Cmd+Q / Dock > Quit arrives here via AppDelegate.swift. Run the same
+      // cleanup path as the tray Quit item so the proxy is restored before exit.
+      _macQuitChannel.setMethodCallHandler((call) async {
+        if (call.method == 'quit') await _quit();
+      });
     }
   }
 
@@ -166,6 +181,9 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   void dispose() {
     if (_isDesktop) {
       windowManager.removeListener(this);
+    }
+    if (Platform.isMacOS) {
+      _macQuitChannel.setMethodCallHandler(null);
     }
     if (_trayActive) {
       _trayActive = false;
@@ -305,7 +323,10 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   Future<void> _initTray() => _enqueueTrayOperation(() async {
     if (!_isDesktop || !_trayActive || _quitting) return;
     await _updateTrayIcon();
-    if (!_trayActive || _quitting) {
+    if (!_trayReady || !_trayActive || _quitting) {
+      // No usable icon → degrade to "no tray" so onWindowClose quits instead of
+      // hiding the window behind a tray icon that will never appear.
+      _trayActive = false;
       await trayManager.destroy();
       return;
     }
@@ -328,7 +349,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   Future<void> _syncTrayState() => _enqueueTrayOperation(() async {
     if (!_isDesktop || !_trayActive || _quitting) return;
     await _updateTrayIcon();
-    if (!_trayActive || _quitting) return;
+    if (!_trayReady || !_trayActive || _quitting) return;
     await _updateTrayTooltip();
     if (!_trayActive || _quitting) return;
     await _updateTrayMenu();
@@ -337,15 +358,53 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   Future<void> _updateTrayIcon() async {
     if (!_isDesktop) return;
     final connected = _ctrl?.connectionStatus == ConnectionStatus.connected;
-    await trayManager.setIcon(
-      Platform.isWindows
-          ? connected
-                ? 'assets/images/tray_icon.ico'
-                : 'assets/images/tray_icon_gray.ico'
-          : connected
-          ? 'assets/images/tray_icon.png'
-          : 'assets/images/tray_icon_gray.png',
-    );
+    final path = Platform.isWindows
+        ? connected
+              ? 'assets/images/tray_icon.ico'
+              : 'assets/images/tray_icon_gray.ico'
+        : connected
+        ? 'assets/images/tray_icon.png'
+        : 'assets/images/tray_icon_gray.png';
+
+    // The tray plugin resolves "assets/…" against the bundle, so a missing icon
+    // surfaces as an icon that never appears rather than a hard error. Verify
+    // the asset is actually bundled so a stripped build degrades to "no tray"
+    // (window close quits) instead of hiding the app behind an invisible icon.
+    if (_trayIconsPresent == null) {
+      _trayIconsPresent = await _trayIconsAvailable();
+    }
+    if (_trayIconsPresent != true) {
+      if (_trayReady) {
+        _trayReady = false;
+        SecureLogger.warn('Tray disabled: bundled tray icons unavailable');
+      }
+      return;
+    }
+
+    try {
+      await trayManager.setIcon(path);
+      _trayReady = true;
+    } catch (error) {
+      _trayReady = false;
+      SecureLogger.warn('Tray icon failed to load: $path', error);
+    }
+  }
+
+  Future<bool> _trayIconsAvailable() async {
+    for (final asset in const [
+      'assets/images/tray_icon.ico',
+      'assets/images/tray_icon_gray.ico',
+      'assets/images/tray_icon.png',
+      'assets/images/tray_icon_gray.png',
+    ]) {
+      try {
+        await rootBundle.load(asset);
+      } catch (_) {
+        SecureLogger.warn('Missing bundled tray icon: $asset');
+        return false;
+      }
+    }
+    return true;
   }
 
   Future<void> _updateTrayTooltip() async {
@@ -528,12 +587,12 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   void onWindowUnmaximize() => setState(() => _maximized = false);
 
   /// Close button / Alt+F4 behavior:
-  /// - Logged in  → hide to tray (connection stays alive)
-  /// - Logged out → full exit
+  /// - Logged in with a usable tray icon → hide to tray (connection stays alive)
+  /// - Otherwise → full exit (no hidden window left behind an invisible icon)
   @override
   Future<void> onWindowClose() async {
     if (!_isDesktop) return;
-    if (_ctrl?.isAuthenticated == true) {
+    if (_ctrl?.isAuthenticated == true && _trayReady) {
       await windowManager.hide();
     } else {
       await _quit();
@@ -629,7 +688,7 @@ class _CompactBodyState extends State<_CompactBody> {
       ],
     );
 
-    return Container(
+    final body = Container(
       color: c.appBg,
       child: Column(
         children: [
@@ -641,6 +700,30 @@ class _CompactBodyState extends State<_CompactBody> {
         ],
       ),
     );
+
+    // Android system back: a single-route app pops the root route and exits the
+    // activity from any page. Instead, non-home pages step back one level and
+    // only the dashboard actually exits. (iOS has no system back button — the
+    // edge swipe is disabled on the root route — so this is Android-only.)
+    if (!kIsWeb && Platform.isAndroid) {
+      final atHome =
+          ctrl.page == AppPage.dashboard && !ctrl.mobileProfileChildPage;
+      return PopScope<Object?>(
+        canPop: atHome,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          if (ctrl.mobileProfileChildPage) {
+            // Hub child (wallet/orders/traffic/tickets/settings) → account hub.
+            ctrl.goToProfileChildPage(AppPage.account);
+          } else if (ctrl.page != AppPage.dashboard) {
+            // Any other page (nodes/shop/invite/account) → dashboard.
+            ctrl.goToPage(AppPage.dashboard);
+          }
+        },
+        child: body,
+      );
+    }
+    return body;
   }
 }
 

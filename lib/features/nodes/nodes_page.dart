@@ -241,78 +241,90 @@ class _NodesPageState extends State<NodesPage> {
 
     return RefreshIndicator(
       onRefresh: _handleRefresh,
-      child: ListView(
+      child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          if (asPrimary)
-            CompactPageHeader(
-              title: context.l10n.nodes,
-              subtitle: context.l10n.selectLineAndLatency,
-            )
-          else
-            Row(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                PageBackButton(
-                  onTap: () => AppScope.of(context).goToPage(AppPage.dashboard),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                if (asPrimary)
+                  CompactPageHeader(
+                    title: context.l10n.nodes,
+                    subtitle: context.l10n.selectLineAndLatency,
+                  )
+                else
+                  Row(
                     children: [
-                      Text(
-                        context.l10n.nodes,
-                        style: AppTextStyles.pageTitle.copyWith(
-                          color: c.textPrimary,
-                          fontSize: 26,
-                        ),
+                      PageBackButton(
+                        onTap: () =>
+                            AppScope.of(context).goToPage(AppPage.dashboard),
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        context.l10n.selectLineAndLatency,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(
-                          color: c.textMuted,
-                          fontSize: 12,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.l10n.nodes,
+                              style: AppTextStyles.pageTitle.copyWith(
+                                color: c.textPrimary,
+                                fontSize: 26,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              context.l10n.selectLineAndLatency,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption.copyWith(
+                                color: c.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
+                const SizedBox(height: 16),
+                if (noPlan)
+                  NoPlanCard(
+                    onPurchase: isPageEnabled(AppPage.shop)
+                        ? () => ctrl.goToPage(AppPage.shop)
+                        : null,
+                  )
+                else
+                  ..._bodyChildren(context),
               ],
             ),
-          const SizedBox(height: 16),
-          if (noPlan)
-            NoPlanCard(
-              onPurchase: isPageEnabled(AppPage.shop)
-                  ? () => ctrl.goToPage(AppPage.shop)
-                  : null,
-            )
-          else ...[
-            ..._bodyChildren(context),
+          ),
+          if (!noPlan)
             if (nodes.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 48),
-                child: AppEmptyState(
-                  icon: LucideIcons.searchX,
-                  title: context.l10n.noMatchingNodes,
-                  subtitle: context.l10n.tryDifferentNodeFilter,
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 48),
+                  child: AppEmptyState(
+                    icon: LucideIcons.searchX,
+                    title: context.l10n.noMatchingNodes,
+                    subtitle: context.l10n.tryDifferentNodeFilter,
+                  ),
                 ),
               )
             else
-              for (final n in nodes) ...[
-                _NodeCard(
-                  node: n,
-                  selected: !isAuto && n.id == effectiveId,
-                  favorite: _favorites.contains(n.id),
-                  onTap: () => _selectNode(n),
-                  onToggleFavorite: () => _toggleFavorite(n.id),
+              // Lazy node cards: only the visible rows are built instead of
+              // materializing every card up front (same pattern as node_picker).
+              SliverList.separated(
+                itemCount: nodes.length,
+                itemBuilder: (_, i) => _NodeCard(
+                  node: nodes[i],
+                  selected: !isAuto && nodes[i].id == effectiveId,
+                  favorite: _favorites.contains(nodes[i].id),
+                  onTap: () => _selectNode(nodes[i]),
+                  onToggleFavorite: () => _toggleFavorite(nodes[i].id),
                 ),
-                const SizedBox(height: 10),
-              ],
-          ],
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+              ),
         ],
       ),
     );
