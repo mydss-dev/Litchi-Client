@@ -212,8 +212,8 @@ class PanelApi {
     }
   }
 
-  Future<RemoteUser> getUserInfo() async {
-    final res = await _client.get('/user/info');
+  Future<RemoteUser> getUserInfo({bool silent = false}) async {
+    final res = await _client.get('/user/info', silent: silent);
     _check(res);
     return RemoteUser.fromJson(_dataMap(res));
   }
@@ -226,8 +226,8 @@ class PanelApi {
     throw const ApiException('无法获取订阅地址');
   }
 
-  Future<RemoteSubscribe> getSubscribeInfo() async {
-    final res = await _client.get('/user/getSubscribe');
+  Future<RemoteSubscribe> getSubscribeInfo({bool silent = false}) async {
+    final res = await _client.get('/user/getSubscribe', silent: silent);
     _check(res);
     final data = res['data'];
     if (data is Map) {

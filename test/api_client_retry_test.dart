@@ -90,4 +90,57 @@ void main() {
       expect(client.isConfigured, isTrue);
     },
   );
+
+  test('silent polls never trigger a session-expired logout', () {
+    Response response({bool silent = false, int? code, String message = ''}) {
+      return Response(
+        requestOptions: RequestOptions(
+          path: '/user/info',
+          extra: silent ? {ApiClient.silentPollExtraKey: true} : const {},
+        ),
+        data: {'code': code, 'message': message},
+      );
+    }
+
+    // Expired responses on normal (user-initiated) requests do log out.
+    expect(
+      ApiClient.shouldHandleSessionExpired(response(code: 401)),
+      isTrue,
+    );
+    expect(
+      ApiClient.shouldHandleSessionExpired(response(message: '未登录')),
+      isTrue,
+    );
+    expect(
+      ApiClient.shouldHandleSessionExpired(
+        response(message: 'unauthenticated'),
+      ),
+      isTrue,
+    );
+
+    // The same responses on a silent/background poll must NOT log out.
+    expect(
+      ApiClient.shouldHandleSessionExpired(response(code: 401, silent: true)),
+      isFalse,
+    );
+    expect(
+      ApiClient.shouldHandleSessionExpired(
+        response(message: '未登录', silent: true),
+      ),
+      isFalse,
+    );
+
+    // Successful responses are ignored.
+    expect(
+      ApiClient.shouldHandleSessionExpired(response(code: 200)),
+      isFalse,
+    );
+
+    // Public auth paths are never treated as session-expired.
+    final publicPath = Response(
+      requestOptions: RequestOptions(path: '/passport/auth/login'),
+      data: {'code': 401, 'message': '未登录'},
+    );
+    expect(ApiClient.shouldHandleSessionExpired(publicPath), isFalse);
+  });
 }

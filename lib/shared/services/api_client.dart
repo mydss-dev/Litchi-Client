@@ -95,6 +95,12 @@ String? _firstValidationMessage(Object? value) {
 class ApiClient {
   static const int maxGetRetries = 2;
 
+  /// Request-extra key marking a background/silent poll.
+  ///
+  /// The session-expired interceptor ignores requests tagged with this key so
+  /// a transient 401 on a status timer can never log the user out.
+  static const String silentPollExtraKey = 'silentPoll';
+
   Dio? _dio;
   List<String> _bases = const [];
   int _index = 0;
@@ -209,20 +215,9 @@ class ApiClient {
           handler.next(options);
         },
         onResponse: (response, handler) {
-          final data = response.data;
-          if (data is Map) {
-            final code = data['code'];
-            final msg = data['message']?.toString() ?? '';
-            // Treat 401-class code or any "not logged in" message as expired.
-            final isExpired =
-                code == 401 ||
-                msg.contains('未登录') ||
-                msg.toLowerCase().contains('unauthorized') ||
-                msg.toLowerCase().contains('unauthenticated');
-            if (isExpired && !_isPublicAuthPath(response.requestOptions.path)) {
-              final callback = onSessionExpired;
-              if (callback != null) unawaited(Future<void>.sync(callback));
-            }
+          if (shouldHandleSessionExpired(response)) {
+            final callback = onSessionExpired;
+            if (callback != null) unawaited(Future<void>.sync(callback));
           }
           handler.next(response);
         },
@@ -237,14 +232,44 @@ class ApiClient {
         normalized.startsWith('/passport/');
   }
 
+  /// True when a panel response indicates the session expired and the user
+  /// should be logged out.
+  ///
+  /// Background/silent polls (requests tagged with [silentPollExtraKey]) are
+  /// deliberately excluded: a transient 401 on a 60-second status timer must
+  /// not kick the user out of the app — real auth expiry is handled the next
+  /// time the user performs an action.
+  static bool shouldHandleSessionExpired(Response response) {
+    if (_isPublicAuthPath(response.requestOptions.path)) return false;
+    if (response.requestOptions.extra[silentPollExtraKey] == true) return false;
+    final data = response.data;
+    if (data is! Map) return false;
+    final code = data['code'];
+    final msg = data['message']?.toString() ?? '';
+    // Treat 401-class code or any "not logged in" message as expired.
+    return code == 401 ||
+        msg.contains('未登录') ||
+        msg.toLowerCase().contains('unauthorized') ||
+        msg.toLowerCase().contains('unauthenticated');
+  }
+
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? params,
+    bool silent = false,
   }) async {
     _assertReady();
     try {
       final res = await _withFailover(
-        () => _getWithRetry(() => _dio!.get(path, queryParameters: params)),
+        () => _getWithRetry(
+          () => _dio!.get(
+            path,
+            queryParameters: params,
+            options: silent
+                ? Options(extra: {silentPollExtraKey: true})
+                : null,
+          ),
+        ),
       );
       return _parse(res);
     } on DioException catch (e) {

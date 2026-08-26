@@ -196,4 +196,62 @@ void main() {
       expect(remote['detour'], SingBoxConfig.selectorTag);
     }
   });
+
+  test('skips node types the core cannot load instead of failing', () {
+    // snell/mieru are not registered outbound types in the pinned core
+    // (v1.13.13) — such a node must be dropped, never allowed to poison the
+    // whole config.
+    for (final unsupported in ['snell', 'mieru']) {
+      final badNode = NodeModel(
+        id: unsupported,
+        name: unsupported,
+        flag: '',
+        latency: 0,
+        rawOutbound: {
+          'type': unsupported,
+          'server': 'example.com',
+          'server_port': 443,
+          '_litchi_format': 'sing-box',
+        },
+      );
+      final config = SingBoxConfig.buildFullConfig(
+        [badNode],
+        selectedTag: SingBoxConfig.nodeTagFor(badNode),
+      );
+      // No usable nodes remain → no config is produced at all.
+      expect(config, isNull, reason: '$unsupported must be skipped');
+    }
+  });
+
+  test('keeps usable nodes when a profile mixes supported and unsupported types',
+      () {
+    const snellNode = NodeModel(
+      id: 'snell-1',
+      name: 'Snell',
+      flag: '',
+      latency: 0,
+      rawOutbound: {
+        'type': 'snell',
+        'server': 'snell.example.com',
+        'server_port': 8443,
+        'psk': 'secret',
+        '_litchi_format': 'sing-box',
+      },
+    );
+    final config = SingBoxConfig.buildFullConfig(
+      const [node, snellNode],
+      selectedTag: SingBoxConfig.nodeTagFor(node),
+    );
+
+    expect(config, isNotNull);
+    final outbounds = (config!['outbounds'] as List).cast<Map>();
+    final tags = outbounds.map((o) => o['tag']).toSet();
+    expect(tags, contains('node-hk-1'));
+    expect(tags, isNot(contains('node-snell-1')));
+    // The selector must not reference the dropped node.
+    final selector = outbounds.firstWhere(
+      (outbound) => outbound['tag'] == SingBoxConfig.selectorTag,
+    );
+    expect(selector['outbounds'], isNot(contains('node-snell-1')));
+  });
 }

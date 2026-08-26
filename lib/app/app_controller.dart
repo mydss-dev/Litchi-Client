@@ -534,7 +534,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (connectionActionLocked) return;
     _statusRefreshInFlight = true;
     try {
-      final snap = await _dataLoader.loadAccountStatus();
+      // Tagged silent so a transient 401 on the timer can never log the user
+      // out — the session-expired interceptor skips these requests.
+      final snap = await _dataLoader.loadAccountStatus(silent: true);
       if (_disposed || !_isAuthenticated) return;
       _applyAccountStatus(snap);
     } catch (_) {

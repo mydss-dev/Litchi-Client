@@ -68,8 +68,6 @@ abstract final class SubscriptionParser {
     'http',
     'wireguard',
     'ssh',
-    'mieru',
-    'snell',
   };
 
   static int _outboundPort(Map<String, dynamic> outbound) {

@@ -79,4 +79,35 @@ void main() {
     expect(nodes, hasLength(1));
     expect(nodes.single.port, 20000);
   });
+
+  test('drops node types the pinned core does not support', () {
+    final nodes = SubscriptionParser.parse(jsonEncode({
+      'outbounds': [
+        {
+          'type': 'snell',
+          'tag': 'Snell 01',
+          'server': 'snell.example.com',
+          'server_port': 8443,
+          'psk': 'secret',
+        },
+        {
+          'type': 'mieru',
+          'tag': 'Mieru 01',
+          'server': 'mieru.example.com',
+          'server_port': 443,
+        },
+        {
+          'type': 'trojan',
+          'tag': 'Trojan 01',
+          'server': 'trojan.example.com',
+          'server_port': 443,
+          'password': 'password',
+        },
+      ],
+    }));
+
+    // Only the trojan node survives; snell/mieru are rejected at parse time.
+    expect(nodes, hasLength(1));
+    expect(nodes.single.name, 'Trojan 01');
+  });
 }

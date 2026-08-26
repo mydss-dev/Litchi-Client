@@ -98,15 +98,15 @@ class DataLoader {
   /// Lightweight refresh: only the live account counters the user watches
   /// (remaining traffic, expiry, device count). Does NOT touch nodes, plans,
   /// invite data, or the core — safe to call on a timer while connected.
-  Future<DataSnapshot> loadAccountStatus() async {
+  Future<DataSnapshot> loadAccountStatus({bool silent = false}) async {
     final snap = DataSnapshot();
-    await _fillUserInfo(snap);
+    await _fillUserInfo(snap, silent: silent);
     return snap;
   }
 
   // ── Private fill methods ─────────────────────────────────────────────────
 
-  Future<void> _fillUserInfo(DataSnapshot snap) async {
+  Future<void> _fillUserInfo(DataSnapshot snap, {bool silent = false}) async {
     final sw = Stopwatch()..start();
     var userLoaded = false;
     var subscribeLoaded = false;
@@ -114,7 +114,7 @@ class DataLoader {
 
     Future<void> loadUser() async {
       try {
-        final info = await _api.getUserInfo();
+        final info = await _api.getUserInfo(silent: silent);
         userLoaded = true;
         snap.remoteUser = info;
         snap.user = ModelMappers.toUser(info);
@@ -131,7 +131,7 @@ class DataLoader {
 
     Future<void> loadSubscribe() async {
       try {
-        final subscribe = await _api.getSubscribeInfo();
+        final subscribe = await _api.getSubscribeInfo(silent: silent);
         subscribeLoaded = true;
         snap.subscribeUrl = subscribe.subscribeUrl;
         snap.currentPlanId ??= subscribe.planId;

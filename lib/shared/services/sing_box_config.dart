@@ -13,6 +13,30 @@ import 'app_paths.dart';
 abstract final class SingBoxConfig {
   static const String coreVersion = '1.13.13';
   static const String subscriptionUserAgent = 'sing-box $coreVersion';
+
+  /// Proxy outbound types the pinned sing-box core can actually load.
+  ///
+  /// Nodes whose type is missing here are skipped individually instead of
+  /// failing the whole config — one unsupported node must never take down
+  /// every connection.
+  static const Set<String> coreSupportedOutboundTypes = {
+    'vmess',
+    'vless',
+    'trojan',
+    'shadowsocks',
+    'hysteria',
+    'hysteria2',
+    'tuic',
+    'anytls',
+    'socks',
+    'http',
+    'wireguard',
+    'ssh',
+    'naive',
+    'shadowtls',
+    'tor',
+    'tailscale',
+  };
   static const int defaultPort = 7890;
   static const int defaultApiPort = 9090;
   static const String selectorTag = 'proxy';
@@ -247,6 +271,7 @@ abstract final class SingBoxConfig {
     final tag = '${outbound['tag'] ?? ''}';
     final server = '${outbound['server'] ?? ''}';
     return type.isNotEmpty &&
+        coreSupportedOutboundTypes.contains(type) &&
         tag.isNotEmpty &&
         server.isNotEmpty &&
         _hasPort(outbound);
