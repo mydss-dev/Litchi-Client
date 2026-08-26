@@ -111,4 +111,89 @@ void main() {
     expect((tunConfig['inbounds'] as List), hasLength(2));
     expect(((tunConfig['inbounds'] as List)[1] as Map)['type'], 'tun');
   });
+
+  test('writes the random secret into experimental.clash_api', () {
+    final config = SingBoxConfig.buildFullConfig(
+      const [node],
+      selectedTag: SingBoxConfig.nodeTagFor(node),
+      apiSecret: 's3cr3t-t0ken',
+    )!;
+    final clashApi = ((config['experimental'] as Map)['clash_api'] as Map);
+    expect(clashApi['secret'], 's3cr3t-t0ken');
+    expect(
+      clashApi['external_controller'],
+      '127.0.0.1:${SingBoxConfig.defaultApiPort}',
+    );
+
+    final noSecret = SingBoxConfig.buildFullConfig(
+      const [node],
+      selectedTag: SingBoxConfig.nodeTagFor(node),
+    )!;
+    final bareApi =
+        ((noSecret['experimental'] as Map)['clash_api'] as Map);
+    expect(bareApi.containsKey('secret'), isFalse);
+  });
+
+  test('bootstraps node domains through the local resolver', () {
+    final config = SingBoxConfig.buildFullConfig(
+      const [node],
+      selectedTag: SingBoxConfig.nodeTagFor(node),
+    )!;
+    final route = config['route'] as Map;
+    expect(
+      route['default_domain_resolver'],
+      {'server': 'dns-local', 'strategy': 'ipv4_only'},
+    );
+  });
+
+  test('routes mainland China domains and IPs directly', () {
+    final config = SingBoxConfig.buildFullConfig(
+      const [node],
+      selectedTag: SingBoxConfig.nodeTagFor(node),
+    )!;
+    final route = config['route'] as Map;
+    final ruleSets = (route['rule_set'] as List).cast<Map>();
+    expect(
+      ruleSets.map((s) => s['tag']),
+      containsAll(['geosite-cn', 'geoip-cn']),
+    );
+    final rules = (route['rules'] as List).cast<Map>();
+    expect(
+      rules,
+      contains(
+        allOf(
+          containsPair('rule_set', ['geosite-cn', 'geoip-cn']),
+          containsPair('outbound', SingBoxConfig.directTag),
+        ),
+      ),
+    );
+
+    final dns = config['dns'] as Map;
+    final dnsRules = (dns['rules'] as List).cast<Map>();
+    expect(
+      dnsRules,
+      contains(
+        allOf(
+          containsPair('rule_set', ['geosite-cn']),
+          containsPair('server', 'dns-local'),
+        ),
+      ),
+    );
+  });
+
+  test('routes remote DoH through the proxy in Google/Cloudflare modes', () {
+    for (final mode in ['Google', 'Cloudflare']) {
+      final config = SingBoxConfig.buildFullConfig(
+        const [node],
+        selectedTag: SingBoxConfig.nodeTagFor(node),
+        dnsMode: mode,
+      )!;
+      final servers = ((config['dns'] as Map)['servers'] as List)
+          .cast<Map>();
+      final remote = servers.firstWhere(
+        (s) => s['tag'] == 'dns-remote',
+      );
+      expect(remote['detour'], SingBoxConfig.selectorTag);
+    }
+  });
 }
