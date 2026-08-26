@@ -31,6 +31,7 @@ abstract final class SingBoxConfig {
     required String selectedTag,
     int port = defaultPort,
     int apiPort = defaultApiPort,
+    String apiSecret = '',
     ProxyMode proxyMode = ProxyMode.rule,
     String dnsMode = '系统 DNS',
     NetworkMode networkMode = NetworkMode.system,
@@ -102,6 +103,38 @@ abstract final class SingBoxConfig {
       ],
       'route': {
         'auto_detect_interface': true,
+        // Node servers are usually domains. Route their resolution through the
+        // local/system DNS server instead of the (possibly proxied) final
+        // resolver, otherwise a remote DoH final can deadlock bootstrapping.
+        // Required since sing-box 1.14 whenever more than one DNS server is
+        // configured.
+        'default_domain_resolver': {
+          'server': 'dns-local',
+          'strategy': 'ipv4_only',
+        },
+        // Mainland-China direct rules: geosite-cn (domain) + geoip-cn (IP).
+        // Served from the jsDelivr CDN mirror of SagerNet's official rule
+        // sets because raw.githubusercontent.com is unreliable in CN.
+        'rule_set': [
+          {
+            'type': 'remote',
+            'tag': 'geosite-cn',
+            'format': 'binary',
+            'url':
+                'https://cdn.jsdelivr.net/gh/SagerNet/sing-geosite@rule-set/geosite-cn.srs',
+            'download_detour': directTag,
+            'update_interval': '24h',
+          },
+          {
+            'type': 'remote',
+            'tag': 'geoip-cn',
+            'format': 'binary',
+            'url':
+                'https://cdn.jsdelivr.net/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs',
+            'download_detour': directTag,
+            'update_interval': '24h',
+          },
+        ],
         'rules': [
           {
             'clash_mode': 'direct',
@@ -110,6 +143,10 @@ abstract final class SingBoxConfig {
           {
             'clash_mode': 'global',
             'outbound': selectorTag,
+          },
+          {
+            'rule_set': ['geosite-cn', 'geoip-cn'],
+            'outbound': directTag,
           },
           {
             'ip_is_private': true,
@@ -121,6 +158,7 @@ abstract final class SingBoxConfig {
       'experimental': {
         'clash_api': {
           'external_controller': '127.0.0.1:$apiPort',
+          if (apiSecret.isNotEmpty) 'secret': apiSecret,
           'default_mode': proxyMode.storageKey,
         },
         'cache_file': {
@@ -144,8 +182,11 @@ abstract final class SingBoxConfig {
     final server = '${outbound['server'] ?? ''}'.trim();
     if (type.isEmpty || server.isEmpty || !_hasPort(outbound)) return null;
     outbound['tag'] = tag;
-    // The panel profile refers to its own DNS tag (`local`). The client owns
-    // DNS configuration, so imported nodes must use the client's final DNS.
+    // The panel profile may attach a domain_resolver referencing its own DNS
+    // tag (e.g. `local`), which does not exist in the client config. The
+    // client resolves node domains via route.default_domain_resolver (system
+    // DNS bootstrap) and everything else through the DNS module final, so a
+    // per-outbound resolver is both unnecessary and would fail to load.
     outbound.remove('domain_resolver');
     if (!allowInsecure && outbound['tls'] is Map) {
       (outbound['tls'] as Map).remove('insecure');
@@ -163,6 +204,10 @@ abstract final class SingBoxConfig {
           'server_port': 443,
           'path': '/dns-query',
           'tls': {'enabled': true, 'server_name': 'dns.google'},
+          // The remote DoH endpoints are unreachable with direct connections
+          // from mainland China. Route their traffic through the proxy, or
+          // selecting this mode means no connectivity at all.
+          'detour': selectorTag,
         },
         {'type': 'local', 'tag': 'dns-local'},
       ],
@@ -174,6 +219,7 @@ abstract final class SingBoxConfig {
           'server_port': 443,
           'path': '/dns-query',
           'tls': {'enabled': true, 'server_name': 'cloudflare-dns.com'},
+          'detour': selectorTag,
         },
         {'type': 'local', 'tag': 'dns-local'},
       ],
@@ -185,6 +231,14 @@ abstract final class SingBoxConfig {
       'servers': servers,
       'final': servers.first['tag'],
       'strategy': 'ipv4_only',
+      // Mainland domains resolve through the local DNS; everything else uses
+      // the mode's final resolver.
+      'rules': [
+        {
+          'rule_set': ['geosite-cn'],
+          'server': 'dns-local',
+        },
+      ],
     };
   }
 
