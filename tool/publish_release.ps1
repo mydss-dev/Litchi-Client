@@ -133,10 +133,13 @@ try {
       & python -m pip install --disable-pip-version-check boto3
       if ($LASTEXITCODE -ne 0) { throw 'Failed to install boto3.' }
     }
-    $uploadFiles = @((Join-Path $outputPath 'update.json'))
+    # Upload packages first, update.json last so clients never see a new
+    # version before the download URLs are actually reachable.
+    $uploadFiles = @()
     foreach ($entry in $packages.GetEnumerator()) {
       $uploadFiles += Join-Path $outputPath ([IO.Path]::GetFileName($entry.Value))
     }
+    $uploadFiles += (Join-Path $outputPath 'update.json')
     & python (Join-Path $PSScriptRoot 'upload_r2.py') @uploadFiles
     if ($LASTEXITCODE -ne 0) { throw "Cloudflare R2 upload failed with exit code $LASTEXITCODE" }
     Write-Host 'Cloudflare R2 release upload complete.'

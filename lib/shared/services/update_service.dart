@@ -171,8 +171,19 @@ abstract final class UpdateService {
           .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]+'), '-')
           .replaceAll(RegExp(r'^[.\s-]+|[.\s-]+$'), '');
       final installerPrefix = safeAppName.isEmpty ? 'Client' : safeAppName;
+
+      // Use a dedicated downloads directory instead of the system temp folder
+      // so the installer survives temp cleanup and the user can find it.
+      final baseDir = Platform.isWindows
+          ? (Platform.environment['LOCALAPPDATA'] ??
+              Directory.systemTemp.path)
+          : (Platform.environment['HOME'] ?? Directory.systemTemp.path);
+      final downloadDir =
+          Directory('$baseDir${Platform.pathSeparator}$installerPrefix'
+              '${Platform.pathSeparator}downloads');
+      await downloadDir.create(recursive: true);
       file = File(
-        '${Directory.systemTemp.path}${Platform.pathSeparator}'
+        '${downloadDir.path}${Platform.pathSeparator}'
         '$installerPrefix-Setup-$safeVersion$ext',
       );
       output = file.openWrite(mode: FileMode.writeOnly);

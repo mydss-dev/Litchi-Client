@@ -6,6 +6,7 @@ import mimetypes
 import os
 from pathlib import Path
 import sys
+import urllib.parse
 from urllib.parse import quote
 
 import boto3
@@ -33,7 +34,12 @@ def main() -> None:
     secret_key = required_env("R2_SECRET_ACCESS_KEY")
     bucket = required_env("R2_BUCKET")
     base_url = required_env("DOWNLOAD_BASE_URL").rstrip("/")
-    prefix = os.environ.get("R2_PREFIX", "").strip().strip("/")
+
+    # Auto-derive R2 prefix from DOWNLOAD_BASE_URL path, fall back to R2_PREFIX env.
+    parsed = urllib.parse.urlparse(base_url)
+    prefix = (parsed.path.strip("/") if parsed.path and parsed.path != "/" else "").strip("/")
+    if not prefix:
+        prefix = os.environ.get("R2_PREFIX", "").strip().strip("/")
 
     client = boto3.client(
         "s3",
@@ -45,15 +51,25 @@ def main() -> None:
     )
 
     for path in files:
-        object_key = f"{prefix}/{path.name}" if prefix else path.name
+        # update.json always goes to the bucket root so the client can find it
+        # next to config.json.  Package files go under the prefix (e.g. downloads/).
+        if path.name == "update.json":
+            object_key = path.name
+        else:
+            object_key = f"{prefix}/{path.name}" if prefix else path.name
         content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         extra = {"ContentType": content_type}
-        if path.suffix.lower() not in {".json", ".txt"}:
+        if path.name == "update.json":
+            # Short TTL so new releases are visible quickly.
+            extra["CacheControl"] = "no-cache, max-age=300"
+        else:
+            extra["CacheControl"] = "public, max-age=86400"
             extra["ContentDisposition"] = (
                 f"attachment; filename*=UTF-8''{quote(path.name)}"
             )
         client.upload_file(str(path), bucket, object_key, ExtraArgs=extra)
-        print(f"Uploaded {path.name}: {base_url}/{quote(path.name)}")
+        display_url = f"{base_url}/{quote(object_key)}" if prefix and path.name != "update.json" else f"{base_url}/{quote(path.name)}"
+        print(f"Uploaded {path.name}: {display_url}")
 
 
 if __name__ == "__main__":

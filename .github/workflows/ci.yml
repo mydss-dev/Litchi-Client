@@ -74,6 +74,8 @@ jobs:
           $apiBase   = if ("${{ secrets.API_BASE }}")  { "${{ secrets.API_BASE }}" }  else { "" }
           $appName   = if ("${{ secrets.APP_NAME }}")  { "${{ secrets.APP_NAME }}" }  else { "Litchi" }
           $logoUrl   = if ("${{ secrets.LOGO_URL }}")  { "${{ secrets.LOGO_URL }}" }  else { "" }
+          $configUrl = if ("${{ secrets.REMOTE_CONFIG_URL }}")  { "${{ secrets.REMOTE_CONFIG_URL }}" }  else { "" }
+          $configKey = if ("${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}") { "${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}" } else { "" }
           $version   = "${{ github.ref_name }}" -replace '^v', ''
           if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "0.0.0" }
           if ("${{ github.ref }}" -like "refs/tags/v*" -and [string]::IsNullOrWhiteSpace($apiBase)) {
@@ -84,7 +86,9 @@ jobs:
             "--dart-define=API_BASE=$apiBase" `
             "--dart-define=APP_VERSION=$version" `
             "--dart-define=APP_NAME=$appName" `
-            "--dart-define=LOGO_URL=$logoUrl"
+            "--dart-define=LOGO_URL=$logoUrl" `
+            "--dart-define=REMOTE_CONFIG_URL=$configUrl" `
+            "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$configKey"
 
       - name: Bundle Windows runtime
         shell: pwsh
@@ -230,9 +234,13 @@ jobs:
           api_base="${{ secrets.API_BASE }}"
           app_name="${{ secrets.APP_NAME }}"
           logo_url="${{ secrets.LOGO_URL }}"
+          config_url="${{ secrets.REMOTE_CONFIG_URL }}"
+          config_key="${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}"
           api_base="${api_base:-}"
           app_name="${app_name:-Litchi}"
           logo_url="${logo_url:-}"
+          config_url="${config_url:-}"
+          config_key="${config_key:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           if [[ "$GITHUB_REF" == refs/tags/v* && -z "$api_base" ]]; then
@@ -251,7 +259,9 @@ jobs:
             "--dart-define=API_BASE=$api_base" \
             "--dart-define=APP_VERSION=$version" \
             "--dart-define=APP_NAME=$app_name" \
-            "--dart-define=LOGO_URL=$logo_url"
+            "--dart-define=LOGO_URL=$logo_url" \
+            "--dart-define=REMOTE_CONFIG_URL=$config_url" \
+            "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key"
           cp build/app/outputs/flutter-apk/app-release.apk \
             "$RUNNER_TEMP/android-universal.apk"
           flutter build apk --release --split-per-abi \
@@ -260,7 +270,9 @@ jobs:
             "--dart-define=API_BASE=$api_base" \
             "--dart-define=APP_VERSION=$version" \
             "--dart-define=APP_NAME=$app_name" \
-            "--dart-define=LOGO_URL=$logo_url"
+            "--dart-define=LOGO_URL=$logo_url" \
+            "--dart-define=REMOTE_CONFIG_URL=$config_url" \
+            "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key"
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             flutter build appbundle --release \
               "--build-name=$version" \
@@ -268,7 +280,9 @@ jobs:
               "--dart-define=API_BASE=$api_base" \
               "--dart-define=APP_VERSION=$version" \
               "--dart-define=APP_NAME=$app_name" \
-              "--dart-define=LOGO_URL=$logo_url"
+              "--dart-define=LOGO_URL=$logo_url" \
+              "--dart-define=REMOTE_CONFIG_URL=$config_url" \
+              "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key"
           fi
 
       - name: Verify the core includes arm64
@@ -360,9 +374,13 @@ jobs:
           api_base="${{ secrets.API_BASE }}"
           app_name="${{ secrets.APP_NAME }}"
           logo_url="${{ secrets.LOGO_URL }}"
+          config_url="${{ secrets.REMOTE_CONFIG_URL }}"
+          config_key="${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}"
           api_base="${api_base:-}"
           app_name="${app_name:-Litchi}"
           logo_url="${logo_url:-}"
+          config_url="${config_url:-}"
+          config_key="${config_key:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           if [[ "$GITHUB_REF" == refs/tags/v* && -z "$api_base" ]]; then
@@ -374,7 +392,9 @@ jobs:
             "--dart-define=API_BASE=$api_base" \
             "--dart-define=APP_VERSION=$version" \
             "--dart-define=APP_NAME=$app_name" \
-            "--dart-define=LOGO_URL=$logo_url"
+            "--dart-define=LOGO_URL=$logo_url" \
+            "--dart-define=REMOTE_CONFIG_URL=$config_url" \
+            "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key"
 
       - name: Bundle sing-box core (universal)
         run: bash tool/bundle_macos_singbox.sh "build/macos/Build/Products/Release/Client.app"
@@ -428,7 +448,6 @@ jobs:
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
-      R2_PREFIX: ${{ secrets.R2_PREFIX }}
       DOWNLOAD_BASE_URL: ${{ secrets.DOWNLOAD_BASE_URL }}
     steps:
       - uses: actions/checkout@v4

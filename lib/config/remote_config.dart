@@ -14,10 +14,12 @@ import '../shared/services/secure_logger.dart';
 /// Only this file needs to be edited when changing the OSS config URL or
 /// installing the Ed25519 public key used to verify signed remote config.
 abstract final class RemoteConfigService {
-  // Self-hosted setup: only edit these two values. Everything else is read
-  // from the signed JSON stored at [configUrl].
-  static const configUrl = '';
-  static const publicKeyBase64Url = '';
+  // Self-hosted setup: edit these in your CI secrets and pass via
+  // --dart-define=REMOTE_CONFIG_URL=... --dart-define=REMOTE_CONFIG_PUBLIC_KEY=...
+  // Everything else is read from the signed JSON stored at [configUrl].
+  static const configUrl = String.fromEnvironment('REMOTE_CONFIG_URL');
+  static const publicKeyBase64Url =
+      String.fromEnvironment('REMOTE_CONFIG_PUBLIC_KEY');
 
   // ── Editable settings ─────────────────────────────────────────────────────
 
@@ -27,7 +29,8 @@ abstract final class RemoteConfigService {
   /// Generate once with:
   ///   dart run tool/sign_remote_config.dart generate
   ///
-  /// Keep the private key offline. Never put it in the client repository.
+  /// Store the public key in a CI secret (REMOTE_CONFIG_PUBLIC_KEY) and pass
+  /// it at build time via --dart-define.  Keep the private key offline.
 
   // ── Internal settings ─────────────────────────────────────────────────────
 
