@@ -34,12 +34,14 @@ def main() -> None:
     secret_key = required_env("R2_SECRET_ACCESS_KEY")
     bucket = required_env("R2_BUCKET")
     base_url = required_env("DOWNLOAD_BASE_URL").rstrip("/")
-
-    # Auto-derive R2 prefix from DOWNLOAD_BASE_URL path, fall back to R2_PREFIX env.
     parsed = urllib.parse.urlparse(base_url)
-    prefix = (parsed.path.strip("/") if parsed.path and parsed.path != "/" else "").strip("/")
-    if not prefix:
-        prefix = os.environ.get("R2_PREFIX", "").strip().strip("/")
+
+    # The R2 object prefix is the path of DOWNLOAD_BASE_URL: a package uploaded
+    # to key "<prefix>/<name>" is served at "<DOWNLOAD_BASE_URL>/<name>", which
+    # is exactly the download URL publish_release.ps1 writes into update.json.
+    # There is deliberately no R2_PREFIX fallback — a prefix that disagreed with
+    # the download URL would make every installer 404.
+    prefix = parsed.path.strip("/")
 
     client = boto3.client(
         "s3",
@@ -51,8 +53,11 @@ def main() -> None:
     )
 
     for path in files:
-        # update.json always goes to the bucket root so the client can find it
-        # next to config.json.  Package files go under the prefix (e.g. downloads/).
+        # update.json always goes to the bucket root, because the client derives
+        # its manifest URL as the sibling of REMOTE_CONFIG_URL
+        # (configUrl.resolve('update.json')). config.json must therefore also
+        # live at the bucket root — never under the DOWNLOAD_BASE_URL prefix.
+        # Package files go under the prefix.
         if path.name == "update.json":
             object_key = path.name
         else:
@@ -68,7 +73,12 @@ def main() -> None:
                 f"attachment; filename*=UTF-8''{quote(path.name)}"
             )
         client.upload_file(str(path), bucket, object_key, ExtraArgs=extra)
-        display_url = f"{base_url}/{quote(object_key)}" if prefix and path.name != "update.json" else f"{base_url}/{quote(path.name)}"
+        # Print the URL a client actually downloads from. Packages are served at
+        # "<DOWNLOAD_BASE_URL>/<name>"; update.json sits at the bucket root.
+        if path.name == "update.json":
+            display_url = f"{parsed.scheme}://{parsed.netloc}/update.json"
+        else:
+            display_url = f"{base_url}/{quote(path.name)}"
         print(f"Uploaded {path.name}: {display_url}")
 
 
