@@ -51,6 +51,7 @@ class CoreConnectionRequest {
     NetworkMode? overrideNetworkMode,
     int? overrideProxyPort,
     int apiPort = SingBoxConfig.defaultApiPort,
+    String apiSecret = '',
   }) {
     final availableNodes = validNodes;
     if (availableNodes.isEmpty || selectedSingBoxTag.isEmpty) return null;
@@ -59,6 +60,7 @@ class CoreConnectionRequest {
       selectedTag: selectedSingBoxTag,
       port: overrideProxyPort ?? proxyPort,
       apiPort: apiPort,
+      apiSecret: apiSecret,
       proxyMode: proxyMode,
       dnsMode: dnsMode,
       networkMode: overrideNetworkMode ?? networkMode,

@@ -10,6 +10,12 @@ abstract final class ClashApiClient {
   // ── shared client for short controller calls ──────────────────────────────
   static HttpClient? _client;
 
+  /// Bearer secret of the running core's clash_api. Set by the core manager
+  /// right after a config (which always carries a random secret) is started,
+  /// cleared on stop. Without it the controller would accept commands from
+  /// any local process / app on the device.
+  static String apiSecret = '';
+
   static HttpClient get _sharedClient {
     final existing = _client;
     if (existing != null) return existing;
@@ -25,6 +31,7 @@ abstract final class ClashApiClient {
   static void resetClient() {
     _client?.close(force: true);
     _client = null;
+    apiSecret = '';
   }
 
   static Future<bool> isReady({int apiPort = 9090}) async {
@@ -141,6 +148,10 @@ abstract final class ClashApiClient {
         final request = await client!.getUrl(
           Uri.parse('http://127.0.0.1:$apiPort/traffic'),
         );
+        final secret = apiSecret;
+        if (secret.isNotEmpty) {
+          request.headers.set('Authorization', 'Bearer $secret');
+        }
         final response = await request.close();
         await for (final line
             in response
@@ -193,6 +204,10 @@ abstract final class ClashApiClient {
         'DELETE' => await client.deleteUrl(uri),
         _ => await client.getUrl(uri),
       };
+      final secret = apiSecret;
+      if (secret.isNotEmpty) {
+        request.headers.set('Authorization', 'Bearer $secret');
+      }
       if (body != null) {
         request.headers.contentType = ContentType.json;
         request.write(jsonEncode(body));

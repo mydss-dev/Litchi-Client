@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -42,6 +43,11 @@ class CoreController extends ChangeNotifier {
   int _activeProxyPort = 7890;
   NetworkMode _activeNetworkMode = NetworkMode.system;
   Set<String> _activeTunInterfaces = const {};
+
+  /// Random secret guarding the core's clash_api. Generated once per app
+  /// session (reused across restarts so hot-reloads keep working), written
+  /// into every generated config and mirrored to [ClashApiClient.apiSecret].
+  String _apiSecret = '';
 
   bool _disposed = false;
   bool _connectionToggleInFlight = false;
@@ -184,6 +190,7 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<void> startCoreOnly(CoreConnectionRequest req) async {
+    _ensureApiSecret();
     if (Platform.isAndroid) {
       if (_androidCore.isCoreRunning) return;
       if (req.validNodes.isEmpty) return;
@@ -192,6 +199,7 @@ class CoreController extends ChangeNotifier {
       final config = req.buildSingBoxConfig(
         overrideNetworkMode: NetworkMode.system,
         apiPort: _apiPort,
+        apiSecret: _apiSecret,
       );
       if (config == null) return;
       final configJson = SingBoxConfig.encodeConfig(config);
@@ -220,6 +228,7 @@ class CoreController extends ChangeNotifier {
       overrideNetworkMode: NetworkMode.system,
       overrideProxyPort: _activeProxyPort,
       apiPort: _apiPort,
+      apiSecret: _apiSecret,
     );
     if (config == null) return;
 
@@ -236,6 +245,7 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<String?> reloadCore(CoreConnectionRequest req) async {
+    _ensureApiSecret();
     if (Platform.isAndroid) {
       if (coreConnecting) return null;
 
@@ -252,6 +262,7 @@ class CoreController extends ChangeNotifier {
       final vpnConfig = req.buildSingBoxConfig(
         overrideNetworkMode: NetworkMode.tun,
         apiPort: _apiPort,
+        apiSecret: _apiSecret,
       );
       if (vpnConfig == null) return null;
 
@@ -259,6 +270,7 @@ class CoreController extends ChangeNotifier {
       final coreConfig = req.buildSingBoxConfig(
         overrideNetworkMode: NetworkMode.system,
         apiPort: _apiPort,
+        apiSecret: _apiSecret,
       );
       if (coreConfig == null) return null;
 
@@ -332,6 +344,7 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<String?> _toggleConnection(CoreConnectionRequest req) async {
+    _ensureApiSecret();
     if (Platform.isAndroid) return _toggleAndroidConnection(req);
     if (coreConnecting) return null;
 
@@ -413,6 +426,7 @@ class CoreController extends ChangeNotifier {
     final config = req.buildSingBoxConfig(
       overrideProxyPort: _activeProxyPort,
       apiPort: _apiPort,
+      apiSecret: _apiSecret,
     );
     if (config == null) {
       _coreError = CoreErrorMessageService.configBuildFailed;
@@ -512,6 +526,7 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<String?> _toggleAndroidConnection(CoreConnectionRequest req) async {
+    _ensureApiSecret();
     if (coreConnecting) return null;
 
     // ── Disconnect: stop VPN, core stays running ─────────────────────────
@@ -539,6 +554,7 @@ class CoreController extends ChangeNotifier {
     final config = req.buildSingBoxConfig(
       overrideNetworkMode: NetworkMode.tun,
       apiPort: _apiPort,
+      apiSecret: _apiSecret,
     );
 
     if (config == null) {
@@ -557,6 +573,7 @@ class CoreController extends ChangeNotifier {
         final coreConfig = req.buildSingBoxConfig(
           overrideNetworkMode: NetworkMode.system,
           apiPort: _apiPort,
+          apiSecret: _apiSecret,
         );
         if (coreConfig == null) return CoreErrorMessageService.configBuildFailed;
         final coreOk = await _androidCore.startCoreOnly(
@@ -798,6 +815,21 @@ class CoreController extends ChangeNotifier {
     } finally {
       await socket?.close();
     }
+  }
+
+  /// Ensures a session-wide random clash_api secret exists and mirrors it to
+  /// [ClashApiClient] (which [ClashApiClient.resetClient] clears on stop).
+  void _ensureApiSecret() {
+    if (_apiSecret.isEmpty) {
+      final random = Random.secure();
+      const chars =
+          'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      _apiSecret = List.generate(
+        32,
+        (_) => chars[random.nextInt(chars.length)],
+      ).join();
+    }
+    ClashApiClient.apiSecret = _apiSecret;
   }
 
   void _onCoreStateChanged(CoreState state) {

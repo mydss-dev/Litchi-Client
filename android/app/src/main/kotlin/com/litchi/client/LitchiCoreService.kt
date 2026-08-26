@@ -230,7 +230,10 @@ class LitchiCoreService : Service() {
         private fun readControllerPort(config: String): Int {
             return runCatching {
                 val address = JSONObject(config)
-                    .optString("external-controller", "")
+                    .optJSONObject("experimental")
+                    ?.optJSONObject("clash_api")
+                    ?.optString("external_controller", "")
+                    .orEmpty()
                 address.substringAfterLast(':').toIntOrNull()
                     ?.takeIf { it in 1..65535 }
                     ?: DEFAULT_CONTROLLER_PORT
@@ -239,7 +242,11 @@ class LitchiCoreService : Service() {
 
         private fun readControllerSecret(config: String): String {
             return runCatching {
-                JSONObject(config).optString("secret", "")
+                JSONObject(config)
+                    .optJSONObject("experimental")
+                    ?.optJSONObject("clash_api")
+                    ?.optString("secret", "")
+                    .orEmpty()
             }.getOrDefault("")
         }
 
