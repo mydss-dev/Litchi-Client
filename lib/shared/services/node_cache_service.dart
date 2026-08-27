@@ -78,7 +78,7 @@ abstract final class NodeCacheService {
     try {
       final file = File(_secureCachePath);
       if (!file.existsSync()) {
-        return _migrateLegacyPlainCacheIfPresent();
+        return await _migrateLegacyPlainCacheIfPresent();
       }
       final encrypted = (await file.readAsString()).trim();
       if (encrypted.isEmpty) return [];

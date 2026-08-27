@@ -323,7 +323,7 @@ class _NodesPageState extends State<NodesPage> {
                   onTap: () => _selectNode(nodes[i]),
                   onToggleFavorite: () => _toggleFavorite(nodes[i].id),
                 ),
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
               ),
         ],
       ),

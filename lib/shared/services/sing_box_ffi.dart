@@ -94,9 +94,9 @@ final class SingBoxFfi {
     }
     if (Platform.isMacOS) {
       return [
-        '$executableDirectory${separator}..${separator}Frameworks'
+        '$executableDirectory$separator..${separator}Frameworks'
             '${separator}liblitchi_singbox.dylib',
-        '$executableDirectory${separator}..${separator}Resources'
+        '$executableDirectory$separator..${separator}Resources'
             '${separator}liblitchi_singbox.dylib',
       ];
     }

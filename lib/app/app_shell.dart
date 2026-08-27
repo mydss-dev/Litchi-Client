@@ -370,9 +370,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     // surfaces as an icon that never appears rather than a hard error. Verify
     // the asset is actually bundled so a stripped build degrades to "no tray"
     // (window close quits) instead of hiding the app behind an invisible icon.
-    if (_trayIconsPresent == null) {
-      _trayIconsPresent = await _trayIconsAvailable();
-    }
+    _trayIconsPresent ??= await _trayIconsAvailable();
     if (_trayIconsPresent != true) {
       if (_trayReady) {
         _trayReady = false;

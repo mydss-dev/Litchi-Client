@@ -309,7 +309,7 @@ Future<List<int>> _httpGetBytes(Uri uri) async {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw HttpException('HTTP ${response.statusCode}', uri: uri);
     }
-    return response.fold<List<int>>(
+    return await response.fold<List<int>>(
       <int>[],
       (prev, chunk) => prev..addAll(chunk),
     );

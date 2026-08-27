@@ -182,7 +182,7 @@ abstract final class RemoteConfigService {
           .transform(const Utf8Decoder())
           .join()
           .timeout(_timeout);
-      return _parseTrustedConfig(body);
+      return await _parseTrustedConfig(body);
     } catch (e) {
       SecureLogger.warn('Signed payload fetch failed', e);
       return null;
