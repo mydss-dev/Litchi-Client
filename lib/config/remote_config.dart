@@ -34,6 +34,13 @@ abstract final class RemoteConfigService {
   static const publicKeyBase64Url =
       String.fromEnvironment('REMOTE_CONFIG_PUBLIC_KEY');
 
+  /// Previous Ed25519 public key, accepted alongside [publicKeyBase64Url]
+  /// during key rotation so configs signed with the outgoing key keep verifying
+  /// while new releases (which bake in the incoming key) roll out. Empty when
+  /// no rotation is in progress.
+  static const previousPublicKeyBase64Url =
+      String.fromEnvironment('REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY');
+
   // ── Internal settings ─────────────────────────────────────────────────────
 
   static String get _cacheKey => AppIdentity.preferenceKey('remote_config_v1');
@@ -219,13 +226,7 @@ abstract final class RemoteConfigService {
       final payloadBytes = _base64UrlDecode(payloadB64);
       final signatureBytes = _base64UrlDecode(signatureB64);
 
-      final publicKey = SimplePublicKey(
-        _base64UrlDecode(publicKeyBase64Url),
-        type: KeyPairType.ed25519,
-      );
-      final signature = Signature(signatureBytes, publicKey: publicKey);
-      final ok = await Ed25519().verify(payloadBytes, signature: signature);
-      if (!ok) return null;
+      if (!await _verifySignature(payloadBytes, signatureBytes)) return null;
 
       final payload = jsonDecode(utf8.decode(payloadBytes));
       if (payload is! Map<String, dynamic>) return null;
@@ -234,6 +235,37 @@ abstract final class RemoteConfigService {
       // intentional: parse attempt, fallback handled below
       return null;
     }
+  }
+
+  /// Verifies [signatureBytes] over [payloadBytes] against the primary key and,
+  /// when configured, the previous rotation key. Accepting the previous key
+  /// lets configs signed with the outgoing key keep verifying while new
+  /// releases (which bake in the incoming key) roll out.
+  static Future<bool> _verifySignature(
+    List<int> payloadBytes,
+    List<int> signatureBytes,
+  ) async {
+    final keys = <String>[
+      publicKeyBase64Url,
+      if (previousPublicKeyBase64Url.trim().isNotEmpty)
+        previousPublicKeyBase64Url,
+    ];
+    for (final keyB64 in keys) {
+      if (keyB64.trim().isEmpty) continue;
+      try {
+        final publicKey = SimplePublicKey(
+          _base64UrlDecode(keyB64),
+          type: KeyPairType.ed25519,
+        );
+        final signature = Signature(signatureBytes, publicKey: publicKey);
+        if (await Ed25519().verify(payloadBytes, signature: signature)) {
+          return true;
+        }
+      } catch (_) {
+        // invalid key encoding — try the next trusted key
+      }
+    }
+    return false;
   }
 
   static List<int> _base64UrlDecode(String raw) {

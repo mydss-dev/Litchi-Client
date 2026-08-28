@@ -1,0 +1,108 @@
+name: Publish
+
+# Signs the update manifest and uploads the release to Cloudflare R2.
+#
+# This is deliberately a SEPARATE, manually-triggered workflow from ci.yml:
+# the Ed25519 signing private key (LITCHI_CONFIG_PRIVATE_KEY) is a single-point
+# credential — whoever holds it can push arbitrary remote_config and a signed
+# update.json, i.e. redirect every client's API base and ship arbitrary
+# binaries. Keeping it out of the always-running build pipeline means a
+# main-branch or build-workflow compromise cannot reach it.
+#
+# The job runs under the `release` GitHub Environment, which should be
+# configured with required reviewers (and optionally a protection rule). The
+# signing + R2 secrets must live on that environment, not at repo level:
+#   LITCHI_CONFIG_PRIVATE_KEY   (Ed25519 private key, base64url)
+#   LITCHI_CONFIG_PUBLIC_KEY    (matching public key, base64url)
+#   R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET
+#   DOWNLOAD_BASE_URL
+#
+# Installers come from the GitHub Release attached to the tag by ci.yml; this
+# workflow only signs and uploads them.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag whose GitHub Release holds the installers (e.g. v1.2.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Sign update.json & upload to R2
+    runs-on: ubuntu-latest
+    environment: release
+    env:
+      LITCHI_CONFIG_PRIVATE_KEY: ${{ secrets.LITCHI_CONFIG_PRIVATE_KEY }}
+      LITCHI_CONFIG_PUBLIC_KEY: ${{ secrets.LITCHI_CONFIG_PUBLIC_KEY }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      DOWNLOAD_BASE_URL: ${{ secrets.DOWNLOAD_BASE_URL }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag }}
+          lfs: true
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+
+      - name: Download installers from GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ inputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --dir release-artifacts \
+            --pattern '*.exe' \
+            --pattern '*.apk' \
+            --pattern '*.dmg'
+
+      - name: Sign update manifest and upload release
+        shell: pwsh
+        run: |
+          $required = @(
+            'LITCHI_CONFIG_PRIVATE_KEY',
+            'LITCHI_CONFIG_PUBLIC_KEY',
+            'R2_ACCOUNT_ID',
+            'R2_ACCESS_KEY_ID',
+            'R2_SECRET_ACCESS_KEY',
+            'R2_BUCKET',
+            'DOWNLOAD_BASE_URL'
+          )
+          foreach ($name in $required) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+              throw "Missing GitHub Actions secret: $name"
+            }
+          }
+
+          $windows = Get-ChildItem release-artifacts -Recurse -File -Filter *.exe |
+            Select-Object -First 1
+          $android = Get-ChildItem release-artifacts -Recurse -File -Filter *.apk |
+            Sort-Object Length -Descending |
+            Select-Object -First 1
+          $macos = Get-ChildItem release-artifacts -Recurse -File -Filter *.dmg |
+            Select-Object -First 1
+          if (-not $windows -or -not $android -or -not $macos) {
+            throw 'One or more release packages are missing from the GitHub Release.'
+          }
+
+          $version = "${{ inputs.tag }}" -replace '^v', ''
+          $changelog = (git log -1 --pretty=%s).Trim()
+          .\tool\publish_release.ps1 `
+            -Version $version `
+            -DownloadBaseUrl $env:DOWNLOAD_BASE_URL `
+            -Changelog $changelog `
+            -WindowsPackage $windows.FullName `
+            -AndroidPackage $android.FullName `
+            -MacosPackage $macos.FullName `
+            -UploadToR2
