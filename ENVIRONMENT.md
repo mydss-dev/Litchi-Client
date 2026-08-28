@@ -4,7 +4,7 @@
 
 > **重要：`update.json` 不需要手工创建、编辑、签名或上传。**
 >
-> 使用者只需要首次配置 Update 密钥。之后每次发布版本时，GitHub `Publish` Workflow 会自动生成、签名并上传 `update.json`，同时自动上传安装包。
+> `Publish` Workflow 是手工触发的。只有需要自动更新时才需要配置 Update 私钥和 R2；如果 `config.json` 中 `update_enabled` 为 `false`，不运行 `Publish` 即可，不会上传 `update.json` 和更新安装包。
 
 ---
 
@@ -85,7 +85,7 @@ PUBLIC_KEY  → UPDATE_PUBLIC_KEY  → GitHub Repository Variable
 Remote Config 与 Update 不得共用同一套密钥。
 
 > 这一步只负责准备 Update 的签名密钥。
-> 后续不需要手动执行 Update 签名工具，也不需要自己制作 `update.json`。
+> 后续不需要手工执行 Update 签名工具，也不需要自己制作 `update.json`。
 
 ---
 
@@ -101,13 +101,13 @@ GitHub Repository
 → Variables
 ```
 
-创建：
+当前正式 `v*` 构建需要：
 
-| Variable | 内容 |
-|---|---|
-| `CDN_BASE_URL` | CDN 根地址，例如 `https://cdn.example.com` |
-| `REMOTE_CONFIG_PUBLIC_KEY` | 第 2 步生成的 Remote Config 公钥 |
-| `UPDATE_PUBLIC_KEY` | 第 3 步生成的 Update 公钥 |
+| Variable | 是否必填 | 内容 |
+|---|---|---|
+| `CDN_BASE_URL` | 必填 | CDN 根地址，例如 `https://cdn.example.com` |
+| `REMOTE_CONFIG_PUBLIC_KEY` | 必填 | 第 2 步生成的 Remote Config 公钥 |
+| `UPDATE_PUBLIC_KEY` | 当前 `v*` CI 必填 | 第 3 步生成的 Update 公钥 |
 
 初次部署不需要创建：
 
@@ -115,6 +115,8 @@ GitHub Repository
 REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY
 UPDATE_PREVIOUS_PUBLIC_KEY
 ```
+
+它们只在以后轮换密钥时使用。
 
 项目自动使用以下地址：
 
@@ -128,8 +130,8 @@ ${CDN_BASE_URL}/download/<filename>
 
 ```text
 config.json → 手工维护并签名
-update.json → Publish Workflow 自动生成并上传
-download/   → Publish Workflow 自动上传安装包
+update.json → 只有运行 Publish Workflow 时才自动生成并上传
+download/   → 只有运行 Publish Workflow 时才自动上传安装包
 ```
 
 ---
@@ -190,7 +192,16 @@ LOGO_URL
 
 正式构建时，CI 会从 `${CDN_BASE_URL}/config.json` 读取配置，并使用 `REMOTE_CONFIG_PUBLIC_KEY` 验证签名后再应用 `app_name` 和 `logo_url`。
 
-注意：修改 `app_name` 或 `logo_url` 后，客户端运行界面可通过 Remote Config 更新；Windows/Android/macOS 的安装包名称、系统应用名称和安装图标会在下一次构建时使用新的配置。
+`update_enabled`：
+
+```text
+true  → 客户端启用更新检查；需要自动更新时再配置 Publish 所需密钥和 R2
+false → 客户端关闭更新检查；不需要运行 Publish，也不需要配置 R2
+```
+
+注意：`Publish` 是手工 Workflow。`update_enabled: false` 不会自动删除已经存在的更新文件，也不会阻止你手工点击 `Publish`；关闭更新时不要运行 `Publish` 即可。
+
+修改 `app_name` 或 `logo_url` 后，客户端运行界面可通过 Remote Config 更新；Windows/Android/macOS 的安装包名称、系统应用名称和安装图标会在下一次构建时使用新的配置。
 
 `panel_type` 支持：
 
@@ -314,17 +325,13 @@ Remove-Item Env:REMOTE_CONFIG_PUBLIC_KEY -ErrorAction SilentlyContinue
 config.json
 ```
 
-上传到 Cloudflare R2 Bucket 根目录。
-
-此时只需要关心 `config.json`；不要手工创建或上传 `update.json`。
-
-访问：
+上传到 CDN 对应的存储根目录，使下面地址可以访问：
 
 ```text
-https://你的CDN域名/config.json
+${CDN_BASE_URL}/config.json
 ```
 
-应返回：
+访问后应返回：
 
 ```json
 {
@@ -332,6 +339,8 @@ https://你的CDN域名/config.json
   "signature": "..."
 }
 ```
+
+这里只处理 `config.json`。`update.json` 和更新安装包属于可选的自动更新流程。
 
 ---
 
@@ -347,16 +356,36 @@ GitHub Repository
 → Secrets
 ```
 
-Android 正式 Release 需要：
+### 先看结论
+
+**基础运行、Windows 构建、当前 macOS 构建：这里没有任何必填 Secret。**
+
+只有使用对应功能时才需要下面的配置：
+
+| Secret | 是否必须 | 什么时候需要 |
+|---|---|---|
+| `ANDROID_KEYSTORE_BASE64` | 可选 / 条件必填 | 需要正式发布 Android 时 |
+| `ANDROID_KEYSTORE_PASSWORD` | 可选 / 条件必填 | 需要正式发布 Android 时 |
+| `ANDROID_KEY_ALIAS` | 可选 / 条件必填 | 需要正式发布 Android 时 |
+| `ANDROID_KEY_PASSWORD` | 可选 / 条件必填 | 需要正式发布 Android 时 |
+
+Android 四项是一组：**要发布 Android 就四项全部填写；不发布 Android 就都不用填写。**
+
+当前默认 `v*` CI 包含 Android Release，因此如果你直接使用默认全平台 Tag 发布流程，Android 四项会被检查；如果项目不发布 Android，需要同时停用/调整 Android Release job。
+
+### macOS 签名
+
+当前项目使用 ad-hoc codesign：
 
 ```text
-ANDROID_KEYSTORE_BASE64
-ANDROID_KEYSTORE_PASSWORD
-ANDROID_KEY_ALIAS
-ANDROID_KEY_PASSWORD
+不需要 Apple Developer 证书
+不需要 Apple 签名 Secret
+不需要公证凭证
 ```
 
-这里不需要创建：
+以后如果要做正式 Apple Developer ID 签名 / notarization，再单独增加 Apple 证书和凭证即可；当前部署不需要填写。
+
+### 这里明确不要创建
 
 ```text
 API_BASE
@@ -370,16 +399,31 @@ R2_SECRET_ACCESS_KEY
 R2_BUCKET
 ```
 
-公钥统一放 Repository Variables：
+其中：
 
 ```text
-REMOTE_CONFIG_PUBLIC_KEY
-UPDATE_PUBLIC_KEY
+REMOTE_CONFIG_PRIVATE_KEY → 只在本地保存
+UPDATE_PRIVATE_KEY        → 只有启用自动更新时放 release-signing
+R2_*                      → 只有启用自动更新时放 release-upload
 ```
 
 ---
 
-## 11. 创建 `release-signing` Environment
+## 11. 自动更新开启时才配置 `release-signing`
+
+如果你的 `config.json` 是：
+
+```json
+"update_enabled": false
+```
+
+**这一整步可以跳过。**
+
+如果要启用自动更新：
+
+```json
+"update_enabled": true
+```
 
 进入：
 
@@ -401,15 +445,21 @@ Environment Secret：
 UPDATE_PRIVATE_KEY
 ```
 
-这里的私钥由 Publish Workflow 自动读取，用来自动签名 `update.json`。
-
-不需要在本地手工使用这把私钥生成 `update.json`。
+这是自动更新流程的条件必填项，用于 Publish Workflow 自动签名 `update.json`。
 
 ---
 
-## 12. 创建 `release-upload` Environment
+## 12. 自动更新开启时才配置 `release-upload` / R2
 
-创建：
+如果：
+
+```json
+"update_enabled": false
+```
+
+并且你不使用自动更新，**R2 更新发布凭证全部可以不填写，这一整步跳过。**
+
+如果要让 Publish Workflow 自动上传 `update.json` 和更新安装包，创建：
 
 ```text
 release-upload
@@ -422,6 +472,13 @@ R2_ACCOUNT_ID
 R2_ACCESS_KEY_ID
 R2_SECRET_ACCESS_KEY
 R2_BUCKET
+```
+
+这四项是一组：
+
+```text
+使用自动更新 / Publish → 四项全部必填
+不使用自动更新         → 四项全部不需要
 ```
 
 这里不要放：
@@ -441,7 +498,7 @@ REMOTE_CONFIG_PRIVATE_KEY
 v1.0.0
 ```
 
-CI 会检查：
+当前 CI 会检查：
 
 ```text
 CDN_BASE_URL
@@ -464,15 +521,49 @@ logo_url
 
 生成各平台的应用名称、安装包名称和系统图标。
 
-Android 还会检查 Android 签名配置。
+平台相关配置：
 
-CI 成功后会自动生成 GitHub Release 和安装包。
+```text
+Windows → 不需要额外签名 Secret
+macOS   → 当前 ad-hoc 签名，不需要 Apple Secret
+Android → 只有发布 Android 时需要四个 Android keystore Secret
+```
+
+CI 成功后会生成 GitHub Release 和对应安装包。
 
 ---
 
-## 14. 运行 Publish Workflow
+## 14. 只有启用自动更新时才运行 Publish Workflow
 
-进入：
+### 不使用自动更新
+
+如果：
+
+```json
+"update_enabled": false
+```
+
+做到这里即可：
+
+```text
+不要运行 Publish Workflow
+不需要 UPDATE_PRIVATE_KEY
+不需要 R2 四项凭证
+不会由 Publish 上传 update.json
+不会由 Publish 上传 /download/ 更新安装包
+```
+
+客户端也不会主动检查 `update.json`。
+
+### 使用自动更新
+
+如果：
+
+```json
+"update_enabled": true
+```
+
+并且已经完成第 11、12 步，则进入：
 
 ```text
 GitHub
@@ -487,7 +578,7 @@ GitHub
 v1.0.0
 ```
 
-点击运行后，后续全部自动完成：
+点击运行后自动完成：
 
 ```text
 读取 GitHub Release 安装包
@@ -498,47 +589,37 @@ v1.0.0
         ↓
 自动上传安装包到 /download/
         ↓
-自动上传 update.json 到 R2 根目录
+自动上传 update.json 到存储根目录
 ```
 
-**这里不需要：**
-
-```text
-自己创建 update.json
-自己编辑 update.json
-自己运行 Update 签名命令
-自己上传 update.json
-自己上传安装包
-```
-
-最终 R2 结构由流程自动形成：
-
-```text
-/
-├── config.json               # 你手工签名并上传
-├── update.json               # Publish Workflow 自动生成/签名/上传
-└── download/                 # Publish Workflow 自动上传
-    ├── *.exe
-    ├── *.apk
-    └── *.dmg
-```
+不需要自己创建、编辑、签名或上传 `update.json`。
 
 ---
 
 ## 15. 最终验证
 
-只需要检查发布结果：
+### 不使用自动更新
+
+只需要确认：
 
 ```text
-https://你的CDN域名/config.json
-https://你的CDN域名/update.json
-https://你的CDN域名/download/<安装包文件名>
+${CDN_BASE_URL}/config.json
 ```
 
-GitHub Actions 应显示：
+客户端能够正常加载配置即可。
+
+### 使用自动更新
+
+再额外确认：
 
 ```text
-CI       success
+${CDN_BASE_URL}/update.json
+${CDN_BASE_URL}/download/<安装包文件名>
+```
+
+GitHub Actions 中 Publish 应显示：
+
+```text
 sign     success
 upload   success
 ```
@@ -547,7 +628,7 @@ upload   success
 
 ```text
 REMOTE_CONFIG_PUBLIC_KEY → 验证 config.json
-UPDATE_PUBLIC_KEY        → 验证自动生成的 update.json
+UPDATE_PUBLIC_KEY        → 验证 update.json
 ```
 
 ---
@@ -563,7 +644,7 @@ UPDATE_PUBLIC_KEY        → 验证自动生成的 update.json
 4. 当前 PowerShell 临时加载 Remote Config 密钥
 5. 执行第 7 节签名命令
 6. 清理临时密钥
-7. 用新的 config.json 覆盖 R2 根目录旧文件
+7. 用新的 config.json 覆盖线上旧文件
 ```
 
 修改普通 Remote Config 不需要重新构建客户端，也与 `update.json` 无关。
@@ -572,7 +653,54 @@ UPDATE_PUBLIC_KEY        → 验证自动生成的 update.json
 
 ---
 
-## 17. 最终需要记住的区别
+## 17. 最终配置速查
+
+### 永远需要
+
+```text
+CDN_BASE_URL
+REMOTE_CONFIG_PUBLIC_KEY
+REMOTE_CONFIG_PRIVATE_KEY（只保存在本地）
+签名后的 config.json
+```
+
+当前 `v*` CI 另外要求：
+
+```text
+UPDATE_PUBLIC_KEY
+```
+
+### 只有发布 Android 时需要
+
+```text
+ANDROID_KEYSTORE_BASE64
+ANDROID_KEYSTORE_PASSWORD
+ANDROID_KEY_ALIAS
+ANDROID_KEY_PASSWORD
+```
+
+### 只有启用自动更新并运行 Publish 时需要
+
+```text
+UPDATE_PRIVATE_KEY
+R2_ACCOUNT_ID
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_BUCKET
+```
+
+### 当前不需要
+
+```text
+API_BASE
+APP_NAME
+LOGO_URL
+Apple Developer / notarization Secret
+REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY（首次部署）
+UPDATE_PREVIOUS_PUBLIC_KEY（首次部署）
+```
+
+最终关系：
 
 ```text
 config.json
@@ -582,8 +710,7 @@ config.json
 → API、应用名称、Logo 等配置的唯一来源
 
 update.json
+→ 只有启用自动更新时使用
 → 不手工维护
-→ 不手工签名
-→ 不手工上传
-→ Publish Workflow 全自动处理
+→ Publish Workflow 自动生成、签名、上传
 ```
