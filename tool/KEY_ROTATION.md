@@ -1,24 +1,24 @@
 # 签名密钥管理：两套独立信任根
 
-Config 与 Update Manifest 使用两套完全独立的 Ed25519 keypair，禁止共享 private key 或 public key。
+Remote Config 与 Update Manifest 使用两套完全独立的 Ed25519 keypair，禁止共享 private key 或 public key。
 
 ## 信任根
 
 ```text
-Config
-  CONFIG_PRIVATE_KEY
-  CONFIG_PUBLIC_KEY
-  CONFIG_PREVIOUS_PUBLIC_KEY   # 轮换时可选
+Remote Config
+  REMOTE_CONFIG_PRIVATE_KEY
+  REMOTE_CONFIG_PUBLIC_KEY
+  REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY   # 轮换时可选
 
 Update Manifest
   UPDATE_PRIVATE_KEY
   UPDATE_PUBLIC_KEY
-  UPDATE_PREVIOUS_PUBLIC_KEY   # 轮换时可选
+  UPDATE_PREVIOUS_PUBLIC_KEY          # 轮换时可选
 ```
 
 规则：
 
-- Config key 只用于 `config.json`；
+- Remote Config key 只用于 `config.json`；
 - Update key 只用于 `update.json`；
 - 两套 verifier 不允许 cross-fallback；
 - 私钥不得提交仓库。
@@ -37,14 +37,14 @@ update.json
 
 ```text
 CDN_BASE_URL
-CONFIG_PUBLIC_KEY
+REMOTE_CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 ```
 
 轮换时可临时增加：
 
 ```text
-CONFIG_PREVIOUS_PUBLIC_KEY
+REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY
 UPDATE_PREVIOUS_PUBLIC_KEY
 ```
 
@@ -60,7 +60,7 @@ R2_SECRET_ACCESS_KEY
 R2_BUCKET
 ```
 
-`CONFIG_PRIVATE_KEY` 保存在维护者本地，不进入 GitHub Actions。
+`REMOTE_CONFIG_PRIVATE_KEY` 保存在维护者本地，不进入 GitHub Actions。
 
 ## CDN 布局
 
@@ -80,7 +80,7 @@ download/*  → Publish Workflow 自动上传
 
 ## 首次生成 keypair
 
-Config：
+Remote Config：
 
 ```bash
 dart run tool/sign_remote_config.dart generate
@@ -105,21 +105,21 @@ dart run tool/sign_update_manifest.dart generate
    - 使用 Repository Secrets 中的 R2 凭证上传安装包到 `download/`；
    - 最后上传 `update.json` 到 R2 根目录。
 
-## Config key 轮换
+## Remote Config key 轮换
 
-1. 生成新的 Config keypair；
+1. 生成新的 Remote Config keypair；
 2. 新版本客户端配置：
 
 ```text
-CONFIG_PUBLIC_KEY=NEW_PUB
-CONFIG_PREVIOUS_PUBLIC_KEY=OLD_PUB
+REMOTE_CONFIG_PUBLIC_KEY=NEW_PUB
+REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=OLD_PUB
 ```
 
 3. 迁移窗口内根据客户端覆盖情况切换 `config.json` 的签名私钥；
-4. 覆盖完成后删除 `CONFIG_PREVIOUS_PUBLIC_KEY`；
+4. 覆盖完成后删除 `REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY`；
 5. 安全销毁旧私钥。
 
-Config 仍由维护者手工签名和上传。
+Remote Config 仍由维护者手工签名和上传。
 
 ## Update key 轮换
 
@@ -138,11 +138,11 @@ UPDATE_PREVIOUS_PUBLIC_KEY=OLD_PUB
 
 ## 泄漏应急
 
-### Config private key 泄漏
+### Remote Config private key 泄漏
 
-1. 立即生成新的 Config keypair；
+1. 立即生成新的 Remote Config keypair；
 2. 构建携带新公钥的客户端；
-3. 使用新 Config 私钥重新签名 `config.json`；
+3. 使用新 Remote Config 私钥重新签名 `config.json`；
 4. 手工覆盖 CDN/R2 根目录的 `config.json`；
 5. 撤销并销毁泄漏的旧私钥。
 
