@@ -16,7 +16,7 @@ Update Manifest
   UPDATE_PREVIOUS_PUBLIC_KEY          # 轮换时可选
 ```
 
-硬性规则：
+规则：
 
 - Remote Config key 只用于 `config.json`；
 - Update key 只用于 `update.json`；
@@ -33,15 +33,7 @@ update.json
 → 由 GitHub Publish Workflow 自动生成、签名并上传
 ```
 
-Update 私钥只需要配置到：
-
-```text
-release-signing → UPDATE_PRIVATE_KEY
-```
-
-之后正常发版、Update key 轮换和重新发布均应继续通过 `.github/workflows/publish.yml` 完成，不手工维护线上 `update.json`。
-
-## GitHub Variables
+## GitHub Repository Variables
 
 ```text
 CDN_BASE_URL
@@ -56,28 +48,19 @@ REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY
 UPDATE_PREVIOUS_PUBLIC_KEY
 ```
 
-## GitHub Environments
+## GitHub Repository Secrets
 
-### `release-signing`
+自动更新启用时：
 
 ```text
 UPDATE_PRIVATE_KEY
-```
-
-### `release-upload`
-
-```text
 R2_ACCOUNT_ID
 R2_ACCESS_KEY_ID
 R2_SECRET_ACCESS_KEY
 R2_BUCKET
 ```
 
-安全边界：
-
-- `sign` job 不持有 R2 写入凭证；
-- `upload` job 不持有任何 signing private key；
-- `REMOTE_CONFIG_PRIVATE_KEY` 不进入应用 Release Workflow。
+`REMOTE_CONFIG_PRIVATE_KEY` 保存在维护者本地，不进入 GitHub Actions。
 
 ## CDN 布局
 
@@ -118,11 +101,9 @@ dart run tool/sign_update_manifest.dart generate
 3. 运行 `Publish` Workflow，输入对应 Tag；
 4. Workflow 自动：
    - 读取 GitHub Release 安装包；
-   - 使用 `UPDATE_PRIVATE_KEY` 自动生成并签名 `update.json`；
-   - 上传安装包到 `download/`；
+   - 使用 Repository Secret `UPDATE_PRIVATE_KEY` 生成并签名 `update.json`；
+   - 使用 Repository Secrets 中的 R2 凭证上传安装包到 `download/`；
    - 最后上传 `update.json` 到 R2 根目录。
-
-正常发版时不要手工创建、编辑、签名或上传 `update.json`。
 
 ## Remote Config key 轮换
 
@@ -150,13 +131,10 @@ UPDATE_PUBLIC_KEY=NEW_PUB
 UPDATE_PREVIOUS_PUBLIC_KEY=OLD_PUB
 ```
 
-3. 迁移窗口内，`release-signing` 继续保存当前应该使用的 Update 私钥；
-4. 需要切换到新私钥时，只更新 `release-signing` 中的 `UPDATE_PRIVATE_KEY`；
-5. 重新运行正常的 Publish Workflow；
-6. Workflow 自动重新生成、签名并上传 `update.json`；
-7. 迁移完成后删除 `UPDATE_PREVIOUS_PUBLIC_KEY` 并销毁旧私钥。
-
-不要为了轮换手工修改线上 `update.json`。
+3. 在 Repository Secrets 中把 `UPDATE_PRIVATE_KEY` 更新为当前应该使用的私钥；
+4. 重新运行 Publish Workflow；
+5. Workflow 自动重新生成、签名并上传 `update.json`；
+6. 迁移完成后删除 `UPDATE_PREVIOUS_PUBLIC_KEY` 并销毁旧私钥。
 
 ## 泄漏应急
 
@@ -172,9 +150,7 @@ UPDATE_PREVIOUS_PUBLIC_KEY=OLD_PUB
 
 1. 立即生成新的 Update keypair；
 2. 更新客户端的 Update 公钥配置；
-3. 将新的 `UPDATE_PRIVATE_KEY` 写入 `release-signing` Environment；
+3. 将新的 `UPDATE_PRIVATE_KEY` 写入 Repository Secrets；
 4. 运行 Publish Workflow；
 5. Workflow 自动生成新的签名 `update.json` 并上传；
 6. 撤销并销毁泄漏的旧私钥。
-
-即使发生密钥泄漏，也不要跳过现有发布流水线手工维护 `update.json`，避免绕过签名/上传隔离边界。
