@@ -8,6 +8,17 @@ analyzer:
     dead_code: error
     # Unused imports clutter the namespace and slow analysis.
     unused_import: error
+  # Generated build + platform directories must not be analyzed: they contain
+  # machine-generated Dart that does not follow project lints and would flood
+  # the analyzer with false positives after a build.
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 linter:
   rules:
