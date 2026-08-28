@@ -24,9 +24,9 @@ dart --version
 
 ---
 
-## 2. 生成 Config 密钥
+## 2. 生成 Remote Config 密钥
 
-Config 密钥只需要首次部署时生成一次。
+Remote Config 密钥只需要首次部署时生成一次。
 
 执行：
 
@@ -45,7 +45,7 @@ PUBLIC_KEY=xxxxxxxx
 
 ```text
 PRIVATE_KEY → 本地安全保存
-PUBLIC_KEY  → GitHub Repository Variable: CONFIG_PUBLIC_KEY
+PUBLIC_KEY  → GitHub Repository Variable: REMOTE_CONFIG_PUBLIC_KEY
 ```
 
 以后修改 `config.json` 时继续使用同一套密钥，不需要重新执行 `generate`。
@@ -110,11 +110,11 @@ Copy-Item .\config.example.json .\config.json
 
 ## 4. 签名 `config.json`
 
-在当前 PowerShell 窗口临时加载第 2 步保存的 Config 密钥：
+在当前 PowerShell 窗口临时加载第 2 步保存的 Remote Config 密钥：
 
 ```powershell
-$env:CONFIG_PRIVATE_KEY='你的 PRIVATE_KEY'
-$env:CONFIG_PUBLIC_KEY='你的 PUBLIC_KEY'
+$env:REMOTE_CONFIG_PRIVATE_KEY='你的 PRIVATE_KEY'
+$env:REMOTE_CONFIG_PUBLIC_KEY='你的 PUBLIC_KEY'
 ```
 
 执行签名：
@@ -122,7 +122,7 @@ $env:CONFIG_PUBLIC_KEY='你的 PUBLIC_KEY'
 ```powershell
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $signed = (& dart run tool/sign_remote_config.dart sign-env .\config.json) -join [Environment]::NewLine
-if ($LASTEXITCODE -ne 0) { throw "Config 签名失败，config.json 未修改。" }
+if ($LASTEXITCODE -ne 0) { throw "Remote Config 签名失败，config.json 未修改。" }
 [System.IO.File]::WriteAllText((Resolve-Path .\config.json), $signed + [Environment]::NewLine, $utf8)
 ```
 
@@ -144,8 +144,8 @@ Get-Content .\config.json
 签名完成后清理当前 PowerShell 中的临时密钥：
 
 ```powershell
-Remove-Item Env:CONFIG_PRIVATE_KEY -ErrorAction SilentlyContinue
-Remove-Item Env:CONFIG_PUBLIC_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:REMOTE_CONFIG_PRIVATE_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:REMOTE_CONFIG_PUBLIC_KEY -ErrorAction SilentlyContinue
 ```
 
 `payload_b64` 可以被解码，因此 `config.json` 只用于公开配置。
@@ -190,7 +190,7 @@ Repository
 | Variable | 填写内容 |
 |---|---|
 | `CDN_BASE_URL` | CDN 根地址，例如 `https://cdn.example.com` |
-| `CONFIG_PUBLIC_KEY` | 第 2 步生成的 Config 公钥 |
+| `REMOTE_CONFIG_PUBLIC_KEY` | 第 2 步生成的 Remote Config 公钥 |
 
 项目会自动读取：
 
@@ -209,11 +209,11 @@ ${CDN_BASE_URL}/config.json
 ```text
 update_enabled = false
 → CDN_BASE_URL
-→ CONFIG_PUBLIC_KEY
+→ REMOTE_CONFIG_PUBLIC_KEY
 
 update_enabled = true
 → CDN_BASE_URL
-→ CONFIG_PUBLIC_KEY
+→ REMOTE_CONFIG_PUBLIC_KEY
 → UPDATE_PUBLIC_KEY
 ```
 
@@ -302,7 +302,7 @@ CI 会使用：
 
 ```text
 CDN_BASE_URL
-CONFIG_PUBLIC_KEY
+REMOTE_CONFIG_PUBLIC_KEY
 ```
 
 读取并验证：
@@ -376,18 +376,18 @@ ${CDN_BASE_URL}/download/<安装包文件名>
 
 ## 10. 后续修改配置
 
-以后修改 Config：
+以后修改 Remote Config：
 
 ```text
 1. 准备新的明文 config.json
 2. 修改配置
 3. 增加 config_version
-4. 临时加载原来的 Config 密钥
+4. 临时加载原来的 Remote Config 密钥
 5. 签名 config.json
 6. 上传覆盖 CDN/R2 根目录的 config.json
 ```
 
-普通 Config 修改不需要重新生成密钥。
+普通 Remote Config 修改不需要重新生成密钥。
 
 ---
 
@@ -399,7 +399,7 @@ Repository Variables：
 
 ```text
 CDN_BASE_URL
-CONFIG_PUBLIC_KEY
+REMOTE_CONFIG_PUBLIC_KEY
 ```
 
 Repository Secrets：
@@ -418,7 +418,7 @@ Repository Variables：
 
 ```text
 CDN_BASE_URL
-CONFIG_PUBLIC_KEY
+REMOTE_CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 ```
 
