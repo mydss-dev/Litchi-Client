@@ -7,6 +7,7 @@ import '../../config/app_config.dart';
 import '../../config/remote_config.dart';
 import '../models/app_models.dart';
 import 'secure_logger.dart';
+import 'update_manifest_verifier.dart';
 
 /// Checks the independently signed update manifest when configured. Older
 /// one-file configurations remain supported as a migration fallback.
@@ -15,18 +16,27 @@ abstract final class UpdateService {
   /// currently running one, or null when disabled / already up-to-date.
   static Future<UpdateInfo?> check() async {
     if (!AppConfig.updatesEnabled) return null;
-    final manifestUrl = resolveManifestUrl(
-      declaredUrl: AppConfig.updateManifestUrl,
-      configUrl: RemoteConfigService.configUrl,
-    );
-    if (manifestUrl.isNotEmpty) {
-      final manifest = await RemoteConfigService.fetchTrustedPayload(
-        manifestUrl,
+
+    // Manifest-based updates are verified by the independent update-signing
+    // trust root only (UpdateManifestVerifier). The manifest is fetched from
+    // the v2 URL so the legacy update.json — still signed by the outgoing
+    // remote-config key during the bridge — keeps updating old clients.
+    if (UpdateManifestVerifier.isConfigured) {
+      final manifestUrl = resolveManifestUrl(
+        declaredUrl: AppConfig.updateManifestV2Url,
+        configUrl: RemoteConfigService.configUrl,
+        fallbackName: 'update-v2.json',
       );
-      if (manifest == null) return null;
-      return _fromManifest(manifest);
+      if (manifestUrl.isNotEmpty) {
+        final manifest = await UpdateManifestVerifier.fetchVerifiedPayload(
+          manifestUrl,
+        );
+        if (manifest == null) return null;
+        return _fromManifest(manifest);
+      }
     }
 
+    // Legacy one-file configuration (update fields inline in remote config).
     return _fromValues(
       latest: AppConfig.updateVersion,
       downloadUrl: AppConfig.updateDownloadUrl,
@@ -39,6 +49,7 @@ abstract final class UpdateService {
   static String resolveManifestUrl({
     required String declaredUrl,
     required String configUrl,
+    String fallbackName = 'update.json',
   }) {
     final declared = declaredUrl.trim();
     if (declared.isNotEmpty) return declared;
@@ -46,7 +57,7 @@ abstract final class UpdateService {
     if (source == null || source.scheme != 'https' || !source.hasAuthority) {
       return '';
     }
-    return source.resolve('update.json').toString();
+    return source.resolve(fallbackName).toString();
   }
 
   static UpdateInfo? _fromManifest(Map<String, dynamic> manifest) {

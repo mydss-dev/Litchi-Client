@@ -1,0 +1,5 @@
+# Pinned dependencies for the R2 upload job only. The signing jobs never
+# install Python packages. Bump deliberately, never unpinned, in the release
+# environment.
+boto3==1.43.82
+botocore==1.43.82

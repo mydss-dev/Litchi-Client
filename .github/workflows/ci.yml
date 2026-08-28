@@ -77,6 +77,8 @@ jobs:
           $configUrl = if ("${{ secrets.REMOTE_CONFIG_URL }}")  { "${{ secrets.REMOTE_CONFIG_URL }}" }  else { "" }
           $configKey = if ("${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}") { "${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}" } else { "" }
           $prevConfigKey = if ("${{ secrets.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}") { "${{ secrets.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}" } else { "" }
+          $updateKey = if ("${{ secrets.UPDATE_PUBLIC_KEY }}") { "${{ secrets.UPDATE_PUBLIC_KEY }}" } else { "" }
+          $prevUpdateKey = if ("${{ secrets.UPDATE_PREVIOUS_PUBLIC_KEY }}") { "${{ secrets.UPDATE_PREVIOUS_PUBLIC_KEY }}" } else { "" }
           $version   = "${{ github.ref_name }}" -replace '^v', ''
           if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "0.0.0" }
           if ("${{ github.ref }}" -like "refs/tags/v*" -and [string]::IsNullOrWhiteSpace($apiBase)) {
@@ -90,7 +92,9 @@ jobs:
             "--dart-define=LOGO_URL=$logoUrl" `
             "--dart-define=REMOTE_CONFIG_URL=$configUrl" `
             "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$configKey" `
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prevConfigKey"
+            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prevConfigKey" `
+            "--dart-define=UPDATE_PUBLIC_KEY=$updateKey" `
+            "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prevUpdateKey"
 
       - name: Bundle Windows runtime
         shell: pwsh
@@ -239,12 +243,16 @@ jobs:
           config_url="${{ secrets.REMOTE_CONFIG_URL }}"
           config_key="${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}"
           prev_config_key="${{ secrets.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
+          update_key="${{ secrets.UPDATE_PUBLIC_KEY }}"
+          prev_update_key="${{ secrets.UPDATE_PREVIOUS_PUBLIC_KEY }}"
           api_base="${api_base:-}"
           app_name="${app_name:-Litchi}"
           logo_url="${logo_url:-}"
           config_url="${config_url:-}"
           config_key="${config_key:-}"
           prev_config_key="${prev_config_key:-}"
+          update_key="${update_key:-}"
+          prev_update_key="${prev_update_key:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           if [[ "$GITHUB_REF" == refs/tags/v* && -z "$api_base" ]]; then
@@ -266,7 +274,9 @@ jobs:
             "--dart-define=LOGO_URL=$logo_url" \
             "--dart-define=REMOTE_CONFIG_URL=$config_url" \
             "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key" \
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key"
+            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
+            "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
+            "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
           cp build/app/outputs/flutter-apk/app-release.apk \
             "$RUNNER_TEMP/android-universal.apk"
           flutter build apk --release --split-per-abi \
@@ -278,7 +288,9 @@ jobs:
             "--dart-define=LOGO_URL=$logo_url" \
             "--dart-define=REMOTE_CONFIG_URL=$config_url" \
             "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key" \
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key"
+            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
+            "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
+            "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             flutter build appbundle --release \
               "--build-name=$version" \
@@ -289,7 +301,9 @@ jobs:
               "--dart-define=LOGO_URL=$logo_url" \
               "--dart-define=REMOTE_CONFIG_URL=$config_url" \
               "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key" \
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key"
+            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
+            "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
+            "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
           fi
 
       - name: Verify the core includes arm64
@@ -384,12 +398,16 @@ jobs:
           config_url="${{ secrets.REMOTE_CONFIG_URL }}"
           config_key="${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}"
           prev_config_key="${{ secrets.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
+          update_key="${{ secrets.UPDATE_PUBLIC_KEY }}"
+          prev_update_key="${{ secrets.UPDATE_PREVIOUS_PUBLIC_KEY }}"
           api_base="${api_base:-}"
           app_name="${app_name:-Litchi}"
           logo_url="${logo_url:-}"
           config_url="${config_url:-}"
           config_key="${config_key:-}"
           prev_config_key="${prev_config_key:-}"
+          update_key="${update_key:-}"
+          prev_update_key="${prev_update_key:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           if [[ "$GITHUB_REF" == refs/tags/v* && -z "$api_base" ]]; then
@@ -404,7 +422,9 @@ jobs:
             "--dart-define=LOGO_URL=$logo_url" \
             "--dart-define=REMOTE_CONFIG_URL=$config_url" \
             "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key" \
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key"
+            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
+            "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
+            "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
 
       - name: Bundle sing-box core (universal)
         run: bash tool/bundle_macos_singbox.sh "build/macos/Build/Products/Release/Client.app"

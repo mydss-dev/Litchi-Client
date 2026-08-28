@@ -53,18 +53,23 @@ flutter run -d windows
 flutter build windows --release
 ```
 
-Set the OSS config URL and Ed25519 public key once in
-`lib/config/remote_config.dart`. The client rejects unsigned or invalid remote
-configuration. The application identity is fixed so updates continue using the
-same data, credentials, auto-start entry, and single-instance lock.
+Set the OSS config URL and Ed25519 public keys at build time via
+`--dart-define=REMOTE_CONFIG_URL=...`, `--dart-define=REMOTE_CONFIG_PUBLIC_KEY=...`
+(remote config) and `--dart-define=UPDATE_PUBLIC_KEY=...` (update manifest). The
+client rejects unsigned or invalid remote configuration. The application identity
+is fixed so updates continue using the same data, credentials, auto-start entry,
+and single-instance lock.
 
 Tagged releases fail when `API_BASE` is missing. Android tags publish both an
 APK for direct installation and an AAB for Google Play.
 
 The signed `config.json` is maintained manually. Tagged CI releases build all
-platform packages, generate and sign `update.json`, and upload the packages and
-manifest to Cloudflare R2. `tool/publish_release.ps1` provides the same update
-publishing flow for a local package when needed.
+platform packages and create a GitHub Release. Signing and the Cloudflare R2
+upload run in a separate, manually-triggered workflow
+(`.github/workflows/publish.yml`) under protected environments: it signs
+`update-v2.json` with the independent update-manifest key and uploads the
+packages and manifest to R2. `tool/publish_release.ps1` prepares and signs the
+same update manifest locally.
 
 ## Project Structure
 

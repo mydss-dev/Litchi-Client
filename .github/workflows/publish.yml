@@ -2,23 +2,30 @@ name: Publish
 
 # Signs the update manifest and uploads the release to Cloudflare R2.
 #
-# This is deliberately a SEPARATE, manually-triggered workflow from ci.yml:
-# the Ed25519 signing private key (LITCHI_CONFIG_PRIVATE_KEY) is a single-point
-# credential — whoever holds it can push arbitrary remote_config and a signed
-# update.json, i.e. redirect every client's API base and ship arbitrary
-# binaries. Keeping it out of the always-running build pipeline means a
-# main-branch or build-workflow compromise cannot reach it.
+# P0-2: the update manifest now has an INDEPENDENT trust root from remote
+# config. The two keypairs are never shared:
 #
-# The job runs under the `release` GitHub Environment, which should be
-# configured with required reviewers (and optionally a protection rule). The
-# signing + R2 secrets must live on that environment, not at repo level:
-#   LITCHI_CONFIG_PRIVATE_KEY   (Ed25519 private key, base64url)
-#   LITCHI_CONFIG_PUBLIC_KEY    (matching public key, base64url)
-#   R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET
-#   DOWNLOAD_BASE_URL
+#   remote_config.json  <-  REMOTE_CONFIG_PRIVATE_KEY / REMOTE_CONFIG_PUBLIC_KEY
+#   update-v2.json      <-  UPDATE_PRIVATE_KEY        / UPDATE_PUBLIC_KEY
 #
-# Installers come from the GitHub Release attached to the tag by ci.yml; this
-# workflow only signs and uploads them.
+# This is a manually-triggered workflow (workflow_dispatch). It is deliberately
+# separate from ci.yml, which only builds and never touches a signing key.
+#
+# Three jobs hold mutually-exclusive secrets:
+#   sign         (release-signing)   UPDATE_PRIVATE_KEY / UPDATE_PUBLIC_KEY,
+#                                    plus DOWNLOAD_BASE_URL (non-secret)
+#   sign-legacy  (release-legacy)    REMOTE_CONFIG_PRIVATE_KEY /
+#                                    REMOTE_CONFIG_PUBLIC_KEY  [bridge only]
+#   upload       (release-upload)    R2_* + DOWNLOAD_BASE_URL
+#
+# The signing jobs never hold R2 credentials; the upload job never holds a
+# signing key. Artifacts move between jobs via GitHub Artifacts, never via
+# shared environment variables.
+#
+# sign-legacy exists only during the bridge migration: it signs the legacy
+# update.json with the outgoing remote-config key so already-installed clients
+# can upgrade to a build that trusts the independent UPDATE_PUBLIC_KEY. Once
+# those clients have upgraded, delete this job and stop publishing update.json.
 
 on:
   workflow_dispatch:
@@ -30,20 +37,13 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
-  publish:
-    name: Sign update.json & upload to R2
+  sign:
+    name: Sign update-v2.json
     runs-on: ubuntu-latest
-    environment: release
-    env:
-      LITCHI_CONFIG_PRIVATE_KEY: ${{ secrets.LITCHI_CONFIG_PRIVATE_KEY }}
-      LITCHI_CONFIG_PUBLIC_KEY: ${{ secrets.LITCHI_CONFIG_PUBLIC_KEY }}
-      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      R2_BUCKET: ${{ secrets.R2_BUCKET }}
-      DOWNLOAD_BASE_URL: ${{ secrets.DOWNLOAD_BASE_URL }}
+    environment: release-signing
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -67,18 +67,13 @@ jobs:
             --pattern '*.apk' \
             --pattern '*.dmg'
 
-      - name: Sign update manifest and upload release
+      - name: Sign update manifest (v2)
         shell: pwsh
+        env:
+          UPDATE_PRIVATE_KEY: ${{ secrets.UPDATE_PRIVATE_KEY }}
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
         run: |
-          $required = @(
-            'LITCHI_CONFIG_PRIVATE_KEY',
-            'LITCHI_CONFIG_PUBLIC_KEY',
-            'R2_ACCOUNT_ID',
-            'R2_ACCESS_KEY_ID',
-            'R2_SECRET_ACCESS_KEY',
-            'R2_BUCKET',
-            'DOWNLOAD_BASE_URL'
-          )
+          $required = @('UPDATE_PRIVATE_KEY', 'UPDATE_PUBLIC_KEY')
           foreach ($name in $required) {
             if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
               throw "Missing GitHub Actions secret: $name"
@@ -100,9 +95,95 @@ jobs:
           $changelog = (git log -1 --pretty=%s).Trim()
           .\tool\publish_release.ps1 `
             -Version $version `
-            -DownloadBaseUrl $env:DOWNLOAD_BASE_URL `
+            -DownloadBaseUrl "${{ secrets.DOWNLOAD_BASE_URL }}" `
             -Changelog $changelog `
             -WindowsPackage $windows.FullName `
             -AndroidPackage $android.FullName `
-            -MacosPackage $macos.FullName `
-            -UploadToR2
+            -MacosPackage $macos.FullName
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: signed-release
+          path: release_output
+          retention-days: 7
+
+  sign-legacy:
+    name: Sign legacy update.json (bridge only)
+    runs-on: ubuntu-latest
+    needs: sign
+    environment: release-legacy
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+
+      - name: Download unsigned update payload
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: signed-release
+          path: signed-release
+
+      - name: Sign legacy update.json with outgoing remote-config key
+        env:
+          REMOTE_CONFIG_PRIVATE_KEY: ${{ secrets.REMOTE_CONFIG_PRIVATE_KEY }}
+          REMOTE_CONFIG_PUBLIC_KEY: ${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}
+        run: |
+          dart run tool/sign_remote_config.dart sign-env \
+            signed-release/update_payload.json > signed-release/update.json
+
+      - name: Upload legacy manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: legacy-manifest
+          path: signed-release/update.json
+          retention-days: 7
+
+  upload:
+    name: Upload release to R2
+    runs-on: ubuntu-latest
+    needs: [sign, sign-legacy]
+    environment: release-upload
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Download signed artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: signed-release
+          path: release-artifacts
+
+      - name: Download legacy manifest
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: legacy-manifest
+          path: release-artifacts
+
+      - name: Install pinned upload dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            -r tool/requirements-release.txt
+
+      - name: Upload to Cloudflare R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          DOWNLOAD_BASE_URL: ${{ secrets.DOWNLOAD_BASE_URL }}
+        run: |
+          # Packages first, manifests last so clients never see a new version
+          # before the download URLs are actually reachable.
+          set -- release-artifacts/*.exe release-artifacts/*.apk release-artifacts/*.dmg
+          python tool/upload_r2.py \
+            "$@" \
+            release-artifacts/update-v2.json \
+            release-artifacts/update.json

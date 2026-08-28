@@ -13,21 +13,23 @@ param(
   [string]$WindowsPackage = '',
   [string]$AndroidPackage = '',
   [string]$MacosPackage = '',
-  [string]$OutputDirectory = "$PSScriptRoot\..\release_output",
-  [switch]$UploadToR2,
-  [string]$RcloneRemote = ''
+  [string]$OutputDirectory = "$PSScriptRoot\..\release_output"
 )
 
+# Signs update-v2.json with the INDEPENDENT update-manifest keypair. This script
+# must never hold R2 credentials or the remote-config key; it only prepares the
+# release payload and signs it. Uploading is done by a separate job that has no
+# signing key (see .github/workflows/publish.yml).
 $ErrorActionPreference = 'Stop'
-$signer = Join-Path $PSScriptRoot 'sign_remote_config.dart'
-$privateKey = $env:LITCHI_CONFIG_PRIVATE_KEY
-$publicKey = $env:LITCHI_CONFIG_PUBLIC_KEY
+$signer = Join-Path $PSScriptRoot 'sign_update_manifest.dart'
+$privateKey = $env:UPDATE_PRIVATE_KEY
+$publicKey = $env:UPDATE_PUBLIC_KEY
 
 if ([string]::IsNullOrWhiteSpace($privateKey)) {
-  throw 'Set LITCHI_CONFIG_PRIVATE_KEY before publishing.'
+  throw 'Set UPDATE_PRIVATE_KEY before signing the update manifest.'
 }
 if ([string]::IsNullOrWhiteSpace($publicKey)) {
-  throw 'Set LITCHI_CONFIG_PUBLIC_KEY before publishing.'
+  throw 'Set UPDATE_PUBLIC_KEY before signing the update manifest.'
 }
 if ($privateKey -notmatch '^[A-Za-z0-9_-]+$' -or $publicKey -notmatch '^[A-Za-z0-9_-]+$') {
   throw 'Signing keys must be base64url strings without padding.'
@@ -101,48 +103,18 @@ try {
   }
   $unsignedUpdate = Join-Path $temporaryPath 'update_payload.json'
   Write-Utf8Json $updatePayload $unsignedUpdate
-  Sign-Payload $unsignedUpdate (Join-Path $outputPath 'update.json')
+
+  # Emit the unsigned payload too, so the legacy sign job can produce the
+  # bridge-period update.json (signed with the outgoing remote-config key).
+  Copy-Item -LiteralPath $unsignedUpdate -Destination (Join-Path $outputPath 'update_payload.json') -Force
+
+  # Sign the v2 manifest with the update-manifest key.
+  Sign-Payload $unsignedUpdate (Join-Path $outputPath 'update-v2.json')
 
   Write-Host "Release $Version prepared in $outputPath"
   foreach ($platform in $downloadUrls.Keys) {
     Write-Host "$platform  $($downloadUrls[$platform])"
     Write-Host "sha256   $($hashes[$platform])"
-  }
-
-  if (-not [string]::IsNullOrWhiteSpace($RcloneRemote)) {
-    if (-not (Get-Command rclone -ErrorAction SilentlyContinue)) {
-      throw 'RcloneRemote was provided, but rclone is not installed.'
-    }
-    & rclone copy $outputPath $RcloneRemote --checksum
-    if ($LASTEXITCODE -ne 0) { throw "rclone upload failed with exit code $LASTEXITCODE" }
-    Write-Host "Uploaded release files to $RcloneRemote"
-  }
-
-  if ($UploadToR2) {
-    if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-      throw 'Python is required for Cloudflare R2 upload.'
-    }
-    foreach ($name in @('R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET')) {
-      if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
-        throw "Set $name before uploading to Cloudflare R2."
-      }
-    }
-    $env:DOWNLOAD_BASE_URL = $DownloadBaseUrl.TrimEnd('/')
-    & python -c "import boto3" 2>$null
-    if ($LASTEXITCODE -ne 0) {
-      & python -m pip install --disable-pip-version-check boto3
-      if ($LASTEXITCODE -ne 0) { throw 'Failed to install boto3.' }
-    }
-    # Upload packages first, update.json last so clients never see a new
-    # version before the download URLs are actually reachable.
-    $uploadFiles = @()
-    foreach ($entry in $packages.GetEnumerator()) {
-      $uploadFiles += Join-Path $outputPath ([IO.Path]::GetFileName($entry.Value))
-    }
-    $uploadFiles += (Join-Path $outputPath 'update.json')
-    & python (Join-Path $PSScriptRoot 'upload_r2.py') @uploadFiles
-    if ($LASTEXITCODE -ne 0) { throw "Cloudflare R2 upload failed with exit code $LASTEXITCODE" }
-    Write-Host 'Cloudflare R2 release upload complete.'
   }
 } finally {
   if (Test-Path -LiteralPath $temporaryPath) {

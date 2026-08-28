@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cryptography/cryptography.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_config.dart';
 import 'app_identity.dart';
 import '../shared/services/secure_logger.dart';
+import '../shared/services/signed_payload_verifier.dart';
 
 /// Fetches brand/API config from OSS and applies it to [AppConfig].
 ///
@@ -57,7 +57,8 @@ abstract final class RemoteConfigService {
     final uri = Uri.tryParse(configUrl.trim());
     if (uri == null || uri.scheme != 'https' || !uri.hasAuthority) return false;
     try {
-      return _base64UrlDecode(publicKeyBase64Url).length == 32;
+      return SignedPayloadVerifier.base64UrlDecode(publicKeyBase64Url).length ==
+          32;
     } catch (_) {
       return false;
     }
@@ -169,113 +170,35 @@ abstract final class RemoteConfigService {
     }
   }
 
-  /// Fetches and verifies another signed JSON payload with the configured
-  /// compiled trust key. Used by the independently published update manifest.
-  static Future<Map<String, dynamic>?> fetchTrustedPayload(String url) async {
-    if (!isConfigured) return null;
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null || uri.scheme != 'https' || !uri.hasAuthority) return null;
-
-    HttpClient? client;
-    try {
-      client = HttpClient()..connectionTimeout = _timeout;
-      final request = await client.getUrl(uri).timeout(_timeout);
-      request.headers
-        ..set('Accept', 'application/json')
-        ..set('Cache-Control', 'no-cache');
-      final response = await request.close().timeout(_timeout);
-      if (response.statusCode != 200) return null;
-      final body = await response
-          .transform(const Utf8Decoder())
-          .join()
-          .timeout(_timeout);
-      return await _parseTrustedConfig(body);
-    } catch (e) {
-      SecureLogger.warn('Signed payload fetch failed', e);
-      return null;
-    } finally {
-      client?.close(force: true);
-    }
-  }
-
-  /// Parses a signed config wrapper.
-  ///
-  /// Signed format:
-  /// {
-  ///   "payload_b64": "base64url(utf8(jsonPayload))",
-  ///   "signature": "base64url(ed25519_signature(payload_bytes))"
-  /// }
+  /// Parses and verifies a signed config wrapper, accepting only the
+  /// remote-config trust keys. Returns the decoded payload map, or null when
+  /// the body is malformed, unsigned, or its signature does not verify.
   static Future<Map<String, dynamic>?> _parseTrustedConfig(String body) async {
-    final decoded = jsonDecode(body);
-    if (decoded is! Map<String, dynamic>) return null;
-    if (!isConfigured || !_looksSigned(decoded)) return null;
-    return _verifySigned(decoded);
-  }
-
-  static bool _looksSigned(Map<String, dynamic> json) =>
-      json['payload_b64'] is String && json['signature'] is String;
-
-  static Future<Map<String, dynamic>?> _verifySigned(
-    Map<String, dynamic> wrapper,
-  ) async {
     if (!isConfigured) return null;
-
-    try {
-      final payloadB64 = wrapper['payload_b64'] as String;
-      final signatureB64 = wrapper['signature'] as String;
-      final payloadBytes = _base64UrlDecode(payloadB64);
-      final signatureBytes = _base64UrlDecode(signatureB64);
-
-      if (!await _verifySignature(payloadBytes, signatureBytes)) return null;
-
-      final payload = jsonDecode(utf8.decode(payloadBytes));
-      if (payload is! Map<String, dynamic>) return null;
-      return payload;
-    } catch (_) {
-      // intentional: parse attempt, fallback handled below
-      return null;
-    }
+    return verifyAndParse(body);
   }
 
-  /// Verifies [signatureBytes] over [payloadBytes] against the primary key and,
-  /// when configured, the previous rotation key. Accepting the previous key
-  /// lets configs signed with the outgoing key keep verifying while new
-  /// releases (which bake in the incoming key) roll out.
-  static Future<bool> _verifySignature(
-    List<int> payloadBytes,
-    List<int> signatureBytes,
-  ) async {
-    final keys = <String>[
-      publicKeyBase64Url,
-      if (previousPublicKeyBase64Url.trim().isNotEmpty)
-        previousPublicKeyBase64Url,
-    ];
-    for (final keyB64 in keys) {
-      if (keyB64.trim().isEmpty) continue;
-      try {
-        final publicKey = SimplePublicKey(
-          _base64UrlDecode(keyB64),
-          type: KeyPairType.ed25519,
-        );
-        final signature = Signature(signatureBytes, publicKey: publicKey);
-        if (await Ed25519().verify(payloadBytes, signature: signature)) {
-          return true;
-        }
-      } catch (_) {
-        // invalid key encoding — try the next trusted key
-      }
-    }
-    return false;
-  }
-
-  static List<int> _base64UrlDecode(String raw) {
-    final normalized = raw.trim().replaceAll('-', '+').replaceAll('_', '/');
-    final padded = normalized.padRight(
-      normalized.length + ((4 - normalized.length % 4) % 4),
-      '=',
+  /// Verifies [body] against [publicKeysBase64Url] (defaults to the compiled
+  /// remote-config trust keys).
+  ///
+  /// Exposed for tests to lock in trust-domain isolation: a remote-config
+  /// payload must verify only with the remote-config key, never the
+  /// update-manifest key.
+  static Future<Map<String, dynamic>?> verifyAndParse(
+    String body, {
+    List<String>? publicKeysBase64Url,
+  }) {
+    return SignedPayloadVerifier.verifyAndParse(
+      body: body,
+      publicKeysBase64Url: publicKeysBase64Url ?? _trustedKeys,
     );
-    return base64.decode(padded);
   }
+
+  static List<String> get _trustedKeys => <String>[
+    publicKeyBase64Url,
+    if (previousPublicKeyBase64Url.trim().isNotEmpty)
+      previousPublicKeyBase64Url,
+  ];
 }
 
 abstract final class RemoteConfigVersionPolicy {
