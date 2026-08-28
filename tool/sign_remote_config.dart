@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'signing_common.dart';
 
-/// Signs config.json with the config Ed25519 keypair.
+/// Signs config.json with the remote-config Ed25519 keypair.
 ///
-/// This signer must ONLY ever use the config keys — never the
+/// This signer must ONLY ever use the remote-config keys — never the
 /// update-manifest keys. Use tool/sign_update_manifest.dart for update.json.
 Future<void> main(List<String> args) async {
   if (args.isEmpty || args.first == 'help' || args.first == '--help') {
@@ -38,14 +38,14 @@ Future<void> main(List<String> args) async {
         exitCode = 64;
         return;
       }
-      final privateKey = Platform.environment['CONFIG_PRIVATE_KEY'];
-      final publicKey = Platform.environment['CONFIG_PUBLIC_KEY'];
+      final privateKey = Platform.environment['REMOTE_CONFIG_PRIVATE_KEY'];
+      final publicKey = Platform.environment['REMOTE_CONFIG_PUBLIC_KEY'];
       if (privateKey == null ||
           privateKey.isEmpty ||
           publicKey == null ||
           publicKey.isEmpty) {
         stderr.writeln(
-          'Set CONFIG_PRIVATE_KEY and CONFIG_PUBLIC_KEY.',
+          'Set REMOTE_CONFIG_PRIVATE_KEY and REMOTE_CONFIG_PUBLIC_KEY.',
         );
         exitCode = 64;
         return;
@@ -70,6 +70,6 @@ Usage:
   dart run tool/sign_remote_config.dart sign <config.json|payload.json> <private_key> <public_key>
   dart run tool/sign_remote_config.dart sign-env <config.json|payload.json>
 
-sign-env reads CONFIG_PRIVATE_KEY and CONFIG_PUBLIC_KEY.
+sign-env reads REMOTE_CONFIG_PRIVATE_KEY and REMOTE_CONFIG_PUBLIC_KEY.
 ''');
 }
