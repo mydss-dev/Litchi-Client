@@ -45,7 +45,7 @@ PUBLIC_KEY=xxxxxxxx
 
 ```text
 PRIVATE_KEY → 本地安全保存
-PUBLIC_KEY  → GitHub Variable: REMOTE_CONFIG_PUBLIC_KEY
+PUBLIC_KEY  → GitHub Repository Variable: REMOTE_CONFIG_PUBLIC_KEY
 ```
 
 以后修改 `config.json` 时继续使用同一套密钥，不需要重新执行 `generate`。
@@ -60,11 +60,7 @@ PUBLIC_KEY  → GitHub Variable: REMOTE_CONFIG_PUBLIC_KEY
 Copy-Item .\config.example.json .\config.json
 ```
 
-然后直接编辑：
-
-```text
-config.json
-```
+然后直接编辑 `config.json`。
 
 示例：
 
@@ -98,23 +94,17 @@ config.json
 | `invite_url_base` | 邀请链接基础地址 |
 | `update_enabled` | 是否启用客户端自动更新 |
 
-### 自动更新开关
-
 如果不需要自动更新：
 
 ```json
 "update_enabled": false
 ```
 
-这种情况下只需要 Remote Config，不需要配置 Update 公钥、Update 私钥和 GitHub R2 上传凭证。
-
 如果需要自动更新：
 
 ```json
 "update_enabled": true
 ```
-
-这种情况下继续完成本文档第 7 节的 Update 配置。
 
 ---
 
@@ -158,19 +148,13 @@ Remove-Item Env:REMOTE_CONFIG_PRIVATE_KEY -ErrorAction SilentlyContinue
 Remove-Item Env:REMOTE_CONFIG_PUBLIC_KEY -ErrorAction SilentlyContinue
 ```
 
-这里使用的是 Ed25519 数字签名。`payload_b64` 可以被解码，因此 `config.json` 只用于公开配置。
+`payload_b64` 可以被解码，因此 `config.json` 只用于公开配置。
 
 ---
 
 ## 5. 上传 `config.json`
 
-将签名后的：
-
-```text
-config.json
-```
-
-上传到 CDN / Cloudflare R2 根目录。
+将签名后的 `config.json` 上传到 CDN / Cloudflare R2 根目录。
 
 例如：
 
@@ -189,7 +173,7 @@ https://cdn.example.com/config.json
 
 ---
 
-## 6. 配置 GitHub Variables
+## 6. 配置 GitHub Repository Variables
 
 进入：
 
@@ -201,7 +185,7 @@ Repository
 → Variables
 ```
 
-### 所有部署都必须填写
+### 所有部署都填写
 
 | Variable | 填写内容 |
 |---|---|
@@ -214,37 +198,52 @@ Repository
 ${CDN_BASE_URL}/config.json
 ```
 
-### 只有 `update_enabled: true` 才填写
+### `update_enabled: true` 时再填写
 
 | Variable | 填写内容 |
 |---|---|
-| `UPDATE_PUBLIC_KEY` | 第 7 节生成的 Update 公钥 |
+| `UPDATE_PUBLIC_KEY` | 第 7 步生成的 Update 公钥 |
 
-也就是说：
+所以：
 
 ```text
 update_enabled = false
-→ Variables 只填 CDN_BASE_URL + REMOTE_CONFIG_PUBLIC_KEY
+→ CDN_BASE_URL
+→ REMOTE_CONFIG_PUBLIC_KEY
 
 update_enabled = true
-→ 再增加 UPDATE_PUBLIC_KEY
+→ CDN_BASE_URL
+→ REMOTE_CONFIG_PUBLIC_KEY
+→ UPDATE_PUBLIC_KEY
 ```
 
 ---
 
-## 7. 配置自动更新（可选）
+## 7. 配置 GitHub Repository Secrets
 
-本节只在：
+进入：
+
+```text
+Repository
+→ Settings
+→ Secrets and variables
+→ Actions
+→ Secrets
+```
+
+这里统一保存 GitHub Actions 需要使用的私密凭证。
+
+### 自动更新开启时填写
+
+仅当 `config.json` 中：
 
 ```json
 "update_enabled": true
 ```
 
-时执行。
+才需要下面这些。
 
-### 7.1 生成 Update 密钥
-
-执行：
+先生成 Update 密钥：
 
 ```powershell
 dart run tool/sign_update_manifest.dart generate
@@ -257,114 +256,26 @@ PRIVATE_KEY=xxxxxxxx
 PUBLIC_KEY=xxxxxxxx
 ```
 
-填写：
+其中：
 
 ```text
-PUBLIC_KEY  → GitHub Variable: UPDATE_PUBLIC_KEY
-PRIVATE_KEY → release-signing Environment Secret: UPDATE_PRIVATE_KEY
+PUBLIC_KEY  → Repository Variable: UPDATE_PUBLIC_KEY
+PRIVATE_KEY → Repository Secret: UPDATE_PRIVATE_KEY
 ```
 
-Remote Config 和 Update 使用两套独立密钥。
-
-### 7.2 创建 `release-signing`
-
-进入：
-
-```text
-Repository
-→ Settings
-→ Environments
-→ New environment
-```
-
-创建：
-
-```text
-release-signing
-```
-
-添加一个 Environment Secret：
+然后在 Repository Secrets 中填写：
 
 ```text
 UPDATE_PRIVATE_KEY
-```
-
-### 7.3 创建 `release-upload`
-
-创建 Environment：
-
-```text
-release-upload
-```
-
-添加：
-
-```text
 R2_ACCOUNT_ID
 R2_ACCESS_KEY_ID
 R2_SECRET_ACCESS_KEY
 R2_BUCKET
 ```
 
-这些凭证只用于 Publish Workflow 自动上传更新文件。
+如果 `update_enabled` 为 `false`，这一组自动更新 Secret 不需要填写。
 
-### 7.4 自动更新发布流程
-
-正式版本构建完成后进入：
-
-```text
-GitHub
-→ Actions
-→ Publish
-→ Run workflow
-```
-
-输入 Tag，例如：
-
-```text
-v1.0.0
-```
-
-Publish 会自动完成：
-
-```text
-读取 GitHub Release 安装包
-        ↓
-生成 update.json
-        ↓
-使用 UPDATE_PRIVATE_KEY 签名
-        ↓
-上传安装包到 /download/
-        ↓
-上传 update.json 到 CDN/R2 根目录
-```
-
-最终地址：
-
-```text
-${CDN_BASE_URL}/update.json
-${CDN_BASE_URL}/download/<安装包文件名>
-```
-
-如果 `update_enabled` 为 `false`，跳过整个第 7 节即可。
-
----
-
-## 8. Repository Secrets（平台签名，可选）
-
-进入：
-
-```text
-Repository
-→ Settings
-→ Secrets and variables
-→ Actions
-→ Secrets
-```
-
-### Android 正式签名
-
-只有发布 Android 正式版本时需要：
+### Android 正式发布时填写
 
 ```text
 ANDROID_KEYSTORE_BASE64
@@ -373,19 +284,13 @@ ANDROID_KEY_ALIAS
 ANDROID_KEY_PASSWORD
 ```
 
-### Windows
+Windows 当前没有额外的签名 Secret。
 
-当前流程没有额外的 Windows 签名 Secret 配置。
-
-### macOS
-
-当前流程使用 ad-hoc codesign，没有 Apple Developer 证书 Secret 配置。
-
-以后如果接入 Apple Developer 正式签名和 notarization，再单独增加对应凭证。
+macOS 当前使用 ad-hoc codesign，没有 Apple Developer 证书 Secret。
 
 ---
 
-## 9. 构建正式版本
+## 8. 构建正式版本
 
 创建版本 Tag，例如：
 
@@ -415,9 +320,57 @@ api_base_list
 update_enabled
 ```
 
-生成正式客户端。
+如果启用了自动更新，同时会把 `UPDATE_PUBLIC_KEY` 编译进客户端用于验证 `update.json`。
 
-如果启用了自动更新，同时配置 `UPDATE_PUBLIC_KEY`。
+---
+
+## 9. 发布自动更新
+
+本节只在：
+
+```json
+"update_enabled": true
+```
+
+时执行。
+
+正式版本构建完成后进入：
+
+```text
+GitHub
+→ Actions
+→ Publish
+→ Run workflow
+```
+
+输入 Tag，例如：
+
+```text
+v1.0.0
+```
+
+Publish Workflow 会在一个 Job 中自动完成：
+
+```text
+读取 GitHub Release 安装包
+        ↓
+生成 update.json
+        ↓
+使用 UPDATE_PRIVATE_KEY 签名
+        ↓
+使用 R2 凭证上传安装包到 /download/
+        ↓
+上传 update.json 到 CDN/R2 根目录
+```
+
+最终地址：
+
+```text
+${CDN_BASE_URL}/update.json
+${CDN_BASE_URL}/download/<安装包文件名>
+```
+
+如果 `update_enabled` 为 `false`，不用运行 Publish。
 
 ---
 
@@ -436,38 +389,32 @@ update_enabled
 
 普通 Remote Config 修改不需要重新生成密钥。
 
-如果只是修改 API 地址、名称、Logo 等运行配置，也不需要重新生成 Update 密钥。
-
 ---
 
 ## 11. 最终配置速查
 
 ### `update_enabled: false`
 
-GitHub Variables：
+Repository Variables：
 
 ```text
 CDN_BASE_URL
 REMOTE_CONFIG_PUBLIC_KEY
 ```
 
-自动更新相关配置：
+Repository Secrets：
 
 ```text
-不需要
-```
-
-平台签名：
-
-```text
-Android 正式发布 → Android 4 个签名 Secret
-Windows          → 当前无需额外 Secret
-macOS            → 当前无需 Apple 签名 Secret
+Android 正式发布时：
+ANDROID_KEYSTORE_BASE64
+ANDROID_KEYSTORE_PASSWORD
+ANDROID_KEY_ALIAS
+ANDROID_KEY_PASSWORD
 ```
 
 ### `update_enabled: true`
 
-GitHub Variables：
+Repository Variables：
 
 ```text
 CDN_BASE_URL
@@ -475,19 +422,23 @@ REMOTE_CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 ```
 
-`release-signing`：
+Repository Secrets：
 
 ```text
 UPDATE_PRIVATE_KEY
-```
-
-`release-upload`：
-
-```text
 R2_ACCOUNT_ID
 R2_ACCESS_KEY_ID
 R2_SECRET_ACCESS_KEY
 R2_BUCKET
 ```
 
-平台签名按实际发布的平台填写。
+如果同时发布 Android 正式版，再加：
+
+```text
+ANDROID_KEYSTORE_BASE64
+ANDROID_KEYSTORE_PASSWORD
+ANDROID_KEY_ALIAS
+ANDROID_KEY_PASSWORD
+```
+
+整个项目不再需要 `release-signing` 或 `release-upload` Environment。
