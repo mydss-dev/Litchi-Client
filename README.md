@@ -35,6 +35,8 @@ still requires system privileges.
 - Windows 10 / 11 (64-bit)
 - Go 1.24.7 for building the pinned sing-box libraries
 
+> **Deploying or self-hosting?** See [ENVIRONMENT.md](ENVIRONMENT.md) for the exact GitHub Variables, Secrets, key generation, R2 layout, and release checklist.
+
 ## Getting Started
 
 ```powershell
