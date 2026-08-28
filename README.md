@@ -334,7 +334,9 @@ update_enabled
 
 时执行。
 
-正式版本构建完成后进入：
+打 `v*` Tag 后，CI 构建并创建 GitHub Release，完成后 Publish Workflow 会**自动触发**上传（无需手动操作）。
+
+只有在自动触发失败、需要重试时才手动运行：
 
 ```text
 GitHub
