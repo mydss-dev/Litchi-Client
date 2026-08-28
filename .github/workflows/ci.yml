@@ -78,7 +78,7 @@ jobs:
 
           $cdnBase = "${{ vars.CDN_BASE_URL }}".Trim()
           $configUrl = if ($cdnBase) { $cdnBase.TrimEnd('/') + '/config.json' } else { '' }
-          $configKey = "${{ vars.REMOTE_CONFIG_PUBLIC_KEY }}"
+          $configKey = "${{ vars.CONFIG_PUBLIC_KEY }}"
           $updateKey = "${{ vars.UPDATE_PUBLIC_KEY }}"
 
           if ("${{ github.ref }}" -like 'refs/tags/v*') {
@@ -89,7 +89,7 @@ jobs:
               throw 'vars.CDN_BASE_URL must be an absolute HTTPS URL'
             }
             if (-not (Test-Ed25519Key $configKey)) {
-              throw 'vars.REMOTE_CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key'
+              throw 'vars.CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key'
             }
           }
 
@@ -236,7 +236,7 @@ jobs:
           cdn_base="${{ vars.CDN_BASE_URL }}"
           config_url=""
           if [ -n "$cdn_base" ]; then config_url="${cdn_base%/}/config.json"; fi
-          config_key="${{ vars.REMOTE_CONFIG_PUBLIC_KEY }}"
+          config_key="${{ vars.CONFIG_PUBLIC_KEY }}"
           update_key="${{ vars.UPDATE_PUBLIC_KEY }}"
 
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
@@ -248,7 +248,7 @@ jobs:
               *) echo "::error::vars.CDN_BASE_URL must be an absolute HTTPS URL"; exit 1;;
             esac
             if [ "$(decode_len "$config_key")" != "32" ]; then
-              echo "::error::vars.REMOTE_CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
+              echo "::error::vars.CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
             fi
           fi
 
@@ -452,7 +452,7 @@ jobs:
           cdn_base="${{ vars.CDN_BASE_URL }}"
           config_url=""
           if [ -n "$cdn_base" ]; then config_url="${cdn_base%/}/config.json"; fi
-          config_key="${{ vars.REMOTE_CONFIG_PUBLIC_KEY }}"
+          config_key="${{ vars.CONFIG_PUBLIC_KEY }}"
           update_key="${{ vars.UPDATE_PUBLIC_KEY }}"
 
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
@@ -464,7 +464,7 @@ jobs:
               *) echo "::error::vars.CDN_BASE_URL must be an absolute HTTPS URL"; exit 1;;
             esac
             if [ "$(decode_len "$config_key")" != "32" ]; then
-              echo "::error::vars.REMOTE_CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
+              echo "::error::vars.CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
             fi
           fi
 
