@@ -38,14 +38,14 @@ Future<void> main(List<String> args) async {
         exitCode = 64;
         return;
       }
-      final privateKey = Platform.environment['REMOTE_CONFIG_PRIVATE_KEY'];
-      final publicKey = Platform.environment['REMOTE_CONFIG_PUBLIC_KEY'];
+      final privateKey = Platform.environment['CONFIG_PRIVATE_KEY'];
+      final publicKey = Platform.environment['CONFIG_PUBLIC_KEY'];
       if (privateKey == null ||
           privateKey.isEmpty ||
           publicKey == null ||
           publicKey.isEmpty) {
         stderr.writeln(
-          'Set REMOTE_CONFIG_PRIVATE_KEY and REMOTE_CONFIG_PUBLIC_KEY.',
+          'Set CONFIG_PRIVATE_KEY and CONFIG_PUBLIC_KEY.',
         );
         exitCode = 64;
         return;
@@ -70,6 +70,6 @@ Usage:
   dart run tool/sign_remote_config.dart sign <config.json|payload.json> <private_key> <public_key>
   dart run tool/sign_remote_config.dart sign-env <config.json|payload.json>
 
-sign-env reads REMOTE_CONFIG_PRIVATE_KEY and REMOTE_CONFIG_PUBLIC_KEY.
+sign-env reads CONFIG_PRIVATE_KEY and CONFIG_PUBLIC_KEY.
 ''');
 }

@@ -13,7 +13,7 @@ import boto3
 from botocore.config import Config
 
 # Manifests that live at the bucket root: the client derives the update-manifest
-# URL as the sibling of REMOTE_CONFIG_URL (which points at config.json).
+# URL as the sibling of CONFIG_URL (which points at config.json).
 # config.json is signed by the remote-config key; update.json is signed by the
 # independent update-manifest key.
 ROOT_MANIFESTS = {"config.json", "update.json"}
@@ -65,7 +65,7 @@ def main() -> None:
 
     for path in files:
         # Manifests always go to the bucket root, because the client derives
-        # their URL as the sibling of REMOTE_CONFIG_URL
+        # their URL as the sibling of CONFIG_URL
         # (configUrl.resolve(name)). Package files go under the prefix.
         if path.name in ROOT_MANIFESTS:
             object_key = path.name

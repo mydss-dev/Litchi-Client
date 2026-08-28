@@ -113,8 +113,8 @@ Copy-Item .\config.example.json .\config.json
 在当前 PowerShell 窗口临时加载第 2 步保存的 Remote Config 密钥：
 
 ```powershell
-$env:REMOTE_CONFIG_PRIVATE_KEY='你的 PRIVATE_KEY'
-$env:REMOTE_CONFIG_PUBLIC_KEY='你的 PUBLIC_KEY'
+$env:CONFIG_PRIVATE_KEY='你的 PRIVATE_KEY'
+$env:CONFIG_PUBLIC_KEY='你的 PUBLIC_KEY'
 ```
 
 执行签名：
@@ -144,8 +144,8 @@ Get-Content .\config.json
 签名完成后清理当前 PowerShell 中的临时密钥：
 
 ```powershell
-Remove-Item Env:REMOTE_CONFIG_PRIVATE_KEY -ErrorAction SilentlyContinue
-Remove-Item Env:REMOTE_CONFIG_PUBLIC_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:CONFIG_PRIVATE_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:CONFIG_PUBLIC_KEY -ErrorAction SilentlyContinue
 ```
 
 `payload_b64` 可以被解码，因此 `config.json` 只用于公开配置。

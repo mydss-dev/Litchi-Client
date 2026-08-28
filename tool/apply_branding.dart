@@ -79,7 +79,7 @@ provided keys before any branding value is applied.
 
 Examples:
   dart run tool/apply_branding.dart config.json
-  dart run tool/apply_branding.dart https://example.com/config.json --public-key=<REMOTE_CONFIG_PUBLIC_KEY>
+  dart run tool/apply_branding.dart https://example.com/config.json --public-key=<CONFIG_PUBLIC_KEY>
 ''');
 }
 

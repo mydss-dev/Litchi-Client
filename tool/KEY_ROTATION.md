@@ -6,9 +6,9 @@ Remote Config 与 Update Manifest 使用两套完全独立的 Ed25519 keypair，
 
 ```text
 Remote Config
-  REMOTE_CONFIG_PRIVATE_KEY
-  REMOTE_CONFIG_PUBLIC_KEY
-  REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY   # 轮换时可选
+  CONFIG_PRIVATE_KEY
+  CONFIG_PUBLIC_KEY
+  CONFIG_PREVIOUS_PUBLIC_KEY   # 轮换时可选
 
 Update Manifest
   UPDATE_PRIVATE_KEY
@@ -44,7 +44,7 @@ UPDATE_PUBLIC_KEY
 轮换时可临时增加：
 
 ```text
-REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY
+CONFIG_PREVIOUS_PUBLIC_KEY
 UPDATE_PREVIOUS_PUBLIC_KEY
 ```
 
@@ -60,7 +60,7 @@ R2_SECRET_ACCESS_KEY
 R2_BUCKET
 ```
 
-`REMOTE_CONFIG_PRIVATE_KEY` 保存在维护者本地，不进入 GitHub Actions。
+`CONFIG_PRIVATE_KEY` 保存在维护者本地，不进入 GitHub Actions。
 
 ## CDN 布局
 
@@ -111,12 +111,12 @@ dart run tool/sign_update_manifest.dart generate
 2. 新版本客户端配置：
 
 ```text
-REMOTE_CONFIG_PUBLIC_KEY=NEW_PUB
-REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=OLD_PUB
+CONFIG_PUBLIC_KEY=NEW_PUB
+CONFIG_PREVIOUS_PUBLIC_KEY=OLD_PUB
 ```
 
 3. 迁移窗口内根据客户端覆盖情况切换 `config.json` 的签名私钥；
-4. 覆盖完成后删除 `REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY`；
+4. 覆盖完成后删除 `CONFIG_PREVIOUS_PUBLIC_KEY`；
 5. 安全销毁旧私钥。
 
 Remote Config 仍由维护者手工签名和上传。

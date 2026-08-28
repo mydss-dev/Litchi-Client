@@ -103,7 +103,7 @@ jobs:
         run: |
           $configUrl = "${{ steps.config.outputs.config_url }}".Trim()
           $configKey = "${{ steps.config.outputs.config_key }}".Trim()
-          $prevConfigKey = "${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}".Trim()
+          $prevConfigKey = "${{ vars.CONFIG_PREVIOUS_PUBLIC_KEY }}".Trim()
           if ($configUrl -and $configKey) {
             $args = @('run', 'tool/apply_branding.dart', $configUrl, "--public-key=$configKey")
             if ($prevConfigKey) { $args += "--public-key=$prevConfigKey" }
@@ -120,7 +120,7 @@ jobs:
         run: |
           $configUrl = "${{ steps.config.outputs.config_url }}"
           $configKey = "${{ steps.config.outputs.config_key }}"
-          $prevConfigKey = if ("${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}") { "${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}" } else { "" }
+          $prevConfigKey = if ("${{ vars.CONFIG_PREVIOUS_PUBLIC_KEY }}") { "${{ vars.CONFIG_PREVIOUS_PUBLIC_KEY }}" } else { "" }
           $updateKey = "${{ steps.config.outputs.update_key }}"
           $prevUpdateKey = if ("${{ vars.UPDATE_PREVIOUS_PUBLIC_KEY }}") { "${{ vars.UPDATE_PREVIOUS_PUBLIC_KEY }}" } else { "" }
           $version = "${{ github.ref_name }}" -replace '^v', ''
@@ -128,9 +128,9 @@ jobs:
           flutter build windows --release `
             "--build-name=$version" `
             "--dart-define=APP_VERSION=$version" `
-            "--dart-define=REMOTE_CONFIG_URL=$configUrl" `
-            "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$configKey" `
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prevConfigKey" `
+            "--dart-define=CONFIG_URL=$configUrl" `
+            "--dart-define=CONFIG_PUBLIC_KEY=$configKey" `
+            "--dart-define=CONFIG_PREVIOUS_PUBLIC_KEY=$prevConfigKey" `
             "--dart-define=UPDATE_PUBLIC_KEY=$updateKey" `
             "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prevUpdateKey"
 
@@ -273,7 +273,7 @@ jobs:
         run: |
           config_url="${{ steps.config.outputs.config_url }}"
           config_key="${{ steps.config.outputs.config_key }}"
-          prev_config_key="${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
+          prev_config_key="${{ vars.CONFIG_PREVIOUS_PUBLIC_KEY }}"
           if [ -n "$config_url" ] && [ -n "$config_key" ]; then
             args=(run tool/apply_branding.dart "$config_url" "--public-key=$config_key")
             if [ -n "$prev_config_key" ]; then args+=("--public-key=$prev_config_key"); fi
@@ -319,7 +319,7 @@ jobs:
         run: |
           config_url="${{ steps.config.outputs.config_url }}"
           config_key="${{ steps.config.outputs.config_key }}"
-          prev_config_key="${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
+          prev_config_key="${{ vars.CONFIG_PREVIOUS_PUBLIC_KEY }}"
           update_key="${{ steps.config.outputs.update_key }}"
           prev_update_key="${{ vars.UPDATE_PREVIOUS_PUBLIC_KEY }}"
           prev_config_key="${prev_config_key:-}"
@@ -335,9 +335,9 @@ jobs:
             "--build-name=$version" \
             "--build-number=$version_code" \
             "--dart-define=APP_VERSION=$version" \
-            "--dart-define=REMOTE_CONFIG_URL=$config_url" \
-            "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key" \
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
+            "--dart-define=CONFIG_URL=$config_url" \
+            "--dart-define=CONFIG_PUBLIC_KEY=$config_key" \
+            "--dart-define=CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
             "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
             "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
           cp build/app/outputs/flutter-apk/app-release.apk \
@@ -346,9 +346,9 @@ jobs:
             "--build-name=$version" \
             "--build-number=$version_code" \
             "--dart-define=APP_VERSION=$version" \
-            "--dart-define=REMOTE_CONFIG_URL=$config_url" \
-            "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key" \
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
+            "--dart-define=CONFIG_URL=$config_url" \
+            "--dart-define=CONFIG_PUBLIC_KEY=$config_key" \
+            "--dart-define=CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
             "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
             "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
@@ -356,9 +356,9 @@ jobs:
               "--build-name=$version" \
               "--build-number=$version_code" \
               "--dart-define=APP_VERSION=$version" \
-              "--dart-define=REMOTE_CONFIG_URL=$config_url" \
-              "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key" \
-              "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
+              "--dart-define=CONFIG_URL=$config_url" \
+              "--dart-define=CONFIG_PUBLIC_KEY=$config_key" \
+              "--dart-define=CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
               "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
               "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
           fi
@@ -479,7 +479,7 @@ jobs:
         run: |
           config_url="${{ steps.config.outputs.config_url }}"
           config_key="${{ steps.config.outputs.config_key }}"
-          prev_config_key="${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
+          prev_config_key="${{ vars.CONFIG_PREVIOUS_PUBLIC_KEY }}"
           if [ -n "$config_url" ] && [ -n "$config_key" ]; then
             args=(run tool/apply_branding.dart "$config_url" "--public-key=$config_key")
             if [ -n "$prev_config_key" ]; then args+=("--public-key=$prev_config_key"); fi
@@ -494,7 +494,7 @@ jobs:
         run: |
           config_url="${{ steps.config.outputs.config_url }}"
           config_key="${{ steps.config.outputs.config_key }}"
-          prev_config_key="${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
+          prev_config_key="${{ vars.CONFIG_PREVIOUS_PUBLIC_KEY }}"
           update_key="${{ steps.config.outputs.update_key }}"
           prev_update_key="${{ vars.UPDATE_PREVIOUS_PUBLIC_KEY }}"
           prev_config_key="${prev_config_key:-}"
@@ -504,9 +504,9 @@ jobs:
           flutter build macos --release \
             "--build-name=$version" \
             "--dart-define=APP_VERSION=$version" \
-            "--dart-define=REMOTE_CONFIG_URL=$config_url" \
-            "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key" \
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
+            "--dart-define=CONFIG_URL=$config_url" \
+            "--dart-define=CONFIG_PUBLIC_KEY=$config_key" \
+            "--dart-define=CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
             "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
             "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
 
