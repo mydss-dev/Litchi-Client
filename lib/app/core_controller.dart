@@ -367,6 +367,7 @@ class CoreController extends ChangeNotifier {
 
     if (req.validNodes.isEmpty) {
       _coreError = CoreErrorMessageService.noAvailableNodes;
+      _status = ConnectionStatus.error;
       notifyListeners();
       return _coreError;
     }
@@ -430,6 +431,7 @@ class CoreController extends ChangeNotifier {
     );
     if (config == null) {
       _coreError = CoreErrorMessageService.configBuildFailed;
+      _status = ConnectionStatus.error;
       notifyListeners();
       return _coreError;
     }
@@ -544,6 +546,7 @@ class CoreController extends ChangeNotifier {
 
     if (req.validNodes.isEmpty) {
       _coreError = CoreErrorMessageService.noAvailableNodes;
+      _status = ConnectionStatus.error;
       notifyListeners();
       return _coreError;
     }
@@ -559,6 +562,7 @@ class CoreController extends ChangeNotifier {
 
     if (config == null) {
       _coreError = CoreErrorMessageService.configBuildFailed;
+      _status = ConnectionStatus.error;
       notifyListeners();
       return _coreError;
     }
@@ -575,7 +579,11 @@ class CoreController extends ChangeNotifier {
           apiPort: _apiPort,
           apiSecret: _apiSecret,
         );
-        if (coreConfig == null) return CoreErrorMessageService.configBuildFailed;
+        if (coreConfig == null) {
+          _coreError = CoreErrorMessageService.configBuildFailed;
+          _status = ConnectionStatus.error;
+          return _coreError;
+        }
         final coreOk = await _androidCore.startCoreOnly(
           SingBoxConfig.encodeConfig(coreConfig),
         );

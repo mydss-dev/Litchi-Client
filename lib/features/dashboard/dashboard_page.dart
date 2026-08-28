@@ -91,13 +91,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final error = await ctrl.toggleConnection();
     _syncTimer();
 
-    if (mounted && error != null) {
-      AppToast.show(
-        context,
-        CoreErrorMessageService.userFacing(error, l10n: context.l10n),
-        type: AppToastType.error,
-      );
-    } else if (mounted && ctrl.coreRunning) {
+    if (mounted && error == null && ctrl.coreRunning) {
       AppToast.show(
         context,
         context.l10n.connectionSuccess,
@@ -119,13 +113,7 @@ class _DashboardPageState extends State<DashboardPage> {
     _syncTimer();
     if (!mounted) return;
 
-    if (error != null && error.isNotEmpty) {
-      AppToast.show(
-        context,
-        CoreErrorMessageService.userFacing(error, l10n: context.l10n),
-        type: AppToastType.error,
-      );
-    } else if (ctrl.coreRunning) {
+    if ((error == null || error.isEmpty) && ctrl.coreRunning) {
       AppToast.show(
         context,
         context.l10n.connectionSuccess,
