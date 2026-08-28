@@ -1,10 +1,16 @@
 # Litchi Client 部署教程
 
-本文档只保留实际操作步骤。按顺序完成即可。
+本文档只说明实际需要手动完成的部署步骤。
+
+> **重要：`update.json` 不需要手工创建、编辑、签名或上传。**
+>
+> 使用者只需要首次配置 Update 密钥。之后每次发布版本时，GitHub `Publish` Workflow 会自动生成、签名并上传 `update.json`，同时自动上传安装包。
+
+---
 
 ## 1. 准备本地环境
 
-需要：
+需要安装：
 
 ```text
 Flutter
@@ -29,6 +35,8 @@ dart --version
 
 ## 2. 生成 Remote Config 密钥
 
+Remote Config 使用一套独立的 Ed25519 密钥。
+
 执行：
 
 ```powershell
@@ -42,7 +50,7 @@ PRIVATE_KEY=xxxxxxxx
 PUBLIC_KEY=xxxxxxxx
 ```
 
-保存：
+保存位置：
 
 ```text
 PRIVATE_KEY → REMOTE_CONFIG_PRIVATE_KEY → 本地离线保存
@@ -51,34 +59,39 @@ PUBLIC_KEY  → REMOTE_CONFIG_PUBLIC_KEY  → GitHub Repository Variable
 
 注意：
 
-- 私钥不要提交 GitHub；
-- 私钥不要上传 R2/CDN；
+- `REMOTE_CONFIG_PRIVATE_KEY` 不提交 GitHub；
+- 不上传 R2/CDN；
 - 公钥可以公开。
 
 ---
 
 ## 3. 生成 Update 密钥
 
-再生成一套完全独立的密钥：
+Update 使用另一套完全独立的 Ed25519 密钥。
+
+执行：
 
 ```powershell
 dart run tool/sign_update_manifest.dart generate
 ```
 
-保存：
+保存位置：
 
 ```text
 PRIVATE_KEY → UPDATE_PRIVATE_KEY → release-signing Environment Secret
 PUBLIC_KEY  → UPDATE_PUBLIC_KEY  → GitHub Repository Variable
 ```
 
-Remote Config 和 Update 不能共用同一套密钥。
+Remote Config 与 Update 不得共用同一套密钥。
+
+> 这一步只负责准备 Update 的签名密钥。
+> 后续不需要手动执行 Update 签名工具，也不需要自己制作 `update.json`。
 
 ---
 
 ## 4. 配置 GitHub Repository Variables
 
-位置：
+进入：
 
 ```text
 GitHub Repository
@@ -96,19 +109,27 @@ GitHub Repository
 | `REMOTE_CONFIG_PUBLIC_KEY` | 第 2 步生成的 Remote Config 公钥 |
 | `UPDATE_PUBLIC_KEY` | 第 3 步生成的 Update 公钥 |
 
-初次部署不需要：
+初次部署不需要创建：
 
 ```text
 REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY
 UPDATE_PREVIOUS_PUBLIC_KEY
 ```
 
-项目会自动使用：
+项目自动使用以下地址：
 
 ```text
 ${CDN_BASE_URL}/config.json
 ${CDN_BASE_URL}/update.json
 ${CDN_BASE_URL}/download/<filename>
+```
+
+其中：
+
+```text
+config.json → 手工维护并签名
+update.json → Publish Workflow 自动生成并上传
+download/   → Publish Workflow 自动上传安装包
 ```
 
 ---
@@ -119,7 +140,7 @@ ${CDN_BASE_URL}/download/<filename>
 
 [`config.example.json`](./config.example.json)
 
-第一次配置时复制：
+第一次部署时复制：
 
 ```powershell
 Copy-Item .\config.example.json .\config.json
@@ -131,7 +152,7 @@ Copy-Item .\config.example.json .\config.json
 config.json
 ```
 
-不需要创建任何 `config.local.json`、`config-payload.json` 等中间文件。
+不需要创建 `config.local.json`、`config-payload.json` 等中间文件。
 
 示例：
 
@@ -171,24 +192,24 @@ config_version
 1 → 2 → 3
 ```
 
+所有外部 URL 建议使用 HTTPS。
+
 ---
 
 ## 6. 临时加载 Remote Config 密钥
 
-这一步的目的只是让签名程序在当前 PowerShell 窗口读取密钥。
-
-执行：
+签名 `config.json` 前，在当前 PowerShell 窗口临时加载 Remote Config 密钥：
 
 ```powershell
 $env:REMOTE_CONFIG_PRIVATE_KEY='这里填写第 2 步生成的 PRIVATE_KEY'
 $env:REMOTE_CONFIG_PUBLIC_KEY='这里填写第 2 步生成的 PUBLIC_KEY'
 ```
 
-这里只会写入**当前 PowerShell 进程的临时环境变量**：
+这两个变量只存在于**当前 PowerShell 进程**：
 
 ```text
-当前 PowerShell 窗口有效
-关闭窗口后自动消失
+当前窗口有效
+关闭窗口自动消失
 不会写入 Windows 系统环境变量
 不会写入 GitHub
 不会写入项目文件
@@ -200,8 +221,6 @@ $env:REMOTE_CONFIG_PUBLIC_KEY='这里填写第 2 步生成的 PUBLIC_KEY'
 setx
 ```
 
-`setx` 会把变量持久写入 Windows 环境变量，不需要这样做。
-
 可以只检查长度，不打印真实密钥：
 
 ```powershell
@@ -209,32 +228,15 @@ $env:REMOTE_CONFIG_PRIVATE_KEY.Length
 $env:REMOTE_CONFIG_PUBLIC_KEY.Length
 ```
 
-两个结果都必须大于 `0`。
+两个结果都应大于 `0`。
 
 ---
 
 ## 7. 签名 `config.json`
 
-完整顺序就是：
+这里是 **Ed25519 数字签名**，不是内容加密。
 
-```text
-编辑 config.json
-        ↓
-临时输入 REMOTE_CONFIG_PRIVATE_KEY
-临时输入 REMOTE_CONFIG_PUBLIC_KEY
-        ↓
-执行签名
-        ↓
-原地覆盖 config.json
-        ↓
-上传 config.json
-```
-
-这里执行的是 **Ed25519 数字签名**，不是内容加密。
-
-### Windows PowerShell
-
-执行：
+Windows PowerShell 执行：
 
 ```powershell
 $utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -265,31 +267,22 @@ Get-Content .\config.json
 }
 ```
 
-此时 `config.json` 已经是最终上传文件。
+此时这个 `config.json` 就是最终上传文件。
 
-`payload_b64` 只是编码，不是加密，因此原始配置中不要填写密码、Token、API Secret、私钥等敏感信息。
+`payload_b64` 只是编码，不是加密，因此配置中不要保存密码、Token、API Secret、私钥等敏感信息。
 
 ---
 
 ## 8. 清理当前 PowerShell 中的 Remote Config 密钥
 
-签名完成后可以立即执行：
+签名完成后执行：
 
 ```powershell
 Remove-Item Env:REMOTE_CONFIG_PRIVATE_KEY -ErrorAction SilentlyContinue
 Remove-Item Env:REMOTE_CONFIG_PUBLIC_KEY -ErrorAction SilentlyContinue
 ```
 
-确认已经清除：
-
-```powershell
-$env:REMOTE_CONFIG_PRIVATE_KEY
-$env:REMOTE_CONFIG_PUBLIC_KEY
-```
-
-应为空。
-
-如果直接关闭当前 PowerShell 窗口，也会自动清除。
+或者直接关闭当前 PowerShell 窗口。
 
 ---
 
@@ -303,22 +296,15 @@ config.json
 
 上传到 Cloudflare R2 Bucket 根目录。
 
-最终结构：
+此时只需要关心 `config.json`；不要手工创建或上传 `update.json`。
 
-```text
-/
-├── config.json
-├── update.json
-└── download/
-```
-
-最终访问地址：
+访问：
 
 ```text
 https://你的CDN域名/config.json
 ```
 
-浏览器打开后应该看到：
+应返回：
 
 ```json
 {
@@ -327,13 +313,11 @@ https://你的CDN域名/config.json
 }
 ```
 
-而不是原始配置字段。
-
 ---
 
 ## 10. 配置 GitHub Repository Secrets
 
-位置：
+进入：
 
 ```text
 GitHub Repository
@@ -343,7 +327,7 @@ GitHub Repository
 → Secrets
 ```
 
-正式 Release 至少配置：
+正式 Release 至少需要：
 
 | Secret | 用途 |
 |---|---|
@@ -365,20 +349,18 @@ APP_NAME
 LOGO_URL
 ```
 
-公钥不要放 Secrets：
+以下公钥放 Repository Variables，不放 Secrets：
 
 ```text
 REMOTE_CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 ```
 
-公钥放 Repository Variables。
-
 ---
 
 ## 11. 创建 `release-signing` Environment
 
-位置：
+进入：
 
 ```text
 Settings
@@ -398,7 +380,9 @@ Environment Secret：
 UPDATE_PRIVATE_KEY
 ```
 
-这里只放 Update 私钥，不放 R2 凭证。
+这里的私钥由 Publish Workflow 自动读取，用来自动签名 `update.json`。
+
+不需要在本地手工使用这把私钥生成 `update.json`。
 
 ---
 
@@ -447,11 +431,11 @@ API_BASE
 
 Android 还会检查 Android 签名配置。
 
-CI 成功后会生成 GitHub Release 和安装包。
+CI 成功后会自动生成 GitHub Release 和安装包。
 
 ---
 
-## 14. 发布 `update.json` 和安装包
+## 14. 运行 Publish Workflow
 
 进入：
 
@@ -462,31 +446,43 @@ GitHub
 → Run workflow
 ```
 
-输入 Tag，例如：
+输入需要发布的 Tag，例如：
 
 ```text
 v1.0.0
 ```
 
-流程：
+点击运行后，后续全部自动完成：
 
 ```text
-GitHub Release 安装包
+读取 GitHub Release 安装包
         ↓
-UPDATE_PRIVATE_KEY 签名
+自动计算版本、文件哈希和下载地址
         ↓
-update.json
+自动使用 UPDATE_PRIVATE_KEY 生成并签名 update.json
         ↓
-上传 R2
+自动上传安装包到 /download/
+        ↓
+自动上传 update.json 到 R2 根目录
 ```
 
-最终 R2：
+**这里不需要：**
+
+```text
+自己创建 update.json
+自己编辑 update.json
+自己运行 Update 签名命令
+自己上传 update.json
+自己上传安装包
+```
+
+最终 R2 结构由流程自动形成：
 
 ```text
 /
-├── config.json
-├── update.json
-└── download/
+├── config.json               # 你手工签名并上传
+├── update.json               # Publish Workflow 自动生成/签名/上传
+└── download/                 # Publish Workflow 自动上传
     ├── *.exe
     ├── *.apk
     └── *.dmg
@@ -496,7 +492,7 @@ update.json
 
 ## 15. 最终验证
 
-确认：
+只需要检查自动发布结果：
 
 ```text
 https://你的CDN域名/config.json
@@ -504,7 +500,7 @@ https://你的CDN域名/update.json
 https://你的CDN域名/download/<安装包文件名>
 ```
 
-GitHub Actions：
+GitHub Actions 应显示：
 
 ```text
 CI       success
@@ -516,25 +512,40 @@ upload   success
 
 ```text
 REMOTE_CONFIG_PUBLIC_KEY → 验证 config.json
-UPDATE_PUBLIC_KEY        → 验证 update.json
+UPDATE_PUBLIC_KEY        → 验证自动生成的 update.json
 ```
-
-两套密钥互不通用。
 
 ---
 
 ## 16. 后续修改 Remote Config
 
-以后改配置只需要：
+以后只修改 Remote Config 时：
 
 ```text
-1. 从 config.example.json 重新复制出明文 config.json
-2. 填写新的配置
+1. 从 config.example.json 复制出新的明文 config.json
+2. 修改配置
 3. 增加 config_version
-4. 在当前 PowerShell 临时输入 Remote Config 私钥和公钥
+4. 当前 PowerShell 临时加载 Remote Config 密钥
 5. 执行第 7 节签名命令
-6. 清理当前 PowerShell 临时密钥
+6. 清理临时密钥
 7. 用新的 config.json 覆盖 R2 根目录旧文件
 ```
 
-修改普通 Remote Config 不需要重新构建客户端。
+修改普通 Remote Config 不需要重新构建客户端，也与 `update.json` 无关。
+
+---
+
+## 17. 最终需要记住的区别
+
+```text
+config.json
+→ 你手工维护
+→ 你手工签名
+→ 你手工上传
+
+update.json
+→ 不手工维护
+→ 不手工签名
+→ 不手工上传
+→ Publish Workflow 全自动处理
+```
