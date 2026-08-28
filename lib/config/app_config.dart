@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 
 import 'panel_backend.dart';
@@ -17,45 +15,10 @@ abstract final class AppConfig {
 
   static String currentVersion = const String.fromEnvironment('APP_VERSION');
 
+  /// Global kill switch: a trusted remote config may disable update checks
+  /// entirely (e.g. while a broken release is pulled). Update metadata itself
+  /// never lives here — it comes exclusively from the signed update.json.
   static bool updatesEnabled = true;
-  static String updateManifestUrl = '';
-  static String updateManifestV2Url = '';
-  static String updateVersion = '';
-  static final Map<String, String> _updateDownloadUrls = {};
-  static final Map<String, String> _updateSha256s = {};
-  static String updateChangelog = '';
-
-  static String? get _selectedUpdateKey {
-    final platform = _platformKey;
-    if (platform != null && _updateDownloadUrls.containsKey(platform)) {
-      return platform;
-    }
-    if (_updateDownloadUrls.containsKey('default')) return 'default';
-    return _updateDownloadUrls.keys.firstOrNull;
-  }
-
-  /// Picks the platform-specific download URL.
-  static String get updateDownloadUrl {
-    final key = _selectedUpdateKey;
-    return key == null ? '' : _updateDownloadUrls[key]!;
-  }
-
-  /// Picks the digest paired with the selected platform URL. A flat digest is
-  /// stored under `default` and applies to every platform.
-  static String get updateSha256 {
-    final key = _selectedUpdateKey;
-    if (key != null && _updateSha256s.containsKey(key)) {
-      return _updateSha256s[key]!;
-    }
-    return _updateSha256s['default'] ?? '';
-  }
-
-  static String? get _platformKey => () {
-    if (Platform.isWindows) return 'windows';
-    if (Platform.isMacOS) return 'macos';
-    if (Platform.isAndroid) return 'android';
-    return null;
-  }();
 
   static void setVersion(String version) {
     final v = version.trim();
@@ -135,12 +98,6 @@ abstract final class AppConfig {
 
     final updateEnabled = json['update_enabled'];
     updatesEnabled = updateEnabled is bool ? updateEnabled : true;
-    _url(json, 'update_manifest_url', (v) => updateManifestUrl = v);
-    _url(json, 'update_manifest_v2_url', (v) => updateManifestV2Url = v);
-    _str(json, 'update_version', (v) => updateVersion = v);
-    _updateDownloadUrlsFromJson(json['update_download_url']);
-    _str(json, 'update_changelog', (v) => updateChangelog = v);
-    _updateSha256sFromJson(json['update_sha256']);
 
     if (_runtimeFingerprint() != before) {
       revision.value++;
@@ -158,72 +115,7 @@ abstract final class AppConfig {
     avatarUrl,
     inviteUrlBase,
     updatesEnabled,
-    updateManifestUrl,
-    updateManifestV2Url,
-    updateVersion,
-    for (final entry
-        in (_updateDownloadUrls.entries.toList()
-          ..sort((a, b) => a.key.compareTo(b.key))))
-      '${entry.key}=${entry.value}',
-    updateChangelog,
-    for (final entry
-        in (_updateSha256s.entries.toList()
-          ..sort((a, b) => a.key.compareTo(b.key))))
-      '${entry.key}=${entry.value}',
   ].join('\u0000');
-
-  static void _updateDownloadUrlsFromJson(Object? value) {
-    if (value is String) {
-      final safe = _trustedHttpsUrl(value);
-      if (safe != null) {
-        _updateDownloadUrls
-          ..clear()
-          ..['default'] = safe;
-      }
-      return;
-    }
-    if (value is Map) {
-      final next = <String, String>{};
-
-      for (final entry in value.entries) {
-        final platform = entry.key.toString();
-        final raw = entry.value?.toString() ?? '';
-        final safe = _trustedHttpsUrl(raw);
-        if (safe != null) {
-          next[platform] = safe;
-        }
-      }
-
-      if (next.isNotEmpty) {
-        _updateDownloadUrls
-          ..clear()
-          ..addAll(next);
-      }
-    }
-  }
-
-  static void _updateSha256sFromJson(Object? value) {
-    if (value is String) {
-      _updateSha256s
-        ..clear()
-        ..['default'] = value.trim().toLowerCase();
-      return;
-    }
-    if (value is Map) {
-      final next = <String, String>{};
-      for (final entry in value.entries) {
-        if (entry.value is! String) continue;
-        next[entry.key.toString()] = (entry.value as String)
-            .trim()
-            .toLowerCase();
-      }
-      if (next.isNotEmpty) {
-        _updateSha256s
-          ..clear()
-          ..addAll(next);
-      }
-    }
-  }
 
   static void _str(
     Map<String, dynamic> json,

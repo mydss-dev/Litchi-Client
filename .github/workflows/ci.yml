@@ -58,6 +58,48 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Resolve release config
+        id: config
+        shell: pwsh
+        run: |
+          function Test-Ed25519Key {
+            param([string]$Key)
+            if ([string]::IsNullOrWhiteSpace($Key)) { return $false }
+            $b64 = $Key.Trim().Replace('-', '+').Replace('_', '/')
+            switch ($b64.Length % 4) {
+              2 { $b64 += '==' }
+              3 { $b64 += '=' }
+            }
+            try {
+              $bytes = [Convert]::FromBase64String($b64)
+              return ($bytes.Length -eq 32)
+            } catch { return $false }
+          }
+
+          $cdnBase = "${{ vars.CDN_BASE_URL }}".Trim()
+          $configUrl = if ($cdnBase) { $cdnBase.TrimEnd('/') + '/config.json' } else { '' }
+          $configKey = "${{ vars.REMOTE_CONFIG_PUBLIC_KEY }}"
+          $updateKey = "${{ vars.UPDATE_PUBLIC_KEY }}"
+
+          if ("${{ github.ref }}" -like 'refs/tags/v*') {
+            if ([string]::IsNullOrWhiteSpace($cdnBase)) {
+              throw 'Tagged releases require vars.CDN_BASE_URL'
+            }
+            if ($cdnBase -notmatch '^https://') {
+              throw 'vars.CDN_BASE_URL must be an absolute HTTPS URL'
+            }
+            if (-not (Test-Ed25519Key $configKey)) {
+              throw 'vars.REMOTE_CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key'
+            }
+            if (-not (Test-Ed25519Key $updateKey)) {
+              throw 'vars.UPDATE_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key'
+            }
+          }
+
+          "config_url=$configUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "config_key=$configKey" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "update_key=$updateKey" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
       - name: Generate brand assets
         id: branding
         shell: pwsh
@@ -74,11 +116,11 @@ jobs:
           $apiBase   = if ("${{ secrets.API_BASE }}")  { "${{ secrets.API_BASE }}" }  else { "" }
           $appName   = if ("${{ secrets.APP_NAME }}")  { "${{ secrets.APP_NAME }}" }  else { "Litchi" }
           $logoUrl   = if ("${{ secrets.LOGO_URL }}")  { "${{ secrets.LOGO_URL }}" }  else { "" }
-          $configUrl = if ("${{ secrets.REMOTE_CONFIG_URL }}")  { "${{ secrets.REMOTE_CONFIG_URL }}" }  else { "" }
-          $configKey = if ("${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}") { "${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}" } else { "" }
-          $prevConfigKey = if ("${{ secrets.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}") { "${{ secrets.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}" } else { "" }
-          $updateKey = if ("${{ secrets.UPDATE_PUBLIC_KEY }}") { "${{ secrets.UPDATE_PUBLIC_KEY }}" } else { "" }
-          $prevUpdateKey = if ("${{ secrets.UPDATE_PREVIOUS_PUBLIC_KEY }}") { "${{ secrets.UPDATE_PREVIOUS_PUBLIC_KEY }}" } else { "" }
+          $configUrl = "${{ steps.config.outputs.config_url }}"
+          $configKey = "${{ steps.config.outputs.config_key }}"
+          $prevConfigKey = if ("${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}") { "${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}" } else { "" }
+          $updateKey = "${{ steps.config.outputs.update_key }}"
+          $prevUpdateKey = if ("${{ vars.UPDATE_PREVIOUS_PUBLIC_KEY }}") { "${{ vars.UPDATE_PREVIOUS_PUBLIC_KEY }}" } else { "" }
           $version   = "${{ github.ref_name }}" -replace '^v', ''
           if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "0.0.0" }
           if ("${{ github.ref }}" -like "refs/tags/v*" -and [string]::IsNullOrWhiteSpace($apiBase)) {
@@ -184,6 +226,46 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Resolve release config
+        id: config
+        run: |
+          decode_len() {
+            local s="$1"
+            s="${s//-/+}"; s="${s//_//}"
+            case $((${#s} % 4)) in
+              2) s="${s}==";;
+              3) s="${s}=";;
+            esac
+            printf '%s' "$s" | base64 -d 2>/dev/null | wc -c
+          }
+          cdn_base="${{ vars.CDN_BASE_URL }}"
+          config_url=""
+          if [ -n "$cdn_base" ]; then config_url="${cdn_base%/}/config.json"; fi
+          config_key="${{ vars.REMOTE_CONFIG_PUBLIC_KEY }}"
+          update_key="${{ vars.UPDATE_PUBLIC_KEY }}"
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            if [ -z "$cdn_base" ]; then
+              echo "::error::Tagged releases require vars.CDN_BASE_URL"; exit 1
+            fi
+            case "$cdn_base" in
+              https://*) ;;
+              *) echo "::error::vars.CDN_BASE_URL must be an absolute HTTPS URL"; exit 1;;
+            esac
+            if [ "$(decode_len "$config_key")" != "32" ]; then
+              echo "::error::vars.REMOTE_CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
+            fi
+            if [ "$(decode_len "$update_key")" != "32" ]; then
+              echo "::error::vars.UPDATE_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
+            fi
+          fi
+
+          {
+            echo "config_url=$config_url"
+            echo "config_key=$config_key"
+            echo "update_key=$update_key"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build pinned sing-box libbox AAR
         run: |
           bash tool/build_libbox_android.sh
@@ -240,18 +322,15 @@ jobs:
           api_base="${{ secrets.API_BASE }}"
           app_name="${{ secrets.APP_NAME }}"
           logo_url="${{ secrets.LOGO_URL }}"
-          config_url="${{ secrets.REMOTE_CONFIG_URL }}"
-          config_key="${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}"
-          prev_config_key="${{ secrets.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
-          update_key="${{ secrets.UPDATE_PUBLIC_KEY }}"
-          prev_update_key="${{ secrets.UPDATE_PREVIOUS_PUBLIC_KEY }}"
+          config_url="${{ steps.config.outputs.config_url }}"
+          config_key="${{ steps.config.outputs.config_key }}"
+          prev_config_key="${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
+          update_key="${{ steps.config.outputs.update_key }}"
+          prev_update_key="${{ vars.UPDATE_PREVIOUS_PUBLIC_KEY }}"
           api_base="${api_base:-}"
           app_name="${app_name:-Litchi}"
           logo_url="${logo_url:-}"
-          config_url="${config_url:-}"
-          config_key="${config_key:-}"
           prev_config_key="${prev_config_key:-}"
-          update_key="${update_key:-}"
           prev_update_key="${prev_update_key:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
@@ -301,9 +380,9 @@ jobs:
               "--dart-define=LOGO_URL=$logo_url" \
               "--dart-define=REMOTE_CONFIG_URL=$config_url" \
               "--dart-define=REMOTE_CONFIG_PUBLIC_KEY=$config_key" \
-            "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
-            "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
-            "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
+              "--dart-define=REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY=$prev_config_key" \
+              "--dart-define=UPDATE_PUBLIC_KEY=$update_key" \
+              "--dart-define=UPDATE_PREVIOUS_PUBLIC_KEY=$prev_update_key"
           fi
 
       - name: Verify the core includes arm64
@@ -380,6 +459,46 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Resolve release config
+        id: config
+        run: |
+          decode_len() {
+            local s="$1"
+            s="${s//-/+}"; s="${s//_//}"
+            case $((${#s} % 4)) in
+              2) s="${s}==";;
+              3) s="${s}=";;
+            esac
+            printf '%s' "$s" | base64 -d 2>/dev/null | wc -c
+          }
+          cdn_base="${{ vars.CDN_BASE_URL }}"
+          config_url=""
+          if [ -n "$cdn_base" ]; then config_url="${cdn_base%/}/config.json"; fi
+          config_key="${{ vars.REMOTE_CONFIG_PUBLIC_KEY }}"
+          update_key="${{ vars.UPDATE_PUBLIC_KEY }}"
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            if [ -z "$cdn_base" ]; then
+              echo "::error::Tagged releases require vars.CDN_BASE_URL"; exit 1
+            fi
+            case "$cdn_base" in
+              https://*) ;;
+              *) echo "::error::vars.CDN_BASE_URL must be an absolute HTTPS URL"; exit 1;;
+            esac
+            if [ "$(decode_len "$config_key")" != "32" ]; then
+              echo "::error::vars.REMOTE_CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
+            fi
+            if [ "$(decode_len "$update_key")" != "32" ]; then
+              echo "::error::vars.UPDATE_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
+            fi
+          fi
+
+          {
+            echo "config_url=$config_url"
+            echo "config_key=$config_key"
+            echo "update_key=$update_key"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Generate brand assets
         run: |
           app_name="${{ secrets.APP_NAME }}"
@@ -395,18 +514,15 @@ jobs:
           api_base="${{ secrets.API_BASE }}"
           app_name="${{ secrets.APP_NAME }}"
           logo_url="${{ secrets.LOGO_URL }}"
-          config_url="${{ secrets.REMOTE_CONFIG_URL }}"
-          config_key="${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}"
-          prev_config_key="${{ secrets.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
-          update_key="${{ secrets.UPDATE_PUBLIC_KEY }}"
-          prev_update_key="${{ secrets.UPDATE_PREVIOUS_PUBLIC_KEY }}"
+          config_url="${{ steps.config.outputs.config_url }}"
+          config_key="${{ steps.config.outputs.config_key }}"
+          prev_config_key="${{ vars.REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY }}"
+          update_key="${{ steps.config.outputs.update_key }}"
+          prev_update_key="${{ vars.UPDATE_PREVIOUS_PUBLIC_KEY }}"
           api_base="${api_base:-}"
           app_name="${app_name:-Litchi}"
           logo_url="${logo_url:-}"
-          config_url="${config_url:-}"
-          config_key="${config_key:-}"
           prev_config_key="${prev_config_key:-}"
-          update_key="${update_key:-}"
           prev_update_key="${prev_update_key:-}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
@@ -470,4 +586,4 @@ jobs:
   # The Ed25519 signing private key is only exposed to that manually-triggered,
   # environment-protected workflow (see tool/KEY_ROTATION.md). It is kept out of
   # this always-running build pipeline so a main-branch or build-workflow
-  # compromise cannot reach the key that signs update.json and remote_config.
+  # compromise cannot reach the key that signs update.json and config.json.

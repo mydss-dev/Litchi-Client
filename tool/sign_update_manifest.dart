@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'signing_common.dart';
 
-/// Signs the update manifest (update-v2.json) with the update-manifest Ed25519
+/// Signs the update manifest (update.json) with the update-manifest Ed25519
 /// keypair.
 ///
 /// This signer must ONLY ever use the update-manifest keys — never the
-/// remote-config keys. Use tool/sign_remote_config.dart for remote_config.json.
+/// remote-config keys. Use tool/sign_remote_config.dart for config.json.
 Future<void> main(List<String> args) async {
   if (args.isEmpty || args.first == 'help' || args.first == '--help') {
     _usage();

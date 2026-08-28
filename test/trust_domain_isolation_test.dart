@@ -146,21 +146,18 @@ void main() {
     expect(UpdateManifestVerifier.isConfigured, isFalse);
   });
 
-  test('manifest URL resolution requires HTTPS and defaults to v2', () {
+  test('manifest URL resolution requires HTTPS and defaults to update.json', () {
     expect(
       UpdateService.resolveManifestUrl(
-        declaredUrl: '',
         configUrl: 'http://cdn.example.com/config.json',
       ),
       isEmpty,
     );
     expect(
       UpdateService.resolveManifestUrl(
-        declaredUrl: '',
         configUrl: 'https://cdn.example.com/config.json',
-        fallbackName: 'update-v2.json',
       ),
-      'https://cdn.example.com/update-v2.json',
+      'https://cdn.example.com/update.json',
     );
   });
 }

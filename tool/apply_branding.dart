@@ -58,7 +58,7 @@ void _writeGitHubOutput(String name, String value) {
 void _usage() {
   stdout.writeln('''
 Usage:
-  dart run tool/apply_branding.dart <config.js|payload.json|oss_config.json|https_url> [--no-generate-icons] [--metadata-only]
+  dart run tool/apply_branding.dart <config.json|payload.json|https_url> [--no-generate-icons] [--metadata-only]
   dart run tool/apply_branding.dart --app-name="My Client" [--logo-url=https://example.com/logo.png] [--metadata-only]
 
 The tool reads existing remote config fields:
@@ -66,8 +66,7 @@ The tool reads existing remote config fields:
   logo_url  -> if http(s), download launcher-icon assets; runtime logo stays cloud-only
 
 Examples:
-  dart run tool/apply_branding.dart config.js
-  dart run tool/apply_branding.dart oss_config.json
+  dart run tool/apply_branding.dart config.json
   dart run tool/apply_branding.dart https://example.com/config.json
 ''');
 }

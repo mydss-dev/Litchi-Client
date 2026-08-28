@@ -14,21 +14,22 @@ import '../shared/services/signed_payload_verifier.dart';
 /// Only this file needs to be edited when changing the OSS config URL or
 /// installing the Ed25519 public key used to verify signed remote config.
 abstract final class RemoteConfigService {
-  // Self-hosted setup: pass these at build time via
-  // --dart-define=REMOTE_CONFIG_URL=... --dart-define=REMOTE_CONFIG_PUBLIC_KEY=...
-  // Everything else is read from the signed JSON stored at [configUrl], which
-  // must live at the R2 bucket root (the client derives the update-manifest URL
-  // as its sibling).
+  /// Self-hosted setup: pass these at build time via
+  /// --dart-define=REMOTE_CONFIG_URL=... --dart-define=REMOTE_CONFIG_PUBLIC_KEY=...
   ///
-  /// [configUrl] is the HTTPS URL of the signed config JSON. [publicKeyBase64Url]
-  /// is the Ed25519 public key (base64url, unpadded) that verifies it and the
-  /// update manifest. Both must be set for remote config to be enabled —
-  /// a missing or invalid key disables it entirely (fail closed).
+  /// [configUrl] is the HTTPS URL of the signed remote config (`config.json`),
+  /// which lives at the R2 bucket root alongside `update.json`. The client
+  /// derives the update-manifest URL as its sibling of [configUrl].
+  ///
+  /// [publicKeyBase64Url] is the Ed25519 public key (base64url, unpadded) that
+  /// verifies the remote config only — never the update manifest. Both the URL
+  /// and the key must be set for remote config to be enabled; a missing or
+  /// invalid key disables it entirely (fail closed).
   ///
   /// Generate the keypair once with:
   ///   dart run tool/sign_remote_config.dart generate
   ///
-  /// Store the public key in a CI secret (REMOTE_CONFIG_PUBLIC_KEY) and keep
+  /// Store the public key in a CI variable (REMOTE_CONFIG_PUBLIC_KEY) and keep
   /// the private key offline.
   static const configUrl = String.fromEnvironment('REMOTE_CONFIG_URL');
   static const publicKeyBase64Url =

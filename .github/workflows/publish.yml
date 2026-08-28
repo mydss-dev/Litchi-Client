@@ -2,30 +2,28 @@ name: Publish
 
 # Signs the update manifest and uploads the release to Cloudflare R2.
 #
-# P0-2: the update manifest now has an INDEPENDENT trust root from remote
-# config. The two keypairs are never shared:
+# P0-2: the update manifest has an INDEPENDENT trust root from remote config.
+# The two keypairs are never shared:
 #
-#   remote_config.json  <-  REMOTE_CONFIG_PRIVATE_KEY / REMOTE_CONFIG_PUBLIC_KEY
-#   update-v2.json      <-  UPDATE_PRIVATE_KEY        / UPDATE_PUBLIC_KEY
+#   config.json  <-  REMOTE_CONFIG_PRIVATE_KEY / REMOTE_CONFIG_PUBLIC_KEY
+#   update.json  <-  UPDATE_PRIVATE_KEY        / UPDATE_PUBLIC_KEY
 #
 # This is a manually-triggered workflow (workflow_dispatch). It is deliberately
 # separate from ci.yml, which only builds and never touches a signing key.
 #
-# Three jobs hold mutually-exclusive secrets:
-#   sign         (release-signing)   UPDATE_PRIVATE_KEY / UPDATE_PUBLIC_KEY,
-#                                    plus DOWNLOAD_BASE_URL (non-secret)
-#   sign-legacy  (release-legacy)    REMOTE_CONFIG_PRIVATE_KEY /
-#                                    REMOTE_CONFIG_PUBLIC_KEY  [bridge only]
-#   upload       (release-upload)    R2_* + DOWNLOAD_BASE_URL
+# Two jobs hold mutually-exclusive secrets:
+#   sign    (release-signing)  UPDATE_PRIVATE_KEY only
+#   upload  (release-upload)   R2_* only
 #
-# The signing jobs never hold R2 credentials; the upload job never holds a
+# The signing job never holds R2 credentials; the upload job never holds a
 # signing key. Artifacts move between jobs via GitHub Artifacts, never via
 # shared environment variables.
 #
-# sign-legacy exists only during the bridge migration: it signs the legacy
-# update.json with the outgoing remote-config key so already-installed clients
-# can upgrade to a build that trusts the independent UPDATE_PUBLIC_KEY. Once
-# those clients have upgraded, delete this job and stop publishing update.json.
+# There is exactly one CDN base URL (vars.CDN_BASE_URL). Installer download URLs
+# are derived from it as ${CDN_BASE_URL}/download/, and the two manifests live at
+# the bucket root (config.json / update.json). Public signing keys are non-secret
+# and stored in vars.*; private keys are secrets and live only in their own
+# environment.
 
 on:
   workflow_dispatch:
@@ -41,7 +39,7 @@ permissions:
 
 jobs:
   sign:
-    name: Sign update-v2.json
+    name: Sign update.json
     runs-on: ubuntu-latest
     environment: release-signing
     steps:
@@ -67,18 +65,27 @@ jobs:
             --pattern '*.apk' \
             --pattern '*.dmg'
 
-      - name: Sign update manifest (v2)
+      - name: Sign update manifest
         shell: pwsh
         env:
           UPDATE_PRIVATE_KEY: ${{ secrets.UPDATE_PRIVATE_KEY }}
-          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
+          UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_PUBLIC_KEY }}
         run: |
-          $required = @('UPDATE_PRIVATE_KEY', 'UPDATE_PUBLIC_KEY')
-          foreach ($name in $required) {
-            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
-              throw "Missing GitHub Actions secret: $name"
-            }
+          if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable('UPDATE_PRIVATE_KEY'))) {
+            throw 'Missing GitHub Actions secret: UPDATE_PRIVATE_KEY'
           }
+          if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable('UPDATE_PUBLIC_KEY'))) {
+            throw 'Missing GitHub Actions variable: UPDATE_PUBLIC_KEY'
+          }
+
+          $cdnBase = "${{ vars.CDN_BASE_URL }}".Trim()
+          if ([string]::IsNullOrWhiteSpace($cdnBase)) {
+            throw 'Missing GitHub Actions variable: CDN_BASE_URL'
+          }
+          if ($cdnBase -notmatch '^https://') {
+            throw 'CDN_BASE_URL must be an absolute HTTPS URL'
+          }
+          $downloadBaseUrl = $cdnBase.TrimEnd('/') + '/download'
 
           $windows = Get-ChildItem release-artifacts -Recurse -File -Filter *.exe |
             Select-Object -First 1
@@ -95,7 +102,7 @@ jobs:
           $changelog = (git log -1 --pretty=%s).Trim()
           .\tool\publish_release.ps1 `
             -Version $version `
-            -DownloadBaseUrl "${{ secrets.DOWNLOAD_BASE_URL }}" `
+            -DownloadBaseUrl $downloadBaseUrl `
             -Changelog $changelog `
             -WindowsPackage $windows.FullName `
             -AndroidPackage $android.FullName `
@@ -108,47 +115,10 @@ jobs:
           path: release_output
           retention-days: 7
 
-  sign-legacy:
-    name: Sign legacy update.json (bridge only)
-    runs-on: ubuntu-latest
-    needs: sign
-    environment: release-legacy
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: ${{ inputs.tag }}
-
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          channel: stable
-
-      - run: flutter pub get
-
-      - name: Download unsigned update payload
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: signed-release
-          path: signed-release
-
-      - name: Sign legacy update.json with outgoing remote-config key
-        env:
-          REMOTE_CONFIG_PRIVATE_KEY: ${{ secrets.REMOTE_CONFIG_PRIVATE_KEY }}
-          REMOTE_CONFIG_PUBLIC_KEY: ${{ secrets.REMOTE_CONFIG_PUBLIC_KEY }}
-        run: |
-          dart run tool/sign_remote_config.dart sign-env \
-            signed-release/update_payload.json > signed-release/update.json
-
-      - name: Upload legacy manifest
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: legacy-manifest
-          path: signed-release/update.json
-          retention-days: 7
-
   upload:
     name: Upload release to R2
     runs-on: ubuntu-latest
-    needs: [sign, sign-legacy]
+    needs: sign
     environment: release-upload
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -159,12 +129,6 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: signed-release
-          path: release-artifacts
-
-      - name: Download legacy manifest
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: legacy-manifest
           path: release-artifacts
 
       - name: Install pinned upload dependencies
@@ -178,12 +142,22 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          DOWNLOAD_BASE_URL: ${{ secrets.DOWNLOAD_BASE_URL }}
+          DOWNLOAD_BASE_URL: ${{ format('{0}/download', vars.CDN_BASE_URL) }}
         run: |
+          if [ -z "$DOWNLOAD_BASE_URL" ]; then
+            echo "::error::Missing GitHub Actions variable: CDN_BASE_URL"
+            exit 1
+          fi
+          case "$DOWNLOAD_BASE_URL" in
+            https://*) ;;
+            *)
+              echo "::error::CDN_BASE_URL must be an absolute HTTPS URL"
+              exit 1
+              ;;
+          esac
           # Packages first, manifests last so clients never see a new version
           # before the download URLs are actually reachable.
           set -- release-artifacts/*.exe release-artifacts/*.apk release-artifacts/*.dmg
           python tool/upload_r2.py \
             "$@" \
-            release-artifacts/update-v2.json \
             release-artifacts/update.json

@@ -12,11 +12,11 @@ from urllib.parse import quote
 import boto3
 from botocore.config import Config
 
-# Manifests that live at the bucket root: the client derives their URL as the
-# sibling of REMOTE_CONFIG_URL. update.json is the legacy manifest signed by the
-# outgoing remote-config key (bridge only); update-v2.json is signed by the
+# Manifests that live at the bucket root: the client derives the update-manifest
+# URL as the sibling of REMOTE_CONFIG_URL (which points at config.json).
+# config.json is signed by the remote-config key; update.json is signed by the
 # independent update-manifest key.
-ROOT_MANIFESTS = {"update.json", "update-v2.json"}
+ROOT_MANIFESTS = {"config.json", "update.json"}
 
 
 def required_env(name: str) -> str:
@@ -30,14 +30,14 @@ def main() -> None:
     files = [Path(value) for value in sys.argv[1:]]
     if not files:
         raise RuntimeError(
-            "Provide update.json/update-v2.json and at least one package file"
+            "Provide config.json/update.json and at least one package file"
         )
     if any(not path.is_file() for path in files):
         raise RuntimeError("Every upload argument must be a file")
     manifests = [path.name for path in files if path.name in ROOT_MANIFESTS]
     if not manifests or len(files) < 2:
         raise RuntimeError(
-            "Upload must contain update.json/update-v2.json and at least one package"
+            "Upload must contain config.json/update.json and at least one package"
         )
 
     account_id = required_env("R2_ACCOUNT_ID")

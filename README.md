@@ -60,16 +60,30 @@ client rejects unsigned or invalid remote configuration. The application identit
 is fixed so updates continue using the same data, credentials, auto-start entry,
 and single-instance lock.
 
-Tagged releases fail when `API_BASE` is missing. Android tags publish both an
-APK for direct installation and an AAB for Google Play.
+Only one CDN base URL is maintained (`CDN_BASE_URL`, e.g.
+`https://cdn.example.com`). The client derives everything else from it:
+
+- `REMOTE_CONFIG_URL` = `{CDN_BASE_URL}/config.json`
+- update manifest URL = `{CDN_BASE_URL}/update.json` (derived at runtime as the
+  sibling of the config URL)
+- installer download URLs = `{CDN_BASE_URL}/download/<name>`
+
+The two manifests use **independent Ed25519 keypairs**: `config.json` is signed
+by the remote-config key, `update.json` by the update-manifest key.
+
+Tagged releases fail when `API_BASE` is missing, or when `CDN_BASE_URL`,
+`REMOTE_CONFIG_PUBLIC_KEY`, or `UPDATE_PUBLIC_KEY` is missing/invalid (fail
+closed — no release client ships without a correctly verified update config).
+Android tags publish both an APK for direct installation and an AAB for Google
+Play.
 
 The signed `config.json` is maintained manually. Tagged CI releases build all
 platform packages and create a GitHub Release. Signing and the Cloudflare R2
 upload run in a separate, manually-triggered workflow
 (`.github/workflows/publish.yml`) under protected environments: it signs
-`update-v2.json` with the independent update-manifest key and uploads the
-packages and manifest to R2. `tool/publish_release.ps1` prepares and signs the
-same update manifest locally.
+`update.json` with the independent update-manifest key and uploads the packages
+and manifest to R2. `tool/publish_release.ps1` prepares and signs the same update
+manifest locally.
 
 ## Project Structure
 

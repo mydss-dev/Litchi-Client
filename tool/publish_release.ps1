@@ -16,7 +16,7 @@ param(
   [string]$OutputDirectory = "$PSScriptRoot\..\release_output"
 )
 
-# Signs update-v2.json with the INDEPENDENT update-manifest keypair. This script
+# Signs update.json with the INDEPENDENT update-manifest keypair. This script
 # must never hold R2 credentials or the remote-config key; it only prepares the
 # release payload and signs it. Uploading is done by a separate job that has no
 # signing key (see .github/workflows/publish.yml).
@@ -104,12 +104,8 @@ try {
   $unsignedUpdate = Join-Path $temporaryPath 'update_payload.json'
   Write-Utf8Json $updatePayload $unsignedUpdate
 
-  # Emit the unsigned payload too, so the legacy sign job can produce the
-  # bridge-period update.json (signed with the outgoing remote-config key).
-  Copy-Item -LiteralPath $unsignedUpdate -Destination (Join-Path $outputPath 'update_payload.json') -Force
-
-  # Sign the v2 manifest with the update-manifest key.
-  Sign-Payload $unsignedUpdate (Join-Path $outputPath 'update-v2.json')
+  # Sign the manifest with the update-manifest key.
+  Sign-Payload $unsignedUpdate (Join-Path $outputPath 'update.json')
 
   Write-Host "Release $Version prepared in $outputPath"
   foreach ($platform in $downloadUrls.Keys) {

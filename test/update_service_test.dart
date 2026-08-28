@@ -12,17 +12,15 @@ void main() {
   test('defaults update manifest to config.json sibling', () {
     expect(
       UpdateService.resolveManifestUrl(
-        declaredUrl: '',
         configUrl: 'https://cdn.example.com/litchi/config.json',
       ),
       'https://cdn.example.com/litchi/update.json',
     );
     expect(
       UpdateService.resolveManifestUrl(
-        declaredUrl: 'https://updates.example.com/latest.json',
-        configUrl: 'https://cdn.example.com/litchi/config.json',
+        configUrl: 'http://cdn.example.com/litchi/config.json',
       ),
-      'https://updates.example.com/latest.json',
+      isEmpty,
     );
   });
 
@@ -31,46 +29,36 @@ void main() {
     addTearDown(() => AppConfig.currentVersion = originalVersion);
     AppConfig.currentVersion = '1.0.0';
     final hash = List.filled(64, 'a').join();
-    AppConfig.applyRemote({
+
+    final info = UpdateService.parseManifestForCurrentPlatform({
       'update_version': '2.0.0',
       'update_download_url': 'https://cdn.example.com/setup.exe',
       'update_sha256': hash,
     });
-
-    final info = await UpdateService.check();
 
     expect(info, isNotNull);
     expect(info!.downloadUrl, 'https://cdn.example.com/setup.exe');
     expect(info.sha256, hash);
   });
 
-  test('does not advertise an update with invalid hash metadata', () async {
+  test('does not advertise an update with invalid hash metadata', () {
     final originalVersion = AppConfig.currentVersion;
     addTearDown(() => AppConfig.currentVersion = originalVersion);
     AppConfig.currentVersion = '1.0.0';
-    AppConfig.applyRemote({
+
+    final info = UpdateService.parseManifestForCurrentPlatform({
       'update_version': '2.0.0',
       'update_download_url': 'https://cdn.example.com/setup.exe',
       'update_sha256': 'invalid',
     });
 
-    expect(await UpdateService.check(), isNull);
+    expect(info, isNull);
   });
 
   test('remote update switch disables an otherwise valid update', () async {
-    final originalVersion = AppConfig.currentVersion;
     final originalEnabled = AppConfig.updatesEnabled;
-    addTearDown(() {
-      AppConfig.currentVersion = originalVersion;
-      AppConfig.updatesEnabled = originalEnabled;
-    });
-    AppConfig.currentVersion = '1.0.0';
-    AppConfig.applyRemote({
-      'update_enabled': false,
-      'update_version': '2.0.0',
-      'update_download_url': 'https://cdn.example.com/setup.exe',
-      'update_sha256': List.filled(64, 'a').join(),
-    });
+    addTearDown(() => AppConfig.updatesEnabled = originalEnabled);
+    AppConfig.applyRemote({'update_enabled': false});
 
     expect(await UpdateService.check(), isNull);
   });

@@ -2,11 +2,10 @@ import 'dart:io';
 
 import 'signing_common.dart';
 
-/// Signs remote_config.json with the remote-config Ed25519 keypair.
+/// Signs config.json with the remote-config Ed25519 keypair.
 ///
 /// This signer must ONLY ever use the remote-config keys — never the
-/// update-manifest keys. Use tool/sign_update_manifest.dart for update.json /
-/// update-v2.json.
+/// update-manifest keys. Use tool/sign_update_manifest.dart for update.json.
 Future<void> main(List<String> args) async {
   if (args.isEmpty || args.first == 'help' || args.first == '--help') {
     _usage();
@@ -20,7 +19,7 @@ Future<void> main(List<String> args) async {
     case 'sign':
       if (args.length != 4) {
         stderr.writeln(
-          'sign requires: <config.js|payload.json> <private_key> <public_key>',
+          'sign requires: <config.json|payload.json> <private_key> <public_key>',
         );
         _usage();
         exitCode = 64;
@@ -34,7 +33,7 @@ Future<void> main(List<String> args) async {
       return;
     case 'sign-env':
       if (args.length != 2) {
-        stderr.writeln('sign-env requires: <config.js|payload.json>');
+        stderr.writeln('sign-env requires: <config.json|payload.json>');
         _usage();
         exitCode = 64;
         return;
@@ -68,10 +67,9 @@ void _usage() {
   stdout.writeln('''
 Usage:
   dart run tool/sign_remote_config.dart generate
-  dart run tool/sign_remote_config.dart sign <config.js|payload.json> <private_key> <public_key>
-  dart run tool/sign_remote_config.dart sign-env <config.js|payload.json>
+  dart run tool/sign_remote_config.dart sign <config.json|payload.json> <private_key> <public_key>
+  dart run tool/sign_remote_config.dart sign-env <config.json|payload.json>
 
-config.js can contain comments as long as it prints JSON to stdout.
 sign-env reads REMOTE_CONFIG_PRIVATE_KEY and REMOTE_CONFIG_PUBLIC_KEY.
 ''');
 }

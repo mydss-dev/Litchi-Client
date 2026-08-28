@@ -9,50 +9,34 @@ import '../models/app_models.dart';
 import 'secure_logger.dart';
 import 'update_manifest_verifier.dart';
 
-/// Checks the independently signed update manifest when configured. Older
-/// one-file configurations remain supported as a migration fallback.
+/// Checks the independently signed update manifest (`update.json`) when the
+/// update-signing trust root is configured.
 abstract final class UpdateService {
-  /// Returns [UpdateInfo] if the OSS config declares a newer version than the
-  /// currently running one, or null when disabled / already up-to-date.
+  /// Returns [UpdateInfo] if the signed update manifest declares a newer
+  /// version than the currently running one, or null when disabled / already
+  /// up-to-date / not configured.
   static Future<UpdateInfo?> check() async {
     if (!AppConfig.updatesEnabled) return null;
+    if (!UpdateManifestVerifier.isConfigured) return null;
 
-    // Manifest-based updates are verified by the independent update-signing
-    // trust root only (UpdateManifestVerifier). The manifest is fetched from
-    // the v2 URL so the legacy update.json — still signed by the outgoing
-    // remote-config key during the bridge — keeps updating old clients.
-    if (UpdateManifestVerifier.isConfigured) {
-      final manifestUrl = resolveManifestUrl(
-        declaredUrl: AppConfig.updateManifestV2Url,
-        configUrl: RemoteConfigService.configUrl,
-        fallbackName: 'update-v2.json',
-      );
-      if (manifestUrl.isNotEmpty) {
-        final manifest = await UpdateManifestVerifier.fetchVerifiedPayload(
-          manifestUrl,
-        );
-        if (manifest == null) return null;
-        return _fromManifest(manifest);
-      }
-    }
-
-    // Legacy one-file configuration (update fields inline in remote config).
-    return _fromValues(
-      latest: AppConfig.updateVersion,
-      downloadUrl: AppConfig.updateDownloadUrl,
-      expectedHash: AppConfig.updateSha256,
-      changelog: AppConfig.updateChangelog,
+    final manifestUrl = resolveManifestUrl(
+      configUrl: RemoteConfigService.configUrl,
+      fallbackName: 'update.json',
     );
+    if (manifestUrl.isEmpty) return null;
+
+    final manifest = await UpdateManifestVerifier.fetchVerifiedPayload(
+      manifestUrl,
+    );
+    if (manifest == null) return null;
+    return _fromManifest(manifest);
   }
 
   @visibleForTesting
   static String resolveManifestUrl({
-    required String declaredUrl,
     required String configUrl,
     String fallbackName = 'update.json',
   }) {
-    final declared = declaredUrl.trim();
-    if (declared.isNotEmpty) return declared;
     final source = Uri.tryParse(configUrl.trim());
     if (source == null || source.scheme != 'https' || !source.hasAuthority) {
       return '';
@@ -66,8 +50,7 @@ abstract final class UpdateService {
       latest: manifest['update_version']?.toString() ?? '',
       downloadUrl: _platformValue(manifest['update_download_url'], platform),
       expectedHash: _platformValue(manifest['update_sha256'], platform),
-      changelog:
-          manifest['update_changelog']?.toString() ?? AppConfig.updateChangelog,
+      changelog: manifest['update_changelog']?.toString() ?? '',
     );
   }
 

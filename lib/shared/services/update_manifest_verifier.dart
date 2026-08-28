@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'secure_logger.dart';
 import 'signed_payload_verifier.dart';
 
-/// Independent trust root for the signed update manifest (`update-v2.json`).
+/// Independent trust root for the signed update manifest (`update.json`).
 ///
 /// The update manifest is verified exclusively against [publicKeyBase64Url] and,
 /// during signing-key rotation, [previousPublicKeyBase64Url]. It must NEVER fall
