@@ -1,8 +1,8 @@
 # 环境配置
 
-本文档说明构建、签名和发布 Litchi Client 所需的部署配置。
+本文档说明 Litchi Client 的构建、配置签名与发布环境。
 
-项目不会在源码中保存生产环境 URL、签名私钥或其他敏感值。运行时与发布配置由 GitHub Actions 通过 Repository Variables、Repository Secrets 和 GitHub Environments 注入。Remote Config 与 Update Manifest 使用两套相互独立的 Ed25519 信任根。
+项目不会在源码中保存生产环境 URL、签名私钥或其他敏感值。构建与发布配置由 GitHub Actions 通过 Repository Variables、Repository Secrets 和 GitHub Environments 注入。Remote Config 与 Update Manifest 使用两套相互独立的 Ed25519 信任根。
 
 ## 配置模型
 
@@ -12,7 +12,7 @@
 CDN_BASE_URL=https://cdn.example.com
 ```
 
-构建和发布流程会基于该地址自动派生所有公开资源路径：
+构建和发布流程会基于该地址自动派生公开资源路径：
 
 ```text
 Remote Config        https://cdn.example.com/config.json
@@ -20,7 +20,7 @@ Update Manifest      https://cdn.example.com/update.json
 安装包下载            https://cdn.example.com/download/<filename>
 ```
 
-Cloudflare R2 的预期对象结构如下：
+Cloudflare R2 的对象结构应保持为：
 
 ```text
 /
@@ -53,13 +53,13 @@ Remote Config 与应用更新必须独立签名。
 
 | Variable | 是否必需 | 说明 |
 |---|---:|---|
-| `CDN_BASE_URL` | 是 | 对外公开的 HTTPS CDN 根地址。不要附加 `config.json`、`update.json` 或 `download` 路径。 |
+| `CDN_BASE_URL` | 是 | 对外公开的 HTTPS CDN 根地址，不附加 `config.json`、`update.json` 或 `download`。 |
 | `REMOTE_CONFIG_PUBLIC_KEY` | 是 | Base64URL 编码的 Ed25519 公钥，用于验证 `config.json`。 |
 | `UPDATE_PUBLIC_KEY` | 是 | Base64URL 编码的 Ed25519 公钥，用于验证 `update.json`。 |
 | `REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY` | 否 | Remote Config 上一把公钥，仅在密钥轮换期间使用。 |
 | `UPDATE_PREVIOUS_PUBLIC_KEY` | 否 | Update 上一把公钥，仅在密钥轮换期间使用。 |
 
-新部署只需要前三项。`*_PREVIOUS_PUBLIC_KEY` 在未执行密钥轮换时应保持未配置状态。
+新部署只需要前三项。`*_PREVIOUS_PUBLIC_KEY` 在未执行密钥轮换时保持未配置即可。
 
 ## GitHub Repository Secrets
 
@@ -75,19 +75,19 @@ Remote Config 与应用更新必须独立签名。
 | `ANDROID_KEY_ALIAS` | Android Tag Release 必需 | Android 签名密钥别名。 |
 | `ANDROID_KEY_PASSWORD` | Android Tag Release 必需 | Android 签名密钥密码。 |
 | `APP_NAME` | 否 | 应用显示名称，未设置时默认为 `Litchi`。 |
-| `LOGO_URL` | 否 | 可选的品牌 Logo 地址，未设置时使用项目内置资源。 |
+| `LOGO_URL` | 否 | 可选品牌 Logo 地址，未设置时使用项目内置资源。 |
 
-Ed25519 公钥属于公开配置，应放在 Repository Variables，不应放在 Repository Secrets。
+Ed25519 公钥属于公开验证材料，应放在 Repository Variables，而不是 Repository Secrets。
 
 ## GitHub Environments
 
-发布流程通过两个独立的 GitHub Environment 隔离签名凭证与上传凭证。
+发布流程使用两个独立的 GitHub Environment 隔离签名凭证与上传凭证。
 
 配置位置：
 
 `Settings → Environments`
 
-需要创建以下两个 Environment：
+需要创建：
 
 ```text
 release-signing
@@ -117,23 +117,17 @@ Environment Secrets：
 
 该 Environment 不应包含任何签名私钥。
 
-## Remote Config 私钥
-
-当前 GitHub Release Workflow 不需要 `REMOTE_CONFIG_PRIVATE_KEY`，因为 `config.json` 与应用版本发布相互独立。
-
-应将 `REMOTE_CONFIG_PRIVATE_KEY` 保存在离线环境或可信的密钥管理系统中。该私钥不得提交到 Git 仓库，也不得上传到 CDN 或 R2。
-
 ## 生成签名密钥
 
-首先安装项目依赖：
+在项目根目录安装依赖：
 
 ```bash
 flutter pub get
 ```
 
-### 生成 Remote Config 密钥
+### Remote Config 密钥
 
-执行：
+生成 Remote Config 专用密钥：
 
 ```bash
 dart run tool/sign_remote_config.dart generate
@@ -146,22 +140,24 @@ PRIVATE_KEY=<base64url-private-key>
 PUBLIC_KEY=<base64url-public-key>
 ```
 
-对应保存位置：
+保存位置：
 
 ```text
-PRIVATE_KEY → REMOTE_CONFIG_PRIVATE_KEY → 离线密钥存储
+PRIVATE_KEY → REMOTE_CONFIG_PRIVATE_KEY → 离线保存
 PUBLIC_KEY  → REMOTE_CONFIG_PUBLIC_KEY  → GitHub Repository Variable
 ```
 
-### 生成 Update 密钥
+`REMOTE_CONFIG_PRIVATE_KEY` 不参与当前 GitHub Release Workflow。建议保存在密码管理器、离线密钥文件或其他可信密钥管理系统中，不得提交到 Git、上传 CDN 或写入客户端。
 
-再次独立生成一套密钥：
+### Update 密钥
+
+再次独立生成一套 Update 专用密钥：
 
 ```bash
 dart run tool/sign_update_manifest.dart generate
 ```
 
-对应保存位置：
+保存位置：
 
 ```text
 PRIVATE_KEY → UPDATE_PRIVATE_KEY → release-signing Environment Secret
@@ -170,9 +166,189 @@ PUBLIC_KEY  → UPDATE_PUBLIC_KEY  → GitHub Repository Variable
 
 两套密钥不得复用。
 
+## Remote Config 配置文件
+
+仓库根目录提供：
+
+[`config.example.json`](./config.example.json)
+
+该文件是 **Remote Config 的未签名模板**。正式部署时不要直接上传模板，而应先复制、修改并签名。
+
+### 1. 创建实际配置
+
+Windows PowerShell：
+
+```powershell
+Copy-Item .\config.example.json .\config.local.json
+```
+
+Linux/macOS：
+
+```bash
+cp config.example.json config.local.json
+```
+
+随后编辑 `config.local.json`。
+
+典型内容：
+
+```json
+{
+  "config_version": 1,
+  "panel_type": "xiao_v2board",
+  "app_name": "Litchi VPN",
+  "api_base_list": [
+    "https://panel.example.com"
+  ],
+  "api_prefix": "/api/v1",
+  "logo_url": "https://cdn.example.com/logo.png",
+  "avatar_url": "https://cdn.example.com/avatar.png",
+  "invite_url_base": "https://panel.example.com",
+  "update_enabled": true
+}
+```
+
+`config_version` 用于防止配置回滚。每次正式发布新的 Remote Config 时，应递增该值，例如 `1 → 2 → 3`，不要重复使用更低版本号。
+
+`panel_type` 当前支持：
+
+```text
+v2board
+xiao_v2board
+xboard
+```
+
+`api_base_list`、`logo_url`、`avatar_url`、`invite_url_base` 等 URL 必须使用 HTTPS。
+
+### 2. 对配置进行签名
+
+Remote Config 使用 `REMOTE_CONFIG_PRIVATE_KEY` 签名，并由客户端内置的 `REMOTE_CONFIG_PUBLIC_KEY` 验证。
+
+这里执行的是 **数字签名，不是内容加密**。
+
+最终 `config.json` 的结构类似：
+
+```json
+{
+  "payload_b64": "...",
+  "signature": "..."
+}
+```
+
+`payload_b64` 只是 Base64URL 编码，任何人都可以解码。因此 Remote Config 中不得放置密码、API Secret、Token、私钥或其他需要保密的数据。
+
+#### Windows PowerShell
+
+先仅在当前终端会话设置密钥：
+
+```powershell
+$env:REMOTE_CONFIG_PRIVATE_KEY="<REMOTE_CONFIG_PRIVATE_KEY>"
+$env:REMOTE_CONFIG_PUBLIC_KEY="<REMOTE_CONFIG_PUBLIC_KEY>"
+```
+
+然后执行签名：
+
+```powershell
+cmd /c "dart run tool/sign_remote_config.dart sign-env config.local.json > config.json"
+```
+
+使用 `cmd /c` 是为了避免 Windows PowerShell 5 的 `>` 重定向将文件写成 UTF-16。生成的 `config.json` 必须保持 UTF-8 JSON。
+
+签名完成后可检查文件：
+
+```powershell
+Get-Content .\config.json
+```
+
+#### Linux/macOS
+
+```bash
+export REMOTE_CONFIG_PRIVATE_KEY='<REMOTE_CONFIG_PRIVATE_KEY>'
+export REMOTE_CONFIG_PUBLIC_KEY='<REMOTE_CONFIG_PUBLIC_KEY>'
+
+dart run tool/sign_remote_config.dart sign-env config.local.json > config.json
+```
+
+也可以直接将密钥作为参数传入：
+
+```bash
+dart run tool/sign_remote_config.dart sign \
+  config.local.json \
+  <REMOTE_CONFIG_PRIVATE_KEY> \
+  <REMOTE_CONFIG_PUBLIC_KEY> \
+  > config.json
+```
+
+### 3. 上传 `config.json`
+
+只上传签名后的：
+
+```text
+config.json
+```
+
+不要上传：
+
+```text
+config.example.json
+config.local.json
+REMOTE_CONFIG_PRIVATE_KEY
+```
+
+在 Cloudflare R2 中将 `config.json` 放到 Bucket **根目录**，与 `update.json` 同级：
+
+```text
+/
+├── config.json
+├── update.json
+└── download/
+```
+
+如果使用 Cloudflare Dashboard，可进入对应 R2 Bucket 后直接上传 `config.json` 到根目录。
+
+建议响应头：
+
+```text
+Content-Type: application/json
+Cache-Control: no-cache, max-age=300
+```
+
+上传后必须能够通过下面的地址访问：
+
+```text
+${CDN_BASE_URL}/config.json
+```
+
+例如：
+
+```text
+https://cdn.example.com/config.json
+```
+
+### 4. 验证发布结果
+
+浏览器或命令行访问：
+
+```text
+https://cdn.example.com/config.json
+```
+
+返回内容应为签名封装：
+
+```json
+{
+  "payload_b64": "...",
+  "signature": "..."
+}
+```
+
+不应直接返回原始配置字段。
+
+客户端启动后会使用编译进客户端的 `REMOTE_CONFIG_PUBLIC_KEY` 验证签名。签名无效、配置被篡改、URL 无效或公钥不匹配时，Remote Config 会被拒绝。
+
 ## 构建配置
 
-CI 会根据 `CDN_BASE_URL` 自动派生 Remote Config URL，并通过 `--dart-define` 将公开配置注入 Flutter 构建。
+CI 根据 `CDN_BASE_URL` 自动派生 Remote Config URL，并通过 `--dart-define` 将公开配置注入 Flutter 构建。
 
 例如：
 
@@ -186,9 +362,9 @@ CI 自动派生：
 REMOTE_CONFIG_URL=https://cdn.example.com/config.json
 ```
 
-UpdateService 会将 `update.json` 解析为 `config.json` 的同级文件，因此无需单独维护 Update Manifest URL。
+UpdateService 将 `update.json` 解析为 `config.json` 的同级文件，因此无需单独维护 Update Manifest URL。
 
-以下配置不再作为独立的 GitHub Variable 或 Secret 使用：
+以下配置不再作为独立 GitHub Variable 或 Secret 使用：
 
 ```text
 REMOTE_CONFIG_URL
@@ -196,35 +372,7 @@ DOWNLOAD_BASE_URL
 UPDATE_MANIFEST_URL
 ```
 
-## 生成 `config.json`
-
-Remote Config 使用 Remote Config 独立密钥进行签名。
-
-假设未签名配置为 `config-payload.json`，可执行：
-
-```bash
-dart run tool/sign_remote_config.dart sign \
-  config-payload.json \
-  <REMOTE_CONFIG_PRIVATE_KEY> \
-  <REMOTE_CONFIG_PUBLIC_KEY> \
-  > config.json
-```
-
-也可以先在本地环境变量中设置密钥，再执行：
-
-```bash
-dart run tool/sign_remote_config.dart sign-env config-payload.json > config.json
-```
-
-生成后的 `config.json` 可发布到 CDN/R2 根目录：
-
-```text
-https://cdn.example.com/config.json
-```
-
-签名私钥必须始终保留在离线环境中。
-
-## 发布流程
+## 应用发布流程
 
 应用发布由两个 Workflow 组成：
 
@@ -239,22 +387,18 @@ v1.2.3
 
 ### 签名阶段
 
-`sign` Job 运行在 `release-signing` Environment 中。
+`sign` Job 运行在 `release-signing` Environment 中：
 
-主要流程：
-
-- 从指定 GitHub Release 下载 `.exe`、`.apk` 和 `.dmg`；
-- 计算安装包哈希与发布元数据；
+- 从指定 GitHub Release 下载发布安装包；
+- 计算安装包哈希与版本元数据；
 - 使用 `UPDATE_PRIVATE_KEY` 签名 `update.json`；
-- 将签名后的发布产物传递给上传阶段。
+- 将签名结果交给上传阶段。
 
 `sign` Job 不持有任何 R2 写入凭证。
 
 ### 上传阶段
 
-`upload` Job 运行在 `release-upload` Environment 中。
-
-上传目标：
+`upload` Job 运行在 `release-upload` Environment 中，上传：
 
 ```text
 /update.json
@@ -269,7 +413,7 @@ v1.2.3
 
 ## Release 校验
 
-正式 `v*` Tag Release 采用 Fail Closed 配置校验。
+正式 `v*` Tag Release 使用 Fail Closed 配置校验。
 
 以下配置必须存在：
 
@@ -291,14 +435,14 @@ ANDROID_KEY_PASSWORD
 
 `CDN_BASE_URL` 必须是绝对 HTTPS URL。当前 Ed25519 公钥必须能够解码为有效的 32 字节公钥。
 
-正式发布前，应先确认目标 Tag 的 CI 全部完成。随后运行 `Publish` Workflow，并确认：
+正式发布前应确认目标 Tag 的 CI 完成。随后运行 `Publish` Workflow，并确认：
 
 ```text
 sign    success
 upload  success
 ```
 
-发布完成后，CDN 应能访问以下资源：
+发布完成后，CDN 应能够访问：
 
 ```text
 /config.json
@@ -310,7 +454,7 @@ upload  success
 
 初始部署不需要配置 Previous Key。
 
-当需要轮换信任根时，可以临时配置：
+需要轮换信任根时，可临时配置：
 
 ```text
 REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY
@@ -327,11 +471,12 @@ UPDATE_PREVIOUS_PUBLIC_KEY
 
 - 生产环境 URL 不得硬编码在源码中；
 - 签名私钥不得提交到 Git 仓库；
+- Remote Config 不得包含任何需要保密的数据；
 - 公钥通过 GitHub Repository Variables 注入；
 - `config.json` 与 `update.json` 必须使用两套独立 Ed25519 密钥；
 - Update 签名 Job 不得持有 R2 写入凭证；
 - R2 上传 Job 不得持有任何签名私钥；
-- GitHub Actions 的 `uses:` 必须继续固定到完整 Commit SHA；
+- GitHub Actions 的 `uses:` 必须固定到完整 Commit SHA；
 - Release 缺少必要配置或配置无效时必须直接失败，不允许降级发布。
 
-修改 CI、签名工具或部署流程时，应保持以上边界不变。
+修改 CI、签名工具或部署流程时，应保持以上安全边界不变。
