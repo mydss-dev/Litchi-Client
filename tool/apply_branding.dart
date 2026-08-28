@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cryptography/cryptography.dart';
+
 Future<void> main(List<String> args) async {
   if (args.isEmpty || args.first == '--help' || args.first == 'help') {
     _usage();
@@ -10,24 +12,29 @@ Future<void> main(List<String> args) async {
   final source = args.first;
   final generateIcons = !args.contains('--no-generate-icons');
   final metadataOnly = args.contains('--metadata-only');
+  final trustedPublicKeys = _argumentValues(args, '--public-key=')
+      .map((value) => value.trim())
+      .where((value) => value.isNotEmpty)
+      .toList(growable: false);
   final payload = source.startsWith('--app-name=')
       ? <String, dynamic>{
           'app_name': source.substring('--app-name='.length),
           'logo_url': _argumentValue(args, '--logo-url='),
         }
-      : await _loadPayload(source);
+      : await _loadPayload(source, trustedPublicKeys: trustedPublicKeys);
   if (payload == null) {
     exitCode = 65;
     return;
   }
 
-  final appName = _string(payload['app_name'], fallback: 'Litchi Client');
+  final appName = _string(payload['app_name'], fallback: 'Litchi');
   final windowsExeName = '${sanitizeWindowsExecutableBaseName(appName)}.exe';
   final logo = _string(payload['logo_url']);
 
   stdout.writeln('Branding source: $source');
   stdout.writeln('App name: $appName');
   stdout.writeln('Logo: ${logo.isEmpty ? '(empty)' : logo}');
+  _writeGitHubOutput('app_name', appName);
   _writeGitHubOutput('windows_exe_name', windowsExeName);
 
   await _writeAndroidName(appName);
@@ -41,7 +48,7 @@ Future<void> main(List<String> args) async {
       if (generateIcons) await _generateLauncherIcons();
     } else {
       stdout.writeln(
-        'Logo is not an http(s) image URL, keep existing launcher icons.',
+        'Logo is not a valid HTTPS image URL; keep existing launcher icons.',
       );
     }
   }
@@ -52,22 +59,27 @@ Future<void> main(List<String> args) async {
 void _writeGitHubOutput(String name, String value) {
   final outputPath = Platform.environment['GITHUB_OUTPUT'];
   if (outputPath == null || outputPath.isEmpty) return;
-  File(outputPath).writeAsStringSync('$name=$value\n', mode: FileMode.append);
+  final safeValue = value.replaceAll(RegExp(r'[\r\n]+'), ' ').trim();
+  File(outputPath).writeAsStringSync('$name=$safeValue\n', mode: FileMode.append);
 }
 
 void _usage() {
   stdout.writeln('''
 Usage:
-  dart run tool/apply_branding.dart <config.json|payload.json|https_url> [--no-generate-icons] [--metadata-only]
+  dart run tool/apply_branding.dart <config.json|payload.json|https_url> [--public-key=<ed25519_public_key>] [--no-generate-icons] [--metadata-only]
   dart run tool/apply_branding.dart --app-name="My Client" [--logo-url=https://example.com/logo.png] [--metadata-only]
 
 The tool reads existing remote config fields:
-  app_name     -> Android label + Windows product metadata
-  logo_url  -> if http(s), download launcher-icon assets; runtime logo stays cloud-only
+  app_name  -> Android label + Windows/macOS product metadata
+  logo_url  -> HTTPS launcher/tray icon source
+
+When one or more --public-key arguments are supplied, the source must be a
+signed config envelope and its Ed25519 signature must verify against one of the
+provided keys before any branding value is applied.
 
 Examples:
   dart run tool/apply_branding.dart config.json
-  dart run tool/apply_branding.dart https://example.com/config.json
+  dart run tool/apply_branding.dart https://example.com/config.json --public-key=<REMOTE_CONFIG_PUBLIC_KEY>
 ''');
 }
 
@@ -78,7 +90,15 @@ String _argumentValue(List<String> args, String prefix) {
   return '';
 }
 
-Future<Map<String, dynamic>?> _loadPayload(String source) async {
+List<String> _argumentValues(List<String> args, String prefix) => args
+    .where((argument) => argument.startsWith(prefix))
+    .map((argument) => argument.substring(prefix.length))
+    .toList(growable: false);
+
+Future<Map<String, dynamic>?> _loadPayload(
+  String source, {
+  List<String> trustedPublicKeys = const [],
+}) async {
   try {
     String raw;
     if (source.startsWith('http://') || source.startsWith('https://')) {
@@ -102,14 +122,34 @@ Future<Map<String, dynamic>?> _loadPayload(String source) async {
     final json = Map<String, dynamic>.from(decoded);
 
     final payloadB64 = json['payload_b64'];
-    if (payloadB64 is String && payloadB64.isNotEmpty) {
-      final payloadRaw = utf8.decode(_b64decode(payloadB64));
-      final payloadDecoded = jsonDecode(payloadRaw);
-      if (payloadDecoded is Map) {
-        return Map<String, dynamic>.from(payloadDecoded);
+    final signatureB64 = json['signature'];
+
+    if (trustedPublicKeys.isNotEmpty) {
+      if (payloadB64 is! String ||
+          payloadB64.isEmpty ||
+          signatureB64 is! String ||
+          signatureB64.isEmpty) {
+        stderr.writeln(
+          'Trusted branding source must be a signed config envelope.',
+        );
+        return null;
       }
-      stderr.writeln('payload_b64 must decode to a JSON object.');
-      return null;
+      final payloadBytes = _b64decode(payloadB64);
+      final signatureBytes = _b64decode(signatureB64);
+      final verified = await _verifySignature(
+        payloadBytes: payloadBytes,
+        signatureBytes: signatureBytes,
+        publicKeysBase64Url: trustedPublicKeys,
+      );
+      if (!verified) {
+        stderr.writeln('Remote config branding signature verification failed.');
+        return null;
+      }
+      return _decodePayload(payloadBytes);
+    }
+
+    if (payloadB64 is String && payloadB64.isNotEmpty) {
+      return _decodePayload(_b64decode(payloadB64));
     }
 
     return json;
@@ -117,6 +157,37 @@ Future<Map<String, dynamic>?> _loadPayload(String source) async {
     stderr.writeln('Failed to load branding config: $e');
     return null;
   }
+}
+
+Map<String, dynamic>? _decodePayload(List<int> payloadBytes) {
+  final payloadDecoded = jsonDecode(utf8.decode(payloadBytes));
+  if (payloadDecoded is Map) {
+    return Map<String, dynamic>.from(payloadDecoded);
+  }
+  stderr.writeln('payload_b64 must decode to a JSON object.');
+  return null;
+}
+
+Future<bool> _verifySignature({
+  required List<int> payloadBytes,
+  required List<int> signatureBytes,
+  required List<String> publicKeysBase64Url,
+}) async {
+  for (final key in publicKeysBase64Url) {
+    try {
+      final publicKey = SimplePublicKey(
+        _b64decode(key),
+        type: KeyPairType.ed25519,
+      );
+      final signature = Signature(signatureBytes, publicKey: publicKey);
+      if (await Ed25519().verify(payloadBytes, signature: signature)) {
+        return true;
+      }
+    } catch (_) {
+      // Invalid key/signature encoding: try the next trusted rotation key.
+    }
+  }
+  return false;
 }
 
 Future<void> _writeAndroidName(String appName) async {
@@ -198,7 +269,7 @@ Future<void> _writeMacOsName(String appName) async {
 
 Future<bool> _downloadLogoIfUrl(String logo) async {
   final uri = Uri.tryParse(logo);
-  if (uri == null || (uri.scheme != 'http' && uri.scheme != 'https')) {
+  if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
     return false;
   }
 
