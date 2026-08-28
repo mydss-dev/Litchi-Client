@@ -41,8 +41,6 @@ CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 ```
 
-`CONFIG_PUBLIC_KEY` 的值就是 Remote Config 的 `REMOTE_CONFIG_PUBLIC_KEY` 公钥；这里只是 GitHub Repository Variable 的名称更短。
-
 轮换时可临时增加：
 
 ```text
