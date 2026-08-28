@@ -16,12 +16,23 @@ FRAMEWORKS="$APP_BUNDLE/Contents/Frameworks"
 mkdir -p "$BUILD_DIR" "$FRAMEWORKS"
 
 build_arch() {
-  local arch="$1"
-  CGO_ENABLED=1 GOOS=darwin GOARCH="$arch" \
-    CGO_CFLAGS="-arch $arch" CGO_LDFLAGS="-arch $arch" \
+  local go_arch="$1"
+  local clang_arch
+
+  case "$go_arch" in
+    amd64) clang_arch="x86_64" ;;
+    arm64) clang_arch="arm64" ;;
+    *)
+      echo "::error::unsupported macOS architecture: $go_arch" >&2
+      exit 1
+      ;;
+  esac
+
+  CGO_ENABLED=1 GOOS=darwin GOARCH="$go_arch" \
+    CGO_CFLAGS="-arch $clang_arch" CGO_LDFLAGS="-arch $clang_arch" \
     go build -C "$SOURCE" -trimpath -tags "$TAGS" -buildmode=c-shared \
       -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$VERSION-litchi" \
-      -o "$BUILD_DIR/liblitchi_singbox-$arch.dylib" .
+      -o "$BUILD_DIR/liblitchi_singbox-$go_arch.dylib" .
 }
 
 go mod download -C "$SOURCE"
