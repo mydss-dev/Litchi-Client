@@ -45,7 +45,7 @@ PUBLIC_KEY=xxxxxxxx
 
 ```text
 PRIVATE_KEY → 本地安全保存
-PUBLIC_KEY  → GitHub Repository Variable: REMOTE_CONFIG_PUBLIC_KEY
+PUBLIC_KEY  → GitHub Repository Variable: CONFIG_PUBLIC_KEY
 ```
 
 以后修改 `config.json` 时继续使用同一套密钥，不需要重新执行 `generate`。
@@ -190,7 +190,7 @@ Repository
 | Variable | 填写内容 |
 |---|---|
 | `CDN_BASE_URL` | CDN 根地址，例如 `https://cdn.example.com` |
-| `REMOTE_CONFIG_PUBLIC_KEY` | 第 2 步生成的 Remote Config 公钥 |
+| `CONFIG_PUBLIC_KEY` | 第 2 步生成的 Remote Config 公钥 |
 
 项目会自动读取：
 
@@ -209,11 +209,11 @@ ${CDN_BASE_URL}/config.json
 ```text
 update_enabled = false
 → CDN_BASE_URL
-→ REMOTE_CONFIG_PUBLIC_KEY
+→ CONFIG_PUBLIC_KEY
 
 update_enabled = true
 → CDN_BASE_URL
-→ REMOTE_CONFIG_PUBLIC_KEY
+→ CONFIG_PUBLIC_KEY
 → UPDATE_PUBLIC_KEY
 ```
 
@@ -302,7 +302,7 @@ CI 会使用：
 
 ```text
 CDN_BASE_URL
-REMOTE_CONFIG_PUBLIC_KEY
+CONFIG_PUBLIC_KEY
 ```
 
 读取并验证：
@@ -399,7 +399,7 @@ Repository Variables：
 
 ```text
 CDN_BASE_URL
-REMOTE_CONFIG_PUBLIC_KEY
+CONFIG_PUBLIC_KEY
 ```
 
 Repository Secrets：
@@ -418,7 +418,7 @@ Repository Variables：
 
 ```text
 CDN_BASE_URL
-REMOTE_CONFIG_PUBLIC_KEY
+CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 ```
 
