@@ -91,9 +91,6 @@ jobs:
             if (-not (Test-Ed25519Key $configKey)) {
               throw 'vars.REMOTE_CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key'
             }
-            if (-not (Test-Ed25519Key $updateKey)) {
-              throw 'vars.UPDATE_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key'
-            }
           }
 
           "config_url=$configUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
@@ -252,9 +249,6 @@ jobs:
             esac
             if [ "$(decode_len "$config_key")" != "32" ]; then
               echo "::error::vars.REMOTE_CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
-            fi
-            if [ "$(decode_len "$update_key")" != "32" ]; then
-              echo "::error::vars.UPDATE_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
             fi
           fi
 
@@ -471,9 +465,6 @@ jobs:
             esac
             if [ "$(decode_len "$config_key")" != "32" ]; then
               echo "::error::vars.REMOTE_CONFIG_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
-            fi
-            if [ "$(decode_len "$update_key")" != "32" ]; then
-              echo "::error::vars.UPDATE_PUBLIC_KEY must be a 32-byte base64url Ed25519 public key"; exit 1
             fi
           fi
 
