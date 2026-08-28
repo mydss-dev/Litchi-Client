@@ -1,357 +1,187 @@
-# Litchi Client — GitHub 环境配置清单
+# Environment Configuration
 
-> 目标：以后**不在源码里填写真实 URL / 公钥 / 私钥**。  
-> 日常只维护 GitHub Variables / Secrets。  
-> 当前项目是新项目，不需要 Legacy Bridge / `update-v2.json`。
+This document defines the deployment configuration required to build, sign, and publish Litchi Client.
 
----
+The project does not store production URLs or signing keys in source code. Runtime configuration is injected by GitHub Actions from repository variables and secrets. Remote configuration and update manifests use independent Ed25519 trust roots.
 
-## 1. 最终 URL 规则
+## Configuration model
 
-只维护一个：
+Only one CDN base URL is maintained:
 
 ```text
 CDN_BASE_URL=https://cdn.example.com
 ```
 
-项目自动派生：
+The build and release workflows derive all public endpoints from this value:
 
 ```text
-Remote Config:
-https://cdn.example.com/config.json
-
-Update Manifest:
-https://cdn.example.com/update.json
-
-安装包:
-https://cdn.example.com/download/xxx.exe
-https://cdn.example.com/download/xxx.apk
-https://cdn.example.com/download/xxx.dmg
+Remote configuration   https://cdn.example.com/config.json
+Update manifest        https://cdn.example.com/update.json
+Release packages       https://cdn.example.com/download/<filename>
 ```
 
-R2 目录结构：
+The expected object layout in Cloudflare R2 is:
 
 ```text
 /
 ├── config.json
 ├── update.json
 └── download/
-    ├── Litchi-Setup-x.x.x.exe
-    ├── Litchi-x.x.x.apk
-    └── Litchi-x.x.x.dmg
+    ├── Litchi-Setup-<version>.exe
+    ├── Litchi-<version>.apk
+    └── Litchi-<version>.dmg
 ```
 
-`download` 必须小写。
+The `download` path is lowercase.
 
----
+## Trust domains
 
-# 2. Repository Variables
+Remote configuration and application updates are signed independently.
 
-位置：
-
-```text
-GitHub Repository
-→ Settings
-→ Secrets and variables
-→ Actions
-→ Variables
-```
-
-## 必填
-
-| 状态 | Variable | 填什么 |
+| Artifact | Signing key | Verification key |
 |---|---|---|
-| ☐ | `CDN_BASE_URL` | CDN 根地址，例如 `https://cdn.example.com`，不要填 `/config.json` |
-| ☐ | `REMOTE_CONFIG_PUBLIC_KEY` | Remote Config 的 Ed25519 公钥 |
-| ☐ | `UPDATE_PUBLIC_KEY` | Update Manifest 的 Ed25519 公钥 |
+| `config.json` | `REMOTE_CONFIG_PRIVATE_KEY` | `REMOTE_CONFIG_PUBLIC_KEY` |
+| `update.json` | `UPDATE_PRIVATE_KEY` | `UPDATE_PUBLIC_KEY` |
 
-## 暂时不要创建
+The two keypairs must be generated independently. A Remote Config key must never be reused for update signing, and an Update key must never be accepted by the Remote Config verifier.
 
-新项目现在不需要密钥轮换，所以先不要建：
+## GitHub repository variables
 
-```text
-REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY
-UPDATE_PREVIOUS_PUBLIC_KEY
-```
+Configure repository variables under:
 
-以后真正换密钥时再使用。
+`Settings → Secrets and variables → Actions → Variables`
 
----
+| Variable | Required | Description |
+|---|---:|---|
+| `CDN_BASE_URL` | Yes | Public HTTPS CDN origin. Do not append `config.json`, `update.json`, or `download`. |
+| `REMOTE_CONFIG_PUBLIC_KEY` | Yes | Base64URL-encoded Ed25519 public key used to verify `config.json`. |
+| `UPDATE_PUBLIC_KEY` | Yes | Base64URL-encoded Ed25519 public key used to verify `update.json`. |
+| `REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY` | No | Previous Remote Config public key used only during key rotation. |
+| `UPDATE_PREVIOUS_PUBLIC_KEY` | No | Previous Update public key used only during key rotation. |
 
-# 3. 生成两套独立密钥
+For a new deployment, only the first three variables are required. Previous-key variables should remain unset until a key rotation is performed.
 
-**必须生成两次。不要共用同一套密钥。**
+## GitHub repository secrets
 
-先在项目根目录执行：
+Configure repository secrets under:
+
+`Settings → Secrets and variables → Actions → Secrets`
+
+| Secret | Required | Description |
+|---|---:|---|
+| `API_BASE` | Yes for tagged releases | Base URL of the panel API compiled into release builds. |
+| `ANDROID_KEYSTORE_BASE64` | Yes for Android tagged releases | Base64-encoded Android signing keystore. |
+| `ANDROID_KEYSTORE_PASSWORD` | Yes for Android tagged releases | Android keystore password. |
+| `ANDROID_KEY_ALIAS` | Yes for Android tagged releases | Android signing key alias. |
+| `ANDROID_KEY_PASSWORD` | Yes for Android tagged releases | Android signing key password. |
+| `APP_NAME` | No | Application display name. Defaults to `Litchi`. |
+| `LOGO_URL` | No | Optional branding asset URL. Built-in assets are used when omitted. |
+
+Public Ed25519 keys must be stored as repository variables, not repository secrets.
+
+## GitHub environments
+
+The publish workflow separates signing credentials from upload credentials by using two GitHub Environments.
+
+Create the following environments under:
+
+`Settings → Environments`
+
+### `release-signing`
+
+Environment secret:
+
+| Secret | Description |
+|---|---|
+| `UPDATE_PRIVATE_KEY` | Ed25519 private key used exclusively to sign `update.json`. |
+
+This environment must not contain R2 credentials or the Remote Config private key.
+
+### `release-upload`
+
+Environment secrets:
+
+| Secret | Description |
+|---|---|
+| `R2_ACCOUNT_ID` | Cloudflare account ID. |
+| `R2_ACCESS_KEY_ID` | R2 API access key ID. |
+| `R2_SECRET_ACCESS_KEY` | R2 API secret access key. |
+| `R2_BUCKET` | R2 bucket name. |
+
+This environment must not contain any signing private key.
+
+## Remote Config private key
+
+`REMOTE_CONFIG_PRIVATE_KEY` is not required by the current GitHub release workflow because `config.json` is maintained separately from application releases.
+
+Store this private key offline or in a trusted secret-management system. It must not be committed to the repository or uploaded to the CDN.
+
+## Generating signing keys
+
+Install project dependencies first:
 
 ```bash
 flutter pub get
 ```
 
-## A. Remote Config 密钥
+### Remote Config keypair
 
-执行：
+Generate a dedicated Remote Config keypair:
 
 ```bash
 dart run tool/sign_remote_config.dart generate
 ```
 
-会输出：
+The command prints:
 
 ```text
-PRIVATE_KEY=xxxxxxxx
-PUBLIC_KEY=xxxxxxxx
+PRIVATE_KEY=<base64url-private-key>
+PUBLIC_KEY=<base64url-public-key>
 ```
 
-对应关系：
+Store the values as follows:
 
 ```text
-PRIVATE_KEY
-→ REMOTE_CONFIG_PRIVATE_KEY
-→ 私钥，不能提交 Git
-
-PUBLIC_KEY
-→ REMOTE_CONFIG_PUBLIC_KEY
-→ 放 Repository Variables
+PRIVATE_KEY → REMOTE_CONFIG_PRIVATE_KEY → offline secret storage
+PUBLIC_KEY  → REMOTE_CONFIG_PUBLIC_KEY  → GitHub Repository Variable
 ```
 
-### Remote Config 私钥怎么保存
+### Update keypair
 
-当前 GitHub Release workflow **不需要** `REMOTE_CONFIG_PRIVATE_KEY`。
-
-推荐：
-
-```text
-REMOTE_CONFIG_PRIVATE_KEY
-→ 本地离线保存 / 密码管理器保存
-```
-
-不要放源码，不要发到群里，不要和 Update 私钥共用。
-
----
-
-## B. Update 密钥
-
-执行：
+Generate a second, independent keypair:
 
 ```bash
 dart run tool/sign_update_manifest.dart generate
 ```
 
-会输出：
+Store the values as follows:
 
 ```text
-PRIVATE_KEY=yyyyyyyy
-PUBLIC_KEY=yyyyyyyy
+PRIVATE_KEY → UPDATE_PRIVATE_KEY → release-signing Environment Secret
+PUBLIC_KEY  → UPDATE_PUBLIC_KEY  → GitHub Repository Variable
 ```
 
-对应关系：
+Do not reuse either keypair across the two trust domains.
+
+## Building configuration
+
+The CI workflow derives the Remote Config URL from `CDN_BASE_URL` and injects the public configuration into Flutter builds with `--dart-define`.
+
+For example, when:
 
 ```text
-PRIVATE_KEY
-→ UPDATE_PRIVATE_KEY
-→ release-signing Environment Secret
-
-PUBLIC_KEY
-→ UPDATE_PUBLIC_KEY
-→ Repository Variables
+CDN_BASE_URL=https://cdn.example.com
 ```
 
-### 硬要求
+CI derives:
 
 ```text
-REMOTE_CONFIG_PUBLIC_KEY != UPDATE_PUBLIC_KEY
-REMOTE_CONFIG_PRIVATE_KEY != UPDATE_PRIVATE_KEY
+REMOTE_CONFIG_URL=https://cdn.example.com/config.json
 ```
 
-必须是两次独立生成。
+The update service resolves `update.json` as a sibling of `config.json`, so no separate update-manifest URL variable is required.
 
----
-
-# 4. GitHub Environments
-
-位置：
-
-```text
-GitHub Repository
-→ Settings
-→ Environments
-```
-
-创建两个 Environment：
-
-```text
-release-signing
-release-upload
-```
-
----
-
-## Environment 1：release-signing
-
-进入：
-
-```text
-Settings
-→ Environments
-→ release-signing
-```
-
-在 **Environment secrets** 添加：
-
-| 状态 | Secret | 用途 |
-|---|---|---|
-| ☐ | `UPDATE_PRIVATE_KEY` | 只用于签名 `update.json` |
-
-这里只放 Update 私钥。
-
-**不要放：**
-
-```text
-R2_ACCESS_KEY_ID
-R2_SECRET_ACCESS_KEY
-REMOTE_CONFIG_PRIVATE_KEY
-```
-
----
-
-## Environment 2：release-upload
-
-进入：
-
-```text
-Settings
-→ Environments
-→ release-upload
-```
-
-在 **Environment secrets** 添加：
-
-| 状态 | Secret | 用途 |
-|---|---|---|
-| ☐ | `R2_ACCOUNT_ID` | Cloudflare R2 Account ID |
-| ☐ | `R2_ACCESS_KEY_ID` | R2 Access Key |
-| ☐ | `R2_SECRET_ACCESS_KEY` | R2 Secret Key |
-| ☐ | `R2_BUCKET` | R2 Bucket 名称 |
-
-这里只负责上传。
-
-**不要放：**
-
-```text
-UPDATE_PRIVATE_KEY
-REMOTE_CONFIG_PRIVATE_KEY
-```
-
----
-
-# 5. Repository Secrets
-
-位置：
-
-```text
-GitHub Repository
-→ Settings
-→ Secrets and variables
-→ Actions
-→ Secrets
-```
-
-下面这些属于普通 CI / 应用构建配置。
-
-## 正式 Tag Release 必需
-
-| 状态 | Secret | 说明 |
-|---|---|---|
-| ☐ | `API_BASE` | 客户端编译时 API fallback；当前 `v*` Tag Release 要求必须存在 |
-
-## Android 正式 Release 必需
-
-如果要发布 Android：
-
-| 状态 | Secret |
-|---|---|
-| ☐ | `ANDROID_KEYSTORE_BASE64` |
-| ☐ | `ANDROID_KEYSTORE_PASSWORD` |
-| ☐ | `ANDROID_KEY_ALIAS` |
-| ☐ | `ANDROID_KEY_PASSWORD` |
-
-缺少这些时，正式 `v*` Android Release 会失败。
-
-## 可选
-
-| Secret | 说明 |
-|---|---|
-| `APP_NAME` | 不填默认 `Litchi` |
-| `LOGO_URL` | 不填使用内置图标 |
-
----
-
-# 6. 最终应该长这样
-
-## Repository Variables
-
-```text
-CDN_BASE_URL
-REMOTE_CONFIG_PUBLIC_KEY
-UPDATE_PUBLIC_KEY
-```
-
-### 暂不需要
-
-```text
-REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY
-UPDATE_PREVIOUS_PUBLIC_KEY
-```
-
----
-
-## Repository Secrets
-
-```text
-API_BASE
-
-ANDROID_KEYSTORE_BASE64
-ANDROID_KEYSTORE_PASSWORD
-ANDROID_KEY_ALIAS
-ANDROID_KEY_PASSWORD
-
-APP_NAME          # 可选
-LOGO_URL          # 可选
-```
-
----
-
-## release-signing / Environment Secrets
-
-```text
-UPDATE_PRIVATE_KEY
-```
-
----
-
-## release-upload / Environment Secrets
-
-```text
-R2_ACCOUNT_ID
-R2_ACCESS_KEY_ID
-R2_SECRET_ACCESS_KEY
-R2_BUCKET
-```
-
----
-
-## 本地离线保存
-
-```text
-REMOTE_CONFIG_PRIVATE_KEY
-```
-
----
-
-# 7. 可以删除的旧配置
-
-新架构已经不再需要：
+The following values are intentionally not configured as independent GitHub variables or secrets:
 
 ```text
 REMOTE_CONFIG_URL
@@ -359,234 +189,142 @@ DOWNLOAD_BASE_URL
 UPDATE_MANIFEST_URL
 ```
 
-也不要再把下面两个公钥放 Secrets：
+## Creating `config.json`
 
-```text
-REMOTE_CONFIG_PUBLIC_KEY
-UPDATE_PUBLIC_KEY
-```
+Remote configuration is signed with the Remote Config keypair.
 
-它们应该在：
-
-```text
-Actions → Variables
-```
-
-如果旧 Secrets 中存在同名公钥：
-
-1. 先确认 Variables 已经创建并填写正确；
-2. 再删除 Secrets 里的旧公钥。
-
----
-
-# 8. Remote Config：生成 config.json
-
-`config.json` 使用：
-
-```text
-REMOTE_CONFIG_PRIVATE_KEY
-+
-REMOTE_CONFIG_PUBLIC_KEY
-```
-
-签名。
-
-例如本地：
+Given an unsigned JSON payload such as `config-payload.json`, create the signed envelope with:
 
 ```bash
-dart run tool/sign_remote_config.dart sign payload.json YOUR_REMOTE_PRIVATE_KEY YOUR_REMOTE_PUBLIC_KEY > config.json
+dart run tool/sign_remote_config.dart sign \
+  config-payload.json \
+  <REMOTE_CONFIG_PRIVATE_KEY> \
+  <REMOTE_CONFIG_PUBLIC_KEY> \
+  > config.json
 ```
 
-或者先在本地临时设置环境变量，再使用：
+Alternatively, provide the keys through local environment variables and use:
 
 ```bash
-dart run tool/sign_remote_config.dart sign-env payload.json > config.json
+dart run tool/sign_remote_config.dart sign-env config-payload.json > config.json
 ```
 
-**注意：**
-
-生成后的 `config.json` 可以上传 CDN/R2。
-
-私钥不能上传 CDN。
-
----
-
-# 9. Update：update.json
-
-正式发布时，GitHub `publish.yml` 会：
+The resulting `config.json` may be published to the root of the CDN/R2 bucket:
 
 ```text
-GitHub Release 安装包
-        ↓
-release-signing
-        ↓
-UPDATE_PRIVATE_KEY 签名
-        ↓
-update.json
-        ↓
-release-upload
-        ↓
-R2
+https://cdn.example.com/config.json
 ```
 
-最终：
+The private key must remain offline.
+
+## Release workflow
+
+Application releases use two workflows:
+
+1. `.github/workflows/ci.yml` builds platform packages and creates the GitHub Release for a `v*` tag.
+2. `.github/workflows/publish.yml` signs the update manifest and uploads release artifacts to R2.
+
+The publish workflow is manually triggered with the release tag, for example:
+
+```text
+v1.2.3
+```
+
+### Signing stage
+
+The `sign` job runs in the `release-signing` environment.
+
+It:
+
+- downloads `.exe`, `.apk`, and `.dmg` assets from the selected GitHub Release;
+- computes package hashes and release metadata;
+- signs `update.json` with `UPDATE_PRIVATE_KEY`;
+- produces the signed release artifact for the upload stage.
+
+The signing job does not receive R2 credentials.
+
+### Upload stage
+
+The `upload` job runs in the `release-upload` environment.
+
+It uploads:
 
 ```text
 /update.json
-/download/*.exe
-/download/*.apk
-/download/*.dmg
+/download/<windows-package>.exe
+/download/<android-package>.apk
+/download/<macos-package>.dmg
 ```
 
-Update 验签只使用：
+Packages are uploaded before `update.json` so clients cannot observe a new manifest before the referenced package objects are available.
 
-```text
-UPDATE_PUBLIC_KEY
-```
+The upload job does not receive a signing private key.
 
-Remote Config 验签只使用：
+## Release validation
 
-```text
-REMOTE_CONFIG_PUBLIC_KEY
-```
+Tagged releases use fail-closed configuration validation.
 
-两套密钥不能交叉。
-
----
-
-# 10. 填完以后怎么验证
-
-## 第一步：普通 CI
-
-进入：
-
-```text
-GitHub
-→ Actions
-→ CI
-→ Run workflow
-→ main
-```
-
-检查：
-
-```text
-Resolve release config
-```
-
-Windows / Android / macOS 都不应该报配置错误。
-
-> 普通 `main` 构建不是最终生产配置校验，因为严格校验主要发生在 `v*` Tag Release。
-
----
-
-## 第二步：正式 Tag 前检查
-
-确认：
+A `v*` release must provide:
 
 ```text
 CDN_BASE_URL
 REMOTE_CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 API_BASE
-Android signing secrets
 ```
 
-全部存在。
-
-并确认两个公钥是**两次独立生成**的。
-
----
-
-## 第三步：Publish
-
-正式 Tag 的 GitHub Release 产生安装包后，再运行：
+Android tagged releases additionally require:
 
 ```text
-Actions
-→ Publish
-→ Run workflow
+ANDROID_KEYSTORE_BASE64
+ANDROID_KEYSTORE_PASSWORD
+ANDROID_KEY_ALIAS
+ANDROID_KEY_PASSWORD
 ```
 
-输入：
+`CDN_BASE_URL` must be an absolute HTTPS URL. The current public keys must decode to valid 32-byte Ed25519 public keys.
+
+Before publishing a release, verify that CI completes successfully for the intended tag. Then run the `Publish` workflow and confirm that both jobs complete successfully:
 
 ```text
-v1.2.3
+sign    success
+upload  success
 ```
 
-预期：
+Finally, verify that the CDN exposes:
 
 ```text
-sign       ✅
-upload     ✅
+/config.json
+/update.json
+/download/<release-files>
 ```
 
-R2 最终应该看到：
+## Key rotation
+
+Key rotation is optional and is not required for an initial deployment.
+
+When rotating a trust root, the previous public key may temporarily be supplied through:
 
 ```text
-config.json
-update.json
-download/...
+REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY
+UPDATE_PREVIOUS_PUBLIC_KEY
 ```
 
----
+Only the previous key from the same trust domain may be accepted. Remote Config keys and Update keys must remain isolated throughout rotation.
 
-# 11. 最简 Checklist
+After the migration window is complete, remove the corresponding previous-key variable.
 
-按顺序打勾：
+## Security requirements
 
-```text
-[ ] 创建 CDN_BASE_URL
-[ ] 生成 Remote Config keypair
-[ ] REMOTE_CONFIG_PUBLIC_KEY → Variables
-[ ] REMOTE_CONFIG_PRIVATE_KEY → 离线保存
+The following requirements are part of the release architecture:
 
-[ ] 生成第二套 Update keypair
-[ ] UPDATE_PUBLIC_KEY → Variables
-[ ] UPDATE_PRIVATE_KEY → release-signing
+- production URLs are not hard-coded in source files;
+- private signing keys are never committed to the repository;
+- public verification keys are provided through GitHub repository variables;
+- `config.json` and `update.json` use independent Ed25519 keypairs;
+- the update signing job has no R2 write credentials;
+- the R2 upload job has no signing private key;
+- GitHub Actions references remain pinned to full commit SHAs;
+- release configuration fails closed when mandatory values are missing or invalid.
 
-[ ] 创建 release-signing Environment
-[ ] 创建 release-upload Environment
-
-[ ] R2_ACCOUNT_ID → release-upload
-[ ] R2_ACCESS_KEY_ID → release-upload
-[ ] R2_SECRET_ACCESS_KEY → release-upload
-[ ] R2_BUCKET → release-upload
-
-[ ] API_BASE 已存在
-[ ] Android 4 个签名 Secret 已存在
-
-[ ] 删除旧 REMOTE_CONFIG_URL
-[ ] 删除旧 DOWNLOAD_BASE_URL
-[ ] 公钥不再放 Secrets
-
-[ ] CI 验证
-[ ] 创建正式 Tag
-[ ] Publish 验证
-[ ] 检查 R2 /config.json
-[ ] 检查 R2 /update.json
-[ ] 检查 R2 /download/
-```
-
----
-
-# 12. 当前配置的核心原则
-
-只记住这张表即可：
-
-| 文件 / 功能 | 私钥 | 公钥 |
-|---|---|---|
-| `config.json` | `REMOTE_CONFIG_PRIVATE_KEY` | `REMOTE_CONFIG_PUBLIC_KEY` |
-| `update.json` | `UPDATE_PRIVATE_KEY` | `UPDATE_PUBLIC_KEY` |
-
-以及：
-
-```text
-URL → Variables
-Public Key → Variables
-Private Key → Secrets / Offline
-R2 凭证 → release-upload Secrets
-Update 私钥 → release-signing Secret
-```
-
-不要在源码中填写任何真实部署值。
+These boundaries should be preserved when modifying CI, signing, or deployment tooling.
