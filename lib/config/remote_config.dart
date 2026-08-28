@@ -15,7 +15,7 @@ import '../shared/services/signed_payload_verifier.dart';
 /// installing the Ed25519 public key used to verify signed remote config.
 abstract final class RemoteConfigService {
   /// Self-hosted setup: pass these at build time via
-  /// --dart-define=CONFIG_URL=... --dart-define=CONFIG_PUBLIC_KEY=...
+  /// --dart-define=REMOTE_CONFIG_URL=... --dart-define=REMOTE_CONFIG_PUBLIC_KEY=...
   ///
   /// [configUrl] is the HTTPS URL of the signed remote config (`config.json`),
   /// which lives at the R2 bucket root alongside `update.json`. The client
@@ -29,18 +29,18 @@ abstract final class RemoteConfigService {
   /// Generate the keypair once with:
   ///   dart run tool/sign_remote_config.dart generate
   ///
-  /// Store the public key in a CI variable (CONFIG_PUBLIC_KEY) and keep
+  /// Store the public key in a CI variable (REMOTE_CONFIG_PUBLIC_KEY) and keep
   /// the private key offline.
-  static const configUrl = String.fromEnvironment('CONFIG_URL');
+  static const configUrl = String.fromEnvironment('REMOTE_CONFIG_URL');
   static const publicKeyBase64Url =
-      String.fromEnvironment('CONFIG_PUBLIC_KEY');
+      String.fromEnvironment('REMOTE_CONFIG_PUBLIC_KEY');
 
   /// Previous Ed25519 public key, accepted alongside [publicKeyBase64Url]
   /// during key rotation so configs signed with the outgoing key keep verifying
   /// while new releases (which bake in the incoming key) roll out. Empty when
   /// no rotation is in progress.
   static const previousPublicKeyBase64Url =
-      String.fromEnvironment('CONFIG_PREVIOUS_PUBLIC_KEY');
+      String.fromEnvironment('REMOTE_CONFIG_PREVIOUS_PUBLIC_KEY');
 
   // ── Internal settings ─────────────────────────────────────────────────────
 
