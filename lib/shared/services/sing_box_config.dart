@@ -187,7 +187,10 @@ abstract final class SingBoxConfig {
         },
         'cache_file': {
           'enabled': true,
-          'path': '${appDataDir()}${Platform.pathSeparator}sing-box.db',
+          // Relative to the native core's working directory (AppPaths.dataDirectory),
+          // which is passed to litchi_core_start. An absolute path here would be
+          // re-joined onto that base by sing-box's filemanager and double up.
+          'path': 'sing-box.db',
           'store_fakeip': false,
         },
       },
