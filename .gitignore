@@ -90,3 +90,4 @@ version.json
 # Local self-hosted release inputs and generated output
 /oss_payload.json
 /release_output/
+config.json
