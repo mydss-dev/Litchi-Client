@@ -35,7 +35,7 @@ still requires system privileges.
 - Windows 10 / 11 (64-bit)
 - Go 1.24.7 for building the pinned sing-box libraries
 
-> **Deploying or self-hosting?** See [ENVIRONMENT.md](ENVIRONMENT.md) for the exact GitHub Variables, Secrets, key generation, R2 layout, and release checklist.
+> **Deploying or self-hosting?** See [ENVIRONMENT.md](ENVIRONMENT.md) for the exact GitHub Variables, Secrets, key generation, R2 layout, and release tutorial.
 
 ## Getting Started
 
@@ -79,13 +79,12 @@ closed — no release client ships without a correctly verified update config).
 Android tags publish both an APK for direct installation and an AAB for Google
 Play.
 
-The signed `config.json` is maintained manually. Tagged CI releases build all
-platform packages and create a GitHub Release. Signing and the Cloudflare R2
-upload run in a separate, manually-triggered workflow
-(`.github/workflows/publish.yml`) under protected environments: it signs
-`update.json` with the independent update-manifest key and uploads the packages
-and manifest to R2. `tool/publish_release.ps1` prepares and signs the same update
-manifest locally.
+The signed `config.json` is maintained manually. `update.json` is not a
+user-maintained file: do not create, edit, sign, or upload it by hand. Tagged CI
+releases build all platform packages and create a GitHub Release; the separate
+`.github/workflows/publish.yml` workflow automatically generates and signs
+`update.json` with `UPDATE_PRIVATE_KEY`, uploads release packages under
+`download/`, and uploads the signed manifest to R2.
 
 ## Project Structure
 
