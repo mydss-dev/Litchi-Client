@@ -172,13 +172,25 @@ config.json
 }
 ```
 
-客户端的面板 API 地址只来自签名后的：
+客户端 API、应用名称、Logo 等运行配置统一来自签名后的 `config.json`：
 
 ```text
-api_base_list
+api_base_list → 面板 API 地址
+app_name      → 应用名称
+logo_url      → Logo / 构建图标来源
 ```
 
-项目不使用 `API_BASE` 编译兜底，也不需要在 GitHub 中重复配置 API 地址。
+项目不使用以下重复的 GitHub 配置：
+
+```text
+API_BASE
+APP_NAME
+LOGO_URL
+```
+
+正式构建时，CI 会从 `${CDN_BASE_URL}/config.json` 读取配置，并使用 `REMOTE_CONFIG_PUBLIC_KEY` 验证签名后再应用 `app_name` 和 `logo_url`。
+
+注意：修改 `app_name` 或 `logo_url` 后，客户端运行界面可通过 Remote Config 更新；Windows/Android/macOS 的安装包名称、系统应用名称和安装图标会在下一次构建时使用新的配置。
 
 `panel_type` 支持：
 
@@ -344,21 +356,26 @@ ANDROID_KEY_ALIAS
 ANDROID_KEY_PASSWORD
 ```
 
-可选品牌配置：
+这里不需要创建：
 
 ```text
+API_BASE
 APP_NAME
 LOGO_URL
+REMOTE_CONFIG_PRIVATE_KEY
+UPDATE_PRIVATE_KEY
+R2_ACCOUNT_ID
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_BUCKET
 ```
 
-以下公钥放 Repository Variables，不放 Secrets：
+公钥统一放 Repository Variables：
 
 ```text
 REMOTE_CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 ```
-
-面板 API 地址不要放 Repository Secrets，统一维护在 `config.json` 的 `api_base_list` 中。
 
 ---
 
@@ -431,6 +448,21 @@ CDN_BASE_URL
 REMOTE_CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 ```
+
+随后 CI 会读取并验证：
+
+```text
+${CDN_BASE_URL}/config.json
+```
+
+验证成功后，使用其中的：
+
+```text
+app_name
+logo_url
+```
+
+生成各平台的应用名称、安装包名称和系统图标。
 
 Android 还会检查 Android 签名配置。
 
@@ -536,6 +568,8 @@ UPDATE_PUBLIC_KEY        → 验证自动生成的 update.json
 
 修改普通 Remote Config 不需要重新构建客户端，也与 `update.json` 无关。
 
+如果修改的是 `app_name` 或 `logo_url`，下一次正式构建会自动读取新的签名配置来生成安装包品牌信息，不需要再修改 GitHub Secrets。
+
 ---
 
 ## 17. 最终需要记住的区别
@@ -545,6 +579,7 @@ config.json
 → 你手工维护
 → 你手工签名
 → 你手工上传
+→ API、应用名称、Logo 等配置的唯一来源
 
 update.json
 → 不手工维护

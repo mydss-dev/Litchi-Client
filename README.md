@@ -43,10 +43,9 @@ still requires system privileges.
 # Install dependencies
 flutter pub get
 
-# Generate OS-level icons from the configured cloud logo
-$env:LOGO_URL="https://your-oss.example/logo.png"
-dart run tool/prepare_brand_assets.dart
-dart run flutter_launcher_icons
+# Apply local branding from config.json when needed
+# (plain or signed config is supported for local tooling)
+dart run tool/apply_branding.dart config.json
 
 # Run in debug mode
 flutter run -d windows
@@ -70,8 +69,11 @@ Only one CDN base URL is maintained (`CDN_BASE_URL`, e.g.
   sibling of the config URL)
 - installer download URLs = `{CDN_BASE_URL}/download/<name>`
 
-Panel API endpoints come exclusively from the signed `config.json`
-`api_base_list`; there is no compiled `API_BASE` fallback.
+Panel API endpoints and branding values come exclusively from the signed
+`config.json`. `api_base_list` provides panel API endpoints, while `app_name`
+and `logo_url` are also used by CI to generate platform app names, package names,
+and icons after the remote config signature verifies. There are no separate
+`API_BASE`, `APP_NAME`, or `LOGO_URL` GitHub configuration values.
 
 The two manifests use **independent Ed25519 keypairs**: `config.json` is signed
 by the remote-config key, `update.json` by the update-manifest key.
