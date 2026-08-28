@@ -54,12 +54,13 @@ flutter run -d windows
 flutter build windows --release
 ```
 
-Set the OSS config URL and Ed25519 public keys at build time via
-`--dart-define=REMOTE_CONFIG_URL=...`, `--dart-define=REMOTE_CONFIG_PUBLIC_KEY=...`
-(remote config) and `--dart-define=UPDATE_PUBLIC_KEY=...` (update manifest). The
-client rejects unsigned or invalid remote configuration. The application identity
-is fixed so updates continue using the same data, credentials, auto-start entry,
-and single-instance lock.
+Set the signed remote config URL and Ed25519 public key at build time via
+`--dart-define=REMOTE_CONFIG_URL=...` and
+`--dart-define=REMOTE_CONFIG_PUBLIC_KEY=...`. When automatic updates are enabled,
+`--dart-define=UPDATE_PUBLIC_KEY=...` is also supplied for update-manifest
+verification. The client rejects unsigned or invalid remote configuration. The
+application identity is fixed so updates continue using the same data,
+credentials, auto-start entry, and single-instance lock.
 
 Only one CDN base URL is maintained (`CDN_BASE_URL`, e.g.
 `https://cdn.example.com`). The client derives everything else from it:
@@ -75,20 +76,17 @@ and `logo_url` are also used by CI to generate platform app names, package names
 and icons after the remote config signature verifies. There are no separate
 `API_BASE`, `APP_NAME`, or `LOGO_URL` GitHub configuration values.
 
-The two manifests use **independent Ed25519 keypairs**: `config.json` is signed
-by the remote-config key, `update.json` by the update-manifest key.
+Remote Config and Update use independent Ed25519 keypairs. The Update keypair is
+only required when `config.json` has `update_enabled: true` and the Publish
+workflow is used.
 
-Tagged releases fail when `CDN_BASE_URL`, `REMOTE_CONFIG_PUBLIC_KEY`, or
-`UPDATE_PUBLIC_KEY` is missing/invalid (fail closed — no release client ships
-without correctly verified remote configuration and update metadata). Android
+Tagged releases require `CDN_BASE_URL` and `REMOTE_CONFIG_PUBLIC_KEY`. Android
 tags publish both an APK for direct installation and an AAB for Google Play.
 
-The signed `config.json` is maintained manually. `update.json` is not a
-user-maintained file: do not create, edit, sign, or upload it by hand. Tagged CI
-releases build all platform packages and create a GitHub Release; the separate
-`.github/workflows/publish.yml` workflow automatically generates and signs
-`update.json` with `UPDATE_PRIVATE_KEY`, uploads release packages under
-`download/`, and uploads the signed manifest to R2.
+The signed `config.json` is maintained manually. When automatic updates are
+enabled, the separate `.github/workflows/publish.yml` workflow automatically
+generates and signs `update.json` with `UPDATE_PRIVATE_KEY`, uploads release
+packages under `download/`, and uploads the signed manifest to R2.
 
 ## Project Structure
 
