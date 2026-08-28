@@ -70,14 +70,16 @@ Only one CDN base URL is maintained (`CDN_BASE_URL`, e.g.
   sibling of the config URL)
 - installer download URLs = `{CDN_BASE_URL}/download/<name>`
 
+Panel API endpoints come exclusively from the signed `config.json`
+`api_base_list`; there is no compiled `API_BASE` fallback.
+
 The two manifests use **independent Ed25519 keypairs**: `config.json` is signed
 by the remote-config key, `update.json` by the update-manifest key.
 
-Tagged releases fail when `API_BASE` is missing, or when `CDN_BASE_URL`,
-`REMOTE_CONFIG_PUBLIC_KEY`, or `UPDATE_PUBLIC_KEY` is missing/invalid (fail
-closed — no release client ships without a correctly verified update config).
-Android tags publish both an APK for direct installation and an AAB for Google
-Play.
+Tagged releases fail when `CDN_BASE_URL`, `REMOTE_CONFIG_PUBLIC_KEY`, or
+`UPDATE_PUBLIC_KEY` is missing/invalid (fail closed — no release client ships
+without correctly verified remote configuration and update metadata). Android
+tags publish both an APK for direct installation and an AAB for Google Play.
 
 The signed `config.json` is maintained manually. `update.json` is not a
 user-maintained file: do not create, edit, sign, or upload it by hand. Tagged CI
@@ -109,7 +111,7 @@ lib/
 │   └── account/                  # Profile + subscription info
 │
 ├── shared/
-│   ├── config/                   # AppConfig (API base URL, constants)
+│   ├── config/                   # AppConfig (signed remote API/config values)
 │   ├── models/                   # Data models + mappers
 │   ├── services/                 # API client, sing-box config, parsers
 │   ├── theme/                    # Colors, text styles, radius, shadows
@@ -149,7 +151,7 @@ dart format lib/ test/
 Format: `<type>(<scope>): <subject>`
 
 | Type | When to use |
-|------|------------|
+|------|-------------|
 | `feat` | New user-visible feature |
 | `fix` | Bug fix |
 | `refactor` | Code change with no behavior change |

@@ -29,11 +29,12 @@ abstract final class AppConfig {
 
   // ── API ─────────────────────────────────────────────────────────────────────
 
-  static String apiBase = const String.fromEnvironment('API_BASE');
+  /// Primary panel API selected from the signed remote config.
+  static String apiBase = '';
 
+  /// Trusted panel API endpoints from `config.json`.
   static List<String> apiBaseList = const [];
-  static List<String> get effectiveApiBases =>
-      apiBaseList.isNotEmpty ? apiBaseList : [apiBase];
+  static List<String> get effectiveApiBases => apiBaseList;
 
   static String apiPrefix = '';
   static PanelType panelType = PanelType.v2board;

@@ -172,6 +172,14 @@ config.json
 }
 ```
 
+客户端的面板 API 地址只来自签名后的：
+
+```text
+api_base_list
+```
+
+项目不使用 `API_BASE` 编译兜底，也不需要在 GitHub 中重复配置 API 地址。
+
 `panel_type` 支持：
 
 ```text
@@ -192,7 +200,7 @@ config_version
 1 → 2 → 3
 ```
 
-所有外部 URL 建议使用 HTTPS。
+所有外部 URL 应使用 HTTPS。
 
 ---
 
@@ -327,13 +335,7 @@ GitHub Repository
 → Secrets
 ```
 
-正式 Release 至少需要：
-
-| Secret | 用途 |
-|---|---|
-| `API_BASE` | 客户端 API fallback 地址 |
-
-Android Release 需要：
+Android 正式 Release 需要：
 
 ```text
 ANDROID_KEYSTORE_BASE64
@@ -342,7 +344,7 @@ ANDROID_KEY_ALIAS
 ANDROID_KEY_PASSWORD
 ```
 
-可选：
+可选品牌配置：
 
 ```text
 APP_NAME
@@ -355,6 +357,8 @@ LOGO_URL
 REMOTE_CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
 ```
+
+面板 API 地址不要放 Repository Secrets，统一维护在 `config.json` 的 `api_base_list` 中。
 
 ---
 
@@ -426,7 +430,6 @@ CI 会检查：
 CDN_BASE_URL
 REMOTE_CONFIG_PUBLIC_KEY
 UPDATE_PUBLIC_KEY
-API_BASE
 ```
 
 Android 还会检查 Android 签名配置。
@@ -492,7 +495,7 @@ v1.0.0
 
 ## 15. 最终验证
 
-只需要检查自动发布结果：
+只需要检查发布结果：
 
 ```text
 https://你的CDN域名/config.json
