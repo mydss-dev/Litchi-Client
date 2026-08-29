@@ -13,7 +13,7 @@ param(
   [string]$WindowsPackage = '',
   [string]$AndroidPackage = '',
   [string]$MacosPackage = '',
-  [string]$OutputDirectory = "$PSScriptRoot\..\release_output"
+  [string]$OutputDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) 'release_output')
 )
 
 # Signs update.json with the INDEPENDENT update-manifest keypair. This script
