@@ -15,7 +15,7 @@ class CoreConnectionRequest {
   final List<NodeModel> nodes;
   final NodeModel currentNode;
   final ProxyMode proxyMode;
-  final String dnsMode;
+  final DnsMode dnsMode;
   final int proxyPort;
   final NetworkMode networkMode;
 

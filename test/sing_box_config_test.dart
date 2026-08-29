@@ -189,7 +189,7 @@ void main() {
   });
 
   test('routes remote DoH through the proxy in Google/Cloudflare modes', () {
-    for (final mode in ['Google', 'Cloudflare']) {
+    for (final mode in [DnsMode.google, DnsMode.cloudflare]) {
       final config = SingBoxConfig.buildFullConfig(
         const [node],
         selectedTag: SingBoxConfig.nodeTagFor(node),

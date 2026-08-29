@@ -256,6 +256,26 @@ enum NetworkMode {
   };
 }
 
+/// DNS resolver used for the proxy tunnel.
+enum DnsMode {
+  system,
+  cloudflare,
+  google;
+
+  /// Stable key used when persisting to SharedPreferences.
+  String get storageKey => switch (this) {
+    DnsMode.system => 'system',
+    DnsMode.cloudflare => 'cloudflare',
+    DnsMode.google => 'google',
+  };
+
+  static DnsMode fromStorageKey(String? key) => switch (key) {
+    'cloudflare' => DnsMode.cloudflare,
+    'google' => DnsMode.google,
+    _ => DnsMode.system,
+  };
+}
+
 class PlanModel {
   const PlanModel({
     required this.id,

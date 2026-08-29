@@ -28,7 +28,7 @@ class SettingsSnapshot {
   final AppLocalePreference language;
   final ProxyMode proxyMode;
   final NetworkMode networkMode;
-  final String dnsMode;
+  final DnsMode dnsMode;
   final ThemeMode themeMode;
   final bool wasConnected;
 
@@ -61,7 +61,7 @@ abstract final class SettingsService {
       networkMode: NetworkMode.fromStorageKey(
         p.getString(_key('network_mode')),
       ),
-      dnsMode: p.getString(_key('dns_mode')) ?? '系统 DNS',
+      dnsMode: DnsMode.fromStorageKey(p.getString(_key('dns_mode'))),
       themeMode: switch (p.getString(_key('theme_mode')) ?? 'light') {
         'dark' => ThemeMode.dark,
         'system' => ThemeMode.system,
@@ -105,8 +105,8 @@ abstract final class SettingsService {
   static void setNetworkMode(NetworkMode v) => SharedPreferences.getInstance()
       .then((p) => p.setString(_key('network_mode'), v.storageKey));
 
-  static void setDnsMode(String v) => SharedPreferences.getInstance().then(
-    (p) => p.setString(_key('dns_mode'), v),
+  static void setDnsMode(DnsMode v) => SharedPreferences.getInstance().then(
+    (p) => p.setString(_key('dns_mode'), v.storageKey),
   );
 
   static void setThemeMode(ThemeMode m) => SharedPreferences.getInstance().then(

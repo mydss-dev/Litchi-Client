@@ -194,39 +194,31 @@ class _SettingsPageState extends State<SettingsPage> {
       _SettingsGroup(
         title: l10n.connectionSettings,
         children: [
-          _SettingRow(
-            label: l10n.proxyMode,
-            trailing: AppSelect<ProxyMode>(
-              value: ctrl.proxyMode,
-              items: ProxyMode.values,
-              labelOf: (v) => v.label,
-              onChanged: ctrl.setProxyMode,
-            ),
-          ),
           if (networkModes.length > 1)
             _SettingRow(
-              label: l10n.connectionMethod,
+              label: l10n.tunMode,
               subtitle: ctrl.networkMode == NetworkMode.tun
                   ? Platform.isMacOS
                         ? '${l10n.tunDescription} ${l10n.tunPermissionHintMac}'
                         : l10n.tunDescription
                   : l10n.systemProxyDescription,
-              trailing: AppSelect<NetworkMode>(
-                value: ctrl.networkMode,
-                items: networkModes,
-                labelOf: (v) => switch (v) {
-                  NetworkMode.system => l10n.systemProxy,
-                  NetworkMode.tun => l10n.tunMode,
-                },
-                onChanged: _setNetworkMode,
+              trailing: AppSwitch(
+                value: ctrl.networkMode == NetworkMode.tun,
+                onChanged: (on) => _setNetworkMode(
+                  on ? NetworkMode.tun : NetworkMode.system,
+                ),
               ),
             ),
           _SettingRow(
             label: 'DNS',
-            trailing: AppSelect<String>(
+            trailing: AppSelect<DnsMode>(
               value: ctrl.dnsMode,
-              items: const ['系统 DNS', 'Cloudflare', 'Google'],
-              labelOf: (v) => v == '系统 DNS' ? l10n.systemDns : v,
+              items: DnsMode.values,
+              labelOf: (v) => switch (v) {
+                DnsMode.system => l10n.systemDns,
+                DnsMode.cloudflare => 'Cloudflare',
+                DnsMode.google => 'Google',
+              },
               onChanged: ctrl.setDnsMode,
             ),
           ),

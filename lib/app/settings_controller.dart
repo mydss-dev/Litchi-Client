@@ -21,7 +21,7 @@ class SettingsController extends ChangeNotifier {
   AppLocalePreference _language = AppLocalePreference.system;
   ProxyMode _proxyMode = ProxyMode.rule;
   NetworkMode _networkMode = NetworkMode.system;
-  String _dnsMode = '系统 DNS';
+  DnsMode _dnsMode = DnsMode.system;
   int _proxyPort = 7890;
   bool _killSwitch = false;
   ThemeMode _themeMode = ThemeMode.light;
@@ -34,7 +34,7 @@ class SettingsController extends ChangeNotifier {
   AppLocalePreference get language => _language;
   ProxyMode get proxyMode => _proxyMode;
   NetworkMode get networkMode => _networkMode;
-  String get dnsMode => _dnsMode;
+  DnsMode get dnsMode => _dnsMode;
   int get proxyPort => _proxyPort;
   bool get killSwitch => _killSwitch;
   ThemeMode get themeMode => _themeMode;
@@ -148,7 +148,7 @@ class SettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setDnsMode(String v) {
+  void setDnsMode(DnsMode v) {
     if (_dnsMode == v) return;
     _dnsMode = v;
     SettingsService.setDnsMode(v);

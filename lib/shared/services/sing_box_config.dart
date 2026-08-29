@@ -58,7 +58,7 @@ abstract final class SingBoxConfig {
     int apiPort = defaultApiPort,
     String apiSecret = '',
     ProxyMode proxyMode = ProxyMode.rule,
-    String dnsMode = '系统 DNS',
+    DnsMode dnsMode = DnsMode.system,
     NetworkMode networkMode = NetworkMode.system,
     bool allowInsecure = false,
   }) {
@@ -217,9 +217,9 @@ abstract final class SingBoxConfig {
     return outbound;
   }
 
-  static Map<String, dynamic> _dnsConfig(String mode) {
+  static Map<String, dynamic> _dnsConfig(DnsMode mode) {
     final servers = switch (mode) {
-      'Google' => <Map<String, dynamic>>[
+      DnsMode.google => <Map<String, dynamic>>[
         {
           'type': 'https',
           'tag': 'dns-remote',
@@ -234,7 +234,7 @@ abstract final class SingBoxConfig {
         },
         {'type': 'local', 'tag': 'dns-local'},
       ],
-      'Cloudflare' => <Map<String, dynamic>>[
+      DnsMode.cloudflare => <Map<String, dynamic>>[
         {
           'type': 'https',
           'tag': 'dns-remote',

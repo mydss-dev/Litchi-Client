@@ -25,7 +25,7 @@ void main() {
       ],
       currentNode: selected,
       proxyMode: ProxyMode.rule,
-      dnsMode: 'Cloudflare',
+      dnsMode: DnsMode.cloudflare,
       proxyPort: 7890,
     );
 
@@ -51,7 +51,7 @@ void main() {
       nodes: [selected],
       currentNode: selected,
       proxyMode: ProxyMode.rule,
-      dnsMode: 'Cloudflare',
+      dnsMode: DnsMode.cloudflare,
       proxyPort: 7890,
     );
 
@@ -78,7 +78,7 @@ void main() {
       nodes: [selected],
       currentNode: selected,
       proxyMode: ProxyMode.rule,
-      dnsMode: '系统 DNS',
+      dnsMode: DnsMode.system,
       proxyPort: 7890,
     );
 
@@ -121,7 +121,7 @@ void main() {
           latency: 0,
         ),
         proxyMode: ProxyMode.rule,
-        dnsMode: 'Cloudflare',
+        dnsMode: DnsMode.cloudflare,
         proxyPort: 7890,
       );
 

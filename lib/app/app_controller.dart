@@ -112,7 +112,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Locale? get locale => _settings.language.locale;
   ProxyMode get proxyMode => _settings.proxyMode;
   NetworkMode get networkMode => _settings.networkMode;
-  String get dnsMode => _settings.dnsMode;
+  DnsMode get dnsMode => _settings.dnsMode;
   int get proxyPort => _settings.proxyPort;
   int get activeProxyPort =>
       _core.coreProcessRunning ? _core.activeProxyPort : _settings.proxyPort;
@@ -176,7 +176,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (_settings.networkMode != old) unawaited(_reloadCoreConfig());
   }
 
-  void setDnsMode(String v) {
+  void setDnsMode(DnsMode v) {
     final old = _settings.dnsMode;
     _settings.setDnsMode(v);
     if (_settings.dnsMode != old) unawaited(_reloadCoreConfig());
