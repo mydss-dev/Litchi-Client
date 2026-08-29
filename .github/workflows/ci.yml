@@ -225,13 +225,20 @@ jobs:
         id: config
         run: |
           decode_len() {
-            local s="$1"
+            local s="$1" n
             s="${s//-/+}"; s="${s//_//}"
-            case $((${#s} % 4)) in
-              2) s="${s}==";;
-              3) s="${s}=";;
+            # Compute the decoded byte count arithmetically: a base64 string of
+            # length n decodes to 3*(n/4) bytes plus 1 or 2 for a 2- or 3-char
+            # tail. This avoids depending on `base64`/`openssl` whose decode
+            # flags differ between GNU/Linux and BSD/LibreSSL on macOS.
+            s="${s%%=*}"
+            n=${#s}
+            case $((n % 4)) in
+              0) printf '%d' $(( n / 4 * 3 ));;
+              2) printf '%d' $(( n / 4 * 3 + 1 ));;
+              3) printf '%d' $(( n / 4 * 3 + 2 ));;
+              *) printf '0';;
             esac
-            printf '%s' "$s" | openssl base64 -d -A 2>/dev/null | wc -c
           }
           cdn_base="${{ vars.CDN_BASE_URL }}"
           config_url=""
@@ -441,13 +448,20 @@ jobs:
         id: config
         run: |
           decode_len() {
-            local s="$1"
+            local s="$1" n
             s="${s//-/+}"; s="${s//_//}"
-            case $((${#s} % 4)) in
-              2) s="${s}==";;
-              3) s="${s}=";;
+            # Compute the decoded byte count arithmetically: a base64 string of
+            # length n decodes to 3*(n/4) bytes plus 1 or 2 for a 2- or 3-char
+            # tail. This avoids depending on `base64`/`openssl` whose decode
+            # flags differ between GNU/Linux and BSD/LibreSSL on macOS.
+            s="${s%%=*}"
+            n=${#s}
+            case $((n % 4)) in
+              0) printf '%d' $(( n / 4 * 3 ));;
+              2) printf '%d' $(( n / 4 * 3 + 1 ));;
+              3) printf '%d' $(( n / 4 * 3 + 2 ));;
+              *) printf '0';;
             esac
-            printf '%s' "$s" | openssl base64 -d -A 2>/dev/null | wc -c
           }
           cdn_base="${{ vars.CDN_BASE_URL }}"
           config_url=""
