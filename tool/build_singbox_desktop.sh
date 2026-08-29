@@ -25,7 +25,7 @@ CGO_ENABLED=1 GOOS="$TARGET" GOARCH="$ARCH" go build \
   -trimpath \
   -tags "with_clash_api,with_quic,with_utls,with_wireguard" \
   -buildmode=c-shared \
-  -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$VERSION-litchi" \
+  -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$VERSION" \
   -o "$OUTPUT/litchi_singbox$EXT" .
 
 echo "sing-box desktop library ready: $OUTPUT/litchi_singbox$EXT"

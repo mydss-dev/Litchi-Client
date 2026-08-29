@@ -21,7 +21,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get launchAtStartup => '开机启动';
 
   @override
-  String get silentStartup => '静默启动到托盘';
+  String get silentStartup => '静默启动';
 
   @override
   String get automaticUpdates => '自动更新';
@@ -30,7 +30,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appearance => '外观模式';
 
   @override
-  String get language => '语言';
+  String get language => '语言设置';
 
   @override
   String get followSystem => '跟随系统';
@@ -66,6 +66,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunMode => 'TUN 模式';
 
   @override
+  String get dns => 'DNS 解析';
+
+  @override
   String get systemProxyDescription => '使用系统代理接管网络请求';
 
   @override
@@ -75,7 +78,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get advancedSettings => '高级设置';
 
   @override
-  String get connectionProtection => '连接中断保护';
+  String get connectionProtection => '连接保护';
 
   @override
   String get systemProtectionDescription => '系统代理核心异常退出时阻止网络直连';
@@ -87,7 +90,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get macTunProtectionUnavailable => 'macOS TUN 暂不支持连接中断保护';
 
   @override
-  String get repairNetworkSettings => '修复网络设置';
+  String get repairNetworkSettings => '修复网络';
 
   @override
   String get repairNetworkDescription => '断开后无法上网时，清理或重新应用系统代理';
@@ -1019,6 +1022,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get systemDns => '系统 DNS';
 
   @override
+  String get cloudflareDns => 'Cloudflare DNS';
+
+  @override
+  String get googleDns => 'Google DNS';
+
+  @override
   String get httpSecurityWarning =>
       '当前服务器使用 HTTP 连接，数据传输未加密，存在中间人攻击风险。建议联系服务商开启 HTTPS。';
 
@@ -1658,7 +1667,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get launchAtStartup => '開機啟動';
 
   @override
-  String get silentStartup => '靜默啟動到系統匣';
+  String get silentStartup => '靜默啟動';
 
   @override
   String get automaticUpdates => '自動更新';
@@ -1667,7 +1676,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get appearance => '外觀模式';
 
   @override
-  String get language => '語言';
+  String get language => '語言設定';
 
   @override
   String get followSystem => '跟隨系統';
@@ -1703,6 +1712,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get tunMode => 'TUN 模式';
 
   @override
+  String get dns => 'DNS 解析';
+
+  @override
   String get systemProxyDescription => '使用系統代理接管網路請求';
 
   @override
@@ -1712,7 +1724,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get advancedSettings => '進階設定';
 
   @override
-  String get connectionProtection => '連線中斷保護';
+  String get connectionProtection => '連線保護';
 
   @override
   String get systemProtectionDescription => '系統代理核心異常退出時阻止網路直連';
@@ -1724,7 +1736,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get macTunProtectionUnavailable => 'macOS TUN 暫不支援連線中斷保護';
 
   @override
-  String get repairNetworkSettings => '修復網路設定';
+  String get repairNetworkSettings => '修復網路';
 
   @override
   String get repairNetworkDescription => '中斷後無法上網時，清理或重新套用系統代理';
@@ -2654,6 +2666,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get systemDns => '系統 DNS';
+
+  @override
+  String get cloudflareDns => 'Cloudflare DNS';
+
+  @override
+  String get googleDns => 'Google DNS';
 
   @override
   String get httpSecurityWarning =>

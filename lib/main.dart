@@ -145,18 +145,6 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
   final prefs = await SharedPreferences.getInstance();
   await RemoteConfigService.initialize(prefs);
 
-  assert(() {
-    final hasApiBase = AppConfig.effectiveApiBases
-        .map((e) => e.trim())
-        .any((e) => e.startsWith('https://'));
-    if (!hasApiBase && !RemoteConfigService.isConfigured) {
-      SecureLogger.debug(
-        '开发配置缺失：请在 remote_config.dart 填写 OSS 地址和公钥。',
-      );
-    }
-    return true;
-  }());
-
   await BrandAssetCache.initialize();
 
   if (!_isDesktop) {

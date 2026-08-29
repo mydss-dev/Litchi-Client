@@ -31,7 +31,7 @@ build_arch() {
   CGO_ENABLED=1 GOOS=darwin GOARCH="$go_arch" \
     CGO_CFLAGS="-arch $clang_arch" CGO_LDFLAGS="-arch $clang_arch" \
     go build -C "$SOURCE" -trimpath -tags "$TAGS" -buildmode=c-shared \
-      -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$VERSION-litchi" \
+      -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$VERSION" \
       -o "$BUILD_DIR/liblitchi_singbox-$go_arch.dylib" .
 }
 

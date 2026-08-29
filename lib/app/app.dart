@@ -55,9 +55,25 @@ class _LitchiAppState extends State<LitchiApp> {
             // Linux needs a Flutter-owned transparent shape around the entire
             // Navigator. Windows and macOS use their official system shapes.
             builder: (context, child) {
-              final content = child ?? const SizedBox.shrink();
-              if (!Platform.isLinux) return content;
-              return LinuxWindowClip(child: content);
+              Widget content = child ?? const SizedBox.shrink();
+              if (Platform.isLinux) content = LinuxWindowClip(child: content);
+              // The desktop shell is a fixed-size, non-resizable window
+              // (420×760). The Windows engine ties MediaQuery.textScaler to the
+              // display DPI (125% → 1.25, 150% → 1.5), which inflates every
+              // logical text size and clips the home screen on high-DPI machines
+              // — the Win10/Win11 mismatch. Pin text scaling to 1.0 so the
+              // layout renders identically across machines; DPI still sharpens
+              // rendering via devicePixelRatio.
+              if (Platform.isWindows ||
+                  Platform.isMacOS ||
+                  Platform.isLinux) {
+                content = MediaQuery.withClampedTextScaling(
+                  minScaleFactor: 1.0,
+                  maxScaleFactor: 1.0,
+                  child: content,
+                );
+              }
+              return content;
             },
             // Transparent so the rounded window shell shows through at the
             // clipped corners (§ rounded-window spec).

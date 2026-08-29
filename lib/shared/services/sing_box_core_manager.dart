@@ -107,7 +107,7 @@ final class SingBoxCoreManager {
 
   Future<String> version() async {
     _core ??= SingBoxFfi.tryLoad();
-    return _core?.version() ?? SingBoxFfi.loadError;
+    return _core?.version() ?? '';
   }
 
   void dispose() {

@@ -126,7 +126,7 @@ abstract class AppLocalizations {
   /// No description provided for @silentStartup.
   ///
   /// In en, this message translates to:
-  /// **'Start silently in tray'**
+  /// **'Start silently'**
   String get silentStartup;
 
   /// No description provided for @automaticUpdates.
@@ -144,7 +144,7 @@ abstract class AppLocalizations {
   /// No description provided for @language.
   ///
   /// In en, this message translates to:
-  /// **'Language'**
+  /// **'Language settings'**
   String get language;
 
   /// No description provided for @followSystem.
@@ -213,6 +213,12 @@ abstract class AppLocalizations {
   /// **'TUN mode'**
   String get tunMode;
 
+  /// No description provided for @dns.
+  ///
+  /// In en, this message translates to:
+  /// **'DNS'**
+  String get dns;
+
   /// No description provided for @systemProxyDescription.
   ///
   /// In en, this message translates to:
@@ -234,7 +240,7 @@ abstract class AppLocalizations {
   /// No description provided for @connectionProtection.
   ///
   /// In en, this message translates to:
-  /// **'Connection interruption protection'**
+  /// **'Connection protection'**
   String get connectionProtection;
 
   /// No description provided for @systemProtectionDescription.
@@ -258,7 +264,7 @@ abstract class AppLocalizations {
   /// No description provided for @repairNetworkSettings.
   ///
   /// In en, this message translates to:
-  /// **'Repair network settings'**
+  /// **'Repair network'**
   String get repairNetworkSettings;
 
   /// No description provided for @repairNetworkDescription.
@@ -2012,6 +2018,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'System DNS'**
   String get systemDns;
+
+  /// No description provided for @cloudflareDns.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudflare DNS'**
+  String get cloudflareDns;
+
+  /// No description provided for @googleDns.
+  ///
+  /// In en, this message translates to:
+  /// **'Google DNS'**
+  String get googleDns;
 
   /// No description provided for @httpSecurityWarning.
   ///

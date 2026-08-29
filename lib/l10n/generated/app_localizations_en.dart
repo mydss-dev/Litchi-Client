@@ -22,7 +22,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get launchAtStartup => 'Launch at startup';
 
   @override
-  String get silentStartup => 'Start silently in tray';
+  String get silentStartup => 'Start silently';
 
   @override
   String get automaticUpdates => 'Automatic updates';
@@ -31,7 +31,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appearance => 'Appearance';
 
   @override
-  String get language => 'Language';
+  String get language => 'Language settings';
 
   @override
   String get followSystem => 'Follow system';
@@ -67,6 +67,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tunMode => 'TUN mode';
 
   @override
+  String get dns => 'DNS';
+
+  @override
   String get systemProxyDescription =>
       'Route supported apps through the system proxy';
 
@@ -78,7 +81,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get advancedSettings => 'Advanced';
 
   @override
-  String get connectionProtection => 'Connection interruption protection';
+  String get connectionProtection => 'Connection protection';
 
   @override
   String get systemProtectionDescription =>
@@ -93,7 +96,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Interruption protection is not yet available for macOS TUN';
 
   @override
-  String get repairNetworkSettings => 'Repair network settings';
+  String get repairNetworkSettings => 'Repair network';
 
   @override
   String get repairNetworkDescription =>
@@ -1047,6 +1050,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get systemDns => 'System DNS';
+
+  @override
+  String get cloudflareDns => 'Cloudflare DNS';
+
+  @override
+  String get googleDns => 'Google DNS';
 
   @override
   String get httpSecurityWarning =>

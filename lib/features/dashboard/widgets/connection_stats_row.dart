@@ -7,14 +7,9 @@ import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_card.dart';
 
-/// Formats bytes-per-second into a human-readable (value, unit) pair.
-(String, String) formatSpeed(int bps) {
-  if (bps <= 0) return ('--', '');
-  if (bps < 1024) return ('$bps', 'B/s');
-  if (bps < 1024 * 1024) return ((bps / 1024).toStringAsFixed(1), 'KB/s');
-  return ((bps / (1024 * 1024)).toStringAsFixed(1), 'MB/s');
-}
-
+/// Current-latency stat card. The upload/download speed cards were removed
+/// (they added no real value on the home screen); latency is the one live
+/// metric worth surfacing here.
 class ConnectionStatsRow extends StatelessWidget {
   const ConnectionStatsRow({super.key});
 
@@ -26,67 +21,11 @@ class ConnectionStatsRow extends StatelessWidget {
         ? latency.toString()
         : '--';
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final threeCols = constraints.maxWidth >= 560;
-
-        // Speed values update every second via ValueNotifier — isolated from
-        // the global AppScope rebuild to avoid per-second tree-wide diffs.
-        return ValueListenableBuilder<int>(
-          valueListenable: ctrl.downBpsNotifier,
-          builder: (context, downBps, _) => ValueListenableBuilder<int>(
-            valueListenable: ctrl.upBpsNotifier,
-            builder: (context, upBps, _) {
-              final (downValue, downUnit) = formatSpeed(downBps);
-              final (upValue, upUnit) = formatSpeed(upBps);
-              final running = ctrl.coreRunning;
-              final cards = [
-                _ConnectionStatCard(
-                  label: context.l10n.currentLatency,
-                  value: latencyValue,
-                  unit: 'ms',
-                  dimmed: !running,
-                ),
-                _ConnectionStatCard(
-                  label: context.l10n.downloadSpeed,
-                  value: downValue,
-                  unit: downUnit,
-                  dimmed: !running,
-                ),
-                _ConnectionStatCard(
-                  label: context.l10n.uploadSpeed,
-                  value: upValue,
-                  unit: upUnit,
-                  dimmed: !running,
-                ),
-              ];
-
-              if (threeCols) {
-                return IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (int i = 0; i < cards.length; i++) ...[
-                        if (i > 0) const SizedBox(width: 14),
-                        Expanded(child: cards[i]),
-                      ],
-                    ],
-                  ),
-                );
-              }
-
-              return Column(
-                children: [
-                  for (int i = 0; i < cards.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 14),
-                    cards[i],
-                  ],
-                ],
-              );
-            },
-          ),
-        );
-      },
+    return _ConnectionStatCard(
+      label: context.l10n.currentLatency,
+      value: latencyValue,
+      unit: 'ms',
+      dimmed: !ctrl.coreRunning,
     );
   }
 }

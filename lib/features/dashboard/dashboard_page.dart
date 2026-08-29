@@ -22,7 +22,7 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/mode_strip.dart';
 import '../../shared/widgets/no_plan_card.dart';
 import '../../shared/widgets/node_latency.dart';
-import '../../shared/widgets/notice_banner.dart';
+import '../../shared/widgets/notice_carousel.dart';
 import '../../shared/widgets/update_banner.dart';
 import '../../shared/widgets/page_header.dart';
 import '../nodes/node_picker.dart';
@@ -149,6 +149,10 @@ class _DashboardPageState extends State<DashboardPage> {
             title: context.l10n.home,
             subtitle: context.l10n.dashboardSubtitle,
           ),
+          if (ctrl.notices.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            NoticeCarousel(notices: ctrl.notices),
+          ],
           const SizedBox(height: 12),
           ExpiryBanner(user: ctrl.user),
           _DashboardAlerts(
@@ -193,6 +197,11 @@ class _DashboardPageState extends State<DashboardPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
+          if (ctrl.notices.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: NoticeCarousel(notices: ctrl.notices),
+            ),
           _DashboardAlerts(
             ctrl: ctrl,
             onConnectionRetry: _toggleConnection,
@@ -281,11 +290,6 @@ class _DashboardAlerts extends StatelessWidget {
         ),
       if (ctrl.updateInfo != null)
         UpdateBanner(info: ctrl.updateInfo!, onDismiss: ctrl.dismissUpdate),
-      if (ctrl.hasUnreadNotice)
-        NoticeBanner(
-          notice: ctrl.notices.first,
-          onDismiss: ctrl.markNoticeRead,
-        ),
     ];
 
     if (alerts.isEmpty) return const SizedBox.shrink();
@@ -574,30 +578,6 @@ class _HomeConfigCard extends StatelessWidget {
     final title = config.title.isEmpty
         ? homeCardTitle(config.type)
         : config.title;
-
-    if (config.type == 'downSpeed') {
-      return ValueListenableBuilder<int>(
-        valueListenable: ctrl.downBpsNotifier,
-        builder: (context, value, _) => _MetricCard(
-          icon: icon,
-          label: title,
-          value: formatRate(value),
-          color: c.primary,
-        ),
-      );
-    }
-
-    if (config.type == 'upSpeed') {
-      return ValueListenableBuilder<int>(
-        valueListenable: ctrl.upBpsNotifier,
-        builder: (context, value, _) => _MetricCard(
-          icon: icon,
-          label: title,
-          value: formatRate(value),
-          color: c.primary,
-        ),
-      );
-    }
 
     return _MetricCard(
       icon: icon,

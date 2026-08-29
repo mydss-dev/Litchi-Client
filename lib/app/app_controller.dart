@@ -363,8 +363,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       await RegisterConfigCache.save(AppConfig.apiBase, config);
       _registerConfig = config;
       if (!_disposed) notifyListeners();
-    } catch (e) {
-      SecureLogger.debug('register config cache refresh failed', e);
+    } catch (_) {
+      // Best-effort cache; a not-yet-configured server is expected in dev.
     }
   }
 

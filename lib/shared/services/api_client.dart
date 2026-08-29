@@ -124,11 +124,7 @@ class ApiClient {
     _bases = _trustedApiBases(serverUrls);
     _index = 0;
     _authData = authData;
-    if (_bases.isEmpty) {
-      SecureLogger.warn('ApiClient.configure: no trusted https API base');
-    } else {
-      _rebuild();
-    }
+    if (_bases.isNotEmpty) _rebuild();
   }
 
   /// Atomically replaces API endpoints while preserving the current session.

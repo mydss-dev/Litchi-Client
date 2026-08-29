@@ -31,12 +31,17 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   String _coreVersion = '';
+  bool _coreLoaded = false;
 
   @override
   void initState() {
     super.initState();
     AppController.getCoreVersion().then((version) {
-      if (mounted) setState(() => _coreVersion = version);
+      if (!mounted) return;
+      setState(() {
+        _coreVersion = version;
+        _coreLoaded = true;
+      });
     });
   }
 
@@ -197,11 +202,6 @@ class _SettingsPageState extends State<SettingsPage> {
           if (networkModes.length > 1)
             _SettingRow(
               label: l10n.tunMode,
-              subtitle: ctrl.networkMode == NetworkMode.tun
-                  ? Platform.isMacOS
-                        ? '${l10n.tunDescription} ${l10n.tunPermissionHintMac}'
-                        : l10n.tunDescription
-                  : l10n.systemProxyDescription,
               trailing: AppSwitch(
                 value: ctrl.networkMode == NetworkMode.tun,
                 onChanged: (on) => _setNetworkMode(
@@ -210,14 +210,14 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           _SettingRow(
-            label: 'DNS',
+            label: l10n.dns,
             trailing: AppSelect<DnsMode>(
               value: ctrl.dnsMode,
               items: DnsMode.values,
               labelOf: (v) => switch (v) {
                 DnsMode.system => l10n.systemDns,
-                DnsMode.cloudflare => 'Cloudflare',
-                DnsMode.google => 'Google',
+                DnsMode.cloudflare => l10n.cloudflareDns,
+                DnsMode.google => l10n.googleDns,
               },
               onChanged: ctrl.setDnsMode,
             ),
@@ -231,9 +231,6 @@ class _SettingsPageState extends State<SettingsPage> {
           if (supportsSystemProxy)
             _SettingRow(
               label: l10n.connectionProtection,
-              subtitle: ctrl.networkMode == NetworkMode.tun
-                  ? l10n.tunProtectionDescription
-                  : l10n.systemProtectionDescription,
               trailing: AppSwitch(
                 value: ctrl.killSwitch,
                 onChanged: ctrl.setKillSwitch,
@@ -242,7 +239,6 @@ class _SettingsPageState extends State<SettingsPage> {
           if (supportsSystemProxy)
             _SettingRow(
               label: l10n.repairNetworkSettings,
-              subtitle: l10n.repairNetworkDescription,
               trailing: _DiagnosticButton(
                 label: l10n.repair,
                 onTap: _onFixProxy,
@@ -250,7 +246,6 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           _SettingRow(
             label: l10n.diagnostics,
-            subtitle: l10n.diagnosticsDescription,
             trailing: _DiagnosticButton(
               label: l10n.view,
               onTap: _showDiagnosticInfo,
@@ -265,7 +260,9 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingRow(
             label: l10n.appVersion,
             trailing: Text(
-              AppConfig.currentVersion,
+              AppConfig.currentVersion.isEmpty ? '—' : AppConfig.currentVersion,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AppTextStyles.body.copyWith(
                 color: AppColors.of(context).textMuted,
               ),
@@ -274,7 +271,13 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingRow(
             label: l10n.coreVersion,
             trailing: Text(
-              _coreVersion.isEmpty ? l10n.loading : _coreVersion,
+              _coreVersion.isNotEmpty
+                  ? _coreVersion
+                  : _coreLoaded
+                  ? '—'
+                  : l10n.loading,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: AppTextStyles.body.copyWith(
                 color: AppColors.of(context).textMuted,
               ),
@@ -352,43 +355,22 @@ class _SettingsGroup extends StatelessWidget {
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow({
-    required this.label,
-    required this.trailing,
-    this.subtitle,
-  });
+  const _SettingRow({required this.label, required this.trailing});
 
   final String label;
-  final String? subtitle;
   final Widget trailing;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return SizedBox(
-      height: subtitle != null ? 68 : 46,
+      height: 46,
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
-                ),
-                if (subtitle != null)
-                  Text(
-                    subtitle!,
-                    style: AppTextStyles.caption.copyWith(
-                      color: c.textSecondary,
-                      height: 1.35,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
+            child: Text(
+              label,
+              style: AppTextStyles.body.copyWith(color: c.textPrimary),
             ),
           ),
           trailing,

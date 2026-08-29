@@ -40,7 +40,7 @@ $library = Join-Path $output "litchi_singbox$extension"
 Push-Location $source
 try {
   go mod download
-  go build -trimpath -tags $tags -buildmode=c-shared -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$version-litchi" -o $library .
+  go build -trimpath -tags $tags -buildmode=c-shared -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$version" -o $library .
 } finally {
   Pop-Location
 }

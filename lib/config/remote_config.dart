@@ -11,8 +11,9 @@ import '../shared/services/signed_payload_verifier.dart';
 
 /// Fetches brand/API config from OSS and applies it to [AppConfig].
 ///
-/// Only this file needs to be edited when changing the OSS config URL or
-/// installing the Ed25519 public key used to verify signed remote config.
+/// Configuration is supplied at build time via `--dart-define=CONFIG_URL`
+/// and `--dart-define=CONFIG_PUBLIC_KEY`; there is nothing to edit in this
+/// file.
 abstract final class RemoteConfigService {
   /// Self-hosted setup: pass these at build time via
   /// --dart-define=CONFIG_URL=... --dart-define=CONFIG_PUBLIC_KEY=...
@@ -70,12 +71,7 @@ abstract final class RemoteConfigService {
   /// Applies cached config immediately (if any), then kicks off a background
   /// HTTP refresh that updates the cache for next launch.
   static Future<void> initialize(SharedPreferences prefs) async {
-    if (!isConfigured) {
-      SecureLogger.warn(
-        'Remote config disabled: OSS HTTPS URL or Ed25519 key is missing',
-      );
-      return;
-    }
+    if (!isConfigured) return;
 
     // 1. Apply trusted cache immediately so the first frame is correct.
     final cached = prefs.getString(_cacheKey);

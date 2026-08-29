@@ -38,8 +38,5 @@ abstract final class MobileLayout {
 
   /// Supported types: currentPlan, remainTraffic, todayTraffic, downSpeed,
   /// upSpeed, resetDay, deviceLimit, expireDate.
-  static const List<MobileHomeCardConfig> homeCards = [
-    MobileHomeCardConfig(type: 'downSpeed', title: '下行速率', icon: 'download'),
-    MobileHomeCardConfig(type: 'upSpeed', title: '上行速率', icon: 'upload'),
-  ];
+  static const List<MobileHomeCardConfig> homeCards = [];
 }
