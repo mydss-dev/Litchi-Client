@@ -109,11 +109,31 @@ jobs:
           UPDATE_PRIVATE_KEY: ${{ secrets.UPDATE_PRIVATE_KEY }}
           UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_PUBLIC_KEY }}
         run: |
-          if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable('UPDATE_PRIVATE_KEY'))) {
-            throw 'Missing Repository Secret: UPDATE_PRIVATE_KEY'
+          $privKey = [Environment]::GetEnvironmentVariable('UPDATE_PRIVATE_KEY')
+          $pubKey = [Environment]::GetEnvironmentVariable('UPDATE_PUBLIC_KEY')
+          if ([string]::IsNullOrWhiteSpace($privKey)) {
+            Write-Output '::error::UPDATE_PRIVATE_KEY (Repository Secret) is missing or empty'
+            exit 1
           }
-          if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable('UPDATE_PUBLIC_KEY'))) {
-            throw 'Missing Repository Variable: UPDATE_PUBLIC_KEY'
+          if ([string]::IsNullOrWhiteSpace($pubKey)) {
+            Write-Output '::error::UPDATE_PUBLIC_KEY (Repository Variable) is missing or empty'
+            exit 1
+          }
+          if ($privKey.Length -ne 43) {
+            Write-Output "::error::UPDATE_PRIVATE_KEY must be 43 base64url chars (32-byte Ed25519 key); got $($privKey.Length)"
+            exit 1
+          }
+          if ($pubKey.Length -ne 43) {
+            Write-Output "::error::UPDATE_PUBLIC_KEY must be 43 base64url chars (32-byte Ed25519 key); got $($pubKey.Length)"
+            exit 1
+          }
+          if ($privKey -notmatch '^[A-Za-z0-9_-]+$') {
+            Write-Output '::error::UPDATE_PRIVATE_KEY must be base64url without padding (invalid character present)'
+            exit 1
+          }
+          if ($pubKey -notmatch '^[A-Za-z0-9_-]+$') {
+            Write-Output '::error::UPDATE_PUBLIC_KEY must be base64url without padding (invalid character present)'
+            exit 1
           }
 
           $cdnBase = "${{ vars.CDN_BASE_URL }}".Trim()
