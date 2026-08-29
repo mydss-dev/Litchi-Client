@@ -22,7 +22,6 @@ import '../features/traffic/traffic_page.dart';
 import '../l10n/l10n.dart';
 import 'nav_destinations.dart';
 import '../shared/models/app_models.dart';
-import '../shared/responsive/layout_scope.dart';
 import '../shared/services/secure_logger.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
@@ -40,8 +39,8 @@ bool get _isDesktop =>
 /// macOS uses its native traffic lights, corners and shadow.
 bool get _usesCustomChrome => Platform.isWindows || Platform.isLinux;
 
-/// All pages are now responsive — each handles its own compact / wide layout
-/// internally, so the shell just picks the widget directly.
+/// Each page renders its own compact layout; the shell just picks the widget
+/// directly.
 Widget _pageFor(AppPage page) {
   return switch (page) {
     AppPage.dashboard => const DashboardPage(),
@@ -59,8 +58,7 @@ Widget _pageFor(AppPage page) {
 
 /// Root window shell. The whole app is clipped to an 18px rounded rectangle on
 /// a transparent window background, with a 1px border and outer shadow. Corners
-/// go square while maximized. The body inside is responsive: a sidebar layout
-/// on wide screens, a bottom-nav layout on narrow ones.
+/// go square while maximized. The body inside is a single bottom-nav layout.
 class AppShell extends StatefulWidget {
   const AppShell({super.key, this.launchSilently = false});
 
@@ -621,18 +619,14 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   }
 }
 
-/// Single fixed-size layout — bottom nav only.  No sidebar, no responsive
-/// switching.  The app always renders the compact body regardless of width.
+/// Single fixed-size layout — bottom nav only. No sidebar, no responsive
+/// switching. The app always renders the compact body regardless of width.
 class _MainShell extends StatelessWidget {
   const _MainShell();
 
   @override
   Widget build(BuildContext context) {
-    return const LayoutScope(
-      isCompact: true,
-      contentWidth: 420,
-      child: _CompactBody(),
-    );
+    return const _CompactBody();
   }
 }
 

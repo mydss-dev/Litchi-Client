@@ -13,7 +13,6 @@ import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_modal.dart';
 import '../../shared/widgets/app_toast.dart';
-import '../../shared/widgets/icon_action_btn.dart';
 import 'payment_dialog.dart';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -54,12 +53,11 @@ Future<void> showOrderConfirmDialog({
 }) {
   return showAppAdaptiveModal<void>(
     context: context,
-    builder: (_, compact) => _OrderConfirmDialog(
+    builder: (_) => _OrderConfirmDialog(
       plan: plan,
       cycle: cycle,
       api: api,
       onPaid: onPaid,
-      compact: compact,
     ),
   );
 }
@@ -82,14 +80,12 @@ class _OrderConfirmDialog extends StatefulWidget {
     required this.plan,
     required this.cycle,
     required this.api,
-    required this.compact,
     this.onPaid,
   });
 
   final PlanModel plan;
   final BillingCycle cycle;
   final PanelApi api;
-  final bool compact;
   final Future<void> Function()? onPaid;
 
   @override
@@ -251,46 +247,11 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    if (widget.compact) {
-      return AppBottomSheet(
-        title: context.l10n.confirmOrder,
-        subtitle: widget.plan.title,
-        maxHeightFactor: 0.92,
-        children: [_buildContent(c)],
-      );
-    }
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: 580,
-          constraints: const BoxConstraints(maxHeight: 560),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: c.softBorder),
-            boxShadow: [
-              BoxShadow(
-                color: c.shadow,
-                blurRadius: 32,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildHeader(c),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
-                  child: _buildContent(c),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AppBottomSheet(
+      title: context.l10n.confirmOrder,
+      subtitle: widget.plan.title,
+      maxHeightFactor: 0.92,
+      children: [_buildContent(c)],
     );
   }
 
@@ -346,40 +307,6 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
         const SizedBox(height: 24),
         _buildActions(c),
       ],
-    );
-  }
-
-  Widget _buildHeader(AppColors c) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(28, 24, 20, 20),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: c.softBorder)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.confirmOrder,
-                  style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.plan.title,
-                  style: AppTextStyles.body.copyWith(color: c.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          IconActionBtn(
-            icon: LucideIcons.x,
-            onTap: () => Navigator.of(context).pop(),
-            c: c,
-          ),
-        ],
-      ),
     );
   }
 

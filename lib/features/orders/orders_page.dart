@@ -18,13 +18,10 @@ import '../../shared/widgets/page_status_cards.dart';
 import '../../shared/widgets/responsive_page_scaffold.dart';
 import '../shop/payment_dialog.dart';
 
-/// Order history — a single responsive page.
+/// Order history — the mobile orders page.
 ///
-/// The order card and all its sub-widgets are shared. Only the surrounding
-/// affordances adapt to width, keeping the better interaction on each form
-/// factor: pull-to-refresh + a bottom-sheet cancel confirm on narrow screens,
-/// a refresh button + a dialog cancel confirm (with hover cursors) on wide
-/// screens.
+/// The order card and all its sub-widgets are shared; cancel confirmation is a
+/// bottom sheet.
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
 
@@ -100,8 +97,7 @@ class _OrdersPageState extends State<OrdersPage> {
 
     final confirmed = await showAppAdaptiveModal<bool>(
       context: context,
-      builder: (_, compact) =>
-          _CancelOrderModal(compact: compact, orderNo: order.tradeNo),
+      builder: (_) => _CancelOrderModal(orderNo: order.tradeNo),
     );
 
     if (confirmed != true || !mounted) {
@@ -140,7 +136,6 @@ class _OrdersPageState extends State<OrdersPage> {
       primaryCompact: isPrimaryCompactTab(AppPage.orders),
       onRefresh: _handleRefresh,
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
-      showWideRefresh: !_loading,
       children: _bodyChildren(context),
     );
   }
@@ -413,7 +408,7 @@ class _OrderActionButton extends StatelessWidget {
   }
 }
 
-// ── Cancel confirmation: dialog (wide) and bottom sheet (compact) ────────────
+// ── Cancel confirmation (bottom sheet) ───────────────────────────────────────
 
 class _CancelOrderBody extends StatelessWidget {
   const _CancelOrderBody({required this.submitting, required this.onConfirm});
@@ -485,9 +480,8 @@ class _CancelOrderBody extends StatelessWidget {
 }
 
 class _CancelOrderModal extends StatefulWidget {
-  const _CancelOrderModal({required this.compact, required this.orderNo});
+  const _CancelOrderModal({required this.orderNo});
 
-  final bool compact;
   final String orderNo;
 
   @override
@@ -506,13 +500,10 @@ class _CancelOrderModalState extends State<_CancelOrderModal> {
   @override
   Widget build(BuildContext context) {
     return AppAdaptiveModal(
-      compact: widget.compact,
       title: context.l10n.cancelOrder,
       subtitle: widget.orderNo.isEmpty
           ? null
           : context.l10n.orderNumber(widget.orderNo),
-      maxWidth: 420,
-      showCloseButton: false,
       child: _CancelOrderBody(submitting: _submitting, onConfirm: _confirm),
     );
   }

@@ -119,7 +119,6 @@ class _SettingsPageState extends State<SettingsPage> {
       primaryCompact: isPrimaryCompactTab(AppPage.settings),
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
       compactBodySpacing: 18,
-      showWideBack: false,
       children: _bodyChildren(context),
     );
   }

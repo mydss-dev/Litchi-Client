@@ -21,29 +21,19 @@ import '../../shared/widgets/search_input.dart';
 Future<void> showNodePicker(BuildContext context) {
   return showAppAdaptiveModal<void>(
     context: context,
-    builder: (_, compact) => _NodePicker(compact: compact),
+    builder: (_) => const _NodePicker(),
   );
 }
 
 class _NodePicker extends StatefulWidget {
-  const _NodePicker({required this.compact});
-
-  final bool compact;
+  const _NodePicker();
 
   @override
   State<_NodePicker> createState() => _NodePickerState();
 }
 
 class _NodePickerState extends State<_NodePicker> {
-  static const _wideFilterTabs = [
-    NodeFilterTab.all,
-    NodeFilterTab.premium,
-    NodeFilterTab.asia,
-    NodeFilterTab.europe,
-    NodeFilterTab.america,
-    NodeFilterTab.oceania,
-  ];
-  static const _compactFilterTabs = [
+  static const _filterTabs = [
     NodeFilterTab.all,
     NodeFilterTab.asia,
     NodeFilterTab.europe,
@@ -56,14 +46,11 @@ class _NodePickerState extends State<_NodePicker> {
 
   List<String> _filterLabels(BuildContext context) => [
     context.l10n.all,
-    if (!widget.compact) 'VIP',
     context.l10n.asia,
     context.l10n.europe,
     context.l10n.america,
     context.l10n.oceania,
   ];
-  List<NodeFilterTab> get _filterTabs =>
-      widget.compact ? _compactFilterTabs : _wideFilterTabs;
 
   List<NodeModel> _filteredNodes(AppController ctrl) => NodeFilter.apply(
     nodes: ctrl.nodes,
@@ -115,27 +102,15 @@ class _NodePickerState extends State<_NodePicker> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.compact) {
-      final bottom = MediaQuery.viewInsetsOf(context).bottom;
-      return Padding(
-        padding: EdgeInsets.only(bottom: bottom),
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.86,
-          minChildSize: 0.58,
-          maxChildSize: 0.94,
-          expand: false,
-          builder: (_, scrollController) => _buildSurface(scrollController),
-        ),
-      );
-    }
-
-    final screen = MediaQuery.sizeOf(context);
-    final width = (screen.width - 48).clamp(360.0, 620.0).toDouble();
-    final height = (screen.height - 64).clamp(460.0, 540.0).toDouble();
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: SizedBox(width: width, height: height, child: _buildSurface()),
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.86,
+        minChildSize: 0.58,
+        maxChildSize: 0.94,
+        expand: false,
+        builder: (_, scrollController) => _buildSurface(scrollController),
       ),
     );
   }
@@ -145,34 +120,31 @@ class _NodePickerState extends State<_NodePicker> {
     final c = AppColors.of(context);
     final nodes = _filteredNodes(ctrl);
     final testing = ctrl.nodes.any((node) => node.latency < 0);
-    final horizontal = widget.compact ? 18.0 : 20.0;
-    final surfaceRadius = widget.compact
-        ? const BorderRadius.vertical(top: Radius.circular(AppRadius.xl))
-        : BorderRadius.circular(AppRadius.xl);
+    const horizontal = 18.0;
+    const surfaceRadius = BorderRadius.vertical(
+      top: Radius.circular(AppRadius.xl),
+    );
 
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: surfaceRadius,
-        border: widget.compact
-            ? Border(top: BorderSide(color: c.softBorder))
-            : Border.all(color: c.softBorder),
-        boxShadow: widget.compact ? AppShadows.soft(c) : AppShadows.card(c),
+        border: Border(top: BorderSide(color: c.softBorder)),
+        boxShadow: AppShadows.soft(c),
       ),
       child: SafeArea(
-        top: !widget.compact,
+        top: false,
         child: Column(
           children: [
-            if (widget.compact) const _SheetHandle(),
+            const _SheetHandle(),
             _PickerHeader(
-              compact: widget.compact,
               nodeCount: ctrl.nodes.length,
               testing: testing,
               onTest: () => _testLatencies(ctrl),
             ),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontal),
+              padding: const EdgeInsets.symmetric(horizontal: horizontal),
               child: SearchInput(
                 hintText: context.l10n.searchNodes,
                 onChanged: (value) => setState(() => _query = value),
@@ -180,7 +152,7 @@ class _NodePickerState extends State<_NodePicker> {
             ),
             const SizedBox(height: 12),
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontal),
+              padding: const EdgeInsets.symmetric(horizontal: horizontal),
               child: FilterTabs(
                 tabs: _filterLabels(context),
                 selectedIndex: _filterIndex,
@@ -193,7 +165,12 @@ class _NodePickerState extends State<_NodePicker> {
                 controller: scrollController,
                 slivers: [
                   SliverPadding(
-                    padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, 0),
+                    padding: const EdgeInsets.fromLTRB(
+                      horizontal,
+                      0,
+                      horizontal,
+                      0,
+                    ),
                     sliver: SliverToBoxAdapter(
                       child: _AutoSelectTile(
                         selected: ctrl.autoSelected,
@@ -204,9 +181,9 @@ class _NodePickerState extends State<_NodePicker> {
                   const SliverToBoxAdapter(child: SizedBox(height: 10)),
                   if (nodes.isEmpty)
                     SliverPadding(
-                      padding: EdgeInsets.fromLTRB(
+                      padding: const EdgeInsets.fromLTRB(
                         horizontal,
-                        widget.compact ? 38 : 22,
+                        38,
                         horizontal,
                         20,
                       ),
@@ -254,27 +231,12 @@ class _NodePickerState extends State<_NodePicker> {
       );
     }
 
-    if (widget.compact) {
-      return SliverPadding(
-        padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, 18),
-        sliver: SliverList.separated(
-          itemCount: nodes.length,
-          itemBuilder: (_, index) => tileAt(index),
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
-        ),
-      );
-    }
     return SliverPadding(
-      padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, 20),
-      sliver: SliverGrid.builder(
+      padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, 18),
+      sliver: SliverList.separated(
         itemCount: nodes.length,
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 290,
-          mainAxisExtent: 78,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-        ),
         itemBuilder: (_, index) => tileAt(index),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
       ),
     );
   }
@@ -302,13 +264,11 @@ class _SheetHandle extends StatelessWidget {
 
 class _PickerHeader extends StatelessWidget {
   const _PickerHeader({
-    required this.compact,
     required this.nodeCount,
     required this.testing,
     required this.onTest,
   });
 
-  final bool compact;
   final int nodeCount;
   final bool testing;
   final VoidCallback onTest;
@@ -317,22 +277,9 @@ class _PickerHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Padding(
-      padding: EdgeInsets.fromLTRB(compact ? 18 : 20, 14, 10, 10),
+      padding: const EdgeInsets.fromLTRB(18, 14, 10, 10),
       child: Row(
         children: [
-          if (!compact) ...[
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: c.primarySoft,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(LucideIcons.route, size: 18, color: c.primary),
-            ),
-            const SizedBox(width: 12),
-          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

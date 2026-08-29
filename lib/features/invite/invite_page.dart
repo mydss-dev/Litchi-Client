@@ -6,21 +6,19 @@ import '../../app/app_controller.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
 
-/// Invite — a single responsive page.
+/// Invite — the mobile invite page.
 ///
-/// Wide and compact layouts share the invitation cards, actions, statistics,
-/// and commission records. Separate page controllers preserve the compact
-/// carousel's peeking viewport.
+/// Invitation cards, actions, statistics, and commission records. A
+/// `viewportFraction` page controller gives the code carousel its peeking
+/// viewport.
 class InvitePage extends StatefulWidget {
   const InvitePage({super.key});
 
@@ -29,7 +27,6 @@ class InvitePage extends StatefulWidget {
 }
 
 class _InvitePageState extends State<InvitePage> {
-  late final PageController _pageController;
   late final PageController _compactPageController;
   int _selected = 0;
   bool _creating = false;
@@ -37,13 +34,11 @@ class _InvitePageState extends State<InvitePage> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
     _compactPageController = PageController(viewportFraction: 0.9);
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
     _compactPageController.dispose();
     super.dispose();
   }
@@ -83,56 +78,7 @@ class _InvitePageState extends State<InvitePage> {
 
   @override
   Widget build(BuildContext context) {
-    return context.isCompact ? _buildCompact(context) : _buildWide(context);
-  }
-
-  // ── Wide (sidebar) layout ──────────────────────────────────────────────
-  Widget _buildWide(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    final invites = _invites(ctrl);
-    final safeSelected = _selected.clamp(0, invites.length - 1);
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PageHeader(
-            title: context.l10n.inviteFriends,
-            subtitle: context.l10n.inviteSubtitle,
-          ),
-          const SizedBox(height: 12),
-          _InviteLinkPanel(
-            invites: invites,
-            selected: safeSelected,
-            creating: _creating,
-            controller: _pageController,
-            onChanged: (index) => setState(() => _selected = index),
-            onPrevious: () => _switchTo(
-              safeSelected - 1 + invites.length,
-              invites.length,
-              _pageController,
-            ),
-            onNext: () =>
-                _switchTo(safeSelected + 1, invites.length, _pageController),
-            onCreate: _createInviteCode,
-          ),
-          const SizedBox(height: 14),
-          _InviteStatsGrid(
-            registeredUsers: ctrl.invitedCount,
-            pendingCommission:
-                '${ctrl.currencySymbol}${ctrl.pendingCommission.toStringAsFixed(2)}',
-            earnedCommission:
-                '${ctrl.currencySymbol}${ctrl.earnedCommission.toStringAsFixed(2)}',
-            commissionRate: '${ctrl.commissionRate.toStringAsFixed(0)}%',
-          ),
-          const SizedBox(height: 12),
-          _CommissionRecords(
-            records: ctrl.inviteRecords,
-            currencySymbol: ctrl.currencySymbol,
-          ),
-        ],
-      ),
-    );
+    return _buildCompact(context);
   }
 
   // ── Compact (bottom-nav) layout ────────────────────────────────────────

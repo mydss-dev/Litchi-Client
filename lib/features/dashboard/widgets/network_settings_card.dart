@@ -35,13 +35,10 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
       if (!isAdmin) {
         await showAppAdaptiveModal<void>(
           context: context,
-          builder: (ctx, compact) {
+          builder: (ctx) {
             final c = AppColors.of(ctx);
             return AppAdaptiveModal(
-              compact: compact,
               title: context.l10n.administratorRequired,
-              maxWidth: 360,
-              showCloseButton: false,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,

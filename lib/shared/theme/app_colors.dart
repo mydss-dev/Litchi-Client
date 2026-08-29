@@ -10,11 +10,9 @@ import 'app_palette.dart';
 class AppColors extends ThemeExtension<AppColors> {
   const AppColors({
     required this.appBg,
-    required this.sidebarBg,
     required this.cardBg,
     required this.surfaceMuted,
     required this.border,
-    required this.sidebarBorder,
     required this.softBorder,
     required this.textPrimary,
     required this.textSecondary,
@@ -36,12 +34,10 @@ class AppColors extends ThemeExtension<AppColors> {
   });
 
   final Color appBg;
-  final Color sidebarBg;
   final Color cardBg;
   final Color surfaceMuted;
 
   final Color border;
-  final Color sidebarBorder;
   final Color softBorder;
 
   final Color textPrimary;
@@ -80,11 +76,9 @@ class AppColors extends ThemeExtension<AppColors> {
 
   static final AppColors light = AppColors(
     appBg: AppPalette.lightAppBg,
-    sidebarBg: AppPalette.lightSidebarBg,
     cardBg: AppPalette.lightCardBg,
     surfaceMuted: AppPalette.lightSurfaceMuted,
     border: AppPalette.lightBorder,
-    sidebarBorder: AppPalette.lightSidebarBorder,
     softBorder: AppPalette.lightSoftBorder,
     textPrimary: AppPalette.lightTextPrimary,
     textSecondary: AppPalette.lightTextSecondary,
@@ -107,11 +101,9 @@ class AppColors extends ThemeExtension<AppColors> {
 
   static final AppColors dark = AppColors(
     appBg: AppPalette.darkAppBg,
-    sidebarBg: AppPalette.darkSidebarBg,
     cardBg: AppPalette.darkCardBg,
     surfaceMuted: AppPalette.darkSurfaceMuted,
     border: AppPalette.darkBorder,
-    sidebarBorder: AppPalette.darkSidebarBorder,
     softBorder: AppPalette.darkSoftBorder,
     textPrimary: AppPalette.darkTextPrimary,
     textSecondary: AppPalette.darkTextSecondary,
@@ -139,11 +131,9 @@ class AppColors extends ThemeExtension<AppColors> {
   @override
   AppColors copyWith({
     Color? appBg,
-    Color? sidebarBg,
     Color? cardBg,
     Color? surfaceMuted,
     Color? border,
-    Color? sidebarBorder,
     Color? softBorder,
     Color? textPrimary,
     Color? textSecondary,
@@ -165,11 +155,9 @@ class AppColors extends ThemeExtension<AppColors> {
   }) {
     return AppColors(
       appBg: appBg ?? this.appBg,
-      sidebarBg: sidebarBg ?? this.sidebarBg,
       cardBg: cardBg ?? this.cardBg,
       surfaceMuted: surfaceMuted ?? this.surfaceMuted,
       border: border ?? this.border,
-      sidebarBorder: sidebarBorder ?? this.sidebarBorder,
       softBorder: softBorder ?? this.softBorder,
       textPrimary: textPrimary ?? this.textPrimary,
       textSecondary: textSecondary ?? this.textSecondary,
@@ -196,11 +184,9 @@ class AppColors extends ThemeExtension<AppColors> {
     if (other is! AppColors) return this;
     return AppColors(
       appBg: Color.lerp(appBg, other.appBg, t)!,
-      sidebarBg: Color.lerp(sidebarBg, other.sidebarBg, t)!,
       cardBg: Color.lerp(cardBg, other.cardBg, t)!,
       surfaceMuted: Color.lerp(surfaceMuted, other.surfaceMuted, t)!,
       border: Color.lerp(border, other.border, t)!,
-      sidebarBorder: Color.lerp(sidebarBorder, other.sidebarBorder, t)!,
       softBorder: Color.lerp(softBorder, other.softBorder, t)!,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,

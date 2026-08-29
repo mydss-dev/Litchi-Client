@@ -13,7 +13,7 @@ enum CompactPlacement {
   /// Inside the "我的" hub.
   hub,
 
-  /// Sidebar only — not reachable from the compact UI directly.
+  /// Not reachable from the bottom-nav or "我的" hub directly.
   hidden,
 }
 
@@ -69,8 +69,7 @@ class NavDestination {
 
 // ── Single source of truth ───────────────────────────────────────────────────
 //
-// Sidebar, bottom-nav, and "我的" hub ALL derive from this list.
-// Order = sidebar order.
+// Bottom-nav and "我的" hub derive from this list.
 
 const List<NavDestination> kNavDestinations = [
   // ── Primary (bottom nav) ──────────────────────────────────────────────────
@@ -95,7 +94,7 @@ const List<NavDestination> kNavDestinations = [
     compact: CompactPlacement.primary,
   ),
 
-  // ── Sidebar only ──────────────────────────────────────────────────────────
+  // ── Reachable only via direct navigation (not a nav item) ────────────────
   NavDestination(
     page: AppPage.nodes,
     icon: LucideIcons.server,
@@ -131,9 +130,6 @@ const List<NavDestination> kNavDestinations = [
 ];
 
 // ── Derived subsets ──────────────────────────────────────────────────────────
-
-Iterable<NavDestination> get sidebarDestinations =>
-    kNavDestinations.where((item) => item.isEnabled);
 
 List<NavDestination> get compactPrimaryDestinations => kNavDestinations
     .where((d) => d.compact == CompactPlacement.primary && d.isEnabled)

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../l10n/l10n.dart';
-import '../responsive/breakpoints.dart';
 import '../theme/app_text_styles.dart';
 import 'page_header.dart';
 import 'page_status_cards.dart';
 
+/// Shared page chrome for sub-pages. The app is a fixed-size single-layout
+/// window, so there is no wide/sidebar branch — this always renders the
+/// compact (bottom-nav) chrome: a full header for primary tabs, or a
+/// back-button header for hub sub-pages.
 class ResponsivePageScaffold extends StatelessWidget {
   const ResponsivePageScaffold({
     super.key,
@@ -17,11 +19,8 @@ class ResponsivePageScaffold extends StatelessWidget {
     required this.children,
     this.onRefresh,
     this.compactSubtitle,
-    this.showWideRefresh = true,
     this.trailing,
     this.compactBodySpacing = 16,
-    this.showWideBack = true,
-    this.showWideTrailing = true,
   });
 
   final String title;
@@ -32,52 +31,11 @@ class ResponsivePageScaffold extends StatelessWidget {
   final Future<void> Function()? onRefresh;
   final VoidCallback onBack;
   final List<Widget> children;
-  final bool showWideRefresh;
   final Widget? trailing;
   final double compactBodySpacing;
-  final bool showWideBack;
-  final bool showWideTrailing;
 
   @override
   Widget build(BuildContext context) {
-    return context.isCompact ? _buildCompact(context) : _buildWide(context);
-  }
-
-  Widget _buildWide(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (showWideBack) ...[
-                PageBackButton(
-                  onTap: onBack,
-                  tooltip: context.l10n.backToAccount,
-                ),
-                const SizedBox(width: 10),
-              ],
-              Expanded(
-                child: PageHeader(title: title, subtitle: subtitle),
-              ),
-              if (showWideRefresh && onRefresh != null) ...[
-                const SizedBox(width: 10),
-                RefreshIconButton(onTap: onRefresh!),
-              ],
-              if (showWideTrailing && trailing != null) ...[
-                const SizedBox(width: 8),
-                trailing!,
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCompact(BuildContext context) {
     final list = ListView(
       physics: onRefresh == null ? null : const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.zero,

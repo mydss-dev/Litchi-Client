@@ -16,11 +16,9 @@ import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/responsive_page_scaffold.dart';
 import '../shop/payment_dialog.dart';
 
-/// Wallet — a single responsive page.
+/// Wallet — the mobile wallet page.
 ///
-/// Wide screens get the sidebar-style layout with a refresh button and dialogs;
-/// compact screens get pull-to-refresh, a mobile header/back button, and the same
-/// shared wallet content (hero card + recharge card).
+/// Pull-to-refresh with the shared wallet content (hero card + recharge card).
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key});
 
@@ -109,8 +107,7 @@ class _WalletPageState extends State<WalletPage> {
     }
     await showAppAdaptiveModal<void>(
       context: context,
-      builder: (_, compact) => _TransferModal(
-        compact: compact,
+      builder: (_) => _TransferModal(
         maxAmount: ctrl.withdrawable,
         currencySymbol: ctrl.currencySymbol,
       ),
@@ -145,8 +142,7 @@ class _WalletPageState extends State<WalletPage> {
     }
     await showAppAdaptiveModal<void>(
       context: context,
-      builder: (_, compact) => _WithdrawModal(
-        compact: compact,
+      builder: (_) => _WithdrawModal(
         maxAmount: ctrl.withdrawable,
         minAmount: ctrl.minWithdrawAmount,
         methods: ctrl.withdrawMethods,
@@ -155,7 +151,7 @@ class _WalletPageState extends State<WalletPage> {
     );
   }
 
-  // ── Responsive build ──────────────────────────────────────────────────────
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -654,12 +650,10 @@ class _PresetChip extends StatelessWidget {
 
 class _TransferModal extends StatefulWidget {
   const _TransferModal({
-    required this.compact,
     required this.maxAmount,
     required this.currencySymbol,
   });
 
-  final bool compact;
   final double maxAmount;
   final String currencySymbol;
 
@@ -727,9 +721,7 @@ class _TransferModalState extends State<_TransferModal> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return AppAdaptiveModal(
-      compact: widget.compact,
       title: context.l10n.transferCommission,
-      icon: LucideIcons.arrowRightLeft,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -780,14 +772,12 @@ class _TransferModalState extends State<_TransferModal> {
 
 class _WithdrawModal extends StatefulWidget {
   const _WithdrawModal({
-    required this.compact,
     required this.maxAmount,
     required this.minAmount,
     required this.methods,
     required this.currencySymbol,
   });
 
-  final bool compact;
   final double maxAmount;
   final double minAmount;
   final List<String> methods;
@@ -881,9 +871,7 @@ class _WithdrawModalState extends State<_WithdrawModal> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return AppAdaptiveModal(
-      compact: widget.compact,
       title: context.l10n.requestWithdrawal,
-      icon: LucideIcons.receipt,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

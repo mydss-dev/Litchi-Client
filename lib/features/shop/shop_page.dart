@@ -4,21 +4,19 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/app_card.dart';
-import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
 import 'order_confirm_dialog.dart';
 
-/// Shop — a single responsive page.
+/// Shop — the mobile plans page.
 ///
-/// Wide uses a responsive grid and compact uses a pull-to-refresh list. Plan
-/// cards, cycle selection, filtering, and purchase actions are shared.
+/// Pull-to-refresh list of plan cards. Cycle selection, filtering, and purchase
+/// actions live on the shared `_PlanCard`.
 class ShopPage extends StatefulWidget {
   const ShopPage({super.key});
 
@@ -65,60 +63,7 @@ class _ShopPageState extends State<ShopPage> {
 
   @override
   Widget build(BuildContext context) {
-    return context.isCompact ? _buildCompact(context) : _buildWide(context);
-  }
-
-  // ── Wide (sidebar) layout ──────────────────────────────────────────────
-  Widget _buildWide(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    final plans = _filtered(ctrl.plans);
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PageHeader(
-            title: context.l10n.buyPlans,
-            subtitle: context.l10n.buyPlansSubtitle,
-          ),
-          const SizedBox(height: 12),
-          _ShopTabs(
-            tabs: _tabs(context),
-            selected: _tab,
-            onSelected: (index) => setState(() => _tab = index),
-          ),
-          const SizedBox(height: 14),
-          if (plans.isEmpty)
-            _emptyPlans(context)
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final cols = constraints.maxWidth >= 980
-                    ? 3
-                    : constraints.maxWidth >= 620
-                    ? 2
-                    : 1;
-                return GridView.builder(
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: plans.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: cols,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    mainAxisExtent: 310,
-                  ),
-                  itemBuilder: (context, index) => _PlanCard(
-                    key: ValueKey(plans[index].id),
-                    plan: plans[index],
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
+    return _buildCompact(context);
   }
 
   // ── Compact (bottom-nav) layout ────────────────────────────────────────

@@ -11,7 +11,6 @@ import '../../app/nav_destinations.dart';
 import '../../config/mobile_layout.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/responsive/breakpoints.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -24,24 +23,15 @@ import '../../shared/widgets/no_plan_card.dart';
 import '../../shared/widgets/node_latency.dart';
 import '../../shared/widgets/notice_carousel.dart';
 import '../../shared/widgets/update_banner.dart';
-import '../../shared/widgets/page_header.dart';
 import '../nodes/node_picker.dart';
-import 'widgets/connection_hero_card.dart';
-import 'widgets/connection_stats_row.dart';
 import 'widgets/error_banner.dart';
-import 'widgets/expiry_banner.dart';
-import 'widgets/network_settings_card.dart';
-import 'widgets/proxy_mode_card.dart';
 
-/// Dashboard / Home — a single responsive page.
+/// Dashboard / Home — the mobile home page.
 ///
-/// Two-layout merge. Wide keeps the desktop dashboard (hero + mini cards +
-/// stats row); compact keeps the mobile home (pull-to-refresh, connection card,
-/// mode strip, card grid). The 1-second uptime ticker (`_tickTimer`/`_syncTimer`)
-/// and formatters are in `shared/utils/formatters.dart`; `ModeStrip` lives in
-/// `shared/widgets/mode_strip.dart`. The mobile `_syncTimer` (with a mounted
-/// guard) is kept for both. Wide/compact action handlers are distinct. There are
-/// no sub-widget name collisions, so nothing is renamed. Split on window width.
+/// Pull-to-refresh, connection card, mode strip, card grid. The 1-second uptime
+/// ticker (`_tickTimer`/`_syncTimer`) and formatters are in
+/// `shared/utils/formatters.dart`; `ModeStrip` lives in
+/// `shared/widgets/mode_strip.dart`.
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
@@ -83,28 +73,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // ── Wide-branch actions ────────────────────────────────────────────────
-  Future<void> _onToggle() async {
-    final ctrl = AppScope.of(context);
-    if (ctrl.connectionActionLocked) return;
-
-    final error = await ctrl.toggleConnection();
-    _syncTimer();
-
-    if (mounted && error == null && ctrl.coreRunning) {
-      AppToast.show(
-        context,
-        context.l10n.connectionSuccess,
-        type: AppToastType.success,
-      );
-    }
-  }
-
-  Future<void> _onRefreshData() async {
-    await AppScope.of(context).refreshData();
-  }
-
-  // ── Compact-branch actions ─────────────────────────────────────────────
+  // ── Connection actions ─────────────────────────────────────────────────
   Future<void> _toggleConnection() async {
     final ctrl = AppScope.of(context);
     if (ctrl.coreConnecting) return;
@@ -131,58 +100,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return context.isCompact ? _buildCompact(context) : _buildWide(context);
-  }
-
-  // ── Wide (sidebar) layout ──────────────────────────────────────────────
-  Widget _buildWide(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    final status = ctrl.connectionStatus;
-    final noPlan =
-        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          PageHeader(
-            title: context.l10n.home,
-            subtitle: context.l10n.dashboardSubtitle,
-          ),
-          if (ctrl.notices.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            NoticeCarousel(notices: ctrl.notices),
-          ],
-          const SizedBox(height: 12),
-          ExpiryBanner(user: ctrl.user),
-          _DashboardAlerts(
-            ctrl: ctrl,
-            onConnectionRetry: _onToggle,
-            onDataRetry: _onRefreshData,
-          ),
-          if (noPlan)
-            NoPlanCard(
-              onPurchase: isPageEnabled(AppPage.shop)
-                  ? () => ctrl.goToPage(AppPage.shop)
-                  : null,
-            )
-          else ...[
-            ValueListenableBuilder<int>(
-              valueListenable: _tick,
-              builder: (context, _, _) => ConnectionHeroCard(
-                status: status,
-                elapsedLabel: formatDuration(ctrl.connectedDuration),
-                onToggle: _onToggle,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const _InfoMiniCardsRow(),
-            const SizedBox(height: 12),
-            const ConnectionStatsRow(),
-          ],
-        ],
-      ),
-    );
+    return _buildCompact(context);
   }
 
   // ── Compact (bottom-nav) layout ────────────────────────────────────────
@@ -255,7 +173,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-// ── Wide-layout widgets (original desktop DashboardPage, verbatim) ────────
+// ── Shared alert banner ──────────────────────────────────────────────────────
 
 class _DashboardAlerts extends StatelessWidget {
   const _DashboardAlerts({
@@ -304,37 +222,6 @@ class _DashboardAlerts extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _InfoMiniCardsRow extends StatelessWidget {
-  const _InfoMiniCardsRow();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 380) {
-          return const IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: ProxyModeCard()),
-                SizedBox(width: 14),
-                Expanded(child: NetworkSettingsCard()),
-              ],
-            ),
-          );
-        }
-        return const Column(
-          children: [
-            ProxyModeCard(),
-            SizedBox(height: 14),
-            NetworkSettingsCard(),
-          ],
-        );
-      },
     );
   }
 }

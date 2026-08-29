@@ -78,9 +78,8 @@ class _LitchiAppState extends State<LitchiApp> {
             // Transparent so the rounded window shell shows through at the
             // clipped corners (§ rounded-window spec).
             //
-            // A single responsive shell for every platform: it renders a
-            // sidebar layout on wide windows and a bottom-nav layout on narrow
-            // ones, chosen by width rather than by platform.
+            // A single fixed-size shell for every platform: it renders the
+            // bottom-nav layout regardless of window width.
             home: Scaffold(
               backgroundColor: Platform.isWindows ? null : Colors.transparent,
               body: AppShell(launchSilently: widget.launchSilently),

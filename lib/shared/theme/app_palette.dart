@@ -26,12 +26,10 @@ class AppPalette {
   // Light theme (§6.1)
   // ---------------------------------------------------------------------------
   static const Color lightAppBg = Color(0xFFF8FAFC);
-  static const Color lightSidebarBg = Color(0xFFFFFFFF);
   static const Color lightCardBg = Color(0xFFFFFFFF);
   static const Color lightSurfaceMuted = Color(0xFFF1F5F9);
 
   static const Color lightBorder = Color(0xFFE2E8F0);
-  static const Color lightSidebarBorder = Color(0xFFE5EAF2);
   static const Color lightSoftBorder = Color(0xFFEEF2F7);
 
   static const Color lightTextPrimary = Color(0xFF0F172A);
@@ -62,12 +60,10 @@ class AppPalette {
   // Dark theme (§6.2)
   // ---------------------------------------------------------------------------
   static const Color darkAppBg = Color(0xFF0F172A);
-  static const Color darkSidebarBg = Color(0xFF111827);
   static const Color darkCardBg = Color(0xFF1E293B);
   static const Color darkSurfaceMuted = Color(0xFF273449);
 
   static const Color darkBorder = Color(0xFF334155);
-  static const Color darkSidebarBorder = Color(0xFF263445);
   static const Color darkSoftBorder = Color(0xFF263445);
 
   static const Color darkTextPrimary = Color(0xFFF8FAFC);

@@ -8,7 +8,6 @@ import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/responsive/breakpoints.dart';
 import '../../shared/services/node_filter.dart';
 import '../../shared/services/settings_service.dart';
 import '../../shared/theme/app_colors.dart';
@@ -23,7 +22,7 @@ import '../../shared/widgets/page_header.dart';
 import '../../shared/widgets/page_status_cards.dart';
 import '../../shared/widgets/search_input.dart';
 
-/// Node selection page — a single responsive page.
+/// Node selection page.
 class NodesPage extends StatefulWidget {
   const NodesPage({super.key});
 
@@ -141,88 +140,7 @@ class _NodesPageState extends State<NodesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (Breakpoints.isCompactWidth(constraints.maxWidth)) {
-          return _buildCompact(context);
-        }
-        return _buildWide(context);
-      },
-    );
-  }
-
-  // ── Wide (sidebar) layout ────────────────────────────────────────────────────
-
-  Widget _buildWide(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    final noPlan =
-        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
-    final isAuto = ctrl.autoSelected;
-    final effectiveId = isAuto
-        ? '__auto__'
-        : (_selectedId ?? ctrl.currentNode.id);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        PageHeader(
-          title: context.l10n.nodes,
-          subtitle: context.l10n.nodesSubtitle,
-        ),
-        const SizedBox(height: 12),
-        if (noPlan)
-          Expanded(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: NoPlanCard(
-                onPurchase: isPageEnabled(AppPage.shop)
-                    ? () => ctrl.goToPage(AppPage.shop)
-                    : null,
-              ),
-            ),
-          )
-        else ...[
-          ..._bodyChildren(context),
-          const SizedBox(height: 14),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final w = constraints.maxWidth;
-                final cols = w >= 620 ? 3 : (w >= 440 ? 2 : 1);
-                final nodes = _filtered;
-                if (nodes.isEmpty) {
-                  return AppEmptyState(
-                    icon: LucideIcons.searchX,
-                    title: context.l10n.noMatchingNodes,
-                    subtitle: context.l10n.tryDifferentNodeFilter,
-                  );
-                }
-                return GridView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: nodes.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: cols,
-                    mainAxisSpacing: 14,
-                    crossAxisSpacing: 14,
-                    mainAxisExtent: 118,
-                  ),
-                  itemBuilder: (context, i) {
-                    final n = nodes[i];
-                    return _NodeCard(
-                      node: n,
-                      selected: !isAuto && n.id == effectiveId,
-                      favorite: _favorites.contains(n.id),
-                      onTap: () => _selectNode(n),
-                      onToggleFavorite: () => _toggleFavorite(n.id),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ],
-    );
+    return _buildCompact(context);
   }
 
   // ── Compact (bottom-nav) layout ──────────────────────────────────────────────

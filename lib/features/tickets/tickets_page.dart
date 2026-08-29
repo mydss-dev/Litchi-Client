@@ -71,16 +71,14 @@ class _TicketsPageState extends State<TicketsPage> {
   void _openNewTicket() {
     showAppAdaptiveModal<void>(
       context: context,
-      builder: (_, compact) =>
-          _NewTicketModal(compact: compact, onCreated: _load),
+      builder: (_) => _NewTicketModal(onCreated: _load),
     );
   }
 
   void _openTicketDetail(TicketModel ticket) {
     showAppAdaptiveModal<void>(
       context: context,
-      builder: (_, compact) => _TicketDetailModal(
-        compact: compact,
+      builder: (_) => _TicketDetailModal(
         ticket: ticket,
         onChanged: _load,
       ),
@@ -97,8 +95,6 @@ class _TicketsPageState extends State<TicketsPage> {
       primaryCompact: isPrimaryCompactTab(AppPage.tickets),
       onRefresh: _handleRefresh,
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
-      showWideRefresh: !_loading,
-      showWideTrailing: !_loading,
       trailing: PageIconButton(
         tooltip: context.l10n.newTicket,
         icon: LucideIcons.messageSquarePlus,
@@ -219,9 +215,8 @@ class _TicketCard extends StatelessWidget {
 // ── New ticket modal ──────────────────────────────────────────────────────────
 
 class _NewTicketModal extends StatefulWidget {
-  const _NewTicketModal({required this.compact, required this.onCreated});
+  const _NewTicketModal({required this.onCreated});
 
-  final bool compact;
   final VoidCallback onCreated;
 
   @override
@@ -309,9 +304,7 @@ class _NewTicketModalState extends State<_NewTicketModal> {
   @override
   Widget build(BuildContext context) {
     return AppAdaptiveModal(
-      compact: widget.compact,
       title: context.l10n.newTicket,
-      icon: LucideIcons.messageSquarePlus,
       child: _NewTicketForm(
         subjectCtrl: _subjectCtrl,
         messageCtrl: _messageCtrl,
@@ -387,12 +380,10 @@ class _NewTicketForm extends StatelessWidget {
 
 class _TicketDetailModal extends StatefulWidget {
   const _TicketDetailModal({
-    required this.compact,
     required this.ticket,
     required this.onChanged,
   });
 
-  final bool compact;
   final TicketModel ticket;
   final VoidCallback onChanged;
 
@@ -505,14 +496,11 @@ class _TicketDetailModalState extends State<_TicketDetailModal> {
   @override
   Widget build(BuildContext context) {
     return AppAdaptiveModal(
-      compact: widget.compact,
       title: _ticket.subject.isEmpty
           ? context.l10n.ticketDetails
           : _ticket.subject,
       subtitle:
           '${_ticketPriority(context, _ticket.level)} · ${_ticketStatus(context, _ticket.isOpen)}',
-      icon: LucideIcons.messageSquare,
-      maxWidth: 520,
       maxHeightFactor: 0.92,
       child: _TicketDetailBody(
         loading: _loading,
@@ -523,9 +511,7 @@ class _TicketDetailModalState extends State<_TicketDetailModal> {
         closing: _closing,
         onReply: _reply,
         onClose: _close,
-        messageThreadHeight: widget.compact
-            ? MediaQuery.sizeOf(context).height * 0.38
-            : 300,
+        messageThreadHeight: MediaQuery.sizeOf(context).height * 0.38,
       ),
     );
   }
