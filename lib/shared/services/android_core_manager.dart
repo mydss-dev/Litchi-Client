@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
+import 'rule_set_assets.dart';
+
 class AndroidCoreException implements Exception {
   const AndroidCoreException(this.message);
 
@@ -64,6 +66,7 @@ class AndroidCoreManager {
   /// Used for latency tests, node switching, and mode changes before
   /// the user explicitly connects.
   Future<bool> startCoreOnly(String configJson) async {
+    await RuleSetAssets.ensureProvisioned();
     final launched = await _invokeBool('startCoreOnly', {'config': configJson});
     if (!launched) {
       _lastError = await _invokeString('lastError');
@@ -79,6 +82,7 @@ class AndroidCoreManager {
   /// after [startCoreOnly] succeeded.  Triggers the VPN permission prompt
   /// if needed.
   Future<bool> startVpn(String configJson) async {
+    await RuleSetAssets.ensureProvisioned();
     final prepared = await prepareVpn();
     if (!prepared) {
       if (_lastError.isEmpty) {
@@ -100,6 +104,7 @@ class AndroidCoreManager {
   /// Legacy start that does both core-only + VPN in one call.
   /// Prefer [startCoreOnly] + [startVpn] for new code.
   Future<bool> start(String configJson) async {
+    await RuleSetAssets.ensureProvisioned();
     final prepared = await prepareVpn();
     if (!prepared) {
       if (_lastError.isEmpty) {

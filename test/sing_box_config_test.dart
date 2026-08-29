@@ -157,6 +157,13 @@ void main() {
       ruleSets.map((s) => s['tag']),
       containsAll(['geosite-cn', 'geoip-cn']),
     );
+    // Rule sets are embedded assets, not remote downloads: startup must never
+    // depend on a reachable CDN.
+    for (final ruleSet in ruleSets) {
+      expect(ruleSet['type'], 'local');
+      expect(ruleSet['path'], isNotEmpty);
+      expect(ruleSet.containsKey('url'), isFalse);
+    }
     final rules = (route['rules'] as List).cast<Map>();
     expect(
       rules,

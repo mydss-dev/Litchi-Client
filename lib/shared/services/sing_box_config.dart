@@ -5,6 +5,7 @@ import 'dart:math';
 import '../../config/app_identity.dart';
 import '../models/app_models.dart';
 import 'app_paths.dart';
+import 'rule_set_assets.dart';
 
 /// Builds the JSON configuration consumed by the embedded sing-box core.
 ///
@@ -137,26 +138,21 @@ abstract final class SingBoxConfig {
           'strategy': 'ipv4_only',
         },
         // Mainland-China direct rules: geosite-cn (domain) + geoip-cn (IP).
-        // Served from the jsDelivr CDN mirror of SagerNet's official rule
-        // sets because raw.githubusercontent.com is unreliable in CN.
+        // Shipped as embedded assets and extracted to the core's working
+        // directory at startup (see RuleSetAssets.ensureProvisioned), so
+        // startup never depends on a reachable CDN.
         'rule_set': [
           {
-            'type': 'remote',
+            'type': 'local',
             'tag': 'geosite-cn',
             'format': 'binary',
-            'url':
-                'https://cdn.jsdelivr.net/gh/SagerNet/sing-geosite@rule-set/geosite-cn.srs',
-            'download_detour': directTag,
-            'update_interval': '24h',
+            'path': 'rule_sets/geosite-cn.srs',
           },
           {
-            'type': 'remote',
+            'type': 'local',
             'tag': 'geoip-cn',
             'format': 'binary',
-            'url':
-                'https://cdn.jsdelivr.net/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs',
-            'download_detour': directTag,
-            'update_interval': '24h',
+            'path': 'rule_sets/geoip-cn.srs',
           },
         ],
         'rules': [
@@ -293,6 +289,7 @@ abstract final class SingBoxConfig {
   }
 
   static Future<String> writeConfig(Map<String, dynamic> config) async {
+    await RuleSetAssets.ensureProvisioned();
     final directory = Directory(appDataDir());
     await directory.create(recursive: true);
     await cleanupStaleConfigFiles();
