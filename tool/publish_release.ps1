@@ -73,11 +73,20 @@ function Write-Utf8Json {
 
 function Sign-Payload {
   param([string]$PayloadPath, [string]$Destination)
-  $result = & dart run $signer sign-env $PayloadPath 2>&1
-  if ($LASTEXITCODE -ne 0) { throw ($result -join [Environment]::NewLine) }
+  $stdoutFile = Join-Path $temporaryPath 'sign_stdout.txt'
+  $stderrFile = Join-Path $temporaryPath 'sign_stderr.txt'
+  & dart run $signer sign-env $PayloadPath 1>$stdoutFile 2>$stderrFile
+  if ($LASTEXITCODE -ne 0) {
+    $err = ''
+    if (Test-Path -LiteralPath $stderrFile) { $err = (Get-Content -LiteralPath $stderrFile -Raw).Trim() }
+    throw "sign_update_manifest.dart failed (exit $LASTEXITCODE): $err"
+  }
+  # stdout carries the signed JSON envelope; stderr carries only dart build-hook
+  # noise ("Running build hooks..."), which must not leak into update.json.
+  $json = (Get-Content -LiteralPath $stdoutFile -Raw).TrimEnd()
   [IO.File]::WriteAllText(
     $Destination,
-    ($result -join [Environment]::NewLine) + [Environment]::NewLine,
+    $json + [Environment]::NewLine,
     [Text.UTF8Encoding]::new($false)
   )
   Get-Content -LiteralPath $Destination -Raw | ConvertFrom-Json | Out-Null
