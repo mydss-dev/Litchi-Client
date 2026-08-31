@@ -37,16 +37,18 @@ jobs:
   publish:
     name: Publish update
     runs-on: ubuntu-latest
-    # Manual dispatch always runs. The auto path runs after any successful push
-    # run of CI; the Resolve step below skips the heavy work when that push was
-    # not a `v*` tag (head_branch is unreliable for tag pushes, so the tag is
-    # resolved from head_sha instead).
+    # Manual dispatch always runs. The auto path only runs for `v*` tag pushes:
+    # a plain branch push completes fast (analyze only) and would race ahead of
+    # the tag-push build, downloading the release before the slow macOS `.dmg`
+    # is uploaded. `workflow_run.head_branch` is the branch name for a branch
+    # push (`main`) and the tag name for a tag push (`v1.0.3`).
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push'
+        github.event.workflow_run.event == 'push' &&
+        startsWith(github.event.workflow_run.head_branch, 'v')
       )
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
