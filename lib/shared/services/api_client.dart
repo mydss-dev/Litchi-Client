@@ -313,6 +313,12 @@ class ApiClient {
     try {
       return await dio.get<String>(url);
     } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final uri = Uri.tryParse(url);
+      final redacted = uri == null
+          ? '<invalid-url>'
+          : '${uri.scheme}://${uri.host}${uri.path}';
+      SecureLogger.warn('getPlainUrl failed status=$status url=$redacted', e);
       throw ApiException(_friendlyMessage(e));
     }
   }
