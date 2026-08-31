@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import '../../config/app_config.dart';
 import '../models/api_models.dart';
 import '../models/app_models.dart';
@@ -134,6 +132,12 @@ class DataLoader {
         final subscribe = await _api.getSubscribeInfo(silent: silent);
         subscribeLoaded = true;
         snap.subscribeUrl = subscribe.subscribeUrl;
+        if (subscribe.subscribeUrl.trim().isEmpty) {
+          SecureLogger.warn(
+            'DataLoader getSubscribeInfo: subscribe_url empty '
+            '(planId=${subscribe.planId}, transferEnable=${subscribe.transferEnable})',
+          );
+        }
         snap.currentPlanId ??= subscribe.planId;
         subscribeHasPlanEvidence =
             (subscribe.planId != null && subscribe.planId! > 0) ||
@@ -189,7 +193,9 @@ class DataLoader {
     final sw = Stopwatch()..start();
     final url = snap.subscribeUrl;
     if (url == null || url.isEmpty) {
-      debugPrint('[Client] _fillNodes: no subscribe URL, skipping');
+      SecureLogger.warn(
+        'DataLoader _fillNodes: subscribe_url empty, skipping node fetch',
+      );
       return;
     }
     try {

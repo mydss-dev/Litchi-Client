@@ -250,6 +250,11 @@ class PanelApi {
     );
     final body = (res.data ?? '').trim();
 
+    SecureLogger.warn(
+      'fetchSubscription status=${res.statusCode} chars=${body.length} '
+      'shape=${_subscriptionShape(body)} url=${_redactUrl(subscribeUrl)}',
+    );
+
     SubTraffic? traffic;
     final userinfo = res.headers.value('subscription-userinfo');
     if (userinfo != null) traffic = SubTraffic.fromHeader(userinfo);
@@ -257,10 +262,33 @@ class PanelApi {
     if (body.isEmpty) return SubscriptionResult(nodes: [], traffic: traffic);
 
     final profile = SubscriptionParser.parseProfile(body);
+    if (profile.nodes.isEmpty) {
+      SecureLogger.warn('fetchSubscription parsed 0 nodes from non-empty body');
+    }
     return SubscriptionResult(
       nodes: profile.nodes,
       traffic: traffic,
     );
+  }
+
+  /// Describes a subscription body without leaking node contents into logs.
+  static String _subscriptionShape(String body) {
+    if (body.isEmpty) return 'empty';
+    if (body.startsWith('{')) return 'json-object';
+    if (body.startsWith('[')) return 'json-array';
+    if (body.startsWith('vmess://')) return 'vmess-uri';
+    if (body.startsWith('vless://')) return 'vless-uri';
+    if (body.startsWith('trojan://')) return 'trojan-uri';
+    if (body.startsWith('ss://')) return 'ss-uri';
+    return 'unrecognized';
+  }
+
+  /// Strips the query string (which carries the subscription token) from a URL
+  /// so it is safe to include in logs.
+  static String _redactUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return '<invalid-url>';
+    return '${uri.scheme}://${uri.host}${uri.path}';
   }
 
   // ── Plans ─────────────────────────────────────────────────────────────────
