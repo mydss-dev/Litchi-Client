@@ -413,9 +413,6 @@ class _AutoCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              const SizedBox(width: 8),
-              if (selected)
-                Icon(LucideIcons.circleCheck, size: 18, color: c.primary),
             ],
           ),
         ),
@@ -581,16 +578,9 @@ class _NodeCard extends StatelessWidget {
                   ),
                 ),
               const Spacer(),
-              Row(
-                children: [
-                  NodeLatency(
-                    latency: node.latency,
-                    style: NodeLatencyStyle.dot,
-                  ),
-                  const Spacer(),
-                  if (selected)
-                    Icon(LucideIcons.circleCheck, size: 16, color: c.primary),
-                ],
+              NodeLatency(
+                latency: node.latency,
+                style: NodeLatencyStyle.dot,
               ),
             ],
           ),

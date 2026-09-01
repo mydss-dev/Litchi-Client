@@ -173,6 +173,7 @@ class _NodePickerState extends State<_NodePicker> {
                     ),
                     sliver: SliverToBoxAdapter(
                       child: _AutoSelectTile(
+                        ctrl: ctrl,
                         selected: ctrl.autoSelected,
                         onTap: () => _selectAuto(ctrl),
                       ),
@@ -329,14 +330,20 @@ class _PickerHeader extends StatelessWidget {
 }
 
 class _AutoSelectTile extends StatelessWidget {
-  const _AutoSelectTile({required this.selected, required this.onTap});
+  const _AutoSelectTile({
+    required this.ctrl,
+    required this.selected,
+    required this.onTap,
+  });
 
+  final AppController ctrl;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final best = _bestNode();
     return _SelectableSurface(
       selected: selected,
       onTap: onTap,
@@ -355,18 +362,51 @@ class _AutoSelectTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  context.l10n.autoSelectBestDescription,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
+                if (best != null)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CountryFlag.fromCountryCode(
+                        best.code.isNotEmpty ? best.code : 'UN',
+                        theme: const ImageTheme(
+                          width: 18,
+                          height: 13,
+                          shape: RoundedRectangle(2),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          '${best.name} · ${best.latency} ms',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(
+                            color: c.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Text(
+                    context.l10n.autoSelectBestDescription,
+                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                  ),
               ],
             ),
           ),
-          if (selected)
-            Icon(LucideIcons.circleCheck, color: c.primary, size: 19),
         ],
       ),
     );
+  }
+
+  NodeModel? _bestNode() {
+    NodeModel? best;
+    for (final node in ctrl.nodes) {
+      if (node.latency <= 0 || node.latency >= 9999) continue;
+      if (best == null || node.latency < best.latency) best = node;
+    }
+    return best;
   }
 }
 
@@ -416,10 +456,6 @@ class _NodeTile extends StatelessWidget {
             ),
           ),
           NodeLatency(latency: node.latency),
-          if (selected) ...[
-            const SizedBox(width: 8),
-            Icon(LucideIcons.circleCheck, color: c.primary, size: 19),
-          ],
         ],
       ),
     );
