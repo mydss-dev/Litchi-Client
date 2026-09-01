@@ -39,6 +39,13 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
   }
 
   @override
+  void didUpdateWidget(covariant NoticeCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Notices load asynchronously; start auto-play once there are >= 2.
+    if (widget.notices.length >= 2 && _timer == null) _startAutoPlay();
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
@@ -62,7 +69,6 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.notices.isEmpty) return const SizedBox.shrink();
     final c = AppColors.of(context);
 
     return SizedBox(
@@ -74,23 +80,46 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(color: c.softBorder),
         ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            PageView.builder(
-              controller: _controller,
-              itemCount: widget.notices.length,
-              onPageChanged: _onPageChanged,
-              itemBuilder: (context, i) =>
-                  _NoticeSlide(notice: widget.notices[i]),
-            ),
-            if (widget.notices.length > 1)
-              Positioned(
-                right: 12,
-                bottom: 10,
-                child: _Dots(count: widget.notices.length, index: _index),
+        child: widget.notices.isEmpty
+            ? const _NoticePlaceholder()
+            : Stack(
+                fit: StackFit.expand,
+                children: [
+                  PageView.builder(
+                    controller: _controller,
+                    itemCount: widget.notices.length,
+                    onPageChanged: _onPageChanged,
+                    itemBuilder: (context, i) =>
+                        _NoticeSlide(notice: widget.notices[i]),
+                  ),
+                  if (widget.notices.length > 1)
+                    Positioned(
+                      right: 12,
+                      bottom: 10,
+                      child: _Dots(count: widget.notices.length, index: _index),
+                    ),
+                ],
               ),
-          ],
+      ),
+    );
+  }
+}
+
+/// Quiet placeholder shown while notices are loading (or when none exist), so
+/// the banner slot keeps its fixed height and the layout below never jumps.
+class _NoticePlaceholder extends StatelessWidget {
+  const _NoticePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return ColoredBox(
+      color: c.surfaceMuted,
+      child: Center(
+        child: Icon(
+          LucideIcons.megaphone,
+          size: 22,
+          color: c.textMuted.withValues(alpha: 0.35),
         ),
       ),
     );

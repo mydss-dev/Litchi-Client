@@ -116,24 +116,7 @@ class _DashboardPageState extends State<DashboardPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
-          if (ctrl.updateInfo != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _RevealIn(
-                child: UpdateBanner(
-                  info: ctrl.updateInfo!,
-                  onDismiss: ctrl.dismissUpdate,
-                ),
-              ),
-            ),
-          if (ctrl.notices.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _RevealIn(
-                child: NoticeCarousel(notices: ctrl.notices),
-              ),
-            ),
-          _DashboardAlerts(
+          _TopBanners(
             ctrl: ctrl,
             onConnectionRetry: _toggleConnection,
             onDataRetry: _handlePullRefresh,
@@ -186,10 +169,14 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-// ── Shared alert banner ──────────────────────────────────────────────────────
+// ── Top banner stack (update / notice / error) ─────────────────────────────
 
-class _DashboardAlerts extends StatelessWidget {
-  const _DashboardAlerts({
+/// Every transient banner on the dashboard — update prompt, notice carousel,
+/// and error alerts — lives here in one fixed top section. [AnimatedSize]
+/// animates the section's height as banners appear or clear, so the connection
+/// card below glides instead of snapping down when a banner loads.
+class _TopBanners extends StatelessWidget {
+  const _TopBanners({
     required this.ctrl,
     required this.onConnectionRetry,
     required this.onDataRetry,
@@ -201,7 +188,12 @@ class _DashboardAlerts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final alerts = <Widget>[
+    final banners = <Widget>[
+      if (ctrl.updateInfo != null)
+        UpdateBanner(info: ctrl.updateInfo!, onDismiss: ctrl.dismissUpdate),
+      // NoticeCarousel always renders: it shows a placeholder while loading,
+      // so its slot (and everything below it) stays put.
+      NoticeCarousel(notices: ctrl.notices),
       if (ctrl.connectionStatus == ConnectionStatus.error &&
           ctrl.coreError.isNotEmpty)
         ErrorBanner(
@@ -221,47 +213,23 @@ class _DashboardAlerts extends StatelessWidget {
         ),
     ];
 
-    if (alerts.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        children: [
-          for (var index = 0; index < alerts.length; index++) ...[
-            if (index > 0) const SizedBox(height: 8),
-            alerts[index],
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ── Startup reveal (fade-in) ────────────────────────────────────────────────
-
-/// Fades and slides its child in on first build, so the update banner and
-/// notice carousel appear smoothly on launch instead of popping in.
-class _RevealIn extends StatelessWidget {
-  const _RevealIn({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 420),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, (1 - value) * 14),
-            child: child,
-          ),
-        );
-      },
-      child: child,
+      alignment: Alignment.topCenter,
+      child: banners.isEmpty
+          ? const SizedBox(width: double.infinity, height: 0)
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                children: [
+                  for (var i = 0; i < banners.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    banners[i],
+                  ],
+                ],
+              ),
+            ),
     );
   }
 }
