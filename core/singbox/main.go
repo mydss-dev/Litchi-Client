@@ -5,7 +5,10 @@ package main
 */
 import "C"
 
-import "unsafe"
+import (
+	"fmt"
+	"unsafe"
+)
 
 func resultCode(err error) C.int {
 	if err != nil {
@@ -14,19 +17,31 @@ func resultCode(err error) C.int {
 	return 0
 }
 
+// capturePanic turns a Go panic on the cgo boundary into a returned error
+// instead of crashing the host process. Without this, any panic in sing-box's
+// start path (e.g. a missing wintun.dll or a TUN init failure) aborts the app.
+func capturePanic(code *C.int) {
+	if r := recover(); r != nil {
+		coreService.setError(fmt.Sprintf("panic: %v", r))
+		*code = -1
+	}
+}
+
 //export litchi_core_check_config
-func litchi_core_check_config(config *C.char, workDir *C.char) C.int {
+func litchi_core_check_config(config *C.char, workDir *C.char) (code C.int) {
 	if config == nil {
 		return resultCode(coreService.setError("config is required"))
 	}
+	defer capturePanic(&code)
 	return resultCode(coreService.check(C.GoString(config), cString(workDir)))
 }
 
 //export litchi_core_start
-func litchi_core_start(config *C.char, workDir *C.char) C.int {
+func litchi_core_start(config *C.char, workDir *C.char) (code C.int) {
 	if config == nil {
 		return resultCode(coreService.setError("config is required"))
 	}
+	defer capturePanic(&code)
 	return resultCode(coreService.start(C.GoString(config), cString(workDir)))
 }
 

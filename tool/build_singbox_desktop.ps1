@@ -34,7 +34,7 @@ if ($Target -eq "windows" -and -not $env:CC) {
     throw "A C compiler (gcc or clang) is required to build the sing-box DLL"
   }
 }
-$tags = "with_clash_api,with_quic,with_utls,with_wireguard"
+$tags = "with_clash_api,with_quic,with_utls,with_wireguard,with_gvisor"
 $library = Join-Path $output "litchi_singbox$extension"
 
 Push-Location $source
