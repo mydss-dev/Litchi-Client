@@ -214,8 +214,6 @@ class _PlanCardState extends State<_PlanCard> {
       BillingCycle.quarterly,
       BillingCycle.halfYear,
       BillingCycle.yearly,
-      BillingCycle.twoYears,
-      BillingCycle.threeYears,
     ];
   }
 
@@ -350,10 +348,10 @@ class _PlanCardState extends State<_PlanCard> {
             price: price,
             unit: _unit(context),
           ),
-          if (_availableCycles.isNotEmpty) ...[
+          if (_cycleOptions.isNotEmpty) ...[
             const SizedBox(height: 12),
             _CycleSelector(
-              cycles: _availableCycles,
+              cycles: _cycleOptions,
               enabledCycles: _availableCycles,
               selected: _cycle,
               onChanged: (cycle) => setState(() => _cycle = cycle),

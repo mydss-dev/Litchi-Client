@@ -769,11 +769,11 @@ class CoreController extends ChangeNotifier {
   /// dials the outbound each time, so a Reality node pays its full TLS handshake
   /// (~500ms for a US server) on top of TCP, reading ~3× higher than reality.
   ///
-  /// The cold group test still runs in parallel for two reasons: it verifies
-  /// each node can actually proxy end-to-end (a node whose Reality handshake is
-  /// broken still accepts TCP, so it must not be reported as fast), and it is
-  /// the only meaningful signal for UDP-only protocols (hysteria2/tuic) whose
-  /// servers have no TCP handshake to probe.
+  /// The cold group test still runs in parallel, but only as a *fallback* for
+  /// UDP-only protocols (hysteria2/tuic) whose servers have no TCP handshake to
+  /// probe. It must NOT gate the result: while a tunnel is up the core omits
+  /// non-active nodes from /group/{}/delay, and treating that omission as
+  /// "timeout" blanked out healthy nodes whenever the user was already connected.
   Future<Map<String, int>> _measureWarmLatencies(List<NodeModel> nodes) async {
     final coldFuture = ClashApiClient.testGroup(
       group: SingBoxConfig.selectorTag,
@@ -786,13 +786,10 @@ class CoreController extends ChangeNotifier {
     for (var i = 0; i < nodes.length; i++) {
       final node = nodes[i];
       final tag = SingBoxConfig.nodeTagFor(node);
-      if (!cold.containsKey(tag)) {
-        // Core could not proxy through this node — unusable regardless of how
-        // fast its TCP handshake is.
-        result[tag] = 9999;
-        continue;
-      }
-      result[tag] = tcpResults[i] ?? cold[tag]!;
+      // Warm TCP RTT wins when it exists; the cold group test only fills in
+      // when TCP can't probe the node (UDP-only). Otherwise it times out.
+      result[tag] = tcpResults[i] ??
+          (cold.containsKey(tag) ? cold[tag]! : 9999);
     }
     return result;
   }
