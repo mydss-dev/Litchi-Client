@@ -583,12 +583,13 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   void onWindowUnmaximize() => setState(() => _maximized = false);
 
   /// Close button / Alt+F4 behavior:
-  /// - Logged in with a usable tray icon → hide to tray (connection stays alive)
+  /// - Connected with a usable tray icon → hide to tray (connection stays alive)
   /// - Otherwise → full exit (no hidden window left behind an invisible icon)
   @override
   Future<void> onWindowClose() async {
     if (!_isDesktop) return;
-    if (_ctrl?.isAuthenticated == true && _trayReady) {
+    final connected = _ctrl?.connectionStatus == ConnectionStatus.connected;
+    if (_ctrl?.isAuthenticated == true && connected && _trayReady) {
       await windowManager.hide();
     } else {
       await _quit();

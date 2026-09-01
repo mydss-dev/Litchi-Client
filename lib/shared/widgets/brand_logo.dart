@@ -5,9 +5,10 @@ import '../services/brand_asset_cache.dart';
 
 /// Renders the session-stable cloud brand mark.
 ///
-/// A bundled remote logo is intentionally never used as a fallback: branded
-/// builds must not expose one customer's branding while another customer's
-/// cloud asset is loading.
+/// Resolution order: the runtime cloud logo, then the build-time bundled brand
+/// icon (`assets/images/app_icon.png`), then a gradient letter. The bundled
+/// icon is generated from the same signed config at build time, so it is the
+/// same customer's branding — not a different customer's.
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.size = 30, this.radius});
 
@@ -23,9 +24,20 @@ class BrandLogo extends StatelessWidget {
       child: SizedBox.square(
         dimension: size,
         child: file == null
-            ? _letterFallback(r)
+            ? _bundledFallback(r)
             : Image.file(file, fit: BoxFit.contain, gaplessPlayback: true),
       ),
+    );
+  }
+
+  /// Uses the build-time bundled brand icon, degrading to a gradient letter
+  /// only if that asset is somehow missing from the bundle.
+  Widget _bundledFallback(double r) {
+    return Image.asset(
+      'assets/images/app_icon.png',
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => _letterFallback(r),
     );
   }
 
