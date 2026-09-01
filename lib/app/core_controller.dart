@@ -14,6 +14,7 @@ import '../shared/services/proxy_setter.dart';
 import '../shared/services/clash_api_client.dart';
 import '../shared/services/sing_box_config.dart';
 import '../shared/services/sing_box_core_manager.dart';
+import '../shared/services/tcp_ping_service.dart';
 import '../shared/services/mixed_proxy_port_verifier.dart';
 import '../shared/services/secure_logger.dart';
 import '../shared/services/tun_interface_verifier.dart';
@@ -734,9 +735,9 @@ class CoreController extends ChangeNotifier {
     upBpsNotifier.value = 0;
   }
 
-  /// Coalesces concurrent callers onto a single /group/{}/delay so a double
-  /// tap (or a UI test + a background preload firing together) hits the core
-  /// only once.  Each caller maps the shared result onto its own node snapshot;
+  /// Coalesces concurrent callers onto a single latency pass so a double tap
+  /// (or a UI test + a background preload firing together) hits the core only
+  /// once.  Each caller maps the shared result onto its own node snapshot;
   /// AppController's runId guard discards stale UI updates.
   Future<void> testLatencies(
     List<NodeModel> nodes, {
@@ -744,7 +745,7 @@ class CoreController extends ChangeNotifier {
   }) async {
     if (nodes.isEmpty || !coreProcessRunning) return;
 
-    final history = await (_groupTestInFlight ??= _runGroupTest());
+    final history = await (_groupTestInFlight ??= _runGroupTest(nodes));
 
     for (var i = 0; i < nodes.length; i++) {
       final node = nodes[i];
@@ -754,15 +755,75 @@ class CoreController extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, int>> _runGroupTest() async {
+  Future<Map<String, int>> _runGroupTest(List<NodeModel> nodes) async {
     try {
-      return await ClashApiClient.testGroup(
-        group: SingBoxConfig.selectorTag,
-        apiPort: _apiPort,
-      );
+      return await _measureWarmLatencies(nodes);
     } finally {
       _groupTestInFlight = null;
     }
+  }
+
+  /// Reports a "warm" per-node latency: the TCP round-trip to the node server,
+  /// which matches what Clash / V2RayN show and the browsing latency users
+  /// actually feel (~RTT).  The core's own /group/{}/delay is *cold* — it re-
+  /// dials the outbound each time, so a Reality node pays its full TLS handshake
+  /// (~500ms for a US server) on top of TCP, reading ~3× higher than reality.
+  ///
+  /// The cold group test still runs in parallel for two reasons: it verifies
+  /// each node can actually proxy end-to-end (a node whose Reality handshake is
+  /// broken still accepts TCP, so it must not be reported as fast), and it is
+  /// the only meaningful signal for UDP-only protocols (hysteria2/tuic) whose
+  /// servers have no TCP handshake to probe.
+  Future<Map<String, int>> _measureWarmLatencies(List<NodeModel> nodes) async {
+    final coldFuture = ClashApiClient.testGroup(
+      group: SingBoxConfig.selectorTag,
+      apiPort: _apiPort,
+    );
+    final tcpResults = await Future.wait([for (final node in nodes) _tcpPingNode(node)]);
+    final cold = await coldFuture;
+
+    final result = <String, int>{};
+    for (var i = 0; i < nodes.length; i++) {
+      final node = nodes[i];
+      final tag = SingBoxConfig.nodeTagFor(node);
+      if (!cold.containsKey(tag)) {
+        // Core could not proxy through this node — unusable regardless of how
+        // fast its TCP handshake is.
+        result[tag] = 9999;
+        continue;
+      }
+      result[tag] = tcpResults[i] ?? cold[tag]!;
+    }
+    return result;
+  }
+
+  /// TCP round-trip to a node's server, or null when it has no single usable
+  /// port to probe (UDP-only protocols, or `server_ports` ranges).
+  static Future<int?> _tcpPingNode(NodeModel node) async {
+    final outbound = node.rawOutbound;
+    if (outbound == null) return null;
+    final server = '${outbound['server'] ?? ''}'.trim();
+    final port = _probePort(outbound);
+    if (server.isEmpty || port == null) return null;
+    return TcpPingService.ping(server, port);
+  }
+
+  static int? _probePort(Map<String, dynamic> outbound) {
+    final port = outbound['server_port'];
+    if (port is num && port > 0 && port <= 65535) return port.toInt();
+    final ranges = outbound['server_ports'];
+    if (ranges is List && ranges.isNotEmpty) {
+      final first = ranges.first;
+      if (first is num) {
+        final value = first.toInt();
+        if (value > 0 && value <= 65535) return value;
+      }
+      if (first is String) {
+        final parsed = int.tryParse(first.split('-').first.trim());
+        if (parsed != null && parsed > 0 && parsed <= 65535) return parsed;
+      }
+    }
+    return null;
   }
 
   Future<void> _applyInitialSelection(CoreConnectionRequest req) async {

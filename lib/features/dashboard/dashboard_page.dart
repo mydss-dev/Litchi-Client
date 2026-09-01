@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
@@ -594,11 +595,14 @@ class _MobilePowerButton extends StatefulWidget {
 }
 
 class _MobilePowerButtonState extends State<_MobilePowerButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _pulseController;
+  late final AnimationController _chargeController;
+  late final AnimationController _successController;
   bool _pressed = false;
 
   bool get _connected => widget.status == ConnectionStatus.connected;
+  bool get _connecting => widget.status == ConnectionStatus.connecting;
   bool get _transitioning =>
       widget.status == ConnectionStatus.connecting ||
       widget.status == ConnectionStatus.disconnecting;
@@ -611,13 +615,27 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
       vsync: this,
       duration: const Duration(milliseconds: 1150),
     );
+    _chargeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _successController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 720),
+    );
     _syncPulse();
+    _syncCharge();
   }
 
   @override
   void didUpdateWidget(covariant _MobilePowerButton oldWidget) {
     super.didUpdateWidget(oldWidget);
     _syncPulse();
+    _syncCharge();
+    // Fire the success burst once when we land on "connected".
+    if (_connected && oldWidget.status != ConnectionStatus.connected) {
+      _successController.forward(from: 0);
+    }
   }
 
   void _syncPulse() {
@@ -630,9 +648,20 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
     }
   }
 
+  void _syncCharge() {
+    if (_connecting && !_chargeController.isAnimating) {
+      _chargeController.repeat();
+    } else if (!_connecting && _chargeController.isAnimating) {
+      _chargeController.stop();
+      _chargeController.value = 0;
+    }
+  }
+
   @override
   void dispose() {
     _pulseController.dispose();
+    _chargeController.dispose();
+    _successController.dispose();
     super.dispose();
   }
 
@@ -656,6 +685,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
         height: 148,
         child: Stack(
           alignment: Alignment.center,
+          clipBehavior: Clip.none,
           children: [
             if (_shouldPulse)
               AnimatedBuilder(
@@ -675,62 +705,137 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                   );
                 },
               ),
-            AnimatedScale(
-              duration: const Duration(milliseconds: 170),
-              curve: Curves.easeOutCubic,
-              scale: widget.disabled ? 0.96 : (_pressed ? 0.92 : 1),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 320),
+            // Success glow + radiating rings, behind the button.
+            AnimatedBuilder(
+              animation: _successController,
+              builder: (context, _) => _buildSuccessBurst(c),
+            ),
+            AnimatedBuilder(
+              animation: _successController,
+              builder: (context, child) {
+                final t = _successController.value;
+                return Transform.scale(
+                  scale: 1 + 0.07 * math.sin(t * math.pi),
+                  child: child,
+                );
+              },
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 170),
                 curve: Curves.easeOutCubic,
-                width: 124,
-                height: 124,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: _connected ? c.brandGradient : null,
-                  color: _connected ? null : c.surfaceMuted,
-                  boxShadow: _connected
-                      ? AppShadows.powerButton
-                      : AppShadows.soft(c),
-                  border: Border.all(
-                    color: _connected
-                        ? Colors.white.withValues(alpha: 0.3)
-                        : c.border,
-                  ),
-                ),
-                child: Center(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 240),
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: ScaleTransition(
-                        scale: Tween<double>(
-                          begin: 0.88,
-                          end: 1,
-                        ).animate(animation),
-                        child: child,
-                      ),
+                scale: widget.disabled ? 0.96 : (_pressed ? 0.92 : 1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                  width: 124,
+                  height: 124,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: _connected ? c.brandGradient : null,
+                    color: _connected ? null : c.surfaceMuted,
+                    boxShadow: _connected
+                        ? AppShadows.powerButton
+                        : AppShadows.soft(c),
+                    border: Border.all(
+                      color: _connected
+                          ? Colors.white.withValues(alpha: 0.3)
+                          : c.border,
                     ),
-                    child: _transitioning
-                        ? SizedBox(
-                            key: ValueKey(widget.status),
-                            width: 42,
-                            height: 42,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
+                  ),
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 240),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(
+                          scale: Tween<double>(
+                            begin: 0.88,
+                            end: 1,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      ),
+                      child: _transitioning
+                          ? _ChargingRing(
+                              key: ValueKey(widget.status),
+                              turns: _chargeController,
                               color: pulseColor,
+                            )
+                          : Icon(
+                              LucideIcons.power,
+                              key: ValueKey(widget.status),
+                              size: 42,
+                              color: _connected ? Colors.white : c.primary,
                             ),
-                          )
-                        : Icon(
-                            LucideIcons.power,
-                            key: ValueKey(widget.status),
-                            size: 42,
-                            color: _connected ? Colors.white : c.primary,
-                          ),
+                    ),
                   ),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccessBurst(AppColors c) {
+    final t = _successController.value;
+    if (t <= 0 || t >= 1) return const SizedBox.shrink();
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 124 + 24 * t,
+          height: 124 + 24 * t,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: c.success.withValues(alpha: 0.20 * (1 - t)),
+          ),
+        ),
+        for (var i = 0; i < 2; i++) _successRing(c, t, i),
+      ],
+    );
+  }
+
+  Widget _successRing(AppColors c, double t, int i) {
+    final progress = ((t - i * 0.10) / 0.90).clamp(0.0, 1.0);
+    if (progress <= 0 || progress >= 1) return const SizedBox.shrink();
+    final size = 124 + progress * 44;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: c.success.withValues(alpha: 0.45 * (1 - progress)),
+          width: 2,
+        ),
+      ),
+    );
+  }
+}
+
+class _ChargingRing extends StatelessWidget {
+  const _ChargingRing({
+    super.key,
+    required this.turns,
+    required this.color,
+  });
+
+  final Animation<double> turns;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: turns,
+      child: SizedBox(
+        width: 46,
+        height: 46,
+        child: CircularProgressIndicator(
+          value: 0.33,
+          strokeWidth: 3,
+          strokeCap: StrokeCap.round,
+          color: color,
         ),
       ),
     );

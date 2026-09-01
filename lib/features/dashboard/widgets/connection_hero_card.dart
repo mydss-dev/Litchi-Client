@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -327,8 +329,10 @@ class _PowerButton extends StatefulWidget {
 }
 
 class _PowerButtonState extends State<_PowerButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _pulseController;
+  late final AnimationController _chargeController;
+  late final AnimationController _successController;
   bool _pressed = false;
 
   @override
@@ -338,18 +342,34 @@ class _PowerButtonState extends State<_PowerButton>
       vsync: this,
       duration: const Duration(milliseconds: 1150),
     );
+    _chargeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _successController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 720),
+    );
     _syncPulse();
+    _syncCharge();
   }
 
   @override
   void didUpdateWidget(covariant _PowerButton oldWidget) {
     super.didUpdateWidget(oldWidget);
     _syncPulse();
+    _syncCharge();
+    // Fire the success burst once when we land on "connected".
+    if (_isConnected && oldWidget.status != ConnectionStatus.connected) {
+      _successController.forward(from: 0);
+    }
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _chargeController.dispose();
+    _successController.dispose();
     super.dispose();
   }
 
@@ -360,6 +380,15 @@ class _PowerButtonState extends State<_PowerButton>
     } else if (!shouldPulse && _pulseController.isAnimating) {
       _pulseController.stop();
       _pulseController.value = 0;
+    }
+  }
+
+  void _syncCharge() {
+    if (_isConnecting && !_chargeController.isAnimating) {
+      _chargeController.repeat();
+    } else if (!_isConnecting && _chargeController.isAnimating) {
+      _chargeController.stop();
+      _chargeController.value = 0;
     }
   }
 
@@ -390,6 +419,7 @@ class _PowerButtonState extends State<_PowerButton>
           height: 126,
           child: Stack(
             alignment: Alignment.center,
+            clipBehavior: Clip.none,
             children: [
               if (_shouldPulse)
                 AnimatedBuilder(
@@ -409,80 +439,97 @@ class _PowerButtonState extends State<_PowerButton>
                     );
                   },
                 ),
-              AnimatedScale(
-                duration: const Duration(milliseconds: 170),
-                curve: Curves.easeOutCubic,
-                scale: _isDisabled ? 0.96 : (_pressed ? 0.92 : 1.0),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 320),
+              // Success glow + radiating rings, behind the button so they read
+              // as emanating from its edge.
+              AnimatedBuilder(
+                animation: _successController,
+                builder: (context, _) => _buildSuccessBurst(c),
+              ),
+              AnimatedBuilder(
+                animation: _successController,
+                builder: (context, child) {
+                  final t = _successController.value;
+                  // Elastic "pop" on success: 1 → ~1.07 → 1.
+                  return Transform.scale(
+                    scale: 1 + 0.07 * math.sin(t * math.pi),
+                    child: child,
+                  );
+                },
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 170),
                   curve: Curves.easeOutCubic,
-                  width: 104,
-                  height: 104,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: _isConnected ? AppPalette.brandGradient : null,
-                    color: _isConnected ? null : c.surfaceMuted,
-                    border: _isConnected || _isTransitioning
-                        ? null
-                        : Border.all(color: c.primary.withValues(alpha: 0.14)),
-                    boxShadow: _isConnected
-                        ? AppShadows.powerButton
-                        : [
-                            BoxShadow(
-                              color: c.primary.withValues(
-                                alpha: _isTransitioning ? 0.16 : 0.08,
-                              ),
-                              blurRadius: _isTransitioning ? 26 : 18,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                  ),
+                  scale: _isDisabled ? 0.96 : (_pressed ? 0.92 : 1.0),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 260),
+                    duration: const Duration(milliseconds: 320),
                     curve: Curves.easeOutCubic,
-                    margin: const EdgeInsets.all(6),
+                    width: 104,
+                    height: 104,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: _isConnected
-                            ? Colors.white.withValues(alpha: 0.72)
-                            : c.cardBg.withValues(alpha: 0.72),
-                        width: 3,
-                      ),
-                    ),
-                    child: Center(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 240),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: ScaleTransition(
-                              scale: Tween<double>(
-                                begin: 0.88,
-                                end: 1,
-                              ).animate(animation),
-                              child: child,
+                      gradient: _isConnected ? AppPalette.brandGradient : null,
+                      color: _isConnected ? null : c.surfaceMuted,
+                      border: _isConnected || _isTransitioning
+                          ? null
+                          : Border.all(
+                              color: c.primary.withValues(alpha: 0.14),
                             ),
-                          );
-                        },
-                        child: _isTransitioning
-                            ? SizedBox(
-                                key: ValueKey(widget.status),
-                                width: 42,
-                                height: 42,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  color: progressColor,
+                      boxShadow: _isConnected
+                          ? AppShadows.powerButton
+                          : [
+                              BoxShadow(
+                                color: c.primary.withValues(
+                                  alpha: _isTransitioning ? 0.16 : 0.08,
                                 ),
-                              )
-                            : Icon(
-                                LucideIcons.power,
-                                key: ValueKey(widget.status),
-                                size: 40,
-                                color: _isConnected ? Colors.white : c.primary,
+                                blurRadius: _isTransitioning ? 26 : 18,
+                                offset: const Offset(0, 8),
                               ),
+                            ],
+                    ),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 260),
+                      curve: Curves.easeOutCubic,
+                      margin: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _isConnected
+                              ? Colors.white.withValues(alpha: 0.72)
+                              : c.cardBg.withValues(alpha: 0.72),
+                          width: 3,
+                        ),
+                      ),
+                      child: Center(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 240),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          transitionBuilder: (child, animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: ScaleTransition(
+                                scale: Tween<double>(
+                                  begin: 0.88,
+                                  end: 1,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: _isTransitioning
+                              ? _ChargingRing(
+                                  key: ValueKey(widget.status),
+                                  turns: _chargeController,
+                                  color: progressColor,
+                                )
+                              : Icon(
+                                  LucideIcons.power,
+                                  key: ValueKey(widget.status),
+                                  size: 40,
+                                  color: _isConnected
+                                      ? Colors.white
+                                      : c.primary,
+                                ),
+                        ),
                       ),
                     ),
                   ),
@@ -490,6 +537,70 @@ class _PowerButtonState extends State<_PowerButton>
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccessBurst(AppColors c) {
+    final t = _successController.value;
+    if (t <= 0 || t >= 1) return const SizedBox.shrink();
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 104 + 24 * t,
+          height: 104 + 24 * t,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: c.success.withValues(alpha: 0.20 * (1 - t)),
+          ),
+        ),
+        for (var i = 0; i < 2; i++) _successRing(c, t, i),
+      ],
+    );
+  }
+
+  Widget _successRing(AppColors c, double t, int i) {
+    final progress = ((t - i * 0.10) / 0.90).clamp(0.0, 1.0);
+    if (progress <= 0 || progress >= 1) return const SizedBox.shrink();
+    final size = 104 + progress * 56;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: c.success.withValues(alpha: 0.45 * (1 - progress)),
+          width: 2,
+        ),
+      ),
+    );
+  }
+}
+
+class _ChargingRing extends StatelessWidget {
+  const _ChargingRing({
+    super.key,
+    required this.turns,
+    required this.color,
+  });
+
+  final Animation<double> turns;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: turns,
+      child: SizedBox(
+        width: 46,
+        height: 46,
+        child: CircularProgressIndicator(
+          value: 0.33,
+          strokeWidth: 3,
+          strokeCap: StrokeCap.round,
+          color: color,
         ),
       ),
     );
