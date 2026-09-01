@@ -178,7 +178,7 @@ abstract final class UpdateService {
       await downloadDir.create(recursive: true);
       file = File(
         '${downloadDir.path}${Platform.pathSeparator}'
-        '$installerPrefix-Setup-$safeVersion$ext',
+        '$installerPrefix-$safeVersion$ext',
       );
       output = file.openWrite(mode: FileMode.writeOnly);
 

@@ -17,7 +17,7 @@
   #define MyOutputDir "installer_output"
 #endif
 #ifndef MyOutputBaseFilename
-  #define MyOutputBaseFilename MyAppName + "-Setup-" + MyAppVersion
+  #define MyOutputBaseFilename MyAppName + "-" + MyAppVersion
 #endif
 
 [Setup]

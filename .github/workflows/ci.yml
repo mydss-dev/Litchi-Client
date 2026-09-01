@@ -164,14 +164,14 @@ jobs:
           $appName = if ($env:APP_NAME) { $env:APP_NAME } else { 'Litchi' }
           $appSlug = if ($env:APP_SLUG) { $env:APP_SLUG } else { 'Litchi' }
           $publisher = $appName
-          $setupName = "$appSlug-Setup-$version.exe"
+          $setupName = "$appSlug-$version.exe"
           Write-Host "Building installer: $appName $version"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             /DMyAppVersion=$version `
             "/DMyAppName=$appName" `
             "/DMyAppPublisher=$publisher" `
             "/DMyAppExeName=$env:WINDOWS_EXE_NAME" `
-            "/DMyOutputBaseFilename=$appSlug-Setup-$version" `
+            "/DMyOutputBaseFilename=$appSlug-$version" `
             litchi_setup.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host "Installer ready: installer_output\$setupName"

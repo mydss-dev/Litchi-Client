@@ -167,7 +167,7 @@ void main() {
       final ext = Platform.isWindows ? '.exe' : '.dmg';
       final file = File(
         '${Directory.systemTemp.path}${Platform.pathSeparator}'
-        'Client-Setup-hash-mismatch-test$ext',
+        'Client-hash-mismatch-test$ext',
       );
       if (await file.exists()) await file.delete();
 
