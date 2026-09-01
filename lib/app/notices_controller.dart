@@ -28,7 +28,7 @@ class NoticesController extends ChangeNotifier {
   Future<void> loadCached() async {
     final cached = await NoticeCacheService.load();
     if (cached.isEmpty || _notices.isNotEmpty) return;
-    _notices = cached;
+    _notices = _newestFirst(cached);
     notifyListeners();
   }
 
@@ -41,7 +41,7 @@ class NoticesController extends ChangeNotifier {
   }
 
   void setNotices(List<NoticeModel> notices) {
-    _notices = notices;
+    _notices = _newestFirst(notices);
     _isLoading = false;
     notifyListeners();
   }
@@ -60,5 +60,22 @@ class NoticesController extends ChangeNotifier {
     _notices = [];
     _isLoading = false;
     notifyListeners();
+  }
+
+  /// Orders notices newest-first (highest id first).
+  ///
+  /// The panel returns announcements in ascending-id order (oldest first), but
+  /// the carousel shows `notices[0]` first and the unread badge treats
+  /// `notices.first` as the newest, so the list is re-ordered on the way in.
+  /// Sorted here (rather than at the API boundary) so the invariant holds for
+  /// both the fresh-fetch and cached-load paths.
+  static List<NoticeModel> _newestFirst(List<NoticeModel> notices) {
+    final sorted = List<NoticeModel>.of(notices);
+    sorted.sort((a, b) {
+      final byId = b.id.compareTo(a.id);
+      if (byId != 0) return byId;
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    return sorted;
   }
 }
