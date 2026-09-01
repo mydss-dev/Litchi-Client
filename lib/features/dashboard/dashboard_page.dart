@@ -191,9 +191,6 @@ class _TopBanners extends StatelessWidget {
     final banners = <Widget>[
       if (ctrl.updateInfo != null)
         UpdateBanner(info: ctrl.updateInfo!, onDismiss: ctrl.dismissUpdate),
-      // NoticeCarousel always renders: it shows a placeholder while loading,
-      // so its slot (and everything below it) stays put.
-      NoticeCarousel(notices: ctrl.notices),
       if (ctrl.connectionStatus == ConnectionStatus.error &&
           ctrl.coreError.isNotEmpty)
         ErrorBanner(
@@ -211,6 +208,9 @@ class _TopBanners extends StatelessWidget {
           onRetry: onDataRetry,
           warning: true,
         ),
+      // NoticeCarousel always renders: it shows a placeholder while loading,
+      // so its slot (and everything below it) stays put.
+      NoticeCarousel(notices: ctrl.notices),
     ];
 
     return AnimatedSize(
