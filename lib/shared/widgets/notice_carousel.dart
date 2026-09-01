@@ -425,3 +425,75 @@ class NoticeDetailDialog extends StatelessWidget {
     );
   }
 }
+
+/// Must-read popup shown once on login for notices tagged `弹窗`. Unlike
+/// [NoticeDetailDialog] it cannot be dismissed by tapping outside or pressing
+/// back — the user must tap the confirm button, after which the caller records
+/// the notice id as seen.
+class NoticePopupDialog extends StatelessWidget {
+  const NoticePopupDialog({super.key, required this.notice});
+
+  final NoticeModel notice;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        backgroundColor: c.cardBg,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: BorderSide(color: c.softBorder),
+        ),
+        title: Row(
+          children: [
+            Icon(LucideIcons.megaphone, size: 18, color: c.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                notice.title,
+                style: AppTextStyles.bodyStrong.copyWith(
+                  color: c.textPrimary,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 440,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  notice.dateDisplay,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  notice.content,
+                  style: AppTextStyles.body.copyWith(
+                    color: c.textSecondary,
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              context.l10n.gotIt,
+              style: AppTextStyles.button.copyWith(color: c.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -11,6 +11,7 @@ import '../shared/services/settings_service.dart';
 class NoticesController extends ChangeNotifier {
   List<NoticeModel> _notices = [];
   int _lastSeenNoticeId = 0;
+  Set<int> _seenPopupIds = {};
   bool _isLoading = false;
 
   List<NoticeModel> get notices => _notices;
@@ -18,9 +19,15 @@ class NoticesController extends ChangeNotifier {
   bool get hasUnreadNotice =>
       _notices.isNotEmpty && _notices.first.id > _lastSeenNoticeId;
 
-  /// Loads the persisted last-seen id. Call once during app init.
+  /// Must-read notices (tagged `弹窗`) the user has not dismissed yet.
+  List<NoticeModel> get pendingPopups => _notices
+      .where((n) => n.isPopup && !_seenPopupIds.contains(n.id))
+      .toList();
+
+  /// Loads persisted seen-state. Call once during app init.
   Future<void> loadLastSeen() async {
     _lastSeenNoticeId = await SettingsService.loadLastSeenNoticeId();
+    _seenPopupIds = await SettingsService.loadSeenPopupNoticeIds();
   }
 
   /// Pre-populates the banner from the previous fetch's cache. Does nothing
@@ -52,6 +59,14 @@ class NoticesController extends ChangeNotifier {
     if (_notices.isEmpty) return;
     _lastSeenNoticeId = _notices.first.id;
     SettingsService.setLastSeenNoticeId(_lastSeenNoticeId);
+    notifyListeners();
+  }
+
+  /// Records [id] as a dismissed popup so it is never shown again.
+  void markPopupSeen(int id) {
+    if (_seenPopupIds.contains(id)) return;
+    _seenPopupIds.add(id);
+    SettingsService.saveSeenPopupNoticeIds(_seenPopupIds);
     notifyListeners();
   }
 

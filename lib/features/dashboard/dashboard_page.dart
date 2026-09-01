@@ -46,11 +46,13 @@ class _DashboardPageState extends State<DashboardPage> {
   // rebuilding the whole page 60x/minute while connected. ctrl-driven changes
   // (status, data) still rebuild the page via AppScope (InheritedNotifier).
   final ValueNotifier<int> _tick = ValueNotifier<int>(0);
+  bool _showingPopups = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncTimer();
+    _scheduleNoticePopups();
   }
 
   @override
@@ -109,6 +111,34 @@ class _DashboardPageState extends State<DashboardPage> {
     await ctrl.refreshData();
     if (!mounted || ctrl.dataLoadError != null) return;
     AppToast.show(context, context.l10n.refreshed, type: AppToastType.success);
+  }
+
+  /// Surfaces unseen must-read notices (tagged `弹窗`) as a modal, one after
+  /// another. Runs on every controller notify; `_showingPopups` guards against
+  /// re-entry while a dialog is up, and marking each id seen keeps the next
+  /// rebuild from re-triggering.
+  void _scheduleNoticePopups() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _showingPopups) return;
+      final ctrl = AppScope.of(context);
+      if (ctrl.pendingNoticePopups.isEmpty) return;
+      _showingPopups = true;
+      _showNoticePopups(ctrl).whenComplete(() => _showingPopups = false);
+    });
+  }
+
+  Future<void> _showNoticePopups(AppController ctrl) async {
+    final pending = ctrl.pendingNoticePopups.toList();
+    for (final notice in pending) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => NoticePopupDialog(notice: notice),
+      );
+      if (!mounted) return;
+      ctrl.markNoticePopupSeen(notice.id);
+    }
   }
 
   @override

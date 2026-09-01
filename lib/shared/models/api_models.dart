@@ -886,6 +886,7 @@ class NoticeModel {
   final String title;
   final String content; // may contain HTML markup
   final String? imgUrl;
+  final List<String> tags; // e.g. ['弹窗'] marks a must-read popup
   final int createdAt; // unix timestamp (seconds)
 
   const NoticeModel({
@@ -893,6 +894,7 @@ class NoticeModel {
     required this.title,
     required this.content,
     this.imgUrl,
+    this.tags = const [],
     required this.createdAt,
   });
 
@@ -901,6 +903,8 @@ class NoticeModel {
     title: json['title']?.toString() ?? '',
     content: json['content']?.toString() ?? '',
     imgUrl: json['img_url']?.toString(),
+    tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
+        const [],
     createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
   );
 
@@ -909,8 +913,12 @@ class NoticeModel {
     'title': title,
     'content': content,
     'img_url': imgUrl,
+    'tags': tags,
     'created_at': createdAt,
   };
+
+  /// True when this notice is flagged as a must-read popup (tag `弹窗`).
+  bool get isPopup => tags.contains('弹窗');
 
   String get dateDisplay {
     if (createdAt == 0) return '—';

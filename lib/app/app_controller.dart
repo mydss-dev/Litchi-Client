@@ -276,12 +276,17 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get noticesLoading => _notices.isLoading;
   bool get hasUnreadNotice => _notices.hasUnreadNotice;
 
+  /// Unseen must-read notices (tagged `弹窗`) to surface as popups.
+  List<NoticeModel> get pendingNoticePopups => _notices.pendingPopups;
+
   void dismissUpdate() {
     _updateInfo = null;
     notifyListeners();
   }
 
   void markNoticeRead() => _notices.markRead();
+
+  void markNoticePopupSeen(int id) => _notices.markPopupSeen(id);
 
   Future<void> init() async {
     await _settings.load();

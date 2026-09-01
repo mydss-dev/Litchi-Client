@@ -133,6 +133,22 @@ abstract final class SettingsService {
   static void setLastSeenNoticeId(int id) => SharedPreferences.getInstance()
       .then((p) => p.setInt(_key('last_seen_notice_id'), id));
 
+  static Future<Set<int>> loadSeenPopupNoticeIds() async {
+    final p = await SharedPreferences.getInstance();
+    return (p.getStringList(_key('seen_popup_notice_ids')) ?? [])
+        .map(int.tryParse)
+        .whereType<int>()
+        .toSet();
+  }
+
+  static void saveSeenPopupNoticeIds(Set<int> ids) =>
+      SharedPreferences.getInstance().then(
+        (p) => p.setStringList(
+          _key('seen_popup_notice_ids'),
+          ids.map((e) => e.toString()).toList(),
+        ),
+      );
+
   static Future<Set<String>> loadFavorites() async {
     final p = await SharedPreferences.getInstance();
     return (p.getStringList(_key('node_favorites')) ?? []).toSet();
