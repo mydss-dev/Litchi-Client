@@ -42,10 +42,11 @@ abstract final class AppConfig {
 
   // ── Brand ──────────────────────────────────────────────────────────────────
 
-  /// Runtime branding comes only from the trusted signed remote config.
-  /// These defaults are used only before a trusted config is available.
+  /// Runtime branding (name + avatar) comes only from the trusted signed
+  /// remote config. The brand logo is baked in at build time, so it is not
+  /// parsed here. These defaults are used only before a trusted config is
+  /// available.
   static String appName = 'Litchi';
-  static String logoUrl = '';
   static String avatarUrl = '';
 
   // Keep a usable blue→purple fallback even when OSS is unavailable or an
@@ -89,7 +90,6 @@ abstract final class AppConfig {
     }
 
     _str(json, 'app_name', (v) => appName = v);
-    _url(json, 'logo_url', (v) => logoUrl = v);
     _url(json, 'avatar_url', (v) => avatarUrl = v);
     _firstUrl(json, [
       'invite_url_base',
@@ -114,7 +114,6 @@ abstract final class AppConfig {
     panelType.configValue,
     panelFeatures.fingerprint,
     appName,
-    logoUrl,
     avatarUrl,
     inviteUrlBase,
     updatesEnabled,
