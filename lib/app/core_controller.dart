@@ -38,6 +38,7 @@ class CoreController extends ChangeNotifier {
   StreamSubscription<AndroidCoreStatusEvent>? _androidStatusSub;
 
   DateTime? _connectedAt;
+  DateTime? _connectingStartedAt;
   ConnectionStatus _status = ConnectionStatus.disconnected;
   String _coreError = '';
   int _apiPort = SingBoxConfig.defaultApiPort;
@@ -344,6 +345,20 @@ class CoreController extends ChangeNotifier {
     }
   }
 
+  /// Keeps the UI in "connecting" for at least ~1.5s so the power-button halo
+  /// has time to spin before flipping to "connected". Core setup itself is not
+  /// delayed — only the visible state transition, which otherwise completes in
+  /// tens of milliseconds and reads as an abrupt instant switch.
+  Future<void> _holdConnectingMinimum() async {
+    final started = _connectingStartedAt;
+    if (started == null) return;
+    const minDuration = Duration(milliseconds: 1500);
+    final remaining = minDuration - DateTime.now().difference(started);
+    if (remaining > Duration.zero) {
+      await Future<void>.delayed(remaining);
+    }
+  }
+
   Future<String?> _toggleConnection(CoreConnectionRequest req) async {
     _ensureApiSecret();
     if (Platform.isAndroid) return _toggleAndroidConnection(req);
@@ -379,6 +394,7 @@ class CoreController extends ChangeNotifier {
 
     if (_core.isRunning && req.networkMode == NetworkMode.system) {
       _status = ConnectionStatus.connecting;
+      _connectingStartedAt = DateTime.now();
       _coreError = '';
       notifyListeners();
       try {
@@ -400,6 +416,7 @@ class CoreController extends ChangeNotifier {
           return _coreError;
         }
         await ProxySetter.enable(port: _activeProxyPort);
+        await _holdConnectingMinimum();
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
         _startTrafficMonitor();
@@ -438,6 +455,7 @@ class CoreController extends ChangeNotifier {
     }
 
     _status = ConnectionStatus.connecting;
+    _connectingStartedAt = DateTime.now();
     _coreError = '';
     notifyListeners();
 
@@ -509,6 +527,7 @@ class CoreController extends ChangeNotifier {
           await ProxySetter.enable(port: _activeProxyPort);
         }
         _activeNetworkMode = req.networkMode;
+        await _holdConnectingMinimum();
         _connectedAt = DateTime.now();
         _coreError = '';
         _status = ConnectionStatus.connected;
