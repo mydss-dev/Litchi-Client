@@ -156,19 +156,22 @@ jobs:
         shell: pwsh
         env:
           APP_NAME: ${{ steps.branding.outputs.app_name }}
+          APP_SLUG: ${{ steps.branding.outputs.app_slug }}
           WINDOWS_EXE_NAME: ${{ steps.branding.outputs.windows_exe_name }}
         run: |
           $version = "${{ github.ref_name }}" -replace '^v', ''
           if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "0.0.0" }
           $appName = if ($env:APP_NAME) { $env:APP_NAME } else { 'Litchi' }
+          $appSlug = if ($env:APP_SLUG) { $env:APP_SLUG } else { 'Litchi' }
           $publisher = $appName
-          $setupName = "$appName-Setup-$version.exe"
+          $setupName = "$appSlug-Setup-$version.exe"
           Write-Host "Building installer: $appName $version"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" `
             /DMyAppVersion=$version `
             "/DMyAppName=$appName" `
             "/DMyAppPublisher=$publisher" `
             "/DMyAppExeName=$env:WINDOWS_EXE_NAME" `
+            "/DMyOutputBaseFilename=$appSlug-Setup-$version" `
             litchi_setup.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Write-Host "Installer ready: installer_output\$setupName"
@@ -389,19 +392,20 @@ jobs:
 
       - name: Rename APK
         run: |
-          app_name="${{ steps.branding.outputs.app_name }}"
-          app_name="${app_name:-Litchi}"
+          app_slug="${{ steps.branding.outputs.app_slug }}"
+          app_slug="${app_slug:-Litchi}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
           cp "$RUNNER_TEMP/android-universal.apk" \
-             "build/app/outputs/flutter-apk/$app_name $version.apk"
+             "build/app/outputs/flutter-apk/$app_slug-$version.apk"
           mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
-             "build/app/outputs/flutter-apk/$app_name $version arm64.apk"
-          rm -f build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+             "build/app/outputs/flutter-apk/$app_slug-$version-arm64.apk"
+          rm -f build/app/outputs/flutter-apk/app-release.apk \
+                build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
                 build/app/outputs/flutter-apk/app-x86_64-release.apk
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             cp build/app/outputs/bundle/release/app-release.aab \
-              "build/app/outputs/flutter-apk/$app_name $version.aab"
+              "build/app/outputs/flutter-apk/$app_slug-$version.aab"
           fi
 
       - name: Upload APK artifact
@@ -537,11 +541,11 @@ jobs:
       - name: Build DMG
         run: |
           app="build/macos/Build/Products/Release/Client.app"
-          app_name="${{ steps.branding.outputs.app_name }}"
-          app_name="${app_name:-Litchi}"
+          app_slug="${{ steps.branding.outputs.app_slug }}"
+          app_slug="${app_slug:-Litchi}"
           version="${GITHUB_REF_NAME#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then version="0.0.0"; fi
-          dmg="$app_name $version.dmg"
+          dmg="$app_slug-$version.dmg"
           rm -rf dmg-stage && mkdir -p dmg-stage
           cp -R "$app" dmg-stage/
           ln -s /Applications dmg-stage/Applications

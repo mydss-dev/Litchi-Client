@@ -28,6 +28,7 @@ Future<void> main(List<String> args) async {
   }
 
   final appName = _string(payload['app_name'], fallback: 'Litchi');
+  final appSlug = _slug(appName);
   final windowsExeName = '${sanitizeWindowsExecutableBaseName(appName)}.exe';
   final logo = _string(payload['logo_url']);
 
@@ -35,6 +36,7 @@ Future<void> main(List<String> args) async {
   stdout.writeln('App name: $appName');
   stdout.writeln('Logo: ${logo.isEmpty ? '(empty)' : logo}');
   _writeGitHubOutput('app_name', appName);
+  _writeGitHubOutput('app_slug', appSlug);
   _writeGitHubOutput('windows_exe_name', windowsExeName);
 
   await _writeAndroidName(appName);
@@ -233,6 +235,19 @@ Future<void> _writeWindowsName(String appName, String executableName) async {
 
   await file.writeAsString(text);
   stdout.writeln('Windows product metadata updated.');
+}
+
+/// URL/file-safe slug for release filenames: whitespace collapses to a hyphen,
+/// so download URLs never contain %20 and names stay consistent across
+/// platforms. Non-ASCII (e.g. CJK brand names) is preserved.
+String _slug(String appName) {
+  final slug = appName
+      .trim()
+      .replaceAll(RegExp(r'\s+'), '-')
+      .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '')
+      .replaceAll(RegExp(r'-+'), '-')
+      .replaceAll(RegExp(r'^-|-$'), '');
+  return slug.isEmpty ? 'Litchi' : slug;
 }
 
 String sanitizeWindowsExecutableBaseName(String appName) {

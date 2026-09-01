@@ -5,6 +5,7 @@ from __future__ import annotations
 import mimetypes
 import os
 from pathlib import Path
+import re
 import sys
 import urllib.parse
 from urllib.parse import quote
@@ -18,12 +19,58 @@ from botocore.config import Config
 # independent update-manifest key.
 ROOT_MANIFESTS = {"config.json", "update.json"}
 
+# Keep this many release versions' installers in R2. Older ones are deleted
+# after each upload so the bucket doesn't grow without bound.
+KEEP_RELEASES = 3
+
 
 def required_env(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
         raise RuntimeError(f"Missing {name}")
     return value
+
+
+def cleanup_old_releases(client, bucket: str, keep: int = KEEP_RELEASES) -> None:
+    """Delete package objects older than the newest `keep` versions.
+
+    R2 has a finite quota; without this, every tagged release leaves its
+    installers behind forever. The newest `keep` versions are retained so a
+    client mid-upgrade can still finish downloading an older-but-recent package.
+    """
+    paginator = client.get_paginator("list_objects_v2")
+    versioned = []  # (version_tuple, key)
+    for page in paginator.paginate(Bucket=bucket):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            name = key.rsplit("/", 1)[-1]
+            if name in ROOT_MANIFESTS:
+                continue
+            match = re.search(r"(\d+)\.(\d+)\.(\d+)", name)
+            if not match:
+                continue
+            version = tuple(int(part) for part in match.groups())
+            versioned.append((version, key))
+
+    if not versioned:
+        return
+
+    versions = sorted({version for version, _ in versioned}, reverse=True)
+    keep_versions = set(versions[:keep])
+
+    removed = 0
+    for version, key in versioned:
+        if version not in keep_versions:
+            client.delete_object(Bucket=bucket, Key=key)
+            removed += 1
+            print(
+                f"Deleted old release ({'.'.join(map(str, version))}): {key}"
+            )
+    if removed:
+        print(
+            f"Cleaned up {removed} old package(s); "
+            f"keeping the newest {len(keep_versions)} version(s)."
+        )
 
 
 def main() -> None:
@@ -89,6 +136,8 @@ def main() -> None:
         else:
             display_url = f"{base_url}/{quote(path.name)}"
         print(f"Uploaded {path.name}: {display_url}")
+
+    cleanup_old_releases(client, bucket)
 
 
 if __name__ == "__main__":
