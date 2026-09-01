@@ -159,29 +159,33 @@ class _NoticeSlide extends StatelessWidget {
             ),
           ),
           Positioned(
+            left: 12,
+            top: 12,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.25),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.megaphone,
+                size: 15,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          Positioned(
             left: 16,
             right: 48,
             bottom: 12,
-            child: Row(
-              children: [
-                const Icon(
-                  LucideIcons.megaphone,
-                  size: 14,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    notice.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyStrong.copyWith(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
+            child: Text(
+              notice.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyStrong.copyWith(
+                color: Colors.white,
+                fontSize: 14,
+              ),
             ),
           ),
         ],
