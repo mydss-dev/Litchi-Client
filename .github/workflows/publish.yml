@@ -37,11 +37,11 @@ jobs:
   publish:
     name: Publish update
     runs-on: ubuntu-latest
-    # Manual dispatch always runs. The auto path only runs for `v*` tag pushes:
-    # a plain branch push completes fast (analyze only) and would race ahead of
-    # the tag-push build, downloading the release before the slow macOS `.dmg`
-    # is uploaded. `workflow_run.head_branch` is the branch name for a branch
-    # push (`main`) and the tag name for a tag push (`v1.0.3`).
+    # Manual dispatch always runs. The auto path only runs for `v*` tag pushes.
+    # CI now only runs on `v*` tags and pull requests (plain branch pushes no
+    # longer trigger it), so the only non-tag CI completion is a PR run —
+    # excluded by the `event == 'push'` check below. `workflow_run.head_branch`
+    # is `main` for a branch push and the tag name (`v1.0.3`) for a tag push.
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
