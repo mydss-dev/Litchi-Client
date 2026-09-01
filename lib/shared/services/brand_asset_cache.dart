@@ -10,25 +10,25 @@ import 'package:path_provider/path_provider.dart';
 import '../../config/app_config.dart';
 import 'secure_logger.dart';
 
-/// Resolves cloud branding to a session-stable, persistent local file.
+/// Resolves the cloud avatar to a session-stable, persistent local file.
 ///
-/// Branding is prepared before `runApp`, so widgets do not paint a stale
-/// bundled image and then replace it with the current cloud image.
+/// Only the avatar is downloaded at runtime. The brand logo and tray icons are
+/// baked into the bundle at build time (from the same signed config's
+/// `logo_url`), so re-downloading the logo every launch would be redundant.
+/// The avatar is fetched before `runApp` so widgets do not paint a stale
+/// placeholder and then swap it out.
 abstract final class BrandAssetCache {
   static const _timeout = Duration(seconds: 5);
   static const _maxBytes = 5 * 1024 * 1024;
 
-  static File? logoFile;
   static File? avatarFile;
 
-  /// URLs are snapshotted for the whole process. A remote-config refresh is
-  /// persisted for the next launch instead of changing visible branding
-  /// halfway through the current session.
-  static String logoUrl = '';
+  /// The avatar URL is snapshotted for the whole process. A remote-config
+  /// refresh is persisted for the next launch instead of changing the visible
+  /// avatar halfway through the current session.
   static String avatarUrl = '';
 
   static Future<void> initialize() async {
-    logoUrl = _remoteUrl(AppConfig.logoUrl);
     avatarUrl = _remoteUrl(AppConfig.avatarUrl);
     try {
       final support = await getApplicationSupportDirectory();
@@ -36,18 +36,10 @@ abstract final class BrandAssetCache {
         '${support.path}${Platform.pathSeparator}brand',
       );
       await directory.create(recursive: true);
-      final files = await Future.wait([
-        _resolve(directory, 'logo', logoUrl),
-        _resolve(directory, 'avatar', avatarUrl),
-      ]);
-      final valid = await Future.wait([
-        _validateAndWarm(files[0]),
-        _validateAndWarm(files[1]),
-      ]);
-      logoFile = valid[0];
-      avatarFile = valid[1];
+      final file = await _resolve(directory, 'avatar', avatarUrl);
+      avatarFile = await _validateAndWarm(file);
     } catch (e) {
-      SecureLogger.warn('Brand asset cache initialization failed', e);
+      SecureLogger.warn('Avatar cache initialization failed', e);
     }
   }
 

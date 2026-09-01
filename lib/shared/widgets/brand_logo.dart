@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
-import '../services/brand_asset_cache.dart';
 
-/// Renders the session-stable cloud brand mark.
+/// Renders the build-time bundled brand mark.
 ///
-/// Resolution order: the runtime cloud logo, then the build-time bundled brand
-/// icon (`assets/images/app_icon.png`), then a gradient letter. The bundled
-/// icon is generated from the same signed config at build time, so it is the
-/// same customer's branding — not a different customer's.
+/// The icon is the bundled `assets/images/app_icon.png`, generated from the
+/// signed config's `logo_url` at build time — the same source as the desktop
+/// icon. It degrades to a gradient letter only if that asset is somehow
+/// missing from the bundle.
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.size = 30, this.radius});
 
@@ -18,21 +17,16 @@ class BrandLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = radius ?? size / 2;
-    final file = BrandAssetCache.logoFile;
     return ClipRRect(
       borderRadius: BorderRadius.circular(r),
       child: SizedBox.square(
         dimension: size,
-        child: file == null
-            ? _bundledFallback(r)
-            : Image.file(file, fit: BoxFit.contain, gaplessPlayback: true),
+        child: _bundledIcon(r),
       ),
     );
   }
 
-  /// Uses the build-time bundled brand icon, degrading to a gradient letter
-  /// only if that asset is somehow missing from the bundle.
-  Widget _bundledFallback(double r) {
+  Widget _bundledIcon(double r) {
     return Image.asset(
       'assets/images/app_icon.png',
       fit: BoxFit.contain,
