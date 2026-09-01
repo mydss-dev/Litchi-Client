@@ -16,9 +16,14 @@ import '../theme/app_text_styles.dart';
 ///
 /// Replaces the old single-notice [NoticeBanner].
 class NoticeCarousel extends StatefulWidget {
-  const NoticeCarousel({super.key, required this.notices});
+  const NoticeCarousel({
+    super.key,
+    required this.notices,
+    this.isLoading = false,
+  });
 
   final List<NoticeModel> notices;
+  final bool isLoading;
 
   @override
   State<NoticeCarousel> createState() => _NoticeCarouselState();
@@ -67,6 +72,20 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
 
   void _onPageChanged(int index) => setState(() => _index = index);
 
+  void _goTo(int page) {
+    if (!_controller.hasClients) return;
+    _controller.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _previous() =>
+      _goTo((_index - 1 + widget.notices.length) % widget.notices.length);
+
+  void _next() => _goTo((_index + 1) % widget.notices.length);
+
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
@@ -80,26 +99,48 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(color: c.softBorder),
         ),
-        child: widget.notices.isEmpty
-            ? const _NoticePlaceholder()
-            : Stack(
-                fit: StackFit.expand,
-                children: [
-                  PageView.builder(
-                    controller: _controller,
-                    itemCount: widget.notices.length,
-                    onPageChanged: _onPageChanged,
-                    itemBuilder: (context, i) =>
-                        _NoticeSlide(notice: widget.notices[i]),
+        child: widget.isLoading
+            ? const _NoticeSkeleton()
+            : widget.notices.isEmpty
+                ? const _NoticePlaceholder()
+                : Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      PageView.builder(
+                        controller: _controller,
+                        itemCount: widget.notices.length,
+                        onPageChanged: _onPageChanged,
+                        itemBuilder: (context, i) =>
+                            _NoticeSlide(notice: widget.notices[i]),
+                      ),
+                      if (widget.notices.length > 1) ...[
+                        Positioned(
+                          left: 6,
+                          top: 0,
+                          bottom: 0,
+                          child: Center(
+                            child: _NavArrow(left: true, onTap: _previous),
+                          ),
+                        ),
+                        Positioned(
+                          right: 6,
+                          top: 0,
+                          bottom: 0,
+                          child: Center(
+                            child: _NavArrow(left: false, onTap: _next),
+                          ),
+                        ),
+                        Positioned(
+                          right: 12,
+                          bottom: 10,
+                          child: _Dots(
+                            count: widget.notices.length,
+                            index: _index,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  if (widget.notices.length > 1)
-                    Positioned(
-                      right: 12,
-                      bottom: 10,
-                      child: _Dots(count: widget.notices.length, index: _index),
-                    ),
-                ],
-              ),
       ),
     );
   }
@@ -120,6 +161,90 @@ class _NoticePlaceholder extends StatelessWidget {
           LucideIcons.megaphone,
           size: 22,
           color: c.textMuted.withValues(alpha: 0.35),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shimmer-style placeholder shown while notices load and nothing is cached.
+class _NoticeSkeleton extends StatefulWidget {
+  const _NoticeSkeleton();
+
+  @override
+  State<_NoticeSkeleton> createState() => _NoticeSkeletonState();
+}
+
+class _NoticeSkeletonState extends State<_NoticeSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = Curves.easeInOut.transform(_controller.value);
+        return Container(
+          color: Color.lerp(
+            c.surfaceMuted,
+            c.primary.withValues(alpha: 0.14),
+            t,
+          ),
+          alignment: Alignment.bottomLeft,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          child: Container(
+            width: 220,
+            height: 14,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.30),
+              borderRadius: BorderRadius.circular(7),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Circular left/right buttons that let the user page the carousel manually.
+class _NavArrow extends StatelessWidget {
+  const _NavArrow({required this.left, required this.onTap});
+
+  final bool left;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.28),
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(7),
+          child: Icon(
+            left ? LucideIcons.chevronLeft : LucideIcons.chevronRight,
+            size: 18,
+            color: Colors.white,
+          ),
         ),
       ),
     );

@@ -210,7 +210,7 @@ class _TopBanners extends StatelessWidget {
         ),
       // NoticeCarousel always renders: it shows a placeholder while loading,
       // so its slot (and everything below it) stays put.
-      NoticeCarousel(notices: ctrl.notices),
+      NoticeCarousel(notices: ctrl.notices, isLoading: ctrl.noticesLoading),
     ];
 
     return AnimatedSize(

@@ -104,7 +104,10 @@ abstract final class SingBoxConfig {
             'mtu': 9000,
             'auto_route': true,
             'strict_route': true,
-            'stack': 'system',
+            // Windows uses the gvisor (userspace) stack: the `system` stack
+            // drives wintun natively and segfaulted the process on connect.
+            // gvisor needs no driver, so it cannot crash the host that way.
+            'stack': Platform.isWindows ? 'gvisor' : 'system',
           },
       ],
       'outbounds': [

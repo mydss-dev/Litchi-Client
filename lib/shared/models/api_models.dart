@@ -904,6 +904,14 @@ class NoticeModel {
     createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
   );
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'content': content,
+    'img_url': imgUrl,
+    'created_at': createdAt,
+  };
+
   String get dateDisplay {
     if (createdAt == 0) return '—';
     final dt = DateTime.fromMillisecondsSinceEpoch(createdAt * 1000).toLocal();

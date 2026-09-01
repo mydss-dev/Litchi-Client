@@ -13,6 +13,7 @@ import '../shared/services/data_loader.dart';
 import '../shared/services/desktop_network_monitor.dart';
 import '../shared/services/network_error_classifier.dart';
 import '../shared/services/node_cache_service.dart';
+import '../shared/services/notice_cache_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
 import '../shared/services/secure_logger.dart';
@@ -272,6 +273,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   UpdateInfo? get updateInfo => _updateInfo;
   RegisterConfig get registerConfig => _registerConfig;
   List<NoticeModel> get notices => _notices.notices;
+  bool get noticesLoading => _notices.isLoading;
   bool get hasUnreadNotice => _notices.hasUnreadNotice;
 
   void dismissUpdate() {
@@ -284,6 +286,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> init() async {
     await _settings.load();
     await _notices.loadLastSeen();
+    await _notices.loadCached();
     await _core.init();
     if (Platform.isAndroid) {
       if (_core.quickTileDisconnected) {
@@ -792,6 +795,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _dataLoadError = null;
     _notices.reset();
     await NodeCacheService.clear();
+    await NoticeCacheService.clear();
     await _accountSummarySave;
     await AccountSummaryCache.clear();
     _isInitialLoading = false;
@@ -887,11 +891,14 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       }
     }
     try {
+      if (_notices.notices.isEmpty) _notices.setLoading(true);
       final notices = await _api.getNotices();
       if (!_isSessionCurrent(sessionEpoch)) return;
       _notices.setNotices(notices);
+      unawaited(_notices.saveCache());
     } catch (e) {
       SecureLogger.warn('AppController notices load failed', e);
+      _notices.setLoading(false);
     }
   }
 

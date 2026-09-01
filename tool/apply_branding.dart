@@ -45,14 +45,11 @@ Future<void> main(List<String> args) async {
 
   if (!metadataOnly) {
     final downloadedIcon = await _downloadLogoIfUrl(logo);
-    if (downloadedIcon) {
-      await _patchLauncherIconPaths();
-      if (generateIcons) await _generateLauncherIcons();
-    } else {
-      stdout.writeln(
-        'Logo is not a valid HTTPS image URL; keep existing launcher icons.',
-      );
+    if (!downloadedIcon) {
+      await _generateFallbackBrandAssets();
     }
+    await _patchLauncherIconPaths();
+    if (generateIcons) await _generateLauncherIcons();
   }
 
   stdout.writeln('Branding applied.');
@@ -308,6 +305,26 @@ Future<bool> _downloadLogoIfUrl(String logo) async {
   } catch (e) {
     stderr.writeln('Failed to download logo image: $e');
     return false;
+  }
+}
+
+/// Generates the built-in fallback launcher/tray icons when the configured
+/// logo is missing or invalid. Without this, release builds fall back to the
+/// default Flutter icon in the title bar and ship no tray icons at all (which
+/// also disables tray mode), because the signed config carries an empty logo.
+Future<void> _generateFallbackBrandAssets() async {
+  stdout.writeln(
+    'Logo is empty or not a valid HTTPS image URL; generating fallback icons.',
+  );
+  final result = await Process.run(Platform.resolvedExecutable, [
+    'run',
+    'tool/prepare_brand_assets.dart',
+  ]);
+  if (result.stdout.toString().trim().isNotEmpty) stdout.writeln(result.stdout);
+  if (result.stderr.toString().trim().isNotEmpty) stderr.writeln(result.stderr);
+  if (result.exitCode != 0) {
+    stderr.writeln('Fallback brand asset generation failed.');
+    exitCode = result.exitCode;
   }
 }
 

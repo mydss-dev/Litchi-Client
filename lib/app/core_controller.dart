@@ -39,6 +39,7 @@ class CoreController extends ChangeNotifier {
 
   DateTime? _connectedAt;
   DateTime? _connectingStartedAt;
+  DateTime? _disconnectingStartedAt;
   ConnectionStatus _status = ConnectionStatus.disconnected;
   String _coreError = '';
   int _apiPort = SingBoxConfig.defaultApiPort;
@@ -99,6 +100,10 @@ class CoreController extends ChangeNotifier {
         _activeNetworkMode != NetworkMode.tun) {
       return true;
     }
+    // Windows uses the gvisor stack, which has no OS-visible TUN adapter for
+    // the WFP kill switch to protect. Engaging it would block all traffic, so
+    // the preference is stored but never touches WFP.
+    if (Platform.isWindows) return true;
     if (!enabled) {
       await _releaseTunKillSwitch();
       return true;
@@ -359,6 +364,19 @@ class CoreController extends ChangeNotifier {
     }
   }
 
+  /// Mirrors [_holdConnectingMinimum] for the teardown path, but shorter: the
+  /// core stops in tens of milliseconds, so this keeps "disconnecting" visible
+  /// just long enough for the power-button ring to spin once before the flip.
+  Future<void> _holdDisconnectingMinimum() async {
+    final started = _disconnectingStartedAt;
+    if (started == null) return;
+    const minDuration = Duration(milliseconds: 700);
+    final remaining = minDuration - DateTime.now().difference(started);
+    if (remaining > Duration.zero) {
+      await Future<void>.delayed(remaining);
+    }
+  }
+
   Future<String?> _toggleConnection(CoreConnectionRequest req) async {
     _ensureApiSecret();
     if (Platform.isAndroid) return _toggleAndroidConnection(req);
@@ -366,6 +384,7 @@ class CoreController extends ChangeNotifier {
 
     if (_status == ConnectionStatus.connected) {
       _status = ConnectionStatus.disconnecting;
+      _disconnectingStartedAt = DateTime.now();
       notifyListeners();
       _stopTrafficMonitor();
       await ProxySetter.disable();
@@ -376,6 +395,7 @@ class CoreController extends ChangeNotifier {
       }
       _connectedAt = null;
       _coreError = '';
+      await _holdDisconnectingMinimum();
       _status = ConnectionStatus.disconnected;
       notifyListeners();
       return null;
@@ -487,39 +507,47 @@ class CoreController extends ChangeNotifier {
           return _coreError;
         }
         if (req.networkMode == NetworkMode.tun) {
-          final tunReady = await TunInterfaceVerifier.waitUntilReady(
-            interfaceName: Platform.isMacOS
-                ? 'utun'
-                : AppIdentity.tunInterfaceAlias,
-            matchPrefix: Platform.isMacOS,
-            excludedNames: existingMacTunInterfaces,
-          );
-          if (!tunReady) {
-            _coreError = CoreErrorMessageService.tunInterfaceUnavailable;
-            await _core.stop();
-            ClashApiClient.resetClient();
-            await _releaseTunKillSwitch();
-            _status = ConnectionStatus.error;
-            return _coreError;
-          }
-          final currentTunInterfaces = Platform.isMacOS
-              ? await TunInterfaceVerifier.matchingInterfaceNames(
-                  interfaceName: 'utun',
-                  matchPrefix: true,
-                )
-              : <String>{AppIdentity.tunInterfaceAlias};
-          _activeTunInterfaces = Platform.isMacOS
-              ? currentTunInterfaces.difference(existingMacTunInterfaces)
-              : currentTunInterfaces;
-          if (_killSwitchEnabled) {
-            final protected = await _engageTunKillSwitch();
-            if (!protected) {
-              _coreError = CoreErrorMessageService.tunKillSwitchUnavailable;
+          if (Platform.isWindows) {
+            // gvisor stack: the TUN runs entirely in-process, so there is no
+            // OS-visible adapter to wait for and no WFP-protectable alias. The
+            // system stack (wintun) crashed natively on connect, so Windows now
+            // uses gvisor instead.
+            _activeTunInterfaces = const {};
+          } else {
+            final tunReady = await TunInterfaceVerifier.waitUntilReady(
+              interfaceName: Platform.isMacOS
+                  ? 'utun'
+                  : AppIdentity.tunInterfaceAlias,
+              matchPrefix: Platform.isMacOS,
+              excludedNames: existingMacTunInterfaces,
+            );
+            if (!tunReady) {
+              _coreError = CoreErrorMessageService.tunInterfaceUnavailable;
               await _core.stop();
               ClashApiClient.resetClient();
               await _releaseTunKillSwitch();
               _status = ConnectionStatus.error;
               return _coreError;
+            }
+            final currentTunInterfaces = Platform.isMacOS
+                ? await TunInterfaceVerifier.matchingInterfaceNames(
+                    interfaceName: 'utun',
+                    matchPrefix: true,
+                  )
+                : <String>{AppIdentity.tunInterfaceAlias};
+            _activeTunInterfaces = Platform.isMacOS
+                ? currentTunInterfaces.difference(existingMacTunInterfaces)
+                : currentTunInterfaces;
+            if (_killSwitchEnabled) {
+              final protected = await _engageTunKillSwitch();
+              if (!protected) {
+                _coreError = CoreErrorMessageService.tunKillSwitchUnavailable;
+                await _core.stop();
+                ClashApiClient.resetClient();
+                await _releaseTunKillSwitch();
+                _status = ConnectionStatus.error;
+                return _coreError;
+              }
             }
           }
         }
