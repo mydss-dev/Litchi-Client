@@ -764,34 +764,35 @@ class CoreController extends ChangeNotifier {
   }
 
   /// Reports a "warm" per-node latency: the TCP round-trip to the node server,
-  /// which matches what Clash / V2RayN show and the browsing latency users
-  /// actually feel (~RTT).  The core's own /group/{}/delay is *cold* — it re-
-  /// dials the outbound each time, so a Reality node pays its full TLS handshake
-  /// (~500ms for a US server) on top of TCP, reading ~3× higher than reality.
+  /// which matches what Clash / V2RayN show for an in-use node and the browsing
+  /// latency users actually feel (~RTT). The core's own delay test is *cold* —
+  /// it re-dials the outbound each time, so a Reality node pays its full TLS
+  /// handshake on top of TCP, reading ~3× higher than reality.
   ///
-  /// The cold group test still runs in parallel, but only as a *fallback* for
-  /// UDP-only protocols (hysteria2/tuic) whose servers have no TCP handshake to
-  /// probe. It must NOT gate the result: while a tunnel is up the core omits
-  /// non-active nodes from /group/{}/delay, and treating that omission as
-  /// "timeout" blanked out healthy nodes whenever the user was already connected.
+  /// End-to-end reachability is still verified per node via the core's single-
+  /// proxy delay test, so a node whose Reality handshake is broken (but whose
+  /// TCP port still answers) is reported as timed out instead of a misleading
+  /// fast RTT. Per-node tests avoid the group endpoint's shared timeout, which
+  /// used to blank out healthy nodes queued behind a slow one.
   Future<Map<String, int>> _measureWarmLatencies(List<NodeModel> nodes) async {
-    final coldFuture = ClashApiClient.testGroup(
-      group: SingBoxConfig.selectorTag,
-      apiPort: _apiPort,
-    );
-    final tcpResults = await Future.wait([for (final node in nodes) _tcpPingNode(node)]);
-    final cold = await coldFuture;
-
+    final probes = await Future.wait([for (final node in nodes) _probeNode(node)]);
     final result = <String, int>{};
     for (var i = 0; i < nodes.length; i++) {
-      final node = nodes[i];
-      final tag = SingBoxConfig.nodeTagFor(node);
-      // Warm TCP RTT wins when it exists; the cold group test only fills in
-      // when TCP can't probe the node (UDP-only). Otherwise it times out.
-      result[tag] = tcpResults[i] ??
-          (cold.containsKey(tag) ? cold[tag]! : 9999);
+      result[SingBoxConfig.nodeTagFor(nodes[i])] = probes[i];
     }
     return result;
+  }
+
+  /// End-to-end delay (availability) plus a warm TCP RTT for a single node.
+  /// Returns 9999 when the core can't proxy through it at all.
+  Future<int> _probeNode(NodeModel node) async {
+    final tag = SingBoxConfig.nodeTagFor(node);
+    final e2eFuture = ClashApiClient.testDelay(tag, apiPort: _apiPort);
+    final tcpFuture = _tcpPingNode(node);
+    final e2e = await e2eFuture;
+    if (e2e == null) return 9999; // broken Reality / unreachable — no fake latency
+    final tcp = await tcpFuture;
+    return tcp ?? e2e; // UDP-only nodes fall back to the end-to-end delay
   }
 
   /// TCP round-trip to a node's server, or null when it has no single usable
