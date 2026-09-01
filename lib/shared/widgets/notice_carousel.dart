@@ -63,12 +63,17 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
   @override
   Widget build(BuildContext context) {
     if (widget.notices.isEmpty) return const SizedBox.shrink();
+    final c = AppColors.of(context);
 
     return SizedBox(
       width: double.infinity,
       height: _bannerHeight,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: c.softBorder),
+        ),
         child: Stack(
           fit: StackFit.expand,
           children: [

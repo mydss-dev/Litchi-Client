@@ -116,10 +116,22 @@ class _DashboardPageState extends State<DashboardPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
+          if (ctrl.updateInfo != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _RevealIn(
+                child: UpdateBanner(
+                  info: ctrl.updateInfo!,
+                  onDismiss: ctrl.dismissUpdate,
+                ),
+              ),
+            ),
           if (ctrl.notices.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: NoticeCarousel(notices: ctrl.notices),
+              child: _RevealIn(
+                child: NoticeCarousel(notices: ctrl.notices),
+              ),
             ),
           _DashboardAlerts(
             ctrl: ctrl,
@@ -207,8 +219,6 @@ class _DashboardAlerts extends StatelessWidget {
           onRetry: onDataRetry,
           warning: true,
         ),
-      if (ctrl.updateInfo != null)
-        UpdateBanner(info: ctrl.updateInfo!, onDismiss: ctrl.dismissUpdate),
     ];
 
     if (alerts.isEmpty) return const SizedBox.shrink();
@@ -223,6 +233,35 @@ class _DashboardAlerts extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+// ── Startup reveal (fade-in) ────────────────────────────────────────────────
+
+/// Fades and slides its child in on first build, so the update banner and
+/// notice carousel appear smoothly on launch instead of popping in.
+class _RevealIn extends StatelessWidget {
+  const _RevealIn({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 14),
+            child: child,
+          ),
+        );
+      },
+      child: child,
     );
   }
 }
