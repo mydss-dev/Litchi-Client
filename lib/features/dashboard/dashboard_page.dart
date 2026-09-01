@@ -92,6 +92,18 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  Future<void> _changeMode(BuildContext context, ProxyMode mode) async {
+    final ctrl = AppScope.of(context);
+    if (mode == ctrl.proxyMode) return;
+    final error = await ctrl.setProxyMode(mode);
+    if (!context.mounted) return;
+    if (error != null) {
+      AppToast.show(context, error, type: AppToastType.error);
+    } else {
+      AppToast.show(context, mode.switchToast, type: AppToastType.success);
+    }
+  }
+
   Future<void> _handlePullRefresh() async {
     final ctrl = AppScope.of(context);
     await ctrl.refreshData();
@@ -132,33 +144,19 @@ class _DashboardPageState extends State<DashboardPage> {
               valueListenable: _tick,
               builder: (context, _, _) => _MobileConnectionCard(
                 status: ctrl.connectionStatus,
-                node: ctrl.currentNode,
-                loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
                 proxyMode: ctrl.proxyMode,
-                automatic: ctrl.autoSelected,
                 elapsedLabel: formatDuration(ctrl.connectedDuration),
                 supportsConnection: ctrl.supportsCoreConnection,
                 onToggle: _toggleConnection,
-                onNodesTap: () => showNodePicker(context),
+                onModeChanged: (mode) => _changeMode(context, mode),
               ),
             ),
             const SizedBox(height: 10),
-            ModeStrip(
-              selected: ctrl.proxyMode,
-              onChanged: (mode) async {
-                if (mode == ctrl.proxyMode) return;
-                final error = await ctrl.setProxyMode(mode);
-                if (!context.mounted) return;
-                if (error != null) {
-                  AppToast.show(context, error, type: AppToastType.error);
-                } else {
-                  AppToast.show(
-                    context,
-                    mode.switchToast,
-                    type: AppToastType.success,
-                  );
-                }
-              },
+            _NodeCard(
+              node: ctrl.currentNode,
+              loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
+              automatic: ctrl.autoSelected,
+              onTap: () => showNodePicker(context),
             ),
             const SizedBox(height: 10),
             _HomeCardGrid(ctrl: ctrl, formatTrafficGb: formatTrafficGb),
@@ -239,25 +237,19 @@ class _TopBanners extends StatelessWidget {
 class _MobileConnectionCard extends StatelessWidget {
   const _MobileConnectionCard({
     required this.status,
-    required this.node,
-    required this.loading,
     required this.proxyMode,
-    required this.automatic,
     required this.elapsedLabel,
     required this.supportsConnection,
     required this.onToggle,
-    required this.onNodesTap,
+    required this.onModeChanged,
   });
 
   final ConnectionStatus status;
-  final NodeModel node;
-  final bool loading;
   final ProxyMode proxyMode;
-  final bool automatic;
   final String elapsedLabel;
   final bool supportsConnection;
   final VoidCallback onToggle;
-  final VoidCallback onNodesTap;
+  final ValueChanged<ProxyMode> onModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -333,81 +325,87 @@ class _MobileConnectionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onNodesTap,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              child: Ink(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppRadius.card),
-                  border: Border.all(color: c.softBorder),
+          ModeStrip(selected: proxyMode, onChanged: onModeChanged),
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact, tappable card for the active node. Split out of the connection
+/// card so the hero (status + power + mode) stays focused and the app reads
+/// shorter.
+class _NodeCard extends StatelessWidget {
+  const _NodeCard({
+    required this.node,
+    required this.loading,
+    required this.automatic,
+    required this.onTap,
+  });
+
+  final NodeModel node;
+  final bool loading;
+  final bool automatic;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AppCard(
+      padding: const EdgeInsets.all(12),
+      radius: AppRadius.xl,
+      onTap: onTap,
+      child: Row(
+        children: [
+          _NodeAvatar(node: node),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  node.name.isEmpty
+                      ? loading
+                            ? context.l10n.syncingNodes
+                            : context.l10n.selectNodePrompt
+                      : node.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 15,
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    _NodeAvatar(node: node),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            node.name.isEmpty
-                                ? loading
-                                      ? context.l10n.syncingNodes
-                                      : context.l10n.selectNodePrompt
-                                : node.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.bodyStrong.copyWith(
-                              color: c.textPrimary,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          if (loading && node.name.isEmpty)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                minHeight: 3,
-                                color: c.primary,
-                                backgroundColor: c.softBorder,
-                              ),
-                            )
-                          else
-                            Text(
-                              context.l10n.nodeModeLabel(
-                                automatic
-                                    ? context.l10n.autoSelect
-                                    : context.l10n.manualSelect,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.caption.copyWith(
-                                color: c.textMuted,
-                              ),
-                            ),
-                        ],
-                      ),
+                const SizedBox(height: 4),
+                if (loading && node.name.isEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      minHeight: 3,
+                      color: c.primary,
+                      backgroundColor: c.softBorder,
                     ),
-                    const SizedBox(width: 10),
-                    NodeLatency(
-                      latency: node.latency,
-                      style: NodeLatencyStyle.badge,
+                  )
+                else
+                  Text(
+                    context.l10n.nodeModeLabel(
+                      automatic
+                          ? context.l10n.autoSelect
+                          : context.l10n.manualSelect,
                     ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      LucideIcons.chevronRight,
-                      size: 18,
-                      color: c.iconMuted,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      color: c.textMuted,
                     ),
-                  ],
-                ),
-              ),
+                  ),
+              ],
             ),
           ),
+          const SizedBox(width: 10),
+          NodeLatency(latency: node.latency, style: NodeLatencyStyle.badge),
+          const SizedBox(width: 6),
+          Icon(LucideIcons.chevronRight, size: 18, color: c.iconMuted),
         ],
       ),
     );
@@ -688,8 +686,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
           ? null
           : () => setState(() => _pressed = false),
       child: SizedBox(
-        width: 148,
-        height: 148,
+        width: 132,
+        height: 132,
         child: Stack(
           alignment: Alignment.center,
           clipBehavior: Clip.none,
@@ -700,8 +698,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                 builder: (context, _) {
                   final t = Curves.easeOut.transform(_pulseController.value);
                   return Container(
-                    width: 124 + 24 * t,
-                    height: 124 + 24 * t,
+                    width: 108 + 24 * t,
+                    height: 108 + 24 * t,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: pulseColor.withValues(alpha: 0.18 * (1 - t)),
@@ -733,8 +731,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 320),
                   curve: Curves.easeOutCubic,
-                  width: 124,
-                  height: 124,
+                  width: 108,
+                  height: 108,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: _connected ? c.brandGradient : null,
@@ -770,7 +768,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                           : Icon(
                               LucideIcons.power,
                               key: ValueKey(widget.status),
-                              size: 42,
+                              size: 38,
                               color: _connected ? Colors.white : c.primary,
                             ),
                     ),
@@ -791,8 +789,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
       alignment: Alignment.center,
       children: [
         Container(
-          width: 124 + 24 * t,
-          height: 124 + 24 * t,
+          width: 108 + 24 * t,
+          height: 108 + 24 * t,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: c.success.withValues(alpha: 0.20 * (1 - t)),
@@ -806,7 +804,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
   Widget _successRing(AppColors c, double t, int i) {
     final progress = ((t - i * 0.10) / 0.90).clamp(0.0, 1.0);
     if (progress <= 0 || progress >= 1) return const SizedBox.shrink();
-    final size = 124 + progress * 44;
+    final size = 108 + progress * 44;
     return Container(
       width: size,
       height: size,
@@ -836,8 +834,8 @@ class _ChargingRing extends StatelessWidget {
     return RotationTransition(
       turns: turns,
       child: SizedBox(
-        width: 46,
-        height: 46,
+        width: 42,
+        height: 42,
         child: CircularProgressIndicator(
           value: 0.33,
           strokeWidth: 3,
