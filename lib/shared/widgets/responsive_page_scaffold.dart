@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../app/core_platform_support.dart';
+import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import 'page_header.dart';
 import 'page_status_cards.dart';
 
-/// Shared page chrome for sub-pages. The app is a fixed-size single-layout
-/// window, so there is no wide/sidebar branch — this always renders the
-/// compact (bottom-nav) chrome: a full header for primary tabs, or a
-/// back-button header for hub sub-pages.
+/// Shared page chrome for account/support sub-pages. Desktop uses the
+/// persistent sidebar and a wide title/subtitle header; compact platforms keep
+/// the bottom-nav/back-button presentation.
 class ResponsivePageScaffold extends StatelessWidget {
   const ResponsivePageScaffold({
     super.key,
@@ -37,6 +37,8 @@ class ResponsivePageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
+
     final list = ListView(
       shrinkWrap: CorePlatformSupport.isDesktop,
       physics: CorePlatformSupport.isDesktop
@@ -58,6 +60,58 @@ class ResponsivePageScaffold extends StatelessWidget {
     );
     if (onRefresh == null) return list;
     return RefreshIndicator(onRefresh: onRefresh!, child: list);
+  }
+
+  Widget _buildDesktop(BuildContext context) {
+    final c = AppColors.of(context);
+    return Align(
+      alignment: Alignment.topLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 980),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTextStyles.pageTitle.copyWith(
+                          color: c.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.body.copyWith(color: c.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+                if (onRefresh != null) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: MaterialLocalizations.of(context)
+                        .refreshIndicatorSemanticLabel,
+                    onPressed: () async => onRefresh!(),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 18),
+            ...children,
+          ],
+        ),
+      ),
+    );
   }
 }
 

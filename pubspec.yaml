@@ -39,8 +39,6 @@ dependencies:
 
   # Custom window chrome (frameless window + custom topbar)
   window_manager: ^0.5.1
-  # Screen work-area size for auto-fitting the desktop window height
-  screen_retriever: ^0.2.1
   # Lucide icon set — unified icon library per design spec
   lucide_icons_flutter: ^3.0.7
   # SVG rendering for brand logo

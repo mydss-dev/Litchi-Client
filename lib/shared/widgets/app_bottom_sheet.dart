@@ -57,34 +57,39 @@ class AppBottomSheet extends StatelessWidget {
             maxWidth: 560,
             maxHeight: view.height * maxHeightFactor,
           ),
-          child: Material(
-            color: c.cardBg,
-            elevation: 0,
-            clipBehavior: Clip.antiAlias,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            child: Container(
-              decoration: BoxDecoration(
-                color: c.cardBg,
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                border: Border.all(color: c.softBorder),
-                boxShadow: AppShadows.card(c),
-              ),
-              padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ModalHeader(title: title, subtitle: subtitle),
-                  const SizedBox(height: 14),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: children,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              boxShadow: AppShadows.card(c),
+            ),
+            child: Material(
+              color: c.cardBg,
+              elevation: 0,
+              clipBehavior: Clip.antiAlias,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: c.cardBg,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(color: c.softBorder),
+                ),
+                padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ModalHeader(title: title, subtitle: subtitle),
+                    const SizedBox(height: 14),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: children,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

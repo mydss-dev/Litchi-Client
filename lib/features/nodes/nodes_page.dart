@@ -161,7 +161,9 @@ class _NodesPageState extends State<NodesPage> {
     final ctrl = AppScope.of(context);
     final nodes = _filtered;
     final isAuto = ctrl.autoSelected;
-    final effectiveId = isAuto ? '__auto__' : (_selectedId ?? ctrl.currentNode.id);
+    final effectiveId = isAuto
+        ? '__auto__'
+        : (_selectedId ?? ctrl.currentNode.id);
     final noPlan =
         ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
 
@@ -537,33 +539,31 @@ class _DesktopNodeTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final tableHeight = (MediaQuery.sizeOf(context).height - 280)
+        .clamp(300.0, 900.0)
+        .toDouble();
 
     return Container(
+      height: tableHeight,
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: c.softBorder),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < nodes.length; i++) ...[
-            _DesktopNodeRow(
-              node: nodes[i],
-              selected: !autoSelected && nodes[i].id == selectedId,
-              favorite: favorites.contains(nodes[i].id),
-              onTap: () => onSelect(nodes[i]),
-              onToggleFavorite: () => onToggleFavorite(nodes[i].id),
-            ),
-            if (i != nodes.length - 1)
-              Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: c.softBorder,
-              ),
-          ],
-        ],
+      child: ListView.separated(
+        primary: false,
+        padding: EdgeInsets.zero,
+        itemCount: nodes.length,
+        itemBuilder: (_, i) => _DesktopNodeRow(
+          node: nodes[i],
+          selected: !autoSelected && nodes[i].id == selectedId,
+          favorite: favorites.contains(nodes[i].id),
+          onTap: () => onSelect(nodes[i]),
+          onToggleFavorite: () => onToggleFavorite(nodes[i].id),
+        ),
+        separatorBuilder: (_, _) =>
+            Divider(height: 1, indent: 16, endIndent: 16, color: c.softBorder),
       ),
     );
   }
@@ -1043,10 +1043,7 @@ class _NodeCard extends StatelessWidget {
                   ),
                 ),
               const Spacer(),
-              NodeLatency(
-                latency: node.latency,
-                style: NodeLatencyStyle.dot,
-              ),
+              NodeLatency(latency: node.latency, style: NodeLatencyStyle.dot),
             ],
           ),
         ),

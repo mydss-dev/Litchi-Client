@@ -56,6 +56,13 @@ class _AppSelectorState<T> extends State<AppSelector<T>> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant AppSelector<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final controller = _controller;
+    if (controller != null) _value = widget.selector(controller);
+  }
+
   void _onControllerChanged() {
     final next = widget.selector(_controller!);
     if (next != _value) {

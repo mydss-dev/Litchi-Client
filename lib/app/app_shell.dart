@@ -223,16 +223,27 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   /// navigation preserve the size chosen by the user.
   Future<void> _syncWindowSize(AppController ctrl) async {
     if (!_isDesktop) return;
-    if (await windowManager.isMaximized()) return;
+    final maximized = await windowManager.isMaximized();
 
     if (ctrl.isAuthenticated) {
       if (_compactWindow == false) return;
+      if (maximized) {
+        // Logging in while the compact auth window is maximized used to leave
+        // the authenticated app with auth-size constraints and resize disabled.
+        // Update the constraints immediately, then finish the default desktop
+        // restore size from onWindowUnmaximize().
+        await windowManager.setResizable(true);
+        await windowManager.setMinimumSize(_desktopMinimumSize);
+        await windowManager.setMaximumSize(_desktopMaximumSize);
+        return;
+      }
       _compactWindow = false;
       _authHeight = null;
       await _applyDesktopWindow();
       return;
     }
 
+    if (maximized) return;
     final height = _authHeightFor(_visibleAuthScreen ?? ctrl.authScreen);
     if (_compactWindow == true && _authHeight == height) return;
     // Centre only when first entering the auth flow; switching between auth
@@ -308,10 +319,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (_compactWindow == true && _authHeight == height) return;
     _compactWindow = true;
     _authHeight = height;
-    await _applyAuthWindowSize(
-      Size(_authWindowWidth, height),
-      center: false,
-    );
+    await _applyAuthWindowSize(Size(_authWindowWidth, height), center: false);
   }
 
   /// Applies the fixed compact auth size. Windows/Linux only need their desktop
@@ -612,10 +620,18 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   // ── WindowListener ────────────────────────────────────────────────────────
 
   @override
-  void onWindowMaximize() => setState(() => _maximized = true);
+  void onWindowMaximize() {
+    if (!mounted) return;
+    setState(() => _maximized = true);
+  }
 
   @override
-  void onWindowUnmaximize() => setState(() => _maximized = false);
+  void onWindowUnmaximize() {
+    if (!mounted) return;
+    setState(() => _maximized = false);
+    final ctrl = _ctrl;
+    if (ctrl != null) unawaited(_syncWindowSize(ctrl));
+  }
 
   /// Close button / Alt+F4 behavior:
   /// - Connected with a usable tray icon → hide to tray (connection stays alive)
@@ -692,9 +708,8 @@ class _CompactBodyState extends State<_CompactBody> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
             child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(
-                context,
-              ).copyWith(scrollbars: false),
+              behavior: ScrollConfiguration.of(context)
+                  .copyWith(scrollbars: false),
               child: page,
             ),
           ),
@@ -742,9 +757,9 @@ class _CompactBodyState extends State<_CompactBody> {
   }
 }
 
-/// Stable desktop layout with a persistent 196px navigation sidebar. The
-/// content pages themselves stay unchanged in stage 2; later stages give the
-/// dashboard, nodes and shop their dedicated wide layouts.
+/// Stable desktop layout with a persistent 196px navigation sidebar.
+/// Most pages use the shell's vertical scroll; long virtualized surfaces (such
+/// as the desktop node table) own a bounded inner viewport.
 class _DesktopBody extends StatelessWidget {
   const _DesktopBody();
 
@@ -917,13 +932,11 @@ class _SidebarItem extends StatelessWidget {
                     item.labelFor(context),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: (selected
-                            ? AppTextStyles.bodyStrong
-                            : AppTextStyles.body)
-                        .copyWith(
-                          color: foreground,
-                          fontSize: 13.5,
-                        ),
+                    style:
+                        (selected
+                                ? AppTextStyles.bodyStrong
+                                : AppTextStyles.body)
+                            .copyWith(color: foreground, fontSize: 13.5),
                   ),
                 ),
                 const SizedBox(width: 8),

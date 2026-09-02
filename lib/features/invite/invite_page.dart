@@ -29,6 +29,7 @@ class InvitePage extends StatefulWidget {
 
 class _InvitePageState extends State<InvitePage> {
   late final PageController _compactPageController;
+  late final PageController _desktopPageController;
   int _selected = 0;
   bool _creating = false;
 
@@ -36,11 +37,13 @@ class _InvitePageState extends State<InvitePage> {
   void initState() {
     super.initState();
     _compactPageController = PageController(viewportFraction: 0.9);
+    _desktopPageController = PageController();
   }
 
   @override
   void dispose() {
     _compactPageController.dispose();
+    _desktopPageController.dispose();
     super.dispose();
   }
 
@@ -79,7 +82,104 @@ class _InvitePageState extends State<InvitePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
     return _buildCompact(context);
+  }
+
+  Widget _buildDesktop(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final invites = _invites(ctrl);
+    final safeSelected = _selected.clamp(0, invites.length - 1);
+
+    Widget invitePanel() => _InviteLinkPanel(
+      invites: invites,
+      selected: safeSelected,
+      creating: _creating,
+      controller: _desktopPageController,
+      compact: false,
+      onChanged: (index) => setState(() => _selected = index),
+      onPrevious: () => _switchTo(
+        safeSelected - 1 + invites.length,
+        invites.length,
+        _desktopPageController,
+      ),
+      onNext: () =>
+          _switchTo(safeSelected + 1, invites.length, _desktopPageController),
+      onCreate: _createInviteCode,
+    );
+
+    final records = _CommissionRecords(
+      records: ctrl.inviteRecords,
+      currencySymbol: ctrl.currencySymbol,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.inviteFriends,
+                    style: AppTextStyles.pageTitle.copyWith(
+                      color: c.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    context.l10n.inviteSubtitle,
+                    style: AppTextStyles.body.copyWith(color: c.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            IconButton(
+              tooltip: MaterialLocalizations.of(context)
+                  .refreshIndicatorSemanticLabel,
+              onPressed: () async => _handlePullRefresh(),
+              icon: const Icon(LucideIcons.refreshCw),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 860;
+            final panel = invitePanel();
+            if (wide) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: panel),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 2, child: records),
+                ],
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [panel, const SizedBox(height: 12), records],
+            );
+          },
+        ),
+        const SizedBox(height: 14),
+        _InviteStatsGrid(
+          registeredUsers: ctrl.invitedCount,
+          pendingCommission:
+              '${ctrl.currencySymbol}${ctrl.pendingCommission.toStringAsFixed(2)}',
+          earnedCommission:
+              '${ctrl.currencySymbol}${ctrl.earnedCommission.toStringAsFixed(2)}',
+          commissionRate: '${ctrl.commissionRate.toStringAsFixed(0)}%',
+          compact: false,
+        ),
+      ],
+    );
   }
 
   // ── Compact (bottom-nav) layout ────────────────────────────────────────
@@ -413,9 +513,8 @@ class _InviteCodeCard extends StatelessWidget {
               code,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.largeNumber(
-                fontSize: 24,
-              ).copyWith(color: Colors.white),
+              style: AppTextStyles.largeNumber(fontSize: 24)
+                  .copyWith(color: Colors.white),
             ),
           ),
         ],
@@ -585,7 +684,7 @@ class _InviteStatsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = !compact && constraints.maxWidth >= 900 ? 4 : 2;
+        final cols = !compact && constraints.maxWidth >= 760 ? 4 : 2;
         return GridView.count(
           crossAxisCount: cols,
           shrinkWrap: true,

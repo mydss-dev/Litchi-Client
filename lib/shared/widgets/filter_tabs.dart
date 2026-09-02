@@ -51,24 +51,28 @@ class _Tab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? c.primary : c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: selected ? c.primary : c.softBorder),
-          ),
-          child: Text(
-            label,
-            style: AppTextStyles.menu.copyWith(
-              color: selected ? Colors.white : c.textSecondary,
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        height: 36,
+        decoration: BoxDecoration(
+          color: selected ? c.primary : c.cardBg,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: Border.all(color: selected ? c.primary : c.softBorder),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          mouseCursor: SystemMouseCursors.click,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Center(
+              child: Text(
+                label,
+                style: AppTextStyles.menu.copyWith(
+                  color: selected ? Colors.white : c.textSecondary,
+                ),
+              ),
             ),
           ),
         ),
