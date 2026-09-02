@@ -655,8 +655,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   }
 }
 
-/// Desktop replaces the bottom nav with a left-hand drawer; every other
-/// platform keeps the compact bottom-nav layout.
+/// Desktop uses a persistent left sidebar; compact platforms keep bottom nav.
 class _MainShell extends StatelessWidget {
   const _MainShell();
 
@@ -743,147 +742,210 @@ class _CompactBodyState extends State<_CompactBody> {
   }
 }
 
-/// Desktop layout: the current compact page set inside a stable resizable
-/// desktop window. Stage 2 will replace the drawer with a persistent sidebar;
-/// for now navigation and page visuals intentionally stay unchanged.
-class _DesktopBody extends StatefulWidget {
+/// Stable desktop layout with a persistent 196px navigation sidebar. The
+/// content pages themselves stay unchanged in stage 2; later stages give the
+/// dashboard, nodes and shop their dedicated wide layouts.
+class _DesktopBody extends StatelessWidget {
   const _DesktopBody();
-
-  @override
-  State<_DesktopBody> createState() => _DesktopBodyState();
-}
-
-class _DesktopBodyState extends State<_DesktopBody> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
-    // Render only the current page (not an IndexedStack). Every page reads its
-    // data from AppController, so remounting only resets transient local UI.
     final page = _pageFor(ctrl.page);
 
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Colors.transparent,
-      drawerScrimColor: Colors.black38,
-      // The drawer opens only via the hamburger button, not an edge swipe.
-      drawerEdgeDragWidth: 0,
-      drawer: _AppDrawer(ctrl: ctrl),
-      body: Container(
-        color: c.appBg,
-        child: Column(
-          children: [
-            if (_usesCustomChrome)
-              WindowControlsBar(leading: _DrawerButton(onTap: _openDrawer)),
-            if (Platform.isMacOS)
-              MacTitleBar(leading: _DrawerButton(onTap: _openDrawer)),
-            Expanded(
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
-                  child: KeyedSubtree(
-                    key: PageStorageKey<AppPage>(ctrl.page),
-                    child: page,
+    return Container(
+      color: c.appBg,
+      child: Column(
+        children: [
+          if (_usesCustomChrome) const WindowControlsBar(),
+          if (Platform.isMacOS) const MacTitleBar(),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _DesktopSidebar(ctrl: ctrl),
+                Expanded(
+                  child: SafeArea(
+                    top: false,
+                    bottom: false,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                      child: KeyedSubtree(
+                        key: PageStorageKey<AppPage>(ctrl.page),
+                        child: page,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Drawer that slides over the compact desktop window with the full
-/// navigation: the primary destinations plus the "我的" hub sub-pages.
-class _AppDrawer extends StatelessWidget {
-  const _AppDrawer({required this.ctrl});
+class _DesktopSidebar extends StatelessWidget {
+  const _DesktopSidebar({required this.ctrl});
+
+  static const double _width = 196;
+  static const List<AppPage> _mainPages = [
+    AppPage.dashboard,
+    AppPage.nodes,
+    AppPage.shop,
+    AppPage.traffic,
+    AppPage.invite,
+  ];
+  static const List<AppPage> _accountPages = [
+    AppPage.account,
+    AppPage.wallet,
+    AppPage.orders,
+    AppPage.tickets,
+    AppPage.settings,
+  ];
 
   final AppController ctrl;
+
+  List<NavDestination> _orderedEnabled(List<AppPage> pages) => [
+    for (final page in pages)
+      for (final destination in kNavDestinations)
+        if (destination.page == page && destination.isEnabled) destination,
+  ];
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final selectedPrimary = desktopSelectedPage(
-      ctrl.page,
-      ctrl.mobileProfileChildPage,
-    );
-    final settings = hubDestinations.firstWhere(
-      (d) => d.page == AppPage.settings,
-    );
+    final mainItems = _orderedEnabled(_mainPages);
+    final accountItems = _orderedEnabled(_accountPages);
 
-    return Drawer(
-      backgroundColor: c.cardBg,
-      surfaceTintColor: Colors.transparent,
-      width: 260,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(
-          right: Radius.circular(AppRadius.card),
-        ),
+    return Container(
+      width: _width,
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        border: Border(right: BorderSide(color: c.softBorder)),
       ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: BrandTitle(),
+      child: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+              children: [
+                for (final item in mainItems)
+                  _SidebarItem(
+                    item: item,
+                    selected: ctrl.page == item.page,
+                    onTap: () => ctrl.goToPage(item.page),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Divider(height: 1, color: c.softBorder),
+                ),
+                for (final item in accountItems)
+                  _SidebarItem(
+                    item: item,
+                    selected: ctrl.page == item.page,
+                    onTap: () => ctrl.goToPage(item.page),
+                  ),
+              ],
             ),
-            Divider(height: 1, color: c.softBorder),
-            _DrawerAccountCard(
-              user: ctrl.user,
-              onTap: () => _navigate(context, AppPage.account),
-            ),
-            Divider(height: 1, color: c.softBorder),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                children: [
-                  for (final d in desktopDestinations)
-                    _DrawerItem(
-                      icon: d.icon,
-                      label: d.labelFor(context),
-                      selected: d.page == selectedPrimary,
-                      onTap: () => _navigate(context, d.page),
-                    ),
-                ],
-              ),
-            ),
-            Divider(height: 1, color: c.softBorder),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: _DrawerItem(
-                icon: settings.icon,
-                label: settings.labelFor(context),
-                selected: ctrl.page == AppPage.settings,
-                onTap: () => _navigate(context, AppPage.settings),
-              ),
-            ),
-          ],
-        ),
+          ),
+          Divider(height: 1, color: c.softBorder),
+          _SidebarAccountCard(
+            user: ctrl.user,
+            selected: ctrl.page == AppPage.account,
+            onTap: () => ctrl.goToPage(AppPage.account),
+          ),
+        ],
       ),
     );
-  }
-
-  void _navigate(BuildContext context, AppPage page) {
-    ctrl.goToPage(page);
-    Navigator.of(context).pop();
   }
 }
 
-/// Account summary at the top of the drawer — avatar + name + plan — linking
-/// through to the full "我的" hub.
-class _DrawerAccountCard extends StatelessWidget {
-  const _DrawerAccountCard({required this.user, required this.onTap});
+class _SidebarItem extends StatelessWidget {
+  const _SidebarItem({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final NavDestination item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final foreground = selected ? c.primary : c.textMuted;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          mouseCursor: SystemMouseCursors.click,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Ink(
+            height: 42,
+            decoration: BoxDecoration(
+              color: selected ? c.primarySoft : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 4,
+                  child: Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 140),
+                      width: 3,
+                      height: selected ? 20 : 0,
+                      decoration: BoxDecoration(
+                        color: c.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Icon(item.icon, size: 18, color: foreground),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item.labelFor(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: (selected
+                            ? AppTextStyles.bodyStrong
+                            : AppTextStyles.body)
+                        .copyWith(
+                          color: foreground,
+                          fontSize: 13.5,
+                        ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact identity/status strip pinned to the bottom of the desktop sidebar.
+class _SidebarAccountCard extends StatelessWidget {
+  const _SidebarAccountCard({
+    required this.user,
+    required this.selected,
+    required this.onTap,
+  });
 
   final UserModel user;
+  final bool selected;
   final VoidCallback onTap;
 
   @override
@@ -895,143 +957,82 @@ class _DrawerAccountCard extends StatelessWidget {
     final Widget avatar;
     if (BrandAssetCache.avatarUrl.isEmpty || file == null) {
       avatar = CircleAvatar(
-        radius: 18,
+        radius: 16,
         backgroundColor: c.primarySoft,
         child: Text(
           letter,
-          style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
+          style: AppTextStyles.bodyStrong.copyWith(
+            color: c.primary,
+            fontSize: 12,
+          ),
         ),
       );
     } else {
       avatar = ClipOval(
         child: Image.file(
           file,
-          width: 36,
-          height: 36,
+          width: 32,
+          height: 32,
           fit: BoxFit.cover,
           gaplessPlayback: true,
         ),
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-          child: Row(
-            children: [
-              avatar,
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.name.isEmpty ? '--' : user.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyStrong.copyWith(
-                        color: c.textPrimary,
-                      ),
-                    ),
-                    if (user.plan.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        user.plan,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(
-                          color: c.textMuted,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Icon(LucideIcons.chevronRight, size: 16, color: c.iconMuted),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DrawerItem extends StatelessWidget {
-  const _DrawerItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final color = selected ? c.primary : c.textMuted;
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.all(10),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
+          mouseCursor: SystemMouseCursors.click,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Ink(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
             decoration: BoxDecoration(
-              color: selected ? c.primarySoft : Colors.transparent,
+              color: selected ? c.primarySoft : c.surfaceMuted,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(
               children: [
-                Icon(icon, size: 20, color: color),
-                const SizedBox(width: 12),
+                avatar,
+                const SizedBox(width: 9),
                 Expanded(
-                  child: Text(
-                    label,
-                    style: (selected
-                            ? AppTextStyles.bodyStrong
-                            : AppTextStyles.body)
-                        .copyWith(color: color),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.name.isEmpty ? '--' : user.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          color: selected ? c.primary : c.textPrimary,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      if (user.plan.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          user.plan,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(
+                            color: c.textMuted,
+                            fontSize: 10.5,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
+                ),
+                Icon(
+                  LucideIcons.chevronRight,
+                  size: 14,
+                  color: selected ? c.primary : c.iconMuted,
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Hamburger button that opens the drawer.
-class _DrawerButton extends StatelessWidget {
-  const _DrawerButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(left: 12),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: SizedBox(
-            width: 30,
-            height: 30,
-            child: Icon(LucideIcons.menu, size: 18, color: c.iconDefault),
           ),
         ),
       ),
