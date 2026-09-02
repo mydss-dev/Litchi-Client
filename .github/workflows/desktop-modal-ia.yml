@@ -1,5 +1,6 @@
 name: Desktop Modal IA
 
+# Temporary verification workflow; removed after Windows validation succeeds.
 on:
   push:
     branches: [main]
