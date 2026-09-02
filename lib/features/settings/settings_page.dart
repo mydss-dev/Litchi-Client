@@ -112,6 +112,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
     return ResponsivePageScaffold(
       title: l10n.settings,
       subtitle: l10n.settingsSubtitle,
@@ -120,6 +121,36 @@ class _SettingsPageState extends State<SettingsPage> {
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
       compactBodySpacing: 18,
       children: _bodyChildren(context),
+    );
+  }
+
+  Widget _buildDesktop(BuildContext context) {
+    final c = AppColors.of(context);
+    final l10n = context.l10n;
+    return Align(
+      alignment: Alignment.topLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.settings,
+              style: AppTextStyles.pageTitle.copyWith(
+                color: c.textPrimary,
+                fontSize: 26,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              l10n.settingsSubtitle,
+              style: AppTextStyles.body.copyWith(color: c.textMuted),
+            ),
+            const SizedBox(height: 18),
+            ..._bodyChildren(context),
+          ],
+        ),
+      ),
     );
   }
 

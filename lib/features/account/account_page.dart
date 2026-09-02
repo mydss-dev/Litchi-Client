@@ -146,7 +146,101 @@ class _AccountPageState extends State<AccountPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
     return _buildCompact(context);
+  }
+
+  Widget _buildDesktop(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final user = ctrl.user;
+    final canRenew = isPageEnabled(AppPage.shop) && ctrl.hasPlan;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.myAccount,
+                    style: AppTextStyles.pageTitle.copyWith(
+                      color: c.textPrimary,
+                      fontSize: 26,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    context.l10n.myAccountSubtitle,
+                    style: AppTextStyles.body.copyWith(color: c.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Tooltip(
+              message: context.l10n.refresh,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _handlePullRefresh,
+                  mouseCursor: SystemMouseCursors.click,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  child: Ink(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: c.surfaceMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: c.softBorder),
+                    ),
+                    child: Icon(
+                      LucideIcons.refreshCw,
+                      size: 17,
+                      color: c.iconDefault,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _ProfileHeader(
+          userName: user.name,
+          plan: user.plan,
+          expiry: user.expiry,
+          avatar: user.avatarLetter,
+          hidePlan: false,
+          hideExpiry: false,
+          onRenew: canRenew ? _renewCurrentPlan : null,
+          onManage: _showAccountSheet,
+        ),
+        const SizedBox(height: 14),
+        if (!ctrl.hasPlan)
+          NoPlanCard(
+            onPurchase: isPageEnabled(AppPage.shop)
+                ? () => ctrl.goToPage(AppPage.shop)
+                : null,
+          )
+        else ...[
+          _DesktopAccountMetrics(ctrl: ctrl),
+          const SizedBox(height: 14),
+          _TrafficOverviewCard(
+            usedGb: ctrl.traffic.usedGb,
+            totalGb: ctrl.traffic.totalGb,
+            remainGb: ctrl.traffic.remainGb,
+            resetDay: ctrl.resetDay,
+          ),
+        ],
+        const SizedBox(height: 16),
+        _DesktopProfileMenuSection(ctrl: ctrl),
+      ],
+    );
   }
 
   // ── Compact (bottom-nav) layout ────────────────────────────────────────
@@ -159,10 +253,7 @@ class _AccountPageState extends State<AccountPage> {
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
       child: ListView(
-        shrinkWrap: CorePlatformSupport.isDesktop,
-        physics: CorePlatformSupport.isDesktop
-            ? const NeverScrollableScrollPhysics()
-            : const AlwaysScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
           _ProfileHeader(
@@ -180,6 +271,208 @@ class _AccountPageState extends State<AccountPage> {
           const SizedBox(height: 14),
           _ProfileMenuSection(ctrl: ctrl),
         ],
+      ),
+    );
+  }
+}
+
+
+// ── Desktop account widgets ──────────────────────────────────────────────
+
+class _DesktopAccountMetrics extends StatelessWidget {
+  const _DesktopAccountMetrics({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 12.0;
+        final width = (constraints.maxWidth - gap * 2) / 3;
+        final balance = ctrl.user.balance / 100;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(
+              width: width,
+              child: _DesktopAccountMetric(
+                icon: LucideIcons.package,
+                label: context.l10n.currentPlan,
+                value: ctrl.user.plan.isEmpty
+                    ? context.l10n.noCurrentPlan
+                    : ctrl.user.plan,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _DesktopAccountMetric(
+                icon: LucideIcons.wallet,
+                label: context.l10n.accountBalance,
+                value:
+                    '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _DesktopAccountMetric(
+                icon: LucideIcons.calendarClock,
+                label: context.l10n.expiryTime,
+                value: ctrl.user.expiry.isEmpty ? '--' : ctrl.user.expiry,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DesktopAccountMetric extends StatelessWidget {
+  const _DesktopAccountMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AppCard(
+      height: 96,
+      padding: const EdgeInsets.all(14),
+      shadow: AppCardShadow.soft,
+      child: Row(
+        children: [
+          _SmallIcon(icon: icon, color: c.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopProfileMenuSection extends StatelessWidget {
+  const _DesktopProfileMenuSection({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final columns = constraints.maxWidth >= 820 ? 4 : 3;
+        final width =
+            (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final item in hubDestinations)
+              SizedBox(
+                width: width,
+                child: _DesktopQuickTile(
+                  icon: item.icon,
+                  title: item.labelFor(context),
+                  subtitle: item.subtitleFor(context),
+                  onTap: () => ctrl.goToPage(item.page),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DesktopQuickTile extends StatelessWidget {
+  const _DesktopQuickTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: AppCard(
+        onTap: onTap,
+        height: 82,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shadow: AppCardShadow.soft,
+        child: Row(
+          children: [
+            _SmallIcon(icon: icon, color: c.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: c.textPrimary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      color: c.textMuted,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(LucideIcons.chevronRight, size: 16, color: c.iconMuted),
+          ],
+        ),
       ),
     );
   }

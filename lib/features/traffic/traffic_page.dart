@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/core_platform_support.dart';
 import '../../app/nav_destinations.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
@@ -39,6 +40,7 @@ class _TrafficPageState extends State<TrafficPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
     return ResponsivePageScaffold(
       title: context.l10n.trafficStatistics,
       subtitle: context.l10n.trafficStatisticsSubtitle,
@@ -47,6 +49,84 @@ class _TrafficPageState extends State<TrafficPage> {
       onRefresh: _handleRefresh,
       onBack: () => AppScope.of(context).goToPage(AppPage.account),
       children: _bodyChildren(context),
+    );
+  }
+
+  Widget _buildDesktop(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final noPlan =
+        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.trafficStatistics,
+                    style: AppTextStyles.pageTitle.copyWith(
+                      color: c.textPrimary,
+                      fontSize: 26,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    context.l10n.trafficStatisticsSubtitle,
+                    style: AppTextStyles.body.copyWith(color: c.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Tooltip(
+              message: context.l10n.refresh,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _handleRefresh,
+                  mouseCursor: SystemMouseCursors.click,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  child: Ink(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: c.surfaceMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: c.softBorder),
+                    ),
+                    child: Icon(
+                      LucideIcons.refreshCw,
+                      size: 17,
+                      color: c.iconDefault,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        if (noPlan)
+          NoPlanCard(
+            onPurchase: isPageEnabled(AppPage.shop)
+                ? () => ctrl.goToPage(AppPage.shop)
+                : null,
+          )
+        else ...[
+          _DesktopTrafficSummary(ctrl: ctrl),
+          const SizedBox(height: 16),
+          _UsageTrendCard(
+            periodDays: _periodDays,
+            onPeriodChanged: (v) => setState(() => _periodDays = v),
+          ),
+        ],
+      ],
     );
   }
 
@@ -71,6 +151,160 @@ class _TrafficPageState extends State<TrafficPage> {
         onPeriodChanged: (v) => setState(() => _periodDays = v),
       ),
     ];
+  }
+}
+
+
+class _DesktopTrafficSummary extends StatelessWidget {
+  const _DesktopTrafficSummary({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final traffic = ctrl.traffic;
+    final ratio = traffic.totalGb > 0
+        ? (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0)
+        : 0.0;
+    final percent = (ratio * 100).toStringAsFixed(0);
+    final resetDay = ctrl.resetDay;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 12.0;
+        final width = (constraints.maxWidth - gap * 2) / 3;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(
+              width: width,
+              child: _DesktopTrafficMetric(
+                icon: LucideIcons.database,
+                title: context.l10n.trafficOverview,
+                value: formatGb(traffic.totalGb),
+                footer: context.l10n.usedTraffic(
+                  traffic.usedGb.toStringAsFixed(1),
+                  traffic.totalGb.toStringAsFixed(1),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _DesktopTrafficMetric(
+                icon: LucideIcons.chartColumn,
+                title: context.l10n.usage,
+                value: formatGb(traffic.usedGb),
+                footer: context.l10n.usedPercent(percent),
+                progress: ratio,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _DesktopTrafficMetric(
+                icon: LucideIcons.gauge,
+                title: context.l10n.remaining,
+                value: formatGb(traffic.remainGb),
+                footer: resetDay != null && resetDay > 0
+                    ? context.l10n.monthlyResetDay(resetDay)
+                    : context.l10n.resetDayUnavailable,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DesktopTrafficMetric extends StatelessWidget {
+  const _DesktopTrafficMetric({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.footer,
+    this.progress,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final String footer;
+  final double? progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AppCard(
+      height: 116,
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(icon, size: 14, color: c.primary),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textMuted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: c.textPrimary,
+              fontSize: 20,
+            ),
+          ),
+          if (progress != null) ...[
+            const SizedBox(height: 5),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 4,
+                backgroundColor: c.surfaceMuted,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  progress! > 0.85 ? c.warning : c.primary,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 3),
+          Text(
+            footer,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: c.textMuted,
+              fontSize: 10.5,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
