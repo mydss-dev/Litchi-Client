@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:screen_retriever/screen_retriever.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -97,13 +96,15 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   // here so `_quit()` can shut the core down and restore the system proxy
   // before the process exits (see macos/Runner/AppDelegate.swift).
   static const MethodChannel _macQuitChannel = MethodChannel('litchi/quit');
-  // Compact card-sized window for the logged-out (auth) screens; the full app
-  // window once authenticated. Each auth screen gets a fixed height that hugs
-  // its content, applied in didChangeDependencies the moment the screen changes
-  // so the window and the new content land together (no measure-then-resize
-  // stutter, no wasted whitespace).
+  // Auth screens stay compact and non-resizable; once authenticated the app
+  // switches once to a stable, user-resizable desktop window. Page navigation
+  // never changes the outer window size.
   static const double _authWindowWidth = 400;
-  static const Size _appWindowSize = Size(420, 760);
+  static const Size _authMinimumSize = Size(380, 480);
+  static const Size _desktopWindowSize = Size(900, 680);
+  static const Size _desktopMinimumSize = Size(800, 600);
+  // A practical unbounded ceiling that also clears the fixed macOS auth max.
+  static const Size _desktopMaximumSize = Size(10000, 10000);
   bool _maximized = false;
   bool _trayActive = false;
   bool _trayReady = false;
@@ -217,8 +218,9 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (mounted) setState(() => _maximized = m);
   }
 
-  /// Sizes the window to hug the current auth screen while logged out, and
-  /// restores the full app window once authenticated. No-op while maximized.
+  /// Keeps logged-out auth screens compact, then initializes the authenticated
+  /// desktop window exactly once. Subsequent controller rebuilds and page
+  /// navigation preserve the size chosen by the user.
   Future<void> _syncWindowSize(AppController ctrl) async {
     if (!_isDesktop) return;
     if (await windowManager.isMaximized()) return;
@@ -227,7 +229,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       if (_compactWindow == false) return;
       _compactWindow = false;
       _authHeight = null;
-      await _applyWindowSize(_appWindowSize, center: true);
+      await _applyDesktopWindow();
       return;
     }
 
@@ -239,7 +241,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     final firstCompact = _compactWindow != true;
     _compactWindow = true;
     _authHeight = height;
-    await _applyWindowSize(
+    await _applyAuthWindowSize(
       Size(_authWindowWidth, height),
       center: firstCompact,
     );
@@ -306,45 +308,39 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (_compactWindow == true && _authHeight == height) return;
     _compactWindow = true;
     _authHeight = height;
-    await _applyWindowSize(Size(_authWindowWidth, height), center: false);
+    await _applyAuthWindowSize(
+      Size(_authWindowWidth, height),
+      center: false,
+    );
   }
 
-  /// Applies a programmatic window size. macOS ignores a plain setSize while the
-  /// window is non-resizable and won't shrink below the currently laid-out
-  /// content, so we re-enable resizing and pin min == max == target to force it,
-  /// then lock the window again.
-  Future<void> _applyWindowSize(Size size, {required bool center}) async {
+  /// Applies the fixed compact auth size. Windows/Linux only need their desktop
+  /// minimum reset before shrinking; macOS additionally pins min == max to force
+  /// the resize while the auth window is non-resizable.
+  Future<void> _applyAuthWindowSize(Size size, {required bool center}) async {
     await windowManager.setResizable(true);
     if (Platform.isMacOS) {
-      // Pin min == max == target to force the resize.
       await windowManager.setMinimumSize(size);
       await windowManager.setMaximumSize(size);
       await windowManager.setSize(size);
-      if (center) await windowManager.center();
     } else {
+      await windowManager.setMinimumSize(_authMinimumSize);
+      await windowManager.setMaximumSize(_desktopMaximumSize);
       await windowManager.setSize(size);
-      if (center) await windowManager.center();
     }
+    if (center) await windowManager.center();
     await windowManager.setResizable(false);
   }
 
-  /// Resizes the app window to hug the current page's natural content height,
-  /// clamped to the display's work area so a tall page (e.g. the node list)
-  /// scrolls inside the window instead of pushing it past the screen edge.
-  Future<void> _resizeToContentHeight(double contentHeight) async {
-    if (!_isDesktop) return;
-    if (await windowManager.isMaximized()) return;
-    // Custom chrome (Windows/Linux) 46px, macOS drag strip 40px, plus the
-    // content area's top/bottom padding (14 + 12).
-    final chromeHeight = Platform.isMacOS ? 40.0 : 46.0;
-    const verticalPadding = 14.0 + 12.0;
-    final raw = chromeHeight + verticalPadding + contentHeight;
-    final display = await screenRetriever.getPrimaryDisplay();
-    final workHeight = display.visibleSize?.height ?? display.size.height;
-    final maxHeight = workHeight - 24;
-    final upper = maxHeight > 480.0 ? maxHeight : 480.0;
-    final target = raw.clamp(480.0, upper).toDouble();
-    await _applyWindowSize(Size(_appWindowSize.width, target), center: false);
+  /// Initializes the authenticated desktop surface once. After this transition
+  /// the outer window belongs to the user: it can be resized/maximized and page
+  /// navigation no longer changes its dimensions.
+  Future<void> _applyDesktopWindow() async {
+    await windowManager.setResizable(true);
+    await windowManager.setMinimumSize(_desktopMinimumSize);
+    await windowManager.setMaximumSize(_desktopMaximumSize);
+    await windowManager.setSize(_desktopWindowSize);
+    await windowManager.center();
   }
 
   // ── Tray ─────────────────────────────────────────────────────────────────
@@ -650,7 +646,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
         border: asCard ? Border.all(color: c.softBorder) : null,
       ),
       child: controller.isAuthenticated
-          ? _MainShell(onResizeWindow: _resizeToContentHeight)
+          ? const _MainShell()
           : _AuthShell(
               screen: _visibleAuthScreen ?? controller.authScreen,
               opacity: _authOpacity,
@@ -662,16 +658,12 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
 /// Desktop replaces the bottom nav with a left-hand drawer; every other
 /// platform keeps the compact bottom-nav layout.
 class _MainShell extends StatelessWidget {
-  const _MainShell({required this.onResizeWindow});
-
-  /// Called by the desktop body with the current page's natural content height
-  /// so the shell can resize the window to hug it.
-  final Future<void> Function(double contentHeight) onResizeWindow;
+  const _MainShell();
 
   @override
   Widget build(BuildContext context) {
     if (CorePlatformSupport.isDesktop) {
-      return _DesktopBody(onResizeWindow: onResizeWindow);
+      return const _DesktopBody();
     }
     return const _CompactBody();
   }
@@ -751,14 +743,11 @@ class _CompactBodyState extends State<_CompactBody> {
   }
 }
 
-/// Desktop layout: the original compact window with a left-hand drawer. A
-/// hamburger button in the title bar slides the drawer over the content to
-/// reveal the full navigation. The window height auto-fits the current page's
-/// content (measured below), so there is no dead space beneath short pages.
+/// Desktop layout: the current compact page set inside a stable resizable
+/// desktop window. Stage 2 will replace the drawer with a persistent sidebar;
+/// for now navigation and page visuals intentionally stay unchanged.
 class _DesktopBody extends StatefulWidget {
-  const _DesktopBody({required this.onResizeWindow});
-
-  final Future<void> Function(double contentHeight) onResizeWindow;
+  const _DesktopBody();
 
   @override
   State<_DesktopBody> createState() => _DesktopBodyState();
@@ -766,43 +755,15 @@ class _DesktopBody extends StatefulWidget {
 
 class _DesktopBodyState extends State<_DesktopBody> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final GlobalKey _contentKey = GlobalKey();
-  double? _lastContentHeight;
 
   void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureAndResize());
-  }
-
-  /// Re-measures after the content's laid-out size changes (data loads,
-  /// banners appearing/clearing, tab switches).
-  void _onSizeChanged(SizeChangedLayoutNotification notification) {
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measureAndResize());
-  }
-
-  void _measureAndResize() {
-    if (!mounted) return;
-    final box = _contentKey.currentContext?.findRenderObject();
-    if (box is! RenderBox || !box.hasSize) return;
-    final height = box.size.height;
-    if (_lastContentHeight != null &&
-        (height - _lastContentHeight!).abs() < 0.5) {
-      return;
-    }
-    _lastContentHeight = height;
-    unawaited(widget.onResizeWindow(height));
-  }
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
-    // Render only the current page (not an IndexedStack) so its natural height
-    // is measurable. Every page reads its data from AppController, so remounting
-    // on tab switch is cheap — it only resets transient UI (filter tab, search).
+    // Render only the current page (not an IndexedStack). Every page reads its
+    // data from AppController, so remounting only resets transient local UI.
     final page = _pageFor(ctrl.page);
 
     return Scaffold(
@@ -826,20 +787,9 @@ class _DesktopBodyState extends State<_DesktopBody> {
                 bottom: false,
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
-                  child: NotificationListener<SizeChangedLayoutNotification>(
-                    onNotification: (notification) {
-                      _onSizeChanged(notification);
-                      return true;
-                    },
-                    child: SizeChangedLayoutNotifier(
-                      child: KeyedSubtree(
-                        key: PageStorageKey<AppPage>(ctrl.page),
-                        child: SizedBox(
-                          key: _contentKey,
-                          child: page,
-                        ),
-                      ),
-                    ),
+                  child: KeyedSubtree(
+                    key: PageStorageKey<AppPage>(ctrl.page),
+                    child: page,
                   ),
                 ),
               ),
