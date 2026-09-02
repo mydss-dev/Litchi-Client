@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
 
+# Final pass: Windows uses a pure-Go isolated core and must ship no legacy DLL.
 jobs:
   test:
     runs-on: ubuntu-latest
