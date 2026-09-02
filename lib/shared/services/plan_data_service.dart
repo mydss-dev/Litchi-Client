@@ -22,14 +22,27 @@ class PlanDataService {
     if (remotePlans.isEmpty) return const PlanDataResult();
 
     final plans = remotePlans.map(ModelMappers.toPlan).toList();
-    final currentPlan = planById(plans, currentPlanId);
-    final user = currentUser;
     return PlanDataResult(
       plans: plans,
-      user: user != null && user.plan.trim().isEmpty && currentPlan != null
-          ? user.copyWith(plan: currentPlan.title)
-          : null,
+      user: syncCurrentPlanTitle(
+        user: currentUser,
+        plans: plans,
+        currentPlanId: currentPlanId,
+      ),
     );
+  }
+
+  static UserModel? syncCurrentPlanTitle({
+    required UserModel? user,
+    required List<PlanModel> plans,
+    required int? currentPlanId,
+  }) {
+    if (user == null) return null;
+    final currentPlan = planById(plans, currentPlanId);
+    if (currentPlan == null) return null;
+    final freshTitle = currentPlan.title.trim();
+    if (freshTitle.isEmpty || user.plan.trim() == freshTitle) return null;
+    return user.copyWith(plan: currentPlan.title);
   }
 
   static PlanModel? planById(List<PlanModel> plans, int? id) {

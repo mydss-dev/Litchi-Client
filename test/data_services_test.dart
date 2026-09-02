@@ -43,6 +43,39 @@ void main() {
     expect(PlanDataService.planById(plans, null), isNull);
   });
 
+  test('fresh plan title replaces stale account plan name', () {
+    const user = UserModel(
+      name: 'Tester',
+      plan: 'Old Pro Name',
+      avatarLetter: 'T',
+      expiry: '2026-12-31',
+    );
+    const plans = [
+      PlanModel(
+        id: '12',
+        title: 'Litchi Pro',
+        capacity: '500 GB',
+        category: PlanCategory.recurring,
+      ),
+    ];
+
+    final updated = PlanDataService.syncCurrentPlanTitle(
+      user: user,
+      plans: plans,
+      currentPlanId: 12,
+    );
+
+    expect(updated?.plan, 'Litchi Pro');
+    expect(
+      PlanDataService.syncCurrentPlanTitle(
+        user: updated,
+        plans: plans,
+        currentPlanId: 12,
+      ),
+      isNull,
+    );
+  });
+
   test('aggregates traffic logs by local day and keeps points sorted', () {
     final result = TrafficDataService.fromLogs([
       RemoteTrafficLog(

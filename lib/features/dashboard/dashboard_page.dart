@@ -530,7 +530,6 @@ class _DesktopNodeCard extends StatelessWidget {
       height: 300,
       radius: AppRadius.lg,
       padding: const EdgeInsets.all(18),
-      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

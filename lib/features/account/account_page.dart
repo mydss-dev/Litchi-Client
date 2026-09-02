@@ -271,38 +271,47 @@ class _DesktopAccountMetrics extends StatelessWidget {
         const gap = 12.0;
         final width = (constraints.maxWidth - gap * 2) / 3;
         final balance = ctrl.user.balance / 100;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              width: width,
-              child: _DesktopAccountMetric(
-                icon: LucideIcons.package,
-                label: context.l10n.currentPlan,
-                value: ctrl.user.plan.isEmpty
-                    ? context.l10n.noCurrentPlan
-                    : ctrl.user.plan,
-              ),
+            Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                SizedBox(
+                  width: width,
+                  child: _DesktopAccountMetric(
+                    icon: LucideIcons.package,
+                    label: context.l10n.currentPlan,
+                    value: ctrl.user.plan.isEmpty
+                        ? context.l10n.noCurrentPlan
+                        : ctrl.user.plan,
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: _DesktopBalanceMetric(
+                    value:
+                        '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
+                    commission:
+                        '${ctrl.currencySymbol}${ctrl.withdrawable.toStringAsFixed(2)}',
+                  ),
+                ),
+                SizedBox(
+                  width: width,
+                  child: _DesktopAccountMetric(
+                    icon: LucideIcons.calendarClock,
+                    label: context.l10n.expiryTime,
+                    value: ctrl.user.expiry.isEmpty ? '--' : ctrl.user.expiry,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(
-              width: width,
-              child: _DesktopBalanceMetric(
-                value: '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
-                commission:
-                    '${ctrl.currencySymbol}${ctrl.withdrawable.toStringAsFixed(2)}',
-                onRecharge: onRecharge,
-                onTransfer: onTransfer,
-                onWithdraw: onWithdraw,
-              ),
-            ),
-            SizedBox(
-              width: width,
-              child: _DesktopAccountMetric(
-                icon: LucideIcons.calendarClock,
-                label: context.l10n.expiryTime,
-                value: ctrl.user.expiry.isEmpty ? '--' : ctrl.user.expiry,
-              ),
+            const SizedBox(height: 10),
+            _DesktopMoneyActions(
+              onRecharge: onRecharge,
+              onTransfer: onTransfer,
+              onWithdraw: onWithdraw,
             ),
           ],
         );
@@ -364,95 +373,100 @@ class _DesktopAccountMetric extends StatelessWidget {
 }
 
 class _DesktopBalanceMetric extends StatelessWidget {
-  const _DesktopBalanceMetric({
-    required this.value,
-    required this.commission,
-    required this.onRecharge,
-    required this.onTransfer,
-    required this.onWithdraw,
-  });
+  const _DesktopBalanceMetric({required this.value, required this.commission});
 
   final String value;
   final String commission;
-  final VoidCallback onRecharge;
-  final VoidCallback onTransfer;
-  final VoidCallback onWithdraw;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return AppCard(
       height: 116,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.all(14),
       shadow: AppCardShadow.soft,
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              _SmallIcon(icon: LucideIcons.wallet, color: c.primary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.l10n.accountBalance,
-                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Text(
-                          value,
-                          style: AppTextStyles.bodyStrong.copyWith(
-                            color: c.textPrimary,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '${context.l10n.withdrawableCommission} $commission',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.end,
-                            style: AppTextStyles.caption.copyWith(
-                              color: c.textMuted,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+          _SmallIcon(icon: LucideIcons.wallet, color: c.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.accountBalance,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
                 ),
-              ),
-            ],
+                const SizedBox(height: 5),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${context.l10n.withdrawableCommission} $commission',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textMuted,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const Spacer(),
-          Row(
-            children: [
-              Expanded(
-                child: _DesktopMoneyAction(
-                  label: context.l10n.rechargeBalance,
-                  onTap: onRecharge,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _DesktopMoneyAction(
-                  label: context.l10n.transferShort,
-                  onTap: onTransfer,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _DesktopMoneyAction(
-                  label: context.l10n.withdrawShort,
-                  onTap: onWithdraw,
-                ),
-              ),
-            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopMoneyActions extends StatelessWidget {
+  const _DesktopMoneyActions({
+    required this.onRecharge,
+    required this.onTransfer,
+    required this.onWithdraw,
+  });
+
+  final VoidCallback onRecharge;
+  final VoidCallback onTransfer;
+  final VoidCallback onWithdraw;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      shadow: AppCardShadow.soft,
+      child: Row(
+        children: [
+          Expanded(
+            child: _DesktopMoneyAction(
+              label: context.l10n.rechargeBalance,
+              onTap: onRecharge,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _DesktopMoneyAction(
+              label: context.l10n.transferShort,
+              onTap: onTransfer,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _DesktopMoneyAction(
+              label: context.l10n.withdrawShort,
+              onTap: onWithdraw,
+            ),
           ),
         ],
       ),
@@ -475,8 +489,8 @@ class _DesktopMoneyAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.sm),
         child: Ink(
-          height: 28,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
             color: c.primarySoft,
             borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -489,7 +503,7 @@ class _DesktopMoneyAction extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.caption.copyWith(
                 color: c.primary,
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
             ),

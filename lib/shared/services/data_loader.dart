@@ -4,6 +4,7 @@ import '../models/app_models.dart';
 import '../models/model_mappers.dart';
 import 'network_error_classifier.dart';
 import 'panel_api.dart';
+import 'plan_data_service.dart';
 import 'secure_logger.dart';
 
 /// Mutable bag populated by [DataLoader] with best-effort API results.
@@ -232,11 +233,12 @@ class DataLoader {
       if (plans.isNotEmpty) {
         final mapped = plans.map(ModelMappers.toPlan).toList();
         snap.plans = mapped;
-        final currentPlan = _planById(mapped, snap.currentPlanId);
-        final user = snap.user;
-        if (user != null && user.plan.trim().isEmpty && currentPlan != null) {
-          snap.user = user.copyWith(plan: currentPlan.title);
-        }
+        final syncedUser = PlanDataService.syncCurrentPlanTitle(
+          user: snap.user,
+          plans: mapped,
+          currentPlanId: snap.currentPlanId,
+        );
+        if (syncedUser != null) snap.user = syncedUser;
       }
     } catch (e) {
       SecureLogger.warn(
@@ -244,14 +246,6 @@ class DataLoader {
         e,
       );
     }
-  }
-
-  PlanModel? _planById(List<PlanModel> plans, int? id) {
-    if (id == null || id <= 0) return null;
-    for (final plan in plans) {
-      if (int.tryParse(plan.id) == id) return plan;
-    }
-    return null;
   }
 
   Future<void> _fillInvite(DataSnapshot snap) async {
