@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../app/core_platform_support.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import 'page_header.dart';
 import 'page_status_cards.dart';
 
-/// Shared page chrome for account/support sub-pages. Desktop uses the
-/// persistent sidebar and a wide title/subtitle header; compact platforms keep
-/// the bottom-nav/back-button presentation.
+/// Shared page chrome for account/support sub-pages. Desktop is content-first:
+/// the persistent sidebar already names the destination, so only real page
+/// actions are surfaced above content. Compact navigation remains unchanged.
 class ResponsivePageScaffold extends StatelessWidget {
   const ResponsivePageScaffold({
     super.key,
@@ -60,7 +59,7 @@ class ResponsivePageScaffold extends StatelessWidget {
   }
 
   Widget _buildDesktop(BuildContext context) {
-    final c = AppColors.of(context);
+    final hasActions = trailing != null || onRefresh != null;
     return Align(
       alignment: Alignment.topLeft,
       child: ConstrainedBox(
@@ -68,42 +67,35 @@ class ResponsivePageScaffold extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: AppTextStyles.pageTitle.copyWith(
-                          color: c.textPrimary,
+            if (hasActions) ...[
+              Align(
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onRefresh != null)
+                      SizedBox(
+                        width: 34,
+                        height: 34,
+                        child: IconButton(
+                          tooltip: MaterialLocalizations.of(context)
+                              .refreshIndicatorSemanticLabel,
+                          onPressed: () async => onRefresh!(),
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          iconSize: 17,
+                          icon: const Icon(Icons.refresh),
                         ),
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.body.copyWith(color: c.textMuted),
-                      ),
+                    if (trailing != null) ...[
+                      if (onRefresh != null) const SizedBox(width: 8),
+                      trailing!,
                     ],
-                  ),
+                  ],
                 ),
-                if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-                if (onRefresh != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: MaterialLocalizations.of(context)
-                        .refreshIndicatorSemanticLabel,
-                    onPressed: () async => onRefresh!(),
-                    icon: const Icon(Icons.refresh),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 18),
+              ),
+              const SizedBox(height: 10),
+            ],
             ...children,
           ],
         ),

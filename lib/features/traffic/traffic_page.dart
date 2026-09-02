@@ -53,7 +53,6 @@ class _TrafficPageState extends State<TrafficPage> {
   }
 
   Widget _buildDesktop(BuildContext context) {
-    final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final noPlan =
         ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
@@ -61,57 +60,6 @@ class _TrafficPageState extends State<TrafficPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.trafficStatistics,
-                    style: AppTextStyles.pageTitle.copyWith(
-                      color: c.textPrimary,
-                      fontSize: 26,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    context.l10n.trafficStatisticsSubtitle,
-                    style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Tooltip(
-              message: context.l10n.refresh,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _handleRefresh,
-                  mouseCursor: SystemMouseCursors.click,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: Ink(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: c.surfaceMuted,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: c.softBorder),
-                    ),
-                    child: Icon(
-                      LucideIcons.refreshCw,
-                      size: 17,
-                      color: c.iconDefault,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
         if (noPlan)
           NoPlanCard(
             onPurchase: isPageEnabled(AppPage.shop)
@@ -153,7 +101,6 @@ class _TrafficPageState extends State<TrafficPage> {
     ];
   }
 }
-
 
 class _DesktopTrafficSummary extends StatelessWidget {
   const _DesktopTrafficSummary({required this.ctrl});
@@ -876,9 +823,8 @@ class _StatCard extends StatelessWidget {
                   child: Text(
                     value,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.largeNumber(
-                      fontSize: 30,
-                    ).copyWith(color: c.textPrimary),
+                    style: AppTextStyles.largeNumber(fontSize: 30)
+                        .copyWith(color: c.textPrimary),
                   ),
                 ),
                 if (unit.isNotEmpty) ...[

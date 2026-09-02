@@ -170,35 +170,6 @@ class _NodesPageState extends State<NodesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.nodes,
-                    style: AppTextStyles.pageTitle.copyWith(
-                      color: c.textPrimary,
-                      fontSize: 26,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    context.l10n.nodesSubtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            _LatencyTestButton(ctrl: ctrl, showLabel: true),
-          ],
-        ),
-        const SizedBox(height: 18),
         if (noPlan)
           NoPlanCard(
             onPurchase: isPageEnabled(AppPage.shop)
@@ -219,6 +190,8 @@ class _NodesPageState extends State<NodesPage> {
                 context.l10n.nodeCountSummary(nodes.length),
                 style: AppTextStyles.caption.copyWith(color: c.textMuted),
               ),
+              const SizedBox(width: 10),
+              _LatencyTestButton(ctrl: ctrl, showLabel: true),
             ],
           ),
           const SizedBox(height: 14),

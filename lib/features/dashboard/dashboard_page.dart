@@ -152,8 +152,6 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _DesktopDashboardHeader(onRefresh: _handlePullRefresh),
-        const SizedBox(height: 18),
         _DesktopAlerts(
           ctrl: ctrl,
           onConnectionRetry: _toggleConnection,
@@ -265,62 +263,6 @@ class _DashboardPageState extends State<DashboardPage> {
 }
 
 // ── Desktop dashboard widgets ───────────────────────────────────────────────
-
-class _DesktopDashboardHeader extends StatelessWidget {
-  const _DesktopDashboardHeader({required this.onRefresh});
-
-  final VoidCallback onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.l10n.home,
-                style: AppTextStyles.pageTitle.copyWith(
-                  color: c.textPrimary,
-                  fontSize: 26,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                context.l10n.dashboardSubtitle,
-                style: AppTextStyles.body.copyWith(color: c.textMuted),
-              ),
-            ],
-          ),
-        ),
-        Tooltip(
-          message: context.l10n.refresh,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onRefresh,
-              mouseCursor: SystemMouseCursors.click,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              child: Ink(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: c.softBorder),
-                ),
-                child: Icon(LucideIcons.refreshCw, size: 17, color: c.iconDefault),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class _DesktopAlerts extends StatelessWidget {
   const _DesktopAlerts({
@@ -1173,9 +1115,7 @@ class _NodeCard extends StatelessWidget {
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(
-                      color: c.textMuted,
-                    ),
+                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
                   ),
               ],
             ),
@@ -1424,11 +1364,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
 }
 
 class _ChargingRing extends StatelessWidget {
-  const _ChargingRing({
-    super.key,
-    required this.turns,
-    required this.color,
-  });
+  const _ChargingRing({super.key, required this.turns, required this.color});
 
   final Animation<double> turns;
   final Color color;

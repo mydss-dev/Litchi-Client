@@ -86,7 +86,6 @@ class _InvitePageState extends State<InvitePage> {
   }
 
   Widget _buildDesktop(BuildContext context) {
-    final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final invites = _invites(ctrl);
     final safeSelected = _selected.clamp(0, invites.length - 1);
@@ -116,37 +115,6 @@ class _InvitePageState extends State<InvitePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.inviteFriends,
-                    style: AppTextStyles.pageTitle.copyWith(
-                      color: c.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    context.l10n.inviteSubtitle,
-                    style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            IconButton(
-              tooltip: MaterialLocalizations.of(context)
-                  .refreshIndicatorSemanticLabel,
-              onPressed: () async => _handlePullRefresh(),
-              icon: const Icon(LucideIcons.refreshCw),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
         LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 860;

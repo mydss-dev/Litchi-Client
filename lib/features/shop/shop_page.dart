@@ -72,66 +72,12 @@ class _ShopPageState extends State<ShopPage> {
   // ── Desktop layout ───────────────────────────────────────────────────────
 
   Widget _buildDesktop(BuildContext context) {
-    final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final plans = _filtered(ctrl.plans);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l10n.plans,
-                    style: AppTextStyles.pageTitle.copyWith(
-                      color: c.textPrimary,
-                      fontSize: 26,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    context.l10n.buyPlansSubtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Tooltip(
-              message: context.l10n.refresh,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _handlePullRefresh,
-                  mouseCursor: SystemMouseCursors.click,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: Ink(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: c.surfaceMuted,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: c.softBorder),
-                    ),
-                    child: Icon(
-                      LucideIcons.refreshCw,
-                      size: 17,
-                      color: c.iconDefault,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
         _ShopTabs(
           tabs: _tabs(context),
           selected: _tab,
@@ -632,9 +578,8 @@ class _PricePanel extends StatelessWidget {
           ),
           Text(
             price == null ? '--' : price!.toStringAsFixed(0),
-            style: AppTextStyles.largeNumber(
-              fontSize: desktop ? 34 : 38,
-            ).copyWith(color: c.textPrimary),
+            style: AppTextStyles.largeNumber(fontSize: desktop ? 34 : 38)
+                .copyWith(color: c.textPrimary),
           ),
           if (unit.isNotEmpty) ...[
             const SizedBox(width: 6),

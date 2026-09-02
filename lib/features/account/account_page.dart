@@ -162,7 +162,6 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Widget _buildDesktop(BuildContext context) {
-    final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final user = ctrl.user;
     final canRenew = isPageEnabled(AppPage.shop) && ctrl.hasPlan;
@@ -170,57 +169,6 @@ class _AccountPageState extends State<AccountPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    desktopPageLabel(context, AppPage.account),
-                    style: AppTextStyles.pageTitle.copyWith(
-                      color: c.textPrimary,
-                      fontSize: 26,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    context.l10n.myAccountSubtitle,
-                    style: AppTextStyles.body.copyWith(color: c.textMuted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Tooltip(
-              message: context.l10n.refresh,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _handlePullRefresh,
-                  mouseCursor: SystemMouseCursors.click,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: Ink(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: c.surfaceMuted,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: c.softBorder),
-                    ),
-                    child: Icon(
-                      LucideIcons.refreshCw,
-                      size: 17,
-                      color: c.iconDefault,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
         _ProfileHeader(
           userName: user.name,
           plan: user.plan,

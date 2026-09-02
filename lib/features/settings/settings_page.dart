@@ -125,30 +125,13 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildDesktop(BuildContext context) {
-    final c = AppColors.of(context);
-    final l10n = context.l10n;
     return Align(
       alignment: Alignment.topLeft,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              l10n.settings,
-              style: AppTextStyles.pageTitle.copyWith(
-                color: c.textPrimary,
-                fontSize: 26,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              l10n.settingsSubtitle,
-              style: AppTextStyles.body.copyWith(color: c.textMuted),
-            ),
-            const SizedBox(height: 18),
-            ..._bodyChildren(context),
-          ],
+          children: [..._bodyChildren(context)],
         ),
       ),
     );
@@ -234,9 +217,8 @@ class _SettingsPageState extends State<SettingsPage> {
               label: l10n.tunMode,
               trailing: AppSwitch(
                 value: ctrl.networkMode == NetworkMode.tun,
-                onChanged: (on) => _setNetworkMode(
-                  on ? NetworkMode.tun : NetworkMode.system,
-                ),
+                onChanged: (on) =>
+                    _setNetworkMode(on ? NetworkMode.tun : NetworkMode.system),
               ),
             ),
           _SettingRow(
