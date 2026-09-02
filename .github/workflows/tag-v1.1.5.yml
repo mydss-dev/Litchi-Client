@@ -8,17 +8,21 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
-  tag:
+  tag-and-dispatch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
-      - name: Create release tag
+      - name: Verify release tag
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag v1.1.5 ba7f0cee05dcfc4b839e20cda495aa2ca92155f8
-          git push origin refs/tags/v1.1.5
+          git fetch --tags --force
+          TAG_SHA="$(git rev-list -n 1 v1.1.5)"
+          test "$TAG_SHA" = "ba7f0cee05dcfc4b839e20cda495aa2ca92155f8"
+      - name: Dispatch release CI on tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref v1.1.5
