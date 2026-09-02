@@ -1,0 +1,31 @@
+name: Trigger v1.1.3 Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release-v1.1.3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Tag audited release source
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG='v1.1.3'
+          TARGET='f4fe37fe1240ee91adb60eb30b3825ea976cc620'
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists"
+            exit 1
+          fi
+          git tag "$TAG" "$TARGET"
+          git push origin "refs/tags/$TAG"
+          echo "Tagged $TARGET as $TAG"
