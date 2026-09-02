@@ -1,4 +1,4 @@
-name: Windows TUN Core Refactor
+name: Windows TUN Final Verify
 
 on:
   push:
@@ -7,67 +7,32 @@ on:
       - '.github/workflows/windows-tun-refactor.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: main
-          fetch-depth: 0
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           channel: stable
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: '1.24.7'
-      - name: Apply refactor and run static tests
+      - name: Test Flutter and core
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('tool/windows_tun_refactor.py')
-          text = p.read_text()
-          opening = "    final script = '''\n\\$exe = [Text.Encoding]"
-          closing = "\n''';\n    final result = await Process.run('powershell.exe'"
-          if opening not in text or closing not in text:
-              raise SystemExit('PowerShell string repair anchors not found')
-          text = text.replace(opening, '    final script = """\n\\$exe = [Text.Encoding]', 1)
-          text = text.replace(closing, '\n""";\n    final result = await Process.run(\'powershell.exe\'', 1)
-          p.write_text(text)
-          PY
-          python3 tool/windows_tun_refactor.py
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('lib/app/core_controller.dart')
-          text = p.read_text()
-          old = "    if (e2e == null) return 9999; // broken Reality / unreachable — no fake latency\n"
-          new = "    if (e2e == null) {\n      return 9999; // broken Reality / unreachable — no fake latency\n    }\n"
-          if old not in text:
-              raise SystemExit('latency guard anchor not found')
-          p.write_text(text.replace(old, new, 1))
-          PY
-          gofmt -w core/singbox/*.go
-          (cd core/singbox && go mod tidy)
           flutter pub get
-          dart format lib/app/core_controller.dart lib/shared/services/sing_box_config.dart lib/shared/services/sing_box_ffi.dart lib/shared/services/sing_box_core_manager.dart lib/shared/services/windows_core_process_manager.dart
           flutter test
           flutter analyze
           (cd core/singbox && go test -tags "with_clash_api,with_quic,with_utls,with_wireguard" ./...)
           git diff --check
-      - name: Commit product changes
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "fix(windows): isolate TUN core and restore system stack"
-          git push origin HEAD:main
 
   windows_verify:
-    needs: patch
+    needs: test
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -79,7 +44,7 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: '1.24.7'
-      - name: Build Flutter and isolated Windows core
+      - name: Build isolated Windows TUN runtime
         shell: pwsh
         run: |
           flutter pub get
@@ -89,5 +54,6 @@ jobs:
           if (-not (Test-Path "$release\litchi-core.exe")) { throw "litchi-core.exe missing" }
           if (-not (Test-Path "$release\wintun.dll")) { throw "wintun.dll missing" }
           if (Test-Path "$release\litchi_singbox.dll") { throw "legacy litchi_singbox.dll still present" }
+          if (Test-Path "$release\core\litchi_singbox.dll") { throw "legacy core/litchi_singbox.dll still present" }
           & "$release\litchi-core.exe" version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
