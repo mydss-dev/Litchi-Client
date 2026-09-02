@@ -13,15 +13,15 @@ import '../shared/theme/app_text_styles.dart';
 import '../shared/widgets/brand_logo.dart';
 import 'app_controller.dart';
 
-/// Compact branded title bar with native-like window controls.
+/// Branded Windows/Linux title bar with desktop-native interaction targets.
 ///
-/// The whole brand area remains draggable and supports double-click maximize.
+/// The full non-control area is draggable and double-click toggles maximize.
+/// Windows caption buttons intentionally use the whole title-bar height rather
+/// than small rounded mobile-style buttons, matching desktop hit-area habits.
 class WindowControlsBar extends StatefulWidget {
   const WindowControlsBar({super.key, this.height = 46, this.leading});
 
   final double height;
-
-  /// Optional widget (e.g. a drawer hamburger button) shown before the brand.
   final Widget? leading;
 
   @override
@@ -46,15 +46,19 @@ class _WindowControlsBarState extends State<WindowControlsBar>
   }
 
   Future<void> _sync() async {
-    final m = await windowManager.isMaximized();
-    if (mounted) setState(() => _maximized = m);
+    final maximized = await windowManager.isMaximized();
+    if (mounted) setState(() => _maximized = maximized);
   }
 
   @override
-  void onWindowMaximize() => setState(() => _maximized = true);
+  void onWindowMaximize() {
+    if (mounted) setState(() => _maximized = true);
+  }
 
   @override
-  void onWindowUnmaximize() => setState(() => _maximized = false);
+  void onWindowUnmaximize() {
+    if (mounted) setState(() => _maximized = false);
+  }
 
   Future<void> _toggleMaximize() async {
     if (await windowManager.isMaximized()) {
@@ -69,6 +73,7 @@ class _WindowControlsBarState extends State<WindowControlsBar>
     return SizedBox(
       height: widget.height,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ?widget.leading,
           Expanded(
@@ -76,37 +81,44 @@ class _WindowControlsBarState extends State<WindowControlsBar>
               behavior: HitTestBehavior.translucent,
               onPanStart: (_) => windowManager.startDragging(),
               onDoubleTap: _toggleMaximize,
-              child: const Padding(
-                padding: EdgeInsets.only(left: 18),
-                child: BrandTitle(),
+              child: const Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: EdgeInsets.only(left: 18),
+                  child: BrandTitle(),
+                ),
               ),
             ),
           ),
           _WindowButton(
             icon: LucideIcons.minus,
+            height: widget.height,
             onTap: () => windowManager.minimize(),
           ),
           _WindowButton(
             icon: _maximized ? LucideIcons.copy : LucideIcons.square,
             iconSize: _maximized ? 12 : 13,
+            height: widget.height,
             onTap: _toggleMaximize,
           ),
           _WindowButton(
             icon: LucideIcons.x,
+            height: widget.height,
             isClose: true,
             onTap: () => windowManager.close(),
           ),
-          const SizedBox(width: 12),
         ],
       ),
     );
   }
 }
 
+/// macOS keeps the system traffic lights. Flutter only paints the drag strip
+/// beneath the transparent native title bar; no fake traffic-light controls are
+/// drawn, so Retina scaling and native hover/press behavior remain AppKit-owned.
 class MacTitleBar extends StatelessWidget {
   const MacTitleBar({super.key, this.leading});
 
-  /// Optional widget (e.g. a drawer hamburger button) shown before the brand.
   final Widget? leading;
 
   Future<void> _toggleMaximize() async {
@@ -138,7 +150,6 @@ class MacTitleBar extends StatelessWidget {
             const Expanded(
               child: Center(child: IgnorePointer(child: BrandTitle())),
             ),
-            // Balance the leading button's width so the brand stays centred.
             if (leading != null) const SizedBox(width: 42),
           ],
         ),
@@ -298,6 +309,9 @@ class _TitleActionSurface extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        mouseCursor: onTap == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: SizedBox(
           width: 40,
@@ -322,12 +336,14 @@ class _TitleActionSurface extends StatelessWidget {
 class _WindowButton extends StatefulWidget {
   const _WindowButton({
     required this.icon,
+    required this.height,
     required this.onTap,
     this.isClose = false,
     this.iconSize = 14,
   });
 
   final IconData icon;
+  final double height;
   final VoidCallback onTap;
   final bool isClose;
   final double iconSize;
@@ -337,36 +353,58 @@ class _WindowButton extends StatefulWidget {
 }
 
 class _WindowButtonState extends State<_WindowButton> {
-  bool _hover = false;
+  bool _hovered = false;
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final Color bg;
-    final Color iconColor;
-    if (_hover) {
-      bg = widget.isClose ? c.dangerSoft : c.surfaceMuted;
-      iconColor = widget.isClose ? c.danger : c.textPrimary;
-    } else {
-      bg = Colors.transparent;
-      iconColor = c.iconDefault;
+
+    Color background = Colors.transparent;
+    Color iconColor = c.iconDefault;
+    if (_hovered) {
+      if (widget.isClose) {
+        background = c.danger;
+        iconColor = Colors.white;
+      } else {
+        background = c.surfaceMuted;
+        iconColor = c.textPrimary;
+      }
+    }
+    if (_pressed) {
+      background = widget.isClose
+          ? c.danger.withValues(alpha: 0.82)
+          : c.softBorder.withValues(alpha: 0.82);
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
+    return Semantics(
+      button: true,
       child: MouseRegion(
-        onEnter: (_) => setState(() => _hover = true),
-        onExit: (_) => setState(() => _hover = false),
-        cursor: SystemMouseCursors.click,
+        onEnter: (_) {
+          if (!_hovered) setState(() => _hovered = true);
+        },
+        onExit: (_) {
+          if (_hovered || _pressed) {
+            setState(() {
+              _hovered = false;
+              _pressed = false;
+            });
+          }
+        },
+        cursor: SystemMouseCursors.basic,
         child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTapCancel: () => setState(() => _pressed = false),
           onTap: widget.onTap,
-          child: Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(AppRadius.xs),
-            ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 70),
+            curve: Curves.easeOut,
+            width: 46,
+            height: widget.height,
+            color: background,
+            alignment: Alignment.center,
             child: Icon(widget.icon, size: widget.iconSize, color: iconColor),
           ),
         ),
