@@ -142,12 +142,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 720) return _buildDesktop(context);
-        return _buildCompact(context);
-      },
-    );
+    return _buildCompact(context);
   }
 
   // ── Compact (bottom-nav) layout ────────────────────────────────────────
@@ -198,62 +193,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ── Desktop (wide) layout ──────────────────────────────────────────────
-  Widget _buildDesktop(BuildContext context) {
-    final ctrl = AppScope.of(context);
-    final noPlan =
-        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
-
-    return RefreshIndicator(
-      onRefresh: _handlePullRefresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          _TopBanners(
-            ctrl: ctrl,
-            onConnectionRetry: _toggleConnection,
-            onDataRetry: _handlePullRefresh,
-          ),
-          if (noPlan)
-            NoPlanCard(
-              onPurchase: isPageEnabled(AppPage.shop)
-                  ? () => ctrl.goToPage(AppPage.shop)
-                  : null,
-            )
-          else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 360,
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: _tick,
-                    builder: (context, _, _) => _MobileConnectionCard(
-                      status: ctrl.connectionStatus,
-                      proxyMode: ctrl.proxyMode,
-                      elapsedLabel: formatDuration(ctrl.connectedDuration),
-                      supportsConnection: ctrl.supportsCoreConnection,
-                      onToggle: _toggleConnection,
-                      onModeChanged: (mode) => _changeMode(context, mode),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _NodeCard(
-                    node: ctrl.currentNode,
-                    loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
-                    automatic: ctrl.autoSelected,
-                    onTap: () => showNodePicker(context),
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 // ── Top banner stack (update / notice / error) ─────────────────────────────

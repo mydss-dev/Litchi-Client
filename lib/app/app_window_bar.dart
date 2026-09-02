@@ -17,9 +17,12 @@ import 'app_controller.dart';
 ///
 /// The whole brand area remains draggable and supports double-click maximize.
 class WindowControlsBar extends StatefulWidget {
-  const WindowControlsBar({super.key, this.height = 46});
+  const WindowControlsBar({super.key, this.height = 46, this.leading});
 
   final double height;
+
+  /// Optional widget (e.g. a drawer hamburger button) shown before the brand.
+  final Widget? leading;
 
   @override
   State<WindowControlsBar> createState() => _WindowControlsBarState();
@@ -67,6 +70,7 @@ class _WindowControlsBarState extends State<WindowControlsBar>
       height: widget.height,
       child: Row(
         children: [
+          ?widget.leading,
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
@@ -74,7 +78,7 @@ class _WindowControlsBarState extends State<WindowControlsBar>
               onDoubleTap: _toggleMaximize,
               child: const Padding(
                 padding: EdgeInsets.only(left: 18),
-                child: _BrandTitle(),
+                child: BrandTitle(),
               ),
             ),
           ),
@@ -100,7 +104,10 @@ class _WindowControlsBarState extends State<WindowControlsBar>
 }
 
 class MacTitleBar extends StatelessWidget {
-  const MacTitleBar({super.key});
+  const MacTitleBar({super.key, this.leading});
+
+  /// Optional widget (e.g. a drawer hamburger button) shown before the brand.
+  final Widget? leading;
 
   Future<void> _toggleMaximize() async {
     if (await windowManager.isMaximized()) {
@@ -125,8 +132,16 @@ class MacTitleBar extends StatelessWidget {
             bottom: BorderSide(color: c.softBorder.withValues(alpha: 0.72)),
           ),
         ),
-        alignment: Alignment.center,
-        child: const IgnorePointer(child: _BrandTitle()),
+        child: Row(
+          children: [
+            ?leading,
+            const Expanded(
+              child: Center(child: IgnorePointer(child: BrandTitle())),
+            ),
+            // Balance the leading button's width so the brand stays centred.
+            if (leading != null) const SizedBox(width: 42),
+          ],
+        ),
       ),
     );
   }
@@ -153,7 +168,7 @@ class MobileTitleBar extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                Expanded(child: _BrandTitle()),
+                Expanded(child: BrandTitle()),
                 _TitleActionsGroup(),
               ],
             ),
@@ -164,8 +179,8 @@ class MobileTitleBar extends StatelessWidget {
   }
 }
 
-class _BrandTitle extends StatelessWidget {
-  const _BrandTitle();
+class BrandTitle extends StatelessWidget {
+  const BrandTitle({super.key});
 
   @override
   Widget build(BuildContext context) {

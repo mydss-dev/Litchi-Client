@@ -101,8 +101,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   // so the window and the new content land together (no measure-then-resize
   // stutter, no wasted whitespace).
   static const double _authWindowWidth = 400;
-  static const Size _appWindowSize = Size(960, 640);
-  static const Size _appWindowMinSize = Size(720, 520);
+  static const Size _appWindowSize = Size(420, 760);
   bool _maximized = false;
   bool _trayActive = false;
   bool _trayReady = false;
@@ -226,12 +225,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       if (_compactWindow == false) return;
       _compactWindow = false;
       _authHeight = null;
-      await _applyWindowSize(
-        _appWindowSize,
-        center: true,
-        minimumSize: _appWindowMinSize,
-        resizable: true,
-      );
+      await _applyWindowSize(_appWindowSize, center: true);
       return;
     }
 
@@ -246,7 +240,6 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     await _applyWindowSize(
       Size(_authWindowWidth, height),
       center: firstCompact,
-      minimumSize: const Size(380, 480),
     );
   }
 
@@ -311,27 +304,17 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (_compactWindow == true && _authHeight == height) return;
     _compactWindow = true;
     _authHeight = height;
-    await _applyWindowSize(
-      Size(_authWindowWidth, height),
-      center: false,
-      minimumSize: const Size(380, 480),
-    );
+    await _applyWindowSize(Size(_authWindowWidth, height), center: false);
   }
 
   /// Applies a programmatic window size. macOS ignores a plain setSize while the
   /// window is non-resizable and won't shrink below the currently laid-out
   /// content, so we re-enable resizing and pin min == max == target to force it,
-  /// then relax the constraints again.
-  Future<void> _applyWindowSize(
-    Size size, {
-    required bool center,
-    required Size minimumSize,
-    bool resizable = false,
-  }) async {
+  /// then lock the window again.
+  Future<void> _applyWindowSize(Size size, {required bool center}) async {
     await windowManager.setResizable(true);
     if (Platform.isMacOS) {
-      // Pin min == max == target to force the resize, then relax to the
-      // intended floor/ceiling.
+      // Pin min == max == target to force the resize.
       await windowManager.setMinimumSize(size);
       await windowManager.setMaximumSize(size);
       await windowManager.setSize(size);
@@ -340,9 +323,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       await windowManager.setSize(size);
       if (center) await windowManager.center();
     }
-    await windowManager.setMinimumSize(minimumSize);
-    await windowManager.setMaximumSize(const Size(10000, 10000));
-    await windowManager.setResizable(resizable);
+    await windowManager.setResizable(false);
   }
 
   // ── Tray ─────────────────────────────────────────────────────────────────
@@ -657,8 +638,8 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   }
 }
 
-/// Desktop renders a resizable window with a collapsible sidebar; every other
-/// platform keeps the fixed compact bottom-nav layout.
+/// Desktop replaces the bottom nav with a left-hand drawer; every other
+/// platform keeps the compact bottom-nav layout.
 class _MainShell extends StatelessWidget {
   const _MainShell();
 
@@ -743,100 +724,209 @@ class _CompactBodyState extends State<_CompactBody> {
   }
 }
 
-/// Desktop layout: a collapsible sidebar replaces the bottom nav, and the
-/// window is wide + resizable. Content sits in a padded area to the right.
-class _DesktopBody extends StatelessWidget {
+/// Desktop layout: the original compact window with a left-hand drawer. A
+/// hamburger button in the title bar slides the drawer over the content to
+/// reveal the full navigation; the window stays at its original size.
+class _DesktopBody extends StatefulWidget {
   const _DesktopBody();
+
+  @override
+  State<_DesktopBody> createState() => _DesktopBodyState();
+}
+
+class _DesktopBodyState extends State<_DesktopBody> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
+    final page = _indexedBody(ctrl, compactPrimaryDestinations);
 
-    return Container(
-      color: c.appBg,
-      child: Column(
-        children: [
-          if (_usesCustomChrome) const WindowControlsBar(),
-          if (Platform.isMacOS) const MacTitleBar(),
-          Expanded(
-            child: Row(
-              children: [
-                _DesktopSidebar(ctrl: ctrl),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-                    child: _indexedBody(ctrl, desktopDestinations),
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: Colors.transparent,
+      drawerScrimColor: Colors.black38,
+      // The drawer opens only via the hamburger button, not an edge swipe.
+      drawerEdgeDragWidth: 0,
+      drawer: _AppDrawer(ctrl: ctrl),
+      body: Container(
+        color: c.appBg,
+        child: Column(
+          children: [
+            if (_usesCustomChrome)
+              WindowControlsBar(leading: _DrawerButton(onTap: _openDrawer)),
+            if (Platform.isMacOS)
+              MacTitleBar(leading: _DrawerButton(onTap: _openDrawer)),
+            Expanded(
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(
+                      context,
+                    ).copyWith(scrollbars: false),
+                    child: page,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Collapsible [NavigationRail] sidebar for the desktop layout.
-class _DesktopSidebar extends StatefulWidget {
-  const _DesktopSidebar({required this.ctrl});
+/// Drawer that slides over the compact desktop window with the full
+/// navigation: the primary destinations plus the "我的" hub sub-pages.
+class _AppDrawer extends StatelessWidget {
+  const _AppDrawer({required this.ctrl});
 
   final AppController ctrl;
 
   @override
-  State<_DesktopSidebar> createState() => _DesktopSidebarState();
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final selectedPrimary = desktopSelectedPage(
+      ctrl.page,
+      ctrl.mobileProfileChildPage,
+    );
+
+    return Drawer(
+      backgroundColor: c.cardBg,
+      surfaceTintColor: Colors.transparent,
+      width: 300,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(
+          right: Radius.circular(AppRadius.card),
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 16),
+              child: BrandTitle(),
+            ),
+            Divider(height: 1, color: c.softBorder),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: [
+                  for (final d in desktopDestinations)
+                    _DrawerItem(
+                      icon: d.icon,
+                      label: d.labelFor(context),
+                      selected: d.page == selectedPrimary,
+                      onTap: () => _navigate(context, d.page),
+                    ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 14, 20, 6),
+                    child: Divider(height: 1),
+                  ),
+                  for (final d in hubDestinations)
+                    _DrawerItem(
+                      icon: d.icon,
+                      label: d.labelFor(context),
+                      selected: ctrl.page == d.page,
+                      onTap: () => _navigate(context, d.page),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigate(BuildContext context, AppPage page) {
+    ctrl.goToPage(page);
+    Navigator.of(context).pop();
+  }
 }
 
-class _DesktopSidebarState extends State<_DesktopSidebar> {
-  bool _extended = true;
+class _DrawerItem extends StatelessWidget {
+  const _DrawerItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final destinations = desktopDestinations;
-    final selected = desktopSelectedPage(
-      widget.ctrl.page,
-      widget.ctrl.mobileProfileChildPage,
-    );
-    final selectedIndex = destinations.indexWhere((d) => d.page == selected);
+    final color = selected ? c.primary : c.textMuted;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        border: Border(right: BorderSide(color: c.softBorder)),
-      ),
-      child: NavigationRail(
-        backgroundColor: Colors.transparent,
-        extended: _extended,
-        selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-        onDestinationSelected: (index) {
-          if (index < 0 || index >= destinations.length) return;
-          widget.ctrl.goToPage(destinations[index].page);
-        },
-        labelType: NavigationRailLabelType.none,
-        trailing: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: IconButton(
-            tooltip: _extended ? 'Collapse' : 'Expand',
-            icon: Icon(
-              _extended
-                  ? LucideIcons.panelLeftClose
-                  : LucideIcons.panelLeftOpen,
-              size: 20,
-              color: c.iconMuted,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: selected ? c.primarySoft : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            onPressed: () => setState(() => _extended = !_extended),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: color),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: (selected
+                            ? AppTextStyles.bodyStrong
+                            : AppTextStyles.body)
+                        .copyWith(color: color),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        destinations: [
-          for (final d in destinations)
-            NavigationRailDestination(
-              icon: Icon(d.icon, color: c.iconMuted),
-              selectedIcon: Icon(d.icon, color: c.primary),
-              label: Text(d.labelFor(context)),
-            ),
-        ],
+      ),
+    );
+  }
+}
+
+/// Hamburger button that opens the drawer.
+class _DrawerButton extends StatelessWidget {
+  const _DrawerButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(left: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: SizedBox(
+            width: 30,
+            height: 30,
+            child: Icon(LucideIcons.menu, size: 18, color: c.iconDefault),
+          ),
+        ),
       ),
     );
   }

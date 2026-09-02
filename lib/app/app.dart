@@ -57,8 +57,8 @@ class _LitchiAppState extends State<LitchiApp> {
             builder: (context, child) {
               Widget content = child ?? const SizedBox.shrink();
               if (Platform.isLinux) content = LinuxWindowClip(child: content);
-              // The desktop shell is a resizable window (960×640 default, min
-              // 720×520). The Windows engine ties MediaQuery.textScaler to the
+              // The desktop shell is a fixed-size, non-resizable window
+              // (420×760). The Windows engine ties MediaQuery.textScaler to the
               // display DPI (125% → 1.25, 150% → 1.5), which inflates every
               // logical text size and clips the home screen on high-DPI machines
               // — the Win10/Win11 mismatch. Pin text scaling to 1.0 so the
