@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -18,6 +20,21 @@ import '../../shared/widgets/app_switch.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/no_plan_card.dart';
+
+Future<void> showAccountChangePasswordModal(BuildContext context) {
+  return showAppBottomSheet<void>(
+    context: context,
+    builder: (_) => const _ChangePasswordSheet(),
+  );
+}
+
+Future<bool> showAccountLogoutConfirmation(BuildContext context) async {
+  final confirmed = await showAppBottomSheet<bool>(
+    context: context,
+    builder: (_) => const _LogoutSheet(),
+  );
+  return confirmed == true;
+}
 
 /// Account / Profile — the mobile profile page.
 ///
@@ -129,18 +146,12 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   void _showChangePasswordSheet() {
-    showAppBottomSheet<void>(
-      context: context,
-      builder: (_) => const _ChangePasswordSheet(),
-    );
+    unawaited(showAccountChangePasswordModal(context));
   }
 
   Future<void> _confirmLogout() async {
-    final confirmed = await showAppBottomSheet<bool>(
-      context: context,
-      builder: (_) => const _LogoutSheet(),
-    );
-    if (confirmed != true || !mounted) return;
+    final confirmed = await showAccountLogoutConfirmation(context);
+    if (!confirmed || !mounted) return;
     await AppScope.of(context).logout();
   }
 
@@ -276,7 +287,6 @@ class _AccountPageState extends State<AccountPage> {
   }
 }
 
-
 // ── Desktop account widgets ──────────────────────────────────────────────
 
 class _DesktopAccountMetrics extends StatelessWidget {
@@ -310,8 +320,7 @@ class _DesktopAccountMetrics extends StatelessWidget {
               child: _DesktopAccountMetric(
                 icon: LucideIcons.wallet,
                 label: context.l10n.accountBalance,
-                value:
-                    '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
+                value: '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
               ),
             ),
             SizedBox(
@@ -392,8 +401,7 @@ class _DesktopProfileMenuSection extends StatelessWidget {
       builder: (context, constraints) {
         const gap = 10.0;
         final columns = constraints.maxWidth >= 820 ? 4 : 3;
-        final width =
-            (constraints.maxWidth - gap * (columns - 1)) / columns;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
         return Wrap(
           spacing: gap,
           runSpacing: gap,
@@ -532,9 +540,8 @@ class _TrafficOverviewCard extends StatelessWidget {
             children: [
               Text(
                 '${remainGb.toStringAsFixed(1)} GB',
-                style: AppTextStyles.largeNumber(
-                  fontSize: 24,
-                ).copyWith(color: c.textPrimary),
+                style: AppTextStyles.largeNumber(fontSize: 24)
+                    .copyWith(color: c.textPrimary),
               ),
               const SizedBox(width: 8),
               Padding(
