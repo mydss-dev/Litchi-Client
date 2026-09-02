@@ -76,13 +76,11 @@ class AppSelect<T> extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Flexible(
-                child: Text(
-                  labelOf(value),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.menu.copyWith(color: c.textSecondary),
-                ),
+              Text(
+                labelOf(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.menu.copyWith(color: c.textSecondary),
               ),
               const SizedBox(width: AppSpacing.sm),
               Icon(LucideIcons.chevronDown, size: 14, color: c.iconMuted),
