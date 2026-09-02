@@ -139,12 +139,123 @@ class _NodesPageState extends State<NodesPage> {
     );
   }
 
+  List<String> _tabs(BuildContext context) => [
+    context.l10n.all,
+    context.l10n.favorites,
+    context.l10n.asia,
+    context.l10n.europe,
+    context.l10n.america,
+    context.l10n.oceania,
+  ];
+
   @override
   Widget build(BuildContext context) {
+    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
     return _buildCompact(context);
   }
 
-  // ── Compact (bottom-nav) layout ──────────────────────────────────────────────
+  // ── Desktop layout ───────────────────────────────────────────────────────
+
+  Widget _buildDesktop(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final nodes = _filtered;
+    final isAuto = ctrl.autoSelected;
+    final effectiveId = isAuto ? '__auto__' : (_selectedId ?? ctrl.currentNode.id);
+    final noPlan =
+        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.nodes,
+                    style: AppTextStyles.pageTitle.copyWith(
+                      color: c.textPrimary,
+                      fontSize: 26,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    context.l10n.nodesSubtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.body.copyWith(color: c.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            _LatencyTestButton(ctrl: ctrl, showLabel: true),
+          ],
+        ),
+        const SizedBox(height: 18),
+        if (noPlan)
+          NoPlanCard(
+            onPurchase: isPageEnabled(AppPage.shop)
+                ? () => ctrl.goToPage(AppPage.shop)
+                : null,
+          )
+        else ...[
+          Row(
+            children: [
+              Expanded(
+                child: SearchInput(
+                  hintText: context.l10n.searchNodes,
+                  onChanged: _onSearchChanged,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                context.l10n.nodeCountSummary(nodes.length),
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _DesktopAutoRow(
+            ctrl: ctrl,
+            selected: isAuto,
+            onTap: _toggleAutoSelect,
+          ),
+          const SizedBox(height: 14),
+          FilterTabs(
+            tabs: _tabs(context),
+            selectedIndex: _tab,
+            onSelected: (i) => setState(() => _tab = i),
+          ),
+          const SizedBox(height: 14),
+          if (nodes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 42),
+              child: AppEmptyState(
+                icon: LucideIcons.searchX,
+                title: context.l10n.noMatchingNodes,
+                subtitle: context.l10n.tryDifferentNodeFilter,
+              ),
+            )
+          else
+            _DesktopNodeTable(
+              nodes: nodes,
+              selectedId: effectiveId,
+              autoSelected: isAuto,
+              favorites: _favorites,
+              onSelect: _selectNode,
+              onToggleFavorite: _toggleFavorite,
+            ),
+        ],
+      ],
+    );
+  }
+
+  // ── Compact (bottom-nav) layout ─────────────────────────────────────────
 
   Widget _buildCompact(BuildContext context) {
     final c = AppColors.of(context);
@@ -234,8 +345,6 @@ class _NodesPageState extends State<NodesPage> {
                 ),
               )
             else
-              // Lazy node cards: only the visible rows are built instead of
-              // materializing every card up front (same pattern as node_picker).
               SliverList.separated(
                 itemCount: nodes.length,
                 itemBuilder: (_, i) => _NodeCard(
@@ -251,8 +360,6 @@ class _NodesPageState extends State<NodesPage> {
       ),
     );
   }
-
-  // ── Shared body ──────────────────────────────────────────────────────────────
 
   List<Widget> _bodyChildren(BuildContext context) {
     final ctrl = AppScope.of(context);
@@ -275,14 +382,7 @@ class _NodesPageState extends State<NodesPage> {
       _AutoCard(ctrl: ctrl, selected: isAuto, onTap: _toggleAutoSelect),
       const SizedBox(height: 12),
       FilterTabs(
-        tabs: [
-          context.l10n.all,
-          context.l10n.favorites,
-          context.l10n.asia,
-          context.l10n.europe,
-          context.l10n.america,
-          context.l10n.oceania,
-        ],
+        tabs: _tabs(context),
         selectedIndex: _tab,
         onSelected: (i) => setState(() => _tab = i),
       ),
@@ -291,7 +391,338 @@ class _NodesPageState extends State<NodesPage> {
   }
 }
 
-// ── Smart recommendation card ──────────────────────────────────────────────
+// ── Desktop node controls ───────────────────────────────────────────────────
+
+class _DesktopAutoRow extends StatelessWidget {
+  const _DesktopAutoRow({
+    required this.ctrl,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppController ctrl;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final best = _bestNode(ctrl.nodes);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        mouseCursor: SystemMouseCursors.click,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Ink(
+          height: 62,
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          decoration: BoxDecoration(
+            color: selected ? c.primarySoft : c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(
+              color: selected ? c.primary : c.softBorder,
+              width: selected ? 1.4 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? c.primary : c.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  LucideIcons.zap,
+                  size: 16,
+                  color: selected ? Colors.white : c.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.autoSelect,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: selected ? c.primary : c.textPrimary,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      best == null
+                          ? context.l10n.autoSelectBestDescription
+                          : '${best.name} · ${best.latency} ms',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(
+                        color: c.textMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (best != null) ...[
+                CountryFlag.fromCountryCode(
+                  best.code.isNotEmpty ? best.code : 'UN',
+                  theme: const ImageTheme(
+                    width: 22,
+                    height: 16,
+                    shape: RoundedRectangle(3),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                NodeLatency(
+                  latency: best.latency,
+                  style: NodeLatencyStyle.badge,
+                ),
+              ],
+              const SizedBox(width: 8),
+              selected
+                  ? Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: c.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    )
+                  : Icon(
+                      LucideIcons.chevronRight,
+                      size: 17,
+                      color: c.iconMuted,
+                    ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  NodeModel? _bestNode(List<NodeModel> nodes) {
+    NodeModel? best;
+    for (final node in nodes) {
+      if (node.latency <= 0 || node.latency >= 9999) continue;
+      if (best == null || node.latency < best.latency) best = node;
+    }
+    return best;
+  }
+}
+
+class _DesktopNodeTable extends StatelessWidget {
+  const _DesktopNodeTable({
+    required this.nodes,
+    required this.selectedId,
+    required this.autoSelected,
+    required this.favorites,
+    required this.onSelect,
+    required this.onToggleFavorite,
+  });
+
+  final List<NodeModel> nodes;
+  final String selectedId;
+  final bool autoSelected;
+  final Set<String> favorites;
+  final ValueChanged<NodeModel> onSelect;
+  final ValueChanged<String> onToggleFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: c.softBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < nodes.length; i++) ...[
+            _DesktopNodeRow(
+              node: nodes[i],
+              selected: !autoSelected && nodes[i].id == selectedId,
+              favorite: favorites.contains(nodes[i].id),
+              onTap: () => onSelect(nodes[i]),
+              onToggleFavorite: () => onToggleFavorite(nodes[i].id),
+            ),
+            if (i != nodes.length - 1)
+              Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: c.softBorder,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopNodeRow extends StatefulWidget {
+  const _DesktopNodeRow({
+    required this.node,
+    required this.selected,
+    required this.favorite,
+    required this.onTap,
+    required this.onToggleFavorite,
+  });
+
+  final NodeModel node;
+  final bool selected;
+  final bool favorite;
+  final VoidCallback onTap;
+  final VoidCallback onToggleFavorite;
+
+  @override
+  State<_DesktopNodeRow> createState() => _DesktopNodeRowState();
+}
+
+class _DesktopNodeRowState extends State<_DesktopNodeRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final node = widget.node;
+    final code = node.code.isNotEmpty ? node.code : 'UN';
+    final background = widget.selected
+        ? c.primarySoft
+        : _hovered
+        ? c.surfaceMuted
+        : Colors.transparent;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Material(
+        color: background,
+        child: InkWell(
+          onTap: widget.onTap,
+          child: SizedBox(
+            height: 58,
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  width: 3,
+                  height: widget.selected ? 30 : 0,
+                  decoration: BoxDecoration(
+                    color: c.primary,
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 13),
+                SizedBox(
+                  width: 34,
+                  child: Center(
+                    child: CountryFlag.fromCountryCode(
+                      code,
+                      theme: const ImageTheme(
+                        width: 26,
+                        height: 18,
+                        shape: RoundedRectangle(3),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    node.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: widget.selected ? c.primary : c.textPrimary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    node.englishName.isEmpty ? code : node.englishName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      color: c.textMuted,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 78,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: NodeLatency(
+                      latency: node.latency,
+                      style: NodeLatencyStyle.badge,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: context.l10n.favorites,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: widget.onToggleFavorite,
+                      mouseCursor: SystemMouseCursors.click,
+                      customBorder: const CircleBorder(),
+                      child: SizedBox(
+                        width: 34,
+                        height: 34,
+                        child: Icon(
+                          LucideIcons.star,
+                          size: 16,
+                          color: widget.favorite ? c.warning : c.iconMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 34,
+                  child: Center(
+                    child: widget.selected
+                        ? Container(
+                            width: 9,
+                            height: 9,
+                            decoration: BoxDecoration(
+                              color: c.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Smart recommendation card (compact) ────────────────────────────────────
 
 class _AutoCard extends StatelessWidget {
   const _AutoCard({
@@ -432,8 +863,10 @@ class _AutoCard extends StatelessWidget {
 // ── Latency test button ────────────────────────────────────────────────────
 
 class _LatencyTestButton extends StatefulWidget {
-  const _LatencyTestButton({required this.ctrl});
+  const _LatencyTestButton({required this.ctrl, this.showLabel = false});
+
   final AppController ctrl;
+  final bool showLabel;
 
   @override
   State<_LatencyTestButton> createState() => _LatencyTestButtonState();
@@ -464,6 +897,34 @@ class _LatencyTestButtonState extends State<_LatencyTestButton> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+
+    if (widget.showLabel) {
+      return SizedBox(
+        height: 40,
+        child: OutlinedButton.icon(
+          onPressed: _loading ? null : _onTap,
+          icon: _loading
+              ? SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: c.primary,
+                  ),
+                )
+              : const Icon(LucideIcons.gauge, size: 16),
+          label: Text(context.l10n.latencyTest),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: c.primary,
+            side: BorderSide(color: c.softBorder),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Tooltip(
       message: context.l10n.latencyTest,
       child: MouseRegion(
@@ -496,7 +957,7 @@ class _LatencyTestButtonState extends State<_LatencyTestButton> {
   }
 }
 
-// ── Node card ──────────────────────────────────────────────────────────────
+// ── Node card (compact) ────────────────────────────────────────────────────
 
 class _NodeCard extends StatelessWidget {
   const _NodeCard({
