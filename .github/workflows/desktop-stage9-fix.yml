@@ -19,7 +19,7 @@ jobs:
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           channel: stable
-      - name: Apply stage 9 fixes
+      - name: Apply final viewport cleanup
         shell: bash
         run: |
           python - <<'PY'
@@ -33,150 +33,49 @@ jobs:
                   raise SystemExit(f'{path}: expected one match, found {count}')
               p.write_text(text.replace(old, new, 1))
 
-          def replace_between(path, start_marker, end_marker, replacement):
-              p = Path(path)
-              text = p.read_text()
-              start = text.find(start_marker)
-              end = text.find(end_marker, start)
-              if start < 0 or end < 0:
-                  raise SystemExit(f'{path}: section markers not found')
-              p.write_text(text[:start] + replacement + text[end:])
-
-          # 1) Stage-1 cleanup: the old content-height auto-fit dependency is no
-          # longer used directly. window_manager may still keep it transitively.
           replace_once(
-              'pubspec.yaml',
-              '  # Screen work-area size for auto-fitting the desktop window height\n  screen_retriever: ^0.2.1\n',
-              '',
-          )
-
-          # 2) Auth -> desktop while maximized: apply desktop constraints now and
-          # finish the 900x680 transition when the user restores the window.
-          replace_once(
-              'lib/app/app_shell.dart',
-              '''  Future<void> _syncWindowSize(AppController ctrl) async {\n    if (!_isDesktop) return;\n    if (await windowManager.isMaximized()) return;\n\n    if (ctrl.isAuthenticated) {\n      if (_compactWindow == false) return;\n      _compactWindow = false;\n      _authHeight = null;\n      await _applyDesktopWindow();\n      return;\n    }\n\n    final height = _authHeightFor(_visibleAuthScreen ?? ctrl.authScreen);''',
-              '''  Future<void> _syncWindowSize(AppController ctrl) async {\n    if (!_isDesktop) return;\n    final maximized = await windowManager.isMaximized();\n\n    if (ctrl.isAuthenticated) {\n      if (_compactWindow == false) return;\n      if (maximized) {\n        // Logging in while the compact auth window is maximized used to leave\n        // the authenticated app with auth-size constraints and resize disabled.\n        // Update the constraints immediately, then finish the default desktop\n        // restore size from onWindowUnmaximize().\n        await windowManager.setResizable(true);\n        await windowManager.setMinimumSize(_desktopMinimumSize);\n        await windowManager.setMaximumSize(_desktopMaximumSize);\n        return;\n      }\n      _compactWindow = false;\n      _authHeight = null;\n      await _applyDesktopWindow();\n      return;\n    }\n\n    if (maximized) return;\n    final height = _authHeightFor(_visibleAuthScreen ?? ctrl.authScreen);''',
-          )
-          replace_once(
-              'lib/app/app_shell.dart',
-              '''  @override\n  void onWindowMaximize() => setState(() => _maximized = true);\n\n  @override\n  void onWindowUnmaximize() => setState(() => _maximized = false);''',
-              '''  @override\n  void onWindowMaximize() {\n    if (!mounted) return;\n    setState(() => _maximized = true);\n  }\n\n  @override\n  void onWindowUnmaximize() {\n    if (!mounted) return;\n    setState(() => _maximized = false);\n    final ctrl = _ctrl;\n    if (ctrl != null) unawaited(_syncWindowSize(ctrl));\n  }''',
-          )
-          replace_once(
-              'lib/app/app_shell.dart',
-              '''/// Stable desktop layout with a persistent 196px navigation sidebar. The\n/// content pages themselves stay unchanged in stage 2; later stages give the\n/// dashboard, nodes and shop their dedicated wide layouts.''',
-              '''/// Stable desktop layout with a persistent 196px navigation sidebar.\n/// Most pages use the shell's vertical scroll; long virtualized surfaces (such\n/// as the desktop node table) own a bounded inner viewport.''',
-          )
-
-          # 3) Nodes: replace eager Column(for every node) with a bounded,
-          # virtualized ListView so 50/100+ nodes do not all layout at once.
-          node_table = '''class _DesktopNodeTable extends StatelessWidget {\n  const _DesktopNodeTable({\n    required this.nodes,\n    required this.selectedId,\n    required this.autoSelected,\n    required this.favorites,\n    required this.onSelect,\n    required this.onToggleFavorite,\n  });\n\n  final List<NodeModel> nodes;\n  final String selectedId;\n  final bool autoSelected;\n  final Set<String> favorites;\n  final ValueChanged<NodeModel> onSelect;\n  final ValueChanged<String> onToggleFavorite;\n\n  @override\n  Widget build(BuildContext context) {\n    final c = AppColors.of(context);\n    final tableHeight = (MediaQuery.sizeOf(context).height - 280)\n        .clamp(300.0, 900.0)\n        .toDouble();\n\n    return Container(\n      height: tableHeight,\n      decoration: BoxDecoration(\n        color: c.cardBg,\n        borderRadius: BorderRadius.circular(AppRadius.lg),\n        border: Border.all(color: c.softBorder),\n      ),\n      clipBehavior: Clip.antiAlias,\n      child: ListView.separated(\n        primary: false,\n        padding: EdgeInsets.zero,\n        itemCount: nodes.length,\n        itemBuilder: (_, i) => _DesktopNodeRow(\n          node: nodes[i],\n          selected: !autoSelected && nodes[i].id == selectedId,\n          favorite: favorites.contains(nodes[i].id),\n          onTap: () => onSelect(nodes[i]),\n          onToggleFavorite: () => onToggleFavorite(nodes[i].id),\n        ),\n        separatorBuilder: (_, _) => Divider(\n          height: 1,\n          indent: 16,\n          endIndent: 16,\n          color: c.softBorder,\n        ),\n      ),\n    );\n  }\n}\n\n'''
-          replace_between(
               'lib/features/nodes/nodes_page.dart',
-              'class _DesktopNodeTable extends StatelessWidget {',
-              'class _DesktopNodeRow extends StatefulWidget {',
-              node_table,
+              '''    final tableHeight = (MediaQuery.sizeOf(context).height - 280)\n        .clamp(300.0, 900.0)\n        .toDouble();''',
+              '''    // Leave enough room for the title/search/auto/filter controls so the\n    // outer desktop shell does not need to scroll at 800x600. Only the node\n    // viewport itself scrolls in normal desktop window sizes.\n    final tableHeight = (MediaQuery.sizeOf(context).height - 330)\n        .clamp(260.0, 900.0)\n        .toDouble();''',
           )
 
-          # 4) Shared sub-page scaffold: desktop gets real title/subtitle chrome,
-          # no mobile back button, plus a visible refresh affordance.
           replace_once(
               'lib/shared/widgets/responsive_page_scaffold.dart',
-              "import '../theme/app_text_styles.dart';",
-              "import '../theme/app_colors.dart';\nimport '../theme/app_text_styles.dart';",
-          )
-          replace_once(
-              'lib/shared/widgets/responsive_page_scaffold.dart',
-              '''/// Shared page chrome for sub-pages. The app is a fixed-size single-layout\n/// window, so there is no wide/sidebar branch — this always renders the\n/// compact (bottom-nav) chrome: a full header for primary tabs, or a\n/// back-button header for hub sub-pages.''',
-              '''/// Shared page chrome for account/support sub-pages. Desktop uses the\n/// persistent sidebar and a wide title/subtitle header; compact platforms keep\n/// the bottom-nav/back-button presentation.''',
-          )
-          replace_once(
-              'lib/shared/widgets/responsive_page_scaffold.dart',
-              '''  @override\n  Widget build(BuildContext context) {\n    final list = ListView(''',
-              '''  @override\n  Widget build(BuildContext context) {\n    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);\n\n    final list = ListView(''',
-          )
-          replace_once(
-              'lib/shared/widgets/responsive_page_scaffold.dart',
-              '''    if (onRefresh == null) return list;\n    return RefreshIndicator(onRefresh: onRefresh!, child: list);\n  }\n}''',
-              '''    if (onRefresh == null) return list;\n    return RefreshIndicator(onRefresh: onRefresh!, child: list);\n  }\n\n  Widget _buildDesktop(BuildContext context) {\n    final c = AppColors.of(context);\n    return Align(\n      alignment: Alignment.topLeft,\n      child: ConstrainedBox(\n        constraints: const BoxConstraints(maxWidth: 980),\n        child: Column(\n          crossAxisAlignment: CrossAxisAlignment.stretch,\n          children: [\n            Row(\n              crossAxisAlignment: CrossAxisAlignment.start,\n              children: [\n                Expanded(\n                  child: Column(\n                    crossAxisAlignment: CrossAxisAlignment.start,\n                    children: [\n                      Text(\n                        title,\n                        style: AppTextStyles.pageTitle.copyWith(\n                          color: c.textPrimary,\n                        ),\n                      ),\n                      const SizedBox(height: 5),\n                      Text(\n                        subtitle,\n                        maxLines: 2,\n                        overflow: TextOverflow.ellipsis,\n                        style: AppTextStyles.body.copyWith(color: c.textMuted),\n                      ),\n                    ],\n                  ),\n                ),\n                if (trailing != null) ...[\n                  const SizedBox(width: 12),\n                  trailing!,\n                ],\n                if (onRefresh != null) ...[\n                  const SizedBox(width: 8),\n                  IconButton(\n                    tooltip: MaterialLocalizations.of(\n                      context,\n                    ).refreshIndicatorSemanticLabel,\n                    onPressed: () async => onRefresh!(),\n                    icon: const Icon(Icons.refresh),\n                  ),\n                ],\n              ],\n            ),\n            const SizedBox(height: 18),\n            ...children,\n          ],\n        ),\n      ),\n    );\n  }\n}''',
+              '''    final list = ListView(\n      shrinkWrap: CorePlatformSupport.isDesktop,\n      physics: CorePlatformSupport.isDesktop\n          ? const NeverScrollableScrollPhysics()\n          : (onRefresh == null ? null : const AlwaysScrollableScrollPhysics()),\n      padding: EdgeInsets.zero,''',
+              '''    final list = ListView(\n      physics: onRefresh == null ? null : const AlwaysScrollableScrollPhysics(),\n      padding: EdgeInsets.zero,''',
           )
 
-          # 5) Invite was the only primary sidebar page still forcing the compact
-          # carousel. Reuse its already-existing non-compact widgets on desktop.
           replace_once(
               'lib/features/invite/invite_page.dart',
-              '''  late final PageController _compactPageController;\n  int _selected = 0;''',
-              '''  late final PageController _compactPageController;\n  late final PageController _desktopPageController;\n  int _selected = 0;''',
+              '''/// Invite — the mobile invite page.\n///\n/// Invitation cards, actions, statistics, and commission records. A\n/// `viewportFraction` page controller gives the code carousel its peeking\n/// viewport.''',
+              '''/// Invite and referral commission page.\n///\n/// Desktop uses a full-width carousel/statistics layout; compact platforms keep\n/// the peeking invite-code carousel and pull-to-refresh presentation.''',
           )
           replace_once(
               'lib/features/invite/invite_page.dart',
-              '''    _compactPageController = PageController(viewportFraction: 0.9);''',
-              '''    _compactPageController = PageController(viewportFraction: 0.9);\n    _desktopPageController = PageController();''',
-          )
-          replace_once(
-              'lib/features/invite/invite_page.dart',
-              '''    _compactPageController.dispose();\n    super.dispose();''',
-              '''    _compactPageController.dispose();\n    _desktopPageController.dispose();\n    super.dispose();''',
-          )
-          replace_once(
-              'lib/features/invite/invite_page.dart',
-              '''  @override\n  Widget build(BuildContext context) {\n    return _buildCompact(context);\n  }\n\n  // ── Compact (bottom-nav) layout ────────────────────────────────────────''',
-              '''  @override\n  Widget build(BuildContext context) {\n    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);\n    return _buildCompact(context);\n  }\n\n  Widget _buildDesktop(BuildContext context) {\n    final c = AppColors.of(context);\n    final ctrl = AppScope.of(context);\n    final invites = _invites(ctrl);\n    final safeSelected = _selected.clamp(0, invites.length - 1);\n\n    Widget invitePanel() => _InviteLinkPanel(\n      invites: invites,\n      selected: safeSelected,\n      creating: _creating,\n      controller: _desktopPageController,\n      compact: false,\n      onChanged: (index) => setState(() => _selected = index),\n      onPrevious: () => _switchTo(\n        safeSelected - 1 + invites.length,\n        invites.length,\n        _desktopPageController,\n      ),\n      onNext: () => _switchTo(\n        safeSelected + 1,\n        invites.length,\n        _desktopPageController,\n      ),\n      onCreate: _createInviteCode,\n    );\n\n    final records = _CommissionRecords(\n      records: ctrl.inviteRecords,\n      currencySymbol: ctrl.currencySymbol,\n    );\n\n    return Column(\n      crossAxisAlignment: CrossAxisAlignment.stretch,\n      children: [\n        Row(\n          crossAxisAlignment: CrossAxisAlignment.start,\n          children: [\n            Expanded(\n              child: Column(\n                crossAxisAlignment: CrossAxisAlignment.start,\n                children: [\n                  Text(\n                    context.l10n.inviteFriends,\n                    style: AppTextStyles.pageTitle.copyWith(\n                      color: c.textPrimary,\n                    ),\n                  ),\n                  const SizedBox(height: 5),\n                  Text(\n                    context.l10n.inviteSubtitle,\n                    style: AppTextStyles.body.copyWith(color: c.textMuted),\n                  ),\n                ],\n              ),\n            ),\n            const SizedBox(width: 16),\n            IconButton(\n              tooltip: MaterialLocalizations.of(\n                context,\n              ).refreshIndicatorSemanticLabel,\n              onPressed: () async => _handlePullRefresh(),\n              icon: const Icon(LucideIcons.refreshCw),\n            ),\n          ],\n        ),\n        const SizedBox(height: 18),\n        LayoutBuilder(\n          builder: (context, constraints) {\n            final wide = constraints.maxWidth >= 860;\n            final panel = invitePanel();\n            if (wide) {\n              return Row(\n                crossAxisAlignment: CrossAxisAlignment.start,\n                children: [\n                  Expanded(flex: 3, child: panel),\n                  const SizedBox(width: 16),\n                  Expanded(flex: 2, child: records),\n                ],\n              );\n            }\n            return Column(\n              crossAxisAlignment: CrossAxisAlignment.stretch,\n              children: [panel, const SizedBox(height: 12), records],\n            );\n          },\n        ),\n        const SizedBox(height: 14),\n        _InviteStatsGrid(\n          registeredUsers: ctrl.invitedCount,\n          pendingCommission:\n              '${ctrl.currencySymbol}${ctrl.pendingCommission.toStringAsFixed(2)}',\n          earnedCommission:\n              '${ctrl.currencySymbol}${ctrl.earnedCommission.toStringAsFixed(2)}',\n          commissionRate: '${ctrl.commissionRate.toStringAsFixed(0)}%',\n          compact: false,\n        ),\n      ],\n    );\n  }\n\n  // ── Compact (bottom-nav) layout ────────────────────────────────────────''',
-          )
-          replace_once(
-              'lib/features/invite/invite_page.dart',
-              '''        final cols = !compact && constraints.maxWidth >= 900 ? 4 : 2;''',
-              '''        final cols = !compact && constraints.maxWidth >= 760 ? 4 : 2;''',
-          )
-
-          # 6) Desktop dialog shadow was drawn inside a clipping Material, which
-          # clipped the shadow away. Put the shadow outside the clip and use the
-          # stage-7 dialog radius token.
-          desktop_dialog = '''  Widget _buildDesktopDialog(BuildContext context) {\n    final c = AppColors.of(context);\n    final view = MediaQuery.sizeOf(context);\n    final bottom = MediaQuery.viewInsetsOf(context).bottom;\n\n    return Padding(\n      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),\n      child: Center(\n        child: ConstrainedBox(\n          constraints: BoxConstraints(\n            maxWidth: 560,\n            maxHeight: view.height * maxHeightFactor,\n          ),\n          child: DecoratedBox(\n            decoration: BoxDecoration(\n              borderRadius: BorderRadius.circular(AppRadius.lg),\n              boxShadow: AppShadows.card(c),\n            ),\n            child: Material(\n              color: c.cardBg,\n              elevation: 0,\n              clipBehavior: Clip.antiAlias,\n              borderRadius: BorderRadius.circular(AppRadius.lg),\n              child: Container(\n                decoration: BoxDecoration(\n                  color: c.cardBg,\n                  borderRadius: BorderRadius.circular(AppRadius.lg),\n                  border: Border.all(color: c.softBorder),\n                ),\n                padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),\n                child: Column(\n                  mainAxisSize: MainAxisSize.min,\n                  children: [\n                    _ModalHeader(title: title, subtitle: subtitle),\n                    const SizedBox(height: 14),\n                    Flexible(\n                      child: SingleChildScrollView(\n                        child: Column(\n                          mainAxisSize: MainAxisSize.min,\n                          crossAxisAlignment: CrossAxisAlignment.start,\n                          children: children,\n                        ),\n                      ),\n                    ),\n                  ],\n                ),\n              ),\n            ),\n          ),\n        ),\n      ),\n    );\n  }\n\n'''
-          replace_between(
-              'lib/shared/widgets/app_bottom_sheet.dart',
-              '  Widget _buildDesktopDialog(BuildContext context) {',
-              '  Widget _buildCompactSheet(BuildContext context) {',
-              desktop_dialog,
-          )
-
-          # 7) Filter tabs: replace GestureDetector-only pills with InkWell so
-          # hover, focus, keyboard activation, splash and semantics are shared.
-          filter_tabs = '''import 'package:flutter/material.dart';\n\nimport '../theme/app_colors.dart';\nimport '../theme/app_radius.dart';\nimport '../theme/app_text_styles.dart';\n\n/// Horizontal pill tab strip used on Nodes and Shop pages.\nclass FilterTabs extends StatelessWidget {\n  const FilterTabs({\n    super.key,\n    required this.tabs,\n    required this.selectedIndex,\n    required this.onSelected,\n  });\n\n  final List<String> tabs;\n  final int selectedIndex;\n  final ValueChanged<int> onSelected;\n\n  @override\n  Widget build(BuildContext context) {\n    return SingleChildScrollView(\n      scrollDirection: Axis.horizontal,\n      child: Row(\n        children: [\n          for (int i = 0; i < tabs.length; i++) ...[\n            _Tab(\n              label: tabs[i],\n              selected: i == selectedIndex,\n              onTap: () => onSelected(i),\n            ),\n            if (i != tabs.length - 1) const SizedBox(width: 8),\n          ],\n        ],\n      ),\n    );\n  }\n}\n\nclass _Tab extends StatelessWidget {\n  const _Tab({\n    required this.label,\n    required this.selected,\n    required this.onTap,\n  });\n\n  final String label;\n  final bool selected;\n  final VoidCallback onTap;\n\n  @override\n  Widget build(BuildContext context) {\n    final c = AppColors.of(context);\n    return Material(\n      color: Colors.transparent,\n      child: Ink(\n        height: 36,\n        decoration: BoxDecoration(\n          color: selected ? c.primary : c.cardBg,\n          borderRadius: BorderRadius.circular(AppRadius.sm),\n          border: Border.all(color: selected ? c.primary : c.softBorder),\n        ),\n        child: InkWell(\n          onTap: onTap,\n          mouseCursor: SystemMouseCursors.click,\n          borderRadius: BorderRadius.circular(AppRadius.sm),\n          child: Padding(\n            padding: const EdgeInsets.symmetric(horizontal: 16),\n            child: Center(\n              child: Text(\n                label,\n                style: AppTextStyles.menu.copyWith(\n                  color: selected ? Colors.white : c.textSecondary,\n                ),\n              ),\n            ),\n          ),\n        ),\n      ),\n    );\n  }\n}\n'''
-          Path('lib/shared/widgets/filter_tabs.dart').write_text(filter_tabs)
-
-          # 8) AppSelector must recalculate immediately when its selector/widget
-          # configuration changes even if the controller instance is unchanged.
-          replace_once(
-              'lib/shared/widgets/app_selector.dart',
-              '''  void _onControllerChanged() {\n    final next = widget.selector(_controller!);''',
-              '''  @override\n  void didUpdateWidget(covariant AppSelector<T> oldWidget) {\n    super.didUpdateWidget(oldWidget);\n    final controller = _controller;\n    if (controller != null) _value = widget.selector(controller);\n  }\n\n  void _onControllerChanged() {\n    final next = widget.selector(_controller!);''',
+              '''      child: ListView(\n        shrinkWrap: CorePlatformSupport.isDesktop,\n        physics: CorePlatformSupport.isDesktop\n            ? const NeverScrollableScrollPhysics()\n            : const AlwaysScrollableScrollPhysics(),\n        padding: EdgeInsets.zero,''',
+              '''      child: ListView(\n        physics: const AlwaysScrollableScrollPhysics(),\n        padding: EdgeInsets.zero,''',
           )
           PY
 
-      - name: Format and resolve dependencies
+      - name: Format and check
         shell: bash
         run: |
           dart format \
-            lib/app/app_shell.dart \
             lib/features/nodes/nodes_page.dart \
             lib/features/invite/invite_page.dart \
-            lib/shared/widgets/responsive_page_scaffold.dart \
-            lib/shared/widgets/app_bottom_sheet.dart \
-            lib/shared/widgets/filter_tabs.dart \
-            lib/shared/widgets/app_selector.dart
+            lib/shared/widgets/responsive_page_scaffold.dart
           flutter pub get
           git diff --check
 
-      - name: Commit fixes
+      - name: Commit cleanup
         shell: bash
         run: |
           git config user.name "mydss-dev"
           git config user.email "180769754+mydss-dev@users.noreply.github.com"
-          git add pubspec.yaml pubspec.lock lib/app/app_shell.dart lib/features/nodes/nodes_page.dart lib/features/invite/invite_page.dart lib/shared/widgets/responsive_page_scaffold.dart lib/shared/widgets/app_bottom_sheet.dart lib/shared/widgets/filter_tabs.dart lib/shared/widgets/app_selector.dart
+          git add lib/features/nodes/nodes_page.dart lib/features/invite/invite_page.dart lib/shared/widgets/responsive_page_scaffold.dart pubspec.lock
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "fix(desktop): close final audit regressions"
+          git commit -m "fix(desktop): keep node scrolling inside viewport"
           git push origin HEAD:main
