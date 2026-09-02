@@ -19,16 +19,7 @@ $version = ($versionLine -split '=', 2)[1].Trim().TrimStart('v')
 
 $env:GOOS = $Target
 $env:GOARCH = $Arch
-$env:CGO_ENABLED = "1"
-if ($Target -eq "windows" -and -not $env:CC) {
-  if (Get-Command gcc -ErrorAction SilentlyContinue) {
-    $env:CC = "gcc"
-  } elseif (Get-Command clang -ErrorAction SilentlyContinue) {
-    $env:CC = "clang"
-  } else {
-    throw "A C compiler (gcc or clang) is required to build the Windows core"
-  }
-}
+$env:CGO_ENABLED = if ($Target -eq "windows") { "0" } else { "1" }
 $tags = "with_clash_api,with_quic,with_utls,with_wireguard"
 
 Push-Location $source
@@ -39,7 +30,7 @@ try {
     $binary = Join-Path $output "litchi-core.exe"
     go build -trimpath -tags $tags -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$version" -o $binary .
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    Write-Host "isolated Windows sing-box core ready: $binary"
+    Write-Host "pure Go Windows sing-box core ready: $binary"
   } else {
     $extension = if ($Target -eq "darwin") { ".dylib" } else { ".so" }
     $library = Join-Path $output "litchi_singbox$extension"
