@@ -1,0 +1,64 @@
+name: Desktop Content First
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/desktop-content-first.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+      - name: Apply desktop content-first cleanup
+        shell: bash
+        run: |
+          python3 tool/desktop_header_cleanup.py
+          dart format \
+            lib/features/dashboard/dashboard_page.dart \
+            lib/features/nodes/nodes_page.dart \
+            lib/features/shop/shop_page.dart \
+            lib/features/traffic/traffic_page.dart \
+            lib/features/invite/invite_page.dart \
+            lib/features/account/account_page.dart \
+            lib/features/settings/settings_page.dart \
+            lib/shared/widgets/responsive_page_scaffold.dart
+          flutter pub get
+          flutter test
+          flutter analyze
+          git diff --check
+      - name: Commit verified product changes
+        shell: bash
+        run: |
+          rm tool/desktop_header_cleanup.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor(desktop): remove redundant page banners"
+          git push origin HEAD:main
+
+  windows-verify:
+    needs: refactor
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+      - name: Build Windows debug
+        shell: pwsh
+        run: |
+          flutter pub get
+          flutter build windows --debug
