@@ -2,8 +2,9 @@ name: Publish
 
 # Generates, signs, and uploads update.json plus release packages to Cloudflare R2.
 #
-# Runs automatically after the CI workflow completes on a `v*` tag (workflow_run),
-# or manually via workflow_dispatch as a fallback / retry.
+# Runs automatically after the CI workflow completes for a `v*` tag, whether
+# CI was started by a tag push or manually re-run on that tag. It can also be
+# started directly via workflow_dispatch as a fallback / retry.
 #
 # Public values are stored as Repository Variables:
 #   CDN_BASE_URL
@@ -37,17 +38,18 @@ jobs:
   publish:
     name: Publish update
     runs-on: ubuntu-latest
-    # Manual dispatch always runs. The auto path only runs for `v*` tag pushes.
-    # CI now only runs on `v*` tags and pull requests (plain branch pushes no
-    # longer trigger it), so the only non-tag CI completion is a PR run —
-    # excluded by the `event == 'push'` check below. `workflow_run.head_branch`
-    # is `main` for a branch push and the tag name (`v1.0.3`) for a tag push.
+    # Manual dispatch always runs. The auto path accepts successful CI runs on
+    # a v* tag, whether CI came from a tag push or a manual re-run on that tag.
+    # Pull-request and ordinary branch CI runs are excluded by the v* guard.
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
+        (
+          github.event.workflow_run.event == 'push' ||
+          github.event.workflow_run.event == 'workflow_dispatch'
+        ) &&
         startsWith(github.event.workflow_run.head_branch, 'v')
       )
     steps:
