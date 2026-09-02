@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/core_platform_support.dart';
 import 'app_bottom_sheet.dart';
 
 typedef AppAdaptiveModalBuilder = Widget Function(BuildContext context);
@@ -8,11 +9,19 @@ Future<T?> showAppAdaptiveModal<T>({
   required BuildContext context,
   required AppAdaptiveModalBuilder builder,
 }) {
+  if (CorePlatformSupport.isDesktop) {
+    return showDialog<T>(
+      context: context,
+      barrierDismissible: true,
+      builder: builder,
+    );
+  }
   return showAppBottomSheet<T>(context: context, builder: builder);
 }
 
-/// One modal body, always presented as a bottom sheet. The app is a fixed-size
-/// single-layout window, so there is no wide dialog shell.
+/// Shared adaptive modal body. Compact platforms render this as a bottom sheet;
+/// desktop routes render the same content in the centered desktop surface owned
+/// by [AppBottomSheet].
 class AppAdaptiveModal extends StatelessWidget {
   const AppAdaptiveModal({
     super.key,
