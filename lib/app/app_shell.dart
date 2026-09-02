@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -23,6 +24,7 @@ import '../features/traffic/traffic_page.dart';
 import '../l10n/l10n.dart';
 import 'nav_destinations.dart';
 import '../shared/models/app_models.dart';
+import '../shared/services/brand_asset_cache.dart';
 import '../shared/services/secure_logger.dart';
 import '../shared/theme/app_colors.dart';
 import '../shared/theme/app_radius.dart';
@@ -324,6 +326,25 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       if (center) await windowManager.center();
     }
     await windowManager.setResizable(false);
+  }
+
+  /// Resizes the app window to hug the current page's natural content height,
+  /// clamped to the display's work area so a tall page (e.g. the node list)
+  /// scrolls inside the window instead of pushing it past the screen edge.
+  Future<void> _resizeToContentHeight(double contentHeight) async {
+    if (!_isDesktop) return;
+    if (await windowManager.isMaximized()) return;
+    // Custom chrome (Windows/Linux) 46px, macOS drag strip 40px, plus the
+    // content area's top/bottom padding (14 + 12).
+    final chromeHeight = Platform.isMacOS ? 40.0 : 46.0;
+    const verticalPadding = 14.0 + 12.0;
+    final raw = chromeHeight + verticalPadding + contentHeight;
+    final display = await screenRetriever.getPrimaryDisplay();
+    final workHeight = display.visibleSize?.height ?? display.size.height;
+    final maxHeight = workHeight - 24;
+    final upper = maxHeight > 480.0 ? maxHeight : 480.0;
+    final target = raw.clamp(480.0, upper).toDouble();
+    await _applyWindowSize(Size(_appWindowSize.width, target), center: false);
   }
 
   // ── Tray ─────────────────────────────────────────────────────────────────
@@ -629,7 +650,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
         border: asCard ? Border.all(color: c.softBorder) : null,
       ),
       child: controller.isAuthenticated
-          ? const _MainShell()
+          ? _MainShell(onResizeWindow: _resizeToContentHeight)
           : _AuthShell(
               screen: _visibleAuthScreen ?? controller.authScreen,
               opacity: _authOpacity,
@@ -641,11 +662,17 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
 /// Desktop replaces the bottom nav with a left-hand drawer; every other
 /// platform keeps the compact bottom-nav layout.
 class _MainShell extends StatelessWidget {
-  const _MainShell();
+  const _MainShell({required this.onResizeWindow});
+
+  /// Called by the desktop body with the current page's natural content height
+  /// so the shell can resize the window to hug it.
+  final Future<void> Function(double contentHeight) onResizeWindow;
 
   @override
   Widget build(BuildContext context) {
-    if (CorePlatformSupport.isDesktop) return const _DesktopBody();
+    if (CorePlatformSupport.isDesktop) {
+      return _DesktopBody(onResizeWindow: onResizeWindow);
+    }
     return const _CompactBody();
   }
 }
@@ -726,9 +753,12 @@ class _CompactBodyState extends State<_CompactBody> {
 
 /// Desktop layout: the original compact window with a left-hand drawer. A
 /// hamburger button in the title bar slides the drawer over the content to
-/// reveal the full navigation; the window stays at its original size.
+/// reveal the full navigation. The window height auto-fits the current page's
+/// content (measured below), so there is no dead space beneath short pages.
 class _DesktopBody extends StatefulWidget {
-  const _DesktopBody();
+  const _DesktopBody({required this.onResizeWindow});
+
+  final Future<void> Function(double contentHeight) onResizeWindow;
 
   @override
   State<_DesktopBody> createState() => _DesktopBodyState();
@@ -736,14 +766,44 @@ class _DesktopBody extends StatefulWidget {
 
 class _DesktopBodyState extends State<_DesktopBody> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey _contentKey = GlobalKey();
+  double? _lastContentHeight;
 
   void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureAndResize());
+  }
+
+  /// Re-measures after the content's laid-out size changes (data loads,
+  /// banners appearing/clearing, tab switches).
+  void _onSizeChanged(SizeChangedLayoutNotification notification) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureAndResize());
+  }
+
+  void _measureAndResize() {
+    if (!mounted) return;
+    final box = _contentKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final height = box.size.height;
+    if (_lastContentHeight != null &&
+        (height - _lastContentHeight!).abs() < 0.5) {
+      return;
+    }
+    _lastContentHeight = height;
+    unawaited(widget.onResizeWindow(height));
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
-    final page = _indexedBody(ctrl, compactPrimaryDestinations);
+    // Render only the current page (not an IndexedStack) so its natural height
+    // is measurable. Every page reads its data from AppController, so remounting
+    // on tab switch is cheap — it only resets transient UI (filter tab, search).
+    final page = _pageFor(ctrl.page);
 
     return Scaffold(
       key: _scaffoldKey,
@@ -764,13 +824,22 @@ class _DesktopBodyState extends State<_DesktopBody> {
               child: SafeArea(
                 top: false,
                 bottom: false,
-                child: Padding(
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
-                  child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(
-                      context,
-                    ).copyWith(scrollbars: false),
-                    child: page,
+                  child: NotificationListener<SizeChangedLayoutNotification>(
+                    onNotification: (notification) {
+                      _onSizeChanged(notification);
+                      return true;
+                    },
+                    child: SizeChangedLayoutNotifier(
+                      child: KeyedSubtree(
+                        key: PageStorageKey<AppPage>(ctrl.page),
+                        child: SizedBox(
+                          key: _contentKey,
+                          child: page,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -796,11 +865,14 @@ class _AppDrawer extends StatelessWidget {
       ctrl.page,
       ctrl.mobileProfileChildPage,
     );
+    final settings = hubDestinations.firstWhere(
+      (d) => d.page == AppPage.settings,
+    );
 
     return Drawer(
       backgroundColor: c.cardBg,
       surfaceTintColor: Colors.transparent,
-      width: 300,
+      width: 260,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.horizontal(
           right: Radius.circular(AppRadius.card),
@@ -815,6 +887,11 @@ class _AppDrawer extends StatelessWidget {
               child: BrandTitle(),
             ),
             Divider(height: 1, color: c.softBorder),
+            _DrawerAccountCard(
+              user: ctrl.user,
+              onTap: () => _navigate(context, AppPage.account),
+            ),
+            Divider(height: 1, color: c.softBorder),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -826,18 +903,17 @@ class _AppDrawer extends StatelessWidget {
                       selected: d.page == selectedPrimary,
                       onTap: () => _navigate(context, d.page),
                     ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 14, 20, 6),
-                    child: Divider(height: 1),
-                  ),
-                  for (final d in hubDestinations)
-                    _DrawerItem(
-                      icon: d.icon,
-                      label: d.labelFor(context),
-                      selected: ctrl.page == d.page,
-                      onTap: () => _navigate(context, d.page),
-                    ),
                 ],
+              ),
+            ),
+            Divider(height: 1, color: c.softBorder),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: _DrawerItem(
+                icon: settings.icon,
+                label: settings.labelFor(context),
+                selected: ctrl.page == AppPage.settings,
+                onTap: () => _navigate(context, AppPage.settings),
               ),
             ),
           ],
@@ -849,6 +925,87 @@ class _AppDrawer extends StatelessWidget {
   void _navigate(BuildContext context, AppPage page) {
     ctrl.goToPage(page);
     Navigator.of(context).pop();
+  }
+}
+
+/// Account summary at the top of the drawer — avatar + name + plan — linking
+/// through to the full "我的" hub.
+class _DrawerAccountCard extends StatelessWidget {
+  const _DrawerAccountCard({required this.user, required this.onTap});
+
+  final UserModel user;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final file = BrandAssetCache.avatarFile;
+    final letter = user.avatarLetter.isEmpty ? 'L' : user.avatarLetter;
+
+    final Widget avatar;
+    if (BrandAssetCache.avatarUrl.isEmpty || file == null) {
+      avatar = CircleAvatar(
+        radius: 18,
+        backgroundColor: c.primarySoft,
+        child: Text(
+          letter,
+          style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
+        ),
+      );
+    } else {
+      avatar = ClipOval(
+        child: Image.file(
+          file,
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+        ),
+      );
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+          child: Row(
+            children: [
+              avatar,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name.isEmpty ? '--' : user.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: c.textPrimary,
+                      ),
+                    ),
+                    if (user.plan.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        user.plan,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textMuted,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(LucideIcons.chevronRight, size: 16, color: c.iconMuted),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

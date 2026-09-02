@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/core_platform_support.dart';
 import '../../app/nav_destinations.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
@@ -160,7 +161,10 @@ class _NodesPageState extends State<NodesPage> {
     return RefreshIndicator(
       onRefresh: _handleRefresh,
       child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        shrinkWrap: CorePlatformSupport.isDesktop,
+        physics: CorePlatformSupport.isDesktop
+            ? const NeverScrollableScrollPhysics()
+            : const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
             child: Column(

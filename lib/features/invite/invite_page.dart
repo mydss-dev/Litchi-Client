@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/core_platform_support.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
@@ -91,7 +92,10 @@ class _InvitePageState extends State<InvitePage> {
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
       child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        shrinkWrap: CorePlatformSupport.isDesktop,
+        physics: CorePlatformSupport.isDesktop
+            ? const NeverScrollableScrollPhysics()
+            : const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
           if (asChild) ...[

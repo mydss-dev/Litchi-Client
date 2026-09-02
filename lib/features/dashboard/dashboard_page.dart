@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
 import '../../app/core_error_message_service.dart';
+import '../../app/core_platform_support.dart';
 import '../../app/nav_destinations.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
@@ -154,7 +155,10 @@ class _DashboardPageState extends State<DashboardPage> {
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
       child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        shrinkWrap: CorePlatformSupport.isDesktop,
+        physics: CorePlatformSupport.isDesktop
+            ? const NeverScrollableScrollPhysics()
+            : const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
           _TopBanners(
@@ -300,6 +304,15 @@ class _MobileConnectionCard extends StatelessWidget {
               c.textMuted,
             ),
           };
+    final actionText = !supportsConnection
+        ? context.l10n.unavailable
+        : switch (status) {
+            ConnectionStatus.connected => context.l10n.disconnectConnection,
+            ConnectionStatus.connecting => context.l10n.connecting,
+            ConnectionStatus.disconnecting => context.l10n.disconnecting,
+            ConnectionStatus.error => context.l10n.reconnect,
+            ConnectionStatus.disconnected => context.l10n.startConnection,
+          };
     return AppCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       radius: AppRadius.xl,
@@ -312,30 +325,38 @@ class _MobileConnectionCard extends StatelessWidget {
                 label: statusText,
                 color: statusColor,
               ),
-              const Spacer(),
-              if (status == ConnectionStatus.connected)
-                Text(
-                  elapsedLabel,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           _MobilePowerButton(
             status: status,
             disabled: isBusy || !supportsConnection,
             onTap: onToggle,
           ),
-          const SizedBox(height: 12),
-          if (!supportsConnection)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+          const SizedBox(height: 16),
+          Text(
+            actionText,
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: statusColor == c.textMuted ? c.textPrimary : statusColor,
+              fontSize: 20,
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 18,
+            child: Center(
               child: Text(
-                context.l10n.androidLimitedNotice,
+                status == ConnectionStatus.connected
+                    ? elapsedLabel
+                    : !supportsConnection
+                    ? context.l10n.androidLimitedNotice
+                    : '',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.caption.copyWith(color: c.textMuted),
               ),
             ),
+          ),
+          const SizedBox(height: 20),
           ModeStrip(selected: proxyMode, onChanged: onModeChanged),
         ],
       ),
@@ -525,8 +546,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
           ? null
           : () => setState(() => _pressed = false),
       child: SizedBox(
-        width: 108,
-        height: 108,
+        width: 148,
+        height: 148,
         child: Stack(
           alignment: Alignment.center,
           clipBehavior: Clip.none,
@@ -537,8 +558,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                 builder: (context, _) {
                   final t = Curves.easeOut.transform(_pulseController.value);
                   return Container(
-                    width: 88 + 20 * t,
-                    height: 88 + 20 * t,
+                    width: 124 + 24 * t,
+                    height: 124 + 24 * t,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: pulseColor.withValues(alpha: 0.18 * (1 - t)),
@@ -570,8 +591,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 320),
                   curve: Curves.easeOutCubic,
-                  width: 88,
-                  height: 88,
+                  width: 124,
+                  height: 124,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: _connected ? c.brandGradient : null,
@@ -607,7 +628,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                           : Icon(
                               LucideIcons.power,
                               key: ValueKey(widget.status),
-                              size: 30,
+                              size: 42,
                               color: _connected ? Colors.white : c.primary,
                             ),
                     ),
@@ -628,8 +649,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
       alignment: Alignment.center,
       children: [
         Container(
-          width: 88 + 20 * t,
-          height: 88 + 20 * t,
+          width: 124 + 24 * t,
+          height: 124 + 24 * t,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: c.success.withValues(alpha: 0.20 * (1 - t)),
@@ -643,7 +664,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
   Widget _successRing(AppColors c, double t, int i) {
     final progress = ((t - i * 0.10) / 0.90).clamp(0.0, 1.0);
     if (progress <= 0 || progress >= 1) return const SizedBox.shrink();
-    final size = 88 + progress * 36;
+    final size = 124 + progress * 44;
     return Container(
       width: size,
       height: size,
@@ -673,8 +694,8 @@ class _ChargingRing extends StatelessWidget {
     return RotationTransition(
       turns: turns,
       child: SizedBox(
-        width: 34,
-        height: 34,
+        width: 46,
+        height: 46,
         child: CircularProgressIndicator(
           value: 0.33,
           strokeWidth: 3,

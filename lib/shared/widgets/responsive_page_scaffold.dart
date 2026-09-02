@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/core_platform_support.dart';
 import '../theme/app_text_styles.dart';
 import 'page_header.dart';
 import 'page_status_cards.dart';
@@ -37,7 +38,10 @@ class ResponsivePageScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final list = ListView(
-      physics: onRefresh == null ? null : const AlwaysScrollableScrollPhysics(),
+      shrinkWrap: CorePlatformSupport.isDesktop,
+      physics: CorePlatformSupport.isDesktop
+          ? const NeverScrollableScrollPhysics()
+          : (onRefresh == null ? null : const AlwaysScrollableScrollPhysics()),
       padding: EdgeInsets.zero,
       children: [
         if (primaryCompact)

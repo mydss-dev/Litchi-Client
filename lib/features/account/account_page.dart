@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/core_platform_support.dart';
 import '../../app/nav_destinations.dart';
 import '../shop/order_confirm_dialog.dart';
 import '../../l10n/l10n.dart';
@@ -158,7 +159,10 @@ class _AccountPageState extends State<AccountPage> {
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
       child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        shrinkWrap: CorePlatformSupport.isDesktop,
+        physics: CorePlatformSupport.isDesktop
+            ? const NeverScrollableScrollPhysics()
+            : const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
           _ProfileHeader(

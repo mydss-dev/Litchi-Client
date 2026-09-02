@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/core_platform_support.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
@@ -75,7 +76,10 @@ class _ShopPageState extends State<ShopPage> {
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
       child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+        shrinkWrap: CorePlatformSupport.isDesktop,
+        physics: CorePlatformSupport.isDesktop
+            ? const NeverScrollableScrollPhysics()
+            : const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
           if (asChild) ...[
