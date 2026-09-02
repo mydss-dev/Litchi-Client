@@ -157,6 +157,8 @@ class _DashboardPageState extends State<DashboardPage> {
           onConnectionRetry: _toggleConnection,
           onDataRetry: _handlePullRefresh,
         ),
+        NoticeCarousel(notices: ctrl.notices, isLoading: ctrl.noticesLoading),
+        const SizedBox(height: 16),
         if (noPlan)
           NoPlanCard(
             onPurchase: isPageEnabled(AppPage.shop)
@@ -192,7 +194,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       node: ctrl.currentNode,
                       loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
                       automatic: ctrl.autoSelected,
-                      onTap: () => ctrl.goToPage(AppPage.nodes),
+                      onTap: () => showNodePicker(context),
                     ),
                   ),
                 ],
@@ -202,8 +204,6 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 16),
           _DesktopMetricsRow(ctrl: ctrl),
         ],
-        const SizedBox(height: 16),
-        NoticeCarousel(notices: ctrl.notices, isLoading: ctrl.noticesLoading),
       ],
     );
   }
