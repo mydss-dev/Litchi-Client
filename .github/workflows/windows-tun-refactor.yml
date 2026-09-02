@@ -39,10 +39,19 @@ jobs:
           p.write_text(text)
           PY
           python3 tool/windows_tun_refactor.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/app/core_controller.dart')
+          text = p.read_text()
+          old = "    if (e2e == null) return 9999; // broken Reality / unreachable — no fake latency\n"
+          new = "    if (e2e == null) {\n      return 9999; // broken Reality / unreachable — no fake latency\n    }\n"
+          if old not in text:
+              raise SystemExit('latency guard anchor not found')
+          p.write_text(text.replace(old, new, 1))
+          PY
           gofmt -w core/singbox/*.go
           (cd core/singbox && go mod tidy)
           flutter pub get
-          dart fix --apply --code=curly_braces_in_flow_control_structures
           dart format lib/app/core_controller.dart lib/shared/services/sing_box_config.dart lib/shared/services/sing_box_ffi.dart lib/shared/services/sing_box_core_manager.dart lib/shared/services/windows_core_process_manager.dart
           flutter test
           flutter analyze
