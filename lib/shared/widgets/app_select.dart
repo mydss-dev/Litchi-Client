@@ -3,10 +3,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
-/// Compact select / dropdown (§21 Select): 34px tall, chevron-down trailing.
-/// Uses a [PopupMenuButton] for the options list.
+/// Compact select / dropdown with consistent desktop hover and focus behavior.
 class AppSelect<T> extends StatelessWidget {
   const AppSelect({
     super.key,
@@ -26,48 +26,68 @@ class AppSelect<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return PopupMenuButton<T>(
-      initialValue: value,
-      onSelected: onChanged,
-      position: PopupMenuPosition.under,
-      color: c.cardBg,
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        side: BorderSide(color: c.softBorder),
-      ),
-      itemBuilder: (context) => [
-        for (final item in items)
-          PopupMenuItem<T>(
-            value: item,
-            height: 38,
-            child: Text(
-              labelOf(item),
-              style: AppTextStyles.body.copyWith(
-                color: item == value ? c.primary : c.textPrimary,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: PopupMenuButton<T>(
+        initialValue: value,
+        onSelected: onChanged,
+        position: PopupMenuPosition.under,
+        color: c.cardBg,
+        elevation: 5,
+        tooltip: labelOf(value),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: BorderSide(color: c.softBorder),
+        ),
+        itemBuilder: (context) => [
+          for (final item in items)
+            PopupMenuItem<T>(
+              value: item,
+              height: 38,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      labelOf(item),
+                      style: AppTextStyles.body.copyWith(
+                        color: item == value ? c.primary : c.textPrimary,
+                        fontWeight:
+                            item == value ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (item == value) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    Icon(LucideIcons.check, size: 14, color: c.primary),
+                  ],
+                ],
               ),
             ),
+        ],
+        child: Container(
+          height: 36,
+          constraints: BoxConstraints(minWidth: minWidth),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: c.border),
           ),
-      ],
-      child: Container(
-        height: 34,
-        constraints: BoxConstraints(minWidth: minWidth),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          border: Border.all(color: c.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              labelOf(value),
-              style: AppTextStyles.menu.copyWith(color: c.textSecondary),
-            ),
-            const SizedBox(width: 8),
-            Icon(LucideIcons.chevronDown, size: 14, color: c.iconMuted),
-          ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  labelOf(value),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.menu.copyWith(color: c.textSecondary),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(LucideIcons.chevronDown, size: 14, color: c.iconMuted),
+            ],
+          ),
         ),
       ),
     );
