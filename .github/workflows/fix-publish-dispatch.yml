@@ -7,40 +7,12 @@ on:
       - '.github/workflows/fix-publish-dispatch.yml'
 
 permissions:
-  contents: write
   actions: write
 
 jobs:
-  fix-and-dispatch:
+  dispatch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          ref: main
-          fetch-depth: 0
-      - name: Allow tagged manual CI to auto-publish
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('.github/workflows/publish.yml')
-          text = p.read_text()
-          old = """        github.event.workflow_run.conclusion == 'success' &&\n        github.event.workflow_run.event == 'push' &&\n        startsWith(github.event.workflow_run.head_branch, 'v')\n"""
-          new = """        github.event.workflow_run.conclusion == 'success' &&\n        (\n          github.event.workflow_run.event == 'push' ||\n          github.event.workflow_run.event == 'workflow_dispatch'\n        ) &&\n        startsWith(github.event.workflow_run.head_branch, 'v')\n"""
-          if old not in text:
-              raise SystemExit('publish condition anchor not found')
-          text = text.replace(old, new, 1)
-          p.write_text(text)
-          PY
-          git diff --check
-      - name: Commit publish fix
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/publish.yml
-          git commit -m "fix(release): publish tagged manual CI runs"
-          git push origin HEAD:main
       - name: Trigger Publish for v1.1.4
         env:
           GH_TOKEN: ${{ github.token }}
