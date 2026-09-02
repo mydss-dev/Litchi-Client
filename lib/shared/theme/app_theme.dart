@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 import 'app_palette.dart';
+import 'app_radius.dart';
+import 'app_spacing.dart';
 import 'app_text_styles.dart';
 
-/// Builds the light/dark [ThemeData] for Litchi Client.
+/// Builds the light/dark ThemeData for Litchi Client.
 ///
-/// All product colors live in the [AppColors] extension; the base Material
-/// theme is only configured enough to keep scaffold backgrounds and default
-/// text colors on-brand (never Material blue — §3 rule 8).
+/// Product colors live in AppColors. Material defaults are normalized here so
+/// shared and native controls use the same desktop density, radius and focus
+/// language across Windows and macOS.
 class AppTheme {
   AppTheme._();
 
@@ -17,6 +19,9 @@ class AppTheme {
 
   static ThemeData _build(AppColors c, Brightness brightness) {
     final base = ThemeData(brightness: brightness, useMaterial3: true);
+    final controlShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+    );
 
     return base.copyWith(
       extensions: <ThemeExtension<dynamic>>[c],
@@ -29,11 +34,68 @@ class AppTheme {
         surface: c.cardBg,
         error: c.danger,
       ),
-      // Brand gradient seed so any stray Material accents stay on-brand.
       primaryColor: AppPalette.brandStart,
       dividerColor: c.border,
+      focusColor: c.primary.withValues(alpha: 0.08),
+      hoverColor: c.primary.withValues(alpha: 0.045),
+      highlightColor: c.primary.withValues(alpha: 0.06),
       textTheme: _textTheme(base.textTheme, c),
       splashFactory: InkRipple.splashFactory,
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          shape: controlShape,
+          textStyle: AppTextStyles.button,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 40),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          shape: controlShape,
+          side: BorderSide(color: c.border),
+          textStyle: AppTextStyles.button,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(0, 36),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          shape: controlShape,
+          textStyle: AppTextStyles.button,
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          minimumSize: const Size.square(36),
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+        ),
+      ),
+      tooltipTheme: TooltipThemeData(
+        waitDuration: const Duration(milliseconds: 450),
+        showDuration: const Duration(seconds: 3),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: c.textPrimary,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        textStyle: AppTextStyles.caption.copyWith(color: c.cardBg),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: c.cardBg,
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: BorderSide(color: c.softBorder),
+        ),
+      ),
     );
   }
 
