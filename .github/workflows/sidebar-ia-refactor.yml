@@ -26,11 +26,19 @@ jobs:
           python3 tool/sidebar_ia_refactor.py
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('lib/features/account/account_page.dart')
-          text = p.read_text()
+
+          account = Path('lib/features/account/account_page.dart')
+          text = account.read_text()
           if not text.startswith("import 'dart:async';"):
               text = "import 'dart:async';\n\n" + text
-          p.write_text(text)
+          account.write_text(text)
+
+          shell = Path('lib/app/app_shell.dart')
+          text = shell.read_text()
+          unused = "  final item = kNavDestinations.firstWhere((d) => d.page == page);\n"
+          if unused not in text:
+              raise SystemExit('unused desktop label fallback anchor not found')
+          shell.write_text(text.replace(unused, '', 1))
           PY
           dart format lib/app/app_shell.dart lib/features/account/account_page.dart
           flutter pub get
