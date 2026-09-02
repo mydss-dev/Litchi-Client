@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
 class AppFieldLabel extends StatelessWidget {
@@ -48,7 +49,11 @@ class AppTextField extends StatelessWidget {
     if (label == null || label!.isEmpty) return field;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [AppFieldLabel(label!), const SizedBox(height: 6), field],
+      children: [
+        AppFieldLabel(label!),
+        const SizedBox(height: AppSpacing.sm),
+        field,
+      ],
     );
   }
 
@@ -59,6 +64,7 @@ class AppTextField extends StatelessWidget {
       keyboardType: keyboardType,
       obscureText: obscureText,
       maxLines: obscureText ? 1 : maxLines,
+      cursorColor: c.primary,
       style: AppTextStyles.input.copyWith(color: c.textPrimary),
       decoration: InputDecoration(
         prefixText: prefixText,
@@ -68,8 +74,8 @@ class AppTextField extends StatelessWidget {
         fillColor: c.surfaceMuted,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
+          horizontal: AppSpacing.md,
+          vertical: 11,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -77,7 +83,15 @@ class AppTextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide(color: c.primary),
+          borderSide: BorderSide(color: c.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: c.danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: c.danger, width: 1.5),
         ),
       ),
     );
