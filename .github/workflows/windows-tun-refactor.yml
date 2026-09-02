@@ -26,9 +26,6 @@ jobs:
       - name: Apply refactor and run static tests
         shell: bash
         run: |
-          # The carrier is Python and embeds generated Dart. Rewrite the one
-          # nested Dart triple-single-quoted PowerShell string before parsing
-          # the carrier so the two languages' delimiters cannot collide.
           python3 - <<'PY'
           from pathlib import Path
           p = Path('tool/windows_tun_refactor.py')
@@ -42,10 +39,11 @@ jobs:
           p.write_text(text)
           PY
           python3 tool/windows_tun_refactor.py
-          dart format lib/app/core_controller.dart lib/shared/services/sing_box_config.dart lib/shared/services/sing_box_ffi.dart lib/shared/services/sing_box_core_manager.dart lib/shared/services/windows_core_process_manager.dart
           gofmt -w core/singbox/*.go
           (cd core/singbox && go mod tidy)
           flutter pub get
+          dart fix --apply --code=curly_braces_in_flow_control_structures
+          dart format lib/app/core_controller.dart lib/shared/services/sing_box_config.dart lib/shared/services/sing_box_ffi.dart lib/shared/services/sing_box_core_manager.dart lib/shared/services/windows_core_process_manager.dart
           flutter test
           flutter analyze
           (cd core/singbox && go test -tags "with_clash_api,with_quic,with_utls,with_wireguard" ./...)
