@@ -14,10 +14,11 @@ import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/page_status_cards.dart';
 import 'order_confirm_dialog.dart';
 
-/// Shop — the mobile plans page.
+/// Shop / plans page.
 ///
-/// Pull-to-refresh list of plan cards. Cycle selection, filtering, and purchase
-/// actions live on the shared `_PlanCard`.
+/// Desktop uses a responsive two/three-column grid while compact platforms keep
+/// the original single-column purchase flow. Pricing, billing-cycle selection
+/// and checkout behavior remain shared by `_PlanCard`.
 class ShopPage extends StatefulWidget {
   const ShopPage({super.key});
 
@@ -64,10 +65,112 @@ class _ShopPageState extends State<ShopPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
     return _buildCompact(context);
   }
 
+  // ── Desktop layout ───────────────────────────────────────────────────────
+
+  Widget _buildDesktop(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final plans = _filtered(ctrl.plans);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.plans,
+                    style: AppTextStyles.pageTitle.copyWith(
+                      color: c.textPrimary,
+                      fontSize: 26,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    context.l10n.buyPlansSubtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.body.copyWith(color: c.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Tooltip(
+              message: context.l10n.refresh,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _handlePullRefresh,
+                  mouseCursor: SystemMouseCursors.click,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  child: Ink(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: c.surfaceMuted,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: c.softBorder),
+                    ),
+                    child: Icon(
+                      LucideIcons.refreshCw,
+                      size: 17,
+                      color: c.iconDefault,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _ShopTabs(
+          tabs: _tabs(context),
+          selected: _tab,
+          onSelected: (index) => setState(() => _tab = index),
+        ),
+        const SizedBox(height: 18),
+        if (plans.isEmpty)
+          _emptyPlans(context)
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 16.0;
+              final columns = constraints.maxWidth >= 900 ? 3 : 2;
+              final cardWidth =
+                  (constraints.maxWidth - gap * (columns - 1)) / columns;
+
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final plan in plans)
+                    SizedBox(
+                      width: cardWidth,
+                      child: _PlanCard(
+                        key: ValueKey(plan.id),
+                        plan: plan,
+                        desktop: true,
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+      ],
+    );
+  }
+
   // ── Compact (bottom-nav) layout ────────────────────────────────────────
+
   Widget _buildCompact(BuildContext context) {
     final ctrl = AppScope.of(context);
     final plans = _filtered(ctrl.plans);
@@ -76,10 +179,7 @@ class _ShopPageState extends State<ShopPage> {
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
       child: ListView(
-        shrinkWrap: CorePlatformSupport.isDesktop,
-        physics: CorePlatformSupport.isDesktop
-            ? const NeverScrollableScrollPhysics()
-            : const AlwaysScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
           if (asChild) ...[
@@ -146,28 +246,31 @@ class _ShopTabs extends StatelessWidget {
         children: [
           for (var i = 0; i < tabs.length; i++)
             Expanded(
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
                   onTap: () => onSelected(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 140),
+                  mouseCursor: SystemMouseCursors.click,
+                  hoverColor: c.cardBg.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  child: Ink(
                     height: 38,
-                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: selected == i ? c.cardBg : Colors.transparent,
                       borderRadius: BorderRadius.circular(AppRadius.md),
                       boxShadow: selected == i ? AppShadows.soft(c) : null,
                     ),
-                    child: Text(
-                      tabs[i],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(
-                        color: selected == i ? c.primary : c.textMuted,
-                        fontWeight: selected == i
-                            ? FontWeight.w800
-                            : FontWeight.w600,
+                    child: Center(
+                      child: Text(
+                        tabs[i],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: selected == i ? c.primary : c.textMuted,
+                          fontWeight: selected == i
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -181,10 +284,16 @@ class _ShopTabs extends StatelessWidget {
 }
 
 class _PlanCard extends StatefulWidget {
-  const _PlanCard({super.key, required this.plan, this.compact = false});
+  const _PlanCard({
+    super.key,
+    required this.plan,
+    this.compact = false,
+    this.desktop = false,
+  });
 
   final PlanModel plan;
   final bool compact;
+  final bool desktop;
 
   @override
   State<_PlanCard> createState() => _PlanCardState();
@@ -287,6 +396,7 @@ class _PlanCardState extends State<_PlanCard> {
         .toList();
 
     return AppCard(
+      height: widget.desktop ? 390 : null,
       padding: const EdgeInsets.all(16),
       radius: AppRadius.lg,
       borderColor: plan.featured ? c.primary : c.softBorder,
@@ -298,14 +408,18 @@ class _PlanCardState extends State<_PlanCard> {
           Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: widget.desktop ? 38 : 42,
+                height: widget.desktop ? 38 : 42,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: c.primarySoft,
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(_icon, color: c.primary, size: 20),
+                child: Icon(
+                  _icon,
+                  color: c.primary,
+                  size: widget.desktop ? 18 : 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -318,7 +432,7 @@ class _PlanCardState extends State<_PlanCard> {
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyStrong.copyWith(
                         color: c.textPrimary,
-                        fontSize: 16,
+                        fontSize: widget.desktop ? 15 : 16,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -326,11 +440,15 @@ class _PlanCardState extends State<_PlanCard> {
                       _metaText(context),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                      style: AppTextStyles.caption.copyWith(
+                        color: c.textMuted,
+                        fontSize: widget.desktop ? 10.5 : null,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 6),
               if (plan.soldOut)
                 _MiniBadge(text: context.l10n.soldOut, color: c.danger)
               else if (plan.capacityLimit != null &&
@@ -351,6 +469,7 @@ class _PlanCardState extends State<_PlanCard> {
             symbol: ctrl.currencySymbol,
             price: price,
             unit: _unit(context),
+            desktop: widget.desktop,
           ),
           if (_cycleOptions.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -488,11 +607,13 @@ class _PricePanel extends StatelessWidget {
     required this.symbol,
     required this.price,
     required this.unit,
+    this.desktop = false,
   });
 
   final String symbol;
   final double? price;
   final String unit;
+  final bool desktop;
 
   @override
   Widget build(BuildContext context) {
@@ -503,7 +624,7 @@ class _PricePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 7),
+            padding: EdgeInsets.only(bottom: desktop ? 6 : 7),
             child: Text(
               symbol,
               style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
@@ -512,15 +633,17 @@ class _PricePanel extends StatelessWidget {
           Text(
             price == null ? '--' : price!.toStringAsFixed(0),
             style: AppTextStyles.largeNumber(
-              fontSize: 38,
+              fontSize: desktop ? 34 : 38,
             ).copyWith(color: c.textPrimary),
           ),
           if (unit.isNotEmpty) ...[
             const SizedBox(width: 6),
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: desktop ? 7 : 8),
               child: Text(
                 unit,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(color: c.textMuted),
               ),
             ),
@@ -541,14 +664,14 @@ class _FeatureList extends StatelessWidget {
     final c = AppColors.of(context);
     return Column(
       children: [
-        for (final feature in features) ...[
+        for (var i = 0; i < features.length; i++) ...[
           Row(
             children: [
               Icon(LucideIcons.check, size: 15, color: c.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  feature,
+                  features[i],
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(color: c.textSecondary),
@@ -556,7 +679,7 @@ class _FeatureList extends StatelessWidget {
               ),
             ],
           ),
-          if (feature != features.last) const SizedBox(height: 8),
+          if (i != features.length - 1) const SizedBox(height: 8),
         ],
       ],
     );
@@ -571,17 +694,22 @@ class _MiniBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Text(
-        text,
-        style: AppTextStyles.badge.copyWith(color: color, fontSize: 10),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 104),
+      child: Container(
+        height: 22,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.badge.copyWith(color: color, fontSize: 10),
+        ),
       ),
     );
   }
@@ -601,25 +729,28 @@ class _BuyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
-      child: GestureDetector(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         onTap: onTap,
-        child: Container(
+        mouseCursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Ink(
           width: double.infinity,
           height: 44,
-          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: enabled ? c.primary : c.surfaceMuted,
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
-          child: Text(
-            enabled
-                ? context.l10n.buyNow
-                : disabledLabel ?? context.l10n.unavailableForPurchase,
-            style: AppTextStyles.button.copyWith(
-              color: enabled ? Colors.white : c.textMuted,
-              fontWeight: FontWeight.w800,
+          child: Center(
+            child: Text(
+              enabled
+                  ? context.l10n.buyNow
+                  : disabledLabel ?? context.l10n.unavailableForPurchase,
+              style: AppTextStyles.button.copyWith(
+                color: enabled ? Colors.white : c.textMuted,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ),
