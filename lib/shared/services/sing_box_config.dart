@@ -7,7 +7,7 @@ import '../models/app_models.dart';
 import 'app_paths.dart';
 import 'rule_set_assets.dart';
 
-/// Builds the JSON configuration consumed by the embedded sing-box core.
+/// Builds the JSON configuration consumed by the sing-box runtime.
 ///
 /// Native proxy outbounds come from the panel. This class owns application
 /// policy (inbounds, selectors, DNS and routing).
@@ -100,12 +100,9 @@ abstract final class SingBoxConfig {
                 ? 'utun'
                 : AppIdentity.tunInterfaceAlias,
             'address': ['172.19.0.1/30'],
-            // Windows cloud/remote desktops are sensitive to jumbo MTUs and
-            // aggressive route locking. Keep the adapter conventional there;
-            // physical/macOS/Linux clients retain the existing larger MTU.
-            'mtu': Platform.isWindows ? 1500 : 9000,
+            'mtu': 9000,
             'auto_route': true,
-            'strict_route': !Platform.isWindows,
+            'strict_route': true,
             'stack': 'system',
           },
       ],
