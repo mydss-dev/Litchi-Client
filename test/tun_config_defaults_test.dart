@@ -1,0 +1,37 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:litchi_client/shared/models/app_models.dart';
+import 'package:litchi_client/shared/services/sing_box_config.dart';
+
+void main() {
+  const node = NodeModel(
+    id: 'tun-test',
+    name: 'TUN Test',
+    flag: '',
+    latency: 0,
+    rawOutbound: {
+      'type': 'trojan',
+      'server': 'example.com',
+      'server_port': 443,
+      'password': 'secret',
+      'tls': {'enabled': true, 'server_name': 'example.com'},
+      '_litchi_format': 'sing-box',
+    },
+  );
+
+  test('TUN uses the standard system stack with strict routing', () {
+    final config = SingBoxConfig.buildFullConfig(
+      const [node],
+      selectedTag: SingBoxConfig.nodeTagFor(node),
+      networkMode: NetworkMode.tun,
+    )!;
+
+    final tun = (config['inbounds'] as List).cast<Map>().firstWhere(
+      (inbound) => inbound['type'] == 'tun',
+    );
+
+    expect(tun['stack'], 'system');
+    expect(tun['mtu'], 9000);
+    expect(tun['auto_route'], isTrue);
+    expect(tun['strict_route'], isTrue);
+  });
+}
