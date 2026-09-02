@@ -1,0 +1,24 @@
+name: Create v1.1.4 Tag
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/create-v1.1.4-tag.yml
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 81cce5b12afe886b27aa939b8245cc53be6247b3
+          fetch-depth: 0
+      - name: Create tag
+        run: |
+          git tag v1.1.4 81cce5b12afe886b27aa939b8245cc53be6247b3
+          git push origin v1.1.4
