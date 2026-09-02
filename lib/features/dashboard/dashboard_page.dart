@@ -27,12 +27,11 @@ import '../../shared/widgets/update_banner.dart';
 import '../nodes/node_picker.dart';
 import 'widgets/error_banner.dart';
 
-/// Dashboard / Home — the mobile home page.
+/// Dashboard / Home.
 ///
-/// Pull-to-refresh, connection card, mode strip, card grid. The 1-second uptime
-/// ticker (`_tickTimer`/`_syncTimer`) and formatters are in
-/// `shared/utils/formatters.dart`; `ModeStrip` lives in
-/// `shared/widgets/mode_strip.dart`.
+/// Desktop uses a dedicated wide layout while compact platforms keep the
+/// original mobile-first connection flow. The 1-second uptime ticker only
+/// refreshes the elapsed-time readout while the dashboard is visible.
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
 
@@ -42,9 +41,6 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   Timer? _tickTimer;
-  // Ticks once per second to refresh ONLY the elapsed-time readout, instead of
-  // rebuilding the whole page 60x/minute while connected. ctrl-driven changes
-  // (status, data) still rebuild the page via AppScope (InheritedNotifier).
   final ValueNotifier<int> _tick = ValueNotifier<int>(0);
   bool _showingPopups = false;
 
@@ -143,7 +139,77 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
     return _buildCompact(context);
+  }
+
+  // ── Desktop layout ──────────────────────────────────────────────────────
+  Widget _buildDesktop(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final noPlan =
+        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _DesktopDashboardHeader(onRefresh: _handlePullRefresh),
+        const SizedBox(height: 18),
+        _DesktopAlerts(
+          ctrl: ctrl,
+          onConnectionRetry: _toggleConnection,
+          onDataRetry: _handlePullRefresh,
+        ),
+        if (noPlan)
+          NoPlanCard(
+            onPurchase: isPageEnabled(AppPage.shop)
+                ? () => ctrl.goToPage(AppPage.shop)
+                : null,
+          )
+        else ...[
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 16.0;
+              final cardWidth = (constraints.maxWidth - gap) / 2;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: cardWidth,
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: _tick,
+                      builder: (context, _, _) => _DesktopConnectionCard(
+                        status: ctrl.connectionStatus,
+                        proxyMode: ctrl.proxyMode,
+                        elapsedLabel: formatDuration(ctrl.connectedDuration),
+                        supportsConnection: ctrl.supportsCoreConnection,
+                        uploadBps: ctrl.upBps,
+                        downloadBps: ctrl.downBps,
+                        onToggle: _toggleConnection,
+                        onModeChanged: (mode) => _changeMode(context, mode),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: gap),
+                  SizedBox(
+                    width: cardWidth,
+                    child: _DesktopNodeCard(
+                      node: ctrl.currentNode,
+                      loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
+                      automatic: ctrl.autoSelected,
+                      onTap: () => ctrl.goToPage(AppPage.nodes),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _DesktopMetricsRow(ctrl: ctrl),
+        ],
+        const SizedBox(height: 16),
+        NoticeCarousel(notices: ctrl.notices, isLoading: ctrl.noticesLoading),
+      ],
+    );
   }
 
   // ── Compact (bottom-nav) layout ────────────────────────────────────────
@@ -196,15 +262,697 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
+}
 
+// ── Desktop dashboard widgets ───────────────────────────────────────────────
+
+class _DesktopDashboardHeader extends StatelessWidget {
+  const _DesktopDashboardHeader({required this.onRefresh});
+
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.home,
+                style: AppTextStyles.pageTitle.copyWith(
+                  color: c.textPrimary,
+                  fontSize: 26,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                context.l10n.dashboardSubtitle,
+                style: AppTextStyles.body.copyWith(color: c.textMuted),
+              ),
+            ],
+          ),
+        ),
+        Tooltip(
+          message: context.l10n.refresh,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onRefresh,
+              mouseCursor: SystemMouseCursors.click,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: Ink(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: c.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: c.softBorder),
+                ),
+                child: Icon(LucideIcons.refreshCw, size: 17, color: c.iconDefault),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopAlerts extends StatelessWidget {
+  const _DesktopAlerts({
+    required this.ctrl,
+    required this.onConnectionRetry,
+    required this.onDataRetry,
+  });
+
+  final AppController ctrl;
+  final VoidCallback onConnectionRetry;
+  final VoidCallback onDataRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final alerts = <Widget>[
+      if (ctrl.updateInfo != null)
+        UpdateBanner(info: ctrl.updateInfo!, onDismiss: ctrl.dismissUpdate),
+      if (ctrl.connectionStatus == ConnectionStatus.error &&
+          ctrl.coreError.isNotEmpty)
+        ErrorBanner(
+          message: CoreErrorMessageService.userFacing(
+            ctrl.coreError,
+            l10n: context.l10n,
+          ),
+          onRetry: onConnectionRetry,
+        ),
+      if (ctrl.dataLoadError != null)
+        ErrorBanner(
+          message: ctrl.nodes.isNotEmpty
+              ? context.l10n.cachedModeActive
+              : context.l10n.serverUnavailableNoCache,
+          onRetry: onDataRetry,
+          warning: true,
+        ),
+    ];
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: alerts.isEmpty
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                children: [
+                  for (var i = 0; i < alerts.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    alerts[i],
+                  ],
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+class _DesktopConnectionCard extends StatelessWidget {
+  const _DesktopConnectionCard({
+    required this.status,
+    required this.proxyMode,
+    required this.elapsedLabel,
+    required this.supportsConnection,
+    required this.uploadBps,
+    required this.downloadBps,
+    required this.onToggle,
+    required this.onModeChanged,
+  });
+
+  final ConnectionStatus status;
+  final ProxyMode proxyMode;
+  final String elapsedLabel;
+  final bool supportsConnection;
+  final int uploadBps;
+  final int downloadBps;
+  final VoidCallback onToggle;
+  final ValueChanged<ProxyMode> onModeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final isBusy =
+        status == ConnectionStatus.connecting ||
+        status == ConnectionStatus.disconnecting;
+    final (statusText, statusColor) = !supportsConnection
+        ? (context.l10n.businessEdition, c.textMuted)
+        : switch (status) {
+            ConnectionStatus.connected => (context.l10n.protected, c.success),
+            ConnectionStatus.connecting => (context.l10n.connecting, c.primary),
+            ConnectionStatus.disconnecting => (
+              context.l10n.disconnecting,
+              c.textMuted,
+            ),
+            ConnectionStatus.error => (context.l10n.connectionFailed, c.danger),
+            ConnectionStatus.disconnected => (
+              context.l10n.notConnected,
+              c.textMuted,
+            ),
+          };
+    final actionText = !supportsConnection
+        ? context.l10n.unavailable
+        : switch (status) {
+            ConnectionStatus.connected => context.l10n.disconnectConnection,
+            ConnectionStatus.connecting => context.l10n.connecting,
+            ConnectionStatus.disconnecting => context.l10n.disconnecting,
+            ConnectionStatus.error => context.l10n.reconnect,
+            ConnectionStatus.disconnected => context.l10n.startConnection,
+          };
+
+    return AppCard(
+      height: 300,
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _StatusPill(
+                      status: status,
+                      label: statusText,
+                      color: statusColor,
+                    ),
+                    const SizedBox(height: 13),
+                    Text(
+                      actionText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.sectionTitle.copyWith(
+                        color: statusColor == c.textMuted
+                            ? c.textPrimary
+                            : statusColor,
+                        fontSize: 20,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      status == ConnectionStatus.connected
+                          ? elapsedLabel
+                          : context.l10n.proxyMode,
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _DesktopPowerButton(
+                status: status,
+                disabled: isBusy || !supportsConnection,
+                tooltip: actionText,
+                onTap: onToggle,
+              ),
+            ],
+          ),
+          const Spacer(),
+          ModeStrip(selected: proxyMode, onChanged: onModeChanged),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _DesktopSpeedStat(
+                  icon: LucideIcons.arrowDown,
+                  label: context.l10n.downloadSpeed,
+                  value: formatRate(downloadBps),
+                ),
+              ),
+              Container(width: 1, height: 30, color: c.softBorder),
+              Expanded(
+                child: _DesktopSpeedStat(
+                  icon: LucideIcons.arrowUp,
+                  label: context.l10n.uploadSpeed,
+                  value: formatRate(uploadBps),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopPowerButton extends StatelessWidget {
+  const _DesktopPowerButton({
+    required this.status,
+    required this.disabled,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final ConnectionStatus status;
+  final bool disabled;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final connected = status == ConnectionStatus.connected;
+    final busy =
+        status == ConnectionStatus.connecting ||
+        status == ConnectionStatus.disconnecting;
+    final busyColor = status == ConnectionStatus.disconnecting
+        ? c.textMuted
+        : c.primary;
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: Ink(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: connected ? c.brandGradient : null,
+            color: connected ? null : c.surfaceMuted,
+            border: Border.all(
+              color: connected
+                  ? Colors.white.withValues(alpha: 0.26)
+                  : c.border,
+            ),
+            boxShadow: connected ? AppShadows.powerButton : AppShadows.soft(c),
+          ),
+          child: InkWell(
+            onTap: disabled ? null : onTap,
+            mouseCursor: disabled
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
+            customBorder: const CircleBorder(),
+            child: Center(
+              child: busy
+                  ? SizedBox(
+                      width: 25,
+                      height: 25,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: busyColor,
+                      ),
+                    )
+                  : Icon(
+                      LucideIcons.power,
+                      size: 28,
+                      color: connected ? Colors.white : c.primary,
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopSpeedStat extends StatelessWidget {
+  const _DesktopSpeedStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 14, color: c.iconMuted),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: c.textMuted,
+                  fontSize: 10.5,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyStrong.copyWith(
+                  color: c.textPrimary,
+                  fontSize: 12.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopNodeCard extends StatelessWidget {
+  const _DesktopNodeCard({
+    required this.node,
+    required this.loading,
+    required this.automatic,
+    required this.onTap,
+  });
+
+  final NodeModel node;
+  final bool loading;
+  final bool automatic;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final nodeName = node.name.isEmpty
+        ? loading
+              ? context.l10n.syncingNodes
+              : context.l10n.selectNodePrompt
+        : node.name;
+    final secondary = node.englishName.isNotEmpty
+        ? node.englishName
+        : context.l10n.nodeModeLabel(
+            automatic ? context.l10n.autoSelect : context.l10n.manualSelect,
+          );
+
+    return AppCard(
+      height: 300,
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(18),
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.server, size: 17, color: c.primary),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  context.l10n.currentNode,
+                  style: AppTextStyles.sectionTitle.copyWith(
+                    color: c.textPrimary,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              Icon(LucideIcons.chevronRight, size: 17, color: c.iconMuted),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _DesktopNodeAvatar(node: node),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      nodeName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.sectionTitle.copyWith(
+                        color: c.textPrimary,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    if (loading && node.name.isEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          minHeight: 3,
+                          color: c.primary,
+                          backgroundColor: c.softBorder,
+                        ),
+                      )
+                    else
+                      Text(
+                        secondary,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textMuted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: c.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.l10n.currentLatency,
+                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                  ),
+                ),
+                NodeLatency(
+                  latency: node.latency,
+                  style: NodeLatencyStyle.badge,
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          OutlinedButton.icon(
+            onPressed: onTap,
+            icon: const Icon(LucideIcons.arrowRightLeft, size: 15),
+            label: Text(context.l10n.switchNode),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(38),
+              foregroundColor: c.primary,
+              side: BorderSide(color: c.primary.withValues(alpha: 0.28)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopNodeAvatar extends StatelessWidget {
+  const _DesktopNodeAvatar({required this.node});
+
+  final NodeModel node;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Container(
+      width: 58,
+      height: 58,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: c.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: c.softBorder),
+      ),
+      child: node.code.isNotEmpty
+          ? CountryFlag.fromCountryCode(
+              node.code,
+              theme: const ImageTheme(
+                width: 34,
+                height: 24,
+                shape: RoundedRectangle(4),
+              ),
+            )
+          : Icon(LucideIcons.globe2, color: c.iconMuted, size: 24),
+    );
+  }
+}
+
+class _DesktopMetricsRow extends StatelessWidget {
+  const _DesktopMetricsRow({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final expiryInfo = _desktopExpiryInfo(ctrl);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 12.0;
+        final width = (constraints.maxWidth - gap * 2) / 3;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(
+              width: width,
+              child: _DesktopMetricCard(
+                icon: LucideIcons.gauge,
+                title: context.l10n.usage,
+                value: formatGb(ctrl.todayTrafficGb),
+                footer: context.l10n.recentDays(1),
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _DesktopMetricCard(
+                icon: LucideIcons.database,
+                title: context.l10n.remaining,
+                value: formatGb(ctrl.traffic.remainGb),
+                footer: context.l10n.usedTraffic(
+                  ctrl.traffic.usedGb.toStringAsFixed(0),
+                  ctrl.traffic.totalGb.toStringAsFixed(0),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _DesktopMetricCard(
+                icon: LucideIcons.calendarDays,
+                title: context.l10n.expiryTime,
+                value: expiryInfo.days == null
+                    ? context.l10n.permanent
+                    : '${expiryInfo.days} ${context.l10n.daysUnit}',
+                footer: expiryInfo.days == null
+                    ? context.l10n.subscriptionLongTerm
+                    : context.l10n.expiresAt(expiryInfo.date),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DesktopMetricCard extends StatelessWidget {
+  const _DesktopMetricCard({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.footer,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final String footer;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AppCard(
+      height: 118,
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.all(14),
+      shadow: AppCardShadow.soft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(icon, size: 14, color: c.primary),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textMuted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: c.textPrimary,
+              fontSize: 20,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            footer,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: c.textMuted,
+              fontSize: 10.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+({int? days, String date}) _desktopExpiryInfo(AppController ctrl) {
+  final expiredAt = ctrl.expiredAt;
+  if (expiredAt != null && expiredAt > 0) {
+    final expiry = DateTime.fromMillisecondsSinceEpoch(expiredAt * 1000);
+    return (days: _daysUntil(expiry), date: formatDate(expiry));
+  }
+
+  final expiry = DateTime.tryParse(ctrl.user.expiry);
+  if (expiry == null) return (days: null, date: '');
+  return (days: _daysUntil(expiry), date: formatDate(expiry));
+}
+
+int _daysUntil(DateTime expiry) {
+  final today = DateTime.now();
+  final start = DateTime(today.year, today.month, today.day);
+  final end = DateTime(expiry.year, expiry.month, expiry.day);
+  return end.difference(start).inDays.clamp(0, 9999);
 }
 
 // ── Top banner stack (update / notice / error) ─────────────────────────────
 
-/// Every transient banner on the dashboard — update prompt, notice carousel,
-/// and error alerts — lives here in one fixed top section. [AnimatedSize]
-/// animates the section's height as banners appear or clear, so the connection
-/// card below glides instead of snapping down when a banner loads.
+/// Every transient banner on the compact dashboard — update prompt, notice
+/// carousel, and error alerts — lives here in one fixed top section.
 class _TopBanners extends StatelessWidget {
   const _TopBanners({
     required this.ctrl,
@@ -238,8 +986,6 @@ class _TopBanners extends StatelessWidget {
           onRetry: onDataRetry,
           warning: true,
         ),
-      // NoticeCarousel always renders: it shows a placeholder while loading,
-      // so its slot (and everything below it) stays put.
       NoticeCarousel(notices: ctrl.notices, isLoading: ctrl.noticesLoading),
     ];
 
@@ -264,7 +1010,7 @@ class _TopBanners extends StatelessWidget {
   }
 }
 
-// ── Compact-layout widgets (original MobileHomePage, verbatim) ────────────
+// ── Compact-layout widgets ─────────────────────────────────────────────────
 
 class _MobileConnectionCard extends StatelessWidget {
   const _MobileConnectionCard({
@@ -497,7 +1243,6 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
     super.didUpdateWidget(oldWidget);
     _syncPulse();
     _syncCharge();
-    // Fire the success burst once when we land on "connected".
     if (_connected && oldWidget.status != ConnectionStatus.connected) {
       _successController.forward(from: 0);
     }
@@ -570,7 +1315,6 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                   );
                 },
               ),
-            // Success glow + radiating rings, behind the button.
             AnimatedBuilder(
               animation: _successController,
               builder: (context, _) => _buildSuccessBurst(c),
