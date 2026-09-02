@@ -7,6 +7,7 @@ import "C"
 
 import (
 	"fmt"
+	"os"
 	"unsafe"
 )
 
@@ -17,9 +18,8 @@ func resultCode(err error) C.int {
 	return 0
 }
 
-// capturePanic turns a Go panic on the cgo boundary into a returned error
-// instead of crashing the host process. Without this, any panic in sing-box's
-// start path (e.g. a missing wintun.dll or a TUN init failure) aborts the app.
+// capturePanic protects the C ABI used by macOS/Linux. Windows runs sing-box
+// in litchi-core.exe, so TUN/native failures cannot terminate the Flutter GUI.
 func capturePanic(code *C.int) {
 	if r := recover(); r != nil {
 		coreService.setError(fmt.Sprintf("panic: %v", r))
@@ -72,4 +72,6 @@ func cString(value *C.char) string {
 	return C.GoString(value)
 }
 
-func main() {}
+func main() {
+	os.Exit(runCLI(os.Args[1:]))
+}

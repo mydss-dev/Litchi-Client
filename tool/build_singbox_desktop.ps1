@@ -17,11 +17,6 @@ $versionLine = Get-Content $versionsFile | Where-Object {
 if (-not $versionLine) { throw "SING_BOX_VERSION is missing from $versionsFile" }
 $version = ($versionLine -split '=', 2)[1].Trim().TrimStart('v')
 
-$extension = switch ($Target) {
-  "windows" { ".dll" }
-  "darwin" { ".dylib" }
-  default { ".so" }
-}
 $env:GOOS = $Target
 $env:GOARCH = $Arch
 $env:CGO_ENABLED = "1"
@@ -31,18 +26,27 @@ if ($Target -eq "windows" -and -not $env:CC) {
   } elseif (Get-Command clang -ErrorAction SilentlyContinue) {
     $env:CC = "clang"
   } else {
-    throw "A C compiler (gcc or clang) is required to build the sing-box DLL"
+    throw "A C compiler (gcc or clang) is required to build the Windows core"
   }
 }
-$tags = "with_clash_api,with_quic,with_utls,with_wireguard,with_gvisor"
-$library = Join-Path $output "litchi_singbox$extension"
+$tags = "with_clash_api,with_quic,with_utls,with_wireguard"
 
 Push-Location $source
 try {
   go mod download
-  go build -trimpath -tags $tags -buildmode=c-shared -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$version" -o $library .
+  if ($Target -eq "windows") {
+    Remove-Item -LiteralPath (Join-Path $output "litchi_singbox.dll") -Force -ErrorAction SilentlyContinue
+    $binary = Join-Path $output "litchi-core.exe"
+    go build -trimpath -tags $tags -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$version" -o $binary .
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Host "isolated Windows sing-box core ready: $binary"
+  } else {
+    $extension = if ($Target -eq "darwin") { ".dylib" } else { ".so" }
+    $library = Join-Path $output "litchi_singbox$extension"
+    go build -trimpath -tags $tags -buildmode=c-shared -ldflags "-s -w -X github.com/sagernet/sing-box/constant.Version=$version" -o $library .
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Host "sing-box desktop library ready: $library"
+  }
 } finally {
   Pop-Location
 }
-
-Write-Host "sing-box desktop library ready: $library"

@@ -44,8 +44,7 @@ abstract final class SingBoxConfig {
   static const String autoSelectTag = 'auto';
   static const String directTag = 'direct';
   static const String blockTag = 'block';
-  static const String delayTestUrl =
-      'https://www.gstatic.com/generate_204';
+  static const String delayTestUrl = 'https://www.gstatic.com/generate_204';
 
   static String appDataDir() => AppPaths.dataDirectory;
 
@@ -101,13 +100,13 @@ abstract final class SingBoxConfig {
                 ? 'utun'
                 : AppIdentity.tunInterfaceAlias,
             'address': ['172.19.0.1/30'],
-            'mtu': 9000,
+            // Windows cloud/remote desktops are sensitive to jumbo MTUs and
+            // aggressive route locking. Keep the adapter conventional there;
+            // physical/macOS/Linux clients retain the existing larger MTU.
+            'mtu': Platform.isWindows ? 1500 : 9000,
             'auto_route': true,
-            'strict_route': true,
-            // Windows uses the gvisor (userspace) stack: the `system` stack
-            // drives wintun natively and segfaulted the process on connect.
-            // gvisor needs no driver, so it cannot crash the host that way.
-            'stack': Platform.isWindows ? 'gvisor' : 'system',
+            'strict_route': !Platform.isWindows,
+            'stack': 'system',
           },
       ],
       'outbounds': [
@@ -159,22 +158,13 @@ abstract final class SingBoxConfig {
           },
         ],
         'rules': [
-          {
-            'clash_mode': 'direct',
-            'outbound': directTag,
-          },
-          {
-            'clash_mode': 'global',
-            'outbound': selectorTag,
-          },
+          {'clash_mode': 'direct', 'outbound': directTag},
+          {'clash_mode': 'global', 'outbound': selectorTag},
           {
             'rule_set': ['geosite-cn', 'geoip-cn'],
             'outbound': directTag,
           },
-          {
-            'ip_is_private': true,
-            'outbound': directTag,
-          },
+          {'ip_is_private': true, 'outbound': directTag},
         ],
         'final': selectorTag,
       },

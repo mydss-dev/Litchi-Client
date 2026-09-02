@@ -91,3 +91,6 @@ version.json
 /oss_payload.json
 /release_output/
 config.json
+
+# Generated desktop core binaries (never commit build products).
+/runtime/

@@ -100,10 +100,6 @@ class CoreController extends ChangeNotifier {
         _activeNetworkMode != NetworkMode.tun) {
       return true;
     }
-    // Windows uses the gvisor stack, which has no OS-visible TUN adapter for
-    // the WFP kill switch to protect. Engaging it would block all traffic, so
-    // the preference is stored but never touches WFP.
-    if (Platform.isWindows) return true;
     if (!enabled) {
       await _releaseTunKillSwitch();
       return true;
@@ -492,6 +488,8 @@ class CoreController extends ChangeNotifier {
         configPath,
         apiPort: _apiPort,
         elevateMacTun: Platform.isMacOS && req.networkMode == NetworkMode.tun,
+        elevateWindowsTun:
+            Platform.isWindows && req.networkMode == NetworkMode.tun,
       );
 
       if (_core.isRunning) {
@@ -507,47 +505,39 @@ class CoreController extends ChangeNotifier {
           return _coreError;
         }
         if (req.networkMode == NetworkMode.tun) {
-          if (Platform.isWindows) {
-            // gvisor stack: the TUN runs entirely in-process, so there is no
-            // OS-visible adapter to wait for and no WFP-protectable alias. The
-            // system stack (wintun) crashed natively on connect, so Windows now
-            // uses gvisor instead.
-            _activeTunInterfaces = const {};
-          } else {
-            final tunReady = await TunInterfaceVerifier.waitUntilReady(
-              interfaceName: Platform.isMacOS
-                  ? 'utun'
-                  : AppIdentity.tunInterfaceAlias,
-              matchPrefix: Platform.isMacOS,
-              excludedNames: existingMacTunInterfaces,
-            );
-            if (!tunReady) {
-              _coreError = CoreErrorMessageService.tunInterfaceUnavailable;
+          final tunReady = await TunInterfaceVerifier.waitUntilReady(
+            interfaceName: Platform.isMacOS
+                ? 'utun'
+                : AppIdentity.tunInterfaceAlias,
+            matchPrefix: Platform.isMacOS,
+            excludedNames: existingMacTunInterfaces,
+          );
+          if (!tunReady) {
+            _coreError = CoreErrorMessageService.tunInterfaceUnavailable;
+            await _core.stop();
+            ClashApiClient.resetClient();
+            await _releaseTunKillSwitch();
+            _status = ConnectionStatus.error;
+            return _coreError;
+          }
+          final currentTunInterfaces = Platform.isMacOS
+              ? await TunInterfaceVerifier.matchingInterfaceNames(
+                  interfaceName: 'utun',
+                  matchPrefix: true,
+                )
+              : <String>{AppIdentity.tunInterfaceAlias};
+          _activeTunInterfaces = Platform.isMacOS
+              ? currentTunInterfaces.difference(existingMacTunInterfaces)
+              : currentTunInterfaces;
+          if (_killSwitchEnabled) {
+            final protected = await _engageTunKillSwitch();
+            if (!protected) {
+              _coreError = CoreErrorMessageService.tunKillSwitchUnavailable;
               await _core.stop();
               ClashApiClient.resetClient();
               await _releaseTunKillSwitch();
               _status = ConnectionStatus.error;
               return _coreError;
-            }
-            final currentTunInterfaces = Platform.isMacOS
-                ? await TunInterfaceVerifier.matchingInterfaceNames(
-                    interfaceName: 'utun',
-                    matchPrefix: true,
-                  )
-                : <String>{AppIdentity.tunInterfaceAlias};
-            _activeTunInterfaces = Platform.isMacOS
-                ? currentTunInterfaces.difference(existingMacTunInterfaces)
-                : currentTunInterfaces;
-            if (_killSwitchEnabled) {
-              final protected = await _engageTunKillSwitch();
-              if (!protected) {
-                _coreError = CoreErrorMessageService.tunKillSwitchUnavailable;
-                await _core.stop();
-                ClashApiClient.resetClient();
-                await _releaseTunKillSwitch();
-                _status = ConnectionStatus.error;
-                return _coreError;
-              }
             }
           }
         }
@@ -822,7 +812,9 @@ class CoreController extends ChangeNotifier {
   /// fast RTT. Per-node tests avoid the group endpoint's shared timeout, which
   /// used to blank out healthy nodes queued behind a slow one.
   Future<Map<String, int>> _measureWarmLatencies(List<NodeModel> nodes) async {
-    final probes = await Future.wait([for (final node in nodes) _probeNode(node)]);
+    final probes = await Future.wait([
+      for (final node in nodes) _probeNode(node),
+    ]);
     final result = <String, int>{};
     for (var i = 0; i < nodes.length; i++) {
       result[SingBoxConfig.nodeTagFor(nodes[i])] = probes[i];
@@ -837,7 +829,9 @@ class CoreController extends ChangeNotifier {
     final e2eFuture = ClashApiClient.testDelay(tag, apiPort: _apiPort);
     final tcpFuture = _tcpPingNode(node);
     final e2e = await e2eFuture;
-    if (e2e == null) return 9999; // broken Reality / unreachable — no fake latency
+    if (e2e == null) {
+      return 9999; // broken Reality / unreachable — no fake latency
+    }
     final tcp = await tcpFuture;
     return tcp ?? e2e; // UDP-only nodes fall back to the end-to-end delay
   }

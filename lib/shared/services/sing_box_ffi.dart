@@ -32,18 +32,16 @@ final class SingBoxFfi {
       _isRunning = library.lookupFunction<_NoArgsIntNative, _NoArgsIntDart>(
         'litchi_core_is_running',
       ),
-      _version = library
-          .lookupFunction<_NoArgsStringNative, _NoArgsStringDart>(
-            'litchi_core_version',
-          ),
+      _version = library.lookupFunction<_NoArgsStringNative, _NoArgsStringDart>(
+        'litchi_core_version',
+      ),
       _lastError = library
           .lookupFunction<_NoArgsStringNative, _NoArgsStringDart>(
             'litchi_core_last_error',
           ),
-      _freeString = library.lookupFunction<
-        _FreeStringNative,
-        _FreeStringDart
-      >('litchi_core_free_string');
+      _freeString = library.lookupFunction<_FreeStringNative, _FreeStringDart>(
+        'litchi_core_free_string',
+      );
 
   final _StartDart _checkConfig;
   final _StartDart _start;
@@ -56,8 +54,7 @@ final class SingBoxFfi {
   static SingBoxFfi? _instance;
   static String _loadError = '';
 
-  static bool get isSupported =>
-      Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  static bool get isSupported => Platform.isMacOS || Platform.isLinux;
 
   static String get loadError => _loadError;
 
@@ -86,12 +83,6 @@ final class SingBoxFfi {
   static List<String> libraryCandidates() {
     final separator = Platform.pathSeparator;
     final executableDirectory = File(Platform.resolvedExecutable).parent.path;
-    if (Platform.isWindows) {
-      return [
-        '$executableDirectory${separator}litchi_singbox.dll',
-        '$executableDirectory${separator}core${separator}litchi_singbox.dll',
-      ];
-    }
     if (Platform.isMacOS) {
       return [
         '$executableDirectory$separator..${separator}Frameworks'
@@ -132,11 +123,7 @@ final class SingBoxFfi {
 
   String lastError() => _takeString(_lastError());
 
-  int _callWithStrings(
-    _StartDart operation,
-    String first,
-    String second,
-  ) {
+  int _callWithStrings(_StartDart operation, String first, String second) {
     final firstPointer = first.toNativeUtf8();
     final secondPointer = second.toNativeUtf8();
     try {

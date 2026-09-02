@@ -5,6 +5,7 @@ go 1.24.7
 require (
 	github.com/sagernet/sing v0.8.10
 	github.com/sagernet/sing-box v1.13.13-0.20260603083344-78b2e12fbdd8
+	golang.org/x/sys v0.41.0
 )
 
 require (
@@ -140,7 +141,6 @@ require (
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.11.0 // indirect

@@ -8,11 +8,18 @@ $root = Resolve-Path "$PSScriptRoot\.."
 $release = Resolve-Path $ReleaseDir
 
 & "$PSScriptRoot\build_singbox_desktop.ps1" -Target windows -Arch amd64
-$library = Join-Path $root "runtime\singbox\windows-amd64\litchi_singbox.dll"
-if (-not (Test-Path -LiteralPath $library)) {
-  throw "sing-box DLL was not generated: $library"
+$coreBinary = Join-Path $root "runtime\singbox\windows-amd64\litchi-core.exe"
+if (-not (Test-Path -LiteralPath $coreBinary)) {
+  throw "Windows sing-box core was not generated: $coreBinary"
 }
-Copy-Item -LiteralPath $library -Destination (Join-Path $release "litchi_singbox.dll") -Force
+
+@(
+  (Join-Path $release "litchi_singbox.dll"),
+  (Join-Path $release "core\litchi_singbox.dll")
+) | ForEach-Object {
+  Remove-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue
+}
+Copy-Item -LiteralPath $coreBinary -Destination (Join-Path $release "litchi-core.exe") -Force
 
 $versions = @{}
 Get-Content "$PSScriptRoot\core_versions.env" | ForEach-Object {
@@ -39,4 +46,11 @@ try {
   }
 }
 
-Write-Host "sing-box and Wintun bundled into $release"
+$version = & (Join-Path $release "litchi-core.exe") version
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace("$version")) {
+  throw "litchi-core.exe version smoke test failed"
+}
+if (Test-Path -LiteralPath (Join-Path $release "litchi_singbox.dll")) {
+  throw "legacy litchi_singbox.dll must not be present in Windows release"
+}
+Write-Host "isolated Windows core $version and Wintun bundled into $release"

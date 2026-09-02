@@ -53,6 +53,11 @@ Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignorever
 
 [InstallDelete]
 Type: files; Name: "{app}\Client.exe"
+; v1.1.3 and older shipped the Windows core as an in-process DLL. Remove it
+; explicitly during upgrades so old runtime files can never shadow the new
+; isolated litchi-core.exe architecture.
+Type: files; Name: "{app}\litchi_singbox.dll"
+Type: files; Name: "{app}\core\litchi_singbox.dll"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
