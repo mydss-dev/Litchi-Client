@@ -22,8 +22,17 @@ import '../shop/payment_dialog.dart';
 ///
 /// The order card and all its sub-widgets are shared; cancel confirmation is a
 /// bottom sheet.
+Future<void> showOrdersModal(BuildContext context) {
+  return showAppAdaptiveModal<void>(
+    context: context,
+    builder: (_) => const OrdersPage(modal: true),
+  );
+}
+
 class OrdersPage extends StatefulWidget {
-  const OrdersPage({super.key});
+  const OrdersPage({super.key, this.modal = false});
+
+  final bool modal;
 
   @override
   State<OrdersPage> createState() => _OrdersPageState();
@@ -128,6 +137,19 @@ class _OrdersPageState extends State<OrdersPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.modal) {
+      return AppAdaptiveModal(
+        title: context.l10n.orders,
+        subtitle: context.l10n.orderHistorySubtitle,
+        maxWidth: 760,
+        maxHeightFactor: 0.86,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _bodyChildren(context),
+        ),
+      );
+    }
     return ResponsivePageScaffold(
       title: context.l10n.orders,
       subtitle: context.l10n.orderHistorySubtitle,

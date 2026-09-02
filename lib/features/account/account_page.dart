@@ -6,7 +6,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../app/core_platform_support.dart';
 import '../../app/nav_destinations.dart';
+import '../orders/orders_page.dart';
 import '../shop/order_confirm_dialog.dart';
+import 'wallet_page.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/brand_asset_cache.dart';
@@ -16,20 +18,21 @@ import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_modal.dart';
 import '../../shared/widgets/app_switch.dart';
 import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/no_plan_card.dart';
 
 Future<void> showAccountChangePasswordModal(BuildContext context) {
-  return showAppBottomSheet<void>(
+  return showAppAdaptiveModal<void>(
     context: context,
     builder: (_) => const _ChangePasswordSheet(),
   );
 }
 
 Future<bool> showAccountLogoutConfirmation(BuildContext context) async {
-  final confirmed = await showAppBottomSheet<bool>(
+  final confirmed = await showAppAdaptiveModal<bool>(
     context: context,
     builder: (_) => const _LogoutSheet(),
   );
@@ -179,16 +182,24 @@ class _AccountPageState extends State<AccountPage> {
           onRenew: canRenew ? _renewCurrentPlan : null,
         ),
         const SizedBox(height: 14),
-        if (!ctrl.hasPlan)
+        if (!ctrl.hasPlan) ...[
           NoPlanCard(
             onPurchase: isPageEnabled(AppPage.shop)
                 ? () => ctrl.goToPage(AppPage.shop)
                 : null,
-          )
-        else
-          _DesktopAccountMetrics(ctrl: ctrl),
+          ),
+          const SizedBox(height: 14),
+        ],
+        _DesktopAccountMetrics(
+          ctrl: ctrl,
+          onRecharge: () => unawaited(showWalletRechargeModal(context)),
+          onTransfer: () => unawaited(showWalletTransferModal(context)),
+          onWithdraw: () => unawaited(showWalletWithdrawModal(context)),
+        ),
         const SizedBox(height: 16),
-        _DesktopAccountServices(ctrl: ctrl),
+        _DesktopAccountServices(
+          onOrders: () => unawaited(showOrdersModal(context)),
+        ),
         const SizedBox(height: 16),
         _DesktopAccountSettings(
           hasPlan: ctrl.hasPlan,
@@ -241,9 +252,17 @@ class _AccountPageState extends State<AccountPage> {
 // ── Desktop account widgets ──────────────────────────────────────────────
 
 class _DesktopAccountMetrics extends StatelessWidget {
-  const _DesktopAccountMetrics({required this.ctrl});
+  const _DesktopAccountMetrics({
+    required this.ctrl,
+    required this.onRecharge,
+    required this.onTransfer,
+    required this.onWithdraw,
+  });
 
   final AppController ctrl;
+  final VoidCallback onRecharge;
+  final VoidCallback onTransfer;
+  final VoidCallback onWithdraw;
 
   @override
   Widget build(BuildContext context) {
@@ -268,10 +287,13 @@ class _DesktopAccountMetrics extends StatelessWidget {
             ),
             SizedBox(
               width: width,
-              child: _DesktopAccountMetric(
-                icon: LucideIcons.wallet,
-                label: context.l10n.accountBalance,
+              child: _DesktopBalanceMetric(
                 value: '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
+                commission:
+                    '${ctrl.currencySymbol}${ctrl.withdrawable.toStringAsFixed(2)}',
+                onRecharge: onRecharge,
+                onTransfer: onTransfer,
+                onWithdraw: onWithdraw,
               ),
             ),
             SizedBox(
@@ -304,7 +326,7 @@ class _DesktopAccountMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return AppCard(
-      height: 96,
+      height: 116,
       padding: const EdgeInsets.all(14),
       shadow: AppCardShadow.soft,
       child: Row(
@@ -325,7 +347,7 @@ class _DesktopAccountMetric extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   value,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodyStrong.copyWith(
                     color: c.textPrimary,
@@ -341,18 +363,152 @@ class _DesktopAccountMetric extends StatelessWidget {
   }
 }
 
-class _DesktopAccountServices extends StatelessWidget {
-  const _DesktopAccountServices({required this.ctrl});
+class _DesktopBalanceMetric extends StatelessWidget {
+  const _DesktopBalanceMetric({
+    required this.value,
+    required this.commission,
+    required this.onRecharge,
+    required this.onTransfer,
+    required this.onWithdraw,
+  });
 
-  final AppController ctrl;
+  final String value;
+  final String commission;
+  final VoidCallback onRecharge;
+  final VoidCallback onTransfer;
+  final VoidCallback onWithdraw;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final items = desktopAccountDestinations
-        .where((item) => item.isEnabled)
-        .toList(growable: false);
-    if (items.isEmpty) return const SizedBox.shrink();
+    return AppCard(
+      height: 116,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      shadow: AppCardShadow.soft,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _SmallIcon(icon: LucideIcons.wallet, color: c.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.accountBalance,
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Text(
+                          value,
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            color: c.textPrimary,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${context.l10n.withdrawableCommission} $commission',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.end,
+                            style: AppTextStyles.caption.copyWith(
+                              color: c.textMuted,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Expanded(
+                child: _DesktopMoneyAction(
+                  label: context.l10n.rechargeBalance,
+                  onTap: onRecharge,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _DesktopMoneyAction(
+                  label: context.l10n.transferShort,
+                  onTap: onTransfer,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _DesktopMoneyAction(
+                  label: context.l10n.withdrawShort,
+                  onTap: onWithdraw,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopMoneyAction extends StatelessWidget {
+  const _DesktopMoneyAction({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Ink(
+          height: 28,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: c.primarySoft,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: c.primary.withValues(alpha: 0.16)),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption.copyWith(
+                color: c.primary,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopAccountServices extends StatelessWidget {
+  const _DesktopAccountServices({required this.onOrders});
+
+  final VoidCallback onOrders;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    if (!isPageEnabled(AppPage.orders)) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -365,18 +521,11 @@ class _DesktopAccountServices extends StatelessWidget {
         AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           shadow: AppCardShadow.soft,
-          child: Column(
-            children: [
-              for (var index = 0; index < items.length; index++) ...[
-                _ActionRow(
-                  icon: items[index].icon,
-                  title: items[index].labelFor(context),
-                  subtitle: items[index].subtitleFor(context),
-                  onTap: () => ctrl.goToPage(items[index].page),
-                ),
-                if (index != items.length - 1) _Divider(color: c.softBorder),
-              ],
-            ],
+          child: _ActionRow(
+            icon: LucideIcons.clipboardList,
+            title: desktopPageLabel(context, AppPage.orders),
+            subtitle: context.l10n.ordersSubtitle,
+            onTap: onOrders,
           ),
         ),
       ],
@@ -473,13 +622,13 @@ class _DesktopAccountSettings extends StatelessWidget {
 
 String _desktopAccountServicesLabel(BuildContext context) {
   final locale = Localizations.localeOf(context);
-  if (locale.languageCode != 'zh') return 'Account services';
+  if (locale.languageCode != 'zh') return 'Account history';
   final traditional =
       locale.scriptCode == 'Hant' ||
       locale.countryCode == 'TW' ||
       locale.countryCode == 'HK' ||
       locale.countryCode == 'MO';
-  return traditional ? '帳戶服務' : '账户服务';
+  return traditional ? '帳戶記錄' : '账户记录';
 }
 
 String _desktopAccountSettingsLabel(BuildContext context) {

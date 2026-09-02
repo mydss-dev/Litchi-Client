@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/core_platform_support.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/node_filter.dart';
@@ -102,6 +103,7 @@ class _NodePickerState extends State<_NodePicker> {
 
   @override
   Widget build(BuildContext context) {
+    if (CorePlatformSupport.isDesktop) return _buildDesktopModal();
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
@@ -111,6 +113,102 @@ class _NodePickerState extends State<_NodePicker> {
         maxChildSize: 0.94,
         expand: false,
         builder: (_, scrollController) => _buildSurface(scrollController),
+      ),
+    );
+  }
+
+  Widget _buildDesktopModal() {
+    final ctrl = AppScope.of(context);
+    final c = AppColors.of(context);
+    final nodes = _filteredNodes(ctrl);
+    final testing = ctrl.nodes.any((node) => node.latency < 0);
+    final listHeight = (MediaQuery.sizeOf(context).height * 0.58)
+        .clamp(360.0, 520.0)
+        .toDouble();
+
+    return AppAdaptiveModal(
+      title: context.l10n.chooseNode,
+      subtitle: ctrl.nodes.isNotEmpty
+          ? context.l10n.nodeCountSummary(ctrl.nodes.length)
+          : context.l10n.noNodesSubscription,
+      maxWidth: 720,
+      maxHeightFactor: 0.88,
+      child: SizedBox(
+        height: listHeight,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: SearchInput(
+                    hintText: context.l10n.searchNodes,
+                    onChanged: (value) => setState(() => _query = value),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton(
+                  tooltip: context.l10n.latencyTest,
+                  onPressed: testing ? null : () => _testLatencies(ctrl),
+                  icon: testing
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: c.primary,
+                          ),
+                        )
+                      : Icon(LucideIcons.gauge, color: c.primary, size: 19),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            FilterTabs(
+              tabs: _filterLabels(context),
+              selectedIndex: _filterIndex,
+              onSelected: (index) => setState(() => _filterIndex = index),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: _AutoSelectTile(
+                      ctrl: ctrl,
+                      selected: ctrl.autoSelected,
+                      onTap: () => _selectAuto(ctrl),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                  if (nodes.isEmpty)
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      sliver: SliverToBoxAdapter(
+                        child: AppCard(
+                          color: c.surfaceMuted,
+                          shadow: AppCardShadow.none,
+                          child: AppEmptyState(
+                            icon: _query.trim().isNotEmpty || _filterIndex != 0
+                                ? LucideIcons.searchX
+                                : LucideIcons.globe2,
+                            title: _query.trim().isNotEmpty || _filterIndex != 0
+                                ? context.l10n.noMatchingNodes
+                                : context.l10n.noNodes,
+                            subtitle:
+                                _query.trim().isNotEmpty || _filterIndex != 0
+                                ? context.l10n.tryDifferentNodeFilter
+                                : context.l10n.waitForSubscription,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    _buildNodeSliver(ctrl, nodes, 0),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

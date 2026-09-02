@@ -165,14 +165,15 @@ const List<DesktopNavDestination> desktopPrimaryDestinations = [
   DesktopNavDestination(page: AppPage.shop, icon: LucideIcons.shoppingBag),
   DesktopNavDestination(page: AppPage.traffic, icon: LucideIcons.chartColumn),
   DesktopNavDestination(page: AppPage.invite, icon: LucideIcons.gift),
+  DesktopNavDestination(page: AppPage.tickets, icon: LucideIcons.messageSquare),
   DesktopNavDestination(page: AppPage.settings, icon: LucideIcons.settings),
 ];
 
-/// Low-frequency account services shown once inside Account Overview.
+/// Account-associated routes remain available for compact navigation and deep
+/// links, but desktop account actions surface them without extra page hops.
 const List<DesktopNavDestination> desktopAccountDestinations = [
   DesktopNavDestination(page: AppPage.wallet, icon: LucideIcons.wallet),
   DesktopNavDestination(page: AppPage.orders, icon: LucideIcons.clipboardList),
-  DesktopNavDestination(page: AppPage.tickets, icon: LucideIcons.messageSquare),
 ];
 
 bool isDesktopAccountPage(AppPage page) =>

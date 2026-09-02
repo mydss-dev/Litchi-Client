@@ -28,6 +28,7 @@ class AppBottomSheet extends StatelessWidget {
     this.subtitle,
     this.showHandle = true,
     this.maxHeightFactor = 0.9,
+    this.maxWidth = 560,
   });
 
   final String title;
@@ -35,6 +36,7 @@ class AppBottomSheet extends StatelessWidget {
   final List<Widget> children;
   final bool showHandle;
   final double maxHeightFactor;
+  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +56,7 @@ class AppBottomSheet extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: 560,
+            maxWidth: maxWidth,
             maxHeight: view.height * maxHeightFactor,
           ),
           child: DecoratedBox(

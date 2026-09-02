@@ -29,12 +29,14 @@ class AppAdaptiveModal extends StatelessWidget {
     required this.child,
     this.subtitle,
     this.maxHeightFactor = 0.9,
+    this.maxWidth = 560,
   });
 
   final String title;
   final String? subtitle;
   final Widget child;
   final double maxHeightFactor;
+  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +44,7 @@ class AppAdaptiveModal extends StatelessWidget {
       title: title,
       subtitle: subtitle,
       maxHeightFactor: maxHeightFactor,
+      maxWidth: maxWidth,
       children: [child],
     );
   }

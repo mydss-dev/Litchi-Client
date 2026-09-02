@@ -16,6 +16,71 @@ import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/responsive_page_scaffold.dart';
 import '../shop/payment_dialog.dart';
 
+Future<void> showWalletRechargeModal(BuildContext context) {
+  return showAppAdaptiveModal<void>(
+    context: context,
+    builder: (_) => const _RechargeModal(),
+  );
+}
+
+Future<void> showWalletTransferModal(BuildContext context) async {
+  final ctrl = AppScope.of(context);
+  if (ctrl.withdrawable <= 0) {
+    AppToast.show(
+      context,
+      context.l10n.noTransferableCommission,
+      type: AppToastType.warning,
+    );
+    return;
+  }
+  await showAppAdaptiveModal<void>(
+    context: context,
+    builder: (_) => _TransferModal(
+      maxAmount: ctrl.withdrawable,
+      currencySymbol: ctrl.currencySymbol,
+    ),
+  );
+  if (context.mounted) await ctrl.refreshData();
+}
+
+Future<void> showWalletWithdrawModal(BuildContext context) async {
+  final ctrl = AppScope.of(context);
+  if (!ctrl.withdrawEnabled) {
+    AppToast.show(
+      context,
+      context.l10n.withdrawalUnavailable,
+      type: AppToastType.warning,
+    );
+    return;
+  }
+  if (ctrl.withdrawable <= 0) {
+    AppToast.show(
+      context,
+      context.l10n.noWithdrawableCommission,
+      type: AppToastType.warning,
+    );
+    return;
+  }
+  if (ctrl.withdrawMethods.isEmpty) {
+    AppToast.show(
+      context,
+      context.l10n.noWithdrawalMethods,
+      type: AppToastType.warning,
+    );
+    return;
+  }
+  await showAppAdaptiveModal<void>(
+    context: context,
+    builder: (_) => _WithdrawModal(
+      maxAmount: ctrl.withdrawable,
+      minAmount: ctrl.minWithdrawAmount,
+      methods: ctrl.withdrawMethods,
+      currencySymbol: ctrl.currencySymbol,
+    ),
+  );
+  if (context.mounted) await ctrl.refreshData();
+}
+
 /// Wallet — the mobile wallet page.
 ///
 /// Pull-to-refresh with the shared wallet content (hero card + recharge card).
@@ -95,61 +160,9 @@ class _WalletPageState extends State<WalletPage> {
     }
   }
 
-  Future<void> _transferCommission() async {
-    final ctrl = AppScope.of(context);
-    if (ctrl.withdrawable <= 0) {
-      AppToast.show(
-        context,
-        context.l10n.noTransferableCommission,
-        type: AppToastType.warning,
-      );
-      return;
-    }
-    await showAppAdaptiveModal<void>(
-      context: context,
-      builder: (_) => _TransferModal(
-        maxAmount: ctrl.withdrawable,
-        currencySymbol: ctrl.currencySymbol,
-      ),
-    );
-  }
+  Future<void> _transferCommission() => showWalletTransferModal(context);
 
-  Future<void> _withdrawCommission() async {
-    final ctrl = AppScope.of(context);
-    if (!ctrl.withdrawEnabled) {
-      AppToast.show(
-        context,
-        context.l10n.withdrawalUnavailable,
-        type: AppToastType.warning,
-      );
-      return;
-    }
-    if (ctrl.withdrawable <= 0) {
-      AppToast.show(
-        context,
-        context.l10n.noWithdrawableCommission,
-        type: AppToastType.warning,
-      );
-      return;
-    }
-    if (ctrl.withdrawMethods.isEmpty) {
-      AppToast.show(
-        context,
-        context.l10n.noWithdrawalMethods,
-        type: AppToastType.warning,
-      );
-      return;
-    }
-    await showAppAdaptiveModal<void>(
-      context: context,
-      builder: (_) => _WithdrawModal(
-        maxAmount: ctrl.withdrawable,
-        minAmount: ctrl.minWithdrawAmount,
-        methods: ctrl.withdrawMethods,
-        currencySymbol: ctrl.currencySymbol,
-      ),
-    );
-  }
+  Future<void> _withdrawCommission() => showWalletWithdrawModal(context);
 
   // ── Build ─────────────────────────────────────────────────────────────────
 
@@ -197,6 +210,118 @@ class _WalletPageState extends State<WalletPage> {
         onSubmit: _recharge,
       ),
     ];
+  }
+}
+
+// ── Focused recharge modal ───────────────────────────────────────────────────
+
+class _RechargeModal extends StatefulWidget {
+  const _RechargeModal();
+
+  @override
+  State<_RechargeModal> createState() => _RechargeModalState();
+}
+
+class _RechargeModalState extends State<_RechargeModal> {
+  static const _presets = [10, 30, 50, 100, 200, 500, 1000, 2000];
+
+  final _amountCtrl = TextEditingController(text: '100');
+  int _selectedPreset = 100;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    if (amount <= 0) {
+      AppToast.show(
+        context,
+        context.l10n.invalidRechargeAmount,
+        type: AppToastType.warning,
+      );
+      return;
+    }
+    if (_submitting) return;
+
+    final ctrl = AppScope.of(context);
+    final navigator = Navigator.of(context);
+    final dialogContext = Navigator.of(context, rootNavigator: true).context;
+    setState(() => _submitting = true);
+    try {
+      final tradeNo = await ctrl.api.submitRechargeOrder(
+        (amount * 100).round(),
+      );
+      if (!mounted || !dialogContext.mounted) return;
+      navigator.pop();
+      await showOrderPaymentDialog(
+        context: dialogContext,
+        tradeNo: tradeNo,
+        finalPrice: amount,
+        api: ctrl.api,
+        currencySymbol: ctrl.currencySymbol,
+      );
+      await ctrl.refreshData();
+    } catch (e) {
+      if (dialogContext.mounted) {
+        AppToast.show(
+          dialogContext,
+          e.toString().replaceFirst('ApiException: ', ''),
+          type: AppToastType.error,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    return AppAdaptiveModal(
+      title: context.l10n.rechargeBalance,
+      subtitle: context.l10n.rechargeBalanceNotice,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 460 ? 4 : 2;
+              const gap = 10.0;
+              final width =
+                  (constraints.maxWidth - gap * (columns - 1)) / columns;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final value in _presets)
+                    _PresetChip(
+                      label: '${ctrl.currencySymbol}$value',
+                      selected: value == _selectedPreset,
+                      width: width,
+                      onTap: () {
+                        setState(() => _selectedPreset = value);
+                        _amountCtrl.text = value.toString();
+                      },
+                    ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          _RechargeAmountRow(
+            controller: _amountCtrl,
+            currencySymbol: ctrl.currencySymbol,
+            submitting: _submitting,
+            onSubmit: _submit,
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -277,9 +402,8 @@ class _WalletSummary extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           total,
-          style: AppTextStyles.largeNumber(
-            fontSize: 32,
-          ).copyWith(color: c.primary, height: 1),
+          style: AppTextStyles.largeNumber(fontSize: 32)
+              .copyWith(color: c.primary, height: 1),
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -649,10 +773,7 @@ class _PresetChip extends StatelessWidget {
 // ── Transfer modal ────────────────────────────────────────────────────────────
 
 class _TransferModal extends StatefulWidget {
-  const _TransferModal({
-    required this.maxAmount,
-    required this.currencySymbol,
-  });
+  const _TransferModal({required this.maxAmount, required this.currencySymbol});
 
   final double maxAmount;
   final String currencySymbol;
@@ -700,9 +821,8 @@ class _TransferModalState extends State<_TransferModal> {
     }
 
     setState(() => _submitting = true);
-    final error = await AppScope.of(
-      context,
-    ).transferCommissionToBalance(amount);
+    final error = await AppScope.of(context)
+        .transferCommissionToBalance(amount);
     if (!mounted) return;
     setState(() => _submitting = false);
     if (error == null) {
