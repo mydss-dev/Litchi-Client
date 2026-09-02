@@ -3,6 +3,11 @@ import FlutterMacOS
 
 @main
 class AppDelegate: FlutterAppDelegate {
+  override func applicationDidFinishLaunching(_ notification: Notification) {
+    super.applicationDidFinishLaunching(notification)
+    installCloseWindowMenuItemIfNeeded()
+  }
+
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     return true
   }
@@ -44,6 +49,28 @@ class AppDelegate: FlutterAppDelegate {
     )
     channel.invokeMethod("quit", arguments: nil)
     return .terminateLater
+  }
+
+  /// Flutter's stock macOS menu in this project has Minimize/Zoom but no Close
+  /// item. Add the standard Cmd+W command and leave its target nil so AppKit
+  /// routes `performClose:` through the key window. window_manager's
+  /// `setPreventClose(true)` then hands the close request to Dart's existing
+  /// hide-to-tray / full-quit policy rather than bypassing cleanup.
+  private func installCloseWindowMenuItemIfNeeded() {
+    guard let menu = NSApp.windowsMenu else { return }
+    let closeSelector = Selector(("performClose:"))
+    if menu.items.contains(where: { $0.action == closeSelector }) {
+      return
+    }
+
+    let closeItem = NSMenuItem(
+      title: "Close",
+      action: closeSelector,
+      keyEquivalent: "w"
+    )
+    closeItem.keyEquivalentModifierMask = [.command]
+    closeItem.target = nil
+    menu.insertItem(closeItem, at: 0)
   }
 
   private func mainFlutterWindow() -> NSWindow? {
