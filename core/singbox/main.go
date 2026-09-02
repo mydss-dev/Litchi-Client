@@ -1,3 +1,5 @@
+//go:build !windows
+
 package main
 
 /*
@@ -18,8 +20,7 @@ func resultCode(err error) C.int {
 	return 0
 }
 
-// capturePanic protects the C ABI used by macOS/Linux. Windows runs sing-box
-// in litchi-core.exe, so TUN/native failures cannot terminate the Flutter GUI.
+// capturePanic protects the C ABI used by macOS/Linux.
 func capturePanic(code *C.int) {
 	if r := recover(); r != nil {
 		coreService.setError(fmt.Sprintf("panic: %v", r))
