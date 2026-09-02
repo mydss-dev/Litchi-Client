@@ -21,60 +21,9 @@ jobs:
         with:
           channel: stable
       - name: Apply desktop modal IA refactor
-        run: python3 tool/desktop_modal_ia_refactor.py
-      - name: Fix desktop money action surface
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('lib/features/account/account_page.dart')
-          text = p.read_text()
-          old = '''        child: Ink(
-          height: 28,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            color: c.primarySoft,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: c.primary.withValues(alpha: 0.16)),
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption.copyWith(
-              color: c.primary,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-'''
-          new = '''        child: Ink(
-          height: 28,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            color: c.primarySoft,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: c.primary.withValues(alpha: 0.16)),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption.copyWith(
-                color: c.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-'''
-          if old not in text:
-              raise SystemExit('desktop money action anchor not found')
-          p.write_text(text.replace(old, new, 1))
-          PY
+          python3 tool/desktop_modal_ia_refactor.py
+          python3 tool/desktop_modal_ia_fix.py
       - name: Format and verify Flutter
         run: |
           dart format \
@@ -93,14 +42,12 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           nav = Path('lib/app/nav_destinations.dart').read_text()
           account = Path('lib/features/account/account_page.dart').read_text()
           wallet = Path('lib/features/account/wallet_page.dart').read_text()
           orders = Path('lib/features/orders/orders_page.dart').read_text()
           picker = Path('lib/features/nodes/node_picker.dart').read_text()
           modal = Path('lib/shared/widgets/app_bottom_sheet.dart').read_text()
-
           primary = nav.split('desktopPrimaryDestinations = [', 1)[1].split('];', 1)[0]
           assert primary.index('AppPage.tickets') < primary.index('AppPage.settings')
           account_destinations = nav.split('desktopAccountDestinations = [', 1)[1].split('];', 1)[0]
@@ -120,7 +67,7 @@ jobs:
           PY
       - name: Commit verified product changes
         run: |
-          rm tool/desktop_modal_ia_refactor.py
+          rm tool/desktop_modal_ia_refactor.py tool/desktop_modal_ia_fix.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
