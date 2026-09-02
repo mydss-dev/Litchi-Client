@@ -1,0 +1,71 @@
+name: Windows TUN Core Refactor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/windows-tun-refactor.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.24.7'
+      - name: Apply refactor and run static tests
+        shell: bash
+        run: |
+          python3 tool/windows_tun_refactor.py
+          dart format lib/app/core_controller.dart lib/shared/services/sing_box_config.dart lib/shared/services/sing_box_ffi.dart lib/shared/services/sing_box_core_manager.dart lib/shared/services/windows_core_process_manager.dart
+          gofmt -w core/singbox/*.go
+          (cd core/singbox && go mod tidy)
+          flutter pub get
+          flutter test
+          flutter analyze
+          (cd core/singbox && go test -tags "with_clash_api,with_quic,with_utls,with_wireguard" ./...)
+          git diff --check
+      - name: Commit product changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(windows): isolate TUN core and restore system stack"
+          git push origin HEAD:main
+
+  windows_verify:
+    needs: patch
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.24.7'
+      - name: Build Flutter and isolated Windows core
+        shell: pwsh
+        run: |
+          flutter pub get
+          flutter build windows --debug
+          .\tool\bundle_windows_singbox.ps1 -ReleaseDir "build\windows\x64\runner\Debug"
+          $release = Resolve-Path "build\windows\x64\runner\Debug"
+          if (-not (Test-Path "$release\litchi-core.exe")) { throw "litchi-core.exe missing" }
+          if (-not (Test-Path "$release\wintun.dll")) { throw "wintun.dll missing" }
+          if (Test-Path "$release\litchi_singbox.dll") { throw "legacy litchi_singbox.dll still present" }
+          & "$release\litchi-core.exe" version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
