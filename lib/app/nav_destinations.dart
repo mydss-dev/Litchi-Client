@@ -139,6 +139,19 @@ List<NavDestination> get hubDestinations => kNavDestinations
     .where((d) => d.compact == CompactPlacement.hub && d.isEnabled)
     .toList();
 
+/// Sidebar destinations for the desktop layout: the compact primary tabs with
+/// the node browser inserted after the dashboard. Nodes stays out of the
+/// compact bottom nav, where node selection happens via the home node card.
+List<NavDestination> get desktopDestinations {
+  final items = <NavDestination>[
+    for (final d in kNavDestinations)
+      if (d.compact == CompactPlacement.primary && d.isEnabled) d,
+  ];
+  final nodes = kNavDestinations.firstWhere((d) => d.page == AppPage.nodes);
+  items.insert(1, nodes);
+  return items;
+}
+
 bool isPageEnabled(AppPage page) =>
     kNavDestinations
         .where((item) => item.page == page)
@@ -156,6 +169,15 @@ bool isPrimaryCompactTab(AppPage page) =>
 AppPage compactSelectedPrimary(AppPage current, bool inHubChild) {
   if (inHubChild) return AppPage.account;
   if (compactPrimaryDestinations.any((d) => d.page == current)) return current;
+  if (hubDestinations.any((d) => d.page == current)) return AppPage.account;
+  return current;
+}
+
+/// Which sidebar destination should be highlighted for [current]. Hub sub-pages
+/// highlight "我的".
+AppPage desktopSelectedPage(AppPage current, bool inHubChild) {
+  if (inHubChild) return AppPage.account;
+  if (desktopDestinations.any((d) => d.page == current)) return current;
   if (hubDestinations.any((d) => d.page == current)) return AppPage.account;
   return current;
 }

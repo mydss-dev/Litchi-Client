@@ -9,7 +9,6 @@ import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
 import '../../app/core_error_message_service.dart';
 import '../../app/nav_destinations.dart';
-import '../../config/mobile_layout.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
@@ -143,7 +142,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return _buildCompact(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 720) return _buildDesktop(context);
+        return _buildCompact(context);
+      },
+    );
   }
 
   // ── Compact (bottom-nav) layout ────────────────────────────────────────
@@ -188,9 +192,64 @@ class _DashboardPageState extends State<DashboardPage> {
               automatic: ctrl.autoSelected,
               onTap: () => showNodePicker(context),
             ),
-            const SizedBox(height: 10),
-            _HomeCardGrid(ctrl: ctrl, formatTrafficGb: formatTrafficGb),
           ],
+        ],
+      ),
+    );
+  }
+
+  // ── Desktop (wide) layout ──────────────────────────────────────────────
+  Widget _buildDesktop(BuildContext context) {
+    final ctrl = AppScope.of(context);
+    final noPlan =
+        ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
+
+    return RefreshIndicator(
+      onRefresh: _handlePullRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          _TopBanners(
+            ctrl: ctrl,
+            onConnectionRetry: _toggleConnection,
+            onDataRetry: _handlePullRefresh,
+          ),
+          if (noPlan)
+            NoPlanCard(
+              onPurchase: isPageEnabled(AppPage.shop)
+                  ? () => ctrl.goToPage(AppPage.shop)
+                  : null,
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 360,
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: _tick,
+                    builder: (context, _, _) => _MobileConnectionCard(
+                      status: ctrl.connectionStatus,
+                      proxyMode: ctrl.proxyMode,
+                      elapsedLabel: formatDuration(ctrl.connectedDuration),
+                      supportsConnection: ctrl.supportsCoreConnection,
+                      onToggle: _toggleConnection,
+                      onModeChanged: (mode) => _changeMode(context, mode),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _NodeCard(
+                    node: ctrl.currentNode,
+                    loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
+                    automatic: ctrl.autoSelected,
+                    onTap: () => showNodePicker(context),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -302,15 +361,6 @@ class _MobileConnectionCard extends StatelessWidget {
               c.textMuted,
             ),
           };
-    final actionText = !supportsConnection
-        ? context.l10n.unavailable
-        : switch (status) {
-            ConnectionStatus.connected => context.l10n.disconnectConnection,
-            ConnectionStatus.connecting => context.l10n.connecting,
-            ConnectionStatus.disconnecting => context.l10n.disconnecting,
-            ConnectionStatus.error => context.l10n.reconnect,
-            ConnectionStatus.disconnected => context.l10n.startConnection,
-          };
     return AppCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       radius: AppRadius.xl,
@@ -323,38 +373,30 @@ class _MobileConnectionCard extends StatelessWidget {
                 label: statusText,
                 color: statusColor,
               ),
+              const Spacer(),
+              if (status == ConnectionStatus.connected)
+                Text(
+                  elapsedLabel,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           _MobilePowerButton(
             status: status,
             disabled: isBusy || !supportsConnection,
             onTap: onToggle,
           ),
-          const SizedBox(height: 16),
-          Text(
-            actionText,
-            style: AppTextStyles.sectionTitle.copyWith(
-              color: statusColor == c.textMuted ? c.textPrimary : statusColor,
-              fontSize: 20,
-            ),
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: 18,
-            child: Center(
+          const SizedBox(height: 12),
+          if (!supportsConnection)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
               child: Text(
-                status == ConnectionStatus.connected
-                    ? elapsedLabel
-                    : !supportsConnection
-                    ? context.l10n.androidLimitedNotice
-                    : '',
+                context.l10n.androidLimitedNotice,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.caption.copyWith(color: c.textMuted),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
           ModeStrip(selected: proxyMode, onChanged: onModeChanged),
         ],
       ),
@@ -436,178 +478,6 @@ class _NodeCard extends StatelessWidget {
           NodeLatency(latency: node.latency, style: NodeLatencyStyle.badge),
           const SizedBox(width: 6),
           Icon(LucideIcons.chevronRight, size: 18, color: c.iconMuted),
-        ],
-      ),
-    );
-  }
-}
-
-class _HomeCardGrid extends StatelessWidget {
-  const _HomeCardGrid({required this.ctrl, required this.formatTrafficGb});
-
-  final AppController ctrl;
-  final String Function(double) formatTrafficGb;
-
-  @override
-  Widget build(BuildContext context) {
-    final cards = MobileLayout.homeCards.take(4).toList();
-    final rows = <Widget>[];
-    for (var i = 0; i < cards.length; i += 2) {
-      rows.add(
-        Row(
-          children: [
-            Expanded(
-              child: _HomeConfigCard(
-                config: cards[i],
-                ctrl: ctrl,
-                formatTrafficGb: formatTrafficGb,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: i + 1 < cards.length
-                  ? _HomeConfigCard(
-                      config: cards[i + 1],
-                      ctrl: ctrl,
-                      formatTrafficGb: formatTrafficGb,
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        ),
-      );
-      if (i + 2 < cards.length) rows.add(const SizedBox(height: 10));
-    }
-
-    return Column(children: rows);
-  }
-}
-
-class _HomeConfigCard extends StatelessWidget {
-  const _HomeConfigCard({
-    required this.config,
-    required this.ctrl,
-    required this.formatTrafficGb,
-  });
-
-  final MobileHomeCardConfig config;
-  final AppController ctrl;
-  final String Function(double) formatTrafficGb;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final icon = homeCardIcon(config.icon, config.type);
-    final title = config.title.isEmpty
-        ? homeCardTitle(config.type)
-        : config.title;
-
-    return _MetricCard(
-      icon: icon,
-      label: title,
-      value: _homeCardValue(config.type, ctrl, formatTrafficGb),
-      color: c.primary,
-      loading:
-          ctrl.isInitialLoading &&
-          !ctrl.hasAccountSummary &&
-          _isAccountMetric(config.type),
-    );
-  }
-}
-
-bool _isAccountMetric(String type) => switch (type) {
-  'currentPlan' ||
-  'remainTraffic' ||
-  'resetDay' ||
-  'deviceLimit' ||
-  'expireDate' => true,
-  _ => false,
-};
-
-String _homeCardValue(
-  String type,
-  AppController ctrl,
-  String Function(double) formatTrafficGb,
-) {
-  return switch (type) {
-    'currentPlan' => ctrl.user.plan.isEmpty ? '--' : ctrl.user.plan,
-    'remainTraffic' => formatTrafficGb(ctrl.traffic.remainGb),
-    'todayTraffic' => formatTrafficGb(ctrl.todayTrafficGb),
-    'resetDay' => formatResetDay(ctrl.resetDay),
-    'deviceLimit' => formatDeviceLimit(ctrl.deviceLimit),
-    'expireDate' => ctrl.user.expiry.isEmpty ? '--' : ctrl.user.expiry,
-    _ => '--',
-  };
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-    this.loading = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppCard(
-      height: 78,
-      padding: const EdgeInsets.all(13),
-      shadow: AppCardShadow.none,
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
-                const SizedBox(height: 4),
-                if (loading)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: SizedBox(
-                      width: 72,
-                      height: 6,
-                      child: LinearProgressIndicator(
-                        color: color,
-                        backgroundColor: c.softBorder,
-                      ),
-                    ),
-                  )
-                else
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyStrong.copyWith(
-                      color: c.textPrimary,
-                    ),
-                  ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -716,8 +586,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
           ? null
           : () => setState(() => _pressed = false),
       child: SizedBox(
-        width: 132,
-        height: 132,
+        width: 108,
+        height: 108,
         child: Stack(
           alignment: Alignment.center,
           clipBehavior: Clip.none,
@@ -728,8 +598,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                 builder: (context, _) {
                   final t = Curves.easeOut.transform(_pulseController.value);
                   return Container(
-                    width: 108 + 24 * t,
-                    height: 108 + 24 * t,
+                    width: 88 + 20 * t,
+                    height: 88 + 20 * t,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: pulseColor.withValues(alpha: 0.18 * (1 - t)),
@@ -761,8 +631,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 320),
                   curve: Curves.easeOutCubic,
-                  width: 108,
-                  height: 108,
+                  width: 88,
+                  height: 88,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: _connected ? c.brandGradient : null,
@@ -798,7 +668,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
                           : Icon(
                               LucideIcons.power,
                               key: ValueKey(widget.status),
-                              size: 38,
+                              size: 30,
                               color: _connected ? Colors.white : c.primary,
                             ),
                     ),
@@ -819,8 +689,8 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
       alignment: Alignment.center,
       children: [
         Container(
-          width: 108 + 24 * t,
-          height: 108 + 24 * t,
+          width: 88 + 20 * t,
+          height: 88 + 20 * t,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: c.success.withValues(alpha: 0.20 * (1 - t)),
@@ -834,7 +704,7 @@ class _MobilePowerButtonState extends State<_MobilePowerButton>
   Widget _successRing(AppColors c, double t, int i) {
     final progress = ((t - i * 0.10) / 0.90).clamp(0.0, 1.0);
     if (progress <= 0 || progress >= 1) return const SizedBox.shrink();
-    final size = 108 + progress * 44;
+    final size = 88 + progress * 36;
     return Container(
       width: size,
       height: size,
@@ -864,8 +734,8 @@ class _ChargingRing extends StatelessWidget {
     return RotationTransition(
       turns: turns,
       child: SizedBox(
-        width: 42,
-        height: 42,
+        width: 34,
+        height: 34,
         child: CircularProgressIndicator(
           value: 0.33,
           strokeWidth: 3,

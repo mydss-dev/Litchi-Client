@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -28,6 +29,7 @@ import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
 import '../shared/theme/app_text_styles.dart';
 import 'app_controller.dart';
+import 'core_platform_support.dart';
 import 'core_controller.dart';
 import 'app_window_bar.dart';
 
@@ -56,6 +58,23 @@ Widget _pageFor(AppPage page) {
   };
 }
 
+/// Renders the body for [destinations] as an [IndexedStack] (preserving each
+/// tab's scroll state), falling back to a single page for hub/hidden pages.
+Widget _indexedBody(AppController ctrl, List<NavDestination> destinations) {
+  final pages = destinations.map((d) => d.page).toList(growable: false);
+  final index = pages.indexOf(ctrl.page);
+  if (index >= 0) {
+    return IndexedStack(
+      index: index,
+      children: [
+        for (final p in pages)
+          KeyedSubtree(key: PageStorageKey<AppPage>(p), child: _pageFor(p)),
+      ],
+    );
+  }
+  return _pageFor(ctrl.page);
+}
+
 /// Root window shell. The whole app is clipped to an 18px rounded rectangle on
 /// a transparent window background, with a 1px border and outer shadow. Corners
 /// go square while maximized. The body inside is a single bottom-nav layout.
@@ -82,7 +101,8 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   // so the window and the new content land together (no measure-then-resize
   // stutter, no wasted whitespace).
   static const double _authWindowWidth = 400;
-  static const Size _appWindowSize = Size(420, 760);
+  static const Size _appWindowSize = Size(960, 640);
+  static const Size _appWindowMinSize = Size(720, 520);
   bool _maximized = false;
   bool _trayActive = false;
   bool _trayReady = false;
@@ -206,7 +226,12 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
       if (_compactWindow == false) return;
       _compactWindow = false;
       _authHeight = null;
-      await _applyWindowSize(_appWindowSize, center: true);
+      await _applyWindowSize(
+        _appWindowSize,
+        center: true,
+        minimumSize: _appWindowMinSize,
+        resizable: true,
+      );
       return;
     }
 
@@ -221,6 +246,7 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     await _applyWindowSize(
       Size(_authWindowWidth, height),
       center: firstCompact,
+      minimumSize: const Size(380, 480),
     );
   }
 
@@ -285,27 +311,38 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
     if (_compactWindow == true && _authHeight == height) return;
     _compactWindow = true;
     _authHeight = height;
-    await _applyWindowSize(Size(_authWindowWidth, height), center: false);
+    await _applyWindowSize(
+      Size(_authWindowWidth, height),
+      center: false,
+      minimumSize: const Size(380, 480),
+    );
   }
 
   /// Applies a programmatic window size. macOS ignores a plain setSize while the
   /// window is non-resizable and won't shrink below the currently laid-out
   /// content, so we re-enable resizing and pin min == max == target to force it,
   /// then relax the constraints again.
-  Future<void> _applyWindowSize(Size size, {required bool center}) async {
+  Future<void> _applyWindowSize(
+    Size size, {
+    required bool center,
+    required Size minimumSize,
+    bool resizable = false,
+  }) async {
     await windowManager.setResizable(true);
     if (Platform.isMacOS) {
+      // Pin min == max == target to force the resize, then relax to the
+      // intended floor/ceiling.
       await windowManager.setMinimumSize(size);
       await windowManager.setMaximumSize(size);
       await windowManager.setSize(size);
       if (center) await windowManager.center();
-      await windowManager.setMinimumSize(const Size(380, 480));
-      await windowManager.setMaximumSize(const Size(10000, 10000));
     } else {
       await windowManager.setSize(size);
       if (center) await windowManager.center();
     }
-    await windowManager.setResizable(false);
+    await windowManager.setMinimumSize(minimumSize);
+    await windowManager.setMaximumSize(const Size(10000, 10000));
+    await windowManager.setResizable(resizable);
   }
 
   // ── Tray ─────────────────────────────────────────────────────────────────
@@ -620,13 +657,14 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   }
 }
 
-/// Single fixed-size layout — bottom nav only. No sidebar, no responsive
-/// switching. The app always renders the compact body regardless of width.
+/// Desktop renders a resizable window with a collapsible sidebar; every other
+/// platform keeps the fixed compact bottom-nav layout.
 class _MainShell extends StatelessWidget {
   const _MainShell();
 
   @override
   Widget build(BuildContext context) {
+    if (CorePlatformSupport.isDesktop) return const _DesktopBody();
     return const _CompactBody();
   }
 }
@@ -647,22 +685,7 @@ class _CompactBodyState extends State<_CompactBody> {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
     final bottom = MediaQuery.paddingOf(context).bottom;
-    final primaryPages = compactPrimaryDestinations
-        .map((item) => item.page)
-        .toList(growable: false);
-    final primaryWidgets = primaryPages
-        .map(
-          (page) => KeyedSubtree(
-            key: PageStorageKey<AppPage>(page),
-            child: _pageFor(page),
-          ),
-        )
-        .toList(growable: false);
-
-    final primaryIndex = primaryPages.indexOf(ctrl.page);
-    final page = primaryIndex >= 0
-        ? IndexedStack(index: primaryIndex, children: primaryWidgets)
-        : _pageFor(ctrl.page);
+    final page = _indexedBody(ctrl, compactPrimaryDestinations);
 
     final content = Column(
       children: [
@@ -717,6 +740,105 @@ class _CompactBodyState extends State<_CompactBody> {
       );
     }
     return body;
+  }
+}
+
+/// Desktop layout: a collapsible sidebar replaces the bottom nav, and the
+/// window is wide + resizable. Content sits in a padded area to the right.
+class _DesktopBody extends StatelessWidget {
+  const _DesktopBody();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+
+    return Container(
+      color: c.appBg,
+      child: Column(
+        children: [
+          if (_usesCustomChrome) const WindowControlsBar(),
+          if (Platform.isMacOS) const MacTitleBar(),
+          Expanded(
+            child: Row(
+              children: [
+                _DesktopSidebar(ctrl: ctrl),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                    child: _indexedBody(ctrl, desktopDestinations),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Collapsible [NavigationRail] sidebar for the desktop layout.
+class _DesktopSidebar extends StatefulWidget {
+  const _DesktopSidebar({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  State<_DesktopSidebar> createState() => _DesktopSidebarState();
+}
+
+class _DesktopSidebarState extends State<_DesktopSidebar> {
+  bool _extended = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final destinations = desktopDestinations;
+    final selected = desktopSelectedPage(
+      widget.ctrl.page,
+      widget.ctrl.mobileProfileChildPage,
+    );
+    final selectedIndex = destinations.indexWhere((d) => d.page == selected);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        border: Border(right: BorderSide(color: c.softBorder)),
+      ),
+      child: NavigationRail(
+        backgroundColor: Colors.transparent,
+        extended: _extended,
+        selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+        onDestinationSelected: (index) {
+          if (index < 0 || index >= destinations.length) return;
+          widget.ctrl.goToPage(destinations[index].page);
+        },
+        labelType: NavigationRailLabelType.none,
+        trailing: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: IconButton(
+            tooltip: _extended ? 'Collapse' : 'Expand',
+            icon: Icon(
+              _extended
+                  ? LucideIcons.panelLeftClose
+                  : LucideIcons.panelLeftOpen,
+              size: 20,
+              color: c.iconMuted,
+            ),
+            onPressed: () => setState(() => _extended = !_extended),
+          ),
+        ),
+        destinations: [
+          for (final d in destinations)
+            NavigationRailDestination(
+              icon: Icon(d.icon, color: c.iconMuted),
+              selectedIcon: Icon(d.icon, color: c.primary),
+              label: Text(d.labelFor(context)),
+            ),
+        ],
+      ),
+    );
   }
 }
 

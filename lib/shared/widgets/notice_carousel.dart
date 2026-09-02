@@ -36,6 +36,7 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
   final PageController _controller = PageController();
   Timer? _timer;
   int _index = 0;
+  bool _hovering = false;
 
   @override
   void initState() {
@@ -103,43 +104,55 @@ class _NoticeCarouselState extends State<NoticeCarousel> {
             ? const _NoticeSkeleton()
             : widget.notices.isEmpty
                 ? const _NoticePlaceholder()
-                : Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      PageView.builder(
-                        controller: _controller,
-                        itemCount: widget.notices.length,
-                        onPageChanged: _onPageChanged,
-                        itemBuilder: (context, i) =>
-                            _NoticeSlide(notice: widget.notices[i]),
-                      ),
-                      if (widget.notices.length > 1) ...[
-                        Positioned(
-                          left: 6,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(
-                            child: _NavArrow(left: true, onTap: _previous),
-                          ),
+                : MouseRegion(
+                    onEnter: (_) => setState(() => _hovering = true),
+                    onExit: (_) => setState(() => _hovering = false),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        PageView.builder(
+                          controller: _controller,
+                          itemCount: widget.notices.length,
+                          onPageChanged: _onPageChanged,
+                          itemBuilder: (context, i) =>
+                              _NoticeSlide(notice: widget.notices[i]),
                         ),
-                        Positioned(
-                          right: 6,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(
-                            child: _NavArrow(left: false, onTap: _next),
+                        if (widget.notices.length > 1) ...[
+                          Positioned(
+                            left: 6,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: _FadingArrow(
+                                visible: _hovering,
+                                left: true,
+                                onTap: _previous,
+                              ),
+                            ),
                           ),
-                        ),
-                        Positioned(
-                          right: 12,
-                          bottom: 10,
-                          child: _Dots(
-                            count: widget.notices.length,
-                            index: _index,
+                          Positioned(
+                            right: 6,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: _FadingArrow(
+                                visible: _hovering,
+                                left: false,
+                                onTap: _next,
+                              ),
+                            ),
                           ),
-                        ),
+                          Positioned(
+                            right: 12,
+                            bottom: 10,
+                            child: _Dots(
+                              count: widget.notices.length,
+                              index: _index,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
       ),
     );
@@ -233,7 +246,7 @@ class _NavArrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black.withValues(alpha: 0.28),
+      color: Colors.black.withValues(alpha: 0.22),
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
@@ -246,6 +259,33 @@ class _NavArrow extends StatelessWidget {
             color: Colors.white,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Fades the nav arrows in only while the pointer hovers the carousel, and
+/// drops them from hit-testing when hidden so they never block the slide.
+class _FadingArrow extends StatelessWidget {
+  const _FadingArrow({
+    required this.visible,
+    required this.left,
+    required this.onTap,
+  });
+
+  final bool visible;
+  final bool left;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        child: _NavArrow(left: left, onTap: onTap),
       ),
     );
   }
@@ -271,6 +311,15 @@ class _NoticeSlide extends StatelessWidget {
             Image.network(
               notice.imgUrl!,
               fit: BoxFit.cover,
+              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                if (wasSynchronouslyLoaded) return child;
+                return AnimatedOpacity(
+                  opacity: frame == null ? 0 : 1,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOut,
+                  child: child,
+                );
+              },
               errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),
           // Bottom scrim keeps the title readable over any image.
