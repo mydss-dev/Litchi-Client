@@ -14,5 +14,5 @@ func parentProcessAlive(pid int) bool {
 	}
 	defer windows.CloseHandle(handle)
 	status, err := windows.WaitForSingleObject(handle, 0)
-	return err == nil && status == windows.WAIT_TIMEOUT
+	return err == nil && status == uint32(windows.WAIT_TIMEOUT)
 }
