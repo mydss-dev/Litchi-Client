@@ -21,32 +21,29 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          from textwrap import dedent, indent
 
-          def replace_once(path, old, new):
-              p = Path(path)
-              text = p.read_text(encoding='utf-8')
+          def read(path):
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path, text):
+              Path(path).write_text(text, encoding='utf-8')
+
+          def replace_once(text, old, new, label):
               if old not in text:
-                  raise SystemExit(f'Expected block not found in {path}')
-              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+                  raise SystemExit(f'Anchor not found: {label}')
+              return text.replace(old, new, 1)
 
-          # ── Account: add a dedicated desktop overview while preserving compact UI.
+          # ── Account ──────────────────────────────────────────────────────────
           account = 'lib/features/account/account_page.dart'
-          replace_once(
-              account,
-              '''  @override
-          Widget build(BuildContext context) {
-            return _buildCompact(context);
-          }
-
-          // ── Compact (bottom-nav) layout ────────────────────────────────────────
-          ''',
-              '''  @override
-          Widget build(BuildContext context) {
-            if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
-            return _buildCompact(context);
-          }
-
-          // ── Desktop layout ───────────────────────────────────────────────────────
+          text = read(account)
+          build_anchor = (
+              "  @override\n"
+              "  Widget build(BuildContext context) {\n"
+              "    return _buildCompact(context);\n"
+              "  }\n"
+          )
+          desktop_method = indent(dedent(r'''
           Widget _buildDesktop(BuildContext context) {
             final c = AppColors.of(context);
             final ctrl = AppScope.of(context);
@@ -139,26 +136,32 @@ jobs:
               ],
             );
           }
-
-          // ── Compact (bottom-nav) layout ────────────────────────────────────────
-          '''
+          ''').strip() + '\n', '  ')
+          new_build = (
+              "  @override\n"
+              "  Widget build(BuildContext context) {\n"
+              "    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);\n"
+              "    return _buildCompact(context);\n"
+              "  }\n\n"
+              + desktop_method
           )
-          replace_once(
-              account,
-              '''      child: ListView(
-                shrinkWrap: CorePlatformSupport.isDesktop,
-                physics: CorePlatformSupport.isDesktop
-                    ? const NeverScrollableScrollPhysics()
-                    : const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-          ''',
-              '''      child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-          '''
+          text = replace_once(text, build_anchor, new_build, 'account build')
+          old_list = (
+              "      child: ListView(\n"
+              "        shrinkWrap: CorePlatformSupport.isDesktop,\n"
+              "        physics: CorePlatformSupport.isDesktop\n"
+              "            ? const NeverScrollableScrollPhysics()\n"
+              "            : const AlwaysScrollableScrollPhysics(),\n"
+              "        padding: EdgeInsets.zero,\n"
           )
+          new_list = (
+              "      child: ListView(\n"
+              "        physics: const AlwaysScrollableScrollPhysics(),\n"
+              "        padding: EdgeInsets.zero,\n"
+          )
+          text = replace_once(text, old_list, new_list, 'account compact list')
           marker = '// ── Compact-layout widgets + helpers (original MobileProfilePage, verbatim)\n'
-          insert = r'''
+          desktop_widgets = dedent(r'''
           // ── Desktop account widgets ──────────────────────────────────────────────
 
           class _DesktopAccountMetrics extends StatelessWidget {
@@ -360,51 +363,33 @@ jobs:
             }
           }
 
-          '''
-          p = Path(account)
-          text = p.read_text(encoding='utf-8')
-          if marker not in text:
-              raise SystemExit('Account insertion marker not found')
-          p.write_text(text.replace(marker, insert + marker, 1), encoding='utf-8')
+          ''')
+          text = replace_once(text, marker, desktop_widgets + marker, 'account widget marker')
+          write(account, text)
 
-          # ── Traffic: dedicated desktop header + total/used/remaining summary.
+          # ── Traffic ──────────────────────────────────────────────────────────
           traffic = 'lib/features/traffic/traffic_page.dart'
-          replace_once(
-              traffic,
+          text = read(traffic)
+          text = replace_once(
+              text,
               "import '../../app/app_controller.dart';\n",
               "import '../../app/app_controller.dart';\nimport '../../app/core_platform_support.dart';\n",
+              'traffic import',
           )
-          replace_once(
-              traffic,
-              '''  @override
-          Widget build(BuildContext context) {
-            return ResponsivePageScaffold(
-              title: context.l10n.trafficStatistics,
-              subtitle: context.l10n.trafficStatisticsSubtitle,
-              compactTitle: context.l10n.usage,
-              primaryCompact: isPrimaryCompactTab(AppPage.traffic),
-              onRefresh: _handleRefresh,
-              onBack: () => AppScope.of(context).goToPage(AppPage.account),
-              children: _bodyChildren(context),
-            );
-          }
-
-          // ── Shared body ────────────────────────────────────────────────────────────
-          ''',
-              '''  @override
-          Widget build(BuildContext context) {
-            if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
-            return ResponsivePageScaffold(
-              title: context.l10n.trafficStatistics,
-              subtitle: context.l10n.trafficStatisticsSubtitle,
-              compactTitle: context.l10n.usage,
-              primaryCompact: isPrimaryCompactTab(AppPage.traffic),
-              onRefresh: _handleRefresh,
-              onBack: () => AppScope.of(context).goToPage(AppPage.account),
-              children: _bodyChildren(context),
-            );
-          }
-
+          build_start = (
+              "  @override\n"
+              "  Widget build(BuildContext context) {\n"
+              "    return ResponsivePageScaffold(\n"
+          )
+          build_new = (
+              "  @override\n"
+              "  Widget build(BuildContext context) {\n"
+              "    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);\n"
+              "    return ResponsivePageScaffold(\n"
+          )
+          text = replace_once(text, build_start, build_new, 'traffic build')
+          shared_marker = '  // ── Shared body ────────────────────────────────────────────────────────────\n'
+          traffic_method = indent(dedent(r'''
           Widget _buildDesktop(BuildContext context) {
             final c = AppColors.of(context);
             final ctrl = AppScope.of(context);
@@ -482,12 +467,10 @@ jobs:
               ],
             );
           }
-
-          // ── Shared body ────────────────────────────────────────────────────────────
-          '''
-          )
-          marker = 'class _StatsGrid extends StatelessWidget {\n'
-          insert = r'''
+          ''').strip() + '\n\n', '  ')
+          text = replace_once(text, shared_marker, traffic_method + shared_marker, 'traffic shared marker')
+          stats_marker = 'class _StatsGrid extends StatelessWidget {\n'
+          traffic_widgets = dedent(r'''
           class _DesktopTrafficSummary extends StatelessWidget {
             const _DesktopTrafficSummary({required this.ctrl});
 
@@ -641,48 +624,29 @@ jobs:
             }
           }
 
-          '''
-          p = Path(traffic)
-          text = p.read_text(encoding='utf-8')
-          if marker not in text:
-              raise SystemExit('Traffic insertion marker not found')
-          p.write_text(text.replace(marker, insert + marker, 1), encoding='utf-8')
+          ''')
+          text = replace_once(text, stats_marker, traffic_widgets + stats_marker, 'traffic stats marker')
+          write(traffic, text)
 
-          # ── Settings: dedicated desktop header and bounded content width.
+          # ── Settings ─────────────────────────────────────────────────────────
           settings = 'lib/features/settings/settings_page.dart'
-          replace_once(
-              settings,
-              '''  @override
-          Widget build(BuildContext context) {
-            final l10n = context.l10n;
-            return ResponsivePageScaffold(
-              title: l10n.settings,
-              subtitle: l10n.settingsSubtitle,
-              compactTitle: l10n.settings,
-              primaryCompact: isPrimaryCompactTab(AppPage.settings),
-              onBack: () => AppScope.of(context).goToPage(AppPage.account),
-              compactBodySpacing: 18,
-              children: _bodyChildren(context),
-            );
-          }
-
-          // ── Shared body (all settings sections) ────────────────────────────────────
-          ''',
-              '''  @override
-          Widget build(BuildContext context) {
-            final l10n = context.l10n;
-            if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
-            return ResponsivePageScaffold(
-              title: l10n.settings,
-              subtitle: l10n.settingsSubtitle,
-              compactTitle: l10n.settings,
-              primaryCompact: isPrimaryCompactTab(AppPage.settings),
-              onBack: () => AppScope.of(context).goToPage(AppPage.account),
-              compactBodySpacing: 18,
-              children: _bodyChildren(context),
-            );
-          }
-
+          text = read(settings)
+          settings_start = (
+              "  @override\n"
+              "  Widget build(BuildContext context) {\n"
+              "    final l10n = context.l10n;\n"
+              "    return ResponsivePageScaffold(\n"
+          )
+          settings_new = (
+              "  @override\n"
+              "  Widget build(BuildContext context) {\n"
+              "    final l10n = context.l10n;\n"
+              "    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);\n"
+              "    return ResponsivePageScaffold(\n"
+          )
+          text = replace_once(text, settings_start, settings_new, 'settings build')
+          settings_marker = '  // ── Shared body (all settings sections) ────────────────────────────────────\n'
+          settings_method = indent(dedent(r'''
           Widget _buildDesktop(BuildContext context) {
             final c = AppColors.of(context);
             final l10n = context.l10n;
@@ -712,10 +676,9 @@ jobs:
               ),
             );
           }
-
-          // ── Shared body (all settings sections) ────────────────────────────────────
-          '''
-          )
+          ''').strip() + '\n\n', '  ')
+          text = replace_once(text, settings_marker, settings_method + settings_marker, 'settings marker')
+          write(settings, text)
 
       - name: Commit stage 6
         run: |
