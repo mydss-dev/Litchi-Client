@@ -180,8 +180,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         proxyMode: ctrl.proxyMode,
                         elapsedLabel: formatDuration(ctrl.connectedDuration),
                         supportsConnection: ctrl.supportsCoreConnection,
-                        uploadBps: ctrl.upBps,
-                        downloadBps: ctrl.downBps,
                         onToggle: _toggleConnection,
                         onModeChanged: (mode) => _changeMode(context, mode),
                       ),
@@ -326,8 +324,6 @@ class _DesktopConnectionCard extends StatelessWidget {
     required this.proxyMode,
     required this.elapsedLabel,
     required this.supportsConnection,
-    required this.uploadBps,
-    required this.downloadBps,
     required this.onToggle,
     required this.onModeChanged,
   });
@@ -336,8 +332,6 @@ class _DesktopConnectionCard extends StatelessWidget {
   final ProxyMode proxyMode;
   final String elapsedLabel;
   final bool supportsConnection;
-  final int uploadBps;
-  final int downloadBps;
   final VoidCallback onToggle;
   final ValueChanged<ProxyMode> onModeChanged;
 
@@ -371,6 +365,15 @@ class _DesktopConnectionCard extends StatelessWidget {
             ConnectionStatus.error => context.l10n.reconnect,
             ConnectionStatus.disconnected => context.l10n.startConnection,
           };
+    final actionColor = !supportsConnection
+        ? c.textMuted
+        : switch (status) {
+            ConnectionStatus.connected => c.success,
+            ConnectionStatus.connecting => c.primary,
+            ConnectionStatus.disconnecting => c.textMuted,
+            ConnectionStatus.error => c.danger,
+            ConnectionStatus.disconnected => c.textPrimary,
+          };
 
     return AppCard(
       height: 300,
@@ -379,71 +382,45 @@ class _DesktopConnectionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _StatusPill(
-                      status: status,
-                      label: statusText,
-                      color: statusColor,
-                    ),
-                    const SizedBox(height: 13),
-                    Text(
-                      actionText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.sectionTitle.copyWith(
-                        color: statusColor == c.textMuted
-                            ? c.textPrimary
-                            : statusColor,
-                        fontSize: 20,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      status == ConnectionStatus.connected
-                          ? elapsedLabel
-                          : context.l10n.proxyMode,
-                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              _DesktopPowerButton(
-                status: status,
-                disabled: isBusy || !supportsConnection,
-                tooltip: actionText,
-                onTap: onToggle,
-              ),
-            ],
+          Align(
+            alignment: Alignment.center,
+            child: _StatusPill(
+              status: status,
+              label: statusText,
+              color: statusColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.center,
+            child: _DesktopPowerButton(
+              status: status,
+              disabled: isBusy || !supportsConnection,
+              tooltip: actionText,
+              onTap: onToggle,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            actionText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: actionColor,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            status == ConnectionStatus.connected
+                ? elapsedLabel
+                : context.l10n.proxyMode,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption.copyWith(color: c.textMuted),
           ),
           const Spacer(),
           ModeStrip(selected: proxyMode, onChanged: onModeChanged),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _DesktopSpeedStat(
-                  icon: LucideIcons.arrowDown,
-                  label: context.l10n.downloadSpeed,
-                  value: formatRate(downloadBps),
-                ),
-              ),
-              Container(width: 1, height: 30, color: c.softBorder),
-              Expanded(
-                child: _DesktopSpeedStat(
-                  icon: LucideIcons.arrowUp,
-                  label: context.l10n.uploadSpeed,
-                  value: formatRate(uploadBps),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -518,56 +495,6 @@ class _DesktopPowerButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _DesktopSpeedStat extends StatelessWidget {
-  const _DesktopSpeedStat({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 14, color: c.iconMuted),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.caption.copyWith(
-                  color: c.textMuted,
-                  fontSize: 10.5,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodyStrong.copyWith(
-                  color: c.textPrimary,
-                  fontSize: 12.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
