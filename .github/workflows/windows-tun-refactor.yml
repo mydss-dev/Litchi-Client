@@ -26,6 +26,21 @@ jobs:
       - name: Apply refactor and run static tests
         shell: bash
         run: |
+          # The carrier is Python and embeds generated Dart. Rewrite the one
+          # nested Dart triple-single-quoted PowerShell string before parsing
+          # the carrier so the two languages' delimiters cannot collide.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tool/windows_tun_refactor.py')
+          text = p.read_text()
+          opening = "    final script = '''\n\\$exe = [Text.Encoding]"
+          closing = "\n''';\n    final result = await Process.run('powershell.exe'"
+          if opening not in text or closing not in text:
+              raise SystemExit('PowerShell string repair anchors not found')
+          text = text.replace(opening, '    final script = """\n\\$exe = [Text.Encoding]', 1)
+          text = text.replace(closing, '\n""";\n    final result = await Process.run(\'powershell.exe\'', 1)
+          p.write_text(text)
+          PY
           python3 tool/windows_tun_refactor.py
           dart format lib/app/core_controller.dart lib/shared/services/sing_box_config.dart lib/shared/services/sing_box_ffi.dart lib/shared/services/sing_box_core_manager.dart lib/shared/services/windows_core_process_manager.dart
           gofmt -w core/singbox/*.go
