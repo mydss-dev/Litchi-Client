@@ -15,11 +15,10 @@ import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/page_status_cards.dart';
 
-/// Invite — the mobile invite page.
+/// Invite and referral commission page.
 ///
-/// Invitation cards, actions, statistics, and commission records. A
-/// `viewportFraction` page controller gives the code carousel its peeking
-/// viewport.
+/// Desktop uses a full-width carousel/statistics layout; compact platforms keep
+/// the peeking invite-code carousel and pull-to-refresh presentation.
 class InvitePage extends StatefulWidget {
   const InvitePage({super.key});
 
@@ -192,10 +191,7 @@ class _InvitePageState extends State<InvitePage> {
     return RefreshIndicator(
       onRefresh: _handlePullRefresh,
       child: ListView(
-        shrinkWrap: CorePlatformSupport.isDesktop,
-        physics: CorePlatformSupport.isDesktop
-            ? const NeverScrollableScrollPhysics()
-            : const AlwaysScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         children: [
           if (asChild) ...[

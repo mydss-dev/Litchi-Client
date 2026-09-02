@@ -539,8 +539,11 @@ class _DesktopNodeTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final tableHeight = (MediaQuery.sizeOf(context).height - 280)
-        .clamp(300.0, 900.0)
+    // Leave enough room for the title/search/auto/filter controls so the
+    // outer desktop shell does not need to scroll at 800x600. Only the node
+    // viewport itself scrolls in normal desktop window sizes.
+    final tableHeight = (MediaQuery.sizeOf(context).height - 330)
+        .clamp(260.0, 900.0)
         .toDouble();
 
     return Container(

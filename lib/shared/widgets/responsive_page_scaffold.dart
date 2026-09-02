@@ -40,10 +40,7 @@ class ResponsivePageScaffold extends StatelessWidget {
     if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
 
     final list = ListView(
-      shrinkWrap: CorePlatformSupport.isDesktop,
-      physics: CorePlatformSupport.isDesktop
-          ? const NeverScrollableScrollPhysics()
-          : (onRefresh == null ? null : const AlwaysScrollableScrollPhysics()),
+      physics: onRefresh == null ? null : const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.zero,
       children: [
         if (primaryCompact)
