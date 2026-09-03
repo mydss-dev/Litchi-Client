@@ -34,35 +34,14 @@ jobs:
           end = workflow.index("          PY\n", start)
           script = textwrap.dedent(workflow[start:end])
 
-          old = '''account = pattern.sub(repl, account)
-          if '_accountText(' in account:
-              raise SystemExit('account_page.dart still contains _accountText calls')
-          if not seen:
-              raise SystemExit('no _accountText calls were migrated')
-          account = re.sub(
-'''
-          new = '''account = pattern.sub(repl, account)
-          if not seen:
-              raise SystemExit('no _accountText calls were migrated')
-          before_helper_removal = account
-          account = re.sub(
-'''
+          old = "account = pattern.sub(repl, account)\nif '_accountText(' in account:\n    raise SystemExit('account_page.dart still contains _accountText calls')\nif not seen:\n    raise SystemExit('no _accountText calls were migrated')\naccount = re.sub(\n"
+          new = "account = pattern.sub(repl, account)\nif not seen:\n    raise SystemExit('no _accountText calls were migrated')\nbefore_helper_removal = account\naccount = re.sub(\n"
           if script.count(old) != 1:
               raise SystemExit('could not locate the failed helper-removal ordering')
           script = script.replace(old, new, 1)
 
-          old_tail = '''    count=1,
-          )
-          account_path.write_text(account)
-'''
-          new_tail = '''    count=1,
-          )
-          if account == before_helper_removal:
-              raise SystemExit('_accountText helper was not removed')
-          if '_accountText(' in account:
-              raise SystemExit('account_page.dart still contains _accountText calls')
-          account_path.write_text(account)
-'''
+          old_tail = "    count=1,\n)\naccount_path.write_text(account)\n"
+          new_tail = "    count=1,\n)\nif account == before_helper_removal:\n    raise SystemExit('_accountText helper was not removed')\nif '_accountText(' in account:\n    raise SystemExit('account_page.dart still contains _accountText calls')\naccount_path.write_text(account)\n"
           if script.count(old_tail) != 1:
               raise SystemExit('could not locate helper-removal tail')
           script = script.replace(old_tail, new_tail, 1)
