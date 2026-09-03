@@ -54,9 +54,54 @@ jobs:
             throw 'litchi-core.exe version smoke test failed'
           }
           Write-Host "core version: $version"
-      - name: Build Windows app debug
+      - name: Build Windows app release
         shell: pwsh
-        run: flutter build windows --debug
+        run: flutter build windows --release
+      - name: Bundle isolated Windows runtime
+        shell: pwsh
+        run: .\tool\bundle_windows_singbox.ps1 -ReleaseDir "build\windows\x64\runner\Release"
+      - name: Verify release runtime layout
+        shell: pwsh
+        run: |
+          $release = "build\windows\x64\runner\Release"
+          foreach ($required in @('Client.exe', 'litchi-core.exe', 'wintun.dll')) {
+            $path = Join-Path $release $required
+            if (-not (Test-Path -LiteralPath $path)) {
+              throw "Missing Windows release runtime: $required"
+            }
+          }
+          foreach ($legacy in @('litchi_singbox.dll', 'core\litchi_singbox.dll')) {
+            if (Test-Path -LiteralPath (Join-Path $release $legacy)) {
+              throw "Legacy in-process Windows core must not ship: $legacy"
+            }
+          }
+      - name: Install Inno Setup
+        shell: pwsh
+        run: .\tool\install_inno_chinese.ps1
+      - name: Compile Windows installer
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path -LiteralPath $iscc)) {
+            throw "Inno Setup compiler not found: $iscc"
+          }
+          & $iscc `
+            /DMyAppVersion=0.0.0 `
+            /DMyAppName=Litchi `
+            /DMyAppPublisher=Litchi `
+            /DMyAppExeName=Client.exe `
+            /DMyOutputBaseFilename=Litchi-tun-verify `
+            litchi_setup.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installer = "installer_output\Litchi-tun-verify.exe"
+          if (-not (Test-Path -LiteralPath $installer)) {
+            throw 'Windows TUN verification installer was not produced'
+          }
+          $size = (Get-Item -LiteralPath $installer).Length
+          if ($size -le 0) {
+            throw 'Windows TUN verification installer is empty'
+          }
+          Write-Host "installer verified: $installer ($size bytes)"
       - name: Whitespace check
         shell: bash
         run: git diff --check
