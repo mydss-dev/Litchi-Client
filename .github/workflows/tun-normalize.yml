@@ -1,0 +1,60 @@
+name: Normalize Windows TUN Refactor
+
+on:
+  push:
+    branches: [fix/windows-tun-service-architecture]
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    if: ${{ !contains(github.event.head_commit.message, '[tun-normalized]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: fix/windows-tun-service-architecture
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+      - name: Restore core-only platform invariant
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lib/app/core_controller.dart')
+          text = path.read_text()
+          old = '''overrideNetworkMode: Platform.isWindows
+                    ? NetworkMode.system
+                    : req.networkMode,'''
+          if old not in text:
+              raise SystemExit('expected startCoreOnly network-mode block not found')
+          path.write_text(text.replace(old, 'overrideNetworkMode: NetworkMode.system,', 1))
+          PY
+      - name: Format refactor files
+        run: |
+          dart format \
+            lib/app/core_controller.dart \
+            lib/shared/services/clash_api_client.dart \
+            lib/shared/services/sing_box_core_manager.dart \
+            lib/shared/services/windows_core_process_manager.dart \
+            lib/shared/services/windows_tun_service_manager.dart
+          git diff --check
+      - name: Commit normalized files
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No normalization changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            lib/app/core_controller.dart \
+            lib/shared/services/clash_api_client.dart \
+            lib/shared/services/sing_box_core_manager.dart \
+            lib/shared/services/windows_core_process_manager.dart \
+            lib/shared/services/windows_tun_service_manager.dart
+          git commit -m 'chore: normalize Windows TUN refactor [tun-normalized]'
+          git push origin HEAD:fix/windows-tun-service-architecture
