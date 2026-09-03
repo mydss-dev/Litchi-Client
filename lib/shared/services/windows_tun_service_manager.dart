@@ -5,8 +5,10 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 
+import '../../config/app_identity.dart';
 import 'app_paths.dart';
 import 'secure_logger.dart';
+import 'tun_interface_verifier.dart';
 import 'windows_core_process_manager.dart';
 import 'windows_dpapi.dart';
 
@@ -104,16 +106,23 @@ final class WindowsTunServiceManager {
       '/stop',
       timeout: const Duration(seconds: 8),
     );
-    // A missing service is already a stopped TUN from the app's perspective.
-    final stopped =
-        response == null ||
-        (response.statusCode == HttpStatus.ok &&
-            '${response.body?['state'] ?? ''}' != 'running');
-    if (!stopped) {
-      final detail = '${response.body?['error'] ?? ''}'.trim();
-      _lastError = detail.isEmpty ? 'Windows TUN 服务停止失败' : detail;
+    var stopped =
+        response != null &&
+        response.statusCode == HttpStatus.ok &&
+        '${response.body?['state'] ?? ''}' != 'running';
+    if (response == null) {
+      // Losing the privileged control endpoint is not proof that the TUN and
+      // routes disappeared. Only treat it as stopped when the adapter itself is
+      // confirmed absent; otherwise fail closed so callers keep protection.
+      stopped = !await _tunInterfacePresent();
     }
-    _running = false;
+    if (!stopped) {
+      final detail = '${response?.body?['error'] ?? ''}'.trim();
+      _lastError = detail.isEmpty
+          ? 'Windows TUN 服务停止状态无法确认，为避免直连泄漏已保持保护状态'
+          : detail;
+    }
+    _running = !stopped;
     _stopping = false;
     return stopped;
   }
@@ -303,6 +312,18 @@ final class WindowsTunServiceManager {
       return null;
     } finally {
       client.close(force: true);
+    }
+  }
+
+  static Future<bool> _tunInterfacePresent() async {
+    try {
+      return (await TunInterfaceVerifier.matchingInterfaceNames(
+        interfaceName: AppIdentity.tunInterfaceAlias,
+      )).isNotEmpty;
+    } catch (_) {
+      // Adapter inspection failure is not evidence that privileged routing is
+      // gone. Returning true deliberately keeps teardown fail-closed.
+      return true;
     }
   }
 

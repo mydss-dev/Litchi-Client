@@ -433,7 +433,15 @@ class CoreController extends ChangeNotifier {
       await ProxySetter.disable();
       if (_activeNetworkMode == NetworkMode.tun) {
         if (Platform.isWindows) {
-          await _core.stopWindowsTun();
+          final stopped = await _core.stopWindowsTun();
+          if (!stopped) {
+            _coreError = _core.lastError.isEmpty
+                ? 'Windows TUN 服务停止失败，为避免直连泄漏已保持保护状态'
+                : _core.lastError;
+            _status = ConnectionStatus.error;
+            notifyListeners();
+            return _coreError;
+          }
         } else {
           await _core.stop();
           ClashApiClient.resetClient();
@@ -715,13 +723,15 @@ class CoreController extends ChangeNotifier {
       }
     } else {
       final stopped = await _core.stopWindowsTun();
-      await _releaseTunKillSwitch();
       if (!stopped) {
-        _coreError = _core.lastError;
+        _coreError = _core.lastError.isEmpty
+            ? 'Windows TUN 服务停止失败，为避免直连泄漏已保持保护状态'
+            : _core.lastError;
         _status = ConnectionStatus.error;
         notifyListeners();
         return _coreError;
       }
+      await _releaseTunKillSwitch();
       await ProxySetter.enable(port: _activeProxyPort);
     }
     _activeNetworkMode = req.networkMode;
