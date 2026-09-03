@@ -10,10 +10,9 @@ abstract final class ClashApiClient {
   // ── shared client for short controller calls ──────────────────────────────
   static HttpClient? _client;
 
-  /// Bearer secret of the running core's clash_api. Set by the core manager
-  /// right after a config (which always carries a random secret) is started,
-  /// cleared on stop. Without it the controller would accept commands from
-  /// any local process / app on the device.
+  /// Bearer secret of the running main core's clash_api. The owning
+  /// CoreController keeps this session secret stable across process/reload
+  /// transitions and mirrors it here before requests are made.
   static String apiSecret = '';
 
   static HttpClient get _sharedClient {
@@ -26,11 +25,19 @@ abstract final class ClashApiClient {
     return created;
   }
 
-  /// Drop idle connections to a now-dead controller port. Call on core stop /
-  /// before a restart. Safe to call anytime; the next request lazily rebuilds.
+  /// Drop idle connections to a controller that was stopped or reloaded.
+  ///
+  /// Transport reset and authentication lifetime are deliberately separate:
+  /// clearing the session secret here used to make stop -> start transitions
+  /// probe a correctly authenticated controller without its Bearer token.
   static void resetClient() {
     _client?.close(force: true);
     _client = null;
+  }
+
+  /// Explicitly ends the controller authentication session.
+  static void clearSession() {
+    resetClient();
     apiSecret = '';
   }
 
