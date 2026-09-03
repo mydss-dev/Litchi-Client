@@ -213,7 +213,7 @@ class CoreController extends ChangeNotifier {
         // routing disappeared. Keep WFP protection and the main proxy alive;
         // native process exit plus the two watchdogs remain the final cleanup.
         _coreError = _core.lastError.isEmpty
-            ? 'Windows TUN 服务停止父倁无法确认，为避免直跞沄漏囲保持保护父态'
+            ? 'Windows TUN 服务停止状态无法确认，为避免直连泄漏已保持保护状态'
             : _core.lastError;
         _stopTrafficMonitor();
         return;
