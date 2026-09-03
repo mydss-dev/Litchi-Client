@@ -1,0 +1,38 @@
+name: Apply Windows TUN Teardown Hardening
+
+on:
+  push:
+    branches: [fix/windows-tun-service-architecture]
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: ${{ !contains(github.event.head_commit.message, '[tun-hardening]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: fix/windows-tun-service-architecture
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+      - name: Apply fail-closed teardown fixes
+        shell: bash
+        run: |
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpkZWYgcmVwbGFjZV9vbmNlKHBhdGg6IFBhdGgsIG9sZDogc3RyLCBuZXc6IHN0ciwgbGFiZWw6IHN0cikgLT4gTm9uZToKICAgIHRleHQgPSBwYXRoLnJlYWRfdGV4dChlbmNvZGluZz0idXRmLTgiKQogICAgaWYgbmV3IGluIHRleHQ6CiAgICAgICAgcmV0dXJuCiAgICBpZiBvbGQgbm90IGluIHRleHQ6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChmImV4cGVjdGVkIGJsb2NrIG5vdCBmb3VuZDoge2xhYmVsfSIpCiAgICBwYXRoLndyaXRlX3RleHQodGV4dC5yZXBsYWNlKG9sZCwgbmV3LCAxKSwgZW5jb2Rpbmc9InV0Zi04IikKCmNvcmUgPSBQYXRoKCJsaWIvYXBwL2NvcmVfY29udHJvbGxlci5kYXJ0IikKcmVwbGFjZV9vbmNlKAogICAgY29yZSwKICAgICIiIiAgICBpZiAoIVBsYXRmb3JtLmlzV2luZG93cyB8fCBfc3RhdHVzICE9IENvbm5lY3Rpb25TdGF0dXMuY29ubmVjdGVkKQogICAgICByZXR1cm4gbnVsbDsiIiIsCiAgICAiIiIgICAgaWYgKCFQbGF0Zm9ybS5pc1dpbmRvd3MgfHwgX3N0YXR1cyAhPSBDb25uZWN0aW9uU3RhdHVzLmNvbm5lY3RlZCkgewogICAgICByZXR1cm4gbnVsbDsKICAgIH0iIiIsCiAgICAic3dpdGNoIGxheWVyIGJyYWNlcyIsCikKcmVwbGFjZV9vbmNlKAogICAgY29yZSwKICAgICIiIiAgICBpZiAoUGxhdGZvcm0uaXNXaW5kb3dzKSB7CiAgICAgIGF3YWl0IF9jb3JlLnN0b3BXaW5kb3dzVHVuKCk7CiAgICB9CiAgICBhd2FpdCBfcmVsZWFzZVR1bktpbGxTd2l0Y2goKTsKICAgIC8vIE1hcmsgdGhpcyBhcyBhbiBpbnRlbnRpb25hbCBzdG9wIGJlZm9yZSB0aGUgY29yZSBleGl0cywgc28gdGhlIHN0b3BwZWQiIiIsCiAgICAiIiIgICAgaWYgKFBsYXRmb3JtLmlzV2luZG93cykgewogICAgICBmaW5hbCBzdG9wcGVkID0gYXdhaXQgX2NvcmUuc3RvcFdpbmRvd3NUdW4oKTsKICAgICAgaWYgKCFzdG9wcGVkKSB7CiAgICAgICAgX2NvcmVFcnJvciA9IF9jb3JlLmxhc3RFcnJvci5pc0VtcHR5CiAgICAgICAgICAgID8gJ1dpbmRvd3MgVFVOIOacjeWKoeWBnOatouWksei0pe+8jOS4uumBv+WFjeebtOi/nuazhOa8j+W3suS/neaMgeS/neaKpOeKtuaAgScKICAgICAgICAgICAgOiBfY29yZS5sYXN0RXJyb3I7CiAgICAgICAgX3N0YXR1cyA9IENvbm5lY3Rpb25TdGF0dXMuZXJyb3I7CiAgICAgICAgbm90aWZ5TGlzdGVuZXJzKCk7CiAgICAgICAgcmV0dXJuOwogICAgICB9CiAgICB9CiAgICBhd2FpdCBfcmVsZWFzZVR1bktpbGxTd2l0Y2goKTsKICAgIC8vIE1hcmsgdGhpcyBhcyBhbiBpbnRlbnRpb25hbCBzdG9wIGJlZm9yZSB0aGUgY29yZSBleGl0cywgc28gdGhlIHN0b3BwZWQiIiIsCiAgICAic3RvcEFuZFJlc2V0IG11c3QgZmFpbCBjbG9zZWQiLAopCgptYW5hZ2VyID0gUGF0aCgibGliL3NoYXJlZC9zZXJ2aWNlcy9zaW5nX2JveF9jb3JlX21hbmFnZXIuZGFydCIpCnJlcGxhY2Vfb25jZSgKICAgIG1hbmFnZXIsCiAgICAiIiIgICAgaWYgKFBsYXRmb3JtLmlzV2luZG93cykgewogICAgICAvLyBOZXZlciB0ZWFyIGRvd24gdGhlIG1haW4gU09DS1MgY29yZSB3aGlsZSB0aGUgcHJpdmlsZWdlZCBUVU4gaXMgc3RpbGwKICAgICAgLy8gcm91dGluZyBpbnRvIGl0OyBvdGhlcndpc2UgV2luZG93cyBpcyBsZWZ0IHdpdGggYSBsaXZlIGJsYWNrLWhvbGUgVFVOLgogICAgICBhd2FpdCBfd2luZG93c1R1bi5zdG9wKCk7CiAgICB9CiAgICBmaW5hbCBzdG9wcGVkID0gUGxhdGZvcm0uaXNXaW5kb3dzIiIiLAogICAgIiIiICAgIGlmIChQbGF0Zm9ybS5pc1dpbmRvd3MpIHsKICAgICAgLy8gTmV2ZXIgdGVhciBkb3duIHRoZSBtYWluIFNPQ0tTIGNvcmUgd2hpbGUgdGhlIHByaXZpbGVnZWQgVFVOIGlzIHN0aWxsCiAgICAgIC8vIHJvdXRpbmcgaW50byBpdDsgb3RoZXJ3aXNlIFdpbmRvd3MgaXMgbGVmdCB3aXRoIGEgbGl2ZSBibGFjay1ob2xlIFRVTi4KICAgICAgZmluYWwgdHVuU3RvcHBlZCA9IGF3YWl0IF93aW5kb3dzVHVuLnN0b3AoKTsKICAgICAgaWYgKCF0dW5TdG9wcGVkKSB7CiAgICAgICAgX2xhc3RFcnJvciA9IF93aW5kb3dzVHVuLmxhc3RFcnJvci5pc0VtcHR5CiAgICAgICAgICAgID8gJ1dpbmRvd3MgVFVOIOacjeWKoeWBnOatouWksei0pe+8m+S4u+aguOW/g+S/neaMgei/kOihjOS7pemBv+WFjSBUVU4g6buR5rSeJwogICAgICAgICAgICA6IF93aW5kb3dzVHVuLmxhc3RFcnJvcjsKICAgICAgICBfZW1pdExvZyhfbGFzdEVycm9yKTsKICAgICAgICByZXR1cm47CiAgICAgIH0KICAgIH0KICAgIGZpbmFsIHN0b3BwZWQgPSBQbGF0Zm9ybS5pc1dpbmRvd3MiIiIsCiAgICAibWFpbiBjb3JlIHN0b3AgbXVzdCBob25vciBUVU4gdGVhcmRvd24gZmFpbHVyZSIsCikK' | base64 -d > /tmp/harden_teardown.py
+          python3 /tmp/harden_teardown.py
+      - name: Format and check
+        run: |
+          dart format lib/app/core_controller.dart lib/shared/services/sing_box_core_manager.dart
+          git diff --check
+      - name: Commit hardening
+        shell: bash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/app/core_controller.dart lib/shared/services/sing_box_core_manager.dart
+          git commit -m 'fix(windows): keep core alive until TUN stops [tun-hardening]'
+          git push origin HEAD:fix/windows-tun-service-architecture
