@@ -81,6 +81,7 @@ final class SingBoxFfi {
   }
 
   static List<String> libraryCandidates() {
+    if (!isSupported) return const [];
     final separator = Platform.pathSeparator;
     final executableDirectory = File(Platform.resolvedExecutable).parent.path;
     if (Platform.isMacOS) {
