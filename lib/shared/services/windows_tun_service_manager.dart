@@ -105,7 +105,8 @@ final class WindowsTunServiceManager {
       timeout: const Duration(seconds: 8),
     );
     // A missing service is already a stopped TUN from the app's perspective.
-    final stopped = response == null ||
+    final stopped =
+        response == null ||
         (response.statusCode == HttpStatus.ok &&
             '${response.body?['state'] ?? ''}' != 'running');
     if (!stopped) {
@@ -202,9 +203,7 @@ final class WindowsTunServiceManager {
       return true;
     } catch (error) {
       final text = '$error'.replaceFirst('Bad state: ', '');
-      _lastError = text.contains('管理员授权')
-          ? text
-          : 'Windows TUN 服务安装失败：$text';
+      _lastError = text.contains('管理员授权') ? text : 'Windows TUN 服务安装失败：$text';
       return false;
     }
   }
@@ -228,7 +227,10 @@ final class WindowsTunServiceManager {
       final token = '${decoded['token'] ?? ''}'.trim();
       final port = decoded['port'];
       final parsedPort = port is num ? port.toInt() : int.tryParse('$port');
-      if (token.length < 32 || parsedPort == null || parsedPort <= 1024 || parsedPort > 65535) {
+      if (token.length < 32 ||
+          parsedPort == null ||
+          parsedPort <= 1024 ||
+          parsedPort > 65535) {
         return null;
       }
       return _cachedCredentials = _TunCredentials(token, parsedPort);

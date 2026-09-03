@@ -45,10 +45,7 @@ final class WindowsCoreProcessManager {
     return null;
   }
 
-  Future<bool> start(
-    String configPath, {
-    required int apiPort,
-  }) async {
+  Future<bool> start(String configPath, {required int apiPort}) async {
     if (!Platform.isWindows) {
       _lastError = 'Windows core process is only available on Windows';
       return false;

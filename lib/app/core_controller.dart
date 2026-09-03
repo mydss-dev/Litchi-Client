@@ -244,9 +244,7 @@ class CoreController extends ChangeNotifier {
     // Windows always runs the main core without TUN. The privileged service is
     // attached later only when the user actually connects in TUN mode.
     final config = req.buildSingBoxConfig(
-      overrideNetworkMode: Platform.isWindows
-          ? NetworkMode.system
-          : req.networkMode,
+      overrideNetworkMode: NetworkMode.system,
       overrideProxyPort: _activeProxyPort,
       apiPort: _apiPort,
       apiSecret: _apiSecret,
@@ -704,7 +702,8 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<String?> _switchWindowsNetworkLayer(CoreConnectionRequest req) async {
-    if (!Platform.isWindows || _status != ConnectionStatus.connected) return null;
+    if (!Platform.isWindows || _status != ConnectionStatus.connected)
+      return null;
     if (req.networkMode == NetworkMode.tun) {
       await ProxySetter.disable();
       final error = await _activateWindowsTunLayer();
