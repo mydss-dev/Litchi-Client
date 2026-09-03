@@ -18,7 +18,19 @@ void main() {
     },
   );
 
-  test('TUN uses the standard system stack with strict routing', () {
+  test('Windows TUN keeps conservative Wintun defaults', () {
+    final profile = SingBoxConfig.tunRouteProfile(isWindows: true);
+    expect(profile.mtu, 1500);
+    expect(profile.strictRoute, isFalse);
+  });
+
+  test('non-Windows TUN keeps the existing route profile', () {
+    final profile = SingBoxConfig.tunRouteProfile(isWindows: false);
+    expect(profile.mtu, 9000);
+    expect(profile.strictRoute, isTrue);
+  });
+
+  test('TUN config uses the platform route profile', () {
     final config = SingBoxConfig.buildFullConfig(
       const [node],
       selectedTag: SingBoxConfig.nodeTagFor(node),

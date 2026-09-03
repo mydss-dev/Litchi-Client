@@ -50,6 +50,15 @@ abstract final class SingBoxConfig {
 
   static String nodeTagFor(NodeModel node) => 'node-${node.id}';
 
+  /// Windows Wintun startup is sensitive to jumbo MTUs and aggressive route
+  /// locking. Keep Windows conservative while retaining the existing profile
+  /// on macOS/Linux.
+  static ({int mtu, bool strictRoute}) tunRouteProfile({
+    required bool isWindows,
+  }) => isWindows
+      ? (mtu: 1500, strictRoute: false)
+      : (mtu: 9000, strictRoute: true);
+
   static Map<String, dynamic>? buildFullConfig(
     List<NodeModel> nodes, {
     required String selectedTag,
@@ -82,6 +91,7 @@ abstract final class SingBoxConfig {
     final selected = nodeTags.contains(selectedTag)
         ? selectedTag
         : nodeTags.first;
+    final tunProfile = tunRouteProfile(isWindows: Platform.isWindows);
     return {
       'log': {'level': 'warn', 'timestamp': true},
       'dns': _dnsConfig(dnsMode),
@@ -100,9 +110,9 @@ abstract final class SingBoxConfig {
                 ? 'utun'
                 : AppIdentity.tunInterfaceAlias,
             'address': ['172.19.0.1/30'],
-            'mtu': 9000,
+            'mtu': tunProfile.mtu,
             'auto_route': true,
-            'strict_route': true,
+            'strict_route': tunProfile.strictRoute,
             'stack': 'system',
           },
       ],
