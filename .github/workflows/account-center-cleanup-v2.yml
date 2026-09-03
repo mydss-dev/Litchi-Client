@@ -1,0 +1,94 @@
+name: Account Center Cleanup V2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/account-center-cleanup-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+
+      - name: Apply corrected account center cleanup
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/account-center-cleanup.yml').read_text()
+          marker = "          python3 <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("          PY\n", start)
+          script = textwrap.dedent(workflow[start:end])
+
+          old = '''account = pattern.sub(repl, account)
+          if '_accountText(' in account:
+              raise SystemExit('account_page.dart still contains _accountText calls')
+          if not seen:
+              raise SystemExit('no _accountText calls were migrated')
+          account = re.sub(
+'''
+          new = '''account = pattern.sub(repl, account)
+          if not seen:
+              raise SystemExit('no _accountText calls were migrated')
+          before_helper_removal = account
+          account = re.sub(
+'''
+          if script.count(old) != 1:
+              raise SystemExit('could not locate the failed helper-removal ordering')
+          script = script.replace(old, new, 1)
+
+          old_tail = '''    count=1,
+          )
+          account_path.write_text(account)
+'''
+          new_tail = '''    count=1,
+          )
+          if account == before_helper_removal:
+              raise SystemExit('_accountText helper was not removed')
+          if '_accountText(' in account:
+              raise SystemExit('account_page.dart still contains _accountText calls')
+          account_path.write_text(account)
+'''
+          if script.count(old_tail) != 1:
+              raise SystemExit('could not locate helper-removal tail')
+          script = script.replace(old_tail, new_tail, 1)
+          exec(compile(script, '<account-center-cleanup>', 'exec'))
+          PY
+
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - name: Format changed Dart files
+        run: dart format lib/features/account/account_page.dart lib/shared/models/api_models.dart lib/shared/services/panel_api.dart test/account_center_services_test.dart
+      - run: flutter test test/account_center_services_test.dart
+      - run: flutter analyze
+
+      - name: Commit cleanup and remove temporary workflows
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/account-center-cleanup.yml .github/workflows/account-center-cleanup-v2.yml
+          git add lib/features/account/account_page.dart \
+                  lib/shared/models/api_models.dart \
+                  lib/shared/services/panel_api.dart \
+                  lib/l10n/app_en.arb \
+                  lib/l10n/app_zh.arb \
+                  lib/l10n/app_zh_TW.arb \
+                  lib/l10n/generated \
+                  test/account_center_services_test.dart
+          git commit -m "refactor(account): harden and localize account services"
+          git push origin HEAD:main
