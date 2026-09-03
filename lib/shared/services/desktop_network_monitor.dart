@@ -51,13 +51,22 @@ class DesktopNetworkMonitor {
     );
     final entries = <String>[
       for (final interface in interfaces)
-        if (!_isTunInterface(interface.name))
+        if (!_isOwnTunInterface(interface))
           for (final address in interface.addresses)
             '${interface.name}:${address.type.name}:${address.address}',
     ]..sort();
     return entries.join('|');
   }
 
-  static bool _isTunInterface(String name) =>
-      name == AppIdentity.tunInterfaceAlias || name.startsWith('utun');
+  static bool _isOwnTunInterface(NetworkInterface interface) {
+    if (Platform.isWindows) {
+      return interface.name == AppIdentity.tunInterfaceAlias;
+    }
+    if (Platform.isMacOS) {
+      return interface.addresses.any(
+        (address) => address.address == '172.19.0.1',
+      );
+    }
+    return false;
+  }
 }
