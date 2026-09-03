@@ -35,6 +35,7 @@ class CoreController extends ChangeNotifier {
   final AndroidCoreManager _androidCore = AndroidCoreManager();
   StreamSubscription<CoreState>? _sub;
   StreamSubscription<String>? _logSub;
+  StreamSubscription<String>? _windowsTunExitSub;
   StreamSubscription<AndroidCoreStatusEvent>? _androidStatusSub;
 
   DateTime? _connectedAt;
@@ -47,9 +48,8 @@ class CoreController extends ChangeNotifier {
   NetworkMode _activeNetworkMode = NetworkMode.system;
   Set<String> _activeTunInterfaces = const {};
 
-  /// Random secret guarding the core's clash_api. Generated once per app
-  /// session (reused across restarts so hot-reloads keep working), written
-  /// into every generated config and mirrored to [ClashApiClient.apiSecret].
+  /// Random secret guarding the main core's clash_api. Generated once per app
+  /// session and reused across main-core reloads/restarts.
   String _apiSecret = '';
 
   bool _disposed = false;
@@ -135,6 +135,9 @@ class CoreController extends ChangeNotifier {
 
     if (!_core.isRunning) {
       await SingBoxCoreManager.cleanupOnStartup();
+      if (Platform.isWindows) {
+        await _core.cleanupWindowsTunOnStartup();
+      }
       await ProxySetter.disableIfStale();
     }
 
@@ -144,6 +147,11 @@ class CoreController extends ChangeNotifier {
       _logs.add('[$ts] $line');
       if (_logs.length > _maxLogs) _logs.removeAt(0);
     });
+    if (Platform.isWindows) {
+      _windowsTunExitSub ??= _core.windowsTunExitStream.listen(
+        _onWindowsTunUnexpectedStop,
+      );
+    }
   }
 
   @override
@@ -154,6 +162,7 @@ class CoreController extends ChangeNotifier {
     unawaited(_androidCore.dispose());
     unawaited(_sub?.cancel());
     unawaited(_logSub?.cancel());
+    unawaited(_windowsTunExitSub?.cancel());
     _core.dispose();
     unawaited(_releaseTunKillSwitch());
     upBpsNotifier.dispose();
@@ -169,14 +178,19 @@ class CoreController extends ChangeNotifier {
       return;
     }
     if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) return;
+    if (Platform.isWindows) {
+      await _core.stopWindowsTun();
+    }
     await _releaseTunKillSwitch();
     _stopTrafficMonitor();
     await _androidStatusSub?.cancel();
     await _androidCore.dispose();
     await _sub?.cancel();
     await _logSub?.cancel();
+    await _windowsTunExitSub?.cancel();
     _sub = null;
     _logSub = null;
+    _windowsTunExitSub = null;
     // Restore the user's proxy before waiting for the core process. If process
     // shutdown reaches the outer quit timeout, Windows must not be left
     // pointing at a listener that is about to disappear.
@@ -227,8 +241,12 @@ class CoreController extends ChangeNotifier {
     _activeProxyPort = await LocalPortAllocator.choose(
       preferred: req.proxyPort,
     );
+    // Windows always runs the main core without TUN. The privileged service is
+    // attached later only when the user actually connects in TUN mode.
     final config = req.buildSingBoxConfig(
-      overrideNetworkMode: NetworkMode.system,
+      overrideNetworkMode: Platform.isWindows
+          ? NetworkMode.system
+          : req.networkMode,
       overrideProxyPort: _activeProxyPort,
       apiPort: _apiPort,
       apiSecret: _apiSecret,
@@ -315,6 +333,37 @@ class CoreController extends ChangeNotifier {
       return null;
     }
 
+    if (Platform.isWindows) {
+      final coreConfig = req.buildSingBoxConfig(
+        overrideNetworkMode: NetworkMode.system,
+        overrideProxyPort: _activeProxyPort,
+        apiPort: _apiPort,
+        apiSecret: _apiSecret,
+      );
+      if (coreConfig == null) {
+        _coreError = CoreErrorMessageService.configBuildFailed;
+        notifyListeners();
+        return _coreError;
+      }
+      final reloaded = await ClashApiClient.reloadConfig(
+        SingBoxConfig.encodeConfig(coreConfig),
+        apiPort: _apiPort,
+      );
+      if (!reloaded) {
+        _coreError = CoreErrorMessageService.restartClient;
+        notifyListeners();
+        return _coreError;
+      }
+      await _applyInitialSelection(req);
+      if (wasConnected && req.networkMode != _activeNetworkMode) {
+        final switched = await _switchWindowsNetworkLayer(req);
+        if (switched != null) return switched;
+      }
+      _coreError = '';
+      notifyListeners();
+      return null;
+    }
+
     _status = wasConnected
         ? ConnectionStatus.disconnecting
         : ConnectionStatus.disconnected;
@@ -384,9 +433,13 @@ class CoreController extends ChangeNotifier {
       notifyListeners();
       _stopTrafficMonitor();
       await ProxySetter.disable();
-      if (req.networkMode == NetworkMode.tun) {
-        await _core.stop();
-        ClashApiClient.resetClient();
+      if (_activeNetworkMode == NetworkMode.tun) {
+        if (Platform.isWindows) {
+          await _core.stopWindowsTun();
+        } else {
+          await _core.stop();
+          ClashApiClient.resetClient();
+        }
         await _releaseTunKillSwitch();
       }
       _connectedAt = null;
@@ -432,6 +485,7 @@ class CoreController extends ChangeNotifier {
           return _coreError;
         }
         await ProxySetter.enable(port: _activeProxyPort);
+        _activeNetworkMode = NetworkMode.system;
         await _holdConnectingMinimum();
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
@@ -442,6 +496,57 @@ class CoreController extends ChangeNotifier {
         _status = ConnectionStatus.error;
       }
       notifyListeners();
+      return _coreError.isNotEmpty ? _coreError : null;
+    }
+
+    if (Platform.isWindows && req.networkMode == NetworkMode.tun) {
+      _status = ConnectionStatus.connecting;
+      _connectingStartedAt = DateTime.now();
+      _coreError = '';
+      notifyListeners();
+      try {
+        await ProxySetter.disable();
+        if (!_core.isRunning) {
+          await startCoreOnly(req);
+        }
+        if (!_core.isRunning) {
+          _coreError = CoreErrorMessageService.processStartFailure(
+            _core.lastError,
+          );
+          _status = ConnectionStatus.error;
+          return _coreError;
+        }
+        final switched = await ClashApiClient.switchProxy(
+          req.selectedSingBoxTag,
+          group: SingBoxConfig.selectorTag,
+          apiPort: _apiPort,
+        );
+        if (!switched) {
+          _coreError = CoreErrorMessageService.restartClient;
+          _status = ConnectionStatus.error;
+          return _coreError;
+        }
+        final tunError = await _activateWindowsTunLayer();
+        if (tunError != null) {
+          _coreError = tunError;
+          _status = ConnectionStatus.error;
+          return _coreError;
+        }
+        _activeNetworkMode = NetworkMode.tun;
+        await _holdConnectingMinimum();
+        _connectedAt = DateTime.now();
+        _coreError = '';
+        _status = ConnectionStatus.connected;
+        _startTrafficMonitor();
+      } catch (e) {
+        SecureLogger.debug('Windows TUN connect failed', e);
+        await _core.stopWindowsTun();
+        await _releaseTunKillSwitch();
+        _coreError = CoreErrorMessageService.windowsStartException(e);
+        _status = ConnectionStatus.error;
+      } finally {
+        notifyListeners();
+      }
       return _coreError.isNotEmpty ? _coreError : null;
     }
 
@@ -488,8 +593,6 @@ class CoreController extends ChangeNotifier {
         configPath,
         apiPort: _apiPort,
         elevateMacTun: Platform.isMacOS && req.networkMode == NetworkMode.tun,
-        elevateWindowsTun:
-            Platform.isWindows && req.networkMode == NetworkMode.tun,
       );
 
       if (_core.isRunning) {
@@ -563,6 +666,67 @@ class CoreController extends ChangeNotifier {
       notifyListeners();
     }
     return _coreError.isNotEmpty ? _coreError : null;
+  }
+
+  Future<String?> _activateWindowsTunLayer() async {
+    if (!await MixedProxyPortVerifier.waitUntilReady(port: _activeProxyPort)) {
+      return CoreErrorMessageService.proxyPortUnavailable;
+    }
+    final tunProfile = SingBoxConfig.tunRouteProfile(isWindows: true);
+    final started = await _core.startWindowsTun(
+      mainProxyPort: _activeProxyPort,
+      mtu: tunProfile.mtu,
+      strictRoute: tunProfile.strictRoute,
+      stack: 'system',
+    );
+    if (!started) {
+      return _core.lastError.isEmpty
+          ? CoreErrorMessageService.tunInterfaceUnavailable
+          : _core.lastError;
+    }
+    final tunReady = await TunInterfaceVerifier.waitUntilReady(
+      interfaceName: AppIdentity.tunInterfaceAlias,
+    );
+    if (!tunReady) {
+      await _core.stopWindowsTun();
+      return CoreErrorMessageService.tunInterfaceUnavailable;
+    }
+    _activeTunInterfaces = <String>{AppIdentity.tunInterfaceAlias};
+    if (_killSwitchEnabled) {
+      final protected = await _engageTunKillSwitch();
+      if (!protected) {
+        await _core.stopWindowsTun();
+        await _releaseTunKillSwitch();
+        return CoreErrorMessageService.tunKillSwitchUnavailable;
+      }
+    }
+    return null;
+  }
+
+  Future<String?> _switchWindowsNetworkLayer(CoreConnectionRequest req) async {
+    if (!Platform.isWindows || _status != ConnectionStatus.connected) return null;
+    if (req.networkMode == NetworkMode.tun) {
+      await ProxySetter.disable();
+      final error = await _activateWindowsTunLayer();
+      if (error != null) {
+        _coreError = error;
+        _status = ConnectionStatus.error;
+        notifyListeners();
+        return error;
+      }
+    } else {
+      final stopped = await _core.stopWindowsTun();
+      await _releaseTunKillSwitch();
+      if (!stopped) {
+        _coreError = _core.lastError;
+        _status = ConnectionStatus.error;
+        notifyListeners();
+        return _coreError;
+      }
+      await ProxySetter.enable(port: _activeProxyPort);
+    }
+    _activeNetworkMode = req.networkMode;
+    return null;
   }
 
   Future<String?> _toggleAndroidConnection(CoreConnectionRequest req) async {
@@ -676,6 +840,9 @@ class CoreController extends ChangeNotifier {
       return;
     }
     _stopTrafficMonitor();
+    if (Platform.isWindows) {
+      await _core.stopWindowsTun();
+    }
     await _releaseTunKillSwitch();
     // Mark this as an intentional stop before the core exits, so the stopped
     // event is not misread as an unexpected core death by _onCoreStateChanged.
@@ -774,7 +941,7 @@ class CoreController extends ChangeNotifier {
 
   /// Coalesces concurrent callers onto a single latency pass so a double tap
   /// (or a UI test + a background preload firing together) hits the core only
-  /// once.  Each caller maps the shared result onto its own node snapshot;
+  /// once. Each caller maps the shared result onto its own node snapshot;
   /// AppController's runId guard discards stale UI updates.
   Future<void> testLatencies(
     List<NodeModel> nodes, {
@@ -926,7 +1093,7 @@ class CoreController extends ChangeNotifier {
   }
 
   /// Ensures a session-wide random clash_api secret exists and mirrors it to
-  /// [ClashApiClient] (which [ClashApiClient.resetClient] clears on stop).
+  /// [ClashApiClient]. Transport resets deliberately keep this secret intact.
   void _ensureApiSecret() {
     if (_apiSecret.isEmpty) {
       final random = Random.secure();
@@ -946,15 +1113,14 @@ class CoreController extends ChangeNotifier {
             _status == ConnectionStatus.connecting)) {
       // A clean, user-initiated disconnect always moves the status to
       // disconnecting *before* stopping the core, so reaching here while the
-      // status is still connected/connecting means the core died
-      // unexpectedly. Surface it as an error instead of a silent
-      // "disconnected": in TUN mode the tunnel interface is now gone and
-      // traffic would otherwise fall back to the physical link with the user
-      // believing they were still protected.
+      // status is still connected/connecting means the core died unexpectedly.
       final wasConnected = _status == ConnectionStatus.connected;
       ClashApiClient.resetClient();
       _stopTrafficMonitor();
       _connectedAt = null;
+      if (Platform.isWindows && _activeNetworkMode == NetworkMode.tun) {
+        unawaited(_core.stopWindowsTun());
+      }
       if (state == CoreState.error && _core.lastError.isNotEmpty) {
         _coreError = _core.lastError;
       } else if (_coreError.isEmpty) {
@@ -964,8 +1130,7 @@ class CoreController extends ChangeNotifier {
       if (_killSwitchEnabled && wasConnected) {
         if (_activeNetworkMode == NetworkMode.tun) {
           // Keep the Windows WFP or macOS PF session alive. Once the tunnel
-          // disappears, direct traffic from the signed-in user remains blocked
-          // until reconnect, disconnect, or application exit.
+          // disappears, direct traffic remains blocked until explicit cleanup.
         } else {
           unawaited(ProxySetter.engageKillSwitch());
         }
@@ -975,6 +1140,24 @@ class CoreController extends ChangeNotifier {
       }
       notifyListeners();
     }
+  }
+
+  void _onWindowsTunUnexpectedStop(String error) {
+    if (!Platform.isWindows || _activeNetworkMode != NetworkMode.tun) return;
+    if (_status != ConnectionStatus.connected &&
+        _status != ConnectionStatus.connecting) {
+      return;
+    }
+    final wasConnected = _status == ConnectionStatus.connected;
+    _stopTrafficMonitor();
+    _connectedAt = null;
+    _coreError = error.isEmpty ? 'Windows TUN 服务意外停止' : error;
+    _status = ConnectionStatus.error;
+    if (!_killSwitchEnabled || !wasConnected) {
+      unawaited(_releaseTunKillSwitch());
+    }
+    unawaited(ProxySetter.disable());
+    notifyListeners();
   }
 
   Future<bool> _engageTunKillSwitch() {
