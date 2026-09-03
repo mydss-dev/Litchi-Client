@@ -53,6 +53,8 @@ class CoreController extends ChangeNotifier {
   String _apiSecret = '';
 
   bool _disposed = false;
+  bool _shutdownComplete = false;
+  Future<void>? _shutdownInFlight;
   bool _connectionToggleInFlight = false;
   DateTime? _lastConnectionToggleAt;
   static const Duration _connectionToggleCooldown = Duration(milliseconds: 800);
@@ -159,28 +161,65 @@ class CoreController extends ChangeNotifier {
     _disposed = true;
     _stopTrafficMonitor();
     unawaited(_androidStatusSub?.cancel());
-    unawaited(_androidCore.dispose());
     unawaited(_sub?.cancel());
     unawaited(_logSub?.cancel());
     unawaited(_windowsTunExitSub?.cancel());
-    _core.dispose();
-    unawaited(_releaseTunKillSwitch());
+    if (Platform.isWindows) {
+      // Never bypass the fail-closed Windows shutdown path during widget
+      // teardown. AppShell normally awaited shutdown() before native exit; this
+      // is the idempotent fallback for tests, hot teardown, and unusual exits.
+      unawaited(shutdown());
+    } else {
+      unawaited(_androidCore.dispose());
+      _core.dispose();
+      unawaited(_releaseTunKillSwitch());
+    }
     upBpsNotifier.dispose();
     downBpsNotifier.dispose();
     super.dispose();
   }
 
-  Future<void> shutdown() async {
+  Future<void> shutdown() {
+    if (_shutdownComplete) return Future<void>.value();
+    final inFlight = _shutdownInFlight;
+    if (inFlight != null) return inFlight;
+
+    final future = _shutdownInternal();
+    _shutdownInFlight = future;
+    return future.whenComplete(() {
+      if (identical(_shutdownInFlight, future)) {
+        _shutdownInFlight = null;
+      }
+    });
+  }
+
+  Future<void> _shutdownInternal() async {
     if (Platform.isAndroid) {
       await _androidCore.stopCore();
       await _androidStatusSub?.cancel();
       _androidStatusSub = null;
+      _shutdownComplete = true;
       return;
     }
-    if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) return;
-    if (Platform.isWindows) {
-      await _core.stopWindowsTun();
+    if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) {
+      _shutdownComplete = true;
+      return;
     }
+
+    if (Platform.isWindows) {
+      final tunStopped = await _core.stopWindowsTun();
+      if (!tunStopped) {
+        // Losing the service control endpoint is not proof that privileged TUN
+        // routing disappeared. Keep WFP protection and the main proxy alive;
+        // native process exit plus the two watchdogs remain the final cleanup.
+        _coreError = _core.lastError.isEmpty
+            ? 'Windows TUN 服务停止父倁无法确认，为避免直跞沄漏囲保持保护父态'
+            : _core.lastError;
+        _stopTrafficMonitor();
+        return;
+      }
+    }
+
     await _releaseTunKillSwitch();
     _stopTrafficMonitor();
     await _androidStatusSub?.cancel();
@@ -191,6 +230,7 @@ class CoreController extends ChangeNotifier {
     _sub = null;
     _logSub = null;
     _windowsTunExitSub = null;
+
     // Restore the user's proxy before waiting for the core process. If process
     // shutdown reaches the outer quit timeout, Windows must not be left
     // pointing at a listener that is about to disappear.
@@ -199,11 +239,18 @@ class CoreController extends ChangeNotifier {
     } catch (_) {
       // Best-effort cleanup during explicit application exit.
     }
+
     if (_core.isRunning) {
       await _core.stop();
+      if (_core.isRunning) {
+        // Preserve manager ownership when the isolated core cannot be stopped;
+        // the parent-PID watchdog will retry convergence after native exit.
+        return;
+      }
       ClashApiClient.resetClient();
     }
     _core.dispose();
+    _shutdownComplete = true;
   }
 
   Future<void> startCoreOnly(CoreConnectionRequest req) async {
