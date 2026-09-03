@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:io' as io;
 import 'dart:math';
 
 import 'app_paths.dart';
@@ -80,7 +81,7 @@ final class WindowsCoreProcessManager {
       '--token',
       token,
       '--parent-pid',
-      '$pid',
+      '${io.pid}',
     ];
 
     _controlPort = controlPort;
