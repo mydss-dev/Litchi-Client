@@ -26,7 +26,9 @@ jobs:
           channel: stable
 
       - name: Apply account center refresh
-        run: python3 tool/apply_account_center_refresh.py
+        run: |
+          python3 tool/apply_account_center_refresh.py
+          python3 tool/fix_account_center_lint.py
 
       - name: Format changed Dart files
         run: dart format lib/features/account/account_page.dart lib/shared/models/api_models.dart lib/shared/services/panel_api.dart test/account_center_services_test.dart
@@ -63,7 +65,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm tool/apply_account_center_refresh.py
+          git rm tool/apply_account_center_refresh.py tool/fix_account_center_lint.py
           git add lib/features/account/account_page.dart lib/shared/models/api_models.dart lib/shared/services/panel_api.dart test/account_center_services_test.dart
           git commit -m 'refactor(desktop): streamline account center services'
           git push origin HEAD:main
