@@ -1,0 +1,309 @@
+name: Account Center Cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/account-center-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+
+      - name: Apply account center cleanup
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              return text.replace(old, new, 1)
+
+          # 1) Keep XiaoV2Board-only account APIs fail-closed even if a future
+          # caller bypasses the current UI feature gate. Provider injection keeps
+          # PanelApi testable and reads the live panel type on every call.
+          panel_path = Path('lib/shared/services/panel_api.dart')
+          panel = panel_path.read_text()
+          panel = replace_once(
+              panel,
+              "import '../models/api_models.dart';\n",
+              "import '../../config/app_config.dart';\nimport '../../config/panel_backend.dart';\nimport '../models/api_models.dart';\n",
+              'panel imports',
+          )
+          panel = replace_once(
+              panel,
+              "class PanelApi {\n  const PanelApi(this._client);\n\n  final ApiClient _client;\n",
+              "class PanelApi {\n  PanelApi(this._client, {PanelType Function()? panelTypeProvider})\n    : _panelTypeProvider = panelTypeProvider ?? _currentPanelType;\n\n  final ApiClient _client;\n  final PanelType Function() _panelTypeProvider;\n\n  static PanelType _currentPanelType() => AppConfig.panelType;\n\n  void _requireXiaoV2Board() {\n    if (_panelTypeProvider() != PanelType.xiaoV2board) {\n      throw const ApiException('当前面板不支持此功能');\n    }\n  }\n",
+              'PanelApi constructor',
+          )
+          panel = replace_once(
+              panel,
+              "  Future<void> redeemGiftCard(String giftCard) async {\n    final code = giftCard.trim();",
+              "  Future<void> redeemGiftCard(String giftCard) async {\n    _requireXiaoV2Board();\n    final code = giftCard.trim();",
+              'gift-card guard',
+          )
+          panel = replace_once(
+              panel,
+              "  Future<String> getTelegramBotUsername() async {\n    final res = await _client.get('/user/telegram/getBotInfo');",
+              "  Future<String> getTelegramBotUsername() async {\n    _requireXiaoV2Board();\n    final res = await _client.get('/user/telegram/getBotInfo');",
+              'telegram bot guard',
+          )
+          panel = replace_once(
+              panel,
+              "  Future<void> unbindTelegram() async {\n    final res = await _client.get('/user/unbindTelegram');",
+              "  Future<void> unbindTelegram() async {\n    _requireXiaoV2Board();\n    final res = await _client.get('/user/unbindTelegram');",
+              'telegram unbind guard',
+          )
+          panel_path.write_text(panel)
+
+          # 2) Document XiaoV2Board's unbound sentinel where it is normalized.
+          models_path = Path('lib/shared/models/api_models.dart')
+          models = models_path.read_text()
+          models = replace_once(
+              models,
+              "  static String? _nullableIdentifier(Object? value) {\n    if (value == null) return null;\n    final text = value.toString().trim();\n    if (text.isEmpty || text == '0' || text.toLowerCase() == 'null') {",
+              "  static String? _nullableIdentifier(Object? value) {\n    if (value == null) return null;\n    final text = value.toString().trim();\n    // XiaoV2Board serializes an unbound external-account ID as numeric/string 0\n    // (and some compatible panels return the literal string \"null\").\n    if (text.isEmpty || text == '0' || text.toLowerCase() == 'null') {",
+              'identifier sentinel comment',
+          )
+          models_path.write_text(models)
+
+          # 3) Move the account-center-only copy into the normal ARB pipeline.
+          account_path = Path('lib/features/account/account_page.dart')
+          account = account_path.read_text()
+          pattern = re.compile(
+              r"_accountText\(\s*context,\s*hans:\s*'([^']*)',\s*hant:\s*'([^']*)',\s*en:\s*'([^']*)',?\s*\)",
+              re.S,
+          )
+          replacements = {
+              ('请输入兑换码', '請輸入兌換碼', 'Enter a redemption code'): 'context.l10n.giftCardEnterRequired',
+              ('兑换成功', '兌換成功', 'Redeemed successfully'): 'context.l10n.giftCardRedeemed',
+              ('兑换码', '兌換碼', 'Redemption code'): 'context.l10n.giftCardTitle',
+              ('兑换余额、流量、时长或套餐权益', '兌換餘額、流量、時長或套餐權益', 'Redeem account or plan benefits'): 'context.l10n.giftCardModalSubtitle',
+              ('兑换码', '兌換碼', 'Code'): 'context.l10n.giftCardCode',
+              ('请输入兑换码', '請輸入兌換碼', 'Enter code'): 'context.l10n.giftCardEnterHint',
+              ('兑换中…', '兌換中…', 'Redeeming…'): 'context.l10n.giftCardRedeeming',
+              ('立即兑换', '立即兌換', 'Redeem now'): 'context.l10n.giftCardRedeemNow',
+              ('绑定命令已复制', '綁定指令已複製', 'Binding command copied'): 'context.l10n.telegramBindingCommandCopied',
+              ('无法打开 Telegram，请手动搜索 @$_botUsername', '無法開啟 Telegram，請手動搜尋 @$_botUsername', 'Could not open Telegram. Search for @$_botUsername manually.'): 'context.l10n.telegramOpenFailed(_botUsername)',
+              ('Telegram 已解绑', 'Telegram 已解除綁定', 'Telegram unbound'): 'context.l10n.telegramUnbound',
+              ('已绑定', '已綁定', 'Connected'): 'context.l10n.telegramConnected',
+              ('未绑定', '未綁定', 'Not connected'): 'context.l10n.telegramNotConnected',
+              ('绑定后可接收到期、流量和服务通知', '綁定後可接收到期、流量和服務通知', 'Connect Telegram for account notifications'): 'context.l10n.telegramNotificationsSubtitle',
+              ('正在读取机器人…', '正在讀取機器人…', 'Loading bot…'): 'context.l10n.telegramLoadingBot',
+              ('解除绑定', '解除綁定', 'Unbind Telegram'): 'context.l10n.telegramUnbind',
+              ('先复制绑定命令，再打开机器人并粘贴发送。订阅地址不会显示在账户页面。', '先複製綁定指令，再開啟機器人並貼上傳送。訂閱地址不會顯示在帳戶頁面。', 'Copy the binding command, open the bot, then paste and send it.'): 'context.l10n.telegramBindingInstructions',
+              ('复制绑定命令', '複製綁定指令', 'Copy command'): 'context.l10n.telegramCopyCommand',
+              ('打开 Telegram', '開啟 Telegram', 'Open Telegram'): 'context.l10n.telegramOpen',
+              ('我已完成绑定，刷新状态', '我已完成綁定，重新整理狀態', 'I finished binding — refresh status'): 'context.l10n.telegramRefreshBindingStatus',
+              ('划转佣金', '劃轉佣金', 'Transfer commission'): 'context.l10n.transferCommission',
+              ('申请提现', '申請提現', 'Request withdrawal'): 'context.l10n.requestWithdrawal',
+              ('兑换余额、流量或套餐权益', '兌換餘額、流量或套餐權益', 'Redeem account or plan benefits'): 'context.l10n.giftCardServiceSubtitle',
+              ('已绑定，可接收账户通知', '已綁定，可接收帳戶通知', 'Connected for account notifications'): 'context.l10n.telegramServiceConnected',
+              ('未绑定，点击连接 Telegram', '未綁定，點擊連接 Telegram', 'Not connected — connect Telegram'): 'context.l10n.telegramServiceNotConnected',
+              ('资金账户', '資金帳戶', 'Funds account'): 'context.l10n.accountAssets',
+              ('账户服务', '帳戶服務', 'Account services'): 'context.l10n.accountServices',
+              ('账户设置', '帳戶設定', 'Account settings'): 'context.l10n.accountManagement',
+          }
+
+          seen = []
+          def repl(match):
+              key = tuple(match.groups())
+              seen.append(key)
+              if key not in replacements:
+                  raise SystemExit(f'unmapped _accountText call: {key!r}')
+              return replacements[key]
+
+          account = pattern.sub(repl, account)
+          if '_accountText(' in account:
+              raise SystemExit('account_page.dart still contains _accountText calls')
+          if not seen:
+              raise SystemExit('no _accountText calls were migrated')
+          account = re.sub(
+              r"\nString _accountText\(\n  BuildContext context, \{\n  required String hans,\n  required String hant,\n  required String en,\n\}\) \{\n  final locale = Localizations\.localeOf\(context\);\n  if \(locale\.languageCode != 'zh'\) return en;\n  final traditional =\n      locale\.scriptCode == 'Hant' \|\|\n      locale\.countryCode == 'TW' \|\|\n      locale\.countryCode == 'HK' \|\|\n      locale\.countryCode == 'MO';\n  return traditional \? hant : hans;\n\}\n",
+              '\n',
+              account,
+              count=1,
+          )
+          account_path.write_text(account)
+
+          # Insert localized account-center strings next to the existing account keys.
+          arb_blocks = {
+              'lib/l10n/app_en.arb': '''  "accountServices": "Account services",\n  "giftCardTitle": "Redemption code",\n  "giftCardModalSubtitle": "Redeem account, traffic, duration or plan benefits",\n  "giftCardServiceSubtitle": "Redeem account, traffic or plan benefits",\n  "giftCardCode": "Code",\n  "giftCardEnterRequired": "Enter a redemption code",\n  "giftCardEnterHint": "Enter code",\n  "giftCardRedeemed": "Redeemed successfully",\n  "giftCardRedeeming": "Redeeming…",\n  "giftCardRedeemNow": "Redeem now",\n  "telegramBindingCommandCopied": "Binding command copied",\n  "telegramOpenFailed": "Could not open Telegram. Search for @{username} manually.",\n  "@telegramOpenFailed": {"placeholders": {"username": {"type": "String"}}},\n  "telegramUnbound": "Telegram unbound",\n  "telegramConnected": "Connected",\n  "telegramNotConnected": "Not connected",\n  "telegramNotificationsSubtitle": "Connect Telegram for account notifications",\n  "telegramLoadingBot": "Loading bot…",\n  "telegramUnbind": "Unbind Telegram",\n  "telegramBindingInstructions": "Copy the binding command, open the bot, then paste and send it.",\n  "telegramCopyCommand": "Copy command",\n  "telegramOpen": "Open Telegram",\n  "telegramRefreshBindingStatus": "I finished binding — refresh status",\n  "telegramServiceConnected": "Connected for account notifications",\n  "telegramServiceNotConnected": "Not connected — connect Telegram",\n''',
+              'lib/l10n/app_zh.arb': '''  "accountServices": "账户服务",\n  "giftCardTitle": "兑换码",\n  "giftCardModalSubtitle": "兑换余额、流量、时长或套餐权益",\n  "giftCardServiceSubtitle": "兑换余额、流量或套餐权益",\n  "giftCardCode": "兑换码",\n  "giftCardEnterRequired": "请输入兑换码",\n  "giftCardEnterHint": "请输入兑换码",\n  "giftCardRedeemed": "兑换成功",\n  "giftCardRedeeming": "兑换中…",\n  "giftCardRedeemNow": "立即兑换",\n  "telegramBindingCommandCopied": "绑定命令已复制",\n  "telegramOpenFailed": "无法打开 Telegram，请手动搜索 @{username}",\n  "@telegramOpenFailed": {"placeholders": {"username": {"type": "String"}}},\n  "telegramUnbound": "Telegram 已解绑",\n  "telegramConnected": "已绑定",\n  "telegramNotConnected": "未绑定",\n  "telegramNotificationsSubtitle": "绑定后可接收到期、流量和服务通知",\n  "telegramLoadingBot": "正在读取机器人…",\n  "telegramUnbind": "解除绑定",\n  "telegramBindingInstructions": "先复制绑定命令，再打开机器人并粘贴发送。订阅地址不会显示在账户页面。",\n  "telegramCopyCommand": "复制绑定命令",\n  "telegramOpen": "打开 Telegram",\n  "telegramRefreshBindingStatus": "我已完成绑定，刷新状态",\n  "telegramServiceConnected": "已绑定，可接收账户通知",\n  "telegramServiceNotConnected": "未绑定，点击连接 Telegram",\n''',
+              'lib/l10n/app_zh_TW.arb': '''  "accountServices": "帳戶服務",\n  "giftCardTitle": "兌換碼",\n  "giftCardModalSubtitle": "兌換餘額、流量、時長或套餐權益",\n  "giftCardServiceSubtitle": "兌換餘額、流量或套餐權益",\n  "giftCardCode": "兌換碼",\n  "giftCardEnterRequired": "請輸入兌換碼",\n  "giftCardEnterHint": "請輸入兌換碼",\n  "giftCardRedeemed": "兌換成功",\n  "giftCardRedeeming": "兌換中…",\n  "giftCardRedeemNow": "立即兌換",\n  "telegramBindingCommandCopied": "綁定指令已複製",\n  "telegramOpenFailed": "無法開啟 Telegram，請手動搜尋 @{username}",\n  "@telegramOpenFailed": {"placeholders": {"username": {"type": "String"}}},\n  "telegramUnbound": "Telegram 已解除綁定",\n  "telegramConnected": "已綁定",\n  "telegramNotConnected": "未綁定",\n  "telegramNotificationsSubtitle": "綁定後可接收到期、流量和服務通知",\n  "telegramLoadingBot": "正在讀取機器人…",\n  "telegramUnbind": "解除綁定",\n  "telegramBindingInstructions": "先複製綁定指令，再開啟機器人並貼上傳送。訂閱地址不會顯示在帳戶頁面。",\n  "telegramCopyCommand": "複製綁定指令",\n  "telegramOpen": "開啟 Telegram",\n  "telegramRefreshBindingStatus": "我已完成綁定，重新整理狀態",\n  "telegramServiceConnected": "已綁定，可接收帳戶通知",\n  "telegramServiceNotConnected": "未綁定，點擊連接 Telegram",\n''',
+          }
+          for path_string, block in arb_blocks.items():
+              path = Path(path_string)
+              text = path.read_text()
+              if '"accountServices"' in text:
+                  raise SystemExit(f'{path}: account-center localization keys already exist')
+              needle = '  "settingsUpdated": '
+              pos = text.find(needle)
+              if pos < 0:
+                  raise SystemExit(f'{path}: settingsUpdated anchor missing')
+              text = text[:pos] + block + text[pos:]
+              path.write_text(text)
+
+          # 4) Replace source-shape assertions with request/parse behavior tests.
+          Path('test/account_center_services_test.dart').write_text(r'''import 'package:flutter_test/flutter_test.dart';
+          import 'package:litchi_client/config/panel_backend.dart';
+          import 'package:litchi_client/shared/models/api_models.dart';
+          import 'package:litchi_client/shared/services/api_client.dart';
+          import 'package:litchi_client/shared/services/panel_api.dart';
+
+          class _RecordingApiClient extends ApiClient {
+            String? lastMethod;
+            String? lastPath;
+            Map<String, dynamic>? lastData;
+            Map<String, dynamic> nextResponse = const {'code': 0};
+
+            @override
+            Future<Map<String, dynamic>> get(
+              String path, {
+              Map<String, dynamic>? params,
+              bool silent = false,
+            }) async {
+              lastMethod = 'GET';
+              lastPath = path;
+              lastData = params;
+              return nextResponse;
+            }
+
+            @override
+            Future<Map<String, dynamic>> post(
+              String path, {
+              Map<String, dynamic>? data,
+              Map<String, dynamic>? headers,
+            }) async {
+              lastMethod = 'POST';
+              lastPath = path;
+              lastData = data;
+              return nextResponse;
+            }
+          }
+
+          void main() {
+            group('RemoteUser Telegram binding state', () {
+              test('keeps a real Telegram identifier', () {
+                final user = RemoteUser.fromJson({
+                  'email': '191066639@example.com',
+                  'telegram_id': 123456789,
+                });
+
+                expect(user.telegramId, '123456789');
+              });
+
+              test('normalizes XiaoV2Board unbound sentinels', () {
+                for (final value in <Object?>[null, 0, '0', '', 'null']) {
+                  final user = RemoteUser.fromJson({
+                    'email': '191066639@example.com',
+                    'telegram_id': value,
+                  });
+                  expect(user.telegramId, isNull, reason: 'value=$value');
+                }
+              });
+            });
+
+            group('XiaoV2Board account services', () {
+              late _RecordingApiClient client;
+              late PanelApi api;
+
+              setUp(() {
+                client = _RecordingApiClient();
+                api = PanelApi(
+                  client,
+                  panelTypeProvider: () => PanelType.xiaoV2board,
+                );
+              });
+
+              test('redeem gift card posts the expected endpoint and body', () async {
+                await api.redeemGiftCard('  GIFT-123  ');
+
+                expect(client.lastMethod, 'POST');
+                expect(client.lastPath, '/user/redeemgiftcard');
+                expect(client.lastData, {'giftcard': 'GIFT-123'});
+              });
+
+              test('reads and normalizes Telegram bot username', () async {
+                client.nextResponse = {
+                  'code': 0,
+                  'data': {'username': '@litchi_bot'},
+                };
+
+                final username = await api.getTelegramBotUsername();
+
+                expect(username, 'litchi_bot');
+                expect(client.lastMethod, 'GET');
+                expect(client.lastPath, '/user/telegram/getBotInfo');
+              });
+
+              test('unbinds Telegram through the expected endpoint', () async {
+                await api.unbindTelegram();
+
+                expect(client.lastMethod, 'GET');
+                expect(client.lastPath, '/user/unbindTelegram');
+              });
+
+              test('rejects Xiao-only calls for other panel types', () async {
+                final guarded = PanelApi(
+                  client,
+                  panelTypeProvider: () => PanelType.v2board,
+                );
+
+                await expectLater(
+                  guarded.redeemGiftCard('GIFT-123'),
+                  throwsA(isA<ApiException>()),
+                );
+                await expectLater(
+                  guarded.getTelegramBotUsername(),
+                  throwsA(isA<ApiException>()),
+                );
+                await expectLater(
+                  guarded.unbindTelegram(),
+                  throwsA(isA<ApiException>()),
+                );
+                expect(client.lastPath, isNull);
+              });
+            });
+          }
+          ''')
+          PY
+
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - name: Format changed Dart files
+        run: dart format lib/features/account/account_page.dart lib/shared/models/api_models.dart lib/shared/services/panel_api.dart test/account_center_services_test.dart
+      - run: flutter test test/account_center_services_test.dart
+      - run: flutter analyze
+
+      - name: Commit cleanup and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/account-center-cleanup.yml
+          git add lib/features/account/account_page.dart \
+                  lib/shared/models/api_models.dart \
+                  lib/shared/services/panel_api.dart \
+                  lib/l10n/app_en.arb \
+                  lib/l10n/app_zh.arb \
+                  lib/l10n/app_zh_TW.arb \
+                  lib/l10n/generated \
+                  test/account_center_services_test.dart
+          git commit -m "refactor(account): harden and localize account services"
+          git push origin HEAD:main
