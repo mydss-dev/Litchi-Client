@@ -153,8 +153,8 @@ begin
     end;
   end;
 
-  ; Fall back to the SCM directly. This path also handles a manually damaged
-  ; installation where litchi-core.exe is missing but the service remains.
+  // Fall back to the SCM directly. This path also handles a manually damaged
+  // installation where litchi-core.exe is missing but the service remains.
   if not Exec(ExpandConstant('{sys}\sc.exe'), 'delete LitchiTunService', '',
     SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
@@ -169,13 +169,18 @@ begin
   Result := WaitForTunServiceDeleted();
 end;
 
-function InitializeUninstall(): Boolean;
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
-  Result := RemoveTunServiceForUninstall();
-  if not Result then
-    MsgBox(
-      '无法安全移除 Litchi TUN 服务。请重启电脑后再次卸载，避免留下失效的管理员服务。',
-      mbError, MB_OK);
+  if CurUninstallStep = usUninstall then
+  begin
+    if not RemoveTunServiceForUninstall() then
+    begin
+      MsgBox(
+        '无法安全移除 Litchi TUN 服务。请重启电脑后再次卸载，避免留下失效的管理员服务。',
+        mbError, MB_OK);
+      Abort;
+    end;
+  end;
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
@@ -198,8 +203,8 @@ var
 begin
   if CurStep = ssPostInstall then
   begin
-    ; Preserve the service state across upgrades. A service that the user had
-    ; intentionally stopped must not be started just because the app updated.
+    // Preserve the service state across upgrades. A service that the user had
+    // intentionally stopped must not be started just because the app updated.
     if TunServiceExistedBeforeUpgrade and TunServiceWasRunningBeforeUpgrade then
       Exec(ExpandConstant('{sys}\sc.exe'), 'start LitchiTunService', '', SW_HIDE,
         ewWaitUntilTerminated, ResultCode);
