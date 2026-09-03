@@ -1192,13 +1192,12 @@ class CoreController extends ChangeNotifier {
         _coreError = CoreErrorMessageService.unexpectedCoreExit;
       }
       _status = ConnectionStatus.error;
-      if (_killSwitchEnabled && wasConnected) {
-        if (_activeNetworkMode == NetworkMode.tun) {
-          // Keep the Windows WFP or macOS PF session alive. Once the tunnel
-          // disappears, direct traffic remains blocked until explicit cleanup.
-        } else {
-          unawaited(ProxySetter.engageKillSwitch());
-        }
+      if (_killSwitchEnabled && _activeNetworkMode == NetworkMode.tun) {
+        // Core death can race with the final connecting -> connected UI state.
+        // Once TUN protection may be active, keep WFP/PF regardless of that UI
+        // transition until an explicit teardown confirms the tunnel is gone.
+      } else if (_killSwitchEnabled && wasConnected) {
+        unawaited(ProxySetter.engageKillSwitch());
       } else {
         unawaited(_releaseTunKillSwitch());
         unawaited(ProxySetter.disable());
@@ -1213,12 +1212,11 @@ class CoreController extends ChangeNotifier {
         _status != ConnectionStatus.connecting) {
       return;
     }
-    final wasConnected = _status == ConnectionStatus.connected;
     _stopTrafficMonitor();
     _connectedAt = null;
     _coreError = error.isEmpty ? 'Windows TUN 服务意外停止' : error;
     _status = ConnectionStatus.error;
-    if (!_killSwitchEnabled || !wasConnected) {
+    if (!_killSwitchEnabled) {
       unawaited(_releaseTunKillSwitch());
     }
     unawaited(ProxySetter.disable());
