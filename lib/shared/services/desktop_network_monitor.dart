@@ -22,14 +22,14 @@ class DesktopNetworkMonitor {
     _timer = Timer.periodic(interval, (_) => unawaited(checkNow()));
   }
 
-  Future<void> checkNow({bool notifyEvenIfUnchanged = false}) async {
+  Future<void> checkNow() async {
     if (!isSupported || _checking) return;
     _checking = true;
     try {
       final next = await currentSignature();
       final changed = _signature != null && next != _signature;
       _signature = next;
-      if (changed || notifyEvenIfUnchanged) await _onChanged?.call();
+      if (changed) await _onChanged?.call();
     } catch (error) {
       SecureLogger.debug('desktop network check failed', error);
     } finally {
