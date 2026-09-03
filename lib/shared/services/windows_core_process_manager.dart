@@ -6,13 +6,12 @@ import 'dart:math';
 import 'app_paths.dart';
 import 'secure_logger.dart';
 
-/// Runs the Windows sing-box core outside the Flutter process.
+/// Runs the Windows main sing-box core outside the Flutter process.
 ///
-/// System-proxy mode uses a normal child process. TUN mode launches the same
-/// binary with UAC elevation so Wintun and route changes never execute inside
-/// the GUI process. A small authenticated localhost control endpoint provides
-/// startup status and graceful shutdown. The core also watches the Flutter
-/// parent PID and self-terminates if the GUI dies unexpectedly.
+/// This process is deliberately always user-owned. It keeps node, DNS, route,
+/// selector, mixed/SOCKS and Clash API state. Privileged TUN work belongs to
+/// [WindowsTunServiceManager], so changing network layers never changes this
+/// process's privilege level or lifetime.
 final class WindowsCoreProcessManager {
   final _logController = StreamController<String>.broadcast();
   final _exitController = StreamController<String>.broadcast();
@@ -27,6 +26,7 @@ final class WindowsCoreProcessManager {
   int _generation = 0;
 
   bool get isRunning => _running;
+  int? get pid => _pid;
   String get lastError => _lastError;
   Stream<String> get logStream => _logController.stream;
   Stream<String> get exitStream => _exitController.stream;
@@ -47,7 +47,6 @@ final class WindowsCoreProcessManager {
 
   Future<bool> start(
     String configPath, {
-    required bool elevate,
     required int apiPort,
   }) async {
     if (!Platform.isWindows) {
@@ -85,27 +84,22 @@ final class WindowsCoreProcessManager {
     _token = token;
 
     try {
-      if (elevate) {
-        _pid = await _launchElevated(executable, arguments);
-        _emitLog('Windows TUN 核心已通过 UAC 启动 (PID $_pid)');
-      } else {
-        final process = await Process.start(executable, arguments);
-        _process = process;
-        _pid = process.pid;
-        _pipeProcessOutput(process);
-        unawaited(
-          process.exitCode.then((code) => _handleProcessExit(generation, code)),
-        );
-      }
+      final process = await Process.start(executable, arguments);
+      _process = process;
+      _pid = process.pid;
+      _pipeProcessOutput(process);
+      unawaited(
+        process.exitCode.then((code) => _handleProcessExit(generation, code)),
+      );
     } catch (error) {
-      _lastError = _friendlyLaunchError(error);
+      _lastError = 'Windows 主核心启动失败：$error';
       _clearSession();
       return false;
     }
 
     final started = await _waitForStartup(generation);
     if (!started) {
-      final failure = _lastError.isEmpty ? 'Windows 核心启动超时' : _lastError;
+      final failure = _lastError.isEmpty ? 'Windows 主核心启动超时' : _lastError;
       await stop();
       _lastError = failure;
       return false;
@@ -113,7 +107,7 @@ final class WindowsCoreProcessManager {
 
     _running = true;
     _emitLog(
-      '── Windows sing-box 独立核心运行中 '
+      '── Windows sing-box 主核心运行中 '
       '(PID $_pid, API $apiPort) ──',
     );
     unawaited(_monitor(generation));
@@ -152,7 +146,7 @@ final class WindowsCoreProcessManager {
     _running = false;
     _stopping = false;
     _clearSession();
-    if (hadSession) _emitLog('── Windows sing-box 独立核心已停止 ──');
+    if (hadSession) _emitLog('── Windows sing-box 主核心已停止 ──');
     return graceful;
   }
 
@@ -184,8 +178,8 @@ final class WindowsCoreProcessManager {
       final state = '${status?['state'] ?? ''}';
       if (state == 'running') return true;
       if (state == 'error') {
-        _lastError = '${status?['error'] ?? 'Windows 核心启动失败'}'.trim();
-        if (_lastError.isEmpty) _lastError = 'Windows 核心启动失败';
+        _lastError = '${status?['error'] ?? 'Windows 主核心启动失败'}'.trim();
+        if (_lastError.isEmpty) _lastError = 'Windows 主核心启动失败';
         return false;
       }
       if (_lastError.isNotEmpty && _process == null && _pid == null) {
@@ -205,7 +199,7 @@ final class WindowsCoreProcessManager {
       if (status == null) {
         missed += 1;
         if (missed >= 3) {
-          _reportUnexpectedExit(generation, 'Windows 核心进程意外退出');
+          _reportUnexpectedExit(generation, 'Windows 主核心进程意外退出');
           return;
         }
         continue;
@@ -216,7 +210,7 @@ final class WindowsCoreProcessManager {
         final error = '${status['error'] ?? ''}'.trim();
         _reportUnexpectedExit(
           generation,
-          error.isEmpty ? 'Windows 核心运行异常' : error,
+          error.isEmpty ? 'Windows 主核心运行异常' : error,
         );
         return;
       }
@@ -227,13 +221,13 @@ final class WindowsCoreProcessManager {
     if (_stopping || generation != _generation) return;
     if (!_running) {
       if (_lastError.isEmpty) {
-        _lastError = 'Windows 核心进程启动失败 (exit $exitCode)';
+        _lastError = 'Windows 主核心进程启动失败 (exit $exitCode)';
       }
       _process = null;
       _pid = null;
       return;
     }
-    _reportUnexpectedExit(generation, 'Windows 核心进程意外退出 (exit $exitCode)');
+    _reportUnexpectedExit(generation, 'Windows 主核心进程意外退出 (exit $exitCode)');
   }
 
   void _reportUnexpectedExit(int generation, String message) {
@@ -320,91 +314,6 @@ final class WindowsCoreProcessManager {
         .listen(_emitLog);
   }
 
-  Future<int> _launchElevated(String executable, List<String> arguments) async {
-    final argumentLine = arguments.map(_quoteWindowsArgument).join(' ');
-    final exeBase64 = base64Encode(utf8.encode(executable));
-    final argsBase64 = base64Encode(utf8.encode(argumentLine));
-    final script =
-        """
-\$exe = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$exeBase64'))
-\$arguments = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$argsBase64'))
-try {
-  \$startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-  \$startInfo.FileName = \$exe
-  \$startInfo.Arguments = \$arguments
-  \$startInfo.UseShellExecute = \$true
-  \$startInfo.Verb = 'runas'
-  \$startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
-  \$process = [System.Diagnostics.Process]::Start(\$startInfo)
-  if (\$null -eq \$process) { exit 1 }
-  [Console]::Out.Write(\$process.Id)
-  exit 0
-} catch {
-  \$exception = \$_.Exception
-  while (\$null -ne \$exception) {
-    if (\$exception -is [System.ComponentModel.Win32Exception] -and \$exception.NativeErrorCode -eq 1223) {
-      exit 1223
-    }
-    \$exception = \$exception.InnerException
-  }
-  [Console]::Error.Write(\$_.Exception.Message)
-  exit 1
-}
-""";
-    final result = await Process.run('powershell.exe', [
-      '-NoProfile',
-      '-NonInteractive',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-Command',
-      script,
-    ]);
-    if (result.exitCode == 1223) {
-      throw StateError('已取消 Windows TUN 管理员授权');
-    }
-    if (result.exitCode != 0) {
-      final detail = '${result.stderr}'.trim();
-      throw StateError(detail.isEmpty ? '无法以管理员权限启动 Windows TUN 核心' : detail);
-    }
-    final launchedPid = int.tryParse('${result.stdout}'.trim());
-    if (launchedPid == null || launchedPid <= 0) {
-      throw StateError('Windows TUN 核心未返回有效 PID');
-    }
-    return launchedPid;
-  }
-
-  static String _quoteWindowsArgument(String value) {
-    if (value.isNotEmpty && !RegExp(r'[\s"]').hasMatch(value)) return value;
-    final buffer = StringBuffer('"');
-    var backslashes = 0;
-
-    void writeBackslashes(int count) {
-      for (var i = 0; i < count; i++) {
-        buffer.write('\\');
-      }
-    }
-
-    for (final codeUnit in value.codeUnits) {
-      final character = String.fromCharCode(codeUnit);
-      if (character == '\\') {
-        backslashes += 1;
-        continue;
-      }
-      if (character == '"') {
-        writeBackslashes(backslashes * 2 + 1);
-        buffer.write('"');
-        backslashes = 0;
-        continue;
-      }
-      writeBackslashes(backslashes);
-      backslashes = 0;
-      buffer.write(character);
-    }
-    writeBackslashes(backslashes * 2);
-    buffer.write('"');
-    return buffer.toString();
-  }
-
   static Future<int> _allocatePort() async {
     final socket = await ServerSocket.bind(
       InternetAddress.loopbackIPv4,
@@ -423,14 +332,6 @@ try {
         'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     final random = Random.secure();
     return List.generate(48, (_) => chars[random.nextInt(chars.length)]).join();
-  }
-
-  String _friendlyLaunchError(Object error) {
-    final text = '$error';
-    if (text.contains('管理员授权')) {
-      return text.replaceFirst('Bad state: ', '');
-    }
-    return 'Windows 核心启动失败：$text';
   }
 
   void _clearSession() {
