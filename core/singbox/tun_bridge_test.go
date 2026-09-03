@@ -39,14 +39,22 @@ func TestBuildTunBridgeConfigUsesMainCoreSocks(t *testing.T) {
 	if processRule["outbound"] != "direct" {
 		t.Fatalf("main core must bypass bridge: %#v", processRule)
 	}
+	dnsRule := rules[1].(map[string]any)
+	if dnsRule["port"] != float64(53) || dnsRule["outbound"] != "main-core" {
+		t.Fatalf("DNS must reach main core before private-IP bypass: %#v", dnsRule)
+	}
+	privateRule := rules[2].(map[string]any)
+	if privateRule["ip_is_private"] != true || privateRule["outbound"] != "direct" {
+		t.Fatalf("unexpected private-IP bypass rule: %#v", privateRule)
+	}
 }
 
 func TestBuildTunBridgeConfigRejectsUnsafeInputs(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		port   int
-		mtu    int
-		stack  string
+		name  string
+		port  int
+		mtu   int
+		stack string
 	}{
 		{name: "port", port: 0, mtu: 1500, stack: "system"},
 		{name: "mtu", port: 7890, mtu: 100, stack: "system"},

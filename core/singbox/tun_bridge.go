@@ -66,6 +66,13 @@ func buildTunBridgeConfig(mainProxyPort, mtu int, strictRoute bool, stack string
 					"process_name": []string{"litchi-core.exe"},
 					"outbound":     "direct",
 				},
+				// Protocol rules only match metadata populated by sniffing. Keep the
+				// privileged bridge thin and route DNS by destination port instead;
+				// the main core sniffs and hijacks the DNS payload into its DNS module.
+				map[string]any{
+					"port":     53,
+					"outbound": "main-core",
+				},
 				// Keep loopback/LAN traffic out of the bridge, including the
 				// bridge's own 127.0.0.1 SOCKS hop to the main core.
 				map[string]any{
