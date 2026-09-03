@@ -39,16 +39,15 @@ DWORD AddFilter(HANDLE engine,
 
 DWORD AddLayerFilters(HANDLE engine,
                       const GUID& layer,
-                      FWP_BYTE_BLOB* app_id,
+                      FWP_BYTE_BLOB* core_app_id,
                       UINT64 interface_luid) {
-  FWPM_FILTER_CONDITION0 app_condition{};
-  app_condition.fieldKey = FWPM_CONDITION_ALE_APP_ID;
-  app_condition.matchType = FWP_MATCH_EQUAL;
-  app_condition.conditionValue.type = FWP_BYTE_BLOB_TYPE;
-  app_condition.conditionValue.byteBlob = app_id;
-  DWORD result =
-      AddFilter(engine, layer, L"Client permit embedded sing-box", FWP_ACTION_PERMIT, 15,
-                &app_condition, 1);
+  FWPM_FILTER_CONDITION0 core_condition{};
+  core_condition.fieldKey = FWPM_CONDITION_ALE_APP_ID;
+  core_condition.matchType = FWP_MATCH_EQUAL;
+  core_condition.conditionValue.type = FWP_BYTE_BLOB_TYPE;
+  core_condition.conditionValue.byteBlob = core_app_id;
+  DWORD result = AddFilter(engine, layer, L"Litchi permit isolated core",
+                           FWP_ACTION_PERMIT, 15, &core_condition, 1);
   if (result != ERROR_SUCCESS) {
     return result;
   }
@@ -58,9 +57,8 @@ DWORD AddLayerFilters(HANDLE engine,
   interface_condition.matchType = FWP_MATCH_EQUAL;
   interface_condition.conditionValue.type = FWP_UINT64;
   interface_condition.conditionValue.uint64 = &interface_luid;
-  result =
-      AddFilter(engine, layer, L"Client permit TUN interface",
-                FWP_ACTION_PERMIT, 14, &interface_condition, 1);
+  result = AddFilter(engine, layer, L"Litchi permit TUN interface",
+                     FWP_ACTION_PERMIT, 14, &interface_condition, 1);
   if (result != ERROR_SUCCESS) {
     return result;
   }
@@ -70,13 +68,13 @@ DWORD AddLayerFilters(HANDLE engine,
   loopback_condition.matchType = FWP_MATCH_FLAGS_ALL_SET;
   loopback_condition.conditionValue.type = FWP_UINT32;
   loopback_condition.conditionValue.uint32 = FWP_CONDITION_FLAG_IS_LOOPBACK;
-  result = AddFilter(engine, layer, L"Client permit loopback",
+  result = AddFilter(engine, layer, L"Litchi permit loopback",
                      FWP_ACTION_PERMIT, 13, &loopback_condition, 1);
   if (result != ERROR_SUCCESS) {
     return result;
   }
 
-  return AddFilter(engine, layer, L"Client block non-TUN outbound",
+  return AddFilter(engine, layer, L"Litchi block non-TUN outbound",
                    FWP_ACTION_BLOCK, 0, nullptr, 0);
 }
 
@@ -86,7 +84,7 @@ WfpKillSwitch::~WfpKillSwitch() {
   Disengage();
 }
 
-bool WfpKillSwitch::Engage(const std::wstring& app_path,
+bool WfpKillSwitch::Engage(const std::wstring& core_path,
                            const std::wstring& interface_alias,
                            std::string* error) {
   if (IsEngaged()) {
@@ -94,9 +92,9 @@ bool WfpKillSwitch::Engage(const std::wstring& app_path,
     // session so the permit rule always targets the current TUN instance.
     Disengage();
   }
-  if (app_path.empty() || interface_alias.empty()) {
+  if (core_path.empty() || interface_alias.empty()) {
     if (error) {
-      *error = "application path and TUN interface are required";
+      *error = "core path and TUN interface are required";
     }
     return false;
   }
@@ -111,8 +109,8 @@ bool WfpKillSwitch::Engage(const std::wstring& app_path,
     return false;
   }
 
-  FWP_BYTE_BLOB* app_id = nullptr;
-  result = FwpmGetAppIdFromFileName0(app_path.c_str(), &app_id);
+  FWP_BYTE_BLOB* core_app_id = nullptr;
+  result = FwpmGetAppIdFromFileName0(core_path.c_str(), &core_app_id);
   if (result != ERROR_SUCCESS) {
     if (error) {
       *error = ErrorMessage("FwpmGetAppIdFromFileName0", result);
@@ -122,12 +120,12 @@ bool WfpKillSwitch::Engage(const std::wstring& app_path,
 
   FWPM_SESSION0 session{};
   session.displayData.name =
-      const_cast<wchar_t*>(L"Client TUN kill switch session");
+      const_cast<wchar_t*>(L"Litchi TUN kill switch session");
   session.flags = FWPM_SESSION_FLAG_DYNAMIC;
   result =
       FwpmEngineOpen0(nullptr, RPC_C_AUTHN_WINNT, nullptr, &session, &engine_);
   if (result != ERROR_SUCCESS) {
-    FwpmFreeMemory0(reinterpret_cast<void**>(&app_id));
+    FwpmFreeMemory0(reinterpret_cast<void**>(&core_app_id));
     engine_ = nullptr;
     if (error) {
       *error = ErrorMessage("FwpmEngineOpen0", result);
@@ -143,20 +141,20 @@ bool WfpKillSwitch::Engage(const std::wstring& app_path,
     FWPM_SUBLAYER0 sublayer{};
     sublayer.subLayerKey = kLitchiSublayer;
     sublayer.displayData.name =
-        const_cast<wchar_t*>(L"Client TUN kill switch");
-    sublayer.displayData.description =
-        const_cast<wchar_t*>(L"Blocks outbound traffic outside the client TUN");
+        const_cast<wchar_t*>(L"Litchi TUN kill switch");
+    sublayer.displayData.description = const_cast<wchar_t*>(
+        L"Blocks outbound traffic outside TUN except the isolated proxy core");
     sublayer.weight = 0x7f00;
     result = FwpmSubLayerAdd0(engine_, &sublayer, nullptr);
   }
 
   if (result == ERROR_SUCCESS) {
-    result = AddLayerFilters(engine_, FWPM_LAYER_ALE_AUTH_CONNECT_V4, app_id,
-                             interface_luid.Value);
+    result = AddLayerFilters(engine_, FWPM_LAYER_ALE_AUTH_CONNECT_V4,
+                             core_app_id, interface_luid.Value);
   }
   if (result == ERROR_SUCCESS) {
-    result = AddLayerFilters(engine_, FWPM_LAYER_ALE_AUTH_CONNECT_V6, app_id,
-                             interface_luid.Value);
+    result = AddLayerFilters(engine_, FWPM_LAYER_ALE_AUTH_CONNECT_V6,
+                             core_app_id, interface_luid.Value);
   }
 
   if (result == ERROR_SUCCESS) {
@@ -167,7 +165,7 @@ bool WfpKillSwitch::Engage(const std::wstring& app_path,
     if (transaction_started) {
       FwpmTransactionAbort0(engine_);
     }
-    FwpmFreeMemory0(reinterpret_cast<void**>(&app_id));
+    FwpmFreeMemory0(reinterpret_cast<void**>(&core_app_id));
     Disengage();
     if (error) {
       *error = ErrorMessage("install WFP filters", result);
@@ -175,7 +173,7 @@ bool WfpKillSwitch::Engage(const std::wstring& app_path,
     return false;
   }
 
-  FwpmFreeMemory0(reinterpret_cast<void**>(&app_id));
+  FwpmFreeMemory0(reinterpret_cast<void**>(&core_app_id));
   return true;
 }
 

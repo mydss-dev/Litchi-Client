@@ -50,6 +50,9 @@ func (s *statusStore) snapshot() processStatus {
 }
 
 func runCLI(args []string) int {
+	if handled, code := runTunServiceCommand(args); handled {
+		return code
+	}
 	if len(args) == 1 && args[0] == "version" {
 		fmt.Println(coreService.version())
 		return 0
@@ -107,7 +110,14 @@ func runCLI(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	server := &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second}
+	server := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 2 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       15 * time.Second,
+		MaxHeaderBytes:    8 * 1024,
+	}
 	go func() { _ = server.Serve(listener) }()
 
 	if *parentPID > 0 {
@@ -159,8 +169,8 @@ func runCLI(args []string) int {
 
 	select {
 	case <-stopCh:
-		// If native TUN startup is wedged, returning from main terminates the
-		// isolated process without ever endangering the Flutter GUI.
+		// If native startup is wedged, returning from main terminates the isolated
+		// process without ever endangering the Flutter GUI.
 		shutdownControlServer(server)
 		return 1
 	case err = <-startResult:

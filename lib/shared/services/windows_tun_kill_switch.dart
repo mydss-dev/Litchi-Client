@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../../config/app_identity.dart';
 import 'secure_logger.dart';
+import 'windows_core_process_manager.dart';
 
 /// Controls the runner-owned dynamic WFP session used by the Windows TUN
 /// kill switch. The native session automatically removes all filters if the
@@ -14,11 +15,19 @@ abstract final class WindowsTunKillSwitch {
 
   static Future<bool> engage() async {
     if (!Platform.isWindows) return true;
-    final appPath = Platform.resolvedExecutable;
-    if (appPath.isEmpty || !File(appPath).existsSync()) return false;
+
+    // The isolated litchi-core.exe owns the real proxy-node sockets. It must be
+    // the only application-level WFP bypass. Whitelisting Client.exe would let
+    // GUI/API traffic escape outside TUN, while failing to whitelist the core
+    // would make the kill switch block the proxy connection itself.
+    final corePath = WindowsCoreProcessManager.findExecutable();
+    if (corePath == null || corePath.isEmpty || !File(corePath).existsSync()) {
+      return false;
+    }
+
     try {
       return await _channel.invokeMethod<bool>('engage', {
-            'appPath': appPath,
+            'corePath': corePath,
             'interfaceAlias': interfaceAlias,
           }) ??
           false;
