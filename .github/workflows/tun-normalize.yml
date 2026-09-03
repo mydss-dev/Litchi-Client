@@ -18,30 +18,173 @@ jobs:
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
-      - name: Restore core-only platform invariant
+      - name: Harden Windows TUN fail-closed invariants
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('lib/app/core_controller.dart')
-          text = path.read_text()
-          old = '''overrideNetworkMode: Platform.isWindows
+
+          def replace_once(path: Path, old: str, new: str, label: str) -> None:
+              text = path.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'expected block not found: {label}')
+              path.write_text(text.replace(old, new, 1))
+
+          core = Path('lib/app/core_controller.dart')
+          text = core.read_text()
+          old_core_only = '''overrideNetworkMode: Platform.isWindows
                     ? NetworkMode.system
                     : req.networkMode,'''
-          if old not in text:
-              raise SystemExit('expected startCoreOnly network-mode block not found')
-          path.write_text(text.replace(old, 'overrideNetworkMode: NetworkMode.system,', 1))
+          new_core_only = 'overrideNetworkMode: NetworkMode.system,'
+          if old_core_only in text:
+              core.write_text(text.replace(old_core_only, new_core_only, 1))
+          elif new_core_only not in text:
+              raise SystemExit('startCoreOnly network-mode invariant not found')
+
+          replace_once(
+              core,
+              '''      if (_activeNetworkMode == NetworkMode.tun) {
+        if (Platform.isWindows) {
+          await _core.stopWindowsTun();
+        } else {
+          await _core.stop();
+          ClashApiClient.resetClient();
+        }
+        await _releaseTunKillSwitch();
+      }''',
+              '''      if (_activeNetworkMode == NetworkMode.tun) {
+        if (Platform.isWindows) {
+          final stopped = await _core.stopWindowsTun();
+          if (!stopped) {
+            _coreError = _core.lastError.isEmpty
+                ? 'Windows TUN 服务停止失败，为避免直连泄漏已保持保护状态'
+                : _core.lastError;
+            _status = ConnectionStatus.error;
+            notifyListeners();
+            return _coreError;
+          }
+        } else {
+          await _core.stop();
+          ClashApiClient.resetClient();
+        }
+        await _releaseTunKillSwitch();
+      }''',
+              'disconnect must keep kill switch when Windows TUN stop fails',
+          )
+
+          replace_once(
+              core,
+              '''    } else {
+      final stopped = await _core.stopWindowsTun();
+      await _releaseTunKillSwitch();
+      if (!stopped) {
+        _coreError = _core.lastError;
+        _status = ConnectionStatus.error;
+        notifyListeners();
+        return _coreError;
+      }
+      await ProxySetter.enable(port: _activeProxyPort);
+    }''',
+              '''    } else {
+      final stopped = await _core.stopWindowsTun();
+      if (!stopped) {
+        _coreError = _core.lastError.isEmpty
+            ? 'Windows TUN 服务停止失败，为避免直连泄漏已保持保护状态'
+            : _core.lastError;
+        _status = ConnectionStatus.error;
+        notifyListeners();
+        return _coreError;
+      }
+      await _releaseTunKillSwitch();
+      await ProxySetter.enable(port: _activeProxyPort);
+    }''',
+              'TUN to system switch must verify stop before releasing kill switch',
+          )
+
+          manager = Path('lib/shared/services/windows_tun_service_manager.dart')
+          replace_once(
+              manager,
+              '''import 'package:crypto/crypto.dart';
+
+import 'app_paths.dart';''',
+              '''import 'package:crypto/crypto.dart';
+
+import '../../config/app_identity.dart';
+import 'app_paths.dart';''',
+              'Windows TUN manager AppIdentity import',
+          )
+          replace_once(
+              manager,
+              '''import 'secure_logger.dart';
+import 'windows_core_process_manager.dart';''',
+              '''import 'secure_logger.dart';
+import 'tun_interface_verifier.dart';
+import 'windows_core_process_manager.dart';''',
+              'Windows TUN manager interface verifier import',
+          )
+          replace_once(
+              manager,
+              '''    // A missing service is already a stopped TUN from the app's perspective.
+    final stopped =
+        response == null ||
+        (response.statusCode == HttpStatus.ok &&
+            '${response.body?['state'] ?? ''}' != 'running');
+    if (!stopped) {
+      final detail = '${response.body?['error'] ?? ''}'.trim();
+      _lastError = detail.isEmpty ? 'Windows TUN 服务停止失败' : detail;
+    }
+    _running = false;
+    _stopping = false;
+    return stopped;''',
+              '''    var stopped =
+        response != null &&
+        response.statusCode == HttpStatus.ok &&
+        '${response.body?['state'] ?? ''}' != 'running';
+    if (response == null) {
+      // Losing the privileged control endpoint is not proof that the TUN and
+      // routes disappeared. Only treat it as stopped when the adapter itself is
+      // confirmed absent; otherwise fail closed so callers keep protection.
+      stopped = !await _tunInterfacePresent();
+    }
+    if (!stopped) {
+      final detail = '${response?.body?['error'] ?? ''}'.trim();
+      _lastError = detail.isEmpty
+          ? 'Windows TUN 服务停止状态无法确认，为避免直连泄漏已保持保护状态'
+          : detail;
+    }
+    _running = !stopped;
+    _stopping = false;
+    return stopped;''',
+              'Windows TUN stop must not trust a missing control response',
+          )
+          replace_once(
+              manager,
+              '''  static Future<bool> _portAvailable(int port) async {''',
+              '''  static Future<bool> _tunInterfacePresent() async {
+    try {
+      return (await TunInterfaceVerifier.matchingInterfaceNames(
+        interfaceName: AppIdentity.tunInterfaceAlias,
+      )).isNotEmpty;
+    } catch (_) {
+      // Adapter inspection failure is not evidence that privileged routing is
+      // gone. Returning true deliberately keeps teardown fail-closed.
+      return true;
+    }
+  }
+
+  static Future<bool> _portAvailable(int port) async {''',
+              'Windows TUN adapter verification helper',
+          )
           PY
-      - name: Format refactor files
+      - name: Format hardened files
         run: |
           dart format \
             lib/app/core_controller.dart \
-            lib/shared/services/clash_api_client.dart \
-            lib/shared/services/sing_box_core_manager.dart \
-            lib/shared/services/windows_core_process_manager.dart \
             lib/shared/services/windows_tun_service_manager.dart
           git diff --check
-      - name: Commit normalized files
+      - name: Commit hardened files
         shell: bash
         run: |
           if git diff --quiet; then
@@ -52,9 +195,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
             lib/app/core_controller.dart \
-            lib/shared/services/clash_api_client.dart \
-            lib/shared/services/sing_box_core_manager.dart \
-            lib/shared/services/windows_core_process_manager.dart \
             lib/shared/services/windows_tun_service_manager.dart
-          git commit -m 'chore: normalize Windows TUN refactor [tun-normalized]'
+          git commit -m 'fix(windows): fail closed on unconfirmed TUN stop [tun-normalized]'
           git push origin HEAD:fix/windows-tun-service-architecture
