@@ -50,6 +50,9 @@ func (s *statusStore) snapshot() processStatus {
 }
 
 func runCLI(args []string) int {
+	if handled, code := runTunServiceCommand(args); handled {
+		return code
+	}
 	if len(args) == 1 && args[0] == "version" {
 		fmt.Println(coreService.version())
 		return 0
@@ -123,7 +126,6 @@ func runCLI(args []string) int {
 						requestStop()
 						return
 					}
-				}
 			}
 		}()
 	}
