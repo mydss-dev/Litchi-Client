@@ -165,6 +165,13 @@ abstract final class SingBoxConfig {
           },
         ],
         'rules': [
+          // sing-box 1.13 removed legacy inbound sniff fields. Sniff is a
+          // non-final route action so later geosite/geoip rules still apply.
+          {'action': 'sniff'},
+          // DNS arriving through the mixed/SOCKS hop must be handled by this
+          // core so it follows the selected DNS mode instead of escaping to the
+          // system resolver.
+          {'protocol': 'dns', 'action': 'hijack-dns'},
           {'clash_mode': 'direct', 'outbound': directTag},
           {'clash_mode': 'global', 'outbound': selectorTag},
           {
@@ -254,6 +261,9 @@ abstract final class SingBoxConfig {
       'servers': servers,
       'final': servers.first['tag'],
       'strategy': 'ipv4_only',
+      // Preserve DNS answers so later IP-only connections can recover their
+      // domain before geosite routing rules are evaluated.
+      'reverse_mapping': true,
       // Mainland domains resolve through the local DNS; everything else uses
       // the mode's final resolver.
       'rules': [
