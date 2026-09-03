@@ -64,5 +64,6 @@ func TestBuildTunBridgeConfigRejectsUnsafeInputs(t *testing.T) {
 			if _, err := buildTunBridgeConfig(tc.port, tc.mtu, false, tc.stack); err == nil {
 				t.Fatal("expected validation error")
 			}
+		})
 	}
 }
