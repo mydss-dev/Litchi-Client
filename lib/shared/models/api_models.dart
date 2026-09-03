@@ -30,6 +30,7 @@ class RemoteUser {
   final bool remindExpire;
   final bool remindTraffic;
   final bool autoRenewal;
+  final String? telegramId;
 
   const RemoteUser({
     required this.id,
@@ -44,6 +45,7 @@ class RemoteUser {
     required this.remindExpire,
     required this.remindTraffic,
     required this.autoRenewal,
+    this.telegramId,
   });
 
   factory RemoteUser.fromJson(Map<String, dynamic> json) {
@@ -88,6 +90,7 @@ class RemoteUser {
       remindExpire: _bool(json['remind_expire']),
       remindTraffic: _bool(json['remind_traffic']),
       autoRenewal: _bool(json['auto_renewal']),
+      telegramId: _nullableIdentifier(json['telegram_id']),
     );
   }
 
@@ -110,6 +113,15 @@ class RemoteUser {
       if (value != null && value.isNotEmpty) return value;
     }
     return null;
+  }
+
+  static String? _nullableIdentifier(Object? value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    if (text.isEmpty || text == '0' || text.toLowerCase() == 'null') {
+      return null;
+    }
+    return text;
   }
 
   static bool _bool(Object? value) {
@@ -654,10 +666,7 @@ class SubscriptionResult {
   final List<RemoteNode> nodes;
   final SubTraffic? traffic; // null if header absent
 
-  const SubscriptionResult({
-    required this.nodes,
-    this.traffic,
-  });
+  const SubscriptionResult({required this.nodes, this.traffic});
 }
 
 /// Full profile parsed from a native sing-box JSON subscription.
@@ -903,8 +912,8 @@ class NoticeModel {
     title: json['title']?.toString() ?? '',
     content: json['content']?.toString() ?? '',
     imgUrl: json['img_url']?.toString(),
-    tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
-        const [],
+    tags:
+        (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
     createdAt: (json['created_at'] as num?)?.toInt() ?? 0,
   );
 

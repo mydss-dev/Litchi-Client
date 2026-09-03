@@ -1,17 +1,22 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/core_platform_support.dart';
 import '../../app/nav_destinations.dart';
+import '../../config/app_config.dart';
+import '../../config/panel_backend.dart';
 import '../orders/orders_page.dart';
 import '../shop/order_confirm_dialog.dart';
 import 'wallet_page.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/brand_asset_cache.dart';
+import '../../shared/services/windows_shell.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
@@ -148,6 +153,26 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
+  void _showGiftCardModal() {
+    final ctrl = AppScope.of(context);
+    unawaited(
+      showAppAdaptiveModal<void>(
+        context: context,
+        builder: (_) => _GiftCardRedeemModal(ctrl: ctrl),
+      ),
+    );
+  }
+
+  void _showTelegramModal() {
+    final ctrl = AppScope.of(context);
+    unawaited(
+      showAppAdaptiveModal<void>(
+        context: context,
+        builder: (_) => _TelegramBindingModal(ctrl: ctrl),
+      ),
+    );
+  }
+
   void _showChangePasswordSheet() {
     unawaited(showAccountChangePasswordModal(context));
   }
@@ -190,7 +215,7 @@ class _AccountPageState extends State<AccountPage> {
           ),
           const SizedBox(height: 14),
         ],
-        _DesktopAccountMetrics(
+        _DesktopFundsAccount(
           ctrl: ctrl,
           onRecharge: () => unawaited(showWalletRechargeModal(context)),
           onTransfer: () => unawaited(showWalletTransferModal(context)),
@@ -198,7 +223,11 @@ class _AccountPageState extends State<AccountPage> {
         ),
         const SizedBox(height: 16),
         _DesktopAccountServices(
+          showXiaoServices: AppConfig.panelType == PanelType.xiaoV2board,
+          telegramBound: ctrl.accountDetails?.telegramId != null,
           onOrders: () => unawaited(showOrdersModal(context)),
+          onGiftCard: _showGiftCardModal,
+          onTelegram: _showTelegramModal,
         ),
         const SizedBox(height: 16),
         _DesktopAccountSettings(
@@ -249,10 +278,436 @@ class _AccountPageState extends State<AccountPage> {
   }
 }
 
+Future<bool> _openExternalHttps(String url) async {
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.scheme != 'https') return false;
+  try {
+    if (Platform.isWindows) return shellExecuteUrl(url);
+    if (Platform.isMacOS) {
+      return (await Process.run('open', [url])).exitCode == 0;
+    }
+    if (Platform.isLinux) {
+      return (await Process.run('xdg-open', [url])).exitCode == 0;
+    }
+  } catch (_) {
+    return false;
+  }
+  return false;
+}
+
+class _GiftCardRedeemModal extends StatefulWidget {
+  const _GiftCardRedeemModal({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  State<_GiftCardRedeemModal> createState() => _GiftCardRedeemModalState();
+}
+
+class _GiftCardRedeemModalState extends State<_GiftCardRedeemModal> {
+  final _controller = TextEditingController();
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final code = _controller.text.trim();
+    if (code.isEmpty || _submitting) {
+      if (code.isEmpty) {
+        setState(
+          () => _error = _accountText(
+            context,
+            hans: '请输入兑换码',
+            hant: '請輸入兌換碼',
+            en: 'Enter a redemption code',
+          ),
+        );
+      }
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await widget.ctrl.api.redeemGiftCard(code);
+      await widget.ctrl.refreshData();
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        _accountText(
+          context,
+          hans: '兑换成功',
+          hant: '兌換成功',
+          en: 'Redeemed successfully',
+        ),
+        type: AppToastType.success,
+      );
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = e.toString().replaceFirst('ApiException: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return AppAdaptiveModal(
+      title: _accountText(
+        context,
+        hans: '兑换码',
+        hant: '兌換碼',
+        en: 'Redemption code',
+      ),
+      subtitle: _accountText(
+        context,
+        hans: '兑换余额、流量、时长或套餐权益',
+        hant: '兌換餘額、流量、時長或套餐權益',
+        en: 'Redeem account or plan benefits',
+      ),
+      maxWidth: 520,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppTextField(
+            controller: _controller,
+            label: _accountText(context, hans: '兑换码', hant: '兌換碼', en: 'Code'),
+            hint: _accountText(
+              context,
+              hans: '请输入兑换码',
+              hant: '請輸入兌換碼',
+              en: 'Enter code',
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: AppTextStyles.caption.copyWith(color: c.danger),
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 42,
+            child: FilledButton(
+              onPressed: _submitting ? null : _submit,
+              child: Text(
+                _submitting
+                    ? _accountText(
+                        context,
+                        hans: '兑换中…',
+                        hant: '兌換中…',
+                        en: 'Redeeming…',
+                      )
+                    : _accountText(
+                        context,
+                        hans: '立即兑换',
+                        hant: '立即兌換',
+                        en: 'Redeem now',
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TelegramBindingModal extends StatefulWidget {
+  const _TelegramBindingModal({required this.ctrl});
+
+  final AppController ctrl;
+
+  @override
+  State<_TelegramBindingModal> createState() => _TelegramBindingModalState();
+}
+
+class _TelegramBindingModalState extends State<_TelegramBindingModal> {
+  String _botUsername = '';
+  String? _error;
+  bool _loading = true;
+  bool _working = false;
+
+  bool get _bound => widget.ctrl.accountDetails?.telegramId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadBot());
+  }
+
+  Future<void> _loadBot() async {
+    try {
+      final username = await widget.ctrl.api.getTelegramBotUsername();
+      if (!mounted) return;
+      setState(() {
+        _botUsername = username;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString().replaceFirst('ApiException: ', '');
+      });
+    }
+  }
+
+  Future<void> _copyBindCommand() async {
+    if (_working) return;
+    setState(() {
+      _working = true;
+      _error = null;
+    });
+    try {
+      final subscribeUrl = await widget.ctrl.api.getSubscribeUrl();
+      await Clipboard.setData(ClipboardData(text: '/bind $subscribeUrl'));
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        _accountText(
+          context,
+          hans: '绑定命令已复制',
+          hant: '綁定指令已複製',
+          en: 'Binding command copied',
+        ),
+        type: AppToastType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('ApiException: ', ''));
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Future<void> _openTelegram() async {
+    if (_botUsername.isEmpty) return;
+    final opened = await _openExternalHttps('https://t.me/$_botUsername');
+    if (!mounted || opened) return;
+    setState(() {
+      _error = _accountText(
+        context,
+        hans: '无法打开 Telegram，请手动搜索 @$_botUsername',
+        hant: '無法開啟 Telegram，請手動搜尋 @$_botUsername',
+        en: 'Could not open Telegram. Search for @$_botUsername manually.',
+      );
+    });
+  }
+
+  Future<void> _refreshStatus() async {
+    if (_working) return;
+    setState(() {
+      _working = true;
+      _error = null;
+    });
+    try {
+      await widget.ctrl.refreshData();
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('ApiException: ', ''));
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  Future<void> _unbind() async {
+    if (_working) return;
+    setState(() {
+      _working = true;
+      _error = null;
+    });
+    try {
+      await widget.ctrl.api.unbindTelegram();
+      await widget.ctrl.refreshData();
+      if (!mounted) return;
+      setState(() {});
+      AppToast.show(
+        context,
+        _accountText(
+          context,
+          hans: 'Telegram 已解绑',
+          hant: 'Telegram 已解除綁定',
+          en: 'Telegram unbound',
+        ),
+        type: AppToastType.success,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('ApiException: ', ''));
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final status = _bound
+        ? _accountText(context, hans: '已绑定', hant: '已綁定', en: 'Connected')
+        : _accountText(context, hans: '未绑定', hant: '未綁定', en: 'Not connected');
+    return AppAdaptiveModal(
+      title: 'Telegram',
+      subtitle: _accountText(
+        context,
+        hans: '绑定后可接收到期、流量和服务通知',
+        hant: '綁定後可接收到期、流量和服務通知',
+        en: 'Connect Telegram for account notifications',
+      ),
+      maxWidth: 540,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: c.surfaceMuted,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: c.softBorder),
+            ),
+            child: Row(
+              children: [
+                _SmallIcon(icon: LucideIcons.send, color: c.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _loading
+                            ? _accountText(
+                                context,
+                                hans: '正在读取机器人…',
+                                hant: '正在讀取機器人…',
+                                en: 'Loading bot…',
+                              )
+                            : _botUsername.isEmpty
+                            ? 'Telegram Bot'
+                            : '@$_botUsername',
+                        style: AppTextStyles.bodyStrong,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        status,
+                        style: AppTextStyles.caption.copyWith(
+                          color: _bound ? c.success : c.textMuted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: AppTextStyles.caption.copyWith(color: c.danger),
+            ),
+          ],
+          const SizedBox(height: 16),
+          if (_bound)
+            SizedBox(
+              height: 42,
+              child: OutlinedButton(
+                onPressed: _working ? null : _unbind,
+                child: Text(
+                  _accountText(
+                    context,
+                    hans: '解除绑定',
+                    hant: '解除綁定',
+                    en: 'Unbind Telegram',
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            Text(
+              _accountText(
+                context,
+                hans: '先复制绑定命令，再打开机器人并粘贴发送。订阅地址不会显示在账户页面。',
+                hant: '先複製綁定指令，再開啟機器人並貼上傳送。訂閱地址不會顯示在帳戶頁面。',
+                en: 'Copy the binding command, open the bot, then paste and send it.',
+              ),
+              style: AppTextStyles.caption.copyWith(color: c.textMuted),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 42,
+                    child: OutlinedButton(
+                      onPressed: _working || _loading ? null : _copyBindCommand,
+                      child: Text(
+                        _accountText(
+                          context,
+                          hans: '复制绑定命令',
+                          hant: '複製綁定指令',
+                          en: 'Copy command',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 42,
+                    child: FilledButton(
+                      onPressed: _loading || _botUsername.isEmpty
+                          ? null
+                          : _openTelegram,
+                      child: Text(
+                        _accountText(
+                          context,
+                          hans: '打开 Telegram',
+                          hant: '開啟 Telegram',
+                          en: 'Open Telegram',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: _working ? null : _refreshStatus,
+              child: Text(
+                _accountText(
+                  context,
+                  hans: '我已完成绑定，刷新状态',
+                  hant: '我已完成綁定，重新整理狀態',
+                  en: 'I finished binding — refresh status',
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 // ── Desktop account widgets ──────────────────────────────────────────────
 
-class _DesktopAccountMetrics extends StatelessWidget {
-  const _DesktopAccountMetrics({
+class _DesktopFundsAccount extends StatelessWidget {
+  const _DesktopFundsAccount({
     required this.ctrl,
     required this.onRecharge,
     required this.onTransfer,
@@ -266,62 +721,61 @@ class _DesktopAccountMetrics extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const gap = 12.0;
-        final width = (constraints.maxWidth - gap * 2) / 3;
-        final balance = ctrl.user.balance / 100;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Wrap(
-              spacing: gap,
-              runSpacing: gap,
-              children: [
-                SizedBox(
-                  width: width,
-                  child: _DesktopAccountMetric(
-                    icon: LucideIcons.package,
-                    label: context.l10n.currentPlan,
-                    value: ctrl.user.plan.isEmpty
-                        ? context.l10n.noCurrentPlan
-                        : ctrl.user.plan,
+    final c = AppColors.of(context);
+    final balance = ctrl.user.balance / 100;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _desktopFundsLabel(context),
+          style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
+        ),
+        const SizedBox(height: 8),
+        AppCard(
+          padding: const EdgeInsets.all(14),
+          shadow: AppCardShadow.soft,
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _DesktopFundValue(
+                      icon: LucideIcons.wallet,
+                      label: context.l10n.accountBalance,
+                      value:
+                          '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
+                    ),
                   ),
-                ),
-                SizedBox(
-                  width: width,
-                  child: _DesktopBalanceMetric(
-                    value:
-                        '${ctrl.currencySymbol}${balance.toStringAsFixed(2)}',
-                    commission:
-                        '${ctrl.currencySymbol}${ctrl.withdrawable.toStringAsFixed(2)}',
+                  Container(width: 1, height: 44, color: c.softBorder),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _DesktopFundValue(
+                      icon: LucideIcons.badgeDollarSign,
+                      label: context.l10n.withdrawableCommission,
+                      value:
+                          '${ctrl.currencySymbol}${ctrl.withdrawable.toStringAsFixed(2)}',
+                    ),
                   ),
-                ),
-                SizedBox(
-                  width: width,
-                  child: _DesktopAccountMetric(
-                    icon: LucideIcons.calendarClock,
-                    label: context.l10n.expiryTime,
-                    value: ctrl.user.expiry.isEmpty ? '--' : ctrl.user.expiry,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _DesktopMoneyActions(
-              onRecharge: onRecharge,
-              onTransfer: onTransfer,
-              onWithdraw: onWithdraw,
-            ),
-          ],
-        );
-      },
+                ],
+              ),
+              const SizedBox(height: 14),
+              _Divider(color: c.softBorder),
+              const SizedBox(height: 10),
+              _DesktopMoneyActions(
+                onRecharge: onRecharge,
+                onTransfer: onTransfer,
+                onWithdraw: onWithdraw,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _DesktopAccountMetric extends StatelessWidget {
-  const _DesktopAccountMetric({
+class _DesktopFundValue extends StatelessWidget {
+  const _DesktopFundValue({
     required this.icon,
     required this.label,
     required this.value,
@@ -334,97 +788,32 @@ class _DesktopAccountMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return AppCard(
-      height: 116,
-      padding: const EdgeInsets.all(14),
-      shadow: AppCardShadow.soft,
-      child: Row(
-        children: [
-          _SmallIcon(icon: icon, color: c.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+    return Row(
+      children: [
+        _SmallIcon(icon: icon, color: c.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyStrong.copyWith(
+                  color: c.textPrimary,
+                  fontSize: 17,
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  value,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: c.textPrimary,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DesktopBalanceMetric extends StatelessWidget {
-  const _DesktopBalanceMetric({required this.value, required this.commission});
-
-  final String value;
-  final String commission;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppCard(
-      height: 116,
-      padding: const EdgeInsets.all(14),
-      shadow: AppCardShadow.soft,
-      child: Row(
-        children: [
-          _SmallIcon(icon: LucideIcons.wallet, color: c.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.accountBalance,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: c.textPrimary,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${context.l10n.withdrawableCommission} $commission',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(
-                    color: c.textMuted,
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -442,34 +831,39 @@ class _DesktopMoneyActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      shadow: AppCardShadow.soft,
-      child: Row(
-        children: [
-          Expanded(
-            child: _DesktopMoneyAction(
-              label: context.l10n.rechargeBalance,
-              onTap: onRecharge,
-            ),
+    return Row(
+      children: [
+        Expanded(
+          child: _DesktopMoneyAction(
+            label: context.l10n.rechargeBalance,
+            onTap: onRecharge,
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _DesktopMoneyAction(
-              label: context.l10n.transferShort,
-              onTap: onTransfer,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _DesktopMoneyAction(
+            label: _accountText(
+              context,
+              hans: '划转佣金',
+              hant: '劃轉佣金',
+              en: 'Transfer commission',
             ),
+            onTap: onTransfer,
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _DesktopMoneyAction(
-              label: context.l10n.withdrawShort,
-              onTap: onWithdraw,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _DesktopMoneyAction(
+            label: _accountText(
+              context,
+              hans: '申请提现',
+              hant: '申請提現',
+              en: 'Request withdrawal',
             ),
+            onTap: onWithdraw,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -515,14 +909,82 @@ class _DesktopMoneyAction extends StatelessWidget {
 }
 
 class _DesktopAccountServices extends StatelessWidget {
-  const _DesktopAccountServices({required this.onOrders});
+  const _DesktopAccountServices({
+    required this.showXiaoServices,
+    required this.telegramBound,
+    required this.onOrders,
+    required this.onGiftCard,
+    required this.onTelegram,
+  });
 
+  final bool showXiaoServices;
+  final bool telegramBound;
   final VoidCallback onOrders;
+  final VoidCallback onGiftCard;
+  final VoidCallback onTelegram;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    if (!isPageEnabled(AppPage.orders)) return const SizedBox.shrink();
+    final showOrders = isPageEnabled(AppPage.orders);
+    if (!showOrders && !showXiaoServices) return const SizedBox.shrink();
+
+    final rows = <Widget>[];
+    void addRow(Widget row) {
+      if (rows.isNotEmpty) rows.add(_Divider(color: c.softBorder));
+      rows.add(row);
+    }
+
+    if (showOrders) {
+      addRow(
+        _ActionRow(
+          icon: LucideIcons.clipboardList,
+          title: desktopPageLabel(context, AppPage.orders),
+          subtitle: context.l10n.ordersSubtitle,
+          onTap: onOrders,
+        ),
+      );
+    }
+    if (showXiaoServices) {
+      addRow(
+        _ActionRow(
+          icon: LucideIcons.ticketCheck,
+          title: _accountText(
+            context,
+            hans: '兑换码',
+            hant: '兌換碼',
+            en: 'Redemption code',
+          ),
+          subtitle: _accountText(
+            context,
+            hans: '兑换余额、流量或套餐权益',
+            hant: '兌換餘額、流量或套餐權益',
+            en: 'Redeem account or plan benefits',
+          ),
+          onTap: onGiftCard,
+        ),
+      );
+      addRow(
+        _ActionRow(
+          icon: LucideIcons.send,
+          title: 'Telegram',
+          subtitle: telegramBound
+              ? _accountText(
+                  context,
+                  hans: '已绑定，可接收账户通知',
+                  hant: '已綁定，可接收帳戶通知',
+                  en: 'Connected for account notifications',
+                )
+              : _accountText(
+                  context,
+                  hans: '未绑定，点击连接 Telegram',
+                  hant: '未綁定，點擊連接 Telegram',
+                  en: 'Not connected — connect Telegram',
+                ),
+          onTap: onTelegram,
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -535,12 +997,7 @@ class _DesktopAccountServices extends StatelessWidget {
         AppCard(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           shadow: AppCardShadow.soft,
-          child: _ActionRow(
-            icon: LucideIcons.clipboardList,
-            title: desktopPageLabel(context, AppPage.orders),
-            subtitle: context.l10n.ordersSubtitle,
-            onTap: onOrders,
-          ),
+          child: Column(children: rows),
         ),
       ],
     );
@@ -634,27 +1091,30 @@ class _DesktopAccountSettings extends StatelessWidget {
   }
 }
 
-String _desktopAccountServicesLabel(BuildContext context) {
+String _accountText(
+  BuildContext context, {
+  required String hans,
+  required String hant,
+  required String en,
+}) {
   final locale = Localizations.localeOf(context);
-  if (locale.languageCode != 'zh') return 'Account history';
+  if (locale.languageCode != 'zh') return en;
   final traditional =
       locale.scriptCode == 'Hant' ||
       locale.countryCode == 'TW' ||
       locale.countryCode == 'HK' ||
       locale.countryCode == 'MO';
-  return traditional ? '帳戶記錄' : '账户记录';
+  return traditional ? hant : hans;
 }
 
-String _desktopAccountSettingsLabel(BuildContext context) {
-  final locale = Localizations.localeOf(context);
-  if (locale.languageCode != 'zh') return 'Account settings';
-  final traditional =
-      locale.scriptCode == 'Hant' ||
-      locale.countryCode == 'TW' ||
-      locale.countryCode == 'HK' ||
-      locale.countryCode == 'MO';
-  return traditional ? '帳戶設定' : '账户设置';
-}
+String _desktopFundsLabel(BuildContext context) =>
+    _accountText(context, hans: '资金账户', hant: '資金帳戶', en: 'Funds account');
+
+String _desktopAccountServicesLabel(BuildContext context) =>
+    _accountText(context, hans: '账户服务', hant: '帳戶服務', en: 'Account services');
+
+String _desktopAccountSettingsLabel(BuildContext context) =>
+    _accountText(context, hans: '账户设置', hant: '帳戶設定', en: 'Account settings');
 
 // ── Compact-layout widgets + helpers (original MobileProfilePage, verbatim)
 

@@ -218,6 +218,29 @@ class PanelApi {
     return RemoteUser.fromJson(_dataMap(res));
   }
 
+  Future<void> redeemGiftCard(String giftCard) async {
+    final code = giftCard.trim();
+    if (code.isEmpty) throw const ApiException('兑换码不能为空');
+    final res = await _client.post(
+      '/user/redeemgiftcard',
+      data: {'giftcard': code},
+    );
+    _check(res);
+  }
+
+  Future<String> getTelegramBotUsername() async {
+    final res = await _client.get('/user/telegram/getBotInfo');
+    _check(res);
+    final username = _dataMap(res)['username']?.toString().trim() ?? '';
+    if (username.isEmpty) throw const ApiException('Telegram 机器人未配置');
+    return username.startsWith('@') ? username.substring(1) : username;
+  }
+
+  Future<void> unbindTelegram() async {
+    final res = await _client.get('/user/unbindTelegram');
+    _check(res);
+  }
+
   // ── Subscription / Nodes ─────────────────────────────────────────────────
 
   Future<String> getSubscribeUrl() async {
@@ -265,10 +288,7 @@ class PanelApi {
     if (profile.nodes.isEmpty) {
       SecureLogger.warn('fetchSubscription parsed 0 nodes from non-empty body');
     }
-    return SubscriptionResult(
-      nodes: profile.nodes,
-      traffic: traffic,
-    );
+    return SubscriptionResult(nodes: profile.nodes, traffic: traffic);
   }
 
   /// Describes a subscription body without leaking node contents into logs.
