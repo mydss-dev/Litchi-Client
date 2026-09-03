@@ -26,11 +26,15 @@ jobs:
           channel: stable
 
       - name: Apply account center refresh
-        run: |
-          python3 tool/apply_account_center_refresh.py
-          python3 tool/fix_account_center_lint.py
+        run: python3 tool/apply_account_center_refresh.py
 
-      - name: Format changed Dart files
+      - name: Format staged Dart files
+        run: dart format lib/features/account/account_page.dart lib/shared/models/api_models.dart lib/shared/services/panel_api.dart test/account_center_services_test.dart
+
+      - name: Apply lint correction
+        run: python3 tool/fix_account_center_lint.py
+
+      - name: Format final Dart files
         run: dart format lib/features/account/account_page.dart lib/shared/models/api_models.dart lib/shared/services/panel_api.dart test/account_center_services_test.dart
 
       - run: flutter pub get
