@@ -1,0 +1,105 @@
+name: Windows TUN Startup Fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/windows-tun-startup-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    name: Apply and verify
+    runs-on: ubuntu-latest
+    outputs:
+      product_sha: ${{ steps.commit.outputs.product_sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.24.7'
+
+      - name: Apply Windows TUN profile fix
+        run: python3 tool/fix_windows_tun_profile.py
+
+      - name: Format changed Dart files
+        run: dart format lib/shared/services/sing_box_config.dart test/tun_config_defaults_test.dart
+
+      - run: flutter pub get
+      - run: flutter test test/tun_config_defaults_test.dart
+      - run: flutter test
+      - run: flutter analyze
+      - run: git diff --check
+
+      - name: Test isolated sing-box core
+        working-directory: core/singbox
+        run: |
+          go mod download
+          go test -tags "with_clash_api,with_quic,with_utls,with_wireguard" ./...
+
+      - name: Windows TUN regression guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path('lib/shared/services/sing_box_config.dart').read_text()
+          test = Path('test/tun_config_defaults_test.dart').read_text()
+          assert 'tunRouteProfile(isWindows: Platform.isWindows)' in source
+          assert '? (mtu: 1500, strictRoute: false)' in source
+          assert ': (mtu: 9000, strictRoute: true)' in source
+          assert "'mtu': tunProfile.mtu" in source
+          assert "'strict_route': tunProfile.strictRoute" in source
+          assert 'Windows TUN keeps conservative Wintun defaults' in test
+          PY
+
+      - name: Commit product changes
+        id: commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm tool/fix_windows_tun_profile.py
+          git add lib/shared/services/sing_box_config.dart test/tun_config_defaults_test.dart
+          git commit -m 'fix(windows): restore conservative TUN routing profile'
+          git push origin HEAD:main
+          echo "product_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  windows-verify:
+    name: Windows core and client build
+    needs: apply
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.apply.outputs.product_sha }}
+          lfs: true
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.24.7'
+
+      - run: flutter pub get
+
+      - name: Build isolated Windows sing-box core
+        shell: pwsh
+        run: |
+          .\tool\build_singbox_desktop.ps1 -Target windows -Arch amd64
+          if (-not (Test-Path 'runtime\singbox\windows-amd64\litchi-core.exe')) {
+            throw 'litchi-core.exe was not produced'
+          }
+          .\runtime\singbox\windows-amd64\litchi-core.exe version
+
+      - name: Build Windows debug client
+        run: flutter build windows --debug
