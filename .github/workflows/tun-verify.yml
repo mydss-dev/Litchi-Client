@@ -28,13 +28,39 @@ jobs:
             lib/shared/services/clash_api_client.dart `
             lib/shared/services/sing_box_core_manager.dart `
             lib/shared/services/windows_core_process_manager.dart `
+            lib/shared/services/windows_tun_kill_switch.dart `
             lib/shared/services/windows_tun_service_manager.dart
           git diff -- `
             lib/app/core_controller.dart `
             lib/shared/services/clash_api_client.dart `
             lib/shared/services/sing_box_core_manager.dart `
             lib/shared/services/windows_core_process_manager.dart `
+            lib/shared/services/windows_tun_kill_switch.dart `
             lib/shared/services/windows_tun_service_manager.dart
+      - name: Verify isolated-core WFP wiring
+        shell: pwsh
+        run: |
+          $dart = Get-Content -Raw 'lib/shared/services/windows_tun_kill_switch.dart'
+          $runner = Get-Content -Raw 'windows/runner/flutter_window.cpp'
+          $wfp = Get-Content -Raw 'windows/runner/wfp_kill_switch.cpp'
+          if ($dart -match 'Platform\.resolvedExecutable') {
+            throw 'Kill switch must not whitelist Client.exe via Platform.resolvedExecutable'
+          }
+          if ($dart -notmatch 'WindowsCoreProcessManager\.findExecutable\(\)') {
+            throw 'Kill switch must resolve the isolated litchi-core.exe path'
+          }
+          if ($dart -notmatch "'corePath': corePath") {
+            throw 'Kill switch MethodChannel must send corePath'
+          }
+          if ($runner -notmatch 'ReadStringArgument\(\*arguments, "corePath"\)') {
+            throw 'Windows runner must read corePath for WFP engagement'
+          }
+          if ($wfp -notmatch 'Litchi permit isolated core') {
+            throw 'WFP must contain an isolated-core permit rule'
+          }
+          if ($wfp -match 'permit embedded sing-box') {
+            throw 'Legacy embedded-core WFP bypass must not remain'
+          }
       - run: flutter test
       - run: flutter analyze
       - name: Test sing-box bridge on Windows
