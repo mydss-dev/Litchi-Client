@@ -8,7 +8,6 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"net"
@@ -267,7 +266,14 @@ func startTunControlServer(settings tunServiceSettings, runtime *tunRuntime) (*h
 	if err != nil {
 		return nil, err
 	}
-	server := &http.Server{Handler: mux, ReadHeaderTimeout: 2 * time.Second}
+	server := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 2 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       15 * time.Second,
+		MaxHeaderBytes:    8 * 1024,
+	}
 	go func() { _ = server.Serve(listener) }()
 	return server, nil
 }
@@ -317,22 +323,32 @@ func installTunWindowsService(args []string) int {
 	defer manager.Disconnect()
 
 	if existing, openErr := manager.OpenService(windowsTunServiceName); openErr == nil {
-		stopManagedService(existing)
+		if err := stopManagedService(existing); err != nil {
+			existing.Close()
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
 		if err := existing.Delete(); err != nil {
 			existing.Close()
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
 		existing.Close()
-		// SCM deletion is asynchronous; release the old registration before
-		// creating the replacement pointing at the current app version.
-		for i := 0; i < 30; i++ {
+		// SCM deletion is asynchronous; do not create a replacement until the
+		// old registration is actually gone.
+		deleted := false
+		for i := 0; i < 40; i++ {
 			probe, probeErr := manager.OpenService(windowsTunServiceName)
 			if probeErr != nil {
+				deleted = true
 				break
 			}
 			probe.Close()
 			time.Sleep(100 * time.Millisecond)
+		}
+		if !deleted {
+			fmt.Fprintln(os.Stderr, "timed out waiting for old TUN service deletion")
+			return 1
 		}
 	}
 
@@ -378,39 +394,60 @@ func installTunWindowsService(args []string) int {
 
 func uninstallTunWindowsService() int {
 	manager, err := mgr.Connect()
-	if err == nil {
-		if service, openErr := manager.OpenService(windowsTunServiceName); openErr == nil {
-			stopManagedService(service)
-			_ = service.Delete()
-			service.Close()
-		}
-		manager.Disconnect()
-	}
-	_ = registry.DeleteKey(registry.LOCAL_MACHINE, windowsTunServiceRegistryKey)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	defer manager.Disconnect()
+
+	if service, openErr := manager.OpenService(windowsTunServiceName); openErr == nil {
+		if err := stopManagedService(service); err != nil {
+			service.Close()
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		if err := service.Delete(); err != nil {
+			service.Close()
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		service.Close()
+	}
+	_ = registry.DeleteKey(registry.LOCAL_MACHINE, windowsTunServiceRegistryKey)
 	return 0
 }
 
-func stopManagedService(service *mgr.Service) {
-	status, err := service.Control(svc.Stop)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		// A stopped service rejects SERVICE_CONTROL_STOP; Query below is the
-		// authoritative state and keeps this cleanup idempotent.
+func stopManagedService(service *mgr.Service) error {
+	status, err := service.Query()
+	if err != nil {
+		return fmt.Errorf("query TUN service before stop: %w", err)
 	}
-	if err == nil && status.State == svc.Stopped {
-		return
+	if status.State == svc.Stopped {
+		return nil
 	}
-	deadline := time.Now().Add(8 * time.Second)
-	for time.Now().Before(deadline) {
+
+	if _, err := service.Control(svc.Stop); err != nil {
+		// The service can race to Stopped between Query and Control. Confirm that
+		// state once more before treating the control error as fatal.
 		status, queryErr := service.Query()
-		if queryErr != nil || status.State == svc.Stopped {
-			return
+		if queryErr == nil && status.State == svc.Stopped {
+			return nil
+		}
+		return fmt.Errorf("stop TUN service: %w", err)
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		status, err := service.Query()
+		if err != nil {
+			return fmt.Errorf("query TUN service while stopping: %w", err)
+		}
+		if status.State == svc.Stopped {
+			return nil
 		}
 		time.Sleep(150 * time.Millisecond)
 	}
+	return fmt.Errorf("timed out waiting for TUN service to stop")
 }
 
 func writeTunServiceSettings(authHash string, port int) error {
