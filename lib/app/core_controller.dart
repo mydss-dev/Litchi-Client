@@ -710,8 +710,9 @@ class CoreController extends ChangeNotifier {
   }
 
   Future<String?> _switchWindowsNetworkLayer(CoreConnectionRequest req) async {
-    if (!Platform.isWindows || _status != ConnectionStatus.connected)
+    if (!Platform.isWindows || _status != ConnectionStatus.connected) {
       return null;
+    }
     if (req.networkMode == NetworkMode.tun) {
       await ProxySetter.disable();
       final error = await _activateWindowsTunLayer();
@@ -850,7 +851,15 @@ class CoreController extends ChangeNotifier {
     }
     _stopTrafficMonitor();
     if (Platform.isWindows) {
-      await _core.stopWindowsTun();
+      final stopped = await _core.stopWindowsTun();
+      if (!stopped) {
+        _coreError = _core.lastError.isEmpty
+            ? 'Windows TUN 服务停止失败，为避免直连泄漏已保持保护状态'
+            : _core.lastError;
+        _status = ConnectionStatus.error;
+        notifyListeners();
+        return;
+      }
     }
     await _releaseTunKillSwitch();
     // Mark this as an intentional stop before the core exits, so the stopped

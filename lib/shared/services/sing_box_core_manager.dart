@@ -184,7 +184,14 @@ final class SingBoxCoreManager {
     if (Platform.isWindows) {
       // Never tear down the main SOCKS core while the privileged TUN is still
       // routing into it; otherwise Windows is left with a live black-hole TUN.
-      await _windowsTun.stop();
+      final tunStopped = await _windowsTun.stop();
+      if (!tunStopped) {
+        _lastError = _windowsTun.lastError.isEmpty
+            ? 'Windows TUN 服务停止失败；主核心保持运行以避免 TUN 黑洞'
+            : _windowsTun.lastError;
+        _emitLog(_lastError);
+        return;
+      }
     }
     final stopped = Platform.isWindows
         ? await _windows.stop()
