@@ -562,9 +562,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           _startStatusRefresh();
           unawaited(_refreshAccountStatusSilently());
           unawaited(_refreshNodesIfStale());
-          unawaited(
-            _desktopNetworkMonitor.checkNow(notifyEvenIfUnchanged: true),
-          );
+          unawaited(_desktopNetworkMonitor.checkNow());
         }
       case AppLifecycleState.paused:
       case AppLifecycleState.hidden:

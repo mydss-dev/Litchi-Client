@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import '../../config/app_identity.dart';
 import 'secure_logger.dart';
 
 class DesktopNetworkMonitor {
@@ -50,9 +51,13 @@ class DesktopNetworkMonitor {
     );
     final entries = <String>[
       for (final interface in interfaces)
-        for (final address in interface.addresses)
-          '${interface.name}:${address.type.name}:${address.address}',
+        if (!_isTunInterface(interface.name))
+          for (final address in interface.addresses)
+            '${interface.name}:${address.type.name}:${address.address}',
     ]..sort();
     return entries.join('|');
   }
+
+  static bool _isTunInterface(String name) =>
+      name == AppIdentity.tunInterfaceAlias || name.startsWith('utun');
 }
