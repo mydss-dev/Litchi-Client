@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:io' as io;
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
+
 import 'app_paths.dart';
 import 'secure_logger.dart';
 
@@ -46,6 +48,35 @@ final class WindowsCoreProcessManager {
     return null;
   }
 
+  /// Builds the `run` argument vector handed to `litchi-core.exe`.
+  ///
+  /// [parentPid] is the Flutter process ID (dart:io's `pid`) — the core watches
+  /// it and self-terminates when the parent exits. It is a non-nullable [int],
+  /// so a `null` value can never be interpolated into the string `"null"` and
+  /// trip sing-box's `--parent-pid` flag parser again.
+  @visibleForTesting
+  static List<String> buildRunArguments({
+    required String configPath,
+    required String workingDirectory,
+    required int controlPort,
+    required String token,
+    required int parentPid,
+  }) {
+    return <String>[
+      'run',
+      '--config',
+      configPath,
+      '--working-directory',
+      workingDirectory,
+      '--control-port',
+      '$controlPort',
+      '--token',
+      token,
+      '--parent-pid',
+      '$parentPid',
+    ];
+  }
+
   Future<bool> start(String configPath, {required int apiPort}) async {
     if (!Platform.isWindows) {
       _lastError = 'Windows core process is only available on Windows';
@@ -70,19 +101,13 @@ final class WindowsCoreProcessManager {
     final generation = ++_generation;
     final controlPort = await _allocatePort();
     final token = _randomToken();
-    final arguments = <String>[
-      'run',
-      '--config',
-      configPath,
-      '--working-directory',
-      AppPaths.dataDirectory,
-      '--control-port',
-      '$controlPort',
-      '--token',
-      token,
-      '--parent-pid',
-      '${io.pid}',
-    ];
+    final arguments = buildRunArguments(
+      configPath: configPath,
+      workingDirectory: AppPaths.dataDirectory,
+      controlPort: controlPort,
+      token: token,
+      parentPid: io.pid,
+    );
 
     _controlPort = controlPort;
     _token = token;
