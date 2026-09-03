@@ -68,7 +68,6 @@ final class SingBoxCoreManager {
         _ensureWindowsSubscriptions();
         final started = await _windows.start(
           configPath,
-          elevate: false,
           apiPort: apiPort,
         );
         if (!started) {
