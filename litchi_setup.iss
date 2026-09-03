@@ -66,11 +66,6 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
-[UninstallRun]
-; The TUN service is installed lazily on first TUN use. Remove it before the
-; bundled core executable disappears so no privileged service is orphaned.
-Filename: "{app}\litchi-core.exe"; Parameters: "tun-service uninstall"; Flags: runhidden waituntilterminated skipifdoesntexist
-
 [Code]
 var
   TunServiceExistedBeforeUpgrade: Boolean;
@@ -113,6 +108,74 @@ begin
     '$s.WaitForStatus(''Stopped'',[TimeSpan]::FromSeconds(15)) }; exit 0"';
   Result := Exec(PowerShellPath, Command, '', SW_HIDE, ewWaitUntilTerminated,
     ResultCode) and (ResultCode = 0);
+end;
+
+function WaitForTunServiceDeleted(): Boolean;
+var
+  Attempt: Integer;
+begin
+  for Attempt := 0 to 40 do
+  begin
+    if not TunServiceExists() then
+    begin
+      Result := True;
+      Exit;
+    end;
+    Sleep(125);
+  end;
+  Result := False;
+end;
+
+function RemoveTunServiceForUninstall(): Boolean;
+var
+  ResultCode: Integer;
+  CorePath: String;
+begin
+  Result := True;
+  if not TunServiceExists() then
+    Exit;
+
+  if not StopTunServiceAndWait() then
+  begin
+    Result := False;
+    Exit;
+  end;
+
+  CorePath := ExpandConstant('{app}\litchi-core.exe');
+  if FileExists(CorePath) then
+  begin
+    if Exec(CorePath, 'tun-service uninstall', '', SW_HIDE,
+      ewWaitUntilTerminated, ResultCode) and (ResultCode = 0) then
+    begin
+      Result := WaitForTunServiceDeleted();
+      if Result then
+        Exit;
+    end;
+  end;
+
+  ; Fall back to the SCM directly. This path also handles a manually damaged
+  ; installation where litchi-core.exe is missing but the service remains.
+  if not Exec(ExpandConstant('{sys}\sc.exe'), 'delete LitchiTunService', '',
+    SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    Result := False;
+    Exit;
+  end;
+  if (ResultCode <> 0) and TunServiceExists() then
+  begin
+    Result := False;
+    Exit;
+  end;
+  Result := WaitForTunServiceDeleted();
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  Result := RemoveTunServiceForUninstall();
+  if not Result then
+    MsgBox(
+      '无法安全移除 Litchi TUN 服务。请重启电脑后再次卸载，避免留下失效的管理员服务。',
+      mbError, MB_OK);
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
