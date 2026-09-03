@@ -319,14 +319,7 @@ class _GiftCardRedeemModalState extends State<_GiftCardRedeemModal> {
     final code = _controller.text.trim();
     if (code.isEmpty || _submitting) {
       if (code.isEmpty) {
-        setState(
-          () => _error = _accountText(
-            context,
-            hans: '请输入兑换码',
-            hant: '請輸入兌換碼',
-            en: 'Enter a redemption code',
-          ),
-        );
+        setState(() => _error = context.l10n.giftCardEnterRequired);
       }
       return;
     }
@@ -340,12 +333,7 @@ class _GiftCardRedeemModalState extends State<_GiftCardRedeemModal> {
       if (!mounted) return;
       AppToast.show(
         context,
-        _accountText(
-          context,
-          hans: '兑换成功',
-          hant: '兌換成功',
-          en: 'Redeemed successfully',
-        ),
+        context.l10n.giftCardRedeemed,
         type: AppToastType.success,
       );
       Navigator.of(context).pop();
@@ -362,31 +350,16 @@ class _GiftCardRedeemModalState extends State<_GiftCardRedeemModal> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return AppAdaptiveModal(
-      title: _accountText(
-        context,
-        hans: '兑换码',
-        hant: '兌換碼',
-        en: 'Redemption code',
-      ),
-      subtitle: _accountText(
-        context,
-        hans: '兑换余额、流量、时长或套餐权益',
-        hant: '兌換餘額、流量、時長或套餐權益',
-        en: 'Redeem account or plan benefits',
-      ),
+      title: context.l10n.giftCardTitle,
+      subtitle: context.l10n.giftCardModalSubtitle,
       maxWidth: 520,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AppTextField(
             controller: _controller,
-            label: _accountText(context, hans: '兑换码', hant: '兌換碼', en: 'Code'),
-            hint: _accountText(
-              context,
-              hans: '请输入兑换码',
-              hant: '請輸入兌換碼',
-              en: 'Enter code',
-            ),
+            label: context.l10n.giftCardCode,
+            hint: context.l10n.giftCardEnterHint,
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
@@ -402,18 +375,8 @@ class _GiftCardRedeemModalState extends State<_GiftCardRedeemModal> {
               onPressed: _submitting ? null : _submit,
               child: Text(
                 _submitting
-                    ? _accountText(
-                        context,
-                        hans: '兑换中…',
-                        hant: '兌換中…',
-                        en: 'Redeeming…',
-                      )
-                    : _accountText(
-                        context,
-                        hans: '立即兑换',
-                        hant: '立即兌換',
-                        en: 'Redeem now',
-                      ),
+                    ? context.l10n.giftCardRedeeming
+                    : context.l10n.giftCardRedeemNow,
               ),
             ),
           ),
@@ -475,12 +438,7 @@ class _TelegramBindingModalState extends State<_TelegramBindingModal> {
       if (!mounted) return;
       AppToast.show(
         context,
-        _accountText(
-          context,
-          hans: '绑定命令已复制',
-          hant: '綁定指令已複製',
-          en: 'Binding command copied',
-        ),
+        context.l10n.telegramBindingCommandCopied,
         type: AppToastType.success,
       );
     } catch (e) {
@@ -496,12 +454,7 @@ class _TelegramBindingModalState extends State<_TelegramBindingModal> {
     final opened = await _openExternalHttps('https://t.me/$_botUsername');
     if (!mounted || opened) return;
     setState(() {
-      _error = _accountText(
-        context,
-        hans: '无法打开 Telegram，请手动搜索 @$_botUsername',
-        hant: '無法開啟 Telegram，請手動搜尋 @$_botUsername',
-        en: 'Could not open Telegram. Search for @$_botUsername manually.',
-      );
+      _error = context.l10n.telegramOpenFailed(_botUsername);
     });
   }
 
@@ -536,12 +489,7 @@ class _TelegramBindingModalState extends State<_TelegramBindingModal> {
       setState(() {});
       AppToast.show(
         context,
-        _accountText(
-          context,
-          hans: 'Telegram 已解绑',
-          hant: 'Telegram 已解除綁定',
-          en: 'Telegram unbound',
-        ),
+        context.l10n.telegramUnbound,
         type: AppToastType.success,
       );
     } catch (e) {
@@ -556,16 +504,11 @@ class _TelegramBindingModalState extends State<_TelegramBindingModal> {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final status = _bound
-        ? _accountText(context, hans: '已绑定', hant: '已綁定', en: 'Connected')
-        : _accountText(context, hans: '未绑定', hant: '未綁定', en: 'Not connected');
+        ? context.l10n.telegramConnected
+        : context.l10n.telegramNotConnected;
     return AppAdaptiveModal(
       title: 'Telegram',
-      subtitle: _accountText(
-        context,
-        hans: '绑定后可接收到期、流量和服务通知',
-        hant: '綁定後可接收到期、流量和服務通知',
-        en: 'Connect Telegram for account notifications',
-      ),
+      subtitle: context.l10n.telegramNotificationsSubtitle,
       maxWidth: 540,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -587,12 +530,7 @@ class _TelegramBindingModalState extends State<_TelegramBindingModal> {
                     children: [
                       Text(
                         _loading
-                            ? _accountText(
-                                context,
-                                hans: '正在读取机器人…',
-                                hant: '正在讀取機器人…',
-                                en: 'Loading bot…',
-                              )
+                            ? context.l10n.telegramLoadingBot
                             : _botUsername.isEmpty
                             ? 'Telegram Bot'
                             : '@$_botUsername',
@@ -625,24 +563,12 @@ class _TelegramBindingModalState extends State<_TelegramBindingModal> {
               height: 42,
               child: OutlinedButton(
                 onPressed: _working ? null : _unbind,
-                child: Text(
-                  _accountText(
-                    context,
-                    hans: '解除绑定',
-                    hant: '解除綁定',
-                    en: 'Unbind Telegram',
-                  ),
-                ),
+                child: Text(context.l10n.telegramUnbind),
               ),
             )
           else ...[
             Text(
-              _accountText(
-                context,
-                hans: '先复制绑定命令，再打开机器人并粘贴发送。订阅地址不会显示在账户页面。',
-                hant: '先複製綁定指令，再開啟機器人並貼上傳送。訂閱地址不會顯示在帳戶頁面。',
-                en: 'Copy the binding command, open the bot, then paste and send it.',
-              ),
+              context.l10n.telegramBindingInstructions,
               style: AppTextStyles.caption.copyWith(color: c.textMuted),
             ),
             const SizedBox(height: 12),
@@ -653,14 +579,7 @@ class _TelegramBindingModalState extends State<_TelegramBindingModal> {
                     height: 42,
                     child: OutlinedButton(
                       onPressed: _working || _loading ? null : _copyBindCommand,
-                      child: Text(
-                        _accountText(
-                          context,
-                          hans: '复制绑定命令',
-                          hant: '複製綁定指令',
-                          en: 'Copy command',
-                        ),
-                      ),
+                      child: Text(context.l10n.telegramCopyCommand),
                     ),
                   ),
                 ),
@@ -672,14 +591,7 @@ class _TelegramBindingModalState extends State<_TelegramBindingModal> {
                       onPressed: _loading || _botUsername.isEmpty
                           ? null
                           : _openTelegram,
-                      child: Text(
-                        _accountText(
-                          context,
-                          hans: '打开 Telegram',
-                          hant: '開啟 Telegram',
-                          en: 'Open Telegram',
-                        ),
-                      ),
+                      child: Text(context.l10n.telegramOpen),
                     ),
                   ),
                 ),
@@ -688,14 +600,7 @@ class _TelegramBindingModalState extends State<_TelegramBindingModal> {
             const SizedBox(height: 10),
             TextButton(
               onPressed: _working ? null : _refreshStatus,
-              child: Text(
-                _accountText(
-                  context,
-                  hans: '我已完成绑定，刷新状态',
-                  hant: '我已完成綁定，重新整理狀態',
-                  en: 'I finished binding — refresh status',
-                ),
-              ),
+              child: Text(context.l10n.telegramRefreshBindingStatus),
             ),
           ],
         ],
@@ -842,24 +747,14 @@ class _DesktopMoneyActions extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: _DesktopMoneyAction(
-            label: _accountText(
-              context,
-              hans: '划转佣金',
-              hant: '劃轉佣金',
-              en: 'Transfer commission',
-            ),
+            label: context.l10n.transferCommission,
             onTap: onTransfer,
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _DesktopMoneyAction(
-            label: _accountText(
-              context,
-              hans: '申请提现',
-              hant: '申請提現',
-              en: 'Request withdrawal',
-            ),
+            label: context.l10n.requestWithdrawal,
             onTap: onWithdraw,
           ),
         ),
@@ -949,18 +844,8 @@ class _DesktopAccountServices extends StatelessWidget {
       addRow(
         _ActionRow(
           icon: LucideIcons.ticketCheck,
-          title: _accountText(
-            context,
-            hans: '兑换码',
-            hant: '兌換碼',
-            en: 'Redemption code',
-          ),
-          subtitle: _accountText(
-            context,
-            hans: '兑换余额、流量或套餐权益',
-            hant: '兌換餘額、流量或套餐權益',
-            en: 'Redeem account or plan benefits',
-          ),
+          title: context.l10n.giftCardTitle,
+          subtitle: context.l10n.giftCardServiceSubtitle,
           onTap: onGiftCard,
         ),
       );
@@ -969,18 +854,8 @@ class _DesktopAccountServices extends StatelessWidget {
           icon: LucideIcons.send,
           title: 'Telegram',
           subtitle: telegramBound
-              ? _accountText(
-                  context,
-                  hans: '已绑定，可接收账户通知',
-                  hant: '已綁定，可接收帳戶通知',
-                  en: 'Connected for account notifications',
-                )
-              : _accountText(
-                  context,
-                  hans: '未绑定，点击连接 Telegram',
-                  hant: '未綁定，點擊連接 Telegram',
-                  en: 'Not connected — connect Telegram',
-                ),
+              ? context.l10n.telegramServiceConnected
+              : context.l10n.telegramServiceNotConnected,
           onTap: onTelegram,
         ),
       );
@@ -1091,30 +966,13 @@ class _DesktopAccountSettings extends StatelessWidget {
   }
 }
 
-String _accountText(
-  BuildContext context, {
-  required String hans,
-  required String hant,
-  required String en,
-}) {
-  final locale = Localizations.localeOf(context);
-  if (locale.languageCode != 'zh') return en;
-  final traditional =
-      locale.scriptCode == 'Hant' ||
-      locale.countryCode == 'TW' ||
-      locale.countryCode == 'HK' ||
-      locale.countryCode == 'MO';
-  return traditional ? hant : hans;
-}
-
-String _desktopFundsLabel(BuildContext context) =>
-    _accountText(context, hans: '资金账户', hant: '資金帳戶', en: 'Funds account');
+String _desktopFundsLabel(BuildContext context) => context.l10n.accountAssets;
 
 String _desktopAccountServicesLabel(BuildContext context) =>
-    _accountText(context, hans: '账户服务', hant: '帳戶服務', en: 'Account services');
+    context.l10n.accountServices;
 
 String _desktopAccountSettingsLabel(BuildContext context) =>
-    _accountText(context, hans: '账户设置', hant: '帳戶設定', en: 'Account settings');
+    context.l10n.accountManagement;
 
 // ── Compact-layout widgets + helpers (original MobileProfilePage, verbatim)
 
@@ -1170,8 +1028,9 @@ class _TrafficOverviewCard extends StatelessWidget {
             children: [
               Text(
                 '${remainGb.toStringAsFixed(1)} GB',
-                style: AppTextStyles.largeNumber(fontSize: 24)
-                    .copyWith(color: c.textPrimary),
+                style: AppTextStyles.largeNumber(
+                  fontSize: 24,
+                ).copyWith(color: c.textPrimary),
               ),
               const SizedBox(width: 8),
               Padding(

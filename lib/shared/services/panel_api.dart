@@ -1,3 +1,5 @@
+import '../../config/app_config.dart';
+import '../../config/panel_backend.dart';
 import '../models/api_models.dart';
 import 'api_client.dart';
 import 'secure_logger.dart';
@@ -9,9 +11,19 @@ import 'subscription_parser.dart';
 /// Handles authentication, user data, subscription parsing, plans, invite and
 /// traffic — using the V2Board-compatible REST surface that most panels share.
 class PanelApi {
-  const PanelApi(this._client);
+  PanelApi(this._client, {PanelType Function()? panelTypeProvider})
+    : _panelTypeProvider = panelTypeProvider ?? _currentPanelType;
 
   final ApiClient _client;
+  final PanelType Function() _panelTypeProvider;
+
+  static PanelType _currentPanelType() => AppConfig.panelType;
+
+  void _requireXiaoV2Board() {
+    if (_panelTypeProvider() != PanelType.xiaoV2board) {
+      throw const ApiException('当前面板不支持此功能');
+    }
+  }
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -219,6 +231,7 @@ class PanelApi {
   }
 
   Future<void> redeemGiftCard(String giftCard) async {
+    _requireXiaoV2Board();
     final code = giftCard.trim();
     if (code.isEmpty) throw const ApiException('兑换码不能为空');
     final res = await _client.post(
@@ -229,6 +242,7 @@ class PanelApi {
   }
 
   Future<String> getTelegramBotUsername() async {
+    _requireXiaoV2Board();
     final res = await _client.get('/user/telegram/getBotInfo');
     _check(res);
     final username = _dataMap(res)['username']?.toString().trim() ?? '';
@@ -237,6 +251,7 @@ class PanelApi {
   }
 
   Future<void> unbindTelegram() async {
+    _requireXiaoV2Board();
     final res = await _client.get('/user/unbindTelegram');
     _check(res);
   }

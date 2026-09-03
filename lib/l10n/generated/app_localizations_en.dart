@@ -1452,6 +1452,85 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get accountServices => 'Account services';
+
+  @override
+  String get giftCardTitle => 'Redemption code';
+
+  @override
+  String get giftCardModalSubtitle =>
+      'Redeem account, traffic, duration or plan benefits';
+
+  @override
+  String get giftCardServiceSubtitle =>
+      'Redeem account, traffic or plan benefits';
+
+  @override
+  String get giftCardCode => 'Code';
+
+  @override
+  String get giftCardEnterRequired => 'Enter a redemption code';
+
+  @override
+  String get giftCardEnterHint => 'Enter code';
+
+  @override
+  String get giftCardRedeemed => 'Redeemed successfully';
+
+  @override
+  String get giftCardRedeeming => 'Redeeming…';
+
+  @override
+  String get giftCardRedeemNow => 'Redeem now';
+
+  @override
+  String get telegramBindingCommandCopied => 'Binding command copied';
+
+  @override
+  String telegramOpenFailed(String username) {
+    return 'Could not open Telegram. Search for @$username manually.';
+  }
+
+  @override
+  String get telegramUnbound => 'Telegram unbound';
+
+  @override
+  String get telegramConnected => 'Connected';
+
+  @override
+  String get telegramNotConnected => 'Not connected';
+
+  @override
+  String get telegramNotificationsSubtitle =>
+      'Connect Telegram for account notifications';
+
+  @override
+  String get telegramLoadingBot => 'Loading bot…';
+
+  @override
+  String get telegramUnbind => 'Unbind Telegram';
+
+  @override
+  String get telegramBindingInstructions =>
+      'Copy the binding command, open the bot, then paste and send it.';
+
+  @override
+  String get telegramCopyCommand => 'Copy command';
+
+  @override
+  String get telegramOpen => 'Open Telegram';
+
+  @override
+  String get telegramRefreshBindingStatus =>
+      'I finished binding — refresh status';
+
+  @override
+  String get telegramServiceConnected => 'Connected for account notifications';
+
+  @override
+  String get telegramServiceNotConnected => 'Not connected — connect Telegram';
+
+  @override
   String get settingsUpdated => 'Settings updated';
 
   @override

@@ -2721,6 +2721,150 @@ abstract class AppLocalizations {
   /// **'{item} copied'**
   String itemCopied(String item);
 
+  /// No description provided for @accountServices.
+  ///
+  /// In en, this message translates to:
+  /// **'Account services'**
+  String get accountServices;
+
+  /// No description provided for @giftCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Redemption code'**
+  String get giftCardTitle;
+
+  /// No description provided for @giftCardModalSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Redeem account, traffic, duration or plan benefits'**
+  String get giftCardModalSubtitle;
+
+  /// No description provided for @giftCardServiceSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Redeem account, traffic or plan benefits'**
+  String get giftCardServiceSubtitle;
+
+  /// No description provided for @giftCardCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get giftCardCode;
+
+  /// No description provided for @giftCardEnterRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a redemption code'**
+  String get giftCardEnterRequired;
+
+  /// No description provided for @giftCardEnterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter code'**
+  String get giftCardEnterHint;
+
+  /// No description provided for @giftCardRedeemed.
+  ///
+  /// In en, this message translates to:
+  /// **'Redeemed successfully'**
+  String get giftCardRedeemed;
+
+  /// No description provided for @giftCardRedeeming.
+  ///
+  /// In en, this message translates to:
+  /// **'Redeeming…'**
+  String get giftCardRedeeming;
+
+  /// No description provided for @giftCardRedeemNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Redeem now'**
+  String get giftCardRedeemNow;
+
+  /// No description provided for @telegramBindingCommandCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Binding command copied'**
+  String get telegramBindingCommandCopied;
+
+  /// No description provided for @telegramOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open Telegram. Search for @{username} manually.'**
+  String telegramOpenFailed(String username);
+
+  /// No description provided for @telegramUnbound.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram unbound'**
+  String get telegramUnbound;
+
+  /// No description provided for @telegramConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get telegramConnected;
+
+  /// No description provided for @telegramNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get telegramNotConnected;
+
+  /// No description provided for @telegramNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect Telegram for account notifications'**
+  String get telegramNotificationsSubtitle;
+
+  /// No description provided for @telegramLoadingBot.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading bot…'**
+  String get telegramLoadingBot;
+
+  /// No description provided for @telegramUnbind.
+  ///
+  /// In en, this message translates to:
+  /// **'Unbind Telegram'**
+  String get telegramUnbind;
+
+  /// No description provided for @telegramBindingInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the binding command, open the bot, then paste and send it.'**
+  String get telegramBindingInstructions;
+
+  /// No description provided for @telegramCopyCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy command'**
+  String get telegramCopyCommand;
+
+  /// No description provided for @telegramOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Telegram'**
+  String get telegramOpen;
+
+  /// No description provided for @telegramRefreshBindingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'I finished binding — refresh status'**
+  String get telegramRefreshBindingStatus;
+
+  /// No description provided for @telegramServiceConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected for account notifications'**
+  String get telegramServiceConnected;
+
+  /// No description provided for @telegramServiceNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected — connect Telegram'**
+  String get telegramServiceNotConnected;
+
   /// No description provided for @settingsUpdated.
   ///
   /// In en, this message translates to:

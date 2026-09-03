@@ -118,6 +118,8 @@ class RemoteUser {
   static String? _nullableIdentifier(Object? value) {
     if (value == null) return null;
     final text = value.toString().trim();
+    // XiaoV2Board serializes an unbound external-account ID as numeric/string 0
+    // (and some compatible panels return the literal string "null").
     if (text.isEmpty || text == '0' || text.toLowerCase() == 'null') {
       return null;
     }

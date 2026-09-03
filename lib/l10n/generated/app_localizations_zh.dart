@@ -1400,6 +1400,81 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get accountServices => '账户服务';
+
+  @override
+  String get giftCardTitle => '兑换码';
+
+  @override
+  String get giftCardModalSubtitle => '兑换余额、流量、时长或套餐权益';
+
+  @override
+  String get giftCardServiceSubtitle => '兑换余额、流量或套餐权益';
+
+  @override
+  String get giftCardCode => '兑换码';
+
+  @override
+  String get giftCardEnterRequired => '请输入兑换码';
+
+  @override
+  String get giftCardEnterHint => '请输入兑换码';
+
+  @override
+  String get giftCardRedeemed => '兑换成功';
+
+  @override
+  String get giftCardRedeeming => '兑换中…';
+
+  @override
+  String get giftCardRedeemNow => '立即兑换';
+
+  @override
+  String get telegramBindingCommandCopied => '绑定命令已复制';
+
+  @override
+  String telegramOpenFailed(String username) {
+    return '无法打开 Telegram，请手动搜索 @$username';
+  }
+
+  @override
+  String get telegramUnbound => 'Telegram 已解绑';
+
+  @override
+  String get telegramConnected => '已绑定';
+
+  @override
+  String get telegramNotConnected => '未绑定';
+
+  @override
+  String get telegramNotificationsSubtitle => '绑定后可接收到期、流量和服务通知';
+
+  @override
+  String get telegramLoadingBot => '正在读取机器人…';
+
+  @override
+  String get telegramUnbind => '解除绑定';
+
+  @override
+  String get telegramBindingInstructions =>
+      '先复制绑定命令，再打开机器人并粘贴发送。订阅地址不会显示在账户页面。';
+
+  @override
+  String get telegramCopyCommand => '复制绑定命令';
+
+  @override
+  String get telegramOpen => '打开 Telegram';
+
+  @override
+  String get telegramRefreshBindingStatus => '我已完成绑定，刷新状态';
+
+  @override
+  String get telegramServiceConnected => '已绑定，可接收账户通知';
+
+  @override
+  String get telegramServiceNotConnected => '未绑定，点击连接 Telegram';
+
+  @override
   String get settingsUpdated => '设置已更新';
 
   @override
@@ -3044,6 +3119,81 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String itemCopied(String item) {
     return '$item 已複製';
   }
+
+  @override
+  String get accountServices => '帳戶服務';
+
+  @override
+  String get giftCardTitle => '兌換碼';
+
+  @override
+  String get giftCardModalSubtitle => '兌換餘額、流量、時長或套餐權益';
+
+  @override
+  String get giftCardServiceSubtitle => '兌換餘額、流量或套餐權益';
+
+  @override
+  String get giftCardCode => '兌換碼';
+
+  @override
+  String get giftCardEnterRequired => '請輸入兌換碼';
+
+  @override
+  String get giftCardEnterHint => '請輸入兌換碼';
+
+  @override
+  String get giftCardRedeemed => '兌換成功';
+
+  @override
+  String get giftCardRedeeming => '兌換中…';
+
+  @override
+  String get giftCardRedeemNow => '立即兌換';
+
+  @override
+  String get telegramBindingCommandCopied => '綁定指令已複製';
+
+  @override
+  String telegramOpenFailed(String username) {
+    return '無法開啟 Telegram，請手動搜尋 @$username';
+  }
+
+  @override
+  String get telegramUnbound => 'Telegram 已解除綁定';
+
+  @override
+  String get telegramConnected => '已綁定';
+
+  @override
+  String get telegramNotConnected => '未綁定';
+
+  @override
+  String get telegramNotificationsSubtitle => '綁定後可接收到期、流量和服務通知';
+
+  @override
+  String get telegramLoadingBot => '正在讀取機器人…';
+
+  @override
+  String get telegramUnbind => '解除綁定';
+
+  @override
+  String get telegramBindingInstructions =>
+      '先複製綁定指令，再開啟機器人並貼上傳送。訂閱地址不會顯示在帳戶頁面。';
+
+  @override
+  String get telegramCopyCommand => '複製綁定指令';
+
+  @override
+  String get telegramOpen => '開啟 Telegram';
+
+  @override
+  String get telegramRefreshBindingStatus => '我已完成綁定，重新整理狀態';
+
+  @override
+  String get telegramServiceConnected => '已綁定，可接收帳戶通知';
+
+  @override
+  String get telegramServiceNotConnected => '未綁定，點擊連接 Telegram';
 
   @override
   String get settingsUpdated => '設定已更新';
