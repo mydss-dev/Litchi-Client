@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/shared/services/sing_box_config.dart';
@@ -30,7 +32,7 @@ void main() {
     expect(profile.strictRoute, isTrue);
   });
 
-  test('TUN config uses the platform route profile', () {
+  test('TUN config uses the current platform route profile', () {
     final config = SingBoxConfig.buildFullConfig(
       const [node],
       selectedTag: SingBoxConfig.nodeTagFor(node),
@@ -40,10 +42,11 @@ void main() {
     final tun = (config['inbounds'] as List).cast<Map>().firstWhere(
       (inbound) => inbound['type'] == 'tun',
     );
+    final profile = SingBoxConfig.tunRouteProfile(isWindows: Platform.isWindows);
 
     expect(tun['stack'], 'system');
-    expect(tun['mtu'], 9000);
+    expect(tun['mtu'], profile.mtu);
     expect(tun['auto_route'], isTrue);
-    expect(tun['strict_route'], isTrue);
+    expect(tun['strict_route'], profile.strictRoute);
   });
 }
