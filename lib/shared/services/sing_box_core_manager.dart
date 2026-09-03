@@ -6,17 +6,20 @@ import 'core_state.dart';
 import 'sing_box_config.dart';
 import 'sing_box_ffi.dart';
 import 'windows_core_process_manager.dart';
+import 'windows_tun_service_manager.dart';
 
 /// Manages the sing-box desktop runtime.
 ///
-/// Windows intentionally uses an isolated `litchi-core.exe` process so TUN,
-/// Wintun and the Go runtime can never crash the Flutter host. macOS/Linux keep
-/// the existing in-process C ABI bridge.
+/// Windows keeps the main sing-box process unprivileged and isolated from the
+/// Flutter host. TUN is a separate persistent privileged service that forwards
+/// packets into this main core, so enabling/disabling TUN never restarts node,
+/// DNS, selector or Clash API state. macOS/Linux keep the C ABI bridge.
 final class SingBoxCoreManager {
   CoreState _state = CoreState.stopped;
   String _lastError = '';
   SingBoxFfi? _core;
   final WindowsCoreProcessManager _windows = WindowsCoreProcessManager();
+  final WindowsTunServiceManager _windowsTun = WindowsTunServiceManager();
   StreamSubscription<String>? _windowsLogSub;
   StreamSubscription<String>? _windowsExitSub;
 
@@ -28,8 +31,10 @@ final class SingBoxCoreManager {
   bool get _backendRunning =>
       Platform.isWindows ? _windows.isRunning : (_core?.isRunning ?? false);
   bool get isRunning => _state == CoreState.running && _backendRunning;
+  bool get windowsTunRunning => Platform.isWindows && _windowsTun.isRunning;
   Stream<CoreState> get stateStream => _stateController.stream;
   Stream<String> get logStream => _logController.stream;
+  Stream<String> get windowsTunExitStream => _windowsTun.exitStream;
 
   static String? findLibrary() {
     if (Platform.isWindows) return WindowsCoreProcessManager.findExecutable();
@@ -43,11 +48,14 @@ final class SingBoxCoreManager {
     await SingBoxConfig.cleanupStaleConfigFiles();
   }
 
+  Future<void> cleanupWindowsTunOnStartup() async {
+    if (Platform.isWindows) await _windowsTun.cleanupOnStartup();
+  }
+
   Future<void> start(
     String configPath, {
     int apiPort = SingBoxConfig.defaultApiPort,
     bool elevateMacTun = false,
-    bool elevateWindowsTun = false,
   }) async {
     if (_state == CoreState.starting || isRunning) return;
     _lastError = '';
@@ -60,7 +68,7 @@ final class SingBoxCoreManager {
         _ensureWindowsSubscriptions();
         final started = await _windows.start(
           configPath,
-          elevate: elevateWindowsTun,
+          elevate: false,
           apiPort: apiPort,
         );
         if (!started) {
@@ -118,6 +126,7 @@ final class SingBoxCoreManager {
       _setState(CoreState.running);
     } catch (error) {
       if (Platform.isWindows) {
+        await _windowsTun.stop();
         await _windows.stop();
       } else {
         _core?.stop();
@@ -132,8 +141,55 @@ final class SingBoxCoreManager {
     }
   }
 
+  Future<bool> startWindowsTun({
+    required int mainProxyPort,
+    int mtu = 1500,
+    bool strictRoute = false,
+    String stack = 'system',
+  }) async {
+    if (!Platform.isWindows || !isRunning) {
+      _lastError = 'Windows TUN 启动前主核心必须处于运行状态';
+      return false;
+    }
+    final started = await _windowsTun.start(
+      mainProxyPort: mainProxyPort,
+      mtu: mtu,
+      strictRoute: strictRoute,
+      stack: stack,
+    );
+    if (!started) {
+      _lastError = _windowsTun.lastError.isEmpty
+          ? 'Windows TUN 服务启动失败'
+          : _windowsTun.lastError;
+      _emitLog(_lastError);
+      return false;
+    }
+    _emitLog('── Windows TUN 服务运行中 ──');
+    return true;
+  }
+
+  Future<bool> stopWindowsTun() async {
+    if (!Platform.isWindows) return true;
+    final hadTun = _windowsTun.isRunning;
+    final stopped = await _windowsTun.stop();
+    if (!stopped) {
+      _lastError = _windowsTun.lastError.isEmpty
+          ? 'Windows TUN 服务停止失败'
+          : _windowsTun.lastError;
+      _emitLog(_lastError);
+      return false;
+    }
+    if (hadTun) _emitLog('── Windows TUN 服务已停止 ──');
+    return true;
+  }
+
   Future<void> stop() async {
     _lastError = '';
+    if (Platform.isWindows) {
+      // Never tear down the main SOCKS core while the privileged TUN is still
+      // routing into it; otherwise Windows is left with a live black-hole TUN.
+      await _windowsTun.stop();
+    }
     final stopped = Platform.isWindows
         ? await _windows.stop()
         : (_core?.stop() ?? true);
@@ -161,6 +217,7 @@ final class SingBoxCoreManager {
   void dispose() {
     unawaited(_windowsLogSub?.cancel());
     unawaited(_windowsExitSub?.cancel());
+    _windowsTun.dispose();
     _windows.dispose();
     _core?.stop();
     if (!_stateController.isClosed) _stateController.close();
