@@ -65,3 +65,30 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent runasoriginaluser
+
+[UninstallRun]
+; The TUN service is installed lazily on first TUN use. Remove it before the
+; bundled core executable disappears so no privileged service is orphaned.
+Filename: "{app}\litchi-core.exe"; Parameters: "tun-service uninstall"; Flags: runhidden waituntilterminated skipifdoesntexist
+
+[Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+begin
+  if CurStep = ssInstall then
+  begin
+    ; A running Windows service locks litchi-core.exe. Stop it before upgrade
+    ; file replacement. Missing service is expected on first install.
+    Exec(ExpandConstant('{sys}\sc.exe'), 'stop LitchiTunService', '', SW_HIDE,
+      ewWaitUntilTerminated, ResultCode);
+    Sleep(1200);
+  end
+  else if CurStep = ssPostInstall then
+  begin
+    ; If the user had already installed the lazy TUN service, bring it back on
+    ; the freshly installed binary. Missing service remains a harmless no-op.
+    Exec(ExpandConstant('{sys}\sc.exe'), 'start LitchiTunService', '', SW_HIDE,
+      ewWaitUntilTerminated, ResultCode);
+  end;
+end;
