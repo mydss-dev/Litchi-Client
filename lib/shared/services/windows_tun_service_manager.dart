@@ -96,8 +96,16 @@ final class WindowsTunServiceManager {
     ++_generation;
     final credentials = await _loadCredentials();
     if (credentials == null) {
-      _running = false;
+      // Missing or unreadable credentials are not proof that a privileged TUN
+      // disappeared. If the adapter still exists (or inspection itself fails),
+      // fail closed so callers keep WFP protection instead of releasing it.
+      final tunPresent = await _tunInterfacePresent();
+      _running = tunPresent;
       _stopping = false;
+      if (tunPresent) {
+        _lastError = 'Windows TUN 服务凭据不可用，无法确认 TUN 已停止；已保持保护状态';
+        return false;
+      }
       return true;
     }
     final response = await _request(
