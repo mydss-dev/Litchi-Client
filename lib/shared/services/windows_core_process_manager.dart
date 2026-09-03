@@ -50,7 +50,13 @@ final class WindowsCoreProcessManager {
       _lastError = 'Windows core process is only available on Windows';
       return false;
     }
-    await stop();
+    final previousStopped = await stop();
+    if (!previousStopped) {
+      if (_lastError.isEmpty) {
+        _lastError = '旧的 Windows 主核心无法停止，已取消启动新核心';
+      }
+      return false;
+    }
 
     final executable = findExecutable();
     if (executable == null) {
@@ -118,7 +124,7 @@ final class WindowsCoreProcessManager {
     if (!hadSession) return true;
 
     _stopping = true;
-    ++_generation;
+    final stopGeneration = ++_generation;
     var graceful = false;
     try {
       graceful = await _sendStop();
@@ -136,15 +142,23 @@ final class WindowsCoreProcessManager {
         await process.exitCode.timeout(const Duration(seconds: 2));
         graceful = true;
       } catch (_) {
-        // Returning false lets the caller surface a failed stop.
+        // Keep ownership below so a later stop can retry instead of orphaning
+        // the process and accidentally starting a second core beside it.
       }
     }
 
-    _running = false;
     _stopping = false;
+    if (!graceful) {
+      _lastError = 'Windows 主核心停止失败，已保留进程状态以便重试';
+      _running = true;
+      unawaited(_monitor(stopGeneration));
+      return false;
+    }
+
+    _running = false;
     _clearSession();
     if (hadSession) _emitLog('── Windows sing-box 主核心已停止 ──');
-    return graceful;
+    return true;
   }
 
   Future<String> version() async {
