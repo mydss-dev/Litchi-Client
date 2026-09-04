@@ -63,9 +63,7 @@ class CoreConnectionRequest {
   }) {
     final availableNodes = validNodes;
     if (availableNodes.isEmpty || selectedSingBoxTag.isEmpty) return null;
-
-    final effectiveLocalDns = localDnsServers ?? this.localDnsServers;
-    final config = SingBoxConfig.buildFullConfig(
+    return SingBoxConfig.buildFullConfig(
       availableNodes,
       selectedTag: selectedSingBoxTag,
       port: overrideProxyPort ?? proxyPort,
@@ -75,35 +73,7 @@ class CoreConnectionRequest {
       dnsMode: dnsMode,
       networkMode: overrideNetworkMode ?? networkMode,
       allowInsecure: allowInsecure,
-      localDnsServers: effectiveLocalDns,
+      localDnsServers: localDnsServers ?? this.localDnsServers,
     );
-    if (config == null) return null;
-
-    // A non-empty local DNS snapshot is supplied only while the privileged
-    // Windows TUN bridge is active. At that point the bridge is dual-stack, so
-    // allow proxied destinations to resolve A and AAAA while keeping IPv4
-    // preferred for compatibility. Node/bootstrap resolution remains
-    // `ipv4_only` in route.default_domain_resolver and therefore does not
-    // require node AAAA records.
-    //
-    // Mainland domains remain IPv4-only: they are routed direct by the main
-    // core, and advertising an artificial TUN IPv6 route must not make an
-    // IPv4-only physical network select an unreachable direct IPv6 target.
-    if (effectiveLocalDns.isNotEmpty) {
-      final dns = config['dns'];
-      if (dns is Map<String, dynamic>) {
-        dns['strategy'] = 'prefer_ipv4';
-        final rules = dns['rules'];
-        if (rules is List) {
-          for (final rule in rules.whereType<Map<String, dynamic>>()) {
-            final ruleSet = rule['rule_set'];
-            if (ruleSet is List && ruleSet.contains('geosite-cn')) {
-              rule['strategy'] = 'ipv4_only';
-            }
-          }
-        }
-      }
-    }
-    return config;
   }
 }
