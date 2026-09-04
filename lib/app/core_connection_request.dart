@@ -63,7 +63,9 @@ class CoreConnectionRequest {
   }) {
     final availableNodes = validNodes;
     if (availableNodes.isEmpty || selectedSingBoxTag.isEmpty) return null;
-    return SingBoxConfig.buildFullConfig(
+
+    final effectiveLocalDns = localDnsServers ?? this.localDnsServers;
+    final config = SingBoxConfig.buildFullConfig(
       availableNodes,
       selectedTag: selectedSingBoxTag,
       port: overrideProxyPort ?? proxyPort,
@@ -73,7 +75,21 @@ class CoreConnectionRequest {
       dnsMode: dnsMode,
       networkMode: overrideNetworkMode ?? networkMode,
       allowInsecure: allowInsecure,
-      localDnsServers: localDnsServers ?? this.localDnsServers,
+      localDnsServers: effectiveLocalDns,
     );
+    if (config == null) return null;
+
+    // A non-empty local DNS snapshot is supplied only while the privileged
+    // Windows TUN bridge is active. At that point the bridge is dual-stack, so
+    // allow applications to resolve A and AAAA records while keeping IPv4
+    // first for compatibility. Node/bootstrap resolution stays `ipv4_only` in
+    // route.default_domain_resolver and therefore does not require node AAAA.
+    if (effectiveLocalDns.isNotEmpty) {
+      final dns = config['dns'];
+      if (dns is Map<String, dynamic>) {
+        dns['strategy'] = 'prefer_ipv4';
+      }
+    }
+    return config;
   }
 }
