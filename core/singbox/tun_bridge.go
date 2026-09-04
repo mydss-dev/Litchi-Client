@@ -8,6 +8,7 @@ import (
 const (
 	windowsTunInterfaceName = "TUN-LOCAL"
 	windowsTunBridgeAddress = "172.19.0.1/30"
+	windowsTunBridgeAddressV6 = "fdfe:dcba:9876::1/126"
 )
 
 // buildTunBridgeConfig creates the deliberately small privileged sing-box
@@ -37,11 +38,17 @@ func buildTunBridgeConfig(mainProxyPort, mtu int, strictRoute bool, stack string
 				"type":           "tun",
 				"tag":            "tun-in",
 				"interface_name": windowsTunInterfaceName,
-				"address":        []string{windowsTunBridgeAddress},
-				"mtu":            mtu,
-				"auto_route":     true,
-				"strict_route":   strictRoute,
-				"stack":          stack,
+				// Keep the bridge dual-stack so IPv6 application traffic cannot
+				// bypass the Windows TUN route. Node transport resolution stays
+				// controlled by the main core and does not require an AAAA record.
+				"address": []string{
+					windowsTunBridgeAddress,
+					windowsTunBridgeAddressV6,
+				},
+				"mtu":          mtu,
+				"auto_route":   true,
+				"strict_route": strictRoute,
+				"stack":        stack,
 			},
 		},
 		"outbounds": []any{
