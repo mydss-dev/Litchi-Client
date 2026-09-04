@@ -14,6 +14,7 @@ import '../shared/services/proxy_setter.dart';
 import '../shared/services/clash_api_client.dart';
 import '../shared/services/sing_box_config.dart';
 import '../shared/services/sing_box_core_manager.dart';
+import '../shared/services/system_dns.dart';
 import '../shared/services/tcp_ping_service.dart';
 import '../shared/services/mixed_proxy_port_verifier.dart';
 import '../shared/services/secure_logger.dart';
@@ -47,6 +48,11 @@ class CoreController extends ChangeNotifier {
   int _activeProxyPort = 7890;
   NetworkMode _activeNetworkMode = NetworkMode.system;
   Set<String> _activeTunInterfaces = const {};
+
+  /// Real system DNS servers captured just before the Windows TUN bridge comes
+  /// up. While TUN is active the main core's `dns-local` is pinned to these so
+  /// CN resolution never falls through to the TUN gateway (172.19.0.2).
+  List<String> _windowsLocalDns = const [];
 
   /// Random secret guarding the main core's clash_api. Generated once per app
   /// session and reused across main-core reloads/restarts.
@@ -384,6 +390,9 @@ class CoreController extends ChangeNotifier {
         overrideProxyPort: _activeProxyPort,
         apiPort: _apiPort,
         apiSecret: _apiSecret,
+        localDnsServers: _activeNetworkMode == NetworkMode.tun
+            ? _windowsLocalDns
+            : const <String>[],
       );
       if (coreConfig == null) {
         _coreError = CoreErrorMessageService.configBuildFailed;
@@ -579,7 +588,7 @@ class CoreController extends ChangeNotifier {
           _status = ConnectionStatus.error;
           return _coreError;
         }
-        final tunError = await _activateWindowsTunLayer();
+        final tunError = await _activateWindowsTunLayer(req);
         if (tunError != null) {
           _coreError = tunError;
           _status = ConnectionStatus.error;
@@ -721,9 +730,29 @@ class CoreController extends ChangeNotifier {
     return _coreError.isNotEmpty ? _coreError : null;
   }
 
-  Future<String?> _activateWindowsTunLayer() async {
+  Future<String?> _activateWindowsTunLayer(CoreConnectionRequest req) async {
     if (!await MixedProxyPortVerifier.waitUntilReady(port: _activeProxyPort)) {
       return CoreErrorMessageService.proxyPortUnavailable;
+    }
+    // The TUN bridge re-points the system resolver at its gateway once
+    // `auto_route` comes up, which would send the main core's `dns-local`
+    // (type: local) through a dead address. Capture the real upstreams now and
+    // pin `dns-local` to them before enabling TUN.
+    _windowsLocalDns = SystemDns.readServers();
+    if (_windowsLocalDns.isNotEmpty) {
+      final dnsConfig = req.buildSingBoxConfig(
+        overrideNetworkMode: NetworkMode.system,
+        overrideProxyPort: _activeProxyPort,
+        apiPort: _apiPort,
+        apiSecret: _apiSecret,
+        localDnsServers: _windowsLocalDns,
+      );
+      if (dnsConfig == null) return CoreErrorMessageService.configBuildFailed;
+      final reloaded = await ClashApiClient.reloadConfig(
+        SingBoxConfig.encodeConfig(dnsConfig),
+        apiPort: _apiPort,
+      );
+      if (!reloaded) return CoreErrorMessageService.restartClient;
     }
     final tunProfile = SingBoxConfig.tunRouteProfile(isWindows: true);
     final started = await _core.startWindowsTun(
@@ -762,7 +791,7 @@ class CoreController extends ChangeNotifier {
     }
     if (req.networkMode == NetworkMode.tun) {
       await ProxySetter.disable();
-      final error = await _activateWindowsTunLayer();
+      final error = await _activateWindowsTunLayer(req);
       if (error != null) {
         _coreError = error;
         _status = ConnectionStatus.error;

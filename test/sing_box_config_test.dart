@@ -261,4 +261,29 @@ void main() {
     );
     expect(selector['outbounds'], isNot(contains('node-snell-1')));
   });
+
+  test('pins dns-local to an explicit upstream when servers are provided', () {
+    final config = SingBoxConfig.buildFullConfig(
+      const [node],
+      selectedTag: SingBoxConfig.nodeTagFor(node),
+      localDnsServers: const ['223.5.5.5', '119.29.29.29'],
+    )!;
+    final servers = ((config['dns'] as Map)['servers'] as List).cast<Map>();
+    final local = servers.firstWhere((s) => s['tag'] == 'dns-local');
+    expect(local['type'], 'udp');
+    expect(local['server'], '223.5.5.5');
+    // Resolve the real upstream directly, mirroring `type: local`, rather than
+    // letting a public DNS server be routed through the proxy.
+    expect(local['detour'], SingBoxConfig.directTag);
+  });
+
+  test('keeps dns-local as the OS resolver without explicit servers', () {
+    final config = SingBoxConfig.buildFullConfig(
+      const [node],
+      selectedTag: SingBoxConfig.nodeTagFor(node),
+    )!;
+    final servers = ((config['dns'] as Map)['servers'] as List).cast<Map>();
+    final local = servers.firstWhere((s) => s['tag'] == 'dns-local');
+    expect(local['type'], 'local');
+  });
 }

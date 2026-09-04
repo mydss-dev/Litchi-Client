@@ -10,6 +10,7 @@ class CoreConnectionRequest {
     required this.proxyPort,
     this.networkMode = NetworkMode.system,
     this.allowInsecure = false,
+    this.localDnsServers = const [],
   });
 
   final List<NodeModel> nodes;
@@ -22,6 +23,11 @@ class CoreConnectionRequest {
   /// When false, nodes' `insecure`/skip-cert-verify flags are stripped so TLS
   /// certificates are always validated.
   final bool allowInsecure;
+
+  /// Real system DNS servers snapshotted before the Windows TUN bridge comes
+  /// up. When non-empty, `dns-local` resolves through them directly instead of
+  /// the (TUN-poisoned) OS resolver.
+  final List<String> localDnsServers;
 
   List<NodeModel> get validNodes => nodes.where((n) => n.hasConfig).toList();
 
@@ -45,6 +51,7 @@ class CoreConnectionRequest {
         proxyPort: proxyPort,
         networkMode: mode,
         allowInsecure: allowInsecure,
+        localDnsServers: localDnsServers,
       );
 
   Map<String, dynamic>? buildSingBoxConfig({
@@ -52,6 +59,7 @@ class CoreConnectionRequest {
     int? overrideProxyPort,
     int apiPort = SingBoxConfig.defaultApiPort,
     String apiSecret = '',
+    List<String> localDnsServers = const [],
   }) {
     final availableNodes = validNodes;
     if (availableNodes.isEmpty || selectedSingBoxTag.isEmpty) return null;
@@ -65,6 +73,7 @@ class CoreConnectionRequest {
       dnsMode: dnsMode,
       networkMode: overrideNetworkMode ?? networkMode,
       allowInsecure: allowInsecure,
+      localDnsServers: localDnsServers,
     );
   }
 }

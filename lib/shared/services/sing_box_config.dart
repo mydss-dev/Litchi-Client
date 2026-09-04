@@ -69,6 +69,7 @@ abstract final class SingBoxConfig {
     DnsMode dnsMode = DnsMode.system,
     NetworkMode networkMode = NetworkMode.system,
     bool allowInsecure = false,
+    List<String> localDnsServers = const [],
   }) {
     final nodeOutbounds = <Map<String, dynamic>>[];
     final nodeTags = <String>[];
@@ -94,7 +95,7 @@ abstract final class SingBoxConfig {
     final tunProfile = tunRouteProfile(isWindows: Platform.isWindows);
     return {
       'log': {'level': 'warn', 'timestamp': true},
-      'dns': _dnsConfig(dnsMode),
+      'dns': _dnsConfig(dnsMode, localDnsServers),
       'inbounds': [
         {
           'type': 'mixed',
@@ -224,7 +225,10 @@ abstract final class SingBoxConfig {
     return outbound;
   }
 
-  static Map<String, dynamic> _dnsConfig(DnsMode mode) {
+  static Map<String, dynamic> _dnsConfig(
+    DnsMode mode,
+    List<String> localDnsServers,
+  ) {
     final servers = switch (mode) {
       DnsMode.google => <Map<String, dynamic>>[
         {
@@ -239,7 +243,7 @@ abstract final class SingBoxConfig {
           // selecting this mode means no connectivity at all.
           'detour': selectorTag,
         },
-        {'type': 'local', 'tag': 'dns-local'},
+        _localServer(localDnsServers),
       ],
       DnsMode.cloudflare => <Map<String, dynamic>>[
         {
@@ -251,10 +255,10 @@ abstract final class SingBoxConfig {
           'tls': {'enabled': true, 'server_name': 'cloudflare-dns.com'},
           'detour': selectorTag,
         },
-        {'type': 'local', 'tag': 'dns-local'},
+        _localServer(localDnsServers),
       ],
       _ => <Map<String, dynamic>>[
-        {'type': 'local', 'tag': 'dns-local'},
+        _localServer(localDnsServers),
       ],
     };
     return {
@@ -272,6 +276,23 @@ abstract final class SingBoxConfig {
           'server': 'dns-local',
         },
       ],
+    };
+  }
+
+  /// Builds the `dns-local` server entry.
+  ///
+  /// By default this reads the OS resolver (`type: local`). On Windows TUN the
+  /// bridge re-points the system resolver at its own gateway, so callers pass
+  /// the real upstreams snapshotted before TUN came up; pinning to the first
+  /// one and resolving it directly keeps CN domains and node bootstrapping off
+  /// the dead TUN peer address.
+  static Map<String, dynamic> _localServer(List<String> servers) {
+    if (servers.isEmpty) return {'type': 'local', 'tag': 'dns-local'};
+    return {
+      'type': 'udp',
+      'tag': 'dns-local',
+      'server': servers.first,
+      'detour': directTag,
     };
   }
 
