@@ -626,6 +626,12 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       if (coreRunning) {
         if (_settings.networkMode == NetworkMode.system) {
           await fixProxy();
+        } else if (Platform.isWindows &&
+            _settings.networkMode == NetworkMode.tun) {
+          // TUN keeps the main core pinned to a pre-TUN DNS snapshot; a
+          // Wi-Fi / hotspot switch invalidates it. Re-read the physical
+          // adapter's DNS and re-pin without disturbing the tunnel.
+          await _core.refreshWindowsTunDns(_buildConnectionRequest());
         }
         return;
       }

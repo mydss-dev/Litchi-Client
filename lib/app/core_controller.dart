@@ -809,10 +809,59 @@ class CoreController extends ChangeNotifier {
         return _coreError;
       }
       await _releaseTunKillSwitch();
+      // TUN is gone, so the system resolver is no longer pointed at the bridge
+      // gateway. Drop the pinned snapshot and reload the main core with an
+      // empty server list to restore `type: local`, so it follows whatever
+      // resolver the OS reports next instead of the stale pre-TUN snapshot.
+      _windowsLocalDns = const [];
+      final systemConfig = req.buildSingBoxConfig(
+        overrideNetworkMode: NetworkMode.system,
+        overrideProxyPort: _activeProxyPort,
+        apiPort: _apiPort,
+        apiSecret: _apiSecret,
+        localDnsServers: const <String>[],
+      );
+      if (systemConfig != null) {
+        await ClashApiClient.reloadConfig(
+          SingBoxConfig.encodeConfig(systemConfig),
+          apiPort: _apiPort,
+        );
+      }
       await ProxySetter.enable(port: _activeProxyPort);
     }
     _activeNetworkMode = req.networkMode;
     return null;
+  }
+
+  /// Re-snapshots the physical adapter's DNS while TUN is up and re-pins the
+  /// main core's `dns-local` to it.
+  ///
+  /// A Wi-Fi / hotspot switch leaves [_windowsLocalDns] pointing at a resolver
+  /// that is no longer reachable, which reproduces the original CN-domain
+  /// timeout. The desktop network monitor calls this on change; unlike the
+  /// pre-TUN snapshot it uses per-adapter DNS so it stays correct even while
+  /// `GetNetworkParams` reports the TUN gateway.
+  Future<void> refreshWindowsTunDns(CoreConnectionRequest req) async {
+    if (!Platform.isWindows ||
+        _activeNetworkMode != NetworkMode.tun ||
+        _status != ConnectionStatus.connected) {
+      return;
+    }
+    final servers = SystemDns.readPhysicalDnsServers();
+    if (servers.isEmpty) return; // keep the current snapshot as a fallback
+    _windowsLocalDns = servers;
+    final dnsConfig = req.buildSingBoxConfig(
+      overrideNetworkMode: NetworkMode.system,
+      overrideProxyPort: _activeProxyPort,
+      apiPort: _apiPort,
+      apiSecret: _apiSecret,
+      localDnsServers: _windowsLocalDns,
+    );
+    if (dnsConfig == null) return;
+    await ClashApiClient.reloadConfig(
+      SingBoxConfig.encodeConfig(dnsConfig),
+      apiPort: _apiPort,
+    );
   }
 
   Future<String?> _toggleAndroidConnection(CoreConnectionRequest req) async {

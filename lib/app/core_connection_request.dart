@@ -59,7 +59,7 @@ class CoreConnectionRequest {
     int? overrideProxyPort,
     int apiPort = SingBoxConfig.defaultApiPort,
     String apiSecret = '',
-    List<String> localDnsServers = const [],
+    List<String>? localDnsServers,
   }) {
     final availableNodes = validNodes;
     if (availableNodes.isEmpty || selectedSingBoxTag.isEmpty) return null;
@@ -73,7 +73,7 @@ class CoreConnectionRequest {
       dnsMode: dnsMode,
       networkMode: overrideNetworkMode ?? networkMode,
       allowInsecure: allowInsecure,
-      localDnsServers: localDnsServers,
+      localDnsServers: localDnsServers ?? this.localDnsServers,
     );
   }
 }
