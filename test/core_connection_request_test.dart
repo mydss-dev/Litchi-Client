@@ -92,6 +92,48 @@ void main() {
     expect(request.proxyPort, 7890);
   });
 
+  test('pinned Windows TUN DNS allows AAAA but keeps node bootstrap IPv4', () {
+    const selected = NodeModel(
+      id: 'dual-stack',
+      name: 'dual-stack',
+      flag: '',
+      latency: 0,
+      rawOutbound: {
+        'type': 'trojan',
+        'server': 'example.com',
+        'server_port': 443,
+        'password': 'password',
+        '_litchi_format': 'sing-box',
+      },
+    );
+    const request = CoreConnectionRequest(
+      nodes: [selected],
+      currentNode: selected,
+      proxyMode: ProxyMode.rule,
+      dnsMode: DnsMode.cloudflare,
+      proxyPort: 7890,
+    );
+
+    final normal = request.buildSingBoxConfig()!;
+    expect((normal['dns'] as Map)['strategy'], 'ipv4_only');
+
+    final tun = request.buildSingBoxConfig(
+      overrideNetworkMode: NetworkMode.system,
+      localDnsServers: const ['192.0.2.53'],
+    )!;
+    final dns = tun['dns'] as Map;
+    final route = tun['route'] as Map;
+    final bootstrap = route['default_domain_resolver'] as Map;
+    final local = (dns['servers'] as List).cast<Map>().firstWhere(
+      (server) => server['tag'] == 'dns-local',
+    );
+
+    expect(dns['strategy'], 'prefer_ipv4');
+    expect(bootstrap['strategy'], 'ipv4_only');
+    expect(local['type'], 'udp');
+    expect(local['server'], '192.0.2.53');
+  });
+
   test(
     'falls back to first valid node when current node is not connectable',
     () {
