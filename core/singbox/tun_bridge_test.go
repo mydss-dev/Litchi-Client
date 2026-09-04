@@ -20,6 +20,12 @@ func TestBuildTunBridgeConfigUsesMainCoreSocks(t *testing.T) {
 	if tun["type"] != "tun" || tun["interface_name"] != windowsTunInterfaceName {
 		t.Fatalf("unexpected TUN inbound: %#v", tun)
 	}
+	addresses := tun["address"].([]any)
+	if len(addresses) != 2 ||
+		addresses[0] != windowsTunBridgeAddress ||
+		addresses[1] != windowsTunBridgeAddressV6 {
+		t.Fatalf("Windows TUN must be IPv4/IPv6 dual-stack: %#v", addresses)
+	}
 	if tun["mtu"] != float64(1500) || tun["strict_route"] != false || tun["stack"] != "system" {
 		t.Fatalf("unexpected conservative Windows TUN profile: %#v", tun)
 	}
