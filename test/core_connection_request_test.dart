@@ -92,7 +92,7 @@ void main() {
     expect(request.proxyPort, 7890);
   });
 
-  test('pinned Windows TUN DNS allows AAAA but keeps node bootstrap IPv4', () {
+  test('pinned Windows TUN DNS allows AAAA but keeps direct paths IPv4', () {
     const selected = NodeModel(
       id: 'dual-stack',
       name: 'dual-stack',
@@ -127,9 +127,15 @@ void main() {
     final local = (dns['servers'] as List).cast<Map>().firstWhere(
       (server) => server['tag'] == 'dns-local',
     );
+    final cnRule = (dns['rules'] as List).cast<Map>().firstWhere(
+      (rule) =>
+          rule['rule_set'] is List &&
+          (rule['rule_set'] as List).contains('geosite-cn'),
+    );
 
     expect(dns['strategy'], 'prefer_ipv4');
     expect(bootstrap['strategy'], 'ipv4_only');
+    expect(cnRule['strategy'], 'ipv4_only');
     expect(local['type'], 'udp');
     expect(local['server'], '192.0.2.53');
   });
