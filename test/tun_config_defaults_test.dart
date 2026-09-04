@@ -42,12 +42,27 @@ void main() {
     final tun = (config['inbounds'] as List).cast<Map>().firstWhere(
       (inbound) => inbound['type'] == 'tun',
     );
-    final profile = SingBoxConfig.tunRouteProfile(isWindows: Platform.isWindows);
+    final profile = SingBoxConfig.tunRouteProfile(
+      isWindows: Platform.isWindows,
+    );
 
     expect(tun['stack'], 'system');
     expect(tun['mtu'], profile.mtu);
     expect(tun['auto_route'], isTrue);
     expect(tun['strict_route'], profile.strictRoute);
+  });
+
+  test('TUN keeps an IPv6 address so IPv6 cannot bypass the tunnel', () {
+    final config = SingBoxConfig.buildFullConfig(
+      const [node],
+      selectedTag: SingBoxConfig.nodeTagFor(node),
+      networkMode: NetworkMode.tun,
+    )!;
+
+    final tun = (config['inbounds'] as List).cast<Map>().firstWhere(
+      (inbound) => inbound['type'] == 'tun',
+    );
+    expect(tun['address'], ['172.19.0.1/30', 'fdfe:dcba:9876::1/126']);
   });
 
   test('main core sniffs, hijacks DNS, and keeps reverse mappings', () {

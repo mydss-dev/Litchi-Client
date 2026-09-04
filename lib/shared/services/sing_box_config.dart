@@ -110,7 +110,11 @@ abstract final class SingBoxConfig {
             'interface_name': Platform.isMacOS
                 ? 'utun'
                 : AppIdentity.tunInterfaceAlias,
-            'address': ['172.19.0.1/30'],
+            // Keep the TUN dual-stack so IPv6 application traffic cannot bypass
+            // the tunnel. DNS stays ipv4_only (see _dnsConfig), so this is
+            // leak-proofing rather than active IPv6 support; the ULA mirrors the
+            // Windows privileged bridge's fdfe:dcba:9876::1/126.
+            'address': ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'],
             'mtu': tunProfile.mtu,
             'auto_route': true,
             'strict_route': tunProfile.strictRoute,
@@ -257,13 +261,16 @@ abstract final class SingBoxConfig {
         },
         _localServer(localDnsServers),
       ],
-      _ => <Map<String, dynamic>>[
-        _localServer(localDnsServers),
-      ],
+      _ => <Map<String, dynamic>>[_localServer(localDnsServers)],
     };
     return {
       'servers': servers,
       'final': servers.first['tag'],
+      // Resolve IPv4 only: the DNS/routing pipeline (geosite/geoip split, domain
+      // sniffing, reverse mapping) assumes a single-stack IPv4 path. The
+      // dual-stack TUN address is a safety net that captures stray IPv6 (apps
+      // with their own DoH, hardcoded IPv6 literals) so it cannot leak around
+      // the tunnel — not an invitation to switch to IPv6 resolution.
       'strategy': 'ipv4_only',
       // Preserve DNS answers so later IP-only connections can recover their
       // domain before geosite routing rules are evaluated.
