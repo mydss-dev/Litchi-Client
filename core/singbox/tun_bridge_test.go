@@ -26,6 +26,9 @@ func TestBuildTunBridgeConfigUsesMainCoreSocks(t *testing.T) {
 		addresses[1] != windowsTunBridgeAddressV6 {
 		t.Fatalf("Windows TUN must be IPv4/IPv6 dual-stack: %#v", addresses)
 	}
+	if tun["auto_route"] != true {
+		t.Fatalf("dual-stack TUN must install IPv4/IPv6 routes: %#v", tun)
+	}
 	if tun["mtu"] != float64(1500) || tun["strict_route"] != false || tun["stack"] != "system" {
 		t.Fatalf("unexpected conservative Windows TUN profile: %#v", tun)
 	}
