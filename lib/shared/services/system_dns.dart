@@ -23,6 +23,7 @@ abstract final class SystemDns {
   static const int _afInet = 2;
   static const int _flagsSkipAddressLists = 0x1 | 0x2 | 0x4;
   static const int _ifTypeSoftwareLoopback = 24;
+  static const int _ifTypeTunnel = 131;
   static const int _ifOperStatusUp = 1;
 
   static final DynamicLibrary _iphlpapi = DynamicLibrary.open('iphlpapi.dll');
@@ -127,6 +128,7 @@ abstract final class SystemDns {
     while (adapter != nullptr && guard < 64) {
       final info = adapter.ref;
       if (info.ifType != _ifTypeSoftwareLoopback &&
+          info.ifType != _ifTypeTunnel &&
           info.operStatus == _ifOperStatusUp &&
           !_isOwnTunAdapter(info.friendlyName)) {
         _collectDnsServers(info.firstDnsServerAddress, result);

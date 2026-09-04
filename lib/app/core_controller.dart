@@ -498,6 +498,12 @@ class CoreController extends ChangeNotifier {
             notifyListeners();
             return _coreError;
           }
+          // The main core outlives the TUN bridge, so restore `type: local`
+          // now or the pinned snapshot leaks into the next System connect.
+          final restored = await _restoreWindowsDnsAfterTunStop(req);
+          if (!restored) {
+            SecureLogger.debug('restore dns-local after disconnect failed');
+          }
         } else {
           await _core.stop();
           ClashApiClient.resetClient();
@@ -809,28 +815,45 @@ class CoreController extends ChangeNotifier {
         return _coreError;
       }
       await _releaseTunKillSwitch();
-      // TUN is gone, so the system resolver is no longer pointed at the bridge
-      // gateway. Drop the pinned snapshot and reload the main core with an
-      // empty server list to restore `type: local`, so it follows whatever
-      // resolver the OS reports next instead of the stale pre-TUN snapshot.
-      _windowsLocalDns = const [];
-      final systemConfig = req.buildSingBoxConfig(
-        overrideNetworkMode: NetworkMode.system,
-        overrideProxyPort: _activeProxyPort,
-        apiPort: _apiPort,
-        apiSecret: _apiSecret,
-        localDnsServers: const <String>[],
-      );
-      if (systemConfig != null) {
-        await ClashApiClient.reloadConfig(
-          SingBoxConfig.encodeConfig(systemConfig),
-          apiPort: _apiPort,
-        );
+      final restored = await _restoreWindowsDnsAfterTunStop(req);
+      if (!restored) {
+        _coreError = CoreErrorMessageService.restartClient;
+        _status = ConnectionStatus.error;
+        notifyListeners();
+        return _coreError;
       }
       await ProxySetter.enable(port: _activeProxyPort);
     }
     _activeNetworkMode = req.networkMode;
     return null;
+  }
+
+  /// Reloads the main core with an empty DNS server list so `dns-local` returns
+  /// to `type: local` after the Windows TUN bridge has been torn down.
+  ///
+  /// Shared by the TUN -> System mode switch and the ordinary disconnect path:
+  /// the main core outlives the TUN bridge, so without this the pinned
+  /// pre-TUN snapshot leaks into the next System-mode connection and goes
+  /// stale if the network changes in between. Returns true only when the reload
+  /// succeeded; [_windowsLocalDns] is cleared only then so Dart state never
+  /// claims `type: local` while sing-box is still pinned.
+  Future<bool> _restoreWindowsDnsAfterTunStop(CoreConnectionRequest req) async {
+    final systemConfig = req.buildSingBoxConfig(
+      overrideNetworkMode: NetworkMode.system,
+      overrideProxyPort: _activeProxyPort,
+      apiPort: _apiPort,
+      apiSecret: _apiSecret,
+      localDnsServers: const <String>[],
+    );
+    if (systemConfig == null) return false;
+    final reloaded = await ClashApiClient.reloadConfig(
+      SingBoxConfig.encodeConfig(systemConfig),
+      apiPort: _apiPort,
+    );
+    if (reloaded) {
+      _windowsLocalDns = const [];
+    }
+    return reloaded;
   }
 
   /// Re-snapshots the physical adapter's DNS while TUN is up and re-pins the
@@ -849,19 +872,23 @@ class CoreController extends ChangeNotifier {
     }
     final servers = SystemDns.readPhysicalDnsServers();
     if (servers.isEmpty) return; // keep the current snapshot as a fallback
-    _windowsLocalDns = servers;
     final dnsConfig = req.buildSingBoxConfig(
       overrideNetworkMode: NetworkMode.system,
       overrideProxyPort: _activeProxyPort,
       apiPort: _apiPort,
       apiSecret: _apiSecret,
-      localDnsServers: _windowsLocalDns,
+      localDnsServers: servers,
     );
     if (dnsConfig == null) return;
-    await ClashApiClient.reloadConfig(
+    final reloaded = await ClashApiClient.reloadConfig(
       SingBoxConfig.encodeConfig(dnsConfig),
       apiPort: _apiPort,
     );
+    if (reloaded) {
+      _windowsLocalDns = servers;
+    } else {
+      SecureLogger.warn('refresh TUN DNS failed; keeping previous snapshot');
+    }
   }
 
   Future<String?> _toggleAndroidConnection(CoreConnectionRequest req) async {
