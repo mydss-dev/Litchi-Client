@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	windowsTunInterfaceName = "TUN-LOCAL"
-	windowsTunBridgeAddress = "172.19.0.1/30"
+	windowsTunInterfaceName   = "TUN-LOCAL"
+	windowsTunBridgeAddress   = "172.19.0.1/30"
 	windowsTunBridgeAddressV6 = "fdfe:dcba:9876::1/126"
 )
 
