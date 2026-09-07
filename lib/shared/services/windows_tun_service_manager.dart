@@ -11,6 +11,7 @@ import 'secure_logger.dart';
 import 'tun_interface_verifier.dart';
 import 'windows_core_process_manager.dart';
 import 'windows_dpapi.dart';
+import 'windows_tun_conflict_detector.dart';
 
 /// Controls the persistent privileged Windows TUN service.
 ///
@@ -47,6 +48,14 @@ final class WindowsTunServiceManager {
     _stopping = false;
     final generation = ++_generation;
 
+    final conflict = await WindowsTunConflictDetector.findActiveConflict();
+    if (conflict != null) {
+      _lastError = conflict.startsWith('旧版 Litchi TUN')
+          ? '$conflict 仍在运行，请重启 Litchi 后再连接'
+          : '检测到其他 TUN/VPN 正在运行（$conflict），请先关闭 Clash/Mihomo 等其他 TUN 后再连接';
+      return false;
+    }
+
     var credentials = await _loadOrCreateCredentials();
     if (!await _serviceReady(credentials)) {
       // A non-Litchi listener or stale service credentials on our saved port
@@ -80,7 +89,15 @@ final class WindowsTunServiceManager {
     final state = '${response?.body?['state'] ?? ''}';
     if (response?.statusCode != HttpStatus.ok || state != 'running') {
       final detail = '${response?.body?['error'] ?? ''}'.trim();
-      _lastError = detail.isEmpty ? 'Windows TUN 服务启动失败' : detail;
+      if (detail.isNotEmpty) {
+        _lastError = detail;
+      } else if (response == null) {
+        _lastError =
+            'Windows TUN 控制接口启动请求超时（127.0.0.1:${credentials.port}）';
+      } else {
+        _lastError =
+            'Windows TUN 服务启动失败 (HTTP ${response.statusCode}, state: ${state.isEmpty ? 'unknown' : state})';
+      }
       _running = false;
       return false;
     }
@@ -316,7 +333,11 @@ final class WindowsTunServiceManager {
         }
       }
       return _TunResponse(response.statusCode, decoded);
-    } catch (_) {
+    } catch (error) {
+      SecureLogger.debug(
+        'Windows TUN control request failed: $method $path on ${credentials.port}',
+        error,
+      );
       return null;
     } finally {
       client.close(force: true);
