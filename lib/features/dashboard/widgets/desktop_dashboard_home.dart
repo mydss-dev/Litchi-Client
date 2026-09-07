@@ -42,13 +42,11 @@ class DesktopDashboardHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final noPlan =
         ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
-    final showNoticeGap = ctrl.noticesLoading || ctrl.notices.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         NoticeBar(notices: ctrl.notices, isLoading: ctrl.noticesLoading),
-        if (showNoticeGap) const SizedBox(height: 12),
         if (noPlan)
           NoPlanCard(
             onPurchase: isPageEnabled(AppPage.shop)
@@ -56,46 +54,50 @@ class DesktopDashboardHome extends StatelessWidget {
                 : null,
           )
         else
-          ValueListenableBuilder<int>(
-            valueListenable: tick,
-            builder: (context, _, _) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _ConnectionPanel(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ValueListenableBuilder<int>(
+                valueListenable: tick,
+                builder: (context, _, _) => _ConnectionPanel(
                   ctrl: ctrl,
                   onToggle: onToggleConnection,
                   onProxyModeChanged: onProxyModeChanged,
                 ),
-                const SizedBox(height: 12),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    const gap = 12.0;
-                    final width = (constraints.maxWidth - gap) / 2;
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: width,
-                          child: _NodePanel(
-                            node: ctrl.currentNode,
-                            loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
-                            automatic: ctrl.autoSelected,
-                            onTap: onNodeTap,
-                          ),
+              ),
+              const SizedBox(height: 12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const gap = 12.0;
+                  final width = (constraints.maxWidth - gap) / 2;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: width,
+                        child: _NodePanel(
+                          node: ctrl.currentNode,
+                          loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
+                          automatic: ctrl.autoSelected,
+                          onTap: onNodeTap,
                         ),
-                        const SizedBox(width: gap),
-                        SizedBox(
-                          width: width,
-                          child: _RealtimePanel(ctrl: ctrl),
+                      ),
+                      const SizedBox(width: gap),
+                      SizedBox(
+                        width: width,
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: tick,
+                          builder: (context, _, _) =>
+                              _RealtimePanel(ctrl: ctrl),
                         ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                _PlanPanel(ctrl: ctrl),
-              ],
-            ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _PlanPanel(ctrl: ctrl),
+            ],
           ),
       ],
     );
@@ -337,32 +339,22 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 26,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: color.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              color: color,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+    return Tooltip(
+      message: label,
+      child: Container(
+        width: 26,
+        height: 26,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.09),
+          shape: BoxShape.circle,
+          border: Border.all(color: color.withValues(alpha: 0.14)),
+        ),
+        child: Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
       ),
     );
   }
