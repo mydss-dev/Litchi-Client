@@ -173,10 +173,7 @@ class _NoticeBarState extends State<NoticeBar> {
                   duration: const Duration(milliseconds: 220),
                   layoutBuilder: (currentChild, previousChildren) => Stack(
                     alignment: Alignment.centerLeft,
-                    children: [
-                      ...previousChildren,
-                      if (currentChild != null) currentChild,
-                    ],
+                    children: [...previousChildren, ?currentChild],
                   ),
                   child: Text(
                     _summary(notice),
