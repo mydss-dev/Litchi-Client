@@ -606,7 +606,7 @@ class _RealtimePanel extends StatelessWidget {
               Container(width: 1, height: 42, color: c.softBorder),
               Expanded(
                 child: _LiveMetric(
-                  icon: LucideIcons.clock3,
+                  icon: Icons.access_time_rounded,
                   label: context.l10n.connectionDurationLabel,
                   value: connected
                       ? formatDuration(ctrl.connectedDuration)
