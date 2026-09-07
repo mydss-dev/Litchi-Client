@@ -56,6 +56,18 @@ extension DesktopUiLocalizations on AppLocalizations {
     return 'Remaining traffic';
   }
 
+  String get remainingDaysLabel {
+    if (_isTraditionalChinese) return '剩餘天數';
+    if (_isChinese) return '剩余天数';
+    return 'Days remaining';
+  }
+
+  String get resetCountdownLabel {
+    if (_isTraditionalChinese) return '距流量重置';
+    if (_isChinese) return '距流量重置';
+    return 'Traffic reset in';
+  }
+
   String comparedYesterdayLabel(String value) {
     if (_isTraditionalChinese) return '較昨日 $value';
     if (_isChinese) return '较昨日 $value';
