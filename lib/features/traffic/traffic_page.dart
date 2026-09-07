@@ -276,7 +276,7 @@ class _StatsGrid extends StatelessWidget {
           children: [
             SizedBox(width: cardWidth, child: const _TrafficCard()),
             SizedBox(width: cardWidth, child: const _RemainingDaysCard()),
-            if ((AppScope.of(context).resetDay ?? 0) > 0)
+            if (_validResetDay(AppScope.of(context).resetDay) != null)
               SizedBox(width: cardWidth, child: const _TrafficResetCard()),
           ],
         );
@@ -898,6 +898,6 @@ int _daysUntilMonthlyReset(int resetDay) {
 
 DateTime _safeMonthlyDate(int year, int month, int requestedDay) {
   final lastDay = DateTime(year, month + 1, 0).day;
-  final day = requestedDay.clamp(1, lastDay);
+  final day = requestedDay.clamp(1, lastDay).toInt();
   return DateTime(year, month, day);
 }
