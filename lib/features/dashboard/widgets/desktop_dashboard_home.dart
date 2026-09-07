@@ -12,6 +12,7 @@ import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/utils/formatters.dart';
+import '../../../shared/utils/traffic_metrics.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_switch.dart';
 import '../../../shared/widgets/mode_strip.dart';
@@ -553,6 +554,7 @@ class _RealtimePanel extends StatelessWidget {
       height: 126,
       radius: AppRadius.lg,
       padding: const EdgeInsets.all(14),
+      onTap: () => ctrl.goToPage(AppPage.traffic),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -562,23 +564,23 @@ class _RealtimePanel extends StatelessWidget {
               const SizedBox(width: 7),
               Expanded(
                 child: Text(
-                  context.l10n.status,
+                  context.l10n.realtimeStatusLabel,
                   style: AppTextStyles.bodyStrong.copyWith(
                     color: c.textPrimary,
                     fontSize: 13,
                   ),
                 ),
               ),
-              Icon(Icons.access_time_rounded, size: 13, color: c.iconMuted),
-              const SizedBox(width: 5),
               Text(
-                connected ? formatDuration(ctrl.connectedDuration) : '--:--:--',
+                context.l10n.viewUsageLabel,
                 style: AppTextStyles.caption.copyWith(
-                  color: connected ? c.textSecondary : c.textMuted,
+                  color: c.primary,
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              const SizedBox(width: 2),
+              Icon(LucideIcons.chevronRight, size: 15, color: c.primary),
             ],
           ),
           const Spacer(),
@@ -598,6 +600,17 @@ class _RealtimePanel extends StatelessWidget {
                   icon: LucideIcons.arrowDown,
                   label: context.l10n.downloadSpeed,
                   value: formatRate(ctrl.downBps),
+                  active: connected,
+                ),
+              ),
+              Container(width: 1, height: 42, color: c.softBorder),
+              Expanded(
+                child: _LiveMetric(
+                  icon: LucideIcons.clock3,
+                  label: context.l10n.connectionDurationLabel,
+                  value: connected
+                      ? formatDuration(ctrl.connectedDuration)
+                      : '--:--:--',
                   active: connected,
                 ),
               ),
@@ -628,14 +641,14 @@ class _LiveMetric extends StatelessWidget {
     return Opacity(
       opacity: active ? 1 : 0.48,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 7),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(icon, size: 12, color: c.primary),
-                const SizedBox(width: 5),
+                const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     label,
@@ -643,7 +656,7 @@ class _LiveMetric extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.caption.copyWith(
                       color: c.textMuted,
-                      fontSize: 10.5,
+                      fontSize: 10,
                     ),
                   ),
                 ),
@@ -656,7 +669,7 @@ class _LiveMetric extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.bodyStrong.copyWith(
                 color: c.textPrimary,
-                fontSize: 15,
+                fontSize: 13.5,
               ),
             ),
           ],
@@ -695,21 +708,20 @@ class _PlanPanel extends StatelessWidget {
           _MetricDivider(color: c.softBorder),
           Expanded(
             child: _PlanMetric(
-              icon: LucideIcons.gauge,
-              label: context.l10n.usage,
+              icon: LucideIcons.chartColumn,
+              label: context.l10n.todayUsedLabel,
               value: formatGb(ctrl.todayTrafficGb),
-              footer: context.l10n.recentDays(1),
+              footer: _yesterdayComparison(context, ctrl),
             ),
           ),
           _MetricDivider(color: c.softBorder),
           Expanded(
             child: _PlanMetric(
               icon: LucideIcons.database,
-              label: context.l10n.remaining,
+              label: context.l10n.remainingTrafficLabel,
               value: formatGb(ctrl.traffic.remainGb),
-              footer: context.l10n.usedTraffic(
-                ctrl.traffic.usedGb.toStringAsFixed(0),
-                ctrl.traffic.totalGb.toStringAsFixed(0),
+              footer: context.l10n.totalTrafficLabel(
+                formatGb(ctrl.traffic.totalGb),
               ),
             ),
           ),
@@ -794,6 +806,23 @@ class _PlanMetric extends StatelessWidget {
       ],
     );
   }
+}
+
+String _yesterdayComparison(BuildContext context, AppController ctrl) {
+  final yesterday = trafficForDay(
+    ctrl.trafficUsage,
+    DateTime.now().subtract(const Duration(days: 1)),
+  );
+  final change = relativeChangePercent(
+    current: ctrl.todayTrafficGb,
+    previous: yesterday,
+  );
+  if (change == null) {
+    return context.l10n.yesterdayUsageLabel(formatGb(yesterday));
+  }
+  final rounded = change.abs() < 0.5 ? 0 : change.round();
+  final signed = rounded > 0 ? '+$rounded%' : '$rounded%';
+  return context.l10n.comparedYesterdayLabel(signed);
 }
 
 ({int? days, String date}) _expiryInfo(AppController ctrl) {
