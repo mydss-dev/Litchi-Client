@@ -101,8 +101,8 @@ class _TrafficPageState extends State<TrafficPage> {
   }
 }
 
-/// Desktop summary deliberately gives each card a distinct question to answer:
-/// what was used today, what has been used this billing cycle, and what remains.
+/// Desktop summary keeps four different dimensions visible at a glance:
+/// today's usage, remaining quota, subscription lifetime, and reset countdown.
 class _DesktopTrafficSummary extends StatelessWidget {
   const _DesktopTrafficSummary({required this.ctrl});
 
@@ -111,15 +111,17 @@ class _DesktopTrafficSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final traffic = ctrl.traffic;
-    final ratio = traffic.totalGb > 0
-        ? (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0)
-        : 0.0;
-    final percent = (ratio * 100).toStringAsFixed(0);
+    final expiry = _subscriptionExpiryInfo(ctrl);
+    final resetDay = _validResetDay(ctrl.resetDay);
+    final resetDays = resetDay == null ? null : _daysUntilMonthlyReset(resetDay);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         const gap = 12.0;
-        final width = (constraints.maxWidth - gap * 2) / 3;
+        final columns = constraints.maxWidth >= 620 ? 4 : 2;
+        final width =
+            (constraints.maxWidth - gap * (columns - 1)) / columns;
+
         return Wrap(
           spacing: gap,
           runSpacing: gap,
@@ -136,22 +138,38 @@ class _DesktopTrafficSummary extends StatelessWidget {
             SizedBox(
               width: width,
               child: _DesktopTrafficMetric(
-                icon: LucideIcons.gauge,
-                title: context.l10n.periodUsedLabel,
-                value: formatGb(traffic.usedGb),
-                footer: context.l10n.usedPercent(percent),
-                progress: ratio,
-              ),
-            ),
-            SizedBox(
-              width: width,
-              child: _DesktopTrafficMetric(
                 icon: LucideIcons.database,
                 title: context.l10n.remainingTrafficLabel,
                 value: formatGb(traffic.remainGb),
                 footer: context.l10n.totalTrafficLabel(
                   formatGb(traffic.totalGb),
                 ),
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _DesktopTrafficMetric(
+                icon: LucideIcons.calendarDays,
+                title: context.l10n.remainingDaysLabel,
+                value: expiry.days == null
+                    ? context.l10n.permanent
+                    : context.l10n.daysCount(expiry.days!),
+                footer: expiry.days == null || expiry.date.isEmpty
+                    ? context.l10n.subscriptionLongTerm
+                    : context.l10n.expiresAt(expiry.date),
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _DesktopTrafficMetric(
+                icon: LucideIcons.refreshCw,
+                title: context.l10n.resetCountdownLabel,
+                value: resetDays == null
+                    ? context.l10n.neverResets
+                    : context.l10n.daysCount(resetDays),
+                footer: resetDay == null
+                    ? context.l10n.noTrafficReset
+                    : context.l10n.monthlyResetDay(resetDay),
               ),
             ),
           ],
@@ -167,14 +185,12 @@ class _DesktopTrafficMetric extends StatelessWidget {
     required this.title,
     required this.value,
     required this.footer,
-    this.progress,
   });
 
   final IconData icon;
   final String title;
   final String value;
   final String footer;
-  final double? progress;
 
   @override
   Widget build(BuildContext context) {
@@ -222,20 +238,6 @@ class _DesktopTrafficMetric extends StatelessWidget {
               fontSize: 20,
             ),
           ),
-          if (progress != null) ...[
-            const SizedBox(height: 5),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 4,
-                backgroundColor: c.surfaceMuted,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  progress! > 0.85 ? c.warning : c.primary,
-                ),
-              ),
-            ),
-          ],
           const SizedBox(height: 3),
           Text(
             footer,
@@ -312,41 +314,18 @@ class _RemainingDaysCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
-    final expiredAt = ctrl.expiredAt;
-    final expiry = expiredAt == null || expiredAt == 0
-        ? ctrl.user.expiry
-        : formatDate(DateTime.fromMillisecondsSinceEpoch(expiredAt * 1000));
-    final remainingDays = expiredAt == null || expiredAt == 0
-        ? _remainingDays(expiry)
-        : _remainingDaysFromTimestamp(expiredAt);
+    final expiry = _subscriptionExpiryInfo(ctrl);
 
     return _StatCard(
       icon: LucideIcons.calendarDays,
       title: context.l10n.remainingDays,
-      value: remainingDays == null ? context.l10n.permanent : '$remainingDays',
-      unit: remainingDays == null ? '' : context.l10n.daysUnit,
-      footer: remainingDays == null
+      value: expiry.days == null ? context.l10n.permanent : '${expiry.days}',
+      unit: expiry.days == null ? '' : context.l10n.daysUnit,
+      footer: expiry.days == null || expiry.date.isEmpty
           ? context.l10n.subscriptionLongTerm
-          : context.l10n.expiresAt(expiry),
+          : context.l10n.expiresAt(expiry.date),
       progress: null,
     );
-  }
-
-  int? _remainingDays(String expiry) {
-    final expiryDate = DateTime.tryParse(expiry);
-    if (expiryDate == null) return null;
-    final today = DateTime.now();
-    final start = DateTime(today.year, today.month, today.day);
-    final end = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
-    return end.difference(start).inDays.clamp(0, 9999);
-  }
-
-  int _remainingDaysFromTimestamp(int timestamp) {
-    final expiryDate = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-    final today = DateTime.now();
-    final start = DateTime(today.year, today.month, today.day);
-    final end = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
-    return end.difference(start).inDays.clamp(0, 9999);
   }
 }
 
@@ -355,16 +334,18 @@ class _TrafficResetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resetDay = AppScope.of(context).resetDay;
+    final resetDay = _validResetDay(AppScope.of(context).resetDay);
+    final resetDays = resetDay == null ? null : _daysUntilMonthlyReset(resetDay);
+
     return _StatCard(
       icon: LucideIcons.refreshCw,
       title: context.l10n.trafficResetTime,
-      value: resetDay == null
+      value: resetDays == null
           ? context.l10n.neverResets
-          : context.l10n.daysCount(resetDay),
+          : context.l10n.daysCount(resetDays),
       footer: resetDay == null
           ? context.l10n.noTrafficReset
-          : context.l10n.untilNextReset,
+          : context.l10n.monthlyResetDay(resetDay),
       progress: null,
     );
   }
@@ -878,4 +859,45 @@ String _yesterdayComparison(BuildContext context, AppController ctrl) {
   final rounded = change.abs() < 0.5 ? 0 : change.round();
   final signed = rounded > 0 ? '+$rounded%' : '$rounded%';
   return context.l10n.comparedYesterdayLabel(signed);
+}
+
+({int? days, String date}) _subscriptionExpiryInfo(AppController ctrl) {
+  final expiredAt = ctrl.expiredAt;
+  if (expiredAt != null && expiredAt > 0) {
+    final expiry = DateTime.fromMillisecondsSinceEpoch(expiredAt * 1000);
+    return (days: _daysUntil(expiry), date: formatDate(expiry));
+  }
+
+  final expiry = DateTime.tryParse(ctrl.user.expiry);
+  if (expiry == null) return (days: null, date: '');
+  return (days: _daysUntil(expiry), date: formatDate(expiry));
+}
+
+int _daysUntil(DateTime expiry) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final end = DateTime(expiry.year, expiry.month, expiry.day);
+  return end.difference(today).inDays.clamp(0, 9999);
+}
+
+int? _validResetDay(int? resetDay) {
+  if (resetDay == null || resetDay < 1 || resetDay > 31) return null;
+  return resetDay;
+}
+
+int _daysUntilMonthlyReset(int resetDay) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  var target = _safeMonthlyDate(now.year, now.month, resetDay);
+  if (!target.isAfter(today)) {
+    final nextMonth = DateTime(now.year, now.month + 1, 1);
+    target = _safeMonthlyDate(nextMonth.year, nextMonth.month, resetDay);
+  }
+  return target.difference(today).inDays;
+}
+
+DateTime _safeMonthlyDate(int year, int month, int requestedDay) {
+  final lastDay = DateTime(year, month + 1, 0).day;
+  final day = requestedDay.clamp(1, lastDay);
+  return DateTime(year, month, day);
 }
