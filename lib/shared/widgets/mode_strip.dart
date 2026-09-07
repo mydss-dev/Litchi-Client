@@ -4,10 +4,14 @@ import '../../l10n/l10n.dart';
 import '../models/app_models.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
-import '../theme/app_shadows.dart';
 import '../theme/app_text_styles.dart';
 
 /// A compact three-button strip for selecting proxy mode (rule / global / direct).
+///
+/// Keep this visually aligned with [NetworkModeSelector] on the dashboard:
+/// muted segmented container, neutral selected surface, primary text and a
+/// restrained primary border. This is the reference segmented-control style for
+/// desktop pages.
 class ModeStrip extends StatelessWidget {
   const ModeStrip({
     required this.selected,
@@ -76,22 +80,26 @@ class _ModeButton extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Ink(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
             height: height,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? c.primarySoft : Colors.transparent,
+              color: selected ? c.cardBg : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadius.md),
               border: selected
-                  ? Border.all(color: c.primary.withValues(alpha: 0.22))
+                  ? Border.all(color: c.primary.withValues(alpha: 0.16))
                   : null,
-              boxShadow: selected ? AppShadows.soft(c) : null,
             ),
-            child: Center(
-              child: Text(
-                label,
-                style: AppTextStyles.bodyStrong.copyWith(
-                  color: selected ? c.primary : c.textMuted,
-                ),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.button.copyWith(
+                color: selected ? c.primary : c.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
