@@ -889,7 +889,7 @@ int _daysUntilMonthlyReset(int resetDay) {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   var target = _safeMonthlyDate(now.year, now.month, resetDay);
-  if (!target.isAfter(today)) {
+  if (target.isBefore(today)) {
     final nextMonth = DateTime(now.year, now.month + 1, 1);
     target = _safeMonthlyDate(nextMonth.year, nextMonth.month, resetDay);
   }
