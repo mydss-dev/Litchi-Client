@@ -1,4 +1,5 @@
 import 'package:country_flags/country_flags.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -19,10 +20,8 @@ import '../../../shared/widgets/node_latency.dart';
 import '../../../shared/widgets/notice_bar.dart';
 import 'network_settings_card.dart';
 
-/// Desktop-only home composition.
-///
-/// Information priority is intentionally: notice -> connection -> node/live
-/// status -> subscription. Compact/mobile home keeps its existing flow.
+/// Desktop home information order:
+/// notice -> connection -> node/live status -> subscription summary.
 class DesktopDashboardHome extends StatelessWidget {
   const DesktopDashboardHome({
     super.key,
@@ -43,13 +42,13 @@ class DesktopDashboardHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final noPlan =
         ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan;
-    final hasNoticeSlot = ctrl.noticesLoading || ctrl.notices.isNotEmpty;
+    final showNoticeGap = ctrl.noticesLoading || ctrl.notices.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         NoticeBar(notices: ctrl.notices, isLoading: ctrl.noticesLoading),
-        if (hasNoticeSlot) const SizedBox(height: 12),
+        if (showNoticeGap) const SizedBox(height: 12),
         if (noPlan)
           NoPlanCard(
             onPurchase: isPageEnabled(AppPage.shop)
@@ -59,55 +58,52 @@ class DesktopDashboardHome extends StatelessWidget {
         else
           ValueListenableBuilder<int>(
             valueListenable: tick,
-            builder: (context, _, _) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _NetworkControlCard(
-                    ctrl: ctrl,
-                    onToggle: onToggleConnection,
-                    onProxyModeChanged: onProxyModeChanged,
-                  ),
-                  const SizedBox(height: 12),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      const gap = 12.0;
-                      final width = (constraints.maxWidth - gap) / 2;
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: width,
-                            child: _NodeOverviewCard(
-                              node: ctrl.currentNode,
-                              loading:
-                                  ctrl.isInitialLoading && ctrl.nodes.isEmpty,
-                              automatic: ctrl.autoSelected,
-                              onTap: onNodeTap,
-                            ),
+            builder: (context, _, _) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ConnectionPanel(
+                  ctrl: ctrl,
+                  onToggle: onToggleConnection,
+                  onProxyModeChanged: onProxyModeChanged,
+                ),
+                const SizedBox(height: 12),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    const gap = 12.0;
+                    final width = (constraints.maxWidth - gap) / 2;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: width,
+                          child: _NodePanel(
+                            node: ctrl.currentNode,
+                            loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
+                            automatic: ctrl.autoSelected,
+                            onTap: onNodeTap,
                           ),
-                          const SizedBox(width: gap),
-                          SizedBox(
-                            width: width,
-                            child: _RealtimeStatusCard(ctrl: ctrl),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _PlanSummaryCard(ctrl: ctrl),
-                ],
-              );
-            },
+                        ),
+                        const SizedBox(width: gap),
+                        SizedBox(
+                          width: width,
+                          child: _RealtimePanel(ctrl: ctrl),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                _PlanPanel(ctrl: ctrl),
+              ],
+            ),
           ),
       ],
     );
   }
 }
 
-class _NetworkControlCard extends StatelessWidget {
-  const _NetworkControlCard({
+class _ConnectionPanel extends StatelessWidget {
+  const _ConnectionPanel({
     required this.ctrl,
     required this.onToggle,
     required this.onProxyModeChanged,
@@ -122,8 +118,7 @@ class _NetworkControlCard extends StatelessWidget {
     final c = AppColors.of(context);
     final status = ctrl.connectionStatus;
     final connected = status == ConnectionStatus.connected;
-    final busy =
-        status == ConnectionStatus.connecting ||
+    final busy = status == ConnectionStatus.connecting ||
         status == ConnectionStatus.disconnecting;
     final supportsConnection = ctrl.supportsCoreConnection;
     final (statusText, statusColor) = !supportsConnection
@@ -131,17 +126,14 @@ class _NetworkControlCard extends StatelessWidget {
         : switch (status) {
             ConnectionStatus.connected => (context.l10n.protected, c.success),
             ConnectionStatus.connecting => (context.l10n.connecting, c.primary),
-            ConnectionStatus.disconnecting => (
-              context.l10n.disconnecting,
-              c.textMuted,
-            ),
-            ConnectionStatus.error => (context.l10n.connectionFailed, c.danger),
-            ConnectionStatus.disconnected => (
-              context.l10n.notConnected,
-              c.textMuted,
-            ),
+            ConnectionStatus.disconnecting =>
+              (context.l10n.disconnecting, c.textMuted),
+            ConnectionStatus.error =>
+              (context.l10n.connectionFailed, c.danger),
+            ConnectionStatus.disconnected =>
+              (context.l10n.notConnected, c.textMuted),
           };
-    final description = ctrl.networkMode == NetworkMode.system
+    final modeDescription = ctrl.networkMode == NetworkMode.system
         ? context.l10n.systemProxyDescription
         : context.l10n.tunDescription;
 
@@ -153,16 +145,7 @@ class _NetworkControlCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 30,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: c.primarySoft,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(LucideIcons.wifi, size: 15, color: c.primary),
-              ),
+              _IconTile(icon: LucideIcons.wifi),
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
@@ -173,7 +156,7 @@ class _NetworkControlCard extends StatelessWidget {
                   ),
                 ),
               ),
-              _InlineStatus(label: statusText, color: statusColor),
+              _StatusBadge(label: statusText, color: statusColor),
             ],
           ),
           const SizedBox(height: 12),
@@ -223,7 +206,7 @@ class _NetworkControlCard extends StatelessWidget {
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
-                    description,
+                    modeDescription,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.caption.copyWith(
@@ -237,7 +220,7 @@ class _NetworkControlCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Container(
-            minHeight: 48,
+            constraints: const BoxConstraints(minHeight: 48),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: c.cardBg,
@@ -246,32 +229,10 @@ class _NetworkControlCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.10),
-                    shape: BoxShape.circle,
-                  ),
-                  child: busy
-                      ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: statusColor,
-                          ),
-                        )
-                      : Icon(
-                          connected
-                              ? LucideIcons.shieldCheck
-                              : status == ConnectionStatus.error
-                              ? LucideIcons.shieldOff
-                              : LucideIcons.shield,
-                          size: 16,
-                          color: statusColor,
-                        ),
+                _ConnectionStateIcon(
+                  status: status,
+                  color: statusColor,
+                  busy: busy,
                 ),
                 const SizedBox(width: 9),
                 Expanded(
@@ -347,8 +308,29 @@ class _ControlGroup extends StatelessWidget {
   }
 }
 
-class _InlineStatus extends StatelessWidget {
-  const _InlineStatus({required this.label, required this.color});
+class _IconTile extends StatelessWidget {
+  const _IconTile({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Container(
+      width: 30,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: c.primarySoft,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Icon(icon, size: 15, color: c.primary),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.label, required this.color});
 
   final String label;
   final Color color;
@@ -386,8 +368,46 @@ class _InlineStatus extends StatelessWidget {
   }
 }
 
-class _NodeOverviewCard extends StatelessWidget {
-  const _NodeOverviewCard({
+class _ConnectionStateIcon extends StatelessWidget {
+  const _ConnectionStateIcon({
+    required this.status,
+    required this.color,
+    required this.busy,
+  });
+
+  final ConnectionStatus status;
+  final Color color;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (status) {
+      ConnectionStatus.connected => LucideIcons.shieldCheck,
+      ConnectionStatus.error => LucideIcons.shieldOff,
+      _ => LucideIcons.shield,
+    };
+
+    return Container(
+      width: 32,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+      ),
+      child: busy
+          ? SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+            )
+          : Icon(icon, size: 16, color: color),
+    );
+  }
+}
+
+class _NodePanel extends StatelessWidget {
+  const _NodePanel({
     required this.node,
     required this.loading,
     required this.automatic,
@@ -404,8 +424,8 @@ class _NodeOverviewCard extends StatelessWidget {
     final c = AppColors.of(context);
     final nodeName = node.name.isEmpty
         ? loading
-              ? context.l10n.syncingNodes
-              : context.l10n.selectNodePrompt
+            ? context.l10n.syncingNodes
+            : context.l10n.selectNodePrompt
         : node.name;
     final secondary = node.englishName.isNotEmpty
         ? node.englishName
@@ -530,8 +550,8 @@ class _NodeAvatar extends StatelessWidget {
   }
 }
 
-class _RealtimeStatusCard extends StatelessWidget {
-  const _RealtimeStatusCard({required this.ctrl});
+class _RealtimePanel extends StatelessWidget {
+  const _RealtimePanel({required this.ctrl});
 
   final AppController ctrl;
 
@@ -560,7 +580,7 @@ class _RealtimeStatusCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Icon(LucideIcons.clock3, size: 13, color: c.iconMuted),
+              Icon(Icons.access_time_rounded, size: 13, color: c.iconMuted),
               const SizedBox(width: 5),
               Text(
                 connected ? formatDuration(ctrl.connectedDuration) : '--:--:--',
@@ -657,8 +677,8 @@ class _LiveMetric extends StatelessWidget {
   }
 }
 
-class _PlanSummaryCard extends StatelessWidget {
-  const _PlanSummaryCard({required this.ctrl});
+class _PlanPanel extends StatelessWidget {
+  const _PlanPanel({required this.ctrl});
 
   final AppController ctrl;
 
@@ -683,7 +703,7 @@ class _PlanSummaryCard extends StatelessWidget {
                   : '${expiry.days} ${context.l10n.daysUnit}',
             ),
           ),
-          _SummaryDivider(color: c.softBorder),
+          _MetricDivider(color: c.softBorder),
           Expanded(
             child: _PlanMetric(
               icon: LucideIcons.gauge,
@@ -692,7 +712,7 @@ class _PlanSummaryCard extends StatelessWidget {
               footer: context.l10n.recentDays(1),
             ),
           ),
-          _SummaryDivider(color: c.softBorder),
+          _MetricDivider(color: c.softBorder),
           Expanded(
             child: _PlanMetric(
               icon: LucideIcons.database,
@@ -710,18 +730,18 @@ class _PlanSummaryCard extends StatelessWidget {
   }
 }
 
-class _SummaryDivider extends StatelessWidget {
-  const _SummaryDivider({required this.color});
+class _MetricDivider extends StatelessWidget {
+  const _MetricDivider({required this.color});
 
   final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 1,
-    height: 46,
-    margin: const EdgeInsets.symmetric(horizontal: 8),
-    color: color,
-  );
+        width: 1,
+        height: 46,
+        margin: const EdgeInsets.symmetric(horizontal: 8),
+        color: color,
+      );
 }
 
 class _PlanMetric extends StatelessWidget {
@@ -742,16 +762,7 @@ class _PlanMetric extends StatelessWidget {
     final c = AppColors.of(context);
     return Row(
       children: [
-        Container(
-          width: 30,
-          height: 30,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: c.primarySoft,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: Icon(icon, size: 14, color: c.primary),
-        ),
+        _IconTile(icon: icon),
         const SizedBox(width: 9),
         Expanded(
           child: Column(
@@ -809,8 +820,8 @@ class _PlanMetric extends StatelessWidget {
 }
 
 int _daysUntil(DateTime expiry) {
-  final today = DateTime.now();
-  final start = DateTime(today.year, today.month, today.day);
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
   final end = DateTime(expiry.year, expiry.month, expiry.day);
-  return end.difference(start).inDays.clamp(0, 9999);
+  return end.difference(today).inDays.clamp(0, 9999);
 }
