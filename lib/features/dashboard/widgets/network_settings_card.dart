@@ -6,6 +6,7 @@ import '../../../l10n/l10n.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
+import '../../../shared/theme/app_shadows.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_modal.dart';
@@ -55,6 +56,8 @@ class NetworkSettingsCard extends StatelessWidget {
 ///
 /// The permission check stays here so the dashboard and settings page share
 /// exactly the same behavior instead of duplicating TUN privilege logic.
+/// Visually this follows [ModeStrip]: primary-soft selected fill, restrained
+/// primary border, primary selected text and muted unselected text.
 class NetworkModeSelector extends StatefulWidget {
   const NetworkModeSelector({super.key, this.height = 38});
 
@@ -152,7 +155,7 @@ class _NetworkModeSelectorState extends State<NetworkModeSelector> {
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: c.surfaceMuted,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: c.softBorder),
       ),
       child: Row(
@@ -207,11 +210,12 @@ class _NetworkModeOption extends StatelessWidget {
           curve: Curves.easeOutCubic,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? c.cardBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
+            color: selected ? c.primarySoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.md),
             border: selected
-                ? Border.all(color: c.primary.withValues(alpha: 0.16))
+                ? Border.all(color: c.primary.withValues(alpha: 0.22))
                 : null,
+            boxShadow: selected ? AppShadows.soft(c) : null,
           ),
           child: loading
               ? SizedBox(
@@ -227,7 +231,7 @@ class _NetworkModeOption extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.button.copyWith(
-                    color: selected ? c.primary : c.textSecondary,
+                    color: selected ? c.primary : c.textMuted,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),

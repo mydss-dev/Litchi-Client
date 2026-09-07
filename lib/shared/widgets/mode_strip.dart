@@ -8,6 +8,10 @@ import '../theme/app_shadows.dart';
 import '../theme/app_text_styles.dart';
 
 /// A compact three-button strip for selecting proxy mode (rule / global / direct).
+///
+/// This is the visual reference for segmented controls across the desktop UI:
+/// muted outer surface, primary-soft selected fill, restrained primary border,
+/// primary selected text, and muted unselected text.
 class ModeStrip extends StatelessWidget {
   const ModeStrip({
     required this.selected,
@@ -89,6 +93,8 @@ class _ModeButton extends StatelessWidget {
             child: Center(
               child: Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodyStrong.copyWith(
                   color: selected ? c.primary : c.textMuted,
                 ),

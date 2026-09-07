@@ -31,7 +31,7 @@ class NoticeBar extends StatefulWidget {
 }
 
 class _NoticeBarState extends State<NoticeBar> {
-  static const _interval = Duration(seconds: 5);
+  static const _interval = Duration(seconds: 8);
 
   final Set<int> _dismissedIds = <int>{};
   Timer? _timer;
@@ -110,15 +110,42 @@ class _NoticeBarState extends State<NoticeBar> {
     _ensureTimer();
   }
 
+  void _dismissNotice(int id) {
+    if (_dismissedIds.contains(id)) return;
+
+    final visibleBefore = _visibleNotices;
+    final removedIndex = visibleBefore.indexWhere((notice) => notice.id == id);
+    if (removedIndex < 0) return;
+
+    final currentIndex = _index >= visibleBefore.length ? 0 : _index;
+    final remainingCount = visibleBefore.length - 1;
+
+    setState(() {
+      _dismissedIds.add(id);
+
+      if (remainingCount <= 0) {
+        _index = 0;
+      } else if (removedIndex < currentIndex) {
+        // A notice before the currently displayed one was removed. Shift the
+        // index left so the same announcement remains visible.
+        _index = currentIndex - 1;
+      } else if (removedIndex == currentIndex) {
+        // Keep the same slot so the next announcement naturally replaces the
+        // dismissed one. Wrap only when the dismissed notice was the last item.
+        _index = currentIndex >= remainingCount ? 0 : currentIndex;
+      } else {
+        // Removing a later notice should not disturb the current announcement.
+        _index = currentIndex;
+      }
+    });
+    _restartTimer();
+  }
+
   void _dismissCurrent() {
     final visible = _visibleNotices;
     if (visible.isEmpty) return;
     final safeIndex = _index >= visible.length ? 0 : _index;
-    setState(() {
-      _dismissedIds.add(visible[safeIndex].id);
-      _index = 0;
-    });
-    _restartTimer();
+    _dismissNotice(visible[safeIndex].id);
   }
 
   Future<void> _openNotice(NoticeModel notice) async {
@@ -126,6 +153,10 @@ class _NoticeBarState extends State<NoticeBar> {
       context: context,
       builder: (_) => NoticePopupDialog(notice: notice),
     );
+    if (!mounted) return;
+    // Opening the detail is treated as reading the notice. Keep it hidden for
+    // this notice id across ordinary refreshes, just like an explicit dismiss.
+    _dismissNotice(notice.id);
   }
 
   String _summary(NoticeModel notice) {
