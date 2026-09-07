@@ -112,11 +112,31 @@ class _NoticeBarState extends State<NoticeBar> {
 
   void _dismissNotice(int id) {
     if (_dismissedIds.contains(id)) return;
-    final exists = widget.notices.any((notice) => notice.id == id);
-    if (!exists) return;
+
+    final visibleBefore = _visibleNotices;
+    final removedIndex = visibleBefore.indexWhere((notice) => notice.id == id);
+    if (removedIndex < 0) return;
+
+    final currentIndex = _index >= visibleBefore.length ? 0 : _index;
+    final remainingCount = visibleBefore.length - 1;
+
     setState(() {
       _dismissedIds.add(id);
-      _index = 0;
+
+      if (remainingCount <= 0) {
+        _index = 0;
+      } else if (removedIndex < currentIndex) {
+        // A notice before the currently displayed one was removed. Shift the
+        // index left so the same announcement remains visible.
+        _index = currentIndex - 1;
+      } else if (removedIndex == currentIndex) {
+        // Keep the same slot so the next announcement naturally replaces the
+        // dismissed one. Wrap only when the dismissed notice was the last item.
+        _index = currentIndex >= remainingCount ? 0 : currentIndex;
+      } else {
+        // Removing a later notice should not disturb the current announcement.
+        _index = currentIndex;
+      }
     });
     _restartTimer();
   }
