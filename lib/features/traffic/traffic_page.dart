@@ -11,12 +11,13 @@ import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/widgets/app_card.dart';
 import '../../shared/utils/formatters.dart';
+import '../../shared/utils/traffic_metrics.dart';
+import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_toast.dart';
-import '../../shared/widgets/responsive_page_scaffold.dart';
 import '../../shared/widgets/no_plan_card.dart';
+import '../../shared/widgets/responsive_page_scaffold.dart';
 
 /// Statistics page (§13): compact traffic, device, and subscription stats.
 class TrafficPage extends StatefulWidget {
@@ -78,8 +79,6 @@ class _TrafficPageState extends State<TrafficPage> {
     );
   }
 
-  // ── Shared body ────────────────────────────────────────────────────────────
-
   List<Widget> _bodyChildren(BuildContext context) {
     final ctrl = AppScope.of(context);
     if (ctrl.hasAccountSummary && !ctrl.isInitialLoading && !ctrl.hasPlan) {
@@ -102,6 +101,8 @@ class _TrafficPageState extends State<TrafficPage> {
   }
 }
 
+/// Desktop summary deliberately gives each card a distinct question to answer:
+/// what was used today, what has been used this billing cycle, and what remains.
 class _DesktopTrafficSummary extends StatelessWidget {
   const _DesktopTrafficSummary({required this.ctrl});
 
@@ -114,7 +115,6 @@ class _DesktopTrafficSummary extends StatelessWidget {
         ? (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0)
         : 0.0;
     final percent = (ratio * 100).toStringAsFixed(0);
-    final resetDay = ctrl.resetDay;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -127,20 +127,17 @@ class _DesktopTrafficSummary extends StatelessWidget {
             SizedBox(
               width: width,
               child: _DesktopTrafficMetric(
-                icon: LucideIcons.database,
-                title: context.l10n.trafficOverview,
-                value: formatGb(traffic.totalGb),
-                footer: context.l10n.usedTraffic(
-                  traffic.usedGb.toStringAsFixed(1),
-                  traffic.totalGb.toStringAsFixed(1),
-                ),
+                icon: LucideIcons.chartColumn,
+                title: context.l10n.todayUsedLabel,
+                value: formatGb(ctrl.todayTrafficGb),
+                footer: _yesterdayComparison(context, ctrl),
               ),
             ),
             SizedBox(
               width: width,
               child: _DesktopTrafficMetric(
-                icon: LucideIcons.chartColumn,
-                title: context.l10n.usage,
+                icon: LucideIcons.gauge,
+                title: context.l10n.periodUsedLabel,
                 value: formatGb(traffic.usedGb),
                 footer: context.l10n.usedPercent(percent),
                 progress: ratio,
@@ -149,12 +146,12 @@ class _DesktopTrafficSummary extends StatelessWidget {
             SizedBox(
               width: width,
               child: _DesktopTrafficMetric(
-                icon: LucideIcons.gauge,
-                title: context.l10n.remaining,
+                icon: LucideIcons.database,
+                title: context.l10n.remainingTrafficLabel,
                 value: formatGb(traffic.remainGb),
-                footer: resetDay != null && resetDay > 0
-                    ? context.l10n.monthlyResetDay(resetDay)
-                    : context.l10n.resetDayUnavailable,
+                footer: context.l10n.totalTrafficLabel(
+                  formatGb(traffic.totalGb),
+                ),
               ),
             ),
           ],
@@ -464,9 +461,7 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
                 120.0,
                 double.infinity,
               );
-              final chartWidth = minWidth > scrollWidth
-                  ? minWidth
-                  : scrollWidth;
+              final chartWidth = minWidth > scrollWidth ? minWidth : scrollWidth;
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -526,28 +521,24 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
                                           fitInsideVertically: true,
                                           maxContentWidth: 160,
                                           getTooltipColor: (_) => c.textPrimary,
-                                          getTooltipItem:
-                                              (
-                                                group,
-                                                groupIndex,
-                                                rod,
-                                                rodIndex,
-                                              ) {
-                                                final point =
-                                                    data[group.x.toInt()];
-                                                return BarTooltipItem(
-                                                  '${point.tooltipLabel}\n'
-                                                  '${context.l10n.tooltipUpload(formatGb(point.uploadGb))}\n'
-                                                  '${context.l10n.tooltipDownload(formatGb(point.downloadGb))}\n'
-                                                  '${context.l10n.tooltipTotal(formatGb(point.value))}',
-                                                  AppTextStyles.caption
-                                                      .copyWith(
-                                                        color: c.cardBg,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                      ),
-                                                );
-                                              },
+                                          getTooltipItem: (
+                                            group,
+                                            groupIndex,
+                                            rod,
+                                            rodIndex,
+                                          ) {
+                                            final point = data[group.x.toInt()];
+                                            return BarTooltipItem(
+                                              '${point.tooltipLabel}\n'
+                                              '${context.l10n.tooltipUpload(formatGb(point.uploadGb))}\n'
+                                              '${context.l10n.tooltipDownload(formatGb(point.downloadGb))}\n'
+                                              '${context.l10n.tooltipTotal(formatGb(point.value))}',
+                                              AppTextStyles.caption.copyWith(
+                                                color: c.cardBg,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            );
+                                          },
                                         ),
                                       ),
                                       alignment: BarChartAlignment.spaceAround,
@@ -870,4 +861,21 @@ class _StatCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _yesterdayComparison(BuildContext context, AppController ctrl) {
+  final yesterday = trafficForDay(
+    ctrl.trafficUsage,
+    DateTime.now().subtract(const Duration(days: 1)),
+  );
+  final change = relativeChangePercent(
+    current: ctrl.todayTrafficGb,
+    previous: yesterday,
+  );
+  if (change == null) {
+    return context.l10n.yesterdayUsageLabel(formatGb(yesterday));
+  }
+  final rounded = change.abs() < 0.5 ? 0 : change.round();
+  final signed = rounded > 0 ? '+$rounded%' : '$rounded%';
+  return context.l10n.comparedYesterdayLabel(signed);
 }
