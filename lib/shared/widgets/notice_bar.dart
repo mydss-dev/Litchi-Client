@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -43,17 +44,41 @@ class _NoticeBarState extends State<NoticeBar> {
   @override
   void initState() {
     super.initState();
-    _syncTimer();
+    _ensureTimer();
   }
 
   @override
   void didUpdateWidget(covariant NoticeBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final ids = widget.notices.map((notice) => notice.id).toSet();
-    _dismissedIds.removeWhere((id) => !ids.contains(id));
-    final visible = _visibleNotices;
-    if (_index >= visible.length) _index = 0;
-    _syncTimer();
+
+    // An unrelated AppController notification can rebuild the whole dashboard
+    // while keeping the exact same notice list instance. Do not restart the
+    // autoplay timer in that case or a busy dashboard can indefinitely defer
+    // the next announcement.
+    final beforeVisibleIds = oldWidget.notices
+        .where((notice) => !_dismissedIds.contains(notice.id))
+        .map((notice) => notice.id)
+        .toList(growable: false);
+
+    // NoticesController replaces the list object after a real fetch. Treat that
+    // as a fresh announcement session so items hidden by the user can reappear
+    // after an explicit/background refresh, while ordinary rebuilds keep them
+    // dismissed.
+    final refreshed = !identical(oldWidget.notices, widget.notices);
+    if (refreshed) _dismissedIds.clear();
+
+    final afterVisibleIds = _visibleNotices
+        .map((notice) => notice.id)
+        .toList(growable: false);
+    final visibleSetChanged = !listEquals(beforeVisibleIds, afterVisibleIds);
+
+    if (_index >= afterVisibleIds.length) _index = 0;
+
+    if (visibleSetChanged) {
+      _restartTimer();
+    } else {
+      _ensureTimer();
+    }
   }
 
   @override
@@ -62,16 +87,28 @@ class _NoticeBarState extends State<NoticeBar> {
     super.dispose();
   }
 
-  void _syncTimer() {
-    _timer?.cancel();
-    _timer = null;
-    if (_visibleNotices.length < 2) return;
-    _timer = Timer.periodic(_interval, (_) {
+  void _ensureTimer() {
+    final count = _visibleNotices.length;
+    if (count < 2) {
+      _timer?.cancel();
+      _timer = null;
+      return;
+    }
+    _timer ??= Timer.periodic(_interval, (_) {
       if (!mounted) return;
       final visible = _visibleNotices;
-      if (visible.length < 2) return;
+      if (visible.length < 2) {
+        _ensureTimer();
+        return;
+      }
       setState(() => _index = (_index + 1) % visible.length);
     });
+  }
+
+  void _restartTimer() {
+    _timer?.cancel();
+    _timer = null;
+    _ensureTimer();
   }
 
   void _dismissCurrent() {
@@ -82,7 +119,7 @@ class _NoticeBarState extends State<NoticeBar> {
       _dismissedIds.add(visible[safeIndex].id);
       _index = 0;
     });
-    _syncTimer();
+    _restartTimer();
   }
 
   Future<void> _openNotice(NoticeModel notice) async {
@@ -104,34 +141,41 @@ class _NoticeBarState extends State<NoticeBar> {
     return '$title  ·  $plain';
   }
 
+  Widget _withBottomGap(Widget child) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: child,
+      );
+
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final visible = _visibleNotices;
 
     if (widget.isLoading && visible.isEmpty) {
-      return Container(
-        height: 44,
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: c.softBorder),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(
-          children: [
-            Icon(LucideIcons.megaphone, size: 16, color: c.iconMuted),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Container(
-                height: 10,
-                decoration: BoxDecoration(
-                  color: c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+      return _withBottomGap(
+        Container(
+          height: 44,
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: c.softBorder),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Icon(LucideIcons.megaphone, size: 16, color: c.iconMuted),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: c.surfaceMuted,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -141,74 +185,80 @@ class _NoticeBarState extends State<NoticeBar> {
     final safeIndex = _index >= visible.length ? 0 : _index;
     final notice = visible[safeIndex];
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _openNotice(notice),
-        mouseCursor: SystemMouseCursors.click,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Ink(
-          height: 44,
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: c.softBorder),
-          ),
-          padding: const EdgeInsets.fromLTRB(10, 0, 6, 0),
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: c.primarySoft,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(LucideIcons.megaphone, size: 14, color: c.primary),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  layoutBuilder: (currentChild, previousChildren) => Stack(
-                    alignment: Alignment.centerLeft,
-                    children: [...previousChildren, ?currentChild],
+    return _withBottomGap(
+      Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openNotice(notice),
+          mouseCursor: SystemMouseCursors.click,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: Ink(
+            height: 44,
+            decoration: BoxDecoration(
+              color: c.cardBg,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: c.softBorder),
+            ),
+            padding: const EdgeInsets.fromLTRB(10, 0, 6, 0),
+            child: Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: c.primarySoft,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
-                  child: Text(
-                    _summary(notice),
-                    key: ValueKey(notice.id),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.body.copyWith(
-                      color: c.textSecondary,
-                      fontSize: 12.5,
+                  child: Icon(
+                    LucideIcons.megaphone,
+                    size: 14,
+                    color: c.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    layoutBuilder: (currentChild, previousChildren) => Stack(
+                      alignment: Alignment.centerLeft,
+                      children: [...previousChildren, ?currentChild],
+                    ),
+                    child: Text(
+                      _summary(notice),
+                      key: ValueKey(notice.id),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(
+                        color: c.textSecondary,
+                        fontSize: 12.5,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                context.l10n.view,
-                style: AppTextStyles.caption.copyWith(
-                  color: c.primary,
-                  fontWeight: FontWeight.w700,
+                const SizedBox(width: 10),
+                Text(
+                  context.l10n.view,
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              Icon(LucideIcons.chevronRight, size: 15, color: c.primary),
-              const SizedBox(width: 2),
-              Tooltip(
-                message: context.l10n.close,
-                child: IconButton(
-                  onPressed: _dismissCurrent,
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 15,
-                  color: c.iconMuted,
-                  splashRadius: 16,
-                  icon: const Icon(LucideIcons.x),
+                Icon(LucideIcons.chevronRight, size: 15, color: c.primary),
+                const SizedBox(width: 2),
+                Tooltip(
+                  message: context.l10n.close,
+                  child: IconButton(
+                    onPressed: _dismissCurrent,
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 15,
+                    color: c.iconMuted,
+                    splashRadius: 16,
+                    icon: const Icon(LucideIcons.x),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
