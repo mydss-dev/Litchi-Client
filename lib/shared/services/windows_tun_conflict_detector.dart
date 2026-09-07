@@ -9,18 +9,15 @@ import '../../config/app_identity.dart';
 /// visible with addresses are inspected, so merely having Clash/Mihomo or
 /// another VPN installed does not block Litchi.
 abstract final class WindowsTunConflictDetector {
-  static const _tunNameHints = <String>[
+  static const _clientNameHints = <String>[
     'clash',
     'mihomo',
     'meta',
     'sing-box',
     'singbox',
-    'wintun',
-    'wireguard',
-    'tailscale',
-    'zerotier',
-    'vpn',
-    'tun',
+    'hiddify',
+    'nekobox',
+    'v2rayn',
   ];
 
   static Future<String?> findActiveConflict() async {
@@ -40,8 +37,12 @@ abstract final class WindowsTunConflictDetector {
         }
 
         final hasFakeIpRange = interface.addresses.any(_isBenchmarkFakeIp);
-        final looksLikeTun = _tunNameHints.any(normalized.contains);
-        if (!hasFakeIpRange && !looksLikeTun) continue;
+        final knownTunClient = _clientNameHints.any(normalized.contains);
+        final genericTunAlias =
+            normalized == 'tun' ||
+            normalized.startsWith('tun-') ||
+            normalized.startsWith('tun ');
+        if (!hasFakeIpRange && !knownTunClient && !genericTunAlias) continue;
 
         if (normalized == AppIdentity.legacyTunInterfaceAlias.toLowerCase()) {
           return '旧版 Litchi TUN（$name）';
