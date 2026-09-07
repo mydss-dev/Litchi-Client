@@ -57,13 +57,10 @@ class DesktopDashboardHome extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ValueListenableBuilder<int>(
-                valueListenable: tick,
-                builder: (context, _, _) => _ConnectionPanel(
-                  ctrl: ctrl,
-                  onToggle: onToggleConnection,
-                  onProxyModeChanged: onProxyModeChanged,
-                ),
+              _ConnectionPanel(
+                ctrl: ctrl,
+                onToggle: onToggleConnection,
+                onProxyModeChanged: onProxyModeChanged,
               ),
               const SizedBox(height: 12),
               LayoutBuilder(
@@ -251,18 +248,18 @@ class _ConnectionPanel extends StatelessWidget {
                           fontSize: 13.5,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        connected
-                            ? formatDuration(ctrl.connectedDuration)
-                            : context.l10n.dashboardSubtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(
-                          color: c.textMuted,
-                          fontSize: 10.5,
+                      if (!connected) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          context.l10n.dashboardSubtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(
+                            color: c.textMuted,
+                            fontSize: 10.5,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
