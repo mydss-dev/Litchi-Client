@@ -9,16 +9,24 @@ import '../theme/app_text_styles.dart';
 
 /// A compact three-button strip for selecting proxy mode (rule / global / direct).
 class ModeStrip extends StatelessWidget {
-  const ModeStrip({required this.selected, required this.onChanged, super.key});
+  const ModeStrip({
+    required this.selected,
+    required this.onChanged,
+    this.buttonHeight = 42,
+    this.padding = 5,
+    super.key,
+  });
 
   final ProxyMode selected;
   final ValueChanged<ProxyMode> onChanged;
+  final double buttonHeight;
+  final double padding;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Container(
-      padding: const EdgeInsets.all(5),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: c.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadius.card),
@@ -35,6 +43,7 @@ class ModeStrip extends StatelessWidget {
                   ProxyMode.direct => context.l10n.directMode,
                 },
                 selected: selected == mode,
+                height: buttonHeight,
                 onTap: () => onChanged(mode),
               ),
             ),
@@ -48,11 +57,13 @@ class _ModeButton extends StatelessWidget {
   const _ModeButton({
     required this.label,
     required this.selected,
+    required this.height,
     required this.onTap,
   });
 
   final String label;
   final bool selected;
+  final double height;
   final VoidCallback onTap;
 
   @override
@@ -66,7 +77,7 @@ class _ModeButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Ink(
-            height: 42,
+            height: height,
             decoration: BoxDecoration(
               color: selected ? c.primarySoft : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadius.md),

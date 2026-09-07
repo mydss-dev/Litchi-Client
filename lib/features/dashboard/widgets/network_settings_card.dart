@@ -11,14 +11,60 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_modal.dart';
 import '../../../shared/widgets/app_toast.dart';
 
-class NetworkSettingsCard extends StatefulWidget {
+/// Settings-page wrapper around the reusable [NetworkModeSelector].
+class NetworkSettingsCard extends StatelessWidget {
   const NetworkSettingsCard({super.key});
 
   @override
-  State<NetworkSettingsCard> createState() => _NetworkSettingsCardState();
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final ctrl = AppScope.of(context);
+    final mode = ctrl.networkMode;
+
+    return AppCard(
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.networkSettings,
+            style: AppTextStyles.sectionTitle.copyWith(
+              color: c.textPrimary,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            mode == NetworkMode.system
+                ? context.l10n.systemProxyDescription
+                : context.l10n.tunDescription,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.body.copyWith(color: c.textMuted),
+          ),
+          const SizedBox(height: 16),
+          const NetworkModeSelector(),
+        ],
+      ),
+    );
+  }
 }
 
-class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
+/// Reusable segmented selector for system-proxy / TUN connection methods.
+///
+/// The permission check stays here so the dashboard and settings page share
+/// exactly the same behavior instead of duplicating TUN privilege logic.
+class NetworkModeSelector extends StatefulWidget {
+  const NetworkModeSelector({super.key, this.height = 38});
+
+  final double height;
+
+  @override
+  State<NetworkModeSelector> createState() => _NetworkModeSelectorState();
+}
+
+class _NetworkModeSelectorState extends State<NetworkModeSelector> {
   bool _checkingAdmin = false;
 
   Future<void> _setMode(NetworkMode mode) async {
@@ -101,68 +147,39 @@ class _NetworkSettingsCardState extends State<NetworkSettingsCard> {
       NetworkMode.tun,
     );
 
-    return AppCard(
-      radius: AppRadius.card,
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      height: widget.height,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: c.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c.softBorder),
+      ),
+      child: Row(
         children: [
-          Text(
-            context.l10n.networkSettings,
-            style: AppTextStyles.sectionTitle.copyWith(
-              color: c.textPrimary,
-              fontSize: 15,
+          if (supportsSystem)
+            Expanded(
+              child: _NetworkModeOption(
+                label: context.l10n.systemProxy,
+                selected: mode == NetworkMode.system,
+                loading: false,
+                onTap: () => _setMode(NetworkMode.system),
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            mode == NetworkMode.system
-                ? context.l10n.systemProxyDescription
-                : context.l10n.tunDescription,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.body.copyWith(color: c.textMuted),
-          ),
-          const SizedBox(height: 16),
-          // ── Mode toggle ───────────────────────────────────────────────────
-          Container(
-            height: 38,
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: c.surfaceMuted,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: c.softBorder),
+          if (supportsTun)
+            Expanded(
+              child: _NetworkModeOption(
+                label: context.l10n.tunMode,
+                selected: mode == NetworkMode.tun,
+                loading: _checkingAdmin,
+                onTap: () => _setMode(NetworkMode.tun),
+              ),
             ),
-            child: Row(
-              children: [
-                if (supportsSystem)
-                  Expanded(
-                    child: _NetworkModeOption(
-                      label: context.l10n.systemProxy,
-                      selected: mode == NetworkMode.system,
-                      loading: false,
-                      onTap: () => _setMode(NetworkMode.system),
-                    ),
-                  ),
-                if (supportsTun)
-                  Expanded(
-                    child: _NetworkModeOption(
-                      label: context.l10n.tunMode,
-                      selected: mode == NetworkMode.tun,
-                      loading: _checkingAdmin,
-                      onTap: () => _setMode(NetworkMode.tun),
-                    ),
-                  ),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 }
-
-// ── Mode option ───────────────────────────────────────────────────────────────
 
 class _NetworkModeOption extends StatelessWidget {
   const _NetworkModeOption({
@@ -181,7 +198,7 @@ class _NetworkModeOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
+      cursor: loading ? SystemMouseCursors.basic : SystemMouseCursors.click,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: loading ? null : onTap,
@@ -192,14 +209,8 @@ class _NetworkModeOption extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected ? c.cardBg : Colors.transparent,
             borderRadius: BorderRadius.circular(9),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: c.primary.withValues(alpha: 0.14),
-                      blurRadius: 12,
-                      offset: const Offset(0, 5),
-                    ),
-                  ]
+            border: selected
+                ? Border.all(color: c.primary.withValues(alpha: 0.16))
                 : null,
           ),
           child: loading
@@ -218,7 +229,7 @@ class _NetworkModeOption extends StatelessWidget {
                   style: AppTextStyles.button.copyWith(
                     color: selected ? c.primary : c.textSecondary,
                     fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
         ),
