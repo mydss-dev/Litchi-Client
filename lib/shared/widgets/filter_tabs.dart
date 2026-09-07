@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import '../theme/app_shadows.dart';
 import '../theme/app_text_styles.dart';
 
 /// Horizontal segmented tab strip used on Nodes and other desktop filters.
 ///
-/// Visual treatment follows the dashboard connection/proxy selectors so filter
-/// controls do not introduce a separate solid-primary tab style.
+/// Visual treatment follows the dashboard proxy Rule / Global / Direct selector:
+/// muted outer surface, primary-soft selected fill, restrained primary border,
+/// primary selected text and muted unselected text.
 class FilterTabs extends StatelessWidget {
   const FilterTabs({
     super.key,
@@ -74,18 +76,19 @@ class _Tab extends StatelessWidget {
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: selected ? c.cardBg : Colors.transparent,
+            color: selected ? c.primarySoft : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.md),
             border: selected
-                ? Border.all(color: c.primary.withValues(alpha: 0.16))
+                ? Border.all(color: c.primary.withValues(alpha: 0.22))
                 : null,
+            boxShadow: selected ? AppShadows.soft(c) : null,
           ),
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.button.copyWith(
-              color: selected ? c.primary : c.textSecondary,
+              color: selected ? c.primary : c.textMuted,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
