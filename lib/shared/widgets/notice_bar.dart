@@ -31,7 +31,7 @@ class NoticeBar extends StatefulWidget {
 }
 
 class _NoticeBarState extends State<NoticeBar> {
-  static const _interval = Duration(seconds: 5);
+  static const _interval = Duration(seconds: 8);
 
   final Set<int> _dismissedIds = <int>{};
   Timer? _timer;
@@ -110,15 +110,22 @@ class _NoticeBarState extends State<NoticeBar> {
     _ensureTimer();
   }
 
+  void _dismissNotice(int id) {
+    if (_dismissedIds.contains(id)) return;
+    final exists = widget.notices.any((notice) => notice.id == id);
+    if (!exists) return;
+    setState(() {
+      _dismissedIds.add(id);
+      _index = 0;
+    });
+    _restartTimer();
+  }
+
   void _dismissCurrent() {
     final visible = _visibleNotices;
     if (visible.isEmpty) return;
     final safeIndex = _index >= visible.length ? 0 : _index;
-    setState(() {
-      _dismissedIds.add(visible[safeIndex].id);
-      _index = 0;
-    });
-    _restartTimer();
+    _dismissNotice(visible[safeIndex].id);
   }
 
   Future<void> _openNotice(NoticeModel notice) async {
@@ -126,6 +133,10 @@ class _NoticeBarState extends State<NoticeBar> {
       context: context,
       builder: (_) => NoticePopupDialog(notice: notice),
     );
+    if (!mounted) return;
+    // Opening the detail is treated as reading the notice. Keep it hidden for
+    // this notice id across ordinary refreshes, just like an explicit dismiss.
+    _dismissNotice(notice.id);
   }
 
   String _summary(NoticeModel notice) {
