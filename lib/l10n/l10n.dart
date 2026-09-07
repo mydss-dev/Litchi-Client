@@ -15,7 +15,9 @@ extension AppLocalizationsContext on BuildContext {
 extension DesktopUiLocalizations on AppLocalizations {
   bool get _isTraditionalChinese {
     final locale = localeName.toLowerCase().replaceAll('-', '_');
-    return locale == 'zh_tw' || locale == 'zh_hk' || locale == 'zh_hant';
+    return locale.startsWith('zh_tw') ||
+        locale.startsWith('zh_hk') ||
+        locale.startsWith('zh_hant');
   }
 
   bool get _isChinese => localeName.toLowerCase().startsWith('zh');
