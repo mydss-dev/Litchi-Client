@@ -145,7 +145,7 @@ class _ConnectionPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              _IconTile(icon: LucideIcons.wifi),
+              const _IconTile(icon: LucideIcons.wifi),
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
