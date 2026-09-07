@@ -177,6 +177,15 @@ abstract final class SingBoxConfig {
           // core so it follows the selected DNS mode instead of escaping to the
           // system resolver.
           {'protocol': 'dns', 'action': 'hijack-dns'},
+          // Clash/Mihomo commonly hands applications Fake-IP addresses from
+          // RFC 2544's benchmark range. Litchi intentionally does not maintain
+          // another client's Fake-IP mapping, so stale 198.18.0.0/15 sockets
+          // must fail immediately instead of waiting several seconds on a real
+          // outbound dial that can never succeed.
+          {
+            'ip_cidr': ['198.18.0.0/15'],
+            'outbound': blockTag,
+          },
           {'clash_mode': 'direct', 'outbound': directTag},
           {'clash_mode': 'global', 'outbound': selectorTag},
           {
