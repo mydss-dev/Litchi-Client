@@ -77,8 +77,9 @@ class _NoticeBarState extends State<NoticeBar> {
   void _dismissCurrent() {
     final visible = _visibleNotices;
     if (visible.isEmpty) return;
+    final safeIndex = _index >= visible.length ? 0 : _index;
     setState(() {
-      _dismissedIds.add(visible[_index.clamp(0, visible.length - 1)].id);
+      _dismissedIds.add(visible[safeIndex].id);
       _index = 0;
     });
     _syncTimer();
@@ -137,7 +138,7 @@ class _NoticeBarState extends State<NoticeBar> {
 
     if (visible.isEmpty) return const SizedBox.shrink();
 
-    final safeIndex = _index.clamp(0, visible.length - 1);
+    final safeIndex = _index >= visible.length ? 0 : _index;
     final notice = visible[safeIndex];
 
     return Material(
@@ -172,7 +173,10 @@ class _NoticeBarState extends State<NoticeBar> {
                   duration: const Duration(milliseconds: 220),
                   layoutBuilder: (currentChild, previousChildren) => Stack(
                     alignment: Alignment.centerLeft,
-                    children: [...previousChildren, if (currentChild != null) currentChild],
+                    children: [
+                      ...previousChildren,
+                      if (currentChild != null) currentChild,
+                    ],
                   ),
                   child: Text(
                     _summary(notice),
