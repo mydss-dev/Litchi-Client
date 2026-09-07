@@ -60,12 +60,11 @@ class _NoticeBarState extends State<NoticeBar> {
         .map((notice) => notice.id)
         .toList(growable: false);
 
-    // NoticesController replaces the list object after a real fetch. Treat that
-    // as a fresh announcement session so items hidden by the user can reappear
-    // after an explicit/background refresh, while ordinary rebuilds keep them
-    // dismissed.
-    final refreshed = !identical(oldWidget.notices, widget.notices);
-    if (refreshed) _dismissedIds.clear();
+    // Keep dismissals across refreshes for notices that still exist. Only drop
+    // dismissed ids after the server has actually removed those notices. New
+    // notice ids are never dismissed, so they appear immediately on refresh.
+    final currentIds = widget.notices.map((notice) => notice.id).toSet();
+    _dismissedIds.removeWhere((id) => !currentIds.contains(id));
 
     final afterVisibleIds = _visibleNotices
         .map((notice) => notice.id)
