@@ -1723,6 +1723,42 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get unexpectedError => '操作失败，请稍后重试';
+
+  @override
+  String get realtimeStatusLabel => '实时状态';
+
+  @override
+  String get viewUsageLabel => '查看用量';
+
+  @override
+  String get connectionDurationLabel => '连接时长';
+
+  @override
+  String get todayUsedLabel => '今日已用';
+
+  @override
+  String get remainingTrafficLabel => '剩余流量';
+
+  @override
+  String get remainingDaysLabel => '剩余天数';
+
+  @override
+  String get resetCountdownLabel => '距流量重置';
+
+  @override
+  String comparedYesterdayLabel(String value) {
+    return '较昨日 $value';
+  }
+
+  @override
+  String yesterdayUsageLabel(String value) {
+    return '昨日 $value';
+  }
+
+  @override
+  String totalTrafficLabel(String value) {
+    return '总计 $value';
+  }
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -3444,4 +3480,40 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get unexpectedError => '操作失敗，請稍後重試';
+
+  @override
+  String get realtimeStatusLabel => '即時狀態';
+
+  @override
+  String get viewUsageLabel => '查看用量';
+
+  @override
+  String get connectionDurationLabel => '連線時長';
+
+  @override
+  String get todayUsedLabel => '今日已用';
+
+  @override
+  String get remainingTrafficLabel => '剩餘流量';
+
+  @override
+  String get remainingDaysLabel => '剩餘天數';
+
+  @override
+  String get resetCountdownLabel => '距流量重置';
+
+  @override
+  String comparedYesterdayLabel(String value) {
+    return '較昨日 $value';
+  }
+
+  @override
+  String yesterdayUsageLabel(String value) {
+    return '昨日 $value';
+  }
+
+  @override
+  String totalTrafficLabel(String value) {
+    return '總計 $value';
+  }
 }

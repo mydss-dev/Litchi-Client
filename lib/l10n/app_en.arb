@@ -594,5 +594,18 @@
   "invalidCredentialsError": "Incorrect email or password.",
   "invalidVerificationCodeError": "The verification code is invalid or expired.",
   "accountDisabledError": "This account has been disabled. Contact support.",
-  "unexpectedError": "Something went wrong. Try again later."
+  "unexpectedError": "Something went wrong. Try again later.",
+  "realtimeStatusLabel": "Live status",
+  "viewUsageLabel": "View usage",
+  "connectionDurationLabel": "Connection time",
+  "todayUsedLabel": "Used today",
+  "remainingTrafficLabel": "Remaining traffic",
+  "remainingDaysLabel": "Days remaining",
+  "resetCountdownLabel": "Traffic reset in",
+  "comparedYesterdayLabel": "{value} vs yesterday",
+  "@comparedYesterdayLabel": {"placeholders": {"value": {"type": "String"}}},
+  "yesterdayUsageLabel": "Yesterday {value}",
+  "@yesterdayUsageLabel": {"placeholders": {"value": {"type": "String"}}},
+  "totalTrafficLabel": "Total {value}",
+  "@totalTrafficLabel": {"placeholders": {"value": {"type": "String"}}}
 }

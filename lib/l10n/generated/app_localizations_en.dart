@@ -1798,4 +1798,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unexpectedError => 'Something went wrong. Try again later.';
+
+  @override
+  String get realtimeStatusLabel => 'Live status';
+
+  @override
+  String get viewUsageLabel => 'View usage';
+
+  @override
+  String get connectionDurationLabel => 'Connection time';
+
+  @override
+  String get todayUsedLabel => 'Used today';
+
+  @override
+  String get remainingTrafficLabel => 'Remaining traffic';
+
+  @override
+  String get remainingDaysLabel => 'Days remaining';
+
+  @override
+  String get resetCountdownLabel => 'Traffic reset in';
+
+  @override
+  String comparedYesterdayLabel(String value) {
+    return '$value vs yesterday';
+  }
+
+  @override
+  String yesterdayUsageLabel(String value) {
+    return 'Yesterday $value';
+  }
+
+  @override
+  String totalTrafficLabel(String value) {
+    return 'Total $value';
+  }
 }

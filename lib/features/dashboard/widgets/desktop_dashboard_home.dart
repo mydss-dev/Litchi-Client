@@ -12,7 +12,7 @@ import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/utils/formatters.dart';
-import '../../../shared/utils/traffic_metrics.dart';
+import '../../../shared/utils/traffic_summary_text.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_switch.dart';
 import '../../../shared/widgets/mode_strip.dart';
@@ -118,9 +118,9 @@ class _ConnectionPanel extends StatelessWidget {
     final c = AppColors.of(context);
     final status = ctrl.connectionStatus;
     final connected = status == ConnectionStatus.connected;
-    final switchOn =
-        connected || status == ConnectionStatus.connecting;
-    final busy = status == ConnectionStatus.connecting ||
+    final switchOn = connected || status == ConnectionStatus.connecting;
+    final busy =
+        status == ConnectionStatus.connecting ||
         status == ConnectionStatus.disconnecting;
     final supportsConnection = ctrl.supportsCoreConnection;
     final (statusText, statusColor) = !supportsConnection
@@ -128,12 +128,15 @@ class _ConnectionPanel extends StatelessWidget {
         : switch (status) {
             ConnectionStatus.connected => (context.l10n.protected, c.success),
             ConnectionStatus.connecting => (context.l10n.connecting, c.primary),
-            ConnectionStatus.disconnecting =>
-              (context.l10n.disconnecting, c.textMuted),
-            ConnectionStatus.error =>
-              (context.l10n.connectionFailed, c.danger),
-            ConnectionStatus.disconnected =>
-              (context.l10n.notConnected, c.textMuted),
+            ConnectionStatus.disconnecting => (
+              context.l10n.disconnecting,
+              c.textMuted,
+            ),
+            ConnectionStatus.error => (context.l10n.connectionFailed, c.danger),
+            ConnectionStatus.disconnected => (
+              context.l10n.notConnected,
+              c.textMuted,
+            ),
           };
     final modeDescription = ctrl.networkMode == NetworkMode.system
         ? context.l10n.systemProxyDescription
@@ -416,8 +419,8 @@ class _NodePanel extends StatelessWidget {
     final c = AppColors.of(context);
     final nodeName = node.name.isEmpty
         ? loading
-            ? context.l10n.syncingNodes
-            : context.l10n.selectNodePrompt
+              ? context.l10n.syncingNodes
+              : context.l10n.selectNodePrompt
         : node.name;
     final secondary = node.englishName.isNotEmpty
         ? node.englishName
@@ -499,10 +502,7 @@ class _NodePanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              NodeLatency(
-                latency: node.latency,
-                style: NodeLatencyStyle.badge,
-              ),
+              NodeLatency(latency: node.latency, style: NodeLatencyStyle.badge),
             ],
           ),
         ],
@@ -689,7 +689,10 @@ class _PlanPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final expiry = _expiryInfo(ctrl);
+    final expiry = subscriptionExpiryDisplay(
+      expiredAt: ctrl.expiredAt,
+      expiryText: ctrl.user.expiry,
+    );
 
     return AppCard(
       height: 90,
@@ -713,7 +716,11 @@ class _PlanPanel extends StatelessWidget {
               icon: LucideIcons.chartColumn,
               label: context.l10n.todayUsedLabel,
               value: formatGb(ctrl.todayTrafficGb),
-              footer: _yesterdayComparison(context, ctrl),
+              footer: yesterdayComparisonText(
+                context,
+                usage: ctrl.trafficUsage,
+                currentGb: ctrl.todayTrafficGb,
+              ),
             ),
           ),
           _MetricDivider(color: c.softBorder),
@@ -740,11 +747,11 @@ class _MetricDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 1,
-        height: 46,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        color: color,
-      );
+    width: 1,
+    height: 46,
+    margin: const EdgeInsets.symmetric(horizontal: 8),
+    color: color,
+  );
 }
 
 class _PlanMetric extends StatelessWidget {
@@ -808,40 +815,4 @@ class _PlanMetric extends StatelessWidget {
       ],
     );
   }
-}
-
-String _yesterdayComparison(BuildContext context, AppController ctrl) {
-  final yesterday = trafficForDay(
-    ctrl.trafficUsage,
-    DateTime.now().subtract(const Duration(days: 1)),
-  );
-  final change = relativeChangePercent(
-    current: ctrl.todayTrafficGb,
-    previous: yesterday,
-  );
-  if (change == null) {
-    return context.l10n.yesterdayUsageLabel(formatGb(yesterday));
-  }
-  final rounded = change.abs() < 0.5 ? 0 : change.round();
-  final signed = rounded > 0 ? '+$rounded%' : '$rounded%';
-  return context.l10n.comparedYesterdayLabel(signed);
-}
-
-({int? days, String date}) _expiryInfo(AppController ctrl) {
-  final expiredAt = ctrl.expiredAt;
-  if (expiredAt != null && expiredAt > 0) {
-    final expiry = DateTime.fromMillisecondsSinceEpoch(expiredAt * 1000);
-    return (days: _daysUntil(expiry), date: formatDate(expiry));
-  }
-
-  final expiry = DateTime.tryParse(ctrl.user.expiry);
-  if (expiry == null) return (days: null, date: '');
-  return (days: _daysUntil(expiry), date: formatDate(expiry));
-}
-
-int _daysUntil(DateTime expiry) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final end = DateTime(expiry.year, expiry.month, expiry.day);
-  return end.difference(today).inDays.clamp(0, 9999);
 }
