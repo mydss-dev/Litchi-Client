@@ -118,6 +118,8 @@ class _ConnectionPanel extends StatelessWidget {
     final c = AppColors.of(context);
     final status = ctrl.connectionStatus;
     final connected = status == ConnectionStatus.connected;
+    final switchOn =
+        connected || status == ConnectionStatus.connecting;
     final busy = status == ConnectionStatus.connecting ||
         status == ConnectionStatus.disconnecting;
     final supportsConnection = ctrl.supportsCoreConnection;
@@ -265,7 +267,7 @@ class _ConnectionPanel extends StatelessWidget {
                   ),
                 ),
                 AppSwitch(
-                  value: connected,
+                  value: switchOn,
                   onChanged: busy || !supportsConnection
                       ? null
                       : (_) => onToggle(),
@@ -424,8 +426,8 @@ class _NodePanel extends StatelessWidget {
           );
 
     return AppCard(
-      height: 126,
-      radius: AppRadius.lg,
+      height: 120,
+      radius: AppRadius.xl,
       padding: const EdgeInsets.all(14),
       onTap: onTap,
       child: Column(
@@ -551,8 +553,8 @@ class _RealtimePanel extends StatelessWidget {
     final connected = ctrl.connectionStatus == ConnectionStatus.connected;
 
     return AppCard(
-      height: 126,
-      radius: AppRadius.lg,
+      height: 120,
+      radius: AppRadius.xl,
       padding: const EdgeInsets.all(14),
       onTap: () => ctrl.goToPage(AppPage.traffic),
       child: Column(
@@ -588,6 +590,17 @@ class _RealtimePanel extends StatelessWidget {
             children: [
               Expanded(
                 child: _LiveMetric(
+                  icon: Icons.access_time_rounded,
+                  label: context.l10n.connectionDurationLabel,
+                  value: connected
+                      ? formatDuration(ctrl.connectedDuration)
+                      : '--:--:--',
+                  active: connected,
+                ),
+              ),
+              Container(width: 1, height: 42, color: c.softBorder),
+              Expanded(
+                child: _LiveMetric(
                   icon: LucideIcons.arrowUp,
                   label: context.l10n.uploadSpeed,
                   value: formatRate(ctrl.upBps),
@@ -600,17 +613,6 @@ class _RealtimePanel extends StatelessWidget {
                   icon: LucideIcons.arrowDown,
                   label: context.l10n.downloadSpeed,
                   value: formatRate(ctrl.downBps),
-                  active: connected,
-                ),
-              ),
-              Container(width: 1, height: 42, color: c.softBorder),
-              Expanded(
-                child: _LiveMetric(
-                  icon: Icons.access_time_rounded,
-                  label: context.l10n.connectionDurationLabel,
-                  value: connected
-                      ? formatDuration(ctrl.connectedDuration)
-                      : '--:--:--',
                   active: connected,
                 ),
               ),

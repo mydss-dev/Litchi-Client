@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	windowsTunInterfaceName   = "TUN-LOCAL"
+	windowsTunInterfaceName   = "Litchi"
 	windowsTunBridgeAddress   = "172.19.0.1/30"
 	windowsTunBridgeAddressV6 = "fdfe:dcba:9876::1/126"
 )

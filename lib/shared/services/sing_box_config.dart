@@ -177,6 +177,17 @@ abstract final class SingBoxConfig {
           // core so it follows the selected DNS mode instead of escaping to the
           // system resolver.
           {'protocol': 'dns', 'action': 'hijack-dns'},
+          // Clash/Mihomo on Windows commonly hands applications Fake-IP
+          // addresses from RFC 2544's benchmark range. Litchi intentionally
+          // does not maintain another client's Fake-IP mapping, so stale
+          // 198.18.0.0/15 sockets fail immediately instead of waiting on an
+          // outbound dial that can never succeed. Keep this Windows-specific so
+          // other platforms can still use the benchmark range intentionally.
+          if (Platform.isWindows)
+            {
+              'ip_cidr': ['198.18.0.0/15'],
+              'outbound': blockTag,
+            },
           {'clash_mode': 'direct', 'outbound': directTag},
           {'clash_mode': 'global', 'outbound': selectorTag},
           {

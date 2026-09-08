@@ -4,6 +4,7 @@ import '../../../app/app_controller.dart';
 import '../../../app/core_platform_support.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/models/app_models.dart';
+import '../../../shared/services/windows_tun_conflict_detector.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
 import '../../../shared/theme/app_shadows.dart';
@@ -79,9 +80,9 @@ class _NetworkModeSelectorState extends State<NetworkModeSelector> {
       setState(() => _checkingAdmin = true);
       final isAdmin = await AppController.checkAdminPrivileges();
       if (!mounted) return;
-      setState(() => _checkingAdmin = false);
 
       if (!isAdmin) {
+        setState(() => _checkingAdmin = false);
         await showAppAdaptiveModal<void>(
           context: context,
           builder: (ctx) {
@@ -127,6 +128,18 @@ class _NetworkModeSelectorState extends State<NetworkModeSelector> {
               ),
             );
           },
+        );
+        return;
+      }
+
+      final conflict = await WindowsTunConflictDetector.findActiveConflict();
+      if (!mounted) return;
+      setState(() => _checkingAdmin = false);
+      if (conflict != null) {
+        AppToast.show(
+          context,
+          WindowsTunConflictDetector.messageFor(conflict),
+          type: AppToastType.error,
         );
         return;
       }

@@ -40,8 +40,6 @@ class CoreController extends ChangeNotifier {
   StreamSubscription<AndroidCoreStatusEvent>? _androidStatusSub;
 
   DateTime? _connectedAt;
-  DateTime? _connectingStartedAt;
-  DateTime? _disconnectingStartedAt;
   ConnectionStatus _status = ConnectionStatus.disconnected;
   String _coreError = '';
   int _apiPort = SingBoxConfig.defaultApiPort;
@@ -58,12 +56,9 @@ class CoreController extends ChangeNotifier {
   /// session and reused across main-core reloads/restarts.
   String _apiSecret = '';
 
-  bool _disposed = false;
   bool _shutdownComplete = false;
   Future<void>? _shutdownInFlight;
   bool _connectionToggleInFlight = false;
-  DateTime? _lastConnectionToggleAt;
-  static const Duration _connectionToggleCooldown = Duration(milliseconds: 800);
 
   Future<Map<String, int>>? _groupTestInFlight;
 
@@ -84,9 +79,7 @@ class CoreController extends ChangeNotifier {
       _status == ConnectionStatus.disconnecting;
 
   bool get connectionActionLocked =>
-      coreConnecting ||
-      _connectionToggleInFlight ||
-      _isConnectionToggleCoolingDown;
+      coreConnecting || _connectionToggleInFlight;
 
   bool get coreProcessRunning =>
       Platform.isAndroid ? _androidCore.isRunning : _core.isRunning;
@@ -164,7 +157,6 @@ class CoreController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _disposed = true;
     _stopTrafficMonitor();
     unawaited(_androidStatusSub?.cancel());
     unawaited(_sub?.cancel());
@@ -449,33 +441,6 @@ class CoreController extends ChangeNotifier {
     }
   }
 
-  /// Keeps the UI in "connecting" for at least ~1.5s so the power-button halo
-  /// has time to spin before flipping to "connected". Core setup itself is not
-  /// delayed — only the visible state transition, which otherwise completes in
-  /// tens of milliseconds and reads as an abrupt instant switch.
-  Future<void> _holdConnectingMinimum() async {
-    final started = _connectingStartedAt;
-    if (started == null) return;
-    const minDuration = Duration(milliseconds: 1500);
-    final remaining = minDuration - DateTime.now().difference(started);
-    if (remaining > Duration.zero) {
-      await Future<void>.delayed(remaining);
-    }
-  }
-
-  /// Mirrors [_holdConnectingMinimum] for the teardown path, but shorter: the
-  /// core stops in tens of milliseconds, so this keeps "disconnecting" visible
-  /// just long enough for the power-button ring to spin once before the flip.
-  Future<void> _holdDisconnectingMinimum() async {
-    final started = _disconnectingStartedAt;
-    if (started == null) return;
-    const minDuration = Duration(milliseconds: 700);
-    final remaining = minDuration - DateTime.now().difference(started);
-    if (remaining > Duration.zero) {
-      await Future<void>.delayed(remaining);
-    }
-  }
-
   Future<String?> _toggleConnection(CoreConnectionRequest req) async {
     _ensureApiSecret();
     if (Platform.isAndroid) return _toggleAndroidConnection(req);
@@ -483,7 +448,6 @@ class CoreController extends ChangeNotifier {
 
     if (_status == ConnectionStatus.connected) {
       _status = ConnectionStatus.disconnecting;
-      _disconnectingStartedAt = DateTime.now();
       notifyListeners();
       _stopTrafficMonitor();
       await ProxySetter.disable();
@@ -512,7 +476,6 @@ class CoreController extends ChangeNotifier {
       }
       _connectedAt = null;
       _coreError = '';
-      await _holdDisconnectingMinimum();
       _status = ConnectionStatus.disconnected;
       notifyListeners();
       return null;
@@ -531,7 +494,6 @@ class CoreController extends ChangeNotifier {
 
     if (_core.isRunning && req.networkMode == NetworkMode.system) {
       _status = ConnectionStatus.connecting;
-      _connectingStartedAt = DateTime.now();
       _coreError = '';
       notifyListeners();
       try {
@@ -554,7 +516,6 @@ class CoreController extends ChangeNotifier {
         }
         await ProxySetter.enable(port: _activeProxyPort);
         _activeNetworkMode = NetworkMode.system;
-        await _holdConnectingMinimum();
         _connectedAt = DateTime.now();
         _status = ConnectionStatus.connected;
         _startTrafficMonitor();
@@ -569,7 +530,6 @@ class CoreController extends ChangeNotifier {
 
     if (Platform.isWindows && req.networkMode == NetworkMode.tun) {
       _status = ConnectionStatus.connecting;
-      _connectingStartedAt = DateTime.now();
       _coreError = '';
       notifyListeners();
       try {
@@ -601,7 +561,6 @@ class CoreController extends ChangeNotifier {
           return _coreError;
         }
         _activeNetworkMode = NetworkMode.tun;
-        await _holdConnectingMinimum();
         _connectedAt = DateTime.now();
         _coreError = '';
         _status = ConnectionStatus.connected;
@@ -644,7 +603,6 @@ class CoreController extends ChangeNotifier {
     }
 
     _status = ConnectionStatus.connecting;
-    _connectingStartedAt = DateTime.now();
     _coreError = '';
     notifyListeners();
 
@@ -716,7 +674,6 @@ class CoreController extends ChangeNotifier {
           await ProxySetter.enable(port: _activeProxyPort);
         }
         _activeNetworkMode = req.networkMode;
-        await _holdConnectingMinimum();
         _connectedAt = DateTime.now();
         _coreError = '';
         _status = ConnectionStatus.connected;
@@ -1221,12 +1178,6 @@ class CoreController extends ChangeNotifier {
     return false;
   }
 
-  bool get _isConnectionToggleCoolingDown {
-    final last = _lastConnectionToggleAt;
-    if (last == null) return false;
-    return DateTime.now().difference(last) < _connectionToggleCooldown;
-  }
-
   bool _beginConnectionToggle() {
     if (connectionActionLocked) return false;
     _connectionToggleInFlight = true;
@@ -1235,14 +1186,8 @@ class CoreController extends ChangeNotifier {
   }
 
   void _endConnectionToggle() {
-    _lastConnectionToggleAt = DateTime.now();
     _connectionToggleInFlight = false;
     notifyListeners();
-    unawaited(
-      Future<void>.delayed(_connectionToggleCooldown, () {
-        if (!_disposed && !_connectionToggleInFlight) notifyListeners();
-      }),
-    );
   }
 
   Future<int> _allocateApiPort() async {
