@@ -44,9 +44,6 @@ abstract final class WindowsTunConflictDetector {
             normalized.startsWith('tun ');
         if (!hasFakeIpRange && !knownTunClient && !genericTunAlias) continue;
 
-        if (normalized == AppIdentity.legacyTunInterfaceAlias.toLowerCase()) {
-          return '旧版 Litchi TUN（$name）';
-        }
         return name.isEmpty ? '其他 TUN/VPN' : name;
       }
     } catch (_) {
@@ -55,6 +52,9 @@ abstract final class WindowsTunConflictDetector {
     }
     return null;
   }
+
+  static String messageFor(String conflict) =>
+      '检测到其他 TUN/VPN 正在运行（$conflict），请先关闭 Clash/Mihomo 等其他 TUN 后再连接';
 
   static bool _isBenchmarkFakeIp(InternetAddress address) {
     if (address.type != InternetAddressType.IPv4) return false;
