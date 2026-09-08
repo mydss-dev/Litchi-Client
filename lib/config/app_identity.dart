@@ -2,7 +2,6 @@ abstract final class AppIdentity {
   static const storageKey = 'litchi';
   static const storageDirectoryName = 'Litchi';
   static const tunInterfaceAlias = 'Litchi';
-  static const legacyTunInterfaceAlias = 'TUN-LOCAL';
   static const instancePing = 'LITCHI_FOCUS_V1:litchi';
   static const instancePong = 'LITCHI_FOCUS_OK_V1:litchi';
   static const instanceLockPort = 54891;
