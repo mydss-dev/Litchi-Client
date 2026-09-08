@@ -118,6 +118,8 @@ class _ConnectionPanel extends StatelessWidget {
     final c = AppColors.of(context);
     final status = ctrl.connectionStatus;
     final connected = status == ConnectionStatus.connected;
+    final switchOn =
+        connected || status == ConnectionStatus.connecting;
     final busy = status == ConnectionStatus.connecting ||
         status == ConnectionStatus.disconnecting;
     final supportsConnection = ctrl.supportsCoreConnection;
@@ -265,7 +267,7 @@ class _ConnectionPanel extends StatelessWidget {
                   ),
                 ),
                 AppSwitch(
-                  value: connected,
+                  value: switchOn,
                   onChanged: busy || !supportsConnection
                       ? null
                       : (_) => onToggle(),
