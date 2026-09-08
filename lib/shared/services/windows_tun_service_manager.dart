@@ -50,9 +50,7 @@ final class WindowsTunServiceManager {
 
     final conflict = await WindowsTunConflictDetector.findActiveConflict();
     if (conflict != null) {
-      _lastError = conflict.startsWith('旧版 Litchi TUN')
-          ? '$conflict 仍在运行，请重启 Litchi 后再连接'
-          : '检测到其他 TUN/VPN 正在运行（$conflict），请先关闭 Clash/Mihomo 等其他 TUN 后再连接';
+      _lastError = WindowsTunConflictDetector.messageFor(conflict);
       return false;
     }
 
