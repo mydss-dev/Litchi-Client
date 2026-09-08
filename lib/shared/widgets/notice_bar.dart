@@ -7,7 +7,7 @@ import '../models/api_models.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_text_styles.dart';
-import 'notice_carousel.dart';
+import 'notice_pager_dialog.dart';
 
 /// Slim desktop news ticker.
 ///
@@ -86,6 +86,20 @@ class _NoticeBarState extends State<NoticeBar>
     _syncPlayback(restart: true);
   }
 
+  void _goToIndex(int index) {
+    if (!mounted || widget.notices.length < 2) return;
+    _progress.stop();
+    _progress.value = 0;
+    setState(() => _index = index % widget.notices.length);
+    _syncPlayback();
+  }
+
+  void _previous() => _goToIndex(
+        (_index - 1 + widget.notices.length) % widget.notices.length,
+      );
+
+  void _next() => _goToIndex((_index + 1) % widget.notices.length);
+
   void _syncPlayback({bool restart = false}) {
     if (widget.notices.length < 2 || _hovering || _dialogOpen) {
       _progress.stop();
@@ -105,16 +119,24 @@ class _NoticeBarState extends State<NoticeBar>
     _syncPlayback();
   }
 
-  Future<void> _openNotice(NoticeModel notice) async {
+  Future<void> _openNotice(int index) async {
     _dialogOpen = true;
     _syncPlayback();
-    await showDialog<void>(
+    final viewedIndex = await showDialog<int>(
       context: context,
-      builder: (_) => NoticePopupDialog(notice: notice),
+      builder: (_) => NoticePagerDialog(
+        notices: widget.notices,
+        initialIndex: index,
+      ),
     );
     if (!mounted) return;
+    if (viewedIndex != null && widget.notices.isNotEmpty) {
+      _index = viewedIndex.clamp(0, widget.notices.length - 1);
+      _progress.value = 0;
+    }
     _dialogOpen = false;
     _syncPlayback();
+    setState(() {});
   }
 
   String _summary(NoticeModel notice) {
@@ -181,7 +203,7 @@ class _NoticeBarState extends State<NoticeBar>
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => _openNotice(notice),
+            onTap: () => _openNotice(safeIndex),
             mouseCursor: SystemMouseCursors.click,
             borderRadius: BorderRadius.circular(AppRadius.lg),
             child: Ink(
@@ -192,9 +214,10 @@ class _NoticeBarState extends State<NoticeBar>
                 border: Border.all(color: c.softBorder),
               ),
               child: Stack(
+                fit: StackFit.expand,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: Row(
                       children: [
                         Container(
@@ -233,7 +256,12 @@ class _NoticeBarState extends State<NoticeBar>
                           ),
                         ),
                         if (hasMultiple) ...[
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 8),
+                          _NoticeNavButton(
+                            icon: LucideIcons.chevronLeft,
+                            onPressed: _previous,
+                          ),
+                          const SizedBox(width: 2),
                           Text(
                             '${safeIndex + 1} / ${widget.notices.length}',
                             style: AppTextStyles.caption.copyWith(
@@ -242,8 +270,13 @@ class _NoticeBarState extends State<NoticeBar>
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          const SizedBox(width: 2),
+                          _NoticeNavButton(
+                            icon: LucideIcons.chevronRight,
+                            onPressed: _next,
+                          ),
                         ],
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         Text(
                           context.l10n.view,
                           style: AppTextStyles.caption.copyWith(
@@ -260,10 +293,10 @@ class _NoticeBarState extends State<NoticeBar>
                     ),
                   ),
                   Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    height: 2,
+                    left: 1,
+                    right: 1,
+                    bottom: 1,
+                    height: 3,
                     child: ClipRRect(
                       borderRadius: const BorderRadius.vertical(
                         bottom: Radius.circular(AppRadius.lg),
@@ -271,7 +304,9 @@ class _NoticeBarState extends State<NoticeBar>
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          ColoredBox(color: c.surfaceMuted),
+                          ColoredBox(
+                            color: c.primary.withValues(alpha: 0.12),
+                          ),
                           if (hasMultiple)
                             AnimatedBuilder(
                               animation: _progress,
@@ -280,7 +315,7 @@ class _NoticeBarState extends State<NoticeBar>
                                 child: FractionallySizedBox(
                                   widthFactor: _progress.value,
                                   child: ColoredBox(
-                                    color: c.primary.withValues(alpha: 0.72),
+                                    color: c.primary.withValues(alpha: 0.88),
                                   ),
                                 ),
                               ),
@@ -295,6 +330,27 @@ class _NoticeBarState extends State<NoticeBar>
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NoticeNavButton extends StatelessWidget {
+  const _NoticeNavButton({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      color: c.textMuted,
+      iconSize: 14,
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints.tightFor(width: 24, height: 24),
     );
   }
 }
