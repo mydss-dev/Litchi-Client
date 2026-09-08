@@ -126,7 +126,7 @@ class _NoticePagerDialogState extends State<NoticePagerDialog> {
           const SizedBox(width: 8),
         ],
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(_index),
           child: Text(
             context.l10n.close,
             style: AppTextStyles.button.copyWith(color: c.primary),
