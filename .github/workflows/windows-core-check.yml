@@ -1,0 +1,26 @@
+name: Windows Core Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'core/singbox/**'
+      - '.github/workflows/windows-core-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-core:
+    name: Test Windows sing-box bridge
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.24.7'
+      - name: Test Windows core
+        working-directory: core/singbox
+        run: |
+          go mod download
+          go test -tags "with_clash_api,with_quic,with_utls,with_wireguard" ./...
