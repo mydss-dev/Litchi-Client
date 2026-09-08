@@ -594,5 +594,18 @@
   "invalidCredentialsError": "邮箱或密码错误",
   "invalidVerificationCodeError": "验证码错误或已过期",
   "accountDisabledError": "当前账号已被禁用，请联系客服",
-  "unexpectedError": "操作失败，请稍后重试"
+  "unexpectedError": "操作失败，请稍后重试",
+  "realtimeStatusLabel": "实时状态",
+  "viewUsageLabel": "查看用量",
+  "connectionDurationLabel": "连接时长",
+  "todayUsedLabel": "今日已用",
+  "remainingTrafficLabel": "剩余流量",
+  "remainingDaysLabel": "剩余天数",
+  "resetCountdownLabel": "距流量重置",
+  "comparedYesterdayLabel": "较昨日 {value}",
+  "@comparedYesterdayLabel": {"placeholders": {"value": {"type": "String"}}},
+  "yesterdayUsageLabel": "昨日 {value}",
+  "@yesterdayUsageLabel": {"placeholders": {"value": {"type": "String"}}},
+  "totalTrafficLabel": "总计 {value}",
+  "@totalTrafficLabel": {"placeholders": {"value": {"type": "String"}}}
 }

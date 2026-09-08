@@ -3332,6 +3332,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong. Try again later.'**
   String get unexpectedError;
+
+  /// No description provided for @realtimeStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Live status'**
+  String get realtimeStatusLabel;
+
+  /// No description provided for @viewUsageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'View usage'**
+  String get viewUsageLabel;
+
+  /// No description provided for @connectionDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection time'**
+  String get connectionDurationLabel;
+
+  /// No description provided for @todayUsedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Used today'**
+  String get todayUsedLabel;
+
+  /// No description provided for @remainingTrafficLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining traffic'**
+  String get remainingTrafficLabel;
+
+  /// No description provided for @remainingDaysLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Days remaining'**
+  String get remainingDaysLabel;
+
+  /// No description provided for @resetCountdownLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic reset in'**
+  String get resetCountdownLabel;
+
+  /// No description provided for @comparedYesterdayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} vs yesterday'**
+  String comparedYesterdayLabel(String value);
+
+  /// No description provided for @yesterdayUsageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday {value}'**
+  String yesterdayUsageLabel(String value);
+
+  /// No description provided for @totalTrafficLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total {value}'**
+  String totalTrafficLabel(String value);
 }
 
 class _AppLocalizationsDelegate

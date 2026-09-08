@@ -13,6 +13,7 @@ import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/utils/formatters.dart';
 import '../../shared/utils/traffic_metrics.dart';
+import '../../shared/utils/traffic_summary_text.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_select.dart';
 import '../../shared/widgets/app_toast.dart';
@@ -111,16 +112,18 @@ class _DesktopTrafficSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final traffic = ctrl.traffic;
-    final expiry = _subscriptionExpiryInfo(ctrl);
-    final resetDay = _validResetDay(ctrl.resetDay);
-    final resetDays = resetDay == null ? null : _daysUntilMonthlyReset(resetDay);
+    final expiry = subscriptionExpiryDisplay(
+      expiredAt: ctrl.expiredAt,
+      expiryText: ctrl.user.expiry,
+    );
+    final resetDay = validResetDay(ctrl.resetDay);
+    final resetDays = resetDay == null ? null : daysUntilMonthlyReset(resetDay);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         const gap = 12.0;
         final columns = constraints.maxWidth >= 620 ? 4 : 2;
-        final width =
-            (constraints.maxWidth - gap * (columns - 1)) / columns;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
 
         return Wrap(
           spacing: gap,
@@ -132,7 +135,11 @@ class _DesktopTrafficSummary extends StatelessWidget {
                 icon: LucideIcons.chartColumn,
                 title: context.l10n.todayUsedLabel,
                 value: formatGb(ctrl.todayTrafficGb),
-                footer: _yesterdayComparison(context, ctrl),
+                footer: yesterdayComparisonText(
+                  context,
+                  usage: ctrl.trafficUsage,
+                  currentGb: ctrl.todayTrafficGb,
+                ),
               ),
             ),
             SizedBox(
@@ -276,7 +283,7 @@ class _StatsGrid extends StatelessWidget {
           children: [
             SizedBox(width: cardWidth, child: const _TrafficCard()),
             SizedBox(width: cardWidth, child: const _RemainingDaysCard()),
-            if (_validResetDay(AppScope.of(context).resetDay) != null)
+            if (validResetDay(AppScope.of(context).resetDay) != null)
               SizedBox(width: cardWidth, child: const _TrafficResetCard()),
           ],
         );
@@ -314,7 +321,10 @@ class _RemainingDaysCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
-    final expiry = _subscriptionExpiryInfo(ctrl);
+    final expiry = subscriptionExpiryDisplay(
+      expiredAt: ctrl.expiredAt,
+      expiryText: ctrl.user.expiry,
+    );
 
     return _StatCard(
       icon: LucideIcons.calendarDays,
@@ -334,8 +344,8 @@ class _TrafficResetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resetDay = _validResetDay(AppScope.of(context).resetDay);
-    final resetDays = resetDay == null ? null : _daysUntilMonthlyReset(resetDay);
+    final resetDay = validResetDay(AppScope.of(context).resetDay);
+    final resetDays = resetDay == null ? null : daysUntilMonthlyReset(resetDay);
 
     return _StatCard(
       icon: LucideIcons.refreshCw,
@@ -442,7 +452,9 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
                 120.0,
                 double.infinity,
               );
-              final chartWidth = minWidth > scrollWidth ? minWidth : scrollWidth;
+              final chartWidth = minWidth > scrollWidth
+                  ? minWidth
+                  : scrollWidth;
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -502,24 +514,28 @@ class _UsageTrendCardState extends State<_UsageTrendCard> {
                                           fitInsideVertically: true,
                                           maxContentWidth: 160,
                                           getTooltipColor: (_) => c.textPrimary,
-                                          getTooltipItem: (
-                                            group,
-                                            groupIndex,
-                                            rod,
-                                            rodIndex,
-                                          ) {
-                                            final point = data[group.x.toInt()];
-                                            return BarTooltipItem(
-                                              '${point.tooltipLabel}\n'
-                                              '${context.l10n.tooltipUpload(formatGb(point.uploadGb))}\n'
-                                              '${context.l10n.tooltipDownload(formatGb(point.downloadGb))}\n'
-                                              '${context.l10n.tooltipTotal(formatGb(point.value))}',
-                                              AppTextStyles.caption.copyWith(
-                                                color: c.cardBg,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            );
-                                          },
+                                          getTooltipItem:
+                                              (
+                                                group,
+                                                groupIndex,
+                                                rod,
+                                                rodIndex,
+                                              ) {
+                                                final point =
+                                                    data[group.x.toInt()];
+                                                return BarTooltipItem(
+                                                  '${point.tooltipLabel}\n'
+                                                  '${context.l10n.tooltipUpload(formatGb(point.uploadGb))}\n'
+                                                  '${context.l10n.tooltipDownload(formatGb(point.downloadGb))}\n'
+                                                  '${context.l10n.tooltipTotal(formatGb(point.value))}',
+                                                  AppTextStyles.caption
+                                                      .copyWith(
+                                                        color: c.cardBg,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                );
+                                              },
                                         ),
                                       ),
                                       alignment: BarChartAlignment.spaceAround,
@@ -795,8 +811,9 @@ class _StatCard extends StatelessWidget {
                   child: Text(
                     value,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.largeNumber(fontSize: 30)
-                        .copyWith(color: c.textPrimary),
+                    style: AppTextStyles.largeNumber(
+                      fontSize: 30,
+                    ).copyWith(color: c.textPrimary),
                   ),
                 ),
                 if (unit.isNotEmpty) ...[
@@ -842,62 +859,4 @@ class _StatCard extends StatelessWidget {
       ),
     );
   }
-}
-
-String _yesterdayComparison(BuildContext context, AppController ctrl) {
-  final yesterday = trafficForDay(
-    ctrl.trafficUsage,
-    DateTime.now().subtract(const Duration(days: 1)),
-  );
-  final change = relativeChangePercent(
-    current: ctrl.todayTrafficGb,
-    previous: yesterday,
-  );
-  if (change == null) {
-    return context.l10n.yesterdayUsageLabel(formatGb(yesterday));
-  }
-  final rounded = change.abs() < 0.5 ? 0 : change.round();
-  final signed = rounded > 0 ? '+$rounded%' : '$rounded%';
-  return context.l10n.comparedYesterdayLabel(signed);
-}
-
-({int? days, String date}) _subscriptionExpiryInfo(AppController ctrl) {
-  final expiredAt = ctrl.expiredAt;
-  if (expiredAt != null && expiredAt > 0) {
-    final expiry = DateTime.fromMillisecondsSinceEpoch(expiredAt * 1000);
-    return (days: _daysUntil(expiry), date: formatDate(expiry));
-  }
-
-  final expiry = DateTime.tryParse(ctrl.user.expiry);
-  if (expiry == null) return (days: null, date: '');
-  return (days: _daysUntil(expiry), date: formatDate(expiry));
-}
-
-int _daysUntil(DateTime expiry) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final end = DateTime(expiry.year, expiry.month, expiry.day);
-  return end.difference(today).inDays.clamp(0, 9999);
-}
-
-int? _validResetDay(int? resetDay) {
-  if (resetDay == null || resetDay < 1 || resetDay > 31) return null;
-  return resetDay;
-}
-
-int _daysUntilMonthlyReset(int resetDay) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  var target = _safeMonthlyDate(now.year, now.month, resetDay);
-  if (target.isBefore(today)) {
-    final nextMonth = DateTime(now.year, now.month + 1, 1);
-    target = _safeMonthlyDate(nextMonth.year, nextMonth.month, resetDay);
-  }
-  return target.difference(today).inDays;
-}
-
-DateTime _safeMonthlyDate(int year, int month, int requestedDay) {
-  final lastDay = DateTime(year, month + 1, 0).day;
-  final day = requestedDay.clamp(1, lastDay).toInt();
-  return DateTime(year, month, day);
 }

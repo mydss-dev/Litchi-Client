@@ -594,5 +594,18 @@
   "invalidCredentialsError": "電子郵件或密碼錯誤",
   "invalidVerificationCodeError": "驗證碼錯誤或已過期",
   "accountDisabledError": "目前帳號已被停用，請聯絡客服",
-  "unexpectedError": "操作失敗，請稍後重試"
+  "unexpectedError": "操作失敗，請稍後重試",
+  "realtimeStatusLabel": "即時狀態",
+  "viewUsageLabel": "查看用量",
+  "connectionDurationLabel": "連線時長",
+  "todayUsedLabel": "今日已用",
+  "remainingTrafficLabel": "剩餘流量",
+  "remainingDaysLabel": "剩餘天數",
+  "resetCountdownLabel": "距流量重置",
+  "comparedYesterdayLabel": "較昨日 {value}",
+  "@comparedYesterdayLabel": {"placeholders": {"value": {"type": "String"}}},
+  "yesterdayUsageLabel": "昨日 {value}",
+  "@yesterdayUsageLabel": {"placeholders": {"value": {"type": "String"}}},
+  "totalTrafficLabel": "總計 {value}",
+  "@totalTrafficLabel": {"placeholders": {"value": {"type": "String"}}}
 }
