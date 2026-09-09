@@ -12,8 +12,9 @@ import 'notice_pager_dialog.dart';
 /// Slim desktop news ticker.
 ///
 /// Desktop treats notices as persistent news rather than consumable alerts:
-/// opening a notice never removes it. Multiple items rotate every 8 seconds
-/// with a visible progress track, while hover/detail reading pauses autoplay.
+/// opening a notice never removes it. Multiple items rotate every 8 seconds,
+/// while hover/detail reading pauses autoplay. Manual previous/next controls
+/// let users browse notices without waiting for the next rotation.
 class NoticeBar extends StatefulWidget {
   const NoticeBar({
     super.key,
@@ -208,119 +209,82 @@ class _NoticeBarState extends State<NoticeBar>
             borderRadius: BorderRadius.circular(AppRadius.lg),
             child: Ink(
               height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: c.cardBg,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(color: c.softBorder),
               ),
-              child: Stack(
-                fit: StackFit.expand,
+              child: Row(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: c.primarySoft,
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                          child: Icon(
-                            LucideIcons.megaphone,
-                            size: 14,
-                            color: c.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 220),
-                            layoutBuilder: (currentChild, previousChildren) =>
-                                Stack(
-                              alignment: Alignment.centerLeft,
-                              children: [...previousChildren, ?currentChild],
-                            ),
-                            child: Text(
-                              _summary(notice),
-                              key: ValueKey(notice.id),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.body.copyWith(
-                                color: c.textSecondary,
-                                fontSize: 12.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (hasMultiple) ...[
-                          const SizedBox(width: 8),
-                          _NoticeNavButton(
-                            icon: LucideIcons.chevronLeft,
-                            onPressed: _previous,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${safeIndex + 1} / ${widget.notices.length}',
-                            style: AppTextStyles.caption.copyWith(
-                              color: c.textMuted,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: 2),
-                          _NoticeNavButton(
-                            icon: LucideIcons.chevronRight,
-                            onPressed: _next,
-                          ),
-                        ],
-                        const SizedBox(width: 8),
-                        Text(
-                          context.l10n.view,
-                          style: AppTextStyles.caption.copyWith(
-                            color: c.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        Icon(
-                          LucideIcons.chevronRight,
-                          size: 15,
-                          color: c.primary,
-                        ),
-                      ],
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: c.primarySoft,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Icon(
+                      LucideIcons.megaphone,
+                      size: 14,
+                      color: c.primary,
                     ),
                   ),
-                  Positioned(
-                    left: 1,
-                    right: 1,
-                    bottom: 1,
-                    height: 3,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(AppRadius.lg),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      layoutBuilder: (currentChild, previousChildren) => Stack(
+                        alignment: Alignment.centerLeft,
+                        children: [...previousChildren, ?currentChild],
                       ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          ColoredBox(
-                            color: c.primary.withValues(alpha: 0.12),
-                          ),
-                          if (hasMultiple)
-                            AnimatedBuilder(
-                              animation: _progress,
-                              builder: (context, _) => Align(
-                                alignment: Alignment.centerLeft,
-                                child: FractionallySizedBox(
-                                  widthFactor: _progress.value,
-                                  child: ColoredBox(
-                                    color: c.primary.withValues(alpha: 0.88),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                      child: Text(
+                        _summary(notice),
+                        key: ValueKey(notice.id),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.body.copyWith(
+                          color: c.textSecondary,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (hasMultiple) ...[
+                    const SizedBox(width: 10),
+                    _NoticeNavButton(
+                      icon: LucideIcons.chevronLeft,
+                      onPressed: _previous,
+                    ),
+                    const SizedBox(width: 4),
+                    SizedBox(
+                      width: 42,
+                      child: Text(
+                        '${safeIndex + 1} / ${widget.notices.length}',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textMuted,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    _NoticeNavButton(
+                      icon: LucideIcons.chevronRight,
+                      onPressed: _next,
+                    ),
+                  ],
+                  const SizedBox(width: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Text(
+                      context.l10n.view,
+                      style: AppTextStyles.caption.copyWith(
+                        color: c.primary,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -346,11 +310,18 @@ class _NoticeNavButton extends StatelessWidget {
     return IconButton(
       onPressed: onPressed,
       icon: Icon(icon),
-      color: c.textMuted,
-      iconSize: 14,
+      iconSize: 13,
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       constraints: const BoxConstraints.tightFor(width: 24, height: 24),
+      style: IconButton.styleFrom(
+        foregroundColor: c.textSecondary,
+        backgroundColor: c.surfaceMuted,
+        side: BorderSide(color: c.softBorder),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+      ),
     );
   }
 }
