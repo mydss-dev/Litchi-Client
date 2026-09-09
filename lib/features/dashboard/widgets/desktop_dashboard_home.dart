@@ -354,7 +354,6 @@ class _ConnectionSettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
     final description = ctrl.networkMode == NetworkMode.system
         ? context.l10n.systemProxyDescription
         : context.l10n.tunDescription;
