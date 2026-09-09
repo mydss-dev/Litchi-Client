@@ -169,7 +169,7 @@ class _ConnectionOverviewPanel extends StatelessWidget {
                 ),
               );
 
-              if (constraints.maxWidth < 640) {
+              if (constraints.maxWidth < 560) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
