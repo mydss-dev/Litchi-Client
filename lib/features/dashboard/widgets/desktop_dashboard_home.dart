@@ -22,7 +22,7 @@ import '../../../shared/widgets/notice_bar.dart';
 import 'network_settings_card.dart';
 
 /// Desktop home information order:
-/// notice -> connection -> node/live status -> subscription summary.
+/// notice -> connection/node controls -> live status -> subscription summary.
 class DesktopDashboardHome extends StatelessWidget {
   const DesktopDashboardHome({
     super.key,
@@ -54,64 +54,38 @@ class DesktopDashboardHome extends StatelessWidget {
                 ? () => ctrl.goToPage(AppPage.shop)
                 : null,
           )
-        else
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _ConnectionPanel(
-                ctrl: ctrl,
-                onToggle: onToggleConnection,
-                onProxyModeChanged: onProxyModeChanged,
-              ),
-              const SizedBox(height: 12),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  const gap = 12.0;
-                  final width = (constraints.maxWidth - gap) / 2;
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: width,
-                        child: _NodePanel(
-                          node: ctrl.currentNode,
-                          loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
-                          automatic: ctrl.autoSelected,
-                          onTap: onNodeTap,
-                        ),
-                      ),
-                      const SizedBox(width: gap),
-                      SizedBox(
-                        width: width,
-                        child: ValueListenableBuilder<int>(
-                          valueListenable: tick,
-                          builder: (context, _, _) =>
-                              _RealtimePanel(ctrl: ctrl),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _PlanPanel(ctrl: ctrl),
-            ],
+        else ...[
+          _ConnectionOverviewPanel(
+            ctrl: ctrl,
+            onToggle: onToggleConnection,
+            onProxyModeChanged: onProxyModeChanged,
+            onNodeTap: onNodeTap,
           ),
+          const SizedBox(height: 12),
+          ValueListenableBuilder<int>(
+            valueListenable: tick,
+            builder: (context, _, _) => _RealtimePanel(ctrl: ctrl),
+          ),
+          const SizedBox(height: 12),
+          _PlanPanel(ctrl: ctrl),
+        ],
       ],
     );
   }
 }
 
-class _ConnectionPanel extends StatelessWidget {
-  const _ConnectionPanel({
+class _ConnectionOverviewPanel extends StatelessWidget {
+  const _ConnectionOverviewPanel({
     required this.ctrl,
     required this.onToggle,
     required this.onProxyModeChanged,
+    required this.onNodeTap,
   });
 
   final AppController ctrl;
   final VoidCallback onToggle;
   final ValueChanged<ProxyMode> onProxyModeChanged;
+  final VoidCallback onNodeTap;
 
   @override
   Widget build(BuildContext context) {
@@ -161,124 +135,249 @@ class _ConnectionPanel extends StatelessWidget {
                   ),
                 ),
               ),
-              _StatusBadge(label: statusText, color: statusColor),
+              _StatusPill(label: statusText, color: statusColor, busy: busy),
+              const SizedBox(width: 10),
+              AppSwitch(
+                value: switchOn,
+                onChanged: busy || !supportsConnection
+                    ? null
+                    : (_) => onToggle(),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          _NodeSummary(
+            node: ctrl.currentNode,
+            loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
+            automatic: ctrl.autoSelected,
+            onTap: onNodeTap,
+          ),
+          const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
-              const gap = 12.0;
-              final width = (constraints.maxWidth - gap) / 2;
+              final connectionMethod = _ControlGroup(
+                label: context.l10n.connectionMethod,
+                child: const NetworkModeSelector(height: 38),
+              );
+              final proxyMode = _ControlGroup(
+                label: context.l10n.proxyMode,
+                child: ModeStrip(
+                  selected: ctrl.proxyMode,
+                  onChanged: onProxyModeChanged,
+                  buttonHeight: 30,
+                  padding: 3,
+                ),
+              );
+
+              if (constraints.maxWidth < 560) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    connectionMethod,
+                    const SizedBox(height: 10),
+                    proxyMode,
+                  ],
+                );
+              }
+
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: width,
-                    child: _ControlGroup(
-                      label: context.l10n.connectionMethod,
-                      child: const NetworkModeSelector(height: 38),
-                    ),
-                  ),
-                  const SizedBox(width: gap),
-                  SizedBox(
-                    width: width,
-                    child: _ControlGroup(
-                      label: context.l10n.proxyMode,
-                      child: ModeStrip(
-                        selected: ctrl.proxyMode,
-                        onChanged: onProxyModeChanged,
-                        buttonHeight: 30,
-                        padding: 3,
-                      ),
-                    ),
-                  ),
+                  Expanded(child: connectionMethod),
+                  const SizedBox(width: 12),
+                  Expanded(child: proxyMode),
                 ],
               );
             },
           ),
           const SizedBox(height: 10),
-          Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: c.surfaceMuted,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: c.softBorder),
-            ),
-            child: Row(
-              children: [
-                Icon(LucideIcons.info, size: 14, color: c.primary),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    modeDescription,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(
-                      color: c.textMuted,
-                      fontSize: 11.5,
-                    ),
+          Row(
+            children: [
+              Icon(LucideIcons.info, size: 14, color: c.primary),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  modeDescription,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textSecondary,
+                    fontSize: 11.5,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          Container(
-            constraints: const BoxConstraints(minHeight: 48),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: c.cardBg,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: c.softBorder),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
+    required this.label,
+    required this.color,
+    required this.busy,
+  });
+
+  final String label;
+  final Color color;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: color.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (busy)
+            SizedBox(
+              width: 11,
+              height: 11,
+              child: CircularProgressIndicator(strokeWidth: 1.6, color: color),
+            )
+          else
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-            child: Row(
-              children: [
-                _ConnectionStateIcon(
-                  status: status,
-                  color: statusColor,
-                  busy: busy,
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        statusText,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          color: c.textPrimary,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                      if (!connected) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          context.l10n.dashboardSubtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.caption.copyWith(
-                            color: c.textMuted,
-                            fontSize: 10.5,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                AppSwitch(
-                  value: switchOn,
-                  onChanged: busy || !supportsConnection
-                      ? null
-                      : (_) => onToggle(),
-                ),
-              ],
+          const SizedBox(width: 6),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: color,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NodeSummary extends StatelessWidget {
+  const _NodeSummary({
+    required this.node,
+    required this.loading,
+    required this.automatic,
+    required this.onTap,
+  });
+
+  final NodeModel node;
+  final bool loading;
+  final bool automatic;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final nodeName = node.name.isEmpty
+        ? loading
+              ? context.l10n.syncingNodes
+              : context.l10n.selectNodePrompt
+        : node.name;
+    final secondary = node.englishName.isNotEmpty
+        ? node.englishName
+        : context.l10n.nodeModeLabel(
+            automatic ? context.l10n.autoSelect : context.l10n.manualSelect,
+          );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        mouseCursor: SystemMouseCursors.click,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: c.surfaceMuted,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: c.softBorder),
+          ),
+          child: Row(
+            children: [
+              _NodeAvatar(node: node),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          context.l10n.currentNode,
+                          style: AppTextStyles.caption.copyWith(
+                            color: c.textSecondary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            nodeName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodyStrong.copyWith(
+                              color: c.textPrimary,
+                              fontSize: 14.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (loading && node.name.isEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          minHeight: 3,
+                          color: c.primary,
+                          backgroundColor: c.softBorder,
+                        ),
+                      )
+                    else
+                      Text(
+                        secondary,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textSecondary,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              NodeLatency(latency: node.latency, style: NodeLatencyStyle.badge),
+              const SizedBox(width: 10),
+              Text(
+                context.l10n.switchNode,
+                style: AppTextStyles.caption.copyWith(
+                  color: c.primary,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(LucideIcons.chevronRight, size: 15, color: c.primary),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -301,7 +400,7 @@ class _ControlGroup extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.caption.copyWith(
-            color: c.textMuted,
+            color: c.textSecondary,
             fontSize: 11.5,
             fontWeight: FontWeight.w700,
           ),
@@ -334,183 +433,6 @@ class _IconTile extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: label,
-      child: Container(
-        width: 26,
-        height: 26,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.09),
-          shape: BoxShape.circle,
-          border: Border.all(color: color.withValues(alpha: 0.14)),
-        ),
-        child: Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-      ),
-    );
-  }
-}
-
-class _ConnectionStateIcon extends StatelessWidget {
-  const _ConnectionStateIcon({
-    required this.status,
-    required this.color,
-    required this.busy,
-  });
-
-  final ConnectionStatus status;
-  final Color color;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = switch (status) {
-      ConnectionStatus.connected => LucideIcons.shieldCheck,
-      ConnectionStatus.error => LucideIcons.shieldOff,
-      _ => LucideIcons.shield,
-    };
-
-    return Container(
-      width: 32,
-      height: 32,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        shape: BoxShape.circle,
-      ),
-      child: busy
-          ? SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: color),
-            )
-          : Icon(icon, size: 16, color: color),
-    );
-  }
-}
-
-class _NodePanel extends StatelessWidget {
-  const _NodePanel({
-    required this.node,
-    required this.loading,
-    required this.automatic,
-    required this.onTap,
-  });
-
-  final NodeModel node;
-  final bool loading;
-  final bool automatic;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final nodeName = node.name.isEmpty
-        ? loading
-              ? context.l10n.syncingNodes
-              : context.l10n.selectNodePrompt
-        : node.name;
-    final secondary = node.englishName.isNotEmpty
-        ? node.englishName
-        : context.l10n.nodeModeLabel(
-            automatic ? context.l10n.autoSelect : context.l10n.manualSelect,
-          );
-
-    return AppCard(
-      height: 120,
-      radius: AppRadius.xl,
-      padding: const EdgeInsets.all(14),
-      onTap: onTap,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(LucideIcons.server, size: 15, color: c.primary),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  context.l10n.currentNode,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: c.textPrimary,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              Text(
-                context.l10n.switchNode,
-                style: AppTextStyles.caption.copyWith(
-                  color: c.primary,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 2),
-              Icon(LucideIcons.chevronRight, size: 15, color: c.primary),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              _NodeAvatar(node: node),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      nodeName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.sectionTitle.copyWith(
-                        color: c.textPrimary,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (loading && node.name.isEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: LinearProgressIndicator(
-                          minHeight: 3,
-                          color: c.primary,
-                          backgroundColor: c.softBorder,
-                        ),
-                      )
-                    else
-                      Text(
-                        secondary,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(
-                          color: c.textMuted,
-                          fontSize: 10.5,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              NodeLatency(latency: node.latency, style: NodeLatencyStyle.badge),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _NodeAvatar extends StatelessWidget {
   const _NodeAvatar({required this.node});
 
@@ -520,11 +442,11 @@ class _NodeAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Container(
-      width: 44,
-      height: 44,
+      width: 42,
+      height: 42,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: c.surfaceMuted,
+        color: c.cardBg,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: c.softBorder),
       ),
@@ -553,9 +475,8 @@ class _RealtimePanel extends StatelessWidget {
     final connected = ctrl.connectionStatus == ConnectionStatus.connected;
 
     return AppCard(
-      height: 120,
-      radius: AppRadius.xl,
-      padding: const EdgeInsets.all(14),
+      radius: AppRadius.lg,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       onTap: () => ctrl.goToPage(AppPage.traffic),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -577,7 +498,7 @@ class _RealtimePanel extends StatelessWidget {
                 context.l10n.viewUsageLabel,
                 style: AppTextStyles.caption.copyWith(
                   color: c.primary,
-                  fontSize: 10.5,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -585,7 +506,7 @@ class _RealtimePanel extends StatelessWidget {
               Icon(LucideIcons.chevronRight, size: 15, color: c.primary),
             ],
           ),
-          const Spacer(),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -598,7 +519,7 @@ class _RealtimePanel extends StatelessWidget {
                   active: connected,
                 ),
               ),
-              Container(width: 1, height: 42, color: c.softBorder),
+              _MetricDivider(color: c.softBorder, height: 38),
               Expanded(
                 child: _LiveMetric(
                   icon: LucideIcons.arrowUp,
@@ -607,7 +528,7 @@ class _RealtimePanel extends StatelessWidget {
                   active: connected,
                 ),
               ),
-              Container(width: 1, height: 42, color: c.softBorder),
+              _MetricDivider(color: c.softBorder, height: 38),
               Expanded(
                 child: _LiveMetric(
                   icon: LucideIcons.arrowDown,
@@ -641,42 +562,63 @@ class _LiveMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Opacity(
-      opacity: active ? 1 : 0.48,
+      opacity: active ? 1 : 0.58,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 7),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Icon(icon, size: 12, color: c.primary),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
+            _MetricIcon(icon: icon),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.caption.copyWith(
-                      color: c.textMuted,
-                      fontSize: 10,
+                      color: c.textSecondary,
+                      fontSize: 11.5,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyStrong.copyWith(
-                color: c.textPrimary,
-                fontSize: 13.5,
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: c.textPrimary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MetricIcon extends StatelessWidget {
+  const _MetricIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: c.primarySoft,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 13, color: c.primary),
     );
   }
 }
@@ -695,7 +637,6 @@ class _PlanPanel extends StatelessWidget {
     );
 
     return AppCard(
-      height: 90,
       radius: AppRadius.lg,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
@@ -710,7 +651,7 @@ class _PlanPanel extends StatelessWidget {
                   : '${expiry.days} ${context.l10n.daysUnit}',
             ),
           ),
-          _MetricDivider(color: c.softBorder),
+          _MetricDivider(color: c.softBorder, height: 46),
           Expanded(
             child: _PlanMetric(
               icon: LucideIcons.chartColumn,
@@ -723,7 +664,7 @@ class _PlanPanel extends StatelessWidget {
               ),
             ),
           ),
-          _MetricDivider(color: c.softBorder),
+          _MetricDivider(color: c.softBorder, height: 46),
           Expanded(
             child: _PlanMetric(
               icon: LucideIcons.database,
@@ -741,14 +682,15 @@ class _PlanPanel extends StatelessWidget {
 }
 
 class _MetricDivider extends StatelessWidget {
-  const _MetricDivider({required this.color});
+  const _MetricDivider({required this.color, required this.height});
 
   final Color color;
+  final double height;
 
   @override
   Widget build(BuildContext context) => Container(
     width: 1,
-    height: 46,
+    height: height,
     margin: const EdgeInsets.symmetric(horizontal: 8),
     color: color,
   );
@@ -784,8 +726,8 @@ class _PlanMetric extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
-                  color: c.textMuted,
-                  fontSize: 10.5,
+                  color: c.textSecondary,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -805,8 +747,8 @@ class _PlanMetric extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption.copyWith(
-                  color: c.textMuted,
-                  fontSize: 9.5,
+                  color: c.textSecondary,
+                  fontSize: 11,
                 ),
               ),
             ],
