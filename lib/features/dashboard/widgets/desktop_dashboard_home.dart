@@ -22,7 +22,7 @@ import '../../../shared/widgets/notice_bar.dart';
 import 'network_settings_card.dart';
 
 /// Desktop home information order:
-/// notice -> compact connection cards -> realtime status -> subscription summary.
+/// notice -> connection/node + network settings -> realtime status -> subscription summary.
 class DesktopDashboardHome extends StatelessWidget {
   const DesktopDashboardHome({
     super.key,
@@ -57,7 +57,7 @@ class DesktopDashboardHome extends StatelessWidget {
         else ...[
           ValueListenableBuilder<int>(
             valueListenable: tick,
-            builder: (context, _, _) => _CompactControlRow(
+            builder: (context, _, _) => _TopControlRow(
               ctrl: ctrl,
               onToggleConnection: onToggleConnection,
               onProxyModeChanged: onProxyModeChanged,
@@ -77,8 +77,8 @@ class DesktopDashboardHome extends StatelessWidget {
   }
 }
 
-class _CompactControlRow extends StatelessWidget {
-  const _CompactControlRow({
+class _TopControlRow extends StatelessWidget {
+  const _TopControlRow({
     required this.ctrl,
     required this.onToggleConnection,
     required this.onProxyModeChanged,
@@ -92,30 +92,25 @@ class _CompactControlRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final connectionCard = _ConnectionNodeCard(
+      ctrl: ctrl,
+      onToggle: onToggleConnection,
+      onNodeTap: onNodeTap,
+    );
+    final networkCard = _NetworkSettingsCard(
+      ctrl: ctrl,
+      onProxyModeChanged: onProxyModeChanged,
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        const gap = 12.0;
-        final cards = <Widget>[
-          _ConnectionNodeCard(
-            ctrl: ctrl,
-            onToggle: onToggleConnection,
-            onNodeTap: onNodeTap,
-          ),
-          _ConnectionSettingsCard(ctrl: ctrl),
-          _RuleSettingsCard(
-            ctrl: ctrl,
-            onChanged: onProxyModeChanged,
-          ),
-        ];
-
-        if (constraints.maxWidth < 520) {
+        if (constraints.maxWidth < 560) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (var i = 0; i < cards.length; i++) ...[
-                cards[i],
-                if (i != cards.length - 1) const SizedBox(height: gap),
-              ],
+              connectionCard,
+              const SizedBox(height: 12),
+              networkCard,
             ],
           );
         }
@@ -123,10 +118,9 @@ class _CompactControlRow extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (var i = 0; i < cards.length; i++) ...[
-              Expanded(child: cards[i]),
-              if (i != cards.length - 1) const SizedBox(width: gap),
-            ],
+            Expanded(child: connectionCard),
+            const SizedBox(width: 12),
+            Expanded(child: networkCard),
           ],
         );
       },
@@ -172,16 +166,16 @@ class _ConnectionNodeCard extends StatelessWidget {
           };
 
     return AppCard(
-      height: 142,
+      height: 184,
       radius: AppRadius.lg,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
               const _IconTile(icon: LucideIcons.wifi),
-              const SizedBox(width: 8),
+              const SizedBox(width: 9),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,13 +209,13 @@ class _ConnectionNodeCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.bodyStrong.copyWith(
                               color: statusColor,
-                              fontSize: 13.5,
+                              fontSize: 14,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       connected
                           ? formatDuration(ctrl.connectedDuration)
@@ -230,13 +224,13 @@ class _ConnectionNodeCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption.copyWith(
                         color: c.textSecondary,
-                        fontSize: 11,
+                        fontSize: 11.5,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               AppSwitch(
                 value: switchOn,
                 onChanged: busy || !supportsConnection
@@ -246,6 +240,8 @@ class _ConnectionNodeCard extends StatelessWidget {
             ],
           ),
           const Spacer(),
+          Divider(height: 1, thickness: 1, color: c.softBorder),
+          const SizedBox(height: 12),
           _CompactNodeRow(
             node: ctrl.currentNode,
             loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
@@ -296,7 +292,7 @@ class _CompactNodeRow extends StatelessWidget {
           child: Row(
             children: [
               _NodeAvatar(node: node),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,36 +304,39 @@ class _CompactNodeRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyStrong.copyWith(
                         color: c.textPrimary,
-                        fontSize: 13.5,
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            secondary,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption.copyWith(
-                              color: c.textSecondary,
-                              fontSize: 10.5,
-                            ),
-                          ),
-                        ),
-                        if (!loading || node.name.isNotEmpty) ...[
-                          const SizedBox(width: 4),
-                          NodeLatency(
-                            latency: node.latency,
-                            style: NodeLatencyStyle.badge,
-                          ),
-                        ],
-                      ],
+                    const SizedBox(height: 3),
+                    Text(
+                      secondary,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(
+                        color: c.textSecondary,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
+              if (!loading || node.name.isNotEmpty)
+                NodeLatency(
+                  latency: node.latency,
+                  style: NodeLatencyStyle.badge,
+                ),
+              const SizedBox(width: 7),
+              Text(
+                context.l10n.switchNode,
+                maxLines: 1,
+                style: AppTextStyles.caption.copyWith(
+                  color: c.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 2),
               Icon(LucideIcons.chevronRight, size: 15, color: c.primary),
             ],
           ),
@@ -347,74 +346,63 @@ class _CompactNodeRow extends StatelessWidget {
   }
 }
 
-class _ConnectionSettingsCard extends StatelessWidget {
-  const _ConnectionSettingsCard({required this.ctrl});
+class _NetworkSettingsCard extends StatelessWidget {
+  const _NetworkSettingsCard({
+    required this.ctrl,
+    required this.onProxyModeChanged,
+  });
 
   final AppController ctrl;
+  final ValueChanged<ProxyMode> onProxyModeChanged;
 
   @override
   Widget build(BuildContext context) {
-    final description = ctrl.networkMode == NetworkMode.system
-        ? context.l10n.systemProxyDescription
-        : context.l10n.tunDescription;
-
     return AppCard(
-      height: 142,
+      height: 184,
       radius: AppRadius.lg,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _CardTitle(
-            icon: LucideIcons.wifi,
-            title: context.l10n.connectionSettings,
+            icon: LucideIcons.activity,
+            title: context.l10n.networkSettings,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          _ControlLabel(label: context.l10n.connectionMethod),
+          const SizedBox(height: 5),
           const NetworkModeSelector(height: 34),
-          const Spacer(),
-          _DescriptionLine(text: description),
+          const SizedBox(height: 10),
+          _ControlLabel(label: context.l10n.proxyMode),
+          const SizedBox(height: 5),
+          ModeStrip(
+            selected: ctrl.proxyMode,
+            onChanged: onProxyModeChanged,
+            buttonHeight: 28,
+            padding: 3,
+          ),
         ],
       ),
     );
   }
 }
 
-class _RuleSettingsCard extends StatelessWidget {
-  const _RuleSettingsCard({required this.ctrl, required this.onChanged});
+class _ControlLabel extends StatelessWidget {
+  const _ControlLabel({required this.label});
 
-  final AppController ctrl;
-  final ValueChanged<ProxyMode> onChanged;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final description = switch (ctrl.proxyMode) {
-      ProxyMode.rule => context.l10n.proxyModeDescriptionRule,
-      ProxyMode.global => context.l10n.proxyModeDescriptionGlobal,
-      ProxyMode.direct => context.l10n.proxyModeDescriptionDirect,
-    };
-    final locale = Localizations.localeOf(context);
-    final title = locale.languageCode == 'en'
-        ? '${context.l10n.ruleMode} ${context.l10n.settings}'
-        : '${context.l10n.ruleMode}${context.l10n.settings}';
-
-    return AppCard(
-      height: 142,
-      radius: AppRadius.lg,
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _CardTitle(icon: LucideIcons.activity, title: title),
-          const SizedBox(height: 10),
-          ModeStrip(
-            selected: ctrl.proxyMode,
-            onChanged: onChanged,
-            buttonHeight: 28,
-            padding: 3,
-          ),
-          const Spacer(),
-          _DescriptionLine(text: description),
-        ],
+    final c = AppColors.of(context);
+    return Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: AppTextStyles.caption.copyWith(
+        color: c.textSecondary,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
       ),
     );
   }
@@ -440,40 +428,7 @@ class _CardTitle extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: AppTextStyles.bodyStrong.copyWith(
               color: c.textPrimary,
-              fontSize: 13.5,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DescriptionLine extends StatelessWidget {
-  const _DescriptionLine({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 1),
-          child: Icon(LucideIcons.info, size: 12, color: c.primary),
-        ),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption.copyWith(
-              color: c.textSecondary,
-              fontSize: 10.5,
-              height: 1.25,
+              fontSize: 14,
             ),
           ),
         ),
@@ -512,8 +467,8 @@ class _NodeAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Container(
-      width: 34,
-      height: 34,
+      width: 38,
+      height: 38,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: c.cardBg,
@@ -524,12 +479,12 @@ class _NodeAvatar extends StatelessWidget {
           ? CountryFlag.fromCountryCode(
               node.code,
               theme: const ImageTheme(
-                width: 23,
-                height: 16,
+                width: 25,
+                height: 18,
                 shape: RoundedRectangle(3),
               ),
             )
-          : Icon(LucideIcons.globe2, color: c.iconMuted, size: 17),
+          : Icon(LucideIcons.globe2, color: c.iconMuted, size: 18),
     );
   }
 }
@@ -694,7 +649,7 @@ class _PlanPanel extends StatelessWidget {
               value: expiry.date.isEmpty ? context.l10n.permanent : expiry.date,
               footer: expiry.days == null
                   ? context.l10n.subscriptionLongTerm
-                  : '${expiry.days} ${context.l10n.daysUnit}',
+                  : _remainingDaysText(context, expiry.days!),
             ),
           ),
           _MetricDivider(color: c.softBorder, height: 46),
@@ -725,6 +680,15 @@ class _PlanPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+String _remainingDaysText(BuildContext context, int days) {
+  final locale = Localizations.localeOf(context);
+  if (locale.languageCode == 'zh') {
+    final traditional = locale.countryCode?.toUpperCase() == 'TW';
+    return '${traditional ? '剩餘' : '剩余'} $days ${context.l10n.daysUnit}';
+  }
+  return context.l10n.subscriptionExpiresInDays(days);
 }
 
 class _MetricDivider extends StatelessWidget {
