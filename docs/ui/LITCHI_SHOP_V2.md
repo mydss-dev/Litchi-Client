@@ -32,6 +32,9 @@ Phase 7 covers the Shop / Plans presentation and purchase-surface presentation o
 - Order confirmation billing choices reuse interactive `AppCard` surfaces so label + price stay visible.
 - Coupon entry uses `AppTextField`; verify/remove/cancel/submit actions use `AppButton`.
 - Submit and verify loading states come from shared controls instead of feature-local spinners.
+- Payment uses the shared adaptive modal path: centered desktop dialog and compact Android bottom sheet.
+- Payment method choices reuse interactive `AppCard` surfaces; payment, QR, success and expired actions reuse `AppButton`.
+- QR back navigation uses the shared modal leading-action slot; success remains explicitly dismissed with Done.
 - Any visual normalization must reuse shared modal/button/input primitives.
 - Do not change order amount calculation, payment methods, balance handling, coupon behavior, polling or callbacks in Phase 7.
 
