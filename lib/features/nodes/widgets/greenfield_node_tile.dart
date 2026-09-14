@@ -24,6 +24,9 @@ class GreenfieldNodeTile extends StatefulWidget {
     this.pinnedCurrent = false,
   });
 
+  static const double desktopHeight = 62;
+  static const double compactHeight = 76;
+
   final NodeModel node;
   final bool selected;
   final bool favorite;
@@ -45,7 +48,9 @@ class _GreenfieldNodeTileState extends State<GreenfieldNodeTile> {
     final c = AppColors.of(context);
     final emphasized = widget.selected || _hovered || _focused;
     final metadata = _metadata(widget.node);
-    final rowHeight = widget.compact ? 76.0 : 62.0;
+    final rowHeight = widget.compact
+        ? GreenfieldNodeTile.compactHeight
+        : GreenfieldNodeTile.desktopHeight;
 
     return FocusableActionDetector(
       mouseCursor: SystemMouseCursors.click,
