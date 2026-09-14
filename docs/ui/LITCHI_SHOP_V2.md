@@ -24,6 +24,7 @@ Phase 7 covers the Shop / Plans presentation and purchase-surface presentation o
 - Plan title and status badge share the top row.
 - Price uses tabular, high-emphasis typography.
 - Billing-cycle controls use shared selectable-control styling instead of feature-local gesture chips.
+- Unavailable billing cycles remain visible but disabled; availability semantics do not change.
 - Feature rows are concise and preserve backend-provided ordering.
 
 ## Purchase surfaces
