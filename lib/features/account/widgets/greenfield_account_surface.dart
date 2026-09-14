@@ -21,6 +21,9 @@ class GreenfieldAccountSurface extends StatelessWidget {
     required this.expiryLabel,
     required this.balanceText,
     required this.commissionText,
+    required this.showOrders,
+    required this.showTraffic,
+    required this.showInvite,
     required this.showGiftCard,
     required this.showTelegram,
     required this.telegramBound,
@@ -51,6 +54,9 @@ class GreenfieldAccountSurface extends StatelessWidget {
   final String expiryLabel;
   final String balanceText;
   final String commissionText;
+  final bool showOrders;
+  final bool showTraffic;
+  final bool showInvite;
   final bool showGiftCard;
   final bool showTelegram;
   final bool telegramBound;
@@ -101,18 +107,23 @@ class GreenfieldAccountSurface extends StatelessWidget {
               onTransfer: onTransfer,
               onWithdraw: onWithdraw,
             ),
-            const SizedBox(height: AppSpacing.lg),
-            _ServicesSection(
-              compact: compact,
-              showGiftCard: showGiftCard,
-              showTelegram: showTelegram,
-              telegramBound: telegramBound,
-              onOrders: onOrders,
-              onTraffic: onTraffic,
-              onInvite: onInvite,
-              onGiftCard: onGiftCard,
-              onTelegram: onTelegram,
-            ),
+            if (showOrders || showTraffic || showInvite || showGiftCard || showTelegram) ...[
+              const SizedBox(height: AppSpacing.lg),
+              _ServicesSection(
+                compact: compact,
+                showOrders: showOrders,
+                showTraffic: showTraffic,
+                showInvite: showInvite,
+                showGiftCard: showGiftCard,
+                showTelegram: showTelegram,
+                telegramBound: telegramBound,
+                onOrders: onOrders,
+                onTraffic: onTraffic,
+                onInvite: onInvite,
+                onGiftCard: onGiftCard,
+                onTelegram: onTelegram,
+              ),
+            ],
             const SizedBox(height: AppSpacing.lg),
             _SecuritySection(
               hasPlan: hasPlan,
@@ -377,6 +388,9 @@ class _MoneyMetric extends StatelessWidget {
 class _ServicesSection extends StatelessWidget {
   const _ServicesSection({
     required this.compact,
+    required this.showOrders,
+    required this.showTraffic,
+    required this.showInvite,
     required this.showGiftCard,
     required this.showTelegram,
     required this.telegramBound,
@@ -388,6 +402,9 @@ class _ServicesSection extends StatelessWidget {
   });
 
   final bool compact;
+  final bool showOrders;
+  final bool showTraffic;
+  final bool showInvite;
   final bool showGiftCard;
   final bool showTelegram;
   final bool telegramBound;
@@ -400,24 +417,27 @@ class _ServicesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <_ServiceItem>[
-      _ServiceItem(
-        icon: LucideIcons.clipboardList,
-        title: context.l10n.orders,
-        subtitle: context.l10n.ordersSubtitle,
-        onTap: onOrders,
-      ),
-      _ServiceItem(
-        icon: LucideIcons.chartColumn,
-        title: context.l10n.usage,
-        subtitle: context.l10n.usageSubtitle,
-        onTap: onTraffic,
-      ),
-      _ServiceItem(
-        icon: LucideIcons.gift,
-        title: context.l10n.invite,
-        subtitle: context.l10n.inviteSubtitle,
-        onTap: onInvite,
-      ),
+      if (showOrders)
+        _ServiceItem(
+          icon: LucideIcons.clipboardList,
+          title: context.l10n.orders,
+          subtitle: context.l10n.ordersSubtitle,
+          onTap: onOrders,
+        ),
+      if (showTraffic)
+        _ServiceItem(
+          icon: LucideIcons.chartColumn,
+          title: context.l10n.usage,
+          subtitle: context.l10n.usageSubtitle,
+          onTap: onTraffic,
+        ),
+      if (showInvite)
+        _ServiceItem(
+          icon: LucideIcons.gift,
+          title: context.l10n.invite,
+          subtitle: context.l10n.inviteSubtitle,
+          onTap: onInvite,
+        ),
       if (showGiftCard)
         _ServiceItem(
           icon: LucideIcons.ticketCheck,
