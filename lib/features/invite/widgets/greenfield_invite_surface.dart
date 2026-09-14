@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../l10n/l10n.dart';
+import '../../../shared/layout/app_platform.dart';
 import '../../../shared/models/api_models.dart';
 import '../../../shared/models/app_models.dart';
 import '../../../shared/theme/app_colors.dart';
@@ -58,7 +59,8 @@ class GreenfieldInviteSurface extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 680;
+        final compact = AppPlatform.usesTouch;
+        final compactStats = compact || constraints.maxWidth < 760;
         final hero = _InviteHero(
           compact: compact,
           invite: invite,
@@ -75,7 +77,7 @@ class GreenfieldInviteSurface extends StatelessWidget {
           onShareTelegram: onShareTelegram,
         );
         final stats = _InviteStats(
-          compact: compact,
+          compact: compactStats,
           registeredUsers: registeredUsers,
           pendingCommission: pendingCommission,
           earnedCommission: earnedCommission,
