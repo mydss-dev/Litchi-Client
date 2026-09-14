@@ -167,6 +167,9 @@ class _ConnectionHeroCard extends StatelessWidget {
               c.textMuted,
             ),
           };
+    final connectionDescription = ctrl.networkMode == NetworkMode.tun
+        ? context.l10n.tunDescription
+        : context.l10n.systemProxyDescription;
 
     return AppCard(
       height: 228,
@@ -219,7 +222,7 @@ class _ConnectionHeroCard extends StatelessWidget {
                       const SizedBox(height: AppSpacing.lg),
                       Text(
                         connected
-                            ? context.l10n.systemProxyDescription
+                            ? connectionDescription
                             : context.l10n.selectNodePrompt,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -368,11 +371,13 @@ class _NetworkControlCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
     return AppCard(
       height: 228,
       radius: AppRadius.card,
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.lg,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -381,7 +386,7 @@ class _NetworkControlCard extends StatelessWidget {
             title: context.l10n.networkSettings,
             subtitle: context.l10n.connectionMethod,
           ),
-          const Spacer(),
+          const SizedBox(height: AppSpacing.lg),
           _ControlLabel(label: context.l10n.connectionMethod),
           const SizedBox(height: AppSpacing.sm),
           const NetworkModeSelector(height: 42),
@@ -393,23 +398,6 @@ class _NetworkControlCard extends StatelessWidget {
             onChanged: onProxyModeChanged,
             buttonHeight: 36,
             padding: AppSpacing.xs,
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              Icon(LucideIcons.info, size: 14, color: c.iconMuted),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  ctrl.networkMode == NetworkMode.tun
-                      ? context.l10n.tunDescription
-                      : context.l10n.systemProxyDescription,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -558,8 +546,8 @@ class _RealtimePanel extends StatelessWidget {
             child: ValueListenableBuilder<int>(
               valueListenable: tick,
               builder: (context, _, _) => _LiveMetric(
-                icon: LucideIcons.clock3,
-                label: context.l10n.connectionDuration,
+                icon: LucideIcons.clock,
+                label: context.l10n.connectionDurationLabel,
                 value: formatDuration(ctrl.connectedDuration),
                 active: connected,
               ),
@@ -662,9 +650,15 @@ class _PlanPanel extends StatelessWidget {
     );
     final total = ctrl.traffic.totalGb;
     final remaining = ctrl.traffic.remainGb;
-    final used = total > 0 ? (total - remaining).clamp(0.0, total).toDouble() : 0.0;
-    final progress = total > 0 ? (used / total).clamp(0.0, 1.0).toDouble() : 0.0;
-    final planName = ctrl.user.plan.trim().isEmpty ? 'Litchi' : ctrl.user.plan.trim();
+    final used = total > 0
+        ? (total - remaining).clamp(0.0, total).toDouble()
+        : 0.0;
+    final progress = total > 0
+        ? (used / total).clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    final planName = ctrl.user.plan.trim().isEmpty
+        ? 'Litchi'
+        : ctrl.user.plan.trim();
 
     return AppCard(
       height: 154,
