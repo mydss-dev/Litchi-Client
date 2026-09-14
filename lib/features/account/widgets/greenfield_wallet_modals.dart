@@ -519,7 +519,9 @@ class _RechargeAmountField extends StatelessWidget {
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               textInputAction: TextInputAction.done,
-              onSubmitted: (_) => submitting ? null : onSubmit(),
+              onSubmitted: (_) {
+                if (!submitting) onSubmit();
+              },
               style: AppTextStyles.input.copyWith(color: c.textPrimary),
               decoration: InputDecoration(
                 hintText: context.l10n.rechargeAmountHint,
@@ -564,16 +566,17 @@ class _OptionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Ink(
           height: 48,
-          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: selected ? c.primarySoft : c.surfaceMuted,
             borderRadius: BorderRadius.circular(AppRadius.md),
             border: Border.all(color: selected ? c.primary : c.softBorder),
           ),
-          child: Text(
-            label,
-            style: AppTextStyles.bodyStrong.copyWith(
-              color: selected ? c.primary : c.textPrimary,
+          child: Center(
+            child: Text(
+              label,
+              style: AppTextStyles.bodyStrong.copyWith(
+                color: selected ? c.primary : c.textPrimary,
+              ),
             ),
           ),
         ),
