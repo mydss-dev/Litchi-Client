@@ -24,8 +24,10 @@ Phase 6 covers `NodesPage` and `showNodePicker` presentation only.
 
 ## Picker
 - Desktop modal max width: 720px.
-- Android uses the existing bottom-sheet form with keyboard inset and safe area.
-- Search, filters and actions reuse shared controls.
+- Desktop picker uses the shared 40px search/button geometry and 60px selectable surfaces.
+- Android keeps the bottom-sheet form with keyboard inset, drag handle and safe area.
+- Android picker actions use 48px shared icon-button targets and 72px selectable surfaces.
+- Search, filters, latency action and close action reuse shared controls.
 
 ## Rules
 - UI platform choice comes from `AppPlatform` / `AppShellSpec`.
