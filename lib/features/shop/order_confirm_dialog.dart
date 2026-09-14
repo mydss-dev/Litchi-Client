@@ -7,11 +7,13 @@ import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../../shared/theme/app_colors.dart';
-import '../../shared/theme/app_palette.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_bottom_sheet.dart';
+import '../../shared/widgets/app_button.dart';
+import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/app_modal.dart';
+import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'payment_dialog.dart';
 
@@ -305,7 +307,7 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
         const SizedBox(height: 20),
         _buildSummary(c),
         const SizedBox(height: 24),
-        _buildActions(c),
+        _buildActions(),
       ],
     );
   }
@@ -327,47 +329,36 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
           runSpacing: 10,
           children: periods.map((e) {
             final selected = _period == e.key;
-            return GestureDetector(
+            return AppCard(
               onTap: () => setState(() {
                 _period = e.key;
                 _couponApplied = false;
                 _coupon = null;
               }),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: selected ? c.primarySoft : c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  border: Border.all(
-                    color: selected ? c.primary : c.border,
-                    width: selected ? 1.5 : 1,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              radius: AppRadius.sm,
+              color: selected ? c.primarySoft : c.surfaceMuted,
+              shadow: AppCardShadow.none,
+              borderColor: selected ? c.primary : c.border,
+              borderWidth: selected ? 1.5 : 1,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _periodLabel(context, e.key),
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: selected ? c.primary : c.textSecondary,
+                    ),
                   ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _periodLabel(context, e.key),
-                      style: AppTextStyles.bodyStrong.copyWith(
-                        color: selected ? c.primary : c.textSecondary,
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$_currencySymbol${e.value.toStringAsFixed(2)}',
+                    style: AppTextStyles.body.copyWith(
+                      color: selected ? c.primary : c.textMuted,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$_currencySymbol${e.value.toStringAsFixed(2)}',
-                      style: AppTextStyles.body.copyWith(
-                        color: selected ? c.primary : c.textMuted,
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           }).toList(),
@@ -386,48 +377,30 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
         ),
         const SizedBox(height: 12),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Container(
-                height: 42,
-                decoration: BoxDecoration(
-                  color: _couponApplied
-                      ? c.success.withValues(alpha: 0.08)
-                      : c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: _couponApplied ? c.success : c.border,
-                  ),
-                ),
-                child: TextField(
-                  controller: _couponCtrl,
-                  enabled: !_couponApplied,
-                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: context.l10n.couponHint,
-                    hintStyle: AppTextStyles.body.copyWith(color: c.textMuted),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-                  ),
-                ),
+              child: AppTextField(
+                controller: _couponCtrl,
+                hint: context.l10n.couponHint,
+                enabled: !_couponApplied,
               ),
             ),
             const SizedBox(width: 10),
             if (_couponApplied)
-              _SmallBtn(
+              AppButton(
                 label: context.l10n.remove,
-                color: c.danger,
-                onTap: _removeCoupon,
-                c: c,
+                variant: AppButtonVariant.danger,
+                onPressed: _removeCoupon,
               )
             else
-              _SmallBtn(
+              AppButton(
                 label: _verifying
                     ? context.l10n.verifying
                     : context.l10n.verify,
-                color: c.primary,
-                onTap: _verifying ? null : _verifyCoupon,
-                c: c,
+                variant: AppButtonVariant.secondary,
+                loading: _verifying,
+                onPressed: _verifying ? null : _verifyCoupon,
               ),
           ],
         ),
@@ -491,105 +464,28 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
     );
   }
 
-  Widget _buildActions(AppColors c) {
+  Widget _buildActions() {
     return Row(
       children: [
         Expanded(
-          child: SizedBox(
-            height: 44,
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: c.border),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Text(
-                context.l10n.cancel,
-                style: AppTextStyles.button.copyWith(color: c.textSecondary),
-              ),
-            ),
+          child: AppButton(
+            label: context.l10n.cancel,
+            variant: AppButtonVariant.outline,
+            onPressed: () => Navigator.of(context).pop(),
+            expand: true,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           flex: 2,
-          child: SizedBox(
-            height: 44,
-            child: ElevatedButton(
-              onPressed: _submitting ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: AppPalette.brandGradient,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Center(
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          context.l10n.submitOrder,
-                          style: AppTextStyles.button.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                ),
-              ),
-            ),
+          child: AppButton(
+            label: context.l10n.submitOrder,
+            onPressed: _submitting ? null : _submit,
+            loading: _submitting,
+            expand: true,
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── small helper widgets ──────────────────────────────────────────────────────
-
-class _SmallBtn extends StatelessWidget {
-  const _SmallBtn({
-    required this.label,
-    required this.color,
-    required this.onTap,
-    required this.c,
-  });
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-  final AppColors c;
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 42,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: AppTextStyles.bodyStrong.copyWith(color: color),
-        ),
-      ),
     );
   }
 }
