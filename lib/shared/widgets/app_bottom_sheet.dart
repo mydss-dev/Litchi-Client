@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../app/core_platform_support.dart';
+import '../layout/app_platform.dart';
+import '../layout/app_shell_spec.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'app_icon_button.dart';
 
 Future<T?> showAppBottomSheet<T>({
   required BuildContext context,
@@ -40,7 +42,8 @@ class AppBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (CorePlatformSupport.isDesktop) {
+    final navigation = AppShellSpec.navigationFor(AppPlatform.current);
+    if (navigation == AppNavigationMode.sidebar) {
       return _buildDesktopDialog(context);
     }
     return _buildCompactSheet(context);
@@ -52,7 +55,12 @@ class AppBottomSheet extends StatelessWidget {
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.xxl,
+        AppSpacing.xxl,
+        AppSpacing.xxl,
+        AppSpacing.xxl + bottom,
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -75,12 +83,17 @@ class AppBottomSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(color: c.softBorder),
                 ),
-                padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.xl,
+                  AppSpacing.xl,
+                  AppSpacing.xxl,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _ModalHeader(title: title, subtitle: subtitle),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpacing.lg),
                     Flexible(
                       child: SingleChildScrollView(
                         child: Column(
@@ -113,7 +126,12 @@ class AppBottomSheet extends StatelessWidget {
       child: Container(
         clipBehavior: Clip.antiAlias,
         constraints: BoxConstraints(maxHeight: view.height * maxHeightFactor),
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.lg,
+          AppSpacing.lg,
+        ),
         decoration: BoxDecoration(
           color: c.cardBg,
           borderRadius: sheetRadius,
@@ -127,17 +145,17 @@ class AppBottomSheet extends StatelessWidget {
             children: [
               if (showHandle) ...[
                 Container(
-                  width: 38,
-                  height: 4,
+                  width: 40,
+                  height: AppSpacing.xs,
                   decoration: BoxDecoration(
                     color: c.softBorder,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.lg),
               ],
               _ModalHeader(title: title, subtitle: subtitle),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
               Flexible(
                 child: SingleChildScrollView(
                   child: Column(
@@ -174,11 +192,10 @@ class _ModalHeader extends StatelessWidget {
                 title,
                 style: AppTextStyles.sectionTitle.copyWith(
                   color: c.textPrimary,
-                  fontSize: 18,
                 ),
               ),
               if (subtitle != null && subtitle!.isNotEmpty) ...[
-                const SizedBox(height: 3),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   subtitle!,
                   maxLines: 2,
@@ -189,10 +206,11 @@ class _ModalHeader extends StatelessWidget {
             ],
           ),
         ),
-        IconButton(
+        AppIconButton(
           onPressed: () => Navigator.of(context).pop(),
           tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-          icon: Icon(LucideIcons.x, color: c.iconMuted, size: 20),
+          icon: Icons.close,
+          compact: true,
         ),
       ],
     );
