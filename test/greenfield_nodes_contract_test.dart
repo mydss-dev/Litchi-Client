@@ -5,5 +5,14 @@ void main() {
   test('greenfield node rows keep desktop and Android target heights', () {
     expect(GreenfieldNodeTile.desktopHeight, 62);
     expect(GreenfieldNodeTile.compactHeight, 76);
+
+    expect(
+      GreenfieldNodeTile.desktopHeight,
+      inInclusiveRange(60, 64),
+    );
+    expect(
+      GreenfieldNodeTile.compactHeight,
+      greaterThanOrEqualTo(72),
+    );
   });
 }
