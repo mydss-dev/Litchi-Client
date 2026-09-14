@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../l10n/l10n.dart';
+import '../layout/app_platform.dart';
+import '../layout/app_shell_spec.dart';
 import '../services/app_error_message_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_shadows.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
 enum AppToastType { success, error, warning, info }
@@ -78,35 +82,34 @@ class _ToastWidget extends StatefulWidget {
 
 class _ToastWidgetState extends State<_ToastWidget>
     with TickerProviderStateMixin {
+  static const double _minWidth = 160;
+  static const double _maxWidth = 360;
+  static const double _statusExtent = 28;
+  static const double _progressHeight = 3;
+
   late final AnimationController _entryCtrl;
   late final Animation<double> _fade;
   late final Animation<Offset> _slide;
-
   late final AnimationController _progressCtrl;
 
   @override
   void initState() {
     super.initState();
 
-    // Entry animation: 200ms slide-in + fade-in
-    _entryCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
-    _fade = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
+    _entryCtrl = AnimationController(vsync: this, duration: AppMotion.normal);
+    _fade = CurvedAnimation(parent: _entryCtrl, curve: AppMotion.enter);
     _slide = Tween<Offset>(
-      begin: const Offset(0, -0.25),
+      begin: const Offset(0, -0.12),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut));
+    ).animate(CurvedAnimation(parent: _entryCtrl, curve: AppMotion.enter));
     _entryCtrl.forward();
 
-    // Progress bar: counts down from 1.0 → 0.0 over the full duration
     _progressCtrl = AnimationController(
       vsync: this,
       duration: widget.duration,
-      value: 1.0,
+      value: 1,
     );
-    _progressCtrl.animateTo(0.0, curve: Curves.linear);
+    _progressCtrl.animateTo(0, curve: Curves.linear);
   }
 
   @override
@@ -119,6 +122,11 @@ class _ToastWidgetState extends State<_ToastWidget>
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final chrome = AppShellSpec.chromeFor(AppPlatform.current);
+    final topOffset = chrome == AppWindowChrome.systemMobile
+        ? AppSpacing.lg
+        : AppSpacing.xxxxxl;
 
     final (IconData icon, Color color) = switch (widget.type) {
       AppToastType.success => (LucideIcons.circleCheck, c.success),
@@ -127,84 +135,92 @@ class _ToastWidgetState extends State<_ToastWidget>
       AppToastType.info => (LucideIcons.info, c.primary),
     };
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 56),
-        child: FadeTransition(
-          opacity: _fade,
-          child: SlideTransition(
-            position: _slide,
-            child: Material(
-              color: Colors.transparent,
-              child: IntrinsicWidth(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 160,
-                    maxWidth: 360,
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: c.cardBg,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: c.softBorder),
-                      boxShadow: AppShadows.soft(c),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(AppRadius.md - 1),
-                      child: Column(
+    final toast = Semantics(
+      liveRegion: true,
+      label: widget.message,
+      child: Material(
+        color: Colors.transparent,
+        child: IntrinsicWidth(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: _minWidth,
+              maxWidth: _maxWidth,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: c.cardBg,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: c.softBorder),
+                boxShadow: AppShadows.soft(c),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.md - 1),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.md,
+                      ),
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 11,
+                          Container(
+                            width: _statusExtent,
+                            height: _statusExtent,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(AppRadius.xs),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: color.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.xs,
-                                    ),
-                                  ),
-                                  child: Icon(icon, size: 15, color: color),
-                                ),
-                                const SizedBox(width: 10),
-                                Flexible(
-                                  child: Text(
-                                    widget.message,
-                                    style: AppTextStyles.body.copyWith(
-                                      color: c.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            child: Icon(icon, size: 15, color: color),
                           ),
-                          AnimatedBuilder(
-                            animation: _progressCtrl,
-                            builder: (_, child) => LinearProgressIndicator(
-                              value: _progressCtrl.value,
-                              minHeight: 3,
-                              backgroundColor: Colors.transparent,
-                              color: color.withValues(alpha: 0.5),
+                          const SizedBox(width: AppSpacing.sm),
+                          Flexible(
+                            child: Text(
+                              widget.message,
+                              style: AppTextStyles.body.copyWith(
+                                color: c.textPrimary,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
+                    AnimatedBuilder(
+                      animation: _progressCtrl,
+                      builder: (_, child) => LinearProgressIndicator(
+                        value: _progressCtrl.value,
+                        minHeight: _progressHeight,
+                        backgroundColor: Colors.transparent,
+                        color: color.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+
+    final animatedToast = reduceMotion
+        ? toast
+        : FadeTransition(
+            opacity: _fade,
+            child: SlideTransition(position: _slide, child: toast),
+          );
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: SafeArea(
+        minimum: EdgeInsets.only(top: topOffset),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          child: animatedToast,
         ),
       ),
     );
