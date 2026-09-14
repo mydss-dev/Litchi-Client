@@ -20,7 +20,7 @@ class GreenfieldNodeTile extends StatefulWidget {
     required this.favorite,
     required this.compact,
     required this.onPressed,
-    required this.onToggleFavorite,
+    this.onToggleFavorite,
     this.pinnedCurrent = false,
   });
 
@@ -32,7 +32,7 @@ class GreenfieldNodeTile extends StatefulWidget {
   final bool favorite;
   final bool compact;
   final VoidCallback onPressed;
-  final VoidCallback onToggleFavorite;
+  final VoidCallback? onToggleFavorite;
   final bool pinnedCurrent;
 
   @override
@@ -152,17 +152,19 @@ class _GreenfieldNodeTileState extends State<GreenfieldNodeTile> {
                   latency: widget.node.latency,
                   style: NodeLatencyStyle.badge,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                AppIconButton(
-                  icon: LucideIcons.star,
-                  onPressed: widget.onToggleFavorite,
-                  tooltip: context.l10n.favorites,
-                  compact: !widget.compact,
-                  variant: widget.favorite
-                      ? AppIconButtonVariant.primary
-                      : AppIconButtonVariant.ghost,
-                ),
-                SizedBox(width: widget.compact ? AppSpacing.xs : AppSpacing.sm),
+                if (widget.onToggleFavorite != null) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  AppIconButton(
+                    icon: LucideIcons.star,
+                    onPressed: widget.onToggleFavorite,
+                    tooltip: context.l10n.favorites,
+                    compact: !widget.compact,
+                    variant: widget.favorite
+                        ? AppIconButtonVariant.primary
+                        : AppIconButtonVariant.ghost,
+                  ),
+                ],
+                SizedBox(width: widget.compact ? AppSpacing.sm : AppSpacing.md),
               ],
             ),
           ),
