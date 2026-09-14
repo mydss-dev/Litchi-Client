@@ -157,69 +157,114 @@ class _CurrentPlanStrip extends StatelessWidget {
       color: c.primarySoft.withValues(alpha: 0.58),
       borderColor: c.primary.withValues(alpha: 0.16),
       shadow: AppCardShadow.none,
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: c.cardBg,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(LucideIcons.crown, size: 18, color: c.primary),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact =
+              AppLayoutMetrics.classify(constraints.maxWidth) ==
+              AppLayoutClass.compact;
+          final identity = Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.cardBg,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(LucideIcons.crown, size: 18, color: c.primary),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.currentPlan,
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      planName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: c.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+          final metrics = Row(
+            children: [
+              Expanded(
+                child: _PlanStripMetric(
+                  label: context.l10n.remainingTrafficLabel,
+                  value: remainingTraffic,
+                  alignEnd: !compact,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xl),
+              Expanded(
+                child: _PlanStripMetric(
+                  label: context.l10n.expiryTime,
+                  value: expiryLabel,
+                  alignEnd: true,
+                ),
+              ),
+            ],
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  context.l10n.currentPlan,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  planName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: c.textPrimary,
-                  ),
-                ),
+                identity,
+                const SizedBox(height: AppSpacing.lg),
+                Divider(height: 1, thickness: 1, color: c.softBorder),
+                const SizedBox(height: AppSpacing.lg),
+                metrics,
               ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.lg),
-          _PlanStripMetric(
-            label: context.l10n.remainingTrafficLabel,
-            value: remainingTraffic,
-          ),
-          const SizedBox(width: AppSpacing.xl),
-          _PlanStripMetric(
-            label: context.l10n.expiryTime,
-            value: expiryLabel,
-          ),
-        ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(flex: 5, child: identity),
+              const SizedBox(width: AppSpacing.xl),
+              Expanded(flex: 4, child: metrics),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 class _PlanStripMetric extends StatelessWidget {
-  const _PlanStripMetric({required this.label, required this.value});
+  const _PlanStripMetric({
+    required this.label,
+    required this.value,
+    required this.alignEnd,
+  });
 
   final String label;
   final String value;
+  final bool alignEnd;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: AppTextStyles.caption.copyWith(color: c.textMuted),
         ),
         const SizedBox(height: AppSpacing.xs),
