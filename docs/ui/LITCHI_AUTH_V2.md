@@ -1,6 +1,6 @@
 # Litchi Auth V2
 
-Implementation status: Phase 4 in progress; keep this target frozen until the Auth acceptance gate is green.
+Implementation status: Auth V2 implementation is code-complete for this phase and is waiting on the acceptance gate. Keep this target frozen until the gate is green.
 
 This file is the source of truth for Phase 4. Change this target before changing auth visual direction.
 
