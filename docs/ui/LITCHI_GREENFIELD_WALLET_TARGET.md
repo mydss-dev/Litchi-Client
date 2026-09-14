@@ -23,3 +23,11 @@ Wallet is a dedicated financial child page of Account. It must not be expanded b
 
 ## Removal rule
 The legacy Wallet presentation tree is not a design reference. wallet_page.dart may remain only as a compatibility/public-entry wrapper after Greenfield Wallet is wired.
+
+## Validation gate
+- flutter test
+- flutter analyze
+- sing-box desktop bridge
+- Windows debug build
+- macOS debug build
+- Android is tracked separately when the pinned libbox AAR stage blocks before Kotlin/APK compilation.
