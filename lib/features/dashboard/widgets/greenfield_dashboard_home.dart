@@ -37,6 +37,7 @@ class GreenfieldDashboardHome extends StatelessWidget {
             AppLayoutClass.compact;
 
         return Column(
+          key: const ValueKey('greenfield-dashboard-home'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             NoticeBar(notices: ctrl.notices, isLoading: ctrl.noticesLoading),
