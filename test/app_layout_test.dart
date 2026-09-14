@@ -21,6 +21,19 @@ void main() {
       expect(AppLayoutMetrics.desktopSidebarWidth, 200);
     });
 
+    test('keeps frozen desktop auth geometry', () {
+      expect(AppLayoutMetrics.desktopAuthWindowWidth, 860);
+      expect(AppLayoutMetrics.desktopAuthMinimumWindow.width, 760);
+      expect(AppLayoutMetrics.desktopAuthMinimumWindow.height, 560);
+      expect(AppLayoutMetrics.desktopAuthLoginHeight, 620);
+      expect(AppLayoutMetrics.desktopAuthRegisterHeight, 760);
+      expect(AppLayoutMetrics.desktopAuthChangePasswordHeight, 660);
+      expect(AppLayoutMetrics.desktopAuthForgotPasswordHeight, 720);
+      expect(AppLayoutMetrics.desktopAuthFormMaxWidth, 420);
+      expect(AppLayoutMetrics.desktopAuthBrandFlex, 42);
+      expect(AppLayoutMetrics.desktopAuthFormFlex, 58);
+    });
+
     test('keeps frozen compact shell geometry', () {
       expect(AppLayoutMetrics.compactPagePadding.left, 16);
       expect(AppLayoutMetrics.compactPagePadding.top, 12);
