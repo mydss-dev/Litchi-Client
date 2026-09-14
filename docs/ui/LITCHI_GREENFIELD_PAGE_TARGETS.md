@@ -113,6 +113,26 @@ Node cards show only essential metadata. Secondary protocol details may move to 
 
 No desktop-style table compression.
 
+### Quick node picker
+
+The node picker is a **quick switcher**, not a miniature copy of the full Nodes page.
+
+Desktop:
+- command-palette style centered surface, target max width around 660–680 px
+- search + latency test in the first control row
+- horizontally scrollable region filters
+- Auto Select pinned first
+- node rows reuse the same visual language as the full node browser
+- no Favorites rail and no desktop two-pane navigation inside the picker
+
+Android:
+- adaptive bottom sheet, target max height around 90–92% of the viewport
+- search + compact latency test action
+- horizontal region chips
+- Auto Select first, then touch-first node rows
+
+If the active filter hides the current manual node, keep that current selection visible as a pinned row instead of silently removing it.
+
 ---
 
 ## 3. Shop / Plans — final target
