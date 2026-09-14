@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/nav_destinations.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/layout/app_platform.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/theme/app_spacing.dart';
 import '../../shared/utils/formatters.dart';
 import '../../shared/utils/traffic_summary_text.dart';
 import '../../shared/widgets/app_toast.dart';
@@ -82,7 +84,10 @@ class _ShopPageState extends State<ShopPage> {
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
-        children: [surface, const SizedBox(height: 24)],
+        children: [
+          surface,
+          const SizedBox(height: AppSpacing.xxl),
+        ],
       ),
     );
   }
