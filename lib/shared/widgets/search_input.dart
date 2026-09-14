@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../l10n/l10n.dart';
+import '../layout/app_control_metrics.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'app_icon_button.dart';
 
-/// Search field (§21 SearchInput): 44px tall, 14px radius, leading search icon,
-/// trailing clear button that appears when the field has text.
+/// Shared search field using the same pointer/touch geometry as the rest of
+/// the cross-platform control system.
 class SearchInput extends StatefulWidget {
   const SearchInput({
     super.key,
@@ -55,46 +58,44 @@ class _SearchInputState extends State<SearchInput> {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final height = AppControlMetrics.regularHeight;
+
     return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: height,
+      padding: const EdgeInsets.only(left: AppSpacing.lg),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(AppRadius.user),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: c.softBorder),
       ),
       child: Row(
         children: [
           Icon(LucideIcons.search, size: 16, color: c.iconMuted),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: TextField(
               controller: _ctrl,
               onChanged: widget.onChanged,
               style: AppTextStyles.body.copyWith(color: c.textPrimary),
               cursorColor: c.primary,
+              textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
                 hintText: widget.hintText ?? context.l10n.search,
-                hintStyle: AppTextStyles.caption.copyWith(
-                  color: c.textMuted,
-                  fontSize: 12,
-                ),
+                hintStyle: AppTextStyles.caption.copyWith(color: c.textMuted),
               ),
             ),
           ),
           if (_hasText)
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: _clear,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 6),
-                  child: Icon(LucideIcons.x, size: 14, color: c.iconMuted),
-                ),
-              ),
-            ),
+            AppIconButton(
+              icon: LucideIcons.x,
+              onPressed: _clear,
+              tooltip: context.l10n.close,
+              compact: true,
+            )
+          else
+            const SizedBox(width: AppSpacing.md),
         ],
       ),
     );
