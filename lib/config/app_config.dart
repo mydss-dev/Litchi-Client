@@ -49,10 +49,10 @@ abstract final class AppConfig {
   static String appName = 'Litchi';
   static String avatarUrl = '';
 
-  // Keep a usable blue→purple fallback even when OSS is unavailable or an
-  // older config does not contain brand colors.
-  static Color brandStart = const Color(0xFF2563EB);
-  static Color brandEnd = const Color(0xFF7C3AED);
+  // Keep the Litchi red/pink identity when OSS is unavailable or an older
+  // config does not contain brand colors.
+  static Color brandStart = const Color(0xFFE54865);
+  static Color brandEnd = const Color(0xFFF07C9A);
 
   // ── URLs ────────────────────────────────────────────────────────────────────
 

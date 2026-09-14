@@ -19,6 +19,7 @@ import '../../shared/theme/app_text_styles.dart';
 import '../../shared/utils/formatters.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_page_scaffold.dart';
 import '../../shared/widgets/mode_strip.dart';
 import '../../shared/widgets/no_plan_card.dart';
 import '../../shared/widgets/node_latency.dart';
@@ -148,22 +149,24 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildDesktop(BuildContext context) {
     final ctrl = AppScope.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _DesktopAlerts(
-          ctrl: ctrl,
-          onConnectionRetry: _toggleConnection,
-          onDataRetry: _handlePullRefresh,
-        ),
-        DesktopDashboardHome(
-          ctrl: ctrl,
-          tick: _tick,
-          onToggleConnection: _toggleConnection,
-          onProxyModeChanged: (mode) => _changeMode(context, mode),
-          onNodeTap: () => showNodePicker(context),
-        ),
-      ],
+    return AppPageScaffold(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _DesktopAlerts(
+            ctrl: ctrl,
+            onConnectionRetry: _toggleConnection,
+            onDataRetry: _handlePullRefresh,
+          ),
+          DesktopDashboardHome(
+            ctrl: ctrl,
+            tick: _tick,
+            onToggleConnection: _toggleConnection,
+            onProxyModeChanged: (mode) => _changeMode(context, mode),
+            onNodeTap: () => showNodePicker(context),
+          ),
+        ],
+      ),
     );
   }
 

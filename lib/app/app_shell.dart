@@ -26,9 +26,12 @@ import '../shared/models/app_models.dart';
 import '../shared/services/brand_asset_cache.dart';
 import '../shared/services/secure_logger.dart';
 import '../shared/theme/app_colors.dart';
+import '../shared/theme/app_motion.dart';
 import '../shared/theme/app_radius.dart';
 import '../shared/theme/app_shadows.dart';
+import '../shared/theme/app_spacing.dart';
 import '../shared/theme/app_text_styles.dart';
+import '../shared/widgets/brand_logo.dart';
 import 'app_controller.dart';
 import 'core_platform_support.dart';
 import 'core_controller.dart';
@@ -785,7 +788,12 @@ class _DesktopBody extends StatelessWidget {
                     top: false,
                     bottom: false,
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.xxl,
+                        AppSpacing.xl,
+                        AppSpacing.xxl,
+                        AppSpacing.xxl,
+                      ),
                       child: KeyedSubtree(
                         key: PageStorageKey<AppPage>(ctrl.page),
                         child: page,
@@ -828,6 +836,25 @@ class _DesktopSidebar extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 18),
+                  child: Row(
+                    children: [
+                      const BrandLogo(size: 30, radius: AppRadius.sm),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          AppConfig.appName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            color: c.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 for (final item in items)
                   _DesktopSidebarItem(
                     item: item,
@@ -881,7 +908,7 @@ class _DesktopSidebarItem extends StatelessWidget {
                   width: 4,
                   child: Center(
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 140),
+                      duration: AppMotion.fast,
                       width: 3,
                       height: selected ? 20 : 0,
                       decoration: BoxDecoration(
@@ -903,7 +930,7 @@ class _DesktopSidebarItem extends StatelessWidget {
                         (selected
                                 ? AppTextStyles.bodyStrong
                                 : AppTextStyles.body)
-                            .copyWith(color: foreground, fontSize: 13.5),
+                            .copyWith(color: foreground),
                   ),
                 ),
                 const SizedBox(width: 8),

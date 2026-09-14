@@ -25,12 +25,12 @@ class AppPalette {
   // ---------------------------------------------------------------------------
   // Light theme (§6.1)
   // ---------------------------------------------------------------------------
-  static const Color lightAppBg = Color(0xFFF8FAFC);
+  static const Color lightAppBg = Color(0xFFF8F8FC);
   static const Color lightCardBg = Color(0xFFFFFFFF);
-  static const Color lightSurfaceMuted = Color(0xFFF1F5F9);
+  static const Color lightSurfaceMuted = Color(0xFFF4F2F6);
 
-  static const Color lightBorder = Color(0xFFE2E8F0);
-  static const Color lightSoftBorder = Color(0xFFEEF2F7);
+  static const Color lightBorder = Color(0xFFE7E2E8);
+  static const Color lightSoftBorder = Color(0xFFF0ECF1);
 
   static const Color lightTextPrimary = Color(0xFF0F172A);
   static const Color lightTextSecondary = Color(0xFF475569);
@@ -40,11 +40,11 @@ class AppPalette {
   static const Color lightIconMuted = Color(0xFF94A3B8);
 
   static Color get lightPrimary => AppConfig.brandStart;
-  static const Color lightPrimaryHover = Color(0xFF1D4ED8);
-  static const Color lightPrimarySoft = Color(0xFFEFF6FF);
+  static const Color lightPrimaryHover = Color(0xFFC93654);
+  static const Color lightPrimarySoft = Color(0xFFFFEDF1);
 
   static Color get lightSecondary => AppConfig.brandEnd;
-  static const Color lightSecondarySoft = Color(0xFFF5F3FF);
+  static const Color lightSecondarySoft = Color(0xFFFFF0F5);
 
   static const Color lightSuccess = Color(0xFF22C55E);
   static const Color lightWarning = Color(0xFFF59E0B);
@@ -59,12 +59,12 @@ class AppPalette {
   // ---------------------------------------------------------------------------
   // Dark theme (§6.2)
   // ---------------------------------------------------------------------------
-  static const Color darkAppBg = Color(0xFF0F172A);
-  static const Color darkCardBg = Color(0xFF1E293B);
-  static const Color darkSurfaceMuted = Color(0xFF273449);
+  static const Color darkAppBg = Color(0xFF0E1118);
+  static const Color darkCardBg = Color(0xFF171D2B);
+  static const Color darkSurfaceMuted = Color(0xFF202737);
 
-  static const Color darkBorder = Color(0xFF334155);
-  static const Color darkSoftBorder = Color(0xFF263445);
+  static const Color darkBorder = Color(0xFF30394B);
+  static const Color darkSoftBorder = Color(0xFF242D3D);
 
   static const Color darkTextPrimary = Color(0xFFF8FAFC);
   static const Color darkTextSecondary = Color(0xFFCBD5E1);
@@ -74,15 +74,15 @@ class AppPalette {
   static const Color darkIconMuted = Color(0xFF94A3B8);
 
   static Color get darkPrimary => AppConfig.brandStart;
-  static const Color darkPrimaryHover = Color(0xFF2563EB);
+  static const Color darkPrimaryHover = Color(0xFFEF607C);
   static const Color darkPrimarySoft = Color(
-    0x293B82F6,
-  ); // rgba(59,130,246,0.16)
+    0x29E54865,
+  ); // rgba(229,72,101,0.16)
 
   static Color get darkSecondary => AppConfig.brandEnd;
   static const Color darkSecondarySoft = Color(
-    0x298B5CF6,
-  ); // rgba(139,92,246,0.16)
+    0x29F07C9A,
+  ); // rgba(240,124,154,0.16)
 
   static const Color darkSuccess = Color(0xFF22C55E);
   static const Color darkWarning = Color(0xFFF59E0B);

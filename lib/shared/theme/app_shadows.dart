@@ -9,28 +9,27 @@ import 'app_colors.dart';
 class AppShadows {
   AppShadows._();
 
-  /// Standard card: 0 8px 24px shadow.
+  /// Standard card: soft desktop elevation without a floating-card effect.
   static List<BoxShadow> card(AppColors c) => [
-    BoxShadow(color: c.shadow, offset: const Offset(0, 8), blurRadius: 24),
+    BoxShadow(color: c.shadow, offset: const Offset(0, 6), blurRadius: 18),
   ];
 
-  /// Lighter elevation: 0 6px 16px (slightly softer than [card]).
+  /// Lighter elevation for selected controls and compact floating surfaces.
   static List<BoxShadow> soft(AppColors c) => [
     BoxShadow(
       color: c.shadow.withValues(alpha: c.shadow.a * 0.7),
-      offset: const Offset(0, 6),
-      blurRadius: 16,
+      offset: const Offset(0, 4),
+      blurRadius: 12,
     ),
   ];
 
-  /// Brand-emphasis glow: 0 12px 28px rgba(37,99,235,0.25).
+  /// Brand-emphasis glow used by the connection control only.
   static const List<BoxShadow> brand = [
-    BoxShadow(color: Color(0x402563EB), offset: Offset(0, 12), blurRadius: 28),
+    BoxShadow(color: Color(0x40E54865), offset: Offset(0, 12), blurRadius: 28),
   ];
 
-  /// Power-button glow used on the dashboard hero (same as [brand] but kept
-  /// as a named token for clarity at call sites).
+  /// Power-button glow used on the dashboard hero.
   static const List<BoxShadow> powerButton = [
-    BoxShadow(color: Color(0x402563EB), offset: Offset(0, 12), blurRadius: 28),
+    BoxShadow(color: Color(0x40E54865), offset: Offset(0, 12), blurRadius: 28),
   ];
 }

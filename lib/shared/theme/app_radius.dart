@@ -11,8 +11,8 @@ class AppRadius {
   static const double sm = 8; // compact controls / menu items
   static const double md = 10; // buttons / inputs / icon boxes
   static const double user = 12; // user / compact cards
-  static const double card = 12; // standard cards
-  static const double lg = 16; // large cards / dialogs
+  static const double lg = 14; // large controls / dialogs
+  static const double card = 16; // standard cards
   static const double window = 18; // desktop window chrome
   static const double xl = 18; // hero/auth surfaces
   static const double pill = 999; // capsules / circles

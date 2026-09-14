@@ -8,18 +8,20 @@ import '../../../app/core_controller.dart' show ConnectionStatus;
 import '../../../app/nav_destinations.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/models/app_models.dart';
+import '../../../shared/theme/app_breakpoints.dart';
 import '../../../shared/theme/app_colors.dart';
 import '../../../shared/theme/app_radius.dart';
+import '../../../shared/theme/app_spacing.dart';
 import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/utils/formatters.dart';
 import '../../../shared/utils/traffic_summary_text.dart';
 import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/app_switch.dart';
 import '../../../shared/widgets/mode_strip.dart';
 import '../../../shared/widgets/no_plan_card.dart';
 import '../../../shared/widgets/node_latency.dart';
 import '../../../shared/widgets/notice_bar.dart';
 import 'network_settings_card.dart';
+import 'litchi_connection_orb.dart';
 
 /// Desktop home information order:
 /// notice -> connection/node + network settings -> realtime status -> subscription summary.
@@ -55,21 +57,16 @@ class DesktopDashboardHome extends StatelessWidget {
                 : null,
           )
         else ...[
-          ValueListenableBuilder<int>(
-            valueListenable: tick,
-            builder: (context, _, _) => _TopControlRow(
-              ctrl: ctrl,
-              onToggleConnection: onToggleConnection,
-              onProxyModeChanged: onProxyModeChanged,
-              onNodeTap: onNodeTap,
-            ),
+          _TopControlRow(
+            ctrl: ctrl,
+            tick: tick,
+            onToggleConnection: onToggleConnection,
+            onProxyModeChanged: onProxyModeChanged,
+            onNodeTap: onNodeTap,
           ),
-          const SizedBox(height: 12),
-          ValueListenableBuilder<int>(
-            valueListenable: tick,
-            builder: (context, _, _) => _RealtimePanel(ctrl: ctrl),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
+          _RealtimePanel(ctrl: ctrl),
+          const SizedBox(height: AppSpacing.md),
           _PlanPanel(ctrl: ctrl),
         ],
       ],
@@ -80,12 +77,14 @@ class DesktopDashboardHome extends StatelessWidget {
 class _TopControlRow extends StatelessWidget {
   const _TopControlRow({
     required this.ctrl,
+    required this.tick,
     required this.onToggleConnection,
     required this.onProxyModeChanged,
     required this.onNodeTap,
   });
 
   final AppController ctrl;
+  final ValueListenable<int> tick;
   final VoidCallback onToggleConnection;
   final ValueChanged<ProxyMode> onProxyModeChanged;
   final VoidCallback onNodeTap;
@@ -94,6 +93,7 @@ class _TopControlRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final connectionCard = _ConnectionNodeCard(
       ctrl: ctrl,
+      tick: tick,
       onToggle: onToggleConnection,
       onNodeTap: onNodeTap,
     );
@@ -104,12 +104,12 @@ class _TopControlRow extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 560) {
+        if (AppBreakpoints.isCompact(constraints.maxWidth)) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               connectionCard,
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               networkCard,
             ],
           );
@@ -119,7 +119,7 @@ class _TopControlRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(child: connectionCard),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(child: networkCard),
           ],
         );
@@ -131,11 +131,13 @@ class _TopControlRow extends StatelessWidget {
 class _ConnectionNodeCard extends StatelessWidget {
   const _ConnectionNodeCard({
     required this.ctrl,
+    required this.tick,
     required this.onToggle,
     required this.onNodeTap,
   });
 
   final AppController ctrl;
+  final ValueListenable<int> tick;
   final VoidCallback onToggle;
   final VoidCallback onNodeTap;
 
@@ -147,7 +149,6 @@ class _ConnectionNodeCard extends StatelessWidget {
     final busy =
         status == ConnectionStatus.connecting ||
         status == ConnectionStatus.disconnecting;
-    final switchOn = connected || status == ConnectionStatus.connecting;
     final supportsConnection = ctrl.supportsCoreConnection;
     final (statusText, statusColor) = !supportsConnection
         ? (context.l10n.businessEdition, c.textMuted)
@@ -166,7 +167,7 @@ class _ConnectionNodeCard extends StatelessWidget {
           };
 
     return AppCard(
-      height: 184,
+      height: 200,
       radius: AppRadius.lg,
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -216,26 +217,35 @@ class _ConnectionNodeCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      connected
-                          ? formatDuration(ctrl.connectedDuration)
-                          : context.l10n.currentNode,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(
-                        color: c.textSecondary,
-                        fontSize: 11.5,
+                    if (connected)
+                      ValueListenableBuilder<int>(
+                        valueListenable: tick,
+                        builder: (context, _, _) => Text(
+                          formatDuration(ctrl.connectedDuration),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(
+                            color: c.textSecondary,
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        context.l10n.currentNode,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textSecondary,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              AppSwitch(
-                value: switchOn,
-                onChanged: busy || !supportsConnection
-                    ? null
-                    : (_) => onToggle(),
+              const SizedBox(width: AppSpacing.md),
+              LitchiConnectionOrb(
+                status: status,
+                enabled: !busy && supportsConnection,
+                onPressed: onToggle,
               ),
             ],
           ),

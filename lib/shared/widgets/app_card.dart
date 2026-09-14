@@ -56,8 +56,7 @@ class _AppCardState extends State<AppCard> {
         (emphasized ? c.primary.withValues(alpha: 0.38) : c.softBorder);
 
     final decoration = BoxDecoration(
-      color: widget.color,
-      gradient: widget.color == null ? c.cardGradient : null,
+      color: widget.color ?? c.cardBg,
       borderRadius: BorderRadius.circular(widget.radius),
       border: widget.border
           ? Border.all(
