@@ -4,6 +4,8 @@ import 'package:litchi_client/shared/layout/app_control_metrics.dart';
 import 'package:litchi_client/shared/layout/app_platform.dart';
 import 'package:litchi_client/shared/widgets/app_button.dart';
 import 'package:litchi_client/shared/widgets/app_segmented_control.dart';
+import 'package:litchi_client/shared/widgets/app_toast.dart';
+import 'package:litchi_client/shared/widgets/page_status_cards.dart';
 
 void main() {
   group('AppControlMetrics', () {
@@ -92,5 +94,52 @@ void main() {
 
     await tester.tap(find.text('Global'));
     expect(selected, 1);
+  });
+
+  testWidgets('PageIconButton keeps existing callback contract', (tester) async {
+    var taps = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PageIconButton(
+            icon: Icons.refresh,
+            tooltip: 'Refresh',
+            onTap: () => taps++,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(IconButton));
+    expect(taps, 1);
+  });
+
+  testWidgets('AppToast appears in overlay and clears after duration', (
+    tester,
+  ) async {
+    late OverlayState overlay;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            overlay = Overlay.of(context, rootOverlay: true);
+            return const Scaffold(body: SizedBox());
+          },
+        ),
+      ),
+    );
+
+    AppToast.showInOverlay(
+      overlay,
+      'Saved',
+      duration: const Duration(milliseconds: 300),
+    );
+    await tester.pump();
+    expect(find.text('Saved'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Saved'), findsNothing);
   });
 }
