@@ -1,93 +1,66 @@
-# Litchi UI V2 — Implementation Order
+# Litchi UI V2 — Greenfield Implementation Order
 
-This file freezes the implementation sequence so later conversations or coding sessions do not jump ahead.
+This roadmap freezes the new rule: preserve business contracts, rebuild presentation.
 
-## Phase 1 — Foundation primitives (current)
+## Phase A — Foundation
+Already established:
+- shared layout classes
+- shared metrics
+- cross-platform shell contract
+- shared controls
+- auth/business wiring
+- existing service/controller integrations
 
-- Cross-platform target document
-- Shared width classes: Compact / Medium / Expanded
-- Shared layout metrics
-- UI platform identity abstraction
-- Shell contract for Windows / macOS / Android
-- Adaptive layout primitive
-- Layout-aware page scaffold
-- Tests for layout boundaries and platform shell contracts
+These are implementation assets, not final visual layouts.
 
-**Gate:** `flutter test` + `flutter analyze` must pass.
+## Phase B — Final visual rebuild of primary surfaces
 
-## Phase 2 — Shell wiring
+### Dashboard
+- define final desktop and Android composition first
+- replace legacy presentation tree where needed
+- connection state is the primary visual focus
+- network mode is secondary but immediately accessible
+- realtime metrics are compact and readable
+- subscription information is one clear block
+- no legacy card arrangement preserved for compatibility
 
-Wire the existing application shell to the framework tokens without changing business behavior.
+### Nodes
+- desktop: purpose-built node browser, not a legacy list with new buttons
+- Android: touch-first node browser, not a shrunk desktop table
+- selection, latency, favorites, filters and auto-select behavior remain wired to current logic
 
-### Windows
-- Desktop sidebar shell
-- Target default window 900 × 700
-- Minimum 800 × 600
-- Sidebar 200 px
-- Shared desktop page padding
-- Preserve custom window controls, tray and quit lifecycle
+### Shop / Plans
+- redesign product browsing and purchase hierarchy from scratch
+- pricing and plan differences must be visually obvious before interaction
+- order confirmation and payment use the new visual language
+- order/payment calculations and state machine remain unchanged
 
-### macOS
-- Same content geometry and sidebar as Windows
-- Preserve native traffic lights and macOS quit handling
-- Do not create a separate macOS feature-page design
+**Gate for each page:** target spec → implementation → test/analyze → Win/mac build → actual screenshot review.
 
-### Android
-- Bottom navigation shell
-- Shared compact page padding
-- Safe-area handling
-- Preserve Android system-back behavior and VPN permission flow
-- Minimum touch targets 48 px for primary actions
+## Phase C — Remaining surfaces
 
-**Gate:** runtime shell screenshots from Windows, macOS and Android reviewed against `LITCHI_UI_FRAMEWORK_V2.md`.
+Rebuild one surface at a time:
+- Account
+- Invite
+- Traffic
+- Orders
+- Tickets
+- Settings
 
-## Phase 3 — Shared component normalization
+For every surface:
+1. extract required capabilities;
+2. ignore legacy composition;
+3. define new desktop + Android target;
+4. build new presentation tree;
+5. connect existing business logic;
+6. remove obsolete presentation code;
+7. review actual screenshots.
 
-Normalize shared UI components before redesigning feature pages:
+## Mandatory rules
 
-- AppCard
-- Buttons / icon buttons
-- Text fields
-- Selectors / segmented controls
-- Switches
-- Badge / chip
-- Modal / bottom sheet
-- Toast / tooltip
-- Loading / empty / error states
-
-No feature-specific visual redesign should bypass these primitives.
-
-## Phase 4 — Authentication surfaces
-
-Apply the shared system to login/register/reset flows on desktop and Android while preserving current auth window lifecycle.
-
-## Phase 5 — Dashboard
-
-Only after the framework and shells are accepted, implement the frozen Dashboard target.
-
-Desktop and Android share state semantics and brand components; layout arrangement may differ by width.
-
-## Phase 6 — Nodes
-
-Desktop: efficient list/table presentation where appropriate.
-Android: touch-first cards/list.
-
-Keep node selection, latency and subscription logic shared.
-
-## Phase 7 — Shop / Plans
-
-Unify plan cards, pricing hierarchy, purchase states and billing-cycle controls across platforms.
-
-## Phase 8 — Account / Invite / Traffic / Orders / Tickets / Settings
-
-Migrate page by page using the accepted framework. Do not redesign all pages in one large pass.
-
-## Mandatory rule for every phase
-
-1. Read the framework target first.
-2. Change only the current phase scope.
-3. Run tests/analyze.
-4. Review actual runtime UI where relevant.
-5. Fix regressions before starting the next phase.
-
-If a new idea conflicts with the frozen target, change the target document first; never silently drift implementation.
+- Do not call a page complete just because old functionality still works.
+- Do not preserve layout merely to minimize code changes.
+- Do not mix legacy and V2 visual systems on the same page.
+- Shared components support the target; they do not define the target.
+- Business/native compatibility is required. Visual compatibility with the old client is not.
+- When the target is unclear, freeze the target before coding.
