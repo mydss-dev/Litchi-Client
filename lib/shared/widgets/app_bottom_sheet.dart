@@ -28,6 +28,8 @@ class AppBottomSheet extends StatelessWidget {
     required this.title,
     required this.children,
     this.subtitle,
+    this.leading,
+    this.showClose = true,
     this.showHandle = true,
     this.maxHeightFactor = 0.9,
     this.maxWidth = 560,
@@ -35,6 +37,8 @@ class AppBottomSheet extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+  final Widget? leading;
+  final bool showClose;
   final List<Widget> children;
   final bool showHandle;
   final double maxHeightFactor;
@@ -92,7 +96,12 @@ class AppBottomSheet extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _ModalHeader(title: title, subtitle: subtitle),
+                    _ModalHeader(
+                      title: title,
+                      subtitle: subtitle,
+                      leading: leading,
+                      showClose: showClose,
+                    ),
                     const SizedBox(height: AppSpacing.lg),
                     Flexible(
                       child: SingleChildScrollView(
@@ -154,7 +163,12 @@ class AppBottomSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.lg),
               ],
-              _ModalHeader(title: title, subtitle: subtitle),
+              _ModalHeader(
+                title: title,
+                subtitle: subtitle,
+                leading: leading,
+                showClose: showClose,
+              ),
               const SizedBox(height: AppSpacing.md),
               Flexible(
                 child: SingleChildScrollView(
@@ -174,16 +188,27 @@ class AppBottomSheet extends StatelessWidget {
 }
 
 class _ModalHeader extends StatelessWidget {
-  const _ModalHeader({required this.title, required this.subtitle});
+  const _ModalHeader({
+    required this.title,
+    required this.subtitle,
+    required this.leading,
+    required this.showClose,
+  });
 
   final String title;
   final String? subtitle;
+  final Widget? leading;
+  final bool showClose;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Row(
       children: [
+        if (leading != null) ...[
+          leading!,
+          const SizedBox(width: AppSpacing.sm),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,12 +231,13 @@ class _ModalHeader extends StatelessWidget {
             ],
           ),
         ),
-        AppIconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-          icon: Icons.close,
-          compact: true,
-        ),
+        if (showClose)
+          AppIconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            icon: Icons.close,
+            compact: true,
+          ),
       ],
     );
   }
