@@ -88,29 +88,38 @@ class _AuthArea extends StatelessWidget {
                 constraints.maxWidth >=
                     AppLayoutMetrics.desktopAuthMinimumWindow.width;
 
+            if (twoPane) {
+              final height = constraints.hasBoundedHeight
+                  ? (constraints.maxHeight - AppSpacing.xl * 2)
+                        .clamp(0.0, double.infinity)
+                  : AppLayoutMetrics.desktopAuthLoginHeight;
+              return Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: SizedBox(
+                  height: height,
+                  child: _DesktopAuthLayout(spec: spec, screen: screen),
+                ),
+              );
+            }
+
             return ScrollConfiguration(
               behavior: ScrollConfiguration.of(context).copyWith(
                 scrollbars: desktopPresentation,
               ),
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(
-                  twoPane ? AppSpacing.xl : AppSpacing.lg,
-                ),
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minHeight: constraints.hasBoundedHeight
-                        ? (constraints.maxHeight -
-                                  (twoPane ? AppSpacing.xl * 2 : AppSpacing.lg * 2))
+                        ? (constraints.maxHeight - AppSpacing.lg * 2)
                               .clamp(0.0, double.infinity)
                         : 0,
                   ),
-                  child: twoPane
-                      ? _DesktopAuthLayout(spec: spec, screen: screen)
-                      : _CompactAuthLayout(
-                          spec: spec,
-                          screen: screen,
-                          showPreferences: desktopPresentation,
-                        ),
+                  child: _CompactAuthLayout(
+                    spec: spec,
+                    screen: screen,
+                    showPreferences: desktopPresentation,
+                  ),
                 ),
               ),
             );
@@ -139,11 +148,27 @@ class _DesktopAuthLayout extends StatelessWidget {
         const SizedBox(width: AppSpacing.xl),
         Expanded(
           flex: AppLayoutMetrics.desktopAuthFormFlex,
-          child: _AuthFormSurface(
-            spec: spec,
-            screen: screen,
-            showPreferences: true,
-            card: false,
+          child: LayoutBuilder(
+            builder: (context, formConstraints) {
+              return ScrollConfiguration(
+                behavior: ScrollConfiguration.of(
+                  context,
+                ).copyWith(scrollbars: true),
+                child: SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: formConstraints.maxHeight,
+                    ),
+                    child: _AuthFormSurface(
+                      spec: spec,
+                      screen: screen,
+                      showPreferences: true,
+                      card: false,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
