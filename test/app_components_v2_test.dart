@@ -7,6 +7,7 @@ import 'package:litchi_client/shared/widgets/app_icon_button.dart';
 import 'package:litchi_client/shared/widgets/app_segmented_control.dart';
 import 'package:litchi_client/shared/widgets/app_toast.dart';
 import 'package:litchi_client/shared/widgets/page_status_cards.dart';
+import 'package:litchi_client/shared/widgets/search_input.dart';
 
 void main() {
   group('AppControlMetrics', () {
@@ -95,6 +96,26 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     await tester.tap(find.byType(IconButton));
     expect(taps, 0);
+  });
+
+  testWidgets('SearchInput clear keeps the onChanged contract', (tester) async {
+    final changes = <String>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SearchInput(onChanged: changes.add),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField), 'Tokyo');
+    await tester.pump();
+    expect(changes.last, 'Tokyo');
+
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pump();
+    expect(changes.last, '');
   });
 
   testWidgets('AppSegmentedControl reports the selected value', (tester) async {
