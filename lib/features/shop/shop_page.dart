@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
-import '../../app/nav_destinations.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/layout/app_platform.dart';
 import '../../shared/models/app_models.dart';
