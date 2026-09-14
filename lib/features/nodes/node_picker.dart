@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../app/core_platform_support.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/layout/app_platform.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/node_filter.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
 import '../../shared/theme/app_shadows.dart';
+import '../../shared/theme/app_spacing.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_icon_button.dart';
 import '../../shared/widgets/app_modal.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/filter_tabs.dart';
@@ -103,7 +106,8 @@ class _NodePickerState extends State<_NodePicker> {
 
   @override
   Widget build(BuildContext context) {
-    if (CorePlatformSupport.isDesktop) return _buildDesktopModal();
+    if (AppPlatform.isDesktop) return _buildDesktopModal();
+
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
@@ -112,7 +116,7 @@ class _NodePickerState extends State<_NodePicker> {
         minChildSize: 0.58,
         maxChildSize: 0.94,
         expand: false,
-        builder: (_, scrollController) => _buildSurface(scrollController),
+        builder: (_, scrollController) => _buildCompactSurface(scrollController),
       ),
     );
   }
@@ -145,30 +149,23 @@ class _NodePickerState extends State<_NodePicker> {
                     onChanged: (value) => setState(() => _query = value),
                   ),
                 ),
-                const SizedBox(width: 10),
-                IconButton(
-                  tooltip: context.l10n.latencyTest,
-                  onPressed: testing ? null : () => _testLatencies(ctrl),
-                  icon: testing
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: c.primary,
-                          ),
-                        )
-                      : Icon(LucideIcons.gauge, color: c.primary, size: 19),
+                const SizedBox(width: AppSpacing.md),
+                AppButton(
+                  label: context.l10n.latencyTest,
+                  leadingIcon: LucideIcons.gauge,
+                  variant: AppButtonVariant.outline,
+                  loading: testing,
+                  onPressed: () => _testLatencies(ctrl),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             FilterTabs(
               tabs: _filterLabels(context),
               selectedIndex: _filterIndex,
               onSelected: (index) => setState(() => _filterIndex = index),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Expanded(
               child: CustomScrollView(
                 slivers: [
@@ -179,26 +176,19 @@ class _NodePickerState extends State<_NodePicker> {
                       onTap: () => _selectAuto(ctrl),
                     ),
                   ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: AppSpacing.sm),
+                  ),
                   if (nodes.isEmpty)
                     SliverPadding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.xl,
+                      ),
                       sliver: SliverToBoxAdapter(
                         child: AppCard(
                           color: c.surfaceMuted,
                           shadow: AppCardShadow.none,
-                          child: AppEmptyState(
-                            icon: _query.trim().isNotEmpty || _filterIndex != 0
-                                ? LucideIcons.searchX
-                                : LucideIcons.globe2,
-                            title: _query.trim().isNotEmpty || _filterIndex != 0
-                                ? context.l10n.noMatchingNodes
-                                : context.l10n.noNodes,
-                            subtitle:
-                                _query.trim().isNotEmpty || _filterIndex != 0
-                                ? context.l10n.tryDifferentNodeFilter
-                                : context.l10n.waitForSubscription,
-                          ),
+                          child: _buildEmptyState(context),
                         ),
                       ),
                     )
@@ -213,12 +203,12 @@ class _NodePickerState extends State<_NodePicker> {
     );
   }
 
-  Widget _buildSurface([ScrollController? scrollController]) {
+  Widget _buildCompactSurface(ScrollController scrollController) {
     final ctrl = AppScope.of(context);
     final c = AppColors.of(context);
     final nodes = _filteredNodes(ctrl);
     final testing = ctrl.nodes.any((node) => node.latency < 0);
-    const horizontal = 18.0;
+    const horizontal = AppSpacing.lg;
     const surfaceRadius = BorderRadius.vertical(
       top: Radius.circular(AppRadius.xl),
     );
@@ -248,7 +238,7 @@ class _NodePickerState extends State<_NodePicker> {
                 onChanged: (value) => setState(() => _query = value),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: horizontal),
               child: FilterTabs(
@@ -257,18 +247,13 @@ class _NodePickerState extends State<_NodePicker> {
                 onSelected: (index) => setState(() => _filterIndex = index),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Expanded(
               child: CustomScrollView(
                 controller: scrollController,
                 slivers: [
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      horizontal,
-                      0,
-                      horizontal,
-                      0,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: horizontal),
                     sliver: SliverToBoxAdapter(
                       child: _AutoSelectTile(
                         ctrl: ctrl,
@@ -277,31 +262,22 @@ class _NodePickerState extends State<_NodePicker> {
                       ),
                     ),
                   ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: AppSpacing.sm),
+                  ),
                   if (nodes.isEmpty)
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(
                         horizontal,
-                        38,
+                        AppSpacing.xxl,
                         horizontal,
-                        20,
+                        AppSpacing.xl,
                       ),
                       sliver: SliverToBoxAdapter(
                         child: AppCard(
                           color: c.surfaceMuted,
                           shadow: AppCardShadow.none,
-                          child: AppEmptyState(
-                            icon: _query.trim().isNotEmpty || _filterIndex != 0
-                                ? LucideIcons.searchX
-                                : LucideIcons.globe2,
-                            title: _query.trim().isNotEmpty || _filterIndex != 0
-                                ? context.l10n.noMatchingNodes
-                                : context.l10n.noNodes,
-                            subtitle:
-                                _query.trim().isNotEmpty || _filterIndex != 0
-                                ? context.l10n.tryDifferentNodeFilter
-                                : context.l10n.waitForSubscription,
-                          ),
+                          child: _buildEmptyState(context),
                         ),
                       ),
                     )
@@ -316,26 +292,41 @@ class _NodePickerState extends State<_NodePicker> {
     );
   }
 
+  Widget _buildEmptyState(BuildContext context) {
+    final filtered = _query.trim().isNotEmpty || _filterIndex != 0;
+    return AppEmptyState(
+      icon: filtered ? LucideIcons.searchX : LucideIcons.globe2,
+      title: filtered ? context.l10n.noMatchingNodes : context.l10n.noNodes,
+      subtitle: filtered
+          ? context.l10n.tryDifferentNodeFilter
+          : context.l10n.waitForSubscription,
+    );
+  }
+
   Widget _buildNodeSliver(
     AppController ctrl,
     List<NodeModel> nodes,
     double horizontal,
   ) {
-    Widget tileAt(int index) {
-      final node = nodes[index];
-      return _NodeTile(
-        node: node,
-        selected: !ctrl.autoSelected && ctrl.currentNode.id == node.id,
-        onTap: () => _selectNode(ctrl, node),
-      );
-    }
-
     return SliverPadding(
-      padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, 18),
+      padding: EdgeInsets.fromLTRB(
+        horizontal,
+        0,
+        horizontal,
+        AppSpacing.lg,
+      ),
       sliver: SliverList.separated(
         itemCount: nodes.length,
-        itemBuilder: (_, index) => tileAt(index),
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (_, index) {
+          final node = nodes[index];
+          return _NodeTile(
+            node: node,
+            selected: !ctrl.autoSelected && ctrl.currentNode.id == node.id,
+            onTap: () => _selectNode(ctrl, node),
+          );
+        },
+        separatorBuilder: (_, _) =>
+            const SizedBox(height: AppSpacing.sm),
       ),
     );
   }
@@ -348,7 +339,7 @@ class _SheetHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
       child: Container(
         width: 38,
         height: 4,
@@ -376,7 +367,12 @@ class _PickerHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 10, 10),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -387,10 +383,9 @@ class _PickerHeader extends StatelessWidget {
                   context.l10n.chooseNode,
                   style: AppTextStyles.sectionTitle.copyWith(
                     color: c.textPrimary,
-                    fontSize: 18,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   nodeCount > 0
                       ? context.l10n.nodeCountSummary(nodeCount)
@@ -402,24 +397,17 @@ class _PickerHeader extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
+          AppIconButton(
+            icon: LucideIcons.gauge,
             tooltip: context.l10n.latencyTest,
-            onPressed: testing ? null : onTest,
-            icon: testing
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: c.primary,
-                    ),
-                  )
-                : Icon(LucideIcons.gauge, color: c.primary, size: 19),
+            loading: testing,
+            onPressed: onTest,
+            variant: AppIconButtonVariant.surface,
           ),
-          IconButton(
+          AppIconButton(
+            icon: LucideIcons.x,
             tooltip: context.l10n.close,
             onPressed: () => Navigator.of(context).pop(),
-            icon: Icon(LucideIcons.x, color: c.iconMuted, size: 19),
           ),
         ],
       ),
@@ -445,56 +433,31 @@ class _AutoSelectTile extends StatelessWidget {
     return _SelectableSurface(
       selected: selected,
       onTap: onTap,
-      child: Row(
-        children: [
-          _NodeIcon(icon: LucideIcons.zap, selected: selected),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      leading: _NodeIcon(icon: LucideIcons.zap, selected: selected),
+      title: context.l10n.autoSelect,
+      subtitle: best == null ? context.l10n.autoSelectBestDescription : best.name,
+      trailing: best == null
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  context.l10n.autoSelect,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: c.textPrimary,
+                if (best.code.isNotEmpty) ...[
+                  CountryFlag.fromCountryCode(
+                    best.code,
+                    theme: const ImageTheme(
+                      width: 22,
+                      height: 16,
+                      shape: RoundedRectangle(3),
+                    ),
                   ),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
+                NodeLatency(
+                  latency: best.latency,
+                  style: NodeLatencyStyle.badge,
                 ),
-                const SizedBox(height: 3),
-                if (best != null)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CountryFlag.fromCountryCode(
-                        best.code.isNotEmpty ? best.code : 'UN',
-                        theme: const ImageTheme(
-                          width: 18,
-                          height: 13,
-                          shape: RoundedRectangle(2),
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          '${best.name} · ${best.latency} ms',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.caption.copyWith(
-                            color: c.textMuted,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                else
-                  Text(
-                    context.l10n.autoSelectBestDescription,
-                    style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                  ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -521,40 +484,17 @@ class _NodeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
     return _SelectableSurface(
       selected: selected,
       onTap: onTap,
-      child: Row(
-        children: [
-          _FlagBox(node: node),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  node.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: c.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  node.englishName.isEmpty
-                      ? _regionLabel(context, node.region)
-                      : node.englishName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                ),
-              ],
-            ),
-          ),
-          NodeLatency(latency: node.latency),
-        ],
+      leading: _FlagBox(node: node),
+      title: node.name,
+      subtitle: node.englishName.isEmpty
+          ? _regionLabel(context, node.region)
+          : node.englishName,
+      trailing: NodeLatency(
+        latency: node.latency,
+        style: NodeLatencyStyle.badge,
       ),
     );
   }
@@ -572,30 +512,82 @@ class _SelectableSurface extends StatelessWidget {
   const _SelectableSurface({
     required this.selected,
     required this.onTap,
-    required this.child,
+    required this.leading,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
   });
 
   final bool selected;
   final VoidCallback onTap;
-  final Widget child;
+  final Widget leading;
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        child: Ink(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: selected ? c.primarySoft : null,
-            gradient: selected ? null : c.cardGradient,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: selected ? c.primary : c.softBorder),
+    final minHeight = AppPlatform.isDesktop ? 60.0 : 72.0;
+
+    return AppCard(
+      padding: EdgeInsets.zero,
+      radius: AppRadius.card,
+      color: selected ? c.primarySoft : c.cardBg,
+      shadow: AppCardShadow.none,
+      borderColor: selected ? c.primary : c.softBorder,
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: minHeight),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
           ),
-          child: child,
+          child: Row(
+            children: [
+              leading,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        color: selected ? c.primary : c.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: AppSpacing.md),
+                trailing!,
+              ],
+              if (selected) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: c.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -616,10 +608,14 @@ class _NodeIcon extends StatelessWidget {
       height: 40,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: selected ? c.cardBg : c.surfaceMuted,
+        color: selected ? c.primary : c.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
-      child: Icon(icon, color: c.primary, size: 19),
+      child: Icon(
+        icon,
+        color: selected ? Colors.white : c.primary,
+        size: 19,
+      ),
     );
   }
 }
