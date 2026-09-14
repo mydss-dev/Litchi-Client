@@ -2,23 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
-import '../../app/core_platform_support.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/layout/app_adaptive_layout.dart';
+import '../../shared/layout/app_layout.dart';
+import '../../shared/layout/app_platform.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_colors.dart';
 import '../../shared/theme/app_radius.dart';
-import '../../shared/theme/app_shadows.dart';
 import '../../shared/theme/app_text_styles.dart';
-import '../../shared/widgets/app_toast.dart';
+import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/app_segmented_control.dart';
+import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/page_status_cards.dart';
 import 'order_confirm_dialog.dart';
 
 /// Shop / plans page.
 ///
-/// Desktop uses a responsive two/three-column grid while compact platforms keep
-/// the original single-column purchase flow. Pricing, billing-cycle selection
-/// and checkout behavior remain shared by `_PlanCard`.
+/// Width class owns plan-grid geometry while platform identity only controls
+/// interaction behavior such as pull-to-refresh and touch-first card density.
+/// Pricing, billing-cycle selection and checkout behavior remain shared.
 class ShopPage extends StatefulWidget {
   const ShopPage({super.key});
 
@@ -65,13 +68,26 @@ class _ShopPageState extends State<ShopPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
-    return _buildCompact(context);
+    final touch = AppPlatform.usesTouch;
+
+    return AppAdaptiveLayout(
+      compact: (context, _) => touch
+          ? _buildTouch(context, columns: 1, scrollTabs: true)
+          : _buildDesktop(context, columns: 1, scrollTabs: true),
+      medium: (context, _) => touch
+          ? _buildTouch(context, columns: 2)
+          : _buildDesktop(context, columns: 2),
+      expanded: (context, _) => touch
+          ? _buildTouch(context, columns: 3)
+          : _buildDesktop(context, columns: 3),
+    );
   }
 
-  // ── Desktop layout ───────────────────────────────────────────────────────
-
-  Widget _buildDesktop(BuildContext context) {
+  Widget _buildDesktop(
+    BuildContext context, {
+    required int columns,
+    bool scrollTabs = false,
+  }) {
     final ctrl = AppScope.of(context);
     final plans = _filtered(ctrl.plans);
 
@@ -81,43 +97,23 @@ class _ShopPageState extends State<ShopPage> {
         _ShopTabs(
           tabs: _tabs(context),
           selected: _tab,
+          scrollable: scrollTabs,
           onSelected: (index) => setState(() => _tab = index),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppLayoutMetrics.sectionGap),
         if (plans.isEmpty)
           _emptyPlans(context)
         else
-          LayoutBuilder(
-            builder: (context, constraints) {
-              const gap = 16.0;
-              final columns = constraints.maxWidth >= 900 ? 3 : 2;
-              final cardWidth =
-                  (constraints.maxWidth - gap * (columns - 1)) / columns;
-
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  for (final plan in plans)
-                    SizedBox(
-                      width: cardWidth,
-                      child: _PlanCard(
-                        key: ValueKey(plan.id),
-                        plan: plan,
-                        desktop: true,
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
+          _PlanGrid(plans: plans, columns: columns, touch: false),
       ],
     );
   }
 
-  // ── Compact (bottom-nav) layout ────────────────────────────────────────
-
-  Widget _buildCompact(BuildContext context) {
+  Widget _buildTouch(
+    BuildContext context, {
+    required int columns,
+    bool scrollTabs = false,
+  }) {
     final ctrl = AppScope.of(context);
     final plans = _filtered(ctrl.plans);
     final asChild = ctrl.mobileProfileChildPage;
@@ -136,95 +132,102 @@ class _ShopPageState extends State<ShopPage> {
                 Expanded(
                   child: Text(
                     context.l10n.planPurchase,
-                    style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
+                    style: AppTextStyles.pageTitle,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppLayoutMetrics.sectionGap),
           ],
           _ShopTabs(
             tabs: _tabs(context),
             selected: _tab,
+            scrollable: scrollTabs,
             onSelected: (index) => setState(() => _tab = index),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppLayoutMetrics.sectionGap),
           if (plans.isEmpty)
             _emptyPlans(context)
           else
-            for (var i = 0; i < plans.length; i++) ...[
-              _PlanCard(
-                key: ValueKey(plans[i].id),
-                plan: plans[i],
-                compact: true,
-              ),
-              if (i != plans.length - 1) const SizedBox(height: 12),
-            ],
+            _PlanGrid(plans: plans, columns: columns, touch: true),
         ],
       ),
     );
   }
 }
 
-// ── Shared shop widgets ───────────────────────────────────────────────────
+class _PlanGrid extends StatelessWidget {
+  const _PlanGrid({
+    required this.plans,
+    required this.columns,
+    required this.touch,
+  });
+
+  final List<PlanModel> plans;
+  final int columns;
+  final bool touch;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = AppLayoutMetrics.sectionGap;
+        final cardWidth = columns <= 1
+            ? constraints.maxWidth
+            : (constraints.maxWidth - gap * (columns - 1)) / columns;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final plan in plans)
+              SizedBox(
+                width: cardWidth,
+                child: _PlanCard(
+                  key: ValueKey(plan.id),
+                  plan: plan,
+                  compact: touch,
+                  desktop: !touch,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
 
 class _ShopTabs extends StatelessWidget {
   const _ShopTabs({
     required this.tabs,
     required this.selected,
     required this.onSelected,
+    this.scrollable = false,
   });
 
   final List<String> tabs;
   final int selected;
   final ValueChanged<int> onSelected;
+  final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: c.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < tabs.length; i++)
-            Expanded(
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => onSelected(i),
-                  mouseCursor: SystemMouseCursors.click,
-                  hoverColor: c.cardBg.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: Ink(
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: selected == i ? c.cardBg : Colors.transparent,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      boxShadow: selected == i ? AppShadows.soft(c) : null,
-                    ),
-                    child: Center(
-                      child: Text(
-                        tabs[i],
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(
-                          color: selected == i ? c.primary : c.textMuted,
-                          fontWeight: selected == i
-                              ? FontWeight.w800
-                              : FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+    final control = AppSegmentedControl<int>(
+      selected: selected,
+      onChanged: onSelected,
+      items: [
+        for (var index = 0; index < tabs.length; index++)
+          AppSegmentedItem(value: index, label: tabs[index]),
+      ],
+    );
+
+    if (!scrollable) {
+      return SizedBox(width: double.infinity, child: control);
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: control,
     );
   }
 }
@@ -340,11 +343,12 @@ class _PlanCardState extends State<_PlanCard> {
         .map(_cleanFeature)
         .take(widget.compact ? 4 : 3)
         .toList();
+    final canBuy = price != null && !plan.soldOut;
 
     return AppCard(
       height: widget.desktop ? 390 : null,
       padding: const EdgeInsets.all(16),
-      radius: AppRadius.lg,
+      radius: AppRadius.card,
       borderColor: plan.featured ? c.primary : c.softBorder,
       borderWidth: plan.featured ? 1.3 : 1,
       shadow: AppCardShadow.soft,
@@ -431,10 +435,13 @@ class _PlanCardState extends State<_PlanCard> {
             _FeatureList(features: features),
           ],
           if (widget.compact) const SizedBox(height: 14) else const Spacer(),
-          _BuyButton(
-            enabled: price != null && !plan.soldOut,
-            disabledLabel: plan.soldOut ? context.l10n.soldOut : null,
-            onTap: price == null || plan.soldOut
+          AppButton(
+            label: canBuy
+                ? context.l10n.buyNow
+                : plan.soldOut
+                ? context.l10n.soldOut
+                : context.l10n.unavailableForPurchase,
+            onPressed: !canBuy
                 ? null
                 : () => showOrderConfirmDialog(
                     context: context,
@@ -443,6 +450,7 @@ class _PlanCardState extends State<_PlanCard> {
                     api: ctrl.api,
                     onPaid: ctrl.refreshData,
                   ),
+            expand: true,
           ),
         ],
       ),
@@ -465,85 +473,17 @@ class _CycleSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var index = 0; index < cycles.length; index++) ...[
-          Expanded(
-            child: _CycleChip(
-              cycle: cycles[index],
-              enabled: enabledCycles.contains(cycles[index]),
-              selected: selected == cycles[index],
-              onTap: () => onChanged(cycles[index]),
-            ),
+    return AppSegmentedControl<BillingCycle>(
+      selected: selected,
+      onChanged: onChanged,
+      items: [
+        for (final cycle in cycles)
+          AppSegmentedItem(
+            value: cycle,
+            label: _cycleLabel(context, cycle),
+            enabled: enabledCycles.contains(cycle),
           ),
-          if (index != cycles.length - 1) const SizedBox(width: 6),
-        ],
       ],
-    );
-  }
-}
-
-class _CycleChip extends StatelessWidget {
-  const _CycleChip({
-    required this.cycle,
-    required this.enabled,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final BillingCycle cycle;
-  final bool enabled;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final fg = selected
-        ? Colors.white
-        : enabled
-        ? c.textSecondary
-        : c.textMuted.withValues(alpha: 0.32);
-    final bg = selected
-        ? c.primary
-        : enabled
-        ? c.cardBg
-        : c.surfaceMuted.withValues(alpha: 0.35);
-    final borderColor = selected
-        ? c.primary
-        : enabled
-        ? c.primary.withValues(alpha: 0.16)
-        : c.softBorder.withValues(alpha: 0.28);
-    return MouseRegion(
-      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
-      child: GestureDetector(
-        onTap: enabled ? onTap : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: borderColor),
-          ),
-          child: Text(
-            _cycleLabel(context, cycle),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption.copyWith(
-              fontSize: 12,
-              color: fg,
-              fontWeight: selected
-                  ? FontWeight.w800
-                  : enabled
-                  ? FontWeight.w600
-                  : FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -654,50 +594,6 @@ class _MiniBadge extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.badge.copyWith(color: color, fontSize: 10),
-        ),
-      ),
-    );
-  }
-}
-
-class _BuyButton extends StatelessWidget {
-  const _BuyButton({
-    required this.enabled,
-    required this.onTap,
-    this.disabledLabel,
-  });
-
-  final bool enabled;
-  final VoidCallback? onTap;
-  final String? disabledLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        mouseCursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Ink(
-          width: double.infinity,
-          height: 44,
-          decoration: BoxDecoration(
-            color: enabled ? c.primary : c.surfaceMuted,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: Center(
-            child: Text(
-              enabled
-                  ? context.l10n.buyNow
-                  : disabledLabel ?? context.l10n.unavailableForPurchase,
-              style: AppTextStyles.button.copyWith(
-                color: enabled ? Colors.white : c.textMuted,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
         ),
       ),
     );
