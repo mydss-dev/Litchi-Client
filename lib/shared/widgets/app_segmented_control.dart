@@ -11,10 +11,15 @@ import '../theme/app_text_styles.dart';
 
 @immutable
 class AppSegmentedItem<T> {
-  const AppSegmentedItem({required this.value, required this.label});
+  const AppSegmentedItem({
+    required this.value,
+    required this.label,
+    this.enabled = true,
+  });
 
   final T value;
   final String label;
+  final bool enabled;
 }
 
 class AppSegmentedControl<T> extends StatelessWidget {
@@ -46,7 +51,15 @@ class AppSegmentedControl<T> extends StatelessWidget {
     return SegmentedButton<T>(
       segments: [
         for (final item in items)
-          ButtonSegment<T>(value: item.value, label: Text(item.label)),
+          ButtonSegment<T>(
+            value: item.value,
+            label: Text(
+              item.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            enabled: item.enabled,
+          ),
       ],
       selected: <T>{selected},
       onSelectionChanged: onChanged == null
@@ -69,7 +82,9 @@ class AppSegmentedControl<T> extends StatelessWidget {
               : c.surfaceMuted;
         }),
         foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) return c.textMuted;
+          if (states.contains(WidgetState.disabled)) {
+            return c.textMuted.withValues(alpha: 0.42);
+          }
           return states.contains(WidgetState.selected) ? c.primary : c.textMuted;
         }),
         overlayColor: WidgetStatePropertyAll(
@@ -78,6 +93,9 @@ class AppSegmentedControl<T> extends StatelessWidget {
         side: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.focused)) {
             return BorderSide(color: c.primary, width: 1.5);
+          }
+          if (states.contains(WidgetState.disabled)) {
+            return BorderSide(color: c.softBorder.withValues(alpha: 0.45));
           }
           return BorderSide(
             color: states.contains(WidgetState.selected)
