@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../app/nav_destinations.dart';
 import '../../../l10n/l10n.dart';
 import '../../../shared/layout/app_platform.dart';
 import '../../../shared/models/app_models.dart';
@@ -13,6 +12,7 @@ import '../../../shared/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/app_icon_button.dart';
+import '../../../shared/widgets/node_latency.dart';
 import '../../../shared/widgets/page_status_cards.dart';
 import '../../../shared/widgets/search_input.dart';
 import 'greenfield_node_tile.dart';
@@ -77,7 +77,9 @@ class GreenfieldNodesBrowser extends StatelessWidget {
       builder: (context, constraints) {
         final availableHeight = constraints.maxHeight.isFinite
             ? constraints.maxHeight
-            : (MediaQuery.sizeOf(context).height - 160).clamp(440.0, 900.0);
+            : (MediaQuery.sizeOf(context).height - 160)
+                .clamp(440.0, 900.0)
+                .toDouble();
 
         return SizedBox(
           height: availableHeight,
@@ -188,19 +190,17 @@ class GreenfieldNodesBrowser extends StatelessWidget {
                 itemCount: visibleNodes.length,
                 itemBuilder: (context, index) {
                   final node = visibleNodes[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: GreenfieldNodeTile(
-                      node: node,
-                      selected: !autoSelected && node.id == selectedNodeId,
-                      favorite: favorites.contains(node.id),
-                      compact: true,
-                      onPressed: () => onSelectNode(node),
-                      onToggleFavorite: () => onToggleFavorite(node.id),
-                    ),
+                  return GreenfieldNodeTile(
+                    node: node,
+                    selected: !autoSelected && node.id == selectedNodeId,
+                    favorite: favorites.contains(node.id),
+                    compact: true,
+                    onPressed: () => onSelectNode(node),
+                    onToggleFavorite: () => onToggleFavorite(node.id),
                   );
                 },
-                separatorBuilder: (_, _) => const SizedBox.shrink(),
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: AppSpacing.sm),
               ),
           const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
         ],
@@ -669,7 +669,10 @@ class _AutoSelectSurface extends StatelessWidget {
                 ),
               ),
               if (bestNode != null) ...[
-                NodeLatencyBadge(node: bestNode!),
+                NodeLatency(
+                  latency: bestNode!.latency,
+                  style: NodeLatencyStyle.badge,
+                ),
                 const SizedBox(width: AppSpacing.sm),
               ],
               Icon(
@@ -679,33 +682,6 @@ class _AutoSelectSurface extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class NodeLatencyBadge extends StatelessWidget {
-  const NodeLatencyBadge({super.key, required this.node});
-
-  final NodeModel node;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.of(context).cardBg,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Text(
-        node.latency > 0 && node.latency < 9999 ? '${node.latency} ms' : '--',
-        style: AppTextStyles.caption.copyWith(
-          color: AppColors.of(context).textSecondary,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
