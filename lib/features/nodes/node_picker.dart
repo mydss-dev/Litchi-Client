@@ -428,7 +428,6 @@ class _AutoSelectTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
     final best = _bestNode();
     return _SelectableSurface(
       selected: selected,
