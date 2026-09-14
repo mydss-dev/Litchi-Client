@@ -33,6 +33,7 @@ class LitchiConnectionOrb extends StatefulWidget {
 class _LitchiConnectionOrbState extends State<LitchiConnectionOrb>
     with SingleTickerProviderStateMixin {
   late final AnimationController _breath;
+  bool _reduceMotion = false;
 
   bool get _busy =>
       widget.status == ConnectionStatus.connecting ||
@@ -50,6 +51,7 @@ class _LitchiConnectionOrbState extends State<LitchiConnectionOrb>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _reduceMotion = MediaQuery.disableAnimationsOf(context);
     _syncAnimation();
   }
 
@@ -60,8 +62,7 @@ class _LitchiConnectionOrbState extends State<LitchiConnectionOrb>
   }
 
   void _syncAnimation() {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    if (_busy && !reduceMotion) {
+    if (_busy && !_reduceMotion) {
       if (!_breath.isAnimating) _breath.repeat(reverse: true);
       return;
     }
