@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:litchi_client/l10n/generated/app_localizations.dart';
 import 'package:litchi_client/shared/layout/app_control_metrics.dart';
 import 'package:litchi_client/shared/layout/app_platform.dart';
 import 'package:litchi_client/shared/widgets/app_button.dart';
@@ -103,8 +104,10 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: SearchInput(onChanged: changes.add),
+          body: SearchInput(hintText: 'Search', onChanged: changes.add),
         ),
       ),
     );
