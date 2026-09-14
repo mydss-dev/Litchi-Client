@@ -18,6 +18,7 @@ class AppIconButton extends StatelessWidget {
     this.variant = AppIconButtonVariant.ghost,
     this.compact = false,
     this.iconSize,
+    this.loading = false,
   });
 
   final IconData icon;
@@ -26,6 +27,7 @@ class AppIconButton extends StatelessWidget {
   final AppIconButtonVariant variant;
   final bool compact;
   final double? iconSize;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +44,17 @@ class AppIconButton extends StatelessWidget {
             : AppControlMetrics.regularIconSize);
 
     return IconButton(
-      onPressed: onPressed,
+      onPressed: loading ? null : onPressed,
       tooltip: tooltip,
-      icon: Icon(icon, size: effectiveIconSize),
+      icon: loading
+          ? SizedBox.square(
+              dimension: effectiveIconSize,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: c.primary,
+              ),
+            )
+          : Icon(icon, size: effectiveIconSize),
       padding: EdgeInsets.zero,
       constraints: BoxConstraints.tightFor(width: extent, height: extent),
       style: ButtonStyle(
