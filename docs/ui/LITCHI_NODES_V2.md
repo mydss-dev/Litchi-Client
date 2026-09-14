@@ -28,6 +28,7 @@ Phase 6 covers `NodesPage` and `showNodePicker` presentation only.
 - Android keeps the bottom-sheet form with keyboard inset, drag handle and safe area.
 - Android picker actions use 48px shared icon-button targets and 72px selectable surfaces.
 - Search, filters, latency action and close action reuse shared controls.
+- Picker selected surfaces use the same soft brand background, brand border/title and selected indicator as the Nodes page.
 
 ## Rules
 - UI platform choice comes from `AppPlatform` / `AppShellSpec`.
