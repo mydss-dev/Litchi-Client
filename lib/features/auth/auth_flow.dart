@@ -1,21 +1,21 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/layout/app_layout.dart';
+import '../../shared/layout/app_platform.dart';
+import '../../shared/layout/app_shell_spec.dart';
 import '../../shared/theme/app_colors.dart';
-import '../../shared/theme/app_shadows.dart';
+import '../../shared/theme/app_radius.dart';
+import '../../shared/theme/app_spacing.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_select.dart';
 import 'change_password_page.dart';
 import 'forgot_password_page.dart';
 import 'login_page.dart';
 import 'register_page.dart';
-
-bool get _isDesktop =>
-    Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+import 'widgets/auth_brand_panel.dart';
 
 class AuthFlow extends StatelessWidget {
   const AuthFlow({super.key, required this.screen});
@@ -73,81 +73,184 @@ class _AuthArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Container(
-      color: _isDesktop ? Colors.transparent : c.appBg,
+    final platform = AppPlatform.current;
+    final desktopPresentation =
+        AppShellSpec.navigationFor(platform) == AppNavigationMode.sidebar;
+
+    return ColoredBox(
+      color: c.appBg,
       child: SafeArea(
         top: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final availableHeight = constraints.hasBoundedHeight
-                ? (constraints.maxHeight - 44).clamp(0.0, double.infinity)
-                : 0.0;
+            final twoPane =
+                desktopPresentation &&
+                constraints.maxWidth >=
+                    AppLayoutMetrics.desktopAuthMinimumWindow.width;
+
             return ScrollConfiguration(
-              behavior: ScrollConfiguration.of(
-                context,
-              ).copyWith(scrollbars: false),
+              behavior: ScrollConfiguration.of(context).copyWith(
+                scrollbars: desktopPresentation,
+              ),
               child: SingleChildScrollView(
-                physics: _isDesktop && screen == AuthScreen.login
-                    ? const NeverScrollableScrollPhysics()
-                    : null,
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+                padding: EdgeInsets.all(
+                  twoPane ? AppSpacing.xl : AppSpacing.lg,
+                ),
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: availableHeight),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 400),
-                      child: Container(
-                        decoration: _isDesktop
-                            ? null
-                            : BoxDecoration(
-                                gradient: c.cardGradient,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: c.softBorder),
-                                boxShadow: AppShadows.card(c),
-                              ),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                spec.title,
-                                textAlign: TextAlign.center,
-                                style: AppTextStyles.pageTitle.copyWith(
-                                  color: c.textPrimary,
-                                  fontSize: 23,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                spec.subtitle,
-                                textAlign: TextAlign.center,
-                                style: AppTextStyles.body.copyWith(
-                                  color: c.textMuted,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              KeyedSubtree(
-                                key: ValueKey(screen),
-                                child: spec.child,
-                              ),
-                              if (_isDesktop && screen == AuthScreen.login) ...[
-                                const SizedBox(height: 16),
-                                const _DesktopAuthPreferences(),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  constraints: BoxConstraints(
+                    minHeight: constraints.hasBoundedHeight
+                        ? (constraints.maxHeight -
+                                  (twoPane ? AppSpacing.xl * 2 : AppSpacing.lg * 2))
+                              .clamp(0.0, double.infinity)
+                        : 0,
                   ),
+                  child: twoPane
+                      ? _DesktopAuthLayout(spec: spec, screen: screen)
+                      : _CompactAuthLayout(
+                          spec: spec,
+                          screen: screen,
+                          showPreferences: desktopPresentation,
+                        ),
                 ),
               ),
             );
           },
         ),
       ),
+    );
+  }
+}
+
+class _DesktopAuthLayout extends StatelessWidget {
+  const _DesktopAuthLayout({required this.spec, required this.screen});
+
+  final _AuthSpec spec;
+  final AuthScreen screen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Expanded(
+          flex: AppLayoutMetrics.desktopAuthBrandFlex,
+          child: AuthBrandPanel(),
+        ),
+        const SizedBox(width: AppSpacing.xl),
+        Expanded(
+          flex: AppLayoutMetrics.desktopAuthFormFlex,
+          child: _AuthFormSurface(
+            spec: spec,
+            screen: screen,
+            showPreferences: true,
+            card: false,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactAuthLayout extends StatelessWidget {
+  const _CompactAuthLayout({
+    required this.spec,
+    required this.screen,
+    required this.showPreferences,
+  });
+
+  final _AuthSpec spec;
+  final AuthScreen screen;
+  final bool showPreferences;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppLayoutMetrics.desktopAuthFormMaxWidth,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AuthBrandPanel(compact: true),
+            const SizedBox(height: AppSpacing.lg),
+            _AuthFormSurface(
+              spec: spec,
+              screen: screen,
+              showPreferences: showPreferences,
+              card: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AuthFormSurface extends StatelessWidget {
+  const _AuthFormSurface({
+    required this.spec,
+    required this.screen,
+    required this.showPreferences,
+    required this.card,
+  });
+
+  final _AuthSpec spec;
+  final AuthScreen screen;
+  final bool showPreferences;
+  final bool card;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final body = ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxWidth: AppLayoutMetrics.desktopAuthFormMaxWidth,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            spec.title,
+            style: AppTextStyles.pageTitle.copyWith(
+              color: c.textPrimary,
+              fontSize: card ? 24 : 28,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            spec.subtitle,
+            style: AppTextStyles.body.copyWith(color: c.textMuted),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          KeyedSubtree(key: ValueKey(screen), child: spec.child),
+          if (showPreferences && screen == AuthScreen.login) ...[
+            const SizedBox(height: AppSpacing.xl),
+            const _DesktopAuthPreferences(),
+          ],
+        ],
+      ),
+    );
+
+    final aligned = Align(alignment: Alignment.center, child: body);
+    if (!card) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        child: aligned,
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.softBorder),
+      ),
+      child: aligned,
     );
   }
 }
@@ -159,12 +262,14 @@ class _DesktopAuthPreferences extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
     final c = AppColors.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: AppSpacing.md,
+      runSpacing: AppSpacing.sm,
       children: [
-        Icon(LucideIcons.languages, size: 15, color: c.iconMuted),
-        const SizedBox(width: 6),
-        AppSelect<AppLocalePreference>(
+        _PreferenceSelect<AppLocalePreference>(
+          icon: LucideIcons.languages,
           value: ctrl.language,
           items: AppLocalePreference.values,
           labelOf: (value) => switch (value) {
@@ -176,18 +281,12 @@ class _DesktopAuthPreferences extends StatelessWidget {
             AppLocalePreference.english => context.l10n.english,
           },
           onChanged: ctrl.setLanguage,
-          minWidth: 112,
+          minWidth: 118,
         ),
-        const SizedBox(width: 12),
-        Icon(
-          Theme.of(context).brightness == Brightness.dark
+        _PreferenceSelect<ThemeMode>(
+          icon: Theme.of(context).brightness == Brightness.dark
               ? LucideIcons.moon
               : LucideIcons.sun,
-          size: 15,
-          color: c.iconMuted,
-        ),
-        const SizedBox(width: 6),
-        AppSelect<ThemeMode>(
           value: ctrl.themeMode,
           items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
           labelOf: (value) => switch (value) {
@@ -196,7 +295,44 @@ class _DesktopAuthPreferences extends StatelessWidget {
             ThemeMode.dark => context.l10n.darkMode,
           },
           onChanged: ctrl.setThemeMode,
-          minWidth: 104,
+          minWidth: 110,
+        ),
+      ],
+    );
+  }
+}
+
+class _PreferenceSelect<T> extends StatelessWidget {
+  const _PreferenceSelect({
+    required this.icon,
+    required this.value,
+    required this.items,
+    required this.labelOf,
+    required this.onChanged,
+    required this.minWidth,
+  });
+
+  final IconData icon;
+  final T value;
+  final List<T> items;
+  final String Function(T value) labelOf;
+  final ValueChanged<T> onChanged;
+  final double minWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: c.iconMuted),
+        const SizedBox(width: AppSpacing.sm),
+        AppSelect<T>(
+          value: value,
+          items: items,
+          labelOf: labelOf,
+          onChanged: onChanged,
+          minWidth: minWidth,
         ),
       ],
     );
