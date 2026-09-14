@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../layout/app_control_metrics.dart';
@@ -22,19 +24,24 @@ class AppSegmentedControl<T> extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     this.size = AppControlSize.regular,
+    this.minHeight,
   });
 
   final List<AppSegmentedItem<T>> items;
   final T selected;
   final ValueChanged<T>? onChanged;
   final AppControlSize size;
+  final double? minHeight;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    final height = size == AppControlSize.compact
+    final adaptiveHeight = size == AppControlSize.compact
         ? AppControlMetrics.compactHeight
         : AppControlMetrics.regularHeight;
+    final height = minHeight == null
+        ? adaptiveHeight
+        : math.max(adaptiveHeight, minHeight!);
 
     return SegmentedButton<T>(
       segments: [
