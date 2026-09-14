@@ -149,43 +149,45 @@ class _InviteHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: c.primary,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+          if (!compact) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: c.primary,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  child: const Icon(
+                    LucideIcons.gift,
+                    size: 20,
+                    color: Colors.white,
+                  ),
                 ),
-                child: const Icon(
-                  LucideIcons.userPlus,
-                  size: 20,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.l10n.inviteFriends,
-                      style: AppTextStyles.sectionTitle.copyWith(
-                        color: c.textPrimary,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.inviteFriends,
+                        style: AppTextStyles.sectionTitle.copyWith(
+                          color: c.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      context.l10n.inviteSubtitle,
-                      style: AppTextStyles.caption.copyWith(color: c.textMuted),
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        context.l10n.inviteSubtitle,
+                        style: AppTextStyles.caption.copyWith(
+                          color: c.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (!compact) ...[
                 const SizedBox(width: AppSpacing.md),
                 AppButton(
                   label: creating
@@ -198,9 +200,9 @@ class _InviteHero extends StatelessWidget {
                   onPressed: creating ? null : onCreate,
                 ),
               ],
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xl),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+          ],
           Row(
             children: [
               if (hasMany)
