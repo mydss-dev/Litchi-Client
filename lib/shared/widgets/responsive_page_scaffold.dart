@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../app/core_platform_support.dart';
+import '../layout/app_layout.dart';
+import '../layout/app_platform.dart';
+import '../layout/app_shell_spec.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'app_icon_button.dart';
 import 'page_header.dart';
-import 'page_status_cards.dart';
 
-/// Shared page chrome for account/support sub-pages. Desktop is content-first:
-/// the persistent sidebar already names the destination, so only real page
-/// actions are surfaced above content. Compact navigation remains unchanged.
+/// Compatibility scaffold for account/support sub-pages.
+///
+/// New geometry comes from the shared UI framework instead of Core capability
+/// checks. Feature migrations can move to AppPageScaffold incrementally.
 class ResponsivePageScaffold extends StatelessWidget {
   const ResponsivePageScaffold({
     super.key,
@@ -20,7 +25,7 @@ class ResponsivePageScaffold extends StatelessWidget {
     this.onRefresh,
     this.compactSubtitle,
     this.trailing,
-    this.compactBodySpacing = 16,
+    this.compactBodySpacing = AppSpacing.lg,
   });
 
   final String title;
@@ -36,7 +41,10 @@ class ResponsivePageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (CorePlatformSupport.isDesktop) return _buildDesktop(context);
+    final navigation = AppShellSpec.navigationFor(AppPlatform.current);
+    if (navigation == AppNavigationMode.sidebar) {
+      return _buildDesktop(context);
+    }
 
     final list = ListView(
       physics: onRefresh == null ? null : const AlwaysScrollableScrollPhysics(),
@@ -63,7 +71,9 @@ class ResponsivePageScaffold extends StatelessWidget {
     return Align(
       alignment: Alignment.topLeft,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 980),
+        constraints: const BoxConstraints(
+          maxWidth: AppLayoutMetrics.defaultContentMaxWidth,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -74,27 +84,22 @@ class ResponsivePageScaffold extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (onRefresh != null)
-                      SizedBox(
-                        width: 34,
-                        height: 34,
-                        child: IconButton(
-                          tooltip: MaterialLocalizations.of(context)
-                              .refreshIndicatorSemanticLabel,
-                          onPressed: () async => onRefresh!(),
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          iconSize: 17,
-                          icon: const Icon(Icons.refresh),
-                        ),
+                      AppIconButton(
+                        tooltip: MaterialLocalizations.of(context)
+                            .refreshIndicatorSemanticLabel,
+                        onPressed: () async => onRefresh!(),
+                        icon: LucideIcons.refreshCw,
+                        compact: true,
                       ),
                     if (trailing != null) ...[
-                      if (onRefresh != null) const SizedBox(width: 8),
+                      if (onRefresh != null)
+                        const SizedBox(width: AppSpacing.sm),
                       trailing!,
                     ],
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpacing.md),
             ],
             ...children,
           ],
@@ -120,13 +125,8 @@ class _CompactBackHeader extends StatelessWidget {
     return Row(
       children: [
         PageBackButton(onTap: onBack),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            title,
-            style: AppTextStyles.pageTitle.copyWith(fontSize: 26),
-          ),
-        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(child: Text(title, style: AppTextStyles.pageTitle)),
         ...?(trailing == null ? null : [trailing!]),
       ],
     );
