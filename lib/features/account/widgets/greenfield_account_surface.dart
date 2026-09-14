@@ -94,7 +94,6 @@ class GreenfieldAccountSurface extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
             _WalletOverview(
-              compact: compact,
               balanceText: balanceText,
               commissionText: commissionText,
               onWallet: onWallet,
@@ -172,7 +171,9 @@ class _ProfilePlanHero extends StatelessWidget {
         ],
       ),
       child: Text(
-        avatarLetter.isEmpty ? 'L' : avatarLetter.characters.first,
+        avatarLetter.isEmpty ? 'L' : avatarLetter,
+        maxLines: 1,
+        overflow: TextOverflow.clip,
         style: AppTextStyles.heroTitle.copyWith(color: Colors.white),
       ),
     );
@@ -191,14 +192,14 @@ class _ProfilePlanHero extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              hasPlan ? LucideIcons.crown : LucideIcons.circleUserRound,
+              hasPlan ? LucideIcons.crown : LucideIcons.user,
               size: 14,
               color: hasPlan ? c.primary : c.textMuted,
             ),
             const SizedBox(width: AppSpacing.xs),
             Flexible(
               child: Text(
-                hasPlan ? planName : context.l10n.noPlan,
+                hasPlan ? planName : context.l10n.noCurrentPlan,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.bodyStrong.copyWith(
@@ -218,6 +219,13 @@ class _ProfilePlanHero extends StatelessWidget {
       ],
     );
 
+    final planButton = AppButton(
+      label: hasPlan ? context.l10n.renewPlan : context.l10n.buyPlans,
+      leadingIcon: hasPlan ? LucideIcons.refreshCw : LucideIcons.plus,
+      onPressed: onPlanAction,
+      expand: compact,
+    );
+
     return AppCard(
       padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
       color: c.primarySoft.withValues(alpha: 0.48),
@@ -235,12 +243,7 @@ class _ProfilePlanHero extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                AppButton(
-                  label: hasPlan ? context.l10n.renewPlan : context.l10n.buyPlans,
-                  leadingIcon: hasPlan ? LucideIcons.refreshCw : LucideIcons.sparkles,
-                  onPressed: onPlanAction,
-                  expand: true,
-                ),
+                planButton,
               ],
             )
           : Row(
@@ -249,11 +252,7 @@ class _ProfilePlanHero extends StatelessWidget {
                 const SizedBox(width: AppSpacing.lg),
                 Expanded(child: identity),
                 const SizedBox(width: AppSpacing.lg),
-                AppButton(
-                  label: hasPlan ? context.l10n.renewPlan : context.l10n.buyPlans,
-                  leadingIcon: hasPlan ? LucideIcons.refreshCw : LucideIcons.sparkles,
-                  onPressed: onPlanAction,
-                ),
+                planButton,
               ],
             ),
     );
@@ -262,7 +261,6 @@ class _ProfilePlanHero extends StatelessWidget {
 
 class _WalletOverview extends StatelessWidget {
   const _WalletOverview({
-    required this.compact,
     required this.balanceText,
     required this.commissionText,
     required this.onWallet,
@@ -271,7 +269,6 @@ class _WalletOverview extends StatelessWidget {
     required this.onWithdraw,
   });
 
-  final bool compact;
   final String balanceText;
   final String commissionText;
   final VoidCallback onWallet;
@@ -290,7 +287,7 @@ class _WalletOverview extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(LucideIcons.walletCards, size: 18, color: c.primary),
+              Icon(LucideIcons.wallet, size: 18, color: c.primary),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
@@ -326,20 +323,20 @@ class _WalletOverview extends StatelessWidget {
             children: [
               AppButton(
                 label: context.l10n.rechargeBalance,
-                leadingIcon: LucideIcons.circlePlus,
+                leadingIcon: LucideIcons.plus,
                 onPressed: onRecharge,
                 size: AppControlSize.compact,
               ),
               AppButton(
                 label: context.l10n.transferCommission,
-                leadingIcon: LucideIcons.arrowLeftRight,
+                leadingIcon: LucideIcons.badgeDollarSign,
                 variant: AppButtonVariant.secondary,
                 onPressed: onTransfer,
                 size: AppControlSize.compact,
               ),
               AppButton(
                 label: context.l10n.requestWithdrawal,
-                leadingIcon: LucideIcons.banknoteArrowUp,
+                leadingIcon: LucideIcons.wallet,
                 variant: AppButtonVariant.outline,
                 onPressed: onWithdraw,
                 size: AppControlSize.compact,
@@ -410,13 +407,13 @@ class _ServicesSection extends StatelessWidget {
         onTap: onOrders,
       ),
       _ServiceItem(
-        icon: LucideIcons.chartNoAxesCombined,
+        icon: LucideIcons.chartColumn,
         title: context.l10n.usage,
         subtitle: context.l10n.usageSubtitle,
         onTap: onTraffic,
       ),
       _ServiceItem(
-        icon: LucideIcons.usersRound,
+        icon: LucideIcons.gift,
         title: context.l10n.invite,
         subtitle: context.l10n.inviteSubtitle,
         onTap: onInvite,
@@ -552,11 +549,10 @@ class _SecuritySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(context.l10n.accountSettings, style: AppTextStyles.sectionTitle),
+        Text(context.l10n.accountManagement, style: AppTextStyles.sectionTitle),
         const SizedBox(height: AppSpacing.sm),
         AppCard(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -649,7 +645,10 @@ class _SettingSwitchRow extends StatelessWidget {
             children: [
               Text(title, style: AppTextStyles.bodyStrong),
               const SizedBox(height: AppSpacing.xs),
-              Text(subtitle, style: AppTextStyles.caption.copyWith(color: c.textMuted)),
+              Text(
+                subtitle,
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
             ],
           ),
         ),
