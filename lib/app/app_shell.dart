@@ -102,11 +102,13 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   // here so `_quit()` can shut the core down and restore the system proxy
   // before the process exits (see macos/Runner/AppDelegate.swift).
   static const MethodChannel _macQuitChannel = MethodChannel('litchi/quit');
-  // Auth screens stay compact and non-resizable; once authenticated the app
+  // Auth screens stay fixed and non-resizable; once authenticated the app
   // switches once to a stable, user-resizable desktop window. Page navigation
   // never changes the outer window size.
-  static const double _authWindowWidth = 400;
-  static const Size _authMinimumSize = Size(380, 480);
+  static const double _authWindowWidth =
+      AppLayoutMetrics.desktopAuthWindowWidth;
+  static const Size _authMinimumSize =
+      AppLayoutMetrics.desktopAuthMinimumWindow;
   static const Size _desktopWindowSize = AppLayoutMetrics.desktopDefaultWindow;
   static const Size _desktopMinimumSize = AppLayoutMetrics.desktopMinimumWindow;
   // A practical unbounded ceiling that also clears the fixed macOS auth max.
@@ -131,10 +133,12 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const Duration _authFadeInDuration = Duration(milliseconds: 150);
 
   static double _authHeightFor(AuthScreen screen) => switch (screen) {
-    AuthScreen.login => 560,
-    AuthScreen.register => 720,
-    AuthScreen.changePassword => 620,
-    AuthScreen.forgotPassword => 700,
+    AuthScreen.login => AppLayoutMetrics.desktopAuthLoginHeight,
+    AuthScreen.register => AppLayoutMetrics.desktopAuthRegisterHeight,
+    AuthScreen.changePassword =>
+      AppLayoutMetrics.desktopAuthChangePasswordHeight,
+    AuthScreen.forgotPassword =>
+      AppLayoutMetrics.desktopAuthForgotPasswordHeight,
   };
 
   // Cached so onWindowClose / tray callbacks can act without a context lookup.
