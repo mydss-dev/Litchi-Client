@@ -181,6 +181,12 @@ One clear purchase summary:
 
 Warnings about switching an active plan must be visible before submission but should not dominate the dialog.
 
+Implementation lock:
+- pricing, coupon verification, period mapping and order submission stay outside the presentation surface
+- the presentation surface receives already-derived values and callbacks only
+- selecting a billing period may reset an applied coupon exactly as the existing business flow does
+- there is one obvious primary submit action; cancel is visually secondary
+
 ### Payment
 
 Desktop: centered payment surface.
@@ -193,6 +199,13 @@ Stages remain:
 - expired
 
 The UI may be rebuilt completely, but the existing payment state machine and calculations remain untouched.
+
+Implementation lock:
+- each payment stage has one obvious primary task/action
+- presentation code must not call payment APIs or calculate prices/fees
+- checkoutOrder, handling-fee math, balance/surplus/refund adjustments, 15-minute countdown and 3-second polling remain in the state/controller layer
+- QR/browser presentation only receives the final payment URL, amount, countdown and callbacks
+- success and expired stages must not preserve legacy method-selection clutter
 
 ---
 
