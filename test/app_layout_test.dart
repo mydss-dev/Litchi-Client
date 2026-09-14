@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/shared/layout/app_layout.dart';
+import 'package:litchi_client/shared/layout/app_platform.dart';
+import 'package:litchi_client/shared/layout/app_shell_spec.dart';
 
 void main() {
   group('AppLayoutMetrics', () {
@@ -28,6 +30,41 @@ void main() {
       expect(
         AppLayoutMetrics.contentMaxWidthFor(1200),
         AppLayoutMetrics.defaultContentMaxWidth,
+      );
+    });
+  });
+
+  group('AppShellSpec', () {
+    test('Windows and macOS use the shared desktop sidebar shell', () {
+      expect(
+        AppShellSpec.navigationFor(AppPlatformKind.windows),
+        AppNavigationMode.sidebar,
+      );
+      expect(
+        AppShellSpec.navigationFor(AppPlatformKind.macOS),
+        AppNavigationMode.sidebar,
+      );
+    });
+
+    test('Android uses the compact bottom navigation shell', () {
+      expect(
+        AppShellSpec.navigationFor(AppPlatformKind.android),
+        AppNavigationMode.bottomBar,
+      );
+    });
+
+    test('window chrome stays native where required', () {
+      expect(
+        AppShellSpec.chromeFor(AppPlatformKind.windows),
+        AppWindowChrome.customDesktop,
+      );
+      expect(
+        AppShellSpec.chromeFor(AppPlatformKind.macOS),
+        AppWindowChrome.nativeMacOS,
+      );
+      expect(
+        AppShellSpec.chromeFor(AppPlatformKind.android),
+        AppWindowChrome.systemMobile,
       );
     });
   });
