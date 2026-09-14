@@ -144,6 +144,29 @@ void main() {
     expect(selected, 1);
   });
 
+  testWidgets('AppSegmentedControl keeps disabled items inert', (tester) async {
+    var selected = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppSegmentedControl<int>(
+            selected: selected,
+            onChanged: (value) => selected = value,
+            items: const [
+              AppSegmentedItem(value: 0, label: 'Available'),
+              AppSegmentedItem(value: 1, label: 'Disabled', enabled: false),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Disabled'));
+    await tester.pump();
+    expect(selected, 0);
+  });
+
   testWidgets('PageIconButton keeps existing callback contract', (tester) async {
     var taps = 0;
 
