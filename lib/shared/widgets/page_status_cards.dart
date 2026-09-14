@@ -5,8 +5,11 @@ import '../../l10n/l10n.dart';
 import '../services/app_error_message_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
+import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
+import 'app_button.dart';
 import 'app_card.dart';
+import 'app_icon_button.dart';
 
 /// Spinner card shown while a page is loading data.
 class PageLoadingCard extends StatelessWidget {
@@ -17,7 +20,7 @@ class PageLoadingCard extends StatelessWidget {
     final c = AppColors.of(context);
     return AppCard(
       radius: AppRadius.card,
-      padding: const EdgeInsets.all(40),
+      padding: const EdgeInsets.all(AppSpacing.xxxxl),
       child: Center(
         child: CircularProgressIndicator(color: c.primary, strokeWidth: 2),
       ),
@@ -25,13 +28,14 @@ class PageLoadingCard extends StatelessWidget {
   }
 }
 
-/// Error card with message and a retry button.
+/// Error card with a consistent shared retry action.
 class PageErrorCard extends StatelessWidget {
   const PageErrorCard({
     super.key,
     required this.message,
     required this.onRetry,
   });
+
   final String message;
   final VoidCallback onRetry;
 
@@ -42,38 +46,25 @@ class PageErrorCard extends StatelessWidget {
       message,
       context.l10n,
     );
+
     return AppCard(
       radius: AppRadius.card,
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(AppSpacing.xxxl),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(LucideIcons.circleX, size: 32, color: c.danger),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           Text(
             displayMessage,
             style: AppTextStyles.body.copyWith(color: c.textMuted),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: onRetry,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: c.primarySoft,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                ),
-                child: Text(
-                  context.l10n.retry,
-                  style: AppTextStyles.body.copyWith(color: c.primary),
-                ),
-              ),
-            ),
+          const SizedBox(height: AppSpacing.lg),
+          AppButton(
+            label: context.l10n.retry,
+            variant: AppButtonVariant.secondary,
+            onPressed: onRetry,
           ),
         ],
       ),
@@ -114,6 +105,10 @@ class PageBackButton extends StatelessWidget {
   }
 }
 
+/// Compatibility wrapper kept for existing feature pages.
+///
+/// Interaction geometry, hover, focus and disabled feedback now come from
+/// [AppIconButton] instead of a second hand-built icon-button implementation.
 class PageIconButton extends StatelessWidget {
   const PageIconButton({
     super.key,
@@ -130,30 +125,13 @@ class PageIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Tooltip(
-      message: tooltip ?? '',
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: filled ? c.primarySoft : c.cardBg,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: filled ? c.primarySoft : c.softBorder),
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: filled ? c.primary : c.textPrimary,
-            ),
-          ),
-        ),
-      ),
+    return AppIconButton(
+      icon: icon,
+      tooltip: tooltip,
+      onPressed: onTap,
+      variant: filled
+          ? AppIconButtonVariant.primary
+          : AppIconButtonVariant.surface,
     );
   }
 }
@@ -167,6 +145,9 @@ class PageStateCard extends StatelessWidget {
     this.onTap,
   });
 
+  static const double _iconExtent = 40;
+  static const double _iconSize = 20;
+
   final IconData icon;
   final String title;
   final String subtitle;
@@ -178,26 +159,26 @@ class PageStateCard extends StatelessWidget {
     return AppCard(
       onTap: onTap,
       shadow: AppCardShadow.none,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: _iconExtent,
+            height: _iconExtent,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: c.surfaceMuted,
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: Icon(icon, color: c.iconMuted, size: 20),
+            child: Icon(icon, color: c.iconMuted, size: _iconSize),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: AppTextStyles.bodyStrong),
-                const SizedBox(height: 3),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   subtitle,
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
@@ -206,7 +187,7 @@ class PageStateCard extends StatelessWidget {
             ),
           ),
           if (onTap != null) ...[
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpacing.sm),
             Icon(LucideIcons.chevronRight, color: c.iconMuted, size: 18),
           ],
         ],
@@ -221,7 +202,10 @@ class AppEmptyState extends StatelessWidget {
     required this.icon,
     required this.title,
     this.subtitle,
-    this.padding = const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+    this.padding = const EdgeInsets.symmetric(
+      horizontal: AppSpacing.lg,
+      vertical: AppSpacing.xxl,
+    ),
   });
 
   final IconData icon;
@@ -239,14 +223,14 @@ class AppEmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 22, color: c.iconMuted),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               title,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
             ),
             if (subtitle != null && subtitle!.isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
