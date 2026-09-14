@@ -12,10 +12,9 @@ import '../../shared/models/app_models.dart';
 import '../../shared/theme/app_spacing.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../shop/order_confirm_dialog.dart';
-import 'account_page.dart'
-    show showAccountChangePasswordModal, showAccountLogoutConfirmation;
 import 'wallet_page.dart';
 import 'widgets/greenfield_account_modals.dart';
+import 'widgets/greenfield_account_security_modals.dart';
 import 'widgets/greenfield_account_surface.dart';
 
 class GreenfieldAccountPage extends StatefulWidget {
@@ -114,7 +113,7 @@ class _GreenfieldAccountPageState extends State<GreenfieldAccountPage> {
   }
 
   Future<void> _logout() async {
-    final confirmed = await showAccountLogoutConfirmation(context);
+    final confirmed = await showGreenfieldLogoutConfirmation(context);
     if (!confirmed || !mounted) return;
     await AppScope.of(context).logout();
   }
@@ -143,6 +142,9 @@ class _GreenfieldAccountPageState extends State<GreenfieldAccountPage> {
       expiryLabel: expiryLabel,
       balanceText: balanceText,
       commissionText: commissionText,
+      showOrders: isPageEnabled(AppPage.orders),
+      showTraffic: isPageEnabled(AppPage.traffic),
+      showInvite: isPageEnabled(AppPage.invite),
       showGiftCard: showXiaoServices,
       showTelegram: showXiaoServices,
       telegramBound: controller.accountDetails?.telegramId != null,
@@ -166,7 +168,7 @@ class _GreenfieldAccountPageState extends State<GreenfieldAccountPage> {
       onAutoRenewalChanged: (value) =>
           unawaited(_updateSettings(autoRenewal: value)),
       onChangePassword: () =>
-          unawaited(showAccountChangePasswordModal(context)),
+          unawaited(showGreenfieldChangePasswordModal(context)),
       onLogout: () => unawaited(_logout()),
     );
   }
