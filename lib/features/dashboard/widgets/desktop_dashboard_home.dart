@@ -670,7 +670,7 @@ class _PlanPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              _IconTile(icon: LucideIcons.crown, size: 32),
+              const _IconTile(icon: LucideIcons.crown, size: 32),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
