@@ -1,5 +1,4 @@
 import 'package:country_flags/country_flags.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -20,11 +19,14 @@ import '../../../shared/widgets/mode_strip.dart';
 import '../../../shared/widgets/no_plan_card.dart';
 import '../../../shared/widgets/node_latency.dart';
 import '../../../shared/widgets/notice_bar.dart';
-import 'network_settings_card.dart';
 import 'litchi_connection_orb.dart';
+import 'network_settings_card.dart';
 
-/// Desktop home information order:
-/// notice -> connection/node + network settings -> realtime status -> subscription summary.
+/// Desktop dashboard visual hierarchy:
+/// notice -> connection/network hero -> live metrics -> subscription summary.
+///
+/// Network state is never owned here. This file only maps the existing
+/// controller state into the Litchi desktop presentation.
 class DesktopDashboardHome extends StatelessWidget {
   const DesktopDashboardHome({
     super.key,
@@ -64,9 +66,9 @@ class DesktopDashboardHome extends StatelessWidget {
             onProxyModeChanged: onProxyModeChanged,
             onNodeTap: onNodeTap,
           ),
-          const SizedBox(height: AppSpacing.md),
-          _RealtimePanel(ctrl: ctrl),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
+          _RealtimePanel(ctrl: ctrl, tick: tick),
+          const SizedBox(height: AppSpacing.lg),
           _PlanPanel(ctrl: ctrl),
         ],
       ],
@@ -91,13 +93,13 @@ class _TopControlRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final connectionCard = _ConnectionNodeCard(
+    final connectionCard = _ConnectionHeroCard(
       ctrl: ctrl,
       tick: tick,
       onToggle: onToggleConnection,
       onNodeTap: onNodeTap,
     );
-    final networkCard = _NetworkSettingsCard(
+    final networkCard = _NetworkControlCard(
       ctrl: ctrl,
       onProxyModeChanged: onProxyModeChanged,
     );
@@ -109,7 +111,7 @@ class _TopControlRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               connectionCard,
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.lg),
               networkCard,
             ],
           );
@@ -118,9 +120,9 @@ class _TopControlRow extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: connectionCard),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(child: networkCard),
+            Expanded(flex: 56, child: connectionCard),
+            const SizedBox(width: AppSpacing.lg),
+            Expanded(flex: 44, child: networkCard),
           ],
         );
       },
@@ -128,8 +130,8 @@ class _TopControlRow extends StatelessWidget {
   }
 }
 
-class _ConnectionNodeCard extends StatelessWidget {
-  const _ConnectionNodeCard({
+class _ConnectionHeroCard extends StatelessWidget {
+  const _ConnectionHeroCard({
     required this.ctrl,
     required this.tick,
     required this.onToggle,
@@ -153,7 +155,7 @@ class _ConnectionNodeCard extends StatelessWidget {
     final (statusText, statusColor) = !supportsConnection
         ? (context.l10n.businessEdition, c.textMuted)
         : switch (status) {
-            ConnectionStatus.connected => (context.l10n.protected, c.success),
+            ConnectionStatus.connected => (context.l10n.protected, c.primary),
             ConnectionStatus.connecting => (context.l10n.connecting, c.primary),
             ConnectionStatus.disconnecting => (
               context.l10n.disconnecting,
@@ -165,93 +167,85 @@ class _ConnectionNodeCard extends StatelessWidget {
               c.textMuted,
             ),
           };
+    final connectionDescription = ctrl.networkMode == NetworkMode.tun
+        ? context.l10n.tunDescription
+        : context.l10n.systemProxyDescription;
 
     return AppCard(
-      height: 200,
-      radius: AppRadius.lg,
-      padding: const EdgeInsets.all(16),
+      height: 228,
+      radius: AppRadius.card,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.lg,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const _IconTile(icon: LucideIcons.wifi),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        if (busy)
-                          SizedBox(
-                            width: 9,
-                            height: 9,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
-                              color: statusColor,
-                            ),
-                          )
-                        else
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: statusColor,
-                              shape: BoxShape.circle,
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _StatusDot(color: statusColor, busy: busy),
+                          const SizedBox(width: AppSpacing.sm),
+                          Flexible(
+                            child: Text(
+                              statusText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.heroStatus.copyWith(
+                                color: statusColor,
+                              ),
                             ),
                           ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            statusText,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.bodyStrong.copyWith(
-                              color: statusColor,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    if (connected)
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
                       ValueListenableBuilder<int>(
                         valueListenable: tick,
                         builder: (context, _, _) => Text(
-                          formatDuration(ctrl.connectedDuration),
+                          connected
+                              ? formatDuration(ctrl.connectedDuration)
+                              : context.l10n.currentNode,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.caption.copyWith(
+                          style: AppTextStyles.body.copyWith(
                             color: c.textSecondary,
                           ),
                         ),
-                      )
-                    else
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
                       Text(
-                        context.l10n.currentNode,
-                        maxLines: 1,
+                        connected
+                            ? connectionDescription
+                            : context.l10n.selectNodePrompt,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(
-                          color: c.textSecondary,
+                          color: c.textMuted,
+                          height: 1.45,
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              LitchiConnectionOrb(
-                status: status,
-                enabled: !busy && supportsConnection,
-                onPressed: onToggle,
-              ),
-            ],
+                const SizedBox(width: AppSpacing.md),
+                LitchiConnectionOrb(
+                  status: status,
+                  enabled: !busy && supportsConnection,
+                  onPressed: onToggle,
+                  size: 136,
+                ),
+              ],
+            ),
           ),
-          const Spacer(),
           Divider(height: 1, thickness: 1, color: c.softBorder),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           _CompactNodeRow(
             node: ctrl.currentNode,
             loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
@@ -260,6 +254,28 @@ class _ConnectionNodeCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.color, required this.busy});
+
+  final Color color;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    if (busy) {
+      return SizedBox.square(
+        dimension: 11,
+        child: CircularProgressIndicator(strokeWidth: 1.6, color: color),
+      );
+    }
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
@@ -298,11 +314,11 @@ class _CompactNodeRow extends StatelessWidget {
         mouseCursor: SystemMouseCursors.click,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
           child: Row(
             children: [
               _NodeAvatar(node: node),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,40 +330,28 @@ class _CompactNodeRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyStrong.copyWith(
                         color: c.textPrimary,
-                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       secondary,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption.copyWith(
                         color: c.textSecondary,
-                        fontSize: 11,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.sm),
               if (!loading || node.name.isNotEmpty)
                 NodeLatency(
                   latency: node.latency,
                   style: NodeLatencyStyle.badge,
                 ),
-              const SizedBox(width: 7),
-              Text(
-                context.l10n.switchNode,
-                maxLines: 1,
-                style: AppTextStyles.caption.copyWith(
-                  color: c.primary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: 2),
-              Icon(LucideIcons.chevronRight, size: 15, color: c.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(LucideIcons.chevronRight, size: 16, color: c.primary),
             ],
           ),
         ),
@@ -356,8 +360,8 @@ class _CompactNodeRow extends StatelessWidget {
   }
 }
 
-class _NetworkSettingsCard extends StatelessWidget {
-  const _NetworkSettingsCard({
+class _NetworkControlCard extends StatelessWidget {
+  const _NetworkControlCard({
     required this.ctrl,
     required this.onProxyModeChanged,
   });
@@ -368,31 +372,80 @@ class _NetworkSettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      height: 184,
-      radius: AppRadius.lg,
-      padding: const EdgeInsets.all(16),
+      height: 228,
+      radius: AppRadius.card,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.lg,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _CardTitle(
-            icon: LucideIcons.activity,
+          _SectionHeader(
+            icon: LucideIcons.slidersHorizontal,
             title: context.l10n.networkSettings,
+            subtitle: context.l10n.connectionMethod,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.lg),
           _ControlLabel(label: context.l10n.connectionMethod),
-          const SizedBox(height: 5),
-          const NetworkModeSelector(height: 34),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
+          const NetworkModeSelector(height: 42),
+          const SizedBox(height: AppSpacing.lg),
           _ControlLabel(label: context.l10n.proxyMode),
-          const SizedBox(height: 5),
+          const SizedBox(height: AppSpacing.sm),
           ModeStrip(
             selected: ctrl.proxyMode,
             onChanged: onProxyModeChanged,
-            buttonHeight: 28,
-            padding: 3,
+            buttonHeight: 36,
+            padding: AppSpacing.xs,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Row(
+      children: [
+        _IconTile(icon: icon, size: 32),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.sectionTitle.copyWith(
+                  color: c.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(color: c.textMuted),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -409,61 +462,7 @@ class _ControlLabel extends StatelessWidget {
       label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: AppTextStyles.caption.copyWith(
-        color: c.textSecondary,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-  }
-}
-
-class _CardTitle extends StatelessWidget {
-  const _CardTitle({required this.icon, required this.title});
-
-  final IconData icon;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Row(
-      children: [
-        _IconTile(icon: icon),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.bodyStrong.copyWith(
-              color: c.textPrimary,
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _IconTile extends StatelessWidget {
-  const _IconTile({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Container(
-      width: 28,
-      height: 28,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: c.primarySoft,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Icon(icon, size: 14, color: c.primary),
+      style: AppTextStyles.metricLabel.copyWith(color: c.textSecondary),
     );
   }
 }
@@ -481,7 +480,7 @@ class _NodeAvatar extends StatelessWidget {
       height: 38,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: c.cardBg,
+        color: c.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: c.softBorder),
       ),
@@ -500,9 +499,10 @@ class _NodeAvatar extends StatelessWidget {
 }
 
 class _RealtimePanel extends StatelessWidget {
-  const _RealtimePanel({required this.ctrl});
+  const _RealtimePanel({required this.ctrl, required this.tick});
 
   final AppController ctrl;
+  final ValueListenable<int> tick;
 
   @override
   Widget build(BuildContext context) {
@@ -510,45 +510,48 @@ class _RealtimePanel extends StatelessWidget {
     final connected = ctrl.connectionStatus == ConnectionStatus.connected;
 
     return AppCard(
-      radius: AppRadius.lg,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      height: 104,
+      radius: AppRadius.card,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.lg,
+      ),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(LucideIcons.activity, size: 15, color: c.primary),
-              const SizedBox(width: 7),
-              Text(
-                context.l10n.realtimeStatusLabel,
-                style: AppTextStyles.bodyStrong.copyWith(
-                  color: c.textPrimary,
-                  fontSize: 13,
-                ),
+          Expanded(
+            child: ValueListenableBuilder<int>(
+              valueListenable: ctrl.downBpsNotifier,
+              builder: (context, value, _) => _LiveMetric(
+                icon: LucideIcons.arrowDown,
+                label: context.l10n.downloadSpeed,
+                value: formatRate(value),
+                active: connected,
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _LiveMetric(
-                  icon: LucideIcons.arrowUp,
-                  label: context.l10n.uploadSpeed,
-                  value: formatRate(ctrl.upBps),
-                  active: connected,
-                ),
+          _MetricDivider(color: c.softBorder, height: 48),
+          Expanded(
+            child: ValueListenableBuilder<int>(
+              valueListenable: ctrl.upBpsNotifier,
+              builder: (context, value, _) => _LiveMetric(
+                icon: LucideIcons.arrowUp,
+                label: context.l10n.uploadSpeed,
+                value: formatRate(value),
+                active: connected,
               ),
-              _MetricDivider(color: c.softBorder, height: 38),
-              Expanded(
-                child: _LiveMetric(
-                  icon: LucideIcons.arrowDown,
-                  label: context.l10n.downloadSpeed,
-                  value: formatRate(ctrl.downBps),
-                  active: connected,
-                ),
+            ),
+          ),
+          _MetricDivider(color: c.softBorder, height: 48),
+          Expanded(
+            child: ValueListenableBuilder<int>(
+              valueListenable: tick,
+              builder: (context, _, _) => _LiveMetric(
+                icon: LucideIcons.clock,
+                label: context.l10n.connectionDurationLabel,
+                value: formatDuration(ctrl.connectedDuration),
+                active: connected,
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -575,32 +578,31 @@ class _LiveMetric extends StatelessWidget {
     return Opacity(
       opacity: active ? 1 : 0.58,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
         child: Row(
           children: [
             _MetricIcon(icon: icon),
-            const SizedBox(width: 9),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(
+                    style: AppTextStyles.metricLabel.copyWith(
                       color: c.textSecondary,
-                      fontSize: 11.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyStrong.copyWith(
+                    style: AppTextStyles.metricValue.copyWith(
                       color: c.textPrimary,
-                      fontSize: 14,
                     ),
                   ),
                 ],
@@ -622,14 +624,14 @@ class _MetricIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     return Container(
-      width: 28,
-      height: 28,
+      width: 36,
+      height: 36,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: c.primarySoft,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, size: 13, color: c.primary),
+      child: Icon(icon, size: 17, color: c.primary),
     );
   }
 }
@@ -646,44 +648,81 @@ class _PlanPanel extends StatelessWidget {
       expiredAt: ctrl.expiredAt,
       expiryText: ctrl.user.expiry,
     );
+    final total = ctrl.traffic.totalGb;
+    final remaining = ctrl.traffic.remainGb;
+    final used = total > 0
+        ? (total - remaining).clamp(0.0, total).toDouble()
+        : 0.0;
+    final progress = total > 0
+        ? (used / total).clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    final planName = ctrl.user.plan.trim().isEmpty
+        ? 'Litchi'
+        : ctrl.user.plan.trim();
 
     return AppCard(
-      radius: AppRadius.lg,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
+      height: 154,
+      radius: AppRadius.card,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: _PlanMetric(
-              icon: LucideIcons.calendarDays,
-              label: context.l10n.expiryTime,
-              value: expiry.date.isEmpty ? context.l10n.permanent : expiry.date,
-              footer: expiry.days == null
-                  ? context.l10n.subscriptionLongTerm
-                  : _remainingDaysText(context, expiry.days!),
-            ),
-          ),
-          _MetricDivider(color: c.softBorder, height: 46),
-          Expanded(
-            child: _PlanMetric(
-              icon: LucideIcons.chartColumn,
-              label: context.l10n.todayUsedLabel,
-              value: formatGb(ctrl.todayTrafficGb),
-              footer: yesterdayComparisonText(
-                context,
-                usage: ctrl.trafficUsage,
-                currentGb: ctrl.todayTrafficGb,
+          Row(
+            children: [
+              _IconTile(icon: LucideIcons.crown, size: 32),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  planName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.sectionTitle.copyWith(
+                    color: c.textPrimary,
+                  ),
+                ),
               ),
-            ),
-          ),
-          _MetricDivider(color: c.softBorder, height: 46),
-          Expanded(
-            child: _PlanMetric(
-              icon: LucideIcons.database,
-              label: context.l10n.remainingTrafficLabel,
-              value: formatGb(ctrl.traffic.remainGb),
-              footer: context.l10n.totalTrafficLabel(
-                formatGb(ctrl.traffic.totalGb),
+              const SizedBox(width: AppSpacing.md),
+              Text(
+                total > 0
+                    ? '${formatGb(used)} / ${formatGb(total)}'
+                    : '--',
+                maxLines: 1,
+                style: AppTextStyles.caption.copyWith(color: c.textSecondary),
               ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _TrafficProgress(value: progress),
+          const SizedBox(height: AppSpacing.md),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _PlanMetric(
+                    icon: LucideIcons.database,
+                    label: context.l10n.remainingTrafficLabel,
+                    value: formatGb(remaining),
+                  ),
+                ),
+                _MetricDivider(color: c.softBorder, height: 38),
+                Expanded(
+                  child: _PlanMetric(
+                    icon: LucideIcons.chartColumn,
+                    label: context.l10n.todayUsedLabel,
+                    value: formatGb(ctrl.todayTrafficGb),
+                  ),
+                ),
+                _MetricDivider(color: c.softBorder, height: 38),
+                Expanded(
+                  child: _PlanMetric(
+                    icon: LucideIcons.calendarDays,
+                    label: context.l10n.expiryTime,
+                    value: expiry.date.isEmpty
+                        ? context.l10n.permanent
+                        : expiry.date,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -692,13 +731,76 @@ class _PlanPanel extends StatelessWidget {
   }
 }
 
-String _remainingDaysText(BuildContext context, int days) {
-  final locale = Localizations.localeOf(context);
-  if (locale.languageCode == 'zh') {
-    final traditional = locale.countryCode?.toUpperCase() == 'TW';
-    return '${traditional ? '剩餘' : '剩余'} $days ${context.l10n.daysUnit}';
+class _TrafficProgress extends StatelessWidget {
+  const _TrafficProgress({required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      child: Container(
+        height: 8,
+        color: c.surfaceMuted,
+        alignment: Alignment.centerLeft,
+        child: FractionallySizedBox(
+          widthFactor: value,
+          child: DecoratedBox(
+            decoration: BoxDecoration(gradient: c.brandGradient),
+          ),
+        ),
+      ),
+    );
   }
-  return context.l10n.subscriptionExpiresInDays(days);
+}
+
+class _PlanMetric extends StatelessWidget {
+  const _PlanMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: c.primary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(color: c.textSecondary),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.planValue.copyWith(color: c.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MetricDivider extends StatelessWidget {
@@ -711,70 +813,29 @@ class _MetricDivider extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: 1,
     height: height,
-    margin: const EdgeInsets.symmetric(horizontal: 8),
+    margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
     color: color,
   );
 }
 
-class _PlanMetric extends StatelessWidget {
-  const _PlanMetric({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.footer,
-  });
+class _IconTile extends StatelessWidget {
+  const _IconTile({required this.icon, this.size = 28});
 
   final IconData icon;
-  final String label;
-  final String value;
-  final String footer;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Row(
-      children: [
-        _IconTile(icon: icon),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.caption.copyWith(
-                  color: c.textSecondary,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodyStrong.copyWith(
-                  color: c.textPrimary,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                footer,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.caption.copyWith(
-                  color: c.textSecondary,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: c.primarySoft,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Icon(icon, size: size * 0.5, color: c.primary),
     );
   }
 }
