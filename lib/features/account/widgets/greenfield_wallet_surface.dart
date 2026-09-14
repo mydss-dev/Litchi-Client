@@ -26,7 +26,8 @@ class GreenfieldWalletSurface extends StatelessWidget {
     required this.minimumWithdrawalText,
     required this.withdrawMethods,
     required this.onPresetSelected,
-    required this.onRecharge,
+    required this.onOpenRecharge,
+    required this.onSubmitRecharge,
     required this.onTransfer,
     required this.onWithdraw,
   });
@@ -43,7 +44,8 @@ class GreenfieldWalletSurface extends StatelessWidget {
   final String minimumWithdrawalText;
   final List<String> withdrawMethods;
   final ValueChanged<int> onPresetSelected;
-  final VoidCallback onRecharge;
+  final VoidCallback onOpenRecharge;
+  final VoidCallback onSubmitRecharge;
   final VoidCallback onTransfer;
   final VoidCallback onWithdraw;
 
@@ -52,26 +54,24 @@ class GreenfieldWalletSurface extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = AppPlatform.usesTouch || constraints.maxWidth < 680;
-        final details = <Widget>[
-          _QuickRechargeCard(
-            compact: compact,
-            currencySymbol: currencySymbol,
-            presets: presets,
-            selectedPreset: selectedPreset,
-            controller: amountController,
-            submitting: submitting,
-            onPresetSelected: onPresetSelected,
-            onRecharge: onRecharge,
-          ),
-          _CommissionCard(
-            commissionText: commissionText,
-            withdrawEnabled: withdrawEnabled,
-            minimumWithdrawalText: minimumWithdrawalText,
-            withdrawMethods: withdrawMethods,
-            onTransfer: onTransfer,
-            onWithdraw: onWithdraw,
-          ),
-        ];
+        final recharge = _QuickRechargeCard(
+          compact: compact,
+          currencySymbol: currencySymbol,
+          presets: presets,
+          selectedPreset: selectedPreset,
+          controller: amountController,
+          submitting: submitting,
+          onPresetSelected: onPresetSelected,
+          onSubmitRecharge: onSubmitRecharge,
+        );
+        final commission = _CommissionCard(
+          commissionText: commissionText,
+          withdrawEnabled: withdrawEnabled,
+          minimumWithdrawalText: minimumWithdrawalText,
+          withdrawMethods: withdrawMethods,
+          onTransfer: onTransfer,
+          onWithdraw: onWithdraw,
+        );
 
         return Column(
           key: const ValueKey('greenfield-wallet-surface'),
@@ -82,22 +82,22 @@ class GreenfieldWalletSurface extends StatelessWidget {
               totalText: totalText,
               balanceText: balanceText,
               commissionText: commissionText,
-              onRecharge: onRecharge,
+              onOpenRecharge: onOpenRecharge,
               onTransfer: onTransfer,
               onWithdraw: onWithdraw,
             ),
             const SizedBox(height: AppSpacing.lg),
             if (compact) ...[
-              details[0],
+              recharge,
               const SizedBox(height: AppSpacing.lg),
-              details[1],
+              commission,
             ] else
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 3, child: details[0]),
+                  Expanded(flex: 3, child: recharge),
                   const SizedBox(width: AppSpacing.lg),
-                  Expanded(flex: 2, child: details[1]),
+                  Expanded(flex: 2, child: commission),
                 ],
               ),
             if (compact) const SizedBox(height: AppSpacing.xxl),
@@ -114,7 +114,7 @@ class _AssetHero extends StatelessWidget {
     required this.totalText,
     required this.balanceText,
     required this.commissionText,
-    required this.onRecharge,
+    required this.onOpenRecharge,
     required this.onTransfer,
     required this.onWithdraw,
   });
@@ -123,7 +123,7 @@ class _AssetHero extends StatelessWidget {
   final String totalText;
   final String balanceText;
   final String commissionText;
-  final VoidCallback onRecharge;
+  final VoidCallback onOpenRecharge;
   final VoidCallback onTransfer;
   final VoidCallback onWithdraw;
 
@@ -215,7 +215,7 @@ class _AssetHero extends StatelessWidget {
               AppButton(
                 label: context.l10n.rechargeBalance,
                 leadingIcon: LucideIcons.circlePlus,
-                onPressed: onRecharge,
+                onPressed: onOpenRecharge,
                 expand: true,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -250,7 +250,7 @@ class _AssetHero extends StatelessWidget {
               AppButton(
                 label: context.l10n.rechargeBalance,
                 leadingIcon: LucideIcons.circlePlus,
-                onPressed: onRecharge,
+                onPressed: onOpenRecharge,
                 expand: true,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -348,7 +348,7 @@ class _QuickRechargeCard extends StatelessWidget {
     required this.controller,
     required this.submitting,
     required this.onPresetSelected,
-    required this.onRecharge,
+    required this.onSubmitRecharge,
   });
 
   final bool compact;
@@ -358,7 +358,7 @@ class _QuickRechargeCard extends StatelessWidget {
   final TextEditingController controller;
   final bool submitting;
   final ValueChanged<int> onPresetSelected;
-  final VoidCallback onRecharge;
+  final VoidCallback onSubmitRecharge;
 
   @override
   Widget build(BuildContext context) {
@@ -425,7 +425,7 @@ class _QuickRechargeCard extends StatelessWidget {
             controller: controller,
             currencySymbol: currencySymbol,
             submitting: submitting,
-            onSubmit: onRecharge,
+            onSubmit: onSubmitRecharge,
           ),
         ],
       ),
@@ -509,7 +509,9 @@ class _RechargeAmountField extends StatelessWidget {
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               textInputAction: TextInputAction.done,
-              onSubmitted: (_) => submitting ? null : onSubmit(),
+              onSubmitted: (_) {
+                if (!submitting) onSubmit();
+              },
               style: AppTextStyles.input.copyWith(color: c.textPrimary),
               decoration: InputDecoration(
                 hintText: context.l10n.rechargeAmountHint,
@@ -600,7 +602,7 @@ class _CommissionCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           _StatusLine(
-            icon: LucideIcons.creditCard,
+            icon: LucideIcons.receipt,
             text: methodsText,
           ),
           const SizedBox(height: AppSpacing.xl),
