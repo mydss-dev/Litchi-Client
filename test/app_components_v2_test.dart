@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
 import 'package:litchi_client/shared/layout/app_control_metrics.dart';
 import 'package:litchi_client/shared/layout/app_platform.dart';
@@ -116,7 +117,7 @@ void main() {
     await tester.pump();
     expect(changes.last, 'Tokyo');
 
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byIcon(LucideIcons.x));
     await tester.pump();
     expect(changes.last, '');
   });
