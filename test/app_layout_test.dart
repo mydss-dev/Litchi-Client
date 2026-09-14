@@ -21,6 +21,21 @@ void main() {
       expect(AppLayoutMetrics.desktopSidebarWidth, 200);
     });
 
+    test('keeps frozen compact shell geometry', () {
+      expect(AppLayoutMetrics.compactPagePadding.left, 16);
+      expect(AppLayoutMetrics.compactPagePadding.top, 12);
+      expect(AppLayoutMetrics.compactPagePadding.right, 16);
+      expect(AppLayoutMetrics.compactPagePadding.bottom, 12);
+      expect(AppLayoutMetrics.minTouchTarget, 48);
+    });
+
+    test('keeps frozen desktop page padding', () {
+      expect(AppLayoutMetrics.desktopPagePadding.left, 24);
+      expect(AppLayoutMetrics.desktopPagePadding.top, 20);
+      expect(AppLayoutMetrics.desktopPagePadding.right, 24);
+      expect(AppLayoutMetrics.desktopPagePadding.bottom, 24);
+    });
+
     test('uses shared content caps by layout class', () {
       expect(AppLayoutMetrics.contentMaxWidthFor(500), double.infinity);
       expect(
@@ -44,12 +59,39 @@ void main() {
         AppShellSpec.navigationFor(AppPlatformKind.macOS),
         AppNavigationMode.sidebar,
       );
+      expect(
+        AppShellSpec.usesDesktopWindowSizing(AppPlatformKind.windows),
+        isTrue,
+      );
+      expect(
+        AppShellSpec.usesDesktopWindowSizing(AppPlatformKind.macOS),
+        isTrue,
+      );
     });
 
     test('Android uses the compact bottom navigation shell', () {
       expect(
         AppShellSpec.navigationFor(AppPlatformKind.android),
         AppNavigationMode.bottomBar,
+      );
+      expect(
+        AppShellSpec.usesDesktopWindowSizing(AppPlatformKind.android),
+        isFalse,
+      );
+    });
+
+    test('platform page padding comes from the shared geometry contract', () {
+      expect(
+        AppShellSpec.pagePaddingFor(AppPlatformKind.windows),
+        AppLayoutMetrics.desktopPagePadding,
+      );
+      expect(
+        AppShellSpec.pagePaddingFor(AppPlatformKind.macOS),
+        AppLayoutMetrics.desktopPagePadding,
+      );
+      expect(
+        AppShellSpec.pagePaddingFor(AppPlatformKind.android),
+        AppLayoutMetrics.compactPagePadding,
       );
     });
 
