@@ -286,7 +286,6 @@ class _DesktopAuthPreferences extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = AppScope.of(context);
-    final c = AppColors.of(context);
     return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
