@@ -23,6 +23,18 @@ class AppLayoutMetrics {
   static const Size desktopMinimumWindow = Size(800, 600);
   static const double desktopSidebarWidth = 200;
 
+  // Desktop authentication surface. Auth remains a fixed presentation window;
+  // business/auth lifecycle still belongs to AppShell and AppController.
+  static const double desktopAuthWindowWidth = 860;
+  static const Size desktopAuthMinimumWindow = Size(760, 560);
+  static const double desktopAuthLoginHeight = 620;
+  static const double desktopAuthRegisterHeight = 760;
+  static const double desktopAuthChangePasswordHeight = 660;
+  static const double desktopAuthForgotPasswordHeight = 720;
+  static const double desktopAuthFormMaxWidth = 420;
+  static const int desktopAuthBrandFlex = 42;
+  static const int desktopAuthFormFlex = 58;
+
   // Shell content padding.
   static const EdgeInsets desktopPagePadding = EdgeInsets.fromLTRB(
     24,
