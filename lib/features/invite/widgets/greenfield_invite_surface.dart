@@ -279,7 +279,7 @@ class _InviteHero extends StatelessWidget {
           ],
           const SizedBox(height: AppSpacing.lg),
           Container(
-            minHeight: 48,
+            constraints: const BoxConstraints(minHeight: 48),
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
               vertical: AppSpacing.sm,
