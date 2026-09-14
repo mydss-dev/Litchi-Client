@@ -13,6 +13,7 @@ Wallet is a dedicated financial child page of Account. It must not be expanded b
 - Windows/macOS: wide asset hero, then a two-column quick-recharge and commission/status area when space allows.
 - Android: touch-first vertical stack with the existing profile-child back behavior and pull-to-refresh.
 - Shared theme, spacing, cards and controls remain consistent with the cross-platform framework.
+- Interactive preset tiles must use supported Material child layout; do not depend on unsupported Ink alignment parameters.
 
 ## Business behavior that must not change
 - submitRechargeOrder amount conversion and OrderPaymentDialog handoff.
