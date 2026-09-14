@@ -4,16 +4,19 @@ Phase 6 covers `NodesPage` and `showNodePicker` presentation only.
 
 ## Desktop
 - Search + node count + 40px latency action in one control row.
+- Search uses the shared pointer geometry (40px regular height).
 - Auto Select remains the first selectable row.
 - Shared horizontally scrollable filter strip.
 - Node list uses one bordered surface and owns its scrolling.
 - Manual node rows target 58–60px height.
 - Selected row uses a 3px brand accent, soft brand background, and brand-colored title.
 - Row order: flag, name, secondary label, latency, favorite action, selected state.
+- Latency and favorite actions use the shared button primitives, including shared loading state.
 
 ## Android
 - Keep the existing compact header/back structure.
 - Search + 48px latency action.
+- Search uses the shared touch geometry (48px regular height).
 - Auto Select card at least 68px high.
 - Filters stay horizontally scrollable.
 - Manual node cards are at least 72px high and favorite interaction is touch-safe.
