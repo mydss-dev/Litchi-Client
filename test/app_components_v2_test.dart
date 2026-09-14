@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/shared/layout/app_control_metrics.dart';
 import 'package:litchi_client/shared/layout/app_platform.dart';
 import 'package:litchi_client/shared/widgets/app_button.dart';
+import 'package:litchi_client/shared/widgets/app_icon_button.dart';
 import 'package:litchi_client/shared/widgets/app_segmented_control.dart';
 import 'package:litchi_client/shared/widgets/app_toast.dart';
 import 'package:litchi_client/shared/widgets/page_status_cards.dart';
@@ -72,6 +73,28 @@ void main() {
     );
     await tester.tap(find.text('Save'));
     expect(taps, 1);
+  });
+
+  testWidgets('AppIconButton loading disables taps and shows progress', (
+    tester,
+  ) async {
+    var taps = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppIconButton(
+            icon: Icons.refresh,
+            loading: true,
+            onPressed: () => taps++,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.tap(find.byType(IconButton));
+    expect(taps, 0);
   });
 
   testWidgets('AppSegmentedControl reports the selected value', (tester) async {
