@@ -9,10 +9,6 @@ import '../theme/app_text_styles.dart';
 
 enum AppButtonVariant { primary, secondary, outline, ghost, danger }
 
-/// Shared text/action button for Windows, macOS and Android.
-///
-/// The visual style is shared while the interaction target adapts to pointer- or
-/// touch-first platforms through [AppControlMetrics].
 class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
@@ -47,6 +43,11 @@ class AppButton extends StatelessWidget {
     final iconSize = size == AppControlSize.compact
         ? AppControlMetrics.compactIconSize
         : AppControlMetrics.regularIconSize;
+    final labelWidget = Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
 
     final button = TextButton(
       onPressed: enabled ? onPressed : null,
@@ -61,7 +62,6 @@ class AppButton extends StatelessWidget {
           ),
         ),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.standard,
         backgroundColor: WidgetStateProperty.resolveWith(
           (states) => _background(c, states),
         ),
@@ -71,9 +71,7 @@ class AppButton extends StatelessWidget {
         overlayColor: WidgetStateProperty.resolveWith(
           (states) => _overlay(c, states),
         ),
-        side: WidgetStateProperty.resolveWith(
-          (states) => _side(c, states),
-        ),
+        side: WidgetStateProperty.resolveWith((states) => _side(c, states)),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
@@ -104,13 +102,7 @@ class AppButton extends StatelessWidget {
             Icon(leadingIcon, size: iconSize),
             const SizedBox(width: AppSpacing.sm),
           ],
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          if (expand) Expanded(child: labelWidget) else labelWidget,
           if (trailingIcon != null) ...[
             const SizedBox(width: AppSpacing.sm),
             Icon(trailingIcon, size: iconSize),
