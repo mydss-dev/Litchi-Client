@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../layout/app_control_metrics.dart';
+import '../layout/app_platform.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_radius.dart';
@@ -30,7 +31,8 @@ class AppIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final adaptiveExtent = AppControlMetrics.iconButtonExtent;
-    final extent = compact && !AppControlMetrics.usesTouchFor(AppPlatform.current)
+    final extent = compact &&
+            !AppControlMetrics.usesTouchFor(AppPlatform.current)
         ? AppControlMetrics.pointerCompactHeight
         : adaptiveExtent;
     final effectiveIconSize =
@@ -80,11 +82,14 @@ class AppIconButton extends StatelessWidget {
   }
 
   Color _foreground(AppColors c, Set<WidgetState> states) {
-    if (states.contains(WidgetState.disabled)) return c.iconMuted.withValues(alpha: 0.55);
+    if (states.contains(WidgetState.disabled)) {
+      return c.iconMuted.withValues(alpha: 0.55);
+    }
     return switch (variant) {
       AppIconButtonVariant.primary => c.primary,
       AppIconButtonVariant.danger => c.danger,
-      AppIconButtonVariant.ghost || AppIconButtonVariant.surface => c.iconDefault,
+      AppIconButtonVariant.ghost ||
+      AppIconButtonVariant.surface => c.iconDefault,
     };
   }
 
@@ -98,9 +103,11 @@ class AppIconButton extends StatelessWidget {
         states.contains(WidgetState.pressed) ||
         states.contains(WidgetState.focused);
     return switch (variant) {
-      AppIconButtonVariant.ghost => active ? c.surfaceMuted : Colors.transparent,
+      AppIconButtonVariant.ghost =>
+        active ? c.surfaceMuted : Colors.transparent,
       AppIconButtonVariant.surface => active ? c.primarySoft : c.surfaceMuted,
-      AppIconButtonVariant.primary => active ? c.primarySoft : Colors.transparent,
+      AppIconButtonVariant.primary =>
+        active ? c.primarySoft : Colors.transparent,
       AppIconButtonVariant.danger => active ? c.dangerSoft : Colors.transparent,
     };
   }
