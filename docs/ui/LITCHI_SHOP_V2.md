@@ -29,6 +29,9 @@ Phase 7 covers the Shop / Plans presentation and purchase-surface presentation o
 
 ## Purchase surfaces
 - `showOrderConfirmDialog` and payment flows keep all existing business logic.
+- Order confirmation billing choices reuse interactive `AppCard` surfaces so label + price stay visible.
+- Coupon entry uses `AppTextField`; verify/remove/cancel/submit actions use `AppButton`.
+- Submit and verify loading states come from shared controls instead of feature-local spinners.
 - Any visual normalization must reuse shared modal/button/input primitives.
 - Do not change order amount calculation, payment methods, balance handling, coupon behavior, polling or callbacks in Phase 7.
 
