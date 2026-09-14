@@ -13,6 +13,8 @@ Invite is the referral growth page. The invite code/link is the primary object; 
 ## Responsive behavior
 - Windows/macOS: invite hero and statistics use the available width; records remain a clear secondary section.
 - Android: one vertical touch-first flow with pull-to-refresh.
+- Platform identity and width responsiveness are separate: Windows/macOS must not switch to Android presentation merely because the content width is narrow.
+- Width may reduce statistics from four columns to two, but touch-only title/action behavior remains touch-only.
 - If Invite is reached as a profile child, preserve the Account back path; as the normal compact primary tab it has no extra back header.
 - One adaptive presentation tree replaces separate desktop and compact widget trees.
 
