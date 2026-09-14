@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/nav_destinations.dart';
+import '../../l10n/l10n.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/node_filter.dart';
 import '../../shared/services/settings_service.dart';
@@ -163,10 +164,10 @@ class _NodesPageState extends State<NodesPage> {
       noPlan: noPlan,
       onSearchChanged: _onSearchChanged,
       onFilterChanged: (filter) => setState(() => _filter = filter),
-      onAutoSelect: _toggleAutoSelect,
-      onSelectNode: _selectNode,
+      onAutoSelect: () => _toggleAutoSelect(),
+      onSelectNode: (node) => _selectNode(node),
       onToggleFavorite: _toggleFavorite,
-      onLatencyTest: _runLatencyTest,
+      onLatencyTest: () => _runLatencyTest(),
       onRefresh: _handleRefresh,
       onPurchase: isPageEnabled(AppPage.shop)
           ? () => ctrl.goToPage(AppPage.shop)
