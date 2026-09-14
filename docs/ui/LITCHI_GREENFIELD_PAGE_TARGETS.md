@@ -164,6 +164,12 @@ A featured plan may use a restrained brand border or top accent. Do not make eve
 
 Billing-cycle selection belongs either in a clean global selector when it applies consistently or in the order flow. Do not create dense control clusters inside every card.
 
+Implementation lock:
+- the default 900×700 desktop composition must resolve to **2 plan columns**
+- a plan card must **not contain its own billing-cycle segmented control**
+- recurring billing periods are selected in order confirmation, where every available backend period remains visible
+- traffic quota is the hero value; price is secondary
+
 ### Order confirmation
 
 One clear purchase summary:
