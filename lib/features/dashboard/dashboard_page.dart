@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../app/core_controller.dart' show ConnectionStatus;
 import '../../app/core_error_message_service.dart';
-import '../../app/nav_destinations.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/layout/app_platform.dart';
 import '../../shared/layout/app_shell_spec.dart';
