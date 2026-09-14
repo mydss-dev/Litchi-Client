@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:litchi/shared/layout/app_layout.dart';
+import 'package:litchi_client/shared/layout/app_layout.dart';
 
 void main() {
   group('AppLayoutMetrics', () {
