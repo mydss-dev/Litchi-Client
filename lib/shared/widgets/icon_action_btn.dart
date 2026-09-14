@@ -1,45 +1,33 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'app_icon_button.dart';
 
-/// Small square icon button with hover highlight, used in dialogs.
-class IconActionBtn extends StatefulWidget {
+/// Compatibility wrapper for older dialog call sites.
+///
+/// New code should use [AppIconButton] directly. Keeping this wrapper avoids a
+/// broad feature migration while all icon actions share one interaction base.
+class IconActionBtn extends StatelessWidget {
   const IconActionBtn({
     super.key,
     required this.icon,
     required this.onTap,
     required this.c,
   });
+
   final IconData icon;
   final VoidCallback onTap;
+
+  /// Retained for source compatibility. AppIconButton resolves theme colors
+  /// from context so callers no longer need to pass this value for rendering.
   final AppColors c;
 
   @override
-  State<IconActionBtn> createState() => _IconActionBtnState();
-}
-
-class _IconActionBtnState extends State<IconActionBtn> {
-  bool _hover = false;
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: _hover ? widget.c.surfaceMuted : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(widget.icon, size: 16, color: widget.c.iconDefault),
-        ),
-      ),
+    return AppIconButton(
+      icon: icon,
+      onPressed: onTap,
+      compact: true,
     );
   }
 }
