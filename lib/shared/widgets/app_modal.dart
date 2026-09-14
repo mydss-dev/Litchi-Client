@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../app/core_platform_support.dart';
+import '../layout/app_platform.dart';
+import '../layout/app_shell_spec.dart';
 import 'app_bottom_sheet.dart';
 
 typedef AppAdaptiveModalBuilder = Widget Function(BuildContext context);
@@ -9,7 +10,8 @@ Future<T?> showAppAdaptiveModal<T>({
   required BuildContext context,
   required AppAdaptiveModalBuilder builder,
 }) {
-  if (CorePlatformSupport.isDesktop) {
+  final navigation = AppShellSpec.navigationFor(AppPlatform.current);
+  if (navigation == AppNavigationMode.sidebar) {
     return showDialog<T>(
       context: context,
       barrierDismissible: true,
@@ -19,9 +21,8 @@ Future<T?> showAppAdaptiveModal<T>({
   return showAppBottomSheet<T>(context: context, builder: builder);
 }
 
-/// Shared adaptive modal body. Compact platforms render this as a bottom sheet;
-/// desktop routes render the same content in the centered desktop surface owned
-/// by [AppBottomSheet].
+/// Shared adaptive modal body. Mobile routes render this as a bottom sheet;
+/// desktop routes render the same content as a centered dialog surface.
 class AppAdaptiveModal extends StatelessWidget {
   const AppAdaptiveModal({
     super.key,
