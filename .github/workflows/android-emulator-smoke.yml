@@ -59,6 +59,8 @@ jobs:
             'emulator' \
             'ndk;28.0.13004108' \
             "$SYSTEM_IMAGE"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
           mkdir -p "$GITHUB_WORKSPACE/.android/avd"
@@ -145,6 +147,8 @@ jobs:
 
           "$ANDROID_HOME/emulator/emulator" -version 2>&1 | tee "$evidence/emulator-version.txt"
           "$ANDROID_HOME/emulator/emulator" -list-avds 2>&1 | tee "$evidence/avd-list.txt"
+          command -v adb | tee "$evidence/adb-path.txt"
+          adb version | tee -a "$evidence/adb-path.txt"
           adb start-server
           adb devices -l | tee "$evidence/adb-before-boot.txt"
 
