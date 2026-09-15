@@ -47,7 +47,8 @@ class GreenfieldConnectionWorkspace extends StatelessWidget {
     final copy = _copyFor(context, c, status, supported);
 
     return AppCard(
-      height: compact ? null : 248,
+      height: compact ? null : 232,
+      shadow: AppCardShadow.soft,
       padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
       child: compact
           ? _CompactWorkspace(
@@ -112,13 +113,13 @@ class _DesktopWorkspace extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(
-          width: 150,
+          width: 142,
           child: Center(
             child: LitchiConnectionOrb(
               status: ctrl.connectionStatus,
               enabled: !busy && supported,
               onPressed: onToggleConnection,
-              size: 136,
+              size: 132,
             ),
           ),
         ),
@@ -127,6 +128,7 @@ class _DesktopWorkspace extends StatelessWidget {
         const SizedBox(width: AppSpacing.lg),
         Expanded(
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _StatusLine(label: statusText, color: statusColor, busy: busy),
@@ -149,7 +151,7 @@ class _DesktopWorkspace extends StatelessWidget {
                   style: AppTextStyles.body.copyWith(color: c.textSecondary),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: AppSpacing.lg),
               _NodeSelector(
                 node: ctrl.currentNode,
                 loading: ctrl.isInitialLoading && ctrl.nodes.isEmpty,
@@ -160,8 +162,10 @@ class _DesktopWorkspace extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.lg),
+        Container(width: 1, color: c.softBorder),
+        const SizedBox(width: AppSpacing.lg),
         SizedBox(
-          width: 204,
+          width: 188,
           child: _RouteControls(
             ctrl: ctrl,
             compact: false,
@@ -270,6 +274,53 @@ class _RouteControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Icon(LucideIcons.route, size: 16, color: c.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                context.l10n.networkSettings,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          context.l10n.connectionMethod,
+          style: AppTextStyles.metricLabel.copyWith(color: c.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        NetworkModeSelector(height: compact ? 40 : 38),
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          context.l10n.proxyMode,
+          style: AppTextStyles.metricLabel.copyWith(color: c.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        ModeStrip(
+          selected: ctrl.proxyMode,
+          onChanged: onProxyModeChanged,
+          buttonHeight: compact ? 44 : 34,
+          padding: AppSpacing.xs,
+        ),
+      ],
+    );
+
+    if (!compact) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: content,
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -277,45 +328,7 @@ class _RouteControls extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: c.softBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              Icon(LucideIcons.route, size: 16, color: c.primary),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  context.l10n.networkSettings,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            context.l10n.connectionMethod,
-            style: AppTextStyles.metricLabel.copyWith(color: c.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const NetworkModeSelector(height: 40),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            context.l10n.proxyMode,
-            style: AppTextStyles.metricLabel.copyWith(color: c.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ModeStrip(
-            selected: ctrl.proxyMode,
-            onChanged: onProxyModeChanged,
-            buttonHeight: compact ? 44 : 36,
-            padding: AppSpacing.xs,
-          ),
-        ],
-      ),
+      child: content,
     );
   }
 }
@@ -355,7 +368,7 @@ class _NodeSelector extends StatelessWidget {
         mouseCursor: SystemMouseCursors.click,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 58),
+          constraints: const BoxConstraints(minHeight: 54),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
