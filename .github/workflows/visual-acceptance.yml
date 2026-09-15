@@ -27,6 +27,9 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+      - name: Prepare snapshot directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force test/visual/goldens | Out-Null
       - name: Render light and dark dashboard snapshots
         run: flutter test --update-goldens test/visual/dashboard_visual_acceptance_test.dart
       - name: Upload dashboard snapshots
