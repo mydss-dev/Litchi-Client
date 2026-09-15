@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 55
     env:
       PACKAGE_ID: com.litchi.client
-      AVD_NAME: litchi-api35
+      AVD_NAME: litchi_api35
       SYSTEM_IMAGE: system-images;android-35;google_apis;x86_64
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -97,9 +97,14 @@ jobs:
             --name "$AVD_NAME" \
             --package "$SYSTEM_IMAGE" \
             --device 'pixel_6'
+          "$ANDROID_HOME/emulator/emulator" -list-avds
 
       - name: Boot headless emulator
         run: |
+          set -euo pipefail
+          mkdir -p build/emulator-smoke
+          adb start-server
+
           nohup "$ANDROID_HOME/emulator/emulator" \
             -avd "$AVD_NAME" \
             -no-window \
@@ -109,16 +114,39 @@ jobs:
             -gpu swiftshader_indirect \
             -camera-back none \
             -camera-front none \
-            > emulator.log 2>&1 &
+            > build/emulator-smoke/emulator.log 2>&1 &
+          emulator_pid=$!
+          echo "$emulator_pid" > build/emulator-smoke/emulator.pid
 
-          adb wait-for-device
+          booted=0
           for i in $(seq 1 120); do
-            if [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = '1' ]; then
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              echo '::error::Emulator exited before Android completed booting'
+              cat build/emulator-smoke/emulator.log || true
+              adb devices -l | tee build/emulator-smoke/adb-devices.txt || true
+              exit 1
+            fi
+
+            if adb get-state >/dev/null 2>&1 && \
+               [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = '1' ]; then
+              booted=1
               break
             fi
             sleep 2
           done
-          test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = '1'
+
+          if [ "$booted" != '1' ]; then
+            echo '::error::Android emulator boot timed out'
+            cat build/emulator-smoke/emulator.log || true
+            adb devices -l | tee build/emulator-smoke/adb-devices.txt || true
+            adb shell getprop > build/emulator-smoke/getprop.txt 2>/dev/null || true
+            exit 1
+          fi
+
+          adb devices -l | tee build/emulator-smoke/adb-devices.txt
+          adb shell getprop > build/emulator-smoke/getprop.txt
+          adb shell wm size > build/emulator-smoke/wm-size-default.txt
+          adb shell wm density > build/emulator-smoke/wm-density-default.txt
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
@@ -171,8 +199,6 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: litchi-android-emulator-api35-${{ github.sha }}
-          path: |
-            build/emulator-smoke/
-            emulator.log
+          path: build/emulator-smoke/
           if-no-files-found: warn
           retention-days: 7
