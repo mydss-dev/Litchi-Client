@@ -115,6 +115,11 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+      - name: Prepare fallback brand assets
+        # Release builds run the same helper whenever no signed remote brand is
+        # available. Visual tests need the bundled fallback so MobileTitleBar can
+        # render the production BrandLogo without changing application code.
+        run: dart run tool/prepare_brand_assets.dart
       - name: Prepare snapshot directory
         run: mkdir -p test/visual/goldens
       - name: Render Android compact primary snapshots
