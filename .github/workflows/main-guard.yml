@@ -1,0 +1,38 @@
+name: Main Guard
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: main-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Flutter + Core Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          lfs: true
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.24.7'
+      - run: flutter pub get
+      - name: Flutter tests
+        run: flutter test
+      - name: Flutter analyze
+        run: flutter analyze
+      - name: sing-box desktop bridge tests
+        working-directory: core/singbox
+        run: |
+          go mod download
+          go test -tags "with_clash_api,with_quic,with_utls,with_wireguard" ./...
