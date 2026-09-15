@@ -102,10 +102,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  android-dashboard-compact:
+  android-primary-compact:
     # Flutter widget render with TargetPlatform.android. This is a layout and
     # presentation acceptance pass, not an emulator/instrumentation test.
-    name: Android-layout Dashboard Compact 360-390 (Linux render)
+    name: Android-layout Primary Compact 360-390 (Linux render)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -117,16 +117,17 @@ jobs:
       - run: flutter pub get
       - name: Prepare snapshot directory
         run: mkdir -p test/visual/goldens
-      - name: Render Android compact Dashboard snapshots
+      - name: Render Android compact primary snapshots
         run: >-
           flutter test
           --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
           --update-goldens
           test/visual/android_dashboard_visual_acceptance_test.dart
-      - name: Upload Android compact Dashboard snapshots
+          test/visual/android_nodes_visual_acceptance_test.dart
+      - name: Upload Android compact primary snapshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: android-dashboard-compact-360-390
-          path: test/visual/goldens/android_dashboard_*.png
+          name: android-primary-compact-360-390
+          path: test/visual/goldens/android_*.png
           if-no-files-found: error
           retention-days: 14
