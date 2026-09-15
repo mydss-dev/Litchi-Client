@@ -9,6 +9,7 @@ import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/no_plan_card.dart';
 import '../../shared/widgets/responsive_page_scaffold.dart';
 import 'widgets/greenfield_traffic_surface.dart';
+import 'widgets/traffic_presentation_theme.dart';
 
 class GreenfieldTrafficPage extends StatefulWidget {
   const GreenfieldTrafficPage({super.key});
@@ -60,22 +61,24 @@ class _GreenfieldTrafficPageState extends State<GreenfieldTrafficPage> {
       final todayTrafficGb = controller.todayTrafficGb;
 
       children.add(
-        GreenfieldTrafficSurface(
-          traffic: controller.traffic,
-          todayTrafficGb: todayTrafficGb,
-          todayComparison: yesterdayComparisonText(
-            context,
+        TrafficPresentationTheme(
+          child: GreenfieldTrafficSurface(
+            traffic: controller.traffic,
+            todayTrafficGb: todayTrafficGb,
+            todayComparison: yesterdayComparisonText(
+              context,
+              usage: controller.trafficUsage,
+              currentGb: todayTrafficGb,
+            ),
+            expiryDays: expiry.days,
+            expiryDate: expiry.date,
+            resetDay: resetDay,
+            resetDays: resetDays,
             usage: controller.trafficUsage,
-            currentGb: todayTrafficGb,
+            fallbackDailyUsage: controller.dailyUsage,
+            periodDays: _periodDays,
+            onPeriodChanged: (value) => setState(() => _periodDays = value),
           ),
-          expiryDays: expiry.days,
-          expiryDate: expiry.date,
-          resetDay: resetDay,
-          resetDays: resetDays,
-          usage: controller.trafficUsage,
-          fallbackDailyUsage: controller.dailyUsage,
-          periodDays: _periodDays,
-          onPeriodChanged: (value) => setState(() => _periodDays = value),
         ),
       );
     }
