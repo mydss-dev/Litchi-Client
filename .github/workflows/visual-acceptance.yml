@@ -48,6 +48,7 @@ jobs:
           --update-goldens
           test/visual/dashboard_visual_acceptance_test.dart
           test/visual/nodes_visual_acceptance_test.dart
+          test/visual/shop_visual_acceptance_test.dart
       - name: Upload primary-page snapshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -80,6 +81,7 @@ jobs:
           --update-goldens
           test/visual/dashboard_visual_acceptance_test.dart
           test/visual/nodes_visual_acceptance_test.dart
+          test/visual/shop_visual_acceptance_test.dart
       - name: Upload primary-page snapshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
