@@ -51,6 +51,8 @@ class _GreenfieldNodeTileState extends State<GreenfieldNodeTile> {
     final rowHeight = widget.compact
         ? GreenfieldNodeTile.compactHeight
         : GreenfieldNodeTile.desktopHeight;
+    final idleColor = widget.compact ? c.cardBg : Colors.transparent;
+    final idleBorder = widget.compact ? c.softBorder : Colors.transparent;
 
     return FocusableActionDetector(
       mouseCursor: SystemMouseCursors.click,
@@ -79,14 +81,14 @@ class _GreenfieldNodeTileState extends State<GreenfieldNodeTile> {
               ? c.primarySoft
               : emphasized
               ? c.surfaceMuted
-              : c.cardBg,
+              : idleColor,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
             color: widget.selected
-                ? c.primary.withValues(alpha: 0.34)
+                ? c.primary.withValues(alpha: 0.26)
                 : _focused
                 ? c.primary.withValues(alpha: 0.26)
-                : c.softBorder,
+                : idleBorder,
           ),
         ),
         child: Material(
