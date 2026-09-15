@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/features/tickets/widgets/greenfield_tickets_surface.dart';
+import 'package:litchi_client/features/tickets/widgets/tickets_presentation_theme.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
 import 'package:litchi_client/shared/layout/app_platform.dart';
 import 'package:litchi_client/shared/layout/app_shell_spec.dart';
@@ -34,10 +35,12 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             padding: AppShellSpec.pagePaddingFor(AppPlatform.current),
-            child: GreenfieldTicketsSurface(
-              tickets: _tickets,
-              onOpenTicket: (_) {},
-              onCreateTicket: () {},
+            child: TicketsPresentationTheme(
+              child: GreenfieldTicketsSurface(
+                tickets: _tickets,
+                onOpenTicket: (_) {},
+                onCreateTicket: () {},
+              ),
             ),
           ),
         ),
