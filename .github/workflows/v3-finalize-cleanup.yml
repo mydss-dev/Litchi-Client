@@ -1,5 +1,6 @@
 name: V3 Finalize Legacy Cleanup
 
+# One-shot gate: physically remove legacy presentation only after all V3 checks pass.
 on:
   push:
     branches: [main]
