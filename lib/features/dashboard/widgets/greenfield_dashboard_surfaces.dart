@@ -61,10 +61,11 @@ class GreenfieldRealtimeSurface extends StatelessWidget {
     );
 
     return AppCard(
-      height: compact ? null : 100,
+      height: compact ? null : 92,
+      shadow: AppCardShadow.none,
       padding: EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
-        vertical: compact ? AppSpacing.md : AppSpacing.lg,
+        vertical: compact ? AppSpacing.md : AppSpacing.md,
       ),
       child: compact
           ? Column(
@@ -85,9 +86,9 @@ class GreenfieldRealtimeSurface extends StatelessWidget {
           : Row(
               children: [
                 Expanded(child: download),
-                _VerticalRule(color: c.softBorder, height: 46),
+                _VerticalRule(color: c.softBorder, height: 42),
                 Expanded(child: upload),
-                _VerticalRule(color: c.softBorder, height: 46),
+                _VerticalRule(color: c.softBorder, height: 42),
                 Expanded(child: duration),
               ],
             ),
@@ -138,7 +139,11 @@ class GreenfieldSubscriptionSurface extends StatelessWidget {
     );
 
     return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      shadow: AppCardShadow.none,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.lg,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -304,14 +309,14 @@ class _MetricCell extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 32,
+            height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: c.primarySoft,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 16, color: c.primary),
+            child: Icon(icon, size: 15, color: c.primary),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
