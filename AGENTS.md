@@ -38,6 +38,12 @@ V3 is not accepted because it compiles. It is accepted only when:
 4. No legacy card-stack look, old sidebar composition, or old home-page silhouette survives by accident.
 5. Functional behavior remains connected to the existing stable business/core layer.
 
+## Main Branch Working Mode
+
+V3 work now lands directly on `main` unless explicitly changed by the owner.
+Do not create stacked redesign PRs or parallel UI branches by default.
+Every direct-main change must still obey Rule #1 and keep the V3 boundary test green.
+
 ## Implementation Order
 
 1. V3 shell + navigation
@@ -45,9 +51,5 @@ V3 is not accepted because it compiles. It is accepted only when:
 3. Nodes
 4. Settings
 5. Shop / checkout
-6. Account / Wallet / Invite / Traffic / Orders / Tickets
-7. Remove legacy UI only after V3 replacements are functionally complete and validated
-
-## Review Rule
-
-Any future PR or commit that violates Rule #1 must be rejected even if tests pass.
+6. Account / wallet / invite / traffic / orders / tickets
+7. Legacy UI deletion after all required behavior is covered
