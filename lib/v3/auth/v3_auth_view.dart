@@ -67,7 +67,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                     padding: const EdgeInsets.all(34),
                     child: Stack(
                       children: [
-                        Align(
+                        const Align(
                           alignment: Alignment.topLeft,
                           child: _BrandMark(color: Colors.white),
                         ),
