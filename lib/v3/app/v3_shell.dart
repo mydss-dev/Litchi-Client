@@ -11,6 +11,7 @@ import '../pages/v3_invite_page.dart';
 import '../pages/v3_nodes_page.dart';
 import '../pages/v3_settings_page.dart';
 import '../pages/v3_shop_page.dart';
+import '../pages/v3_traffic_page.dart';
 import '../pages/v3_wallet_page.dart';
 import '../theme/v3_palette.dart';
 
@@ -56,6 +57,7 @@ class _V3Workspace extends StatelessWidget {
           AppPage.account => const V3AccountPage(),
           AppPage.wallet => const V3WalletPage(),
           AppPage.invite => const V3InvitePage(),
+          AppPage.traffic => const V3TrafficPage(),
           AppPage.settings => const V3SettingsPage(),
           _ => const V3DashboardPage(),
         };
@@ -65,11 +67,7 @@ class _V3Workspace extends StatelessWidget {
             backgroundColor: p.canvas,
             body: page,
             floatingActionButton: controller.page == AppPage.account
-                ? FloatingActionButton.small(
-                    tooltip: '邀请朋友',
-                    onPressed: () => controller.goToPage(AppPage.invite),
-                    child: const Icon(Icons.group_add_rounded),
-                  )
+                ? _ProfileQuickActions(controller: controller)
                 : null,
             bottomNavigationBar: _MobileNav(controller: controller),
           );
@@ -97,6 +95,41 @@ class _V3Workspace extends StatelessWidget {
   }
 }
 
+class _ProfileQuickActions extends StatelessWidget {
+  const _ProfileQuickActions({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FloatingActionButton.small(
+          heroTag: 'v3-wallet',
+          tooltip: '钱包',
+          onPressed: () => controller.goToPage(AppPage.wallet),
+          child: const Icon(Icons.account_balance_wallet_rounded),
+        ),
+        const SizedBox(height: 10),
+        FloatingActionButton.small(
+          heroTag: 'v3-invite',
+          tooltip: '邀请朋友',
+          onPressed: () => controller.goToPage(AppPage.invite),
+          child: const Icon(Icons.group_add_rounded),
+        ),
+        const SizedBox(height: 10),
+        FloatingActionButton.small(
+          heroTag: 'v3-traffic',
+          tooltip: '流量统计',
+          onPressed: () => controller.goToPage(AppPage.traffic),
+          child: const Icon(Icons.data_usage_rounded),
+        ),
+      ],
+    );
+  }
+}
+
 class _DesktopRail extends StatelessWidget {
   const _DesktopRail({required this.controller});
 
@@ -108,7 +141,8 @@ class _DesktopRail extends StatelessWidget {
     AppPage.settings => 3,
     AppPage.wallet => 4,
     AppPage.invite => 5,
-    AppPage.account || AppPage.traffic || AppPage.orders || AppPage.tickets => 6,
+    AppPage.traffic => 6,
+    AppPage.account || AppPage.orders || AppPage.tickets => 7,
     _ => 0,
   };
 
@@ -119,10 +153,7 @@ class _DesktopRail extends StatelessWidget {
     return Container(
       width: 86,
       margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      decoration: BoxDecoration(
-        color: p.rail,
-        borderRadius: BorderRadius.circular(28),
-      ),
+      decoration: BoxDecoration(color: p.rail, borderRadius: BorderRadius.circular(28)),
       child: Column(
         children: [
           const SizedBox(height: 18),
@@ -130,17 +161,10 @@ class _DesktopRail extends StatelessWidget {
             width: 38,
             height: 38,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: p.accent,
-              borderRadius: BorderRadius.circular(14),
-            ),
+            decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(14)),
             child: const Text(
               'L',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
             ),
           ),
           const SizedBox(height: 28),
@@ -186,6 +210,13 @@ class _DesktopRail extends StatelessWidget {
             onTap: () => controller.goToPage(AppPage.invite),
           ),
           const SizedBox(height: 8),
+          _RailButton(
+            icon: Icons.data_usage_rounded,
+            label: '流量',
+            selected: current == 6,
+            onTap: () => controller.goToPage(AppPage.traffic),
+          ),
+          const SizedBox(height: 8),
           Tooltip(
             message: controller.user.name.isEmpty ? '账户' : controller.user.name,
             child: InkWell(
@@ -197,7 +228,7 @@ class _DesktopRail extends StatelessWidget {
                 height: 42,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: current == 6
+                  color: current == 7
                       ? Colors.white
                       : Colors.white.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(14),
@@ -207,7 +238,7 @@ class _DesktopRail extends StatelessWidget {
                       ? 'U'
                       : controller.user.avatarLetter.substring(0, 1).toUpperCase(),
                   style: TextStyle(
-                    color: current == 6 ? p.rail : Colors.white,
+                    color: current == 7 ? p.rail : Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -293,10 +324,7 @@ class _MobileNav extends StatelessWidget {
       child: Container(
         height: 66,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        decoration: BoxDecoration(
-          color: p.rail,
-          borderRadius: BorderRadius.circular(22),
-        ),
+        decoration: BoxDecoration(color: p.rail, borderRadius: BorderRadius.circular(22)),
         child: Row(
           children: [
             _MobileNavItem(
@@ -461,11 +489,7 @@ class _WindowButton extends StatelessWidget {
       child: SizedBox(
         width: 46,
         height: 44,
-        child: Icon(
-          icon,
-          size: 16,
-          color: danger ? p.danger : p.textMuted,
-        ),
+        child: Icon(icon, size: 16, color: danger ? p.danger : p.textMuted),
       ),
     );
   }
@@ -487,17 +511,10 @@ class _V3BootView extends StatelessWidget {
               width: 48,
               height: 48,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: p.accent,
-                borderRadius: BorderRadius.circular(17),
-              ),
+              decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(17)),
               child: const Text(
                 'L',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
               ),
             ),
             const SizedBox(height: 16),
