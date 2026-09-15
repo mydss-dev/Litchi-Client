@@ -61,6 +61,8 @@ jobs:
             "$SYSTEM_IMAGE"
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/28.0.13004108" >> "$GITHUB_ENV"
+          mkdir -p "$GITHUB_WORKSPACE/.android/avd"
+          echo "ANDROID_AVD_HOME=$GITHUB_WORKSPACE/.android/avd" >> "$GITHUB_ENV"
 
       - run: flutter pub get
 
@@ -94,12 +96,46 @@ jobs:
 
       - name: Create Android 15 AVD
         run: |
-          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+          set -euo pipefail
+          evidence="$GITHUB_WORKSPACE/build/emulator-smoke"
+          mkdir -p "$evidence" "$ANDROID_AVD_HOME"
+
+          echo "ANDROID_HOME=$ANDROID_HOME" | tee "$evidence/android-paths.txt"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" | tee -a "$evidence/android-paths.txt"
+          echo "HOME=$HOME" | tee -a "$evidence/android-paths.txt"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --list_installed \
+            > "$evidence/sdkmanager-installed.txt" 2>&1
+          "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" list device \
+            > "$evidence/avdmanager-devices.txt" 2>&1
+
+          rm -rf "$ANDROID_AVD_HOME/$AVD_NAME.avd" "$ANDROID_AVD_HOME/$AVD_NAME.ini"
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
             --force \
             --name "$AVD_NAME" \
             --package "$SYSTEM_IMAGE" \
-            --device 'pixel_6'
-          "$ANDROID_HOME/emulator/emulator" -list-avds
+            --device 'pixel_6' \
+            -p "$ANDROID_AVD_HOME/$AVD_NAME.avd" \
+            2>&1 | tee "$evidence/avdmanager-create.log"
+
+          find "$GITHUB_WORKSPACE/.android" -maxdepth 3 -type f -o -type d \
+            | sort > "$evidence/avd-files.txt" || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" list avd \
+            > "$evidence/avdmanager-list.txt" 2>&1 || true
+          "$ANDROID_HOME/emulator/emulator" -list-avds \
+            2>&1 | tee "$evidence/avd-list.txt"
+
+          if [ ! -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" ]; then
+            echo "::error::AVD ini was not created at $ANDROID_AVD_HOME/$AVD_NAME.ini"
+            cat "$evidence/avdmanager-create.log" || true
+            cat "$evidence/avdmanager-list.txt" || true
+            cat "$evidence/avd-files.txt" || true
+            exit 1
+          fi
+          test -d "$ANDROID_AVD_HOME/$AVD_NAME.avd"
+          grep -Fxq "$AVD_NAME" "$evidence/avd-list.txt" || {
+            echo "::error::Emulator cannot discover AVD $AVD_NAME"
+            exit 1
+          }
 
       - name: Boot headless emulator
         run: |
@@ -162,7 +198,9 @@ jobs:
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
-          adb shell wm size 390x844
+          # At 440 dpi, 1073x2321 physical pixels is approximately
+          # 390x844 logical dp, matching the compact widget acceptance target.
+          adb shell wm size 1073x2321
           adb shell wm density 440
           adb shell input keyevent KEYCODE_WAKEUP || true
           adb shell wm dismiss-keyguard || true
@@ -181,14 +219,14 @@ jobs:
       - name: Capture host-level evidence
         run: |
           mkdir -p build/emulator-smoke
-          adb exec-out screencap -p > build/emulator-smoke/launch-390x844.png
+          adb exec-out screencap -p > build/emulator-smoke/launch-logical-390x844.png
           adb shell wm size > build/emulator-smoke/wm-size.txt
           adb shell wm density > build/emulator-smoke/wm-density.txt
           adb shell dumpsys window > build/emulator-smoke/window.txt
           adb shell dumpsys activity top > build/emulator-smoke/activity-top.txt
           adb shell dumpsys display > build/emulator-smoke/display.txt
           adb logcat -d > build/emulator-smoke/logcat.txt
-          test -s build/emulator-smoke/launch-390x844.png
+          test -s build/emulator-smoke/launch-logical-390x844.png
 
       - name: Check startup crash and Android back behavior
         run: |
