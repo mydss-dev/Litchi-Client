@@ -1,8 +1,19 @@
 name: UI Platform Check
 
-# Final consolidated PR validation: keep this workflow as the cross-platform build gate.
+# Cross-platform build gate for the direct-main V3 workflow.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'windows/**'
+      - 'macos/**'
+      - 'android/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/ui-platform-check.yml'
   pull_request:
     branches: [main]
     paths:
@@ -33,6 +44,7 @@ jobs:
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
+          cache: true
       - run: flutter pub get
       - run: flutter build windows --debug
 
@@ -46,6 +58,7 @@ jobs:
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
+          cache: true
       - run: flutter pub get
       - run: flutter build macos --debug
 
@@ -63,9 +76,11 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.24.7'
+          cache-dependency-path: core/singbox/go.sum
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
+          cache: true
       - name: Install Android NDK
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
