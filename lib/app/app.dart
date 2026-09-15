@@ -6,12 +6,14 @@ import 'package:window_manager/window_manager.dart';
 import '../config/app_config.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../shared/theme/app_radius.dart';
-import '../shared/theme/app_theme.dart';
+import '../v3/app/v3_shell.dart';
+import '../v3/theme/v3_palette.dart';
 import 'app_controller.dart';
-import 'app_shell.dart';
 
-/// Root widget: owns the [AppController] and rebuilds [MaterialApp] when the
-/// theme mode changes.
+/// Root widget for Litchi V3.
+///
+/// Business state remains in [AppController], while every rendered product
+/// surface comes from the isolated V3 visual layer under `lib/v3/`.
 class LitchiApp extends StatefulWidget {
   const LitchiApp({super.key, this.launchSilently = false});
 
@@ -27,7 +29,7 @@ class _LitchiAppState extends State<LitchiApp> {
   @override
   void initState() {
     super.initState();
-    _controller.init(); // restores token + server URL; notifies when done
+    _controller.init();
   }
 
   @override
@@ -46,25 +48,15 @@ class _LitchiAppState extends State<LitchiApp> {
           return MaterialApp(
             title: AppConfig.appName,
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
+            theme: V3Theme.light(),
+            darkTheme: V3Theme.dark(),
             themeMode: _controller.themeMode,
             locale: _controller.locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            // Linux needs a Flutter-owned transparent shape around the entire
-            // Navigator. Windows and macOS use their official system shapes.
             builder: (context, child) {
               Widget content = child ?? const SizedBox.shrink();
               if (Platform.isLinux) content = LinuxWindowClip(child: content);
-              // The desktop shell is a non-resizable window with a fixed 420px
-              // width whose height auto-fits the current page's content. The
-              // Windows engine ties MediaQuery.textScaler to the
-              // display DPI (125% → 1.25, 150% → 1.5), which inflates every
-              // logical text size and clips the home screen on high-DPI machines
-              // — the Win10/Win11 mismatch. Pin text scaling to 1.0 so the
-              // layout renders identically across machines; DPI still sharpens
-              // rendering via devicePixelRatio.
               if (Platform.isWindows ||
                   Platform.isMacOS ||
                   Platform.isLinux) {
@@ -76,14 +68,9 @@ class _LitchiAppState extends State<LitchiApp> {
               }
               return content;
             },
-            // Transparent so the rounded window shell shows through at the
-            // clipped corners (§ rounded-window spec).
-            //
-            // A single fixed-size shell for every platform: it renders the
-            // bottom-nav layout regardless of window width.
             home: Scaffold(
               backgroundColor: Platform.isWindows ? null : Colors.transparent,
-              body: AppShell(launchSilently: widget.launchSilently),
+              body: V3Shell(launchSilently: widget.launchSilently),
             ),
           );
         },
@@ -92,10 +79,6 @@ class _LitchiAppState extends State<LitchiApp> {
   }
 }
 
-/// Clips the complete Navigator rather than only its home route.
-///
-/// Modal routes render above [AppShell], so Linux clips the entire Navigator
-/// against its transparent host window.
 class LinuxWindowClip extends StatefulWidget {
   const LinuxWindowClip({super.key, required this.child});
 
@@ -122,7 +105,7 @@ class _LinuxWindowClipState extends State<LinuxWindowClip> with WindowListener {
         setState(() => _maximized = maximized);
       }
     } catch (_) {
-      // The native plugin is unavailable in widget tests.
+      // Native plugin can be unavailable in widget tests.
     }
   }
 
