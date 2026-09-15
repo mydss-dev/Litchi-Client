@@ -22,6 +22,7 @@ void main() {
 
     expect(source, contains("ValueKey('greenfield-settings-surface')"));
     expect(source, contains('constraints.maxWidth >= 920'));
+    expect(source, isNot(contains('app_locale_preference.dart')));
   });
 
   test('greenfield settings preserves protected network behavior', () {
