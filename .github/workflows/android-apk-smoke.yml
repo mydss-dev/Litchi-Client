@@ -60,16 +60,6 @@ jobs:
           dart run tool/apply_branding.dart --app-name=Litchi --metadata-only
           dart run flutter_launcher_icons
 
-      - name: Build pinned sing-box libbox AAR
-        run: |
-          bash tool/build_libbox_android.sh
-          test -s android/app/libs/libbox.aar
-          unzip -l android/app/libs/libbox.aar | grep -q 'jni/arm64-v8a/libbox.so'
-
-      - name: Compile Android Kotlin bridge
-        working-directory: android
-        run: ./gradlew :app:compileDebugKotlin --stacktrace
-
       - name: Analyze Flutter sources
         run: |
           set -o pipefail
@@ -83,6 +73,16 @@ jobs:
           path: flutter-analyze.log
           if-no-files-found: ignore
           retention-days: 3
+
+      - name: Build pinned sing-box libbox AAR
+        run: |
+          bash tool/build_libbox_android.sh
+          test -s android/app/libs/libbox.aar
+          unzip -l android/app/libs/libbox.aar | grep -q 'jni/arm64-v8a/libbox.so'
+
+      - name: Compile Android Kotlin bridge
+        working-directory: android
+        run: ./gradlew :app:compileDebugKotlin --stacktrace
 
       - name: Build debug APK
         run: flutter build apk --debug
