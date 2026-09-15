@@ -152,10 +152,10 @@ class _CurrentPlanStrip extends StatelessWidget {
     return AppCard(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xl,
-        vertical: AppSpacing.lg,
+        vertical: AppSpacing.md,
       ),
-      color: c.primarySoft.withValues(alpha: 0.58),
-      borderColor: c.primary.withValues(alpha: 0.16),
+      color: c.cardBg,
+      borderColor: c.softBorder,
       shadow: AppCardShadow.none,
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -169,7 +169,7 @@ class _CurrentPlanStrip extends StatelessWidget {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: c.cardBg,
+                  color: c.primarySoft,
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(LucideIcons.crown, size: 18, color: c.primary),
@@ -189,7 +189,7 @@ class _CurrentPlanStrip extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyStrong.copyWith(
-                        color: c.textPrimary,
+                        color: c.primary,
                       ),
                     ),
                   ],
