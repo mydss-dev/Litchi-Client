@@ -32,7 +32,7 @@ void main() {
 
   test('app root renders V3 instead of legacy AppShell', () {
     final source = File('lib/app/app.dart').readAsStringSync();
-    expect(source, contains("../v3/app/v3_shell.dart"));
+    expect(source, contains('../v3/app/v3_shell.dart'));
     expect(source, contains('V3Shell('));
     expect(source, isNot(contains("import 'app_shell.dart'")));
     expect(source, isNot(contains('body: AppShell(')));
