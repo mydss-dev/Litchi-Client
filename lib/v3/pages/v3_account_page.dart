@@ -353,7 +353,7 @@ class _FinancePanel extends StatelessWidget {
       subtitle: '账户余额',
       accent: p.accent,
       trailing: controller.withdrawable > 0
-          ? '佣金 ${symbol}${controller.withdrawable.toStringAsFixed(2)}'
+          ? '佣金 $symbol${controller.withdrawable.toStringAsFixed(2)}'
           : null,
     );
   }
