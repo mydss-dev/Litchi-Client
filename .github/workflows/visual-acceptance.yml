@@ -38,7 +38,11 @@ jobs:
       - name: Prepare snapshot directory
         run: mkdir -p test/visual/goldens
       - name: Render light and dark dashboard snapshots
-        run: flutter test --update-goldens test/visual/dashboard_visual_acceptance_test.dart
+        run: >-
+          flutter test
+          --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
+          --update-goldens
+          test/visual/dashboard_visual_acceptance_test.dart
       - name: Upload dashboard snapshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -65,7 +69,11 @@ jobs:
         shell: pwsh
         run: New-Item -ItemType Directory -Force test/visual/goldens | Out-Null
       - name: Render light and dark dashboard snapshots
-        run: flutter test --update-goldens test/visual/dashboard_visual_acceptance_test.dart
+        run: >-
+          flutter test
+          --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
+          --update-goldens
+          test/visual/dashboard_visual_acceptance_test.dart
       - name: Upload dashboard snapshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
