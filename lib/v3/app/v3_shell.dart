@@ -9,6 +9,7 @@ import '../pages/v3_account_page.dart';
 import '../pages/v3_dashboard_page.dart';
 import '../pages/v3_invite_page.dart';
 import '../pages/v3_nodes_page.dart';
+import '../pages/v3_orders_page.dart';
 import '../pages/v3_settings_page.dart';
 import '../pages/v3_shop_page.dart';
 import '../pages/v3_traffic_page.dart';
@@ -58,6 +59,7 @@ class _V3Workspace extends StatelessWidget {
           AppPage.wallet => const V3WalletPage(),
           AppPage.invite => const V3InvitePage(),
           AppPage.traffic => const V3TrafficPage(),
+          AppPage.orders => const V3OrdersPage(),
           AppPage.settings => const V3SettingsPage(),
           _ => const V3DashboardPage(),
         };
@@ -125,6 +127,13 @@ class _ProfileQuickActions extends StatelessWidget {
           onPressed: () => controller.goToPage(AppPage.traffic),
           child: const Icon(Icons.data_usage_rounded),
         ),
+        const SizedBox(height: 10),
+        FloatingActionButton.small(
+          heroTag: 'v3-orders',
+          tooltip: '订单记录',
+          onPressed: () => controller.goToPage(AppPage.orders),
+          child: const Icon(Icons.receipt_long_rounded),
+        ),
       ],
     );
   }
@@ -142,7 +151,8 @@ class _DesktopRail extends StatelessWidget {
     AppPage.wallet => 4,
     AppPage.invite => 5,
     AppPage.traffic => 6,
-    AppPage.account || AppPage.orders || AppPage.tickets => 7,
+    AppPage.orders => 7,
+    AppPage.account || AppPage.tickets => 8,
     _ => 0,
   };
 
@@ -167,28 +177,28 @@ class _DesktopRail extends StatelessWidget {
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 22),
           _RailButton(
             icon: Icons.blur_circular_rounded,
             label: '连接',
             selected: current == 0,
             onTap: () => controller.goToPage(AppPage.dashboard),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _RailButton(
             icon: Icons.hub_rounded,
             label: '节点',
             selected: current == 1,
             onTap: () => controller.goToPage(AppPage.nodes),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _RailButton(
             icon: Icons.storefront_rounded,
             label: '套餐',
             selected: current == 2,
             onTap: () => controller.goToPage(AppPage.shop),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _RailButton(
             icon: Icons.tune_rounded,
             label: '设置',
@@ -202,21 +212,28 @@ class _DesktopRail extends StatelessWidget {
             selected: current == 4,
             onTap: () => controller.goToPage(AppPage.wallet),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _RailButton(
             icon: Icons.group_add_rounded,
             label: '邀请',
             selected: current == 5,
             onTap: () => controller.goToPage(AppPage.invite),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _RailButton(
             icon: Icons.data_usage_rounded,
             label: '流量',
             selected: current == 6,
             onTap: () => controller.goToPage(AppPage.traffic),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
+          _RailButton(
+            icon: Icons.receipt_long_rounded,
+            label: '订单',
+            selected: current == 7,
+            onTap: () => controller.goToPage(AppPage.orders),
+          ),
+          const SizedBox(height: 6),
           Tooltip(
             message: controller.user.name.isEmpty ? '账户' : controller.user.name,
             child: InkWell(
@@ -228,7 +245,7 @@ class _DesktopRail extends StatelessWidget {
                 height: 42,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: current == 7
+                  color: current == 8
                       ? Colors.white
                       : Colors.white.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(14),
@@ -238,21 +255,21 @@ class _DesktopRail extends StatelessWidget {
                       ? 'U'
                       : controller.user.avatarLetter.substring(0, 1).toUpperCase(),
                   style: TextStyle(
-                    color: current == 7 ? p.rail : Colors.white,
+                    color: current == 8 ? p.rail : Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _RailButton(
             icon: Icons.logout_rounded,
             label: '退出',
             selected: false,
             onTap: controller.logout,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
         ],
       ),
     );
@@ -282,15 +299,15 @@ class _RailButton extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          width: 50,
-          height: 50,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             color: selected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(
             icon,
-            size: 21,
+            size: 20,
             color: selected ? p.rail : Colors.white.withValues(alpha: 0.56),
           ),
         ),
