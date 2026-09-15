@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/features/traffic/widgets/greenfield_traffic_surface.dart';
+import 'package:litchi_client/features/traffic/widgets/traffic_presentation_theme.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
 import 'package:litchi_client/shared/layout/app_platform.dart';
 import 'package:litchi_client/shared/layout/app_shell_spec.dart';
@@ -34,30 +35,32 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             padding: AppShellSpec.pagePaddingFor(AppPlatform.current),
-            child: GreenfieldTrafficSurface(
-              traffic: const TrafficModel(
-                totalGb: 512,
-                usedGb: 128.4,
-                remainGb: 383.6,
+            child: TrafficPresentationTheme(
+              child: GreenfieldTrafficSurface(
+                traffic: const TrafficModel(
+                  totalGb: 512,
+                  usedGb: 128.4,
+                  remainGb: 383.6,
+                ),
+                todayTrafficGb: 2.48,
+                todayComparison: '较昨日减少 18%',
+                expiryDays: 107,
+                expiryDate: '2026-12-31',
+                resetDay: 1,
+                resetDays: 16,
+                usage: _usage,
+                fallbackDailyUsage: const [
+                  1.8,
+                  2.3,
+                  3.1,
+                  1.6,
+                  4.2,
+                  2.9,
+                  2.48,
+                ],
+                periodDays: 7,
+                onPeriodChanged: (_) {},
               ),
-              todayTrafficGb: 2.48,
-              todayComparison: '较昨日减少 18%',
-              expiryDays: 107,
-              expiryDate: '2026-12-31',
-              resetDay: 1,
-              resetDays: 16,
-              usage: _usage,
-              fallbackDailyUsage: const [
-                1.8,
-                2.3,
-                3.1,
-                1.6,
-                4.2,
-                2.9,
-                2.48,
-              ],
-              periodDays: 7,
-              onPeriodChanged: (_) {},
             ),
           ),
         ),
