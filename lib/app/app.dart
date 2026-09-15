@@ -7,6 +7,7 @@ import '../config/app_config.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../shared/theme/app_radius.dart';
 import '../v3/app/v3_shell.dart';
+import '../v3/app/v3_window_bootstrap.dart';
 import '../v3/theme/v3_palette.dart';
 import 'app_controller.dart';
 
@@ -70,7 +71,9 @@ class _LitchiAppState extends State<LitchiApp> {
             },
             home: Scaffold(
               backgroundColor: Platform.isWindows ? null : Colors.transparent,
-              body: V3Shell(launchSilently: widget.launchSilently),
+              body: V3WindowBootstrap(
+                child: V3Shell(launchSilently: widget.launchSilently),
+              ),
             ),
           );
         },
