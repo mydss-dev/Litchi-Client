@@ -24,6 +24,7 @@ Orders is the purchase ledger. It should make payment state and the next availab
 - Deposit orders remain labeled as account top-up.
 - Existing localized period and status mapping remain the display authority.
 - showOrdersModal remains a public entry used by Account Hub.
+- OrdersPage and showOrdersModal must both route to the same Greenfield ledger/state machine. Do not fork a modal-only order UI or duplicate payment/cancel behavior.
 
 ## Removal rule
 The legacy per-order card composition and custom action buttons are not design references. Preserve behavior and public contracts, not the old presentation tree.
