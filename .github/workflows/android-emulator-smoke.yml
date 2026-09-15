@@ -102,28 +102,38 @@ jobs:
       - name: Boot headless emulator
         run: |
           set -euo pipefail
-          mkdir -p build/emulator-smoke
-          adb start-server
+          evidence="$GITHUB_WORKSPACE/build/emulator-smoke"
+          mkdir -p "$evidence"
 
-          nohup "$ANDROID_HOME/emulator/emulator" \
+          "$ANDROID_HOME/emulator/emulator" -version 2>&1 | tee "$evidence/emulator-version.txt"
+          "$ANDROID_HOME/emulator/emulator" -list-avds 2>&1 | tee "$evidence/avd-list.txt"
+          adb start-server
+          adb devices -l | tee "$evidence/adb-before-boot.txt"
+
+          "$ANDROID_HOME/emulator/emulator" \
             -avd "$AVD_NAME" \
             -no-window \
             -noaudio \
             -no-boot-anim \
             -no-snapshot \
-            -gpu swiftshader_indirect \
+            -gpu software \
             -camera-back none \
             -camera-front none \
-            > build/emulator-smoke/emulator.log 2>&1 &
+            > "$evidence/emulator.log" 2>&1 &
           emulator_pid=$!
-          echo "$emulator_pid" > build/emulator-smoke/emulator.pid
+          echo "$emulator_pid" > "$evidence/emulator.pid"
 
           booted=0
           for i in $(seq 1 120); do
             if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              set +e
+              wait "$emulator_pid"
+              emulator_rc=$?
+              set -e
+              echo "Emulator exit code: $emulator_rc" | tee "$evidence/emulator-exit.txt"
               echo '::error::Emulator exited before Android completed booting'
-              cat build/emulator-smoke/emulator.log || true
-              adb devices -l | tee build/emulator-smoke/adb-devices.txt || true
+              cat "$evidence/emulator.log" || true
+              adb devices -l | tee "$evidence/adb-devices.txt" || true
               exit 1
             fi
 
@@ -137,16 +147,16 @@ jobs:
 
           if [ "$booted" != '1' ]; then
             echo '::error::Android emulator boot timed out'
-            cat build/emulator-smoke/emulator.log || true
-            adb devices -l | tee build/emulator-smoke/adb-devices.txt || true
-            adb shell getprop > build/emulator-smoke/getprop.txt 2>/dev/null || true
+            cat "$evidence/emulator.log" || true
+            adb devices -l | tee "$evidence/adb-devices.txt" || true
+            adb shell getprop > "$evidence/getprop.txt" 2>/dev/null || true
             exit 1
           fi
 
-          adb devices -l | tee build/emulator-smoke/adb-devices.txt
-          adb shell getprop > build/emulator-smoke/getprop.txt
-          adb shell wm size > build/emulator-smoke/wm-size-default.txt
-          adb shell wm density > build/emulator-smoke/wm-density-default.txt
+          adb devices -l | tee "$evidence/adb-devices.txt"
+          adb shell getprop > "$evidence/getprop.txt"
+          adb shell wm size > "$evidence/wm-size-default.txt"
+          adb shell wm density > "$evidence/wm-density-default.txt"
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
