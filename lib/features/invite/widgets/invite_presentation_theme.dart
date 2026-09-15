@@ -16,10 +16,10 @@ class InvitePresentationTheme extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = AppColors.of(context);
-    final quietBrandSurface = Color.alphaBlend(
-      colors.primary.withValues(alpha: 0.045),
-      colors.cardBg,
-    );
+    final dark = theme.brightness == Brightness.dark;
+    final quietBrandSurface = dark
+        ? const Color(0xFF171D2B)
+        : const Color(0xFFFFFBFC);
 
     return Theme(
       data: theme.copyWith(
@@ -28,7 +28,7 @@ class InvitePresentationTheme extends StatelessWidget {
             if (extension is! AppColors) extension,
           colors.copyWith(
             primarySoft: quietBrandSurface,
-            shadow: colors.shadow.withValues(alpha: 0.42),
+            shadow: colors.shadow.withValues(alpha: dark ? 0.18 : 0.025),
           ),
         ],
       ),
