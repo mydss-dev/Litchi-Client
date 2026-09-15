@@ -175,9 +175,9 @@ class _ProfilePlanHero extends StatelessWidget {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: c.primary.withValues(alpha: 0.20),
-            blurRadius: 22,
-            offset: const Offset(0, 8),
+            color: c.primary.withValues(alpha: 0.16),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -239,8 +239,8 @@ class _ProfilePlanHero extends StatelessWidget {
 
     return AppCard(
       padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
-      color: c.primarySoft.withValues(alpha: 0.48),
-      borderColor: c.primary.withValues(alpha: 0.14),
+      color: c.cardBg,
+      borderColor: c.softBorder,
       shadow: AppCardShadow.soft,
       child: compact
           ? Column(
@@ -292,7 +292,7 @@ class _WalletOverview extends StatelessWidget {
     final c = AppColors.of(context);
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      shadow: AppCardShadow.soft,
+      shadow: AppCardShadow.none,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -576,7 +576,7 @@ class _SecuritySection extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         AppCard(
           padding: const EdgeInsets.all(AppSpacing.lg),
-          shadow: AppCardShadow.soft,
+          shadow: AppCardShadow.none,
           child: Column(
             children: [
               if (hasPlan) ...[
