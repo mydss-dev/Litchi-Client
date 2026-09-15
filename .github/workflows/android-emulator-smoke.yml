@@ -234,8 +234,10 @@ jobs:
 
       - name: Check startup crash and Android back behavior
         run: |
-          if grep -A 20 -B 5 -E 'FATAL EXCEPTION|AndroidRuntime' build/emulator-smoke/logcat.txt | grep -q "$PACKAGE_ID"; then
+          if grep -A 30 -B 2 -F 'FATAL EXCEPTION' build/emulator-smoke/logcat.txt \
+             | grep -Fq "Process: $PACKAGE_ID"; then
             echo '::error::Litchi crashed during Android host smoke'
+            grep -A 30 -B 2 -F 'FATAL EXCEPTION' build/emulator-smoke/logcat.txt || true
             exit 1
           fi
 
