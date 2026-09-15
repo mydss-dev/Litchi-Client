@@ -8,6 +8,7 @@ import '../../shared/models/app_models.dart';
 import '../../shared/widgets/app_toast.dart';
 import '../../shared/widgets/responsive_page_scaffold.dart';
 import 'widgets/greenfield_invite_surface.dart';
+import 'widgets/invite_presentation_theme.dart';
 
 class GreenfieldInvitePage extends StatefulWidget {
   const GreenfieldInvitePage({super.key});
@@ -118,27 +119,29 @@ class _GreenfieldInvitePageState extends State<GreenfieldInvitePage> {
       setState(() => _selected = next);
     }
 
-    final surface = GreenfieldInviteSurface(
-      invite: invite,
-      selectedIndex: safeSelected,
-      inviteCount: invites.length,
-      creating: _creating,
-      registeredUsers: controller.invitedCount,
-      pendingCommission:
-          '${controller.currencySymbol}${controller.pendingCommission.toStringAsFixed(2)}',
-      earnedCommission:
-          '${controller.currencySymbol}${controller.earnedCommission.toStringAsFixed(2)}',
-      commissionRate: '${controller.commissionRate.toStringAsFixed(0)}%',
-      records: controller.inviteRecords,
-      currencySymbol: controller.currencySymbol,
-      onPrevious: () => selectRelative(-1),
-      onNext: () => selectRelative(1),
-      onCreate: _createInviteCode,
-      onCopy: () => _copyLink(invite.link),
-      onShareWechat: () => _share(invite.link, _ShareTarget.wechat),
-      onShareQq: () => _share(invite.link, _ShareTarget.qq),
-      onShareTwitter: () => _share(invite.link, _ShareTarget.twitter),
-      onShareTelegram: () => _share(invite.link, _ShareTarget.telegram),
+    final surface = InvitePresentationTheme(
+      child: GreenfieldInviteSurface(
+        invite: invite,
+        selectedIndex: safeSelected,
+        inviteCount: invites.length,
+        creating: _creating,
+        registeredUsers: controller.invitedCount,
+        pendingCommission:
+            '${controller.currencySymbol}${controller.pendingCommission.toStringAsFixed(2)}',
+        earnedCommission:
+            '${controller.currencySymbol}${controller.earnedCommission.toStringAsFixed(2)}',
+        commissionRate: '${controller.commissionRate.toStringAsFixed(0)}%',
+        records: controller.inviteRecords,
+        currencySymbol: controller.currencySymbol,
+        onPrevious: () => selectRelative(-1),
+        onNext: () => selectRelative(1),
+        onCreate: _createInviteCode,
+        onCopy: () => _copyLink(invite.link),
+        onShareWechat: () => _share(invite.link, _ShareTarget.wechat),
+        onShareQq: () => _share(invite.link, _ShareTarget.qq),
+        onShareTwitter: () => _share(invite.link, _ShareTarget.twitter),
+        onShareTelegram: () => _share(invite.link, _ShareTarget.telegram),
+      ),
     );
 
     return ResponsivePageScaffold(
