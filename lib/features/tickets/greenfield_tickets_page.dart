@@ -15,6 +15,7 @@ import '../../shared/widgets/responsive_page_scaffold.dart';
 import 'widgets/greenfield_new_ticket_modal.dart';
 import 'widgets/greenfield_ticket_detail_modal.dart';
 import 'widgets/greenfield_tickets_surface.dart';
+import 'widgets/tickets_presentation_theme.dart';
 
 class GreenfieldTicketsPage extends StatefulWidget {
   const GreenfieldTicketsPage({super.key});
@@ -103,10 +104,12 @@ class _GreenfieldTicketsPageState extends State<GreenfieldTicketsPage> {
         onTap: _openNewTicket,
       );
     }
-    return GreenfieldTicketsSurface(
-      tickets: _tickets,
-      onOpenTicket: _openTicketDetail,
-      onCreateTicket: _openNewTicket,
+    return TicketsPresentationTheme(
+      child: GreenfieldTicketsSurface(
+        tickets: _tickets,
+        onOpenTicket: _openTicketDetail,
+        onCreateTicket: _openNewTicket,
+      ),
     );
   }
 
