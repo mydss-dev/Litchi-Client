@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/core_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 
