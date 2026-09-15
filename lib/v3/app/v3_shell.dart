@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../app/app_controller.dart';
 import '../auth/v3_auth_view.dart';
+import '../pages/v3_account_page.dart';
 import '../pages/v3_dashboard_page.dart';
 import '../pages/v3_nodes_page.dart';
 import '../pages/v3_settings_page.dart';
@@ -54,6 +55,7 @@ class _V3Workspace extends StatelessWidget {
         final page = switch (controller.page) {
           AppPage.nodes => const V3NodesPage(),
           AppPage.shop => const V3ShopPage(),
+          AppPage.account => const V3AccountPage(),
           AppPage.settings => const V3SettingsPage(),
           _ => const V3DashboardPage(),
         };
@@ -99,12 +101,16 @@ class _DesktopRail extends StatelessWidget {
       AppPage.nodes => 1,
       AppPage.shop => 2,
       AppPage.settings => 3,
+      AppPage.account => 4,
       _ => 0,
     };
     return Container(
       width: 86,
       margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      decoration: BoxDecoration(color: p.rail, borderRadius: BorderRadius.circular(28)),
+      decoration: BoxDecoration(
+        color: p.rail,
+        borderRadius: BorderRadius.circular(28),
+      ),
       child: Column(
         children: [
           const SizedBox(height: 18),
@@ -112,33 +118,85 @@ class _DesktopRail extends StatelessWidget {
             width: 38,
             height: 38,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(14)),
-            child: const Text('L', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+            decoration: BoxDecoration(
+              color: p.accent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Text(
+              'L',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
           const SizedBox(height: 28),
-          _RailButton(icon: Icons.blur_circular_rounded, label: '连接', selected: current == 0, onTap: () => controller.goToPage(AppPage.dashboard)),
+          _RailButton(
+            icon: Icons.blur_circular_rounded,
+            label: '连接',
+            selected: current == 0,
+            onTap: () => controller.goToPage(AppPage.dashboard),
+          ),
           const SizedBox(height: 8),
-          _RailButton(icon: Icons.hub_rounded, label: '节点', selected: current == 1, onTap: () => controller.goToPage(AppPage.nodes)),
+          _RailButton(
+            icon: Icons.hub_rounded,
+            label: '节点',
+            selected: current == 1,
+            onTap: () => controller.goToPage(AppPage.nodes),
+          ),
           const SizedBox(height: 8),
-          _RailButton(icon: Icons.storefront_rounded, label: '套餐', selected: current == 2, onTap: () => controller.goToPage(AppPage.shop)),
+          _RailButton(
+            icon: Icons.storefront_rounded,
+            label: '套餐',
+            selected: current == 2,
+            onTap: () => controller.goToPage(AppPage.shop),
+          ),
           const SizedBox(height: 8),
-          _RailButton(icon: Icons.tune_rounded, label: '设置', selected: current == 3, onTap: () => controller.goToPage(AppPage.settings)),
+          _RailButton(
+            icon: Icons.tune_rounded,
+            label: '设置',
+            selected: current == 3,
+            onTap: () => controller.goToPage(AppPage.settings),
+          ),
           const Spacer(),
           Tooltip(
             message: controller.user.name.isEmpty ? '账户' : controller.user.name,
-            child: Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.09), borderRadius: BorderRadius.circular(14)),
-              child: Text(
-                controller.user.avatarLetter.isEmpty ? 'U' : controller.user.avatarLetter.substring(0, 1).toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => controller.goToPage(AppPage.account),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: current == 4
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  controller.user.avatarLetter.isEmpty
+                      ? 'U'
+                      : controller.user.avatarLetter
+                            .substring(0, 1)
+                            .toUpperCase(),
+                  style: TextStyle(
+                    color: current == 4 ? p.rail : Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 10),
-          _RailButton(icon: Icons.logout_rounded, label: '退出', selected: false, onTap: controller.logout),
+          _RailButton(
+            icon: Icons.logout_rounded,
+            label: '退出',
+            selected: false,
+            onTap: controller.logout,
+          ),
           const SizedBox(height: 18),
         ],
       ),
@@ -147,7 +205,13 @@ class _DesktopRail extends StatelessWidget {
 }
 
 class _RailButton extends StatelessWidget {
-  const _RailButton({required this.icon, required this.label, required this.selected, required this.onTap});
+  const _RailButton({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
   final IconData icon;
   final String label;
   final bool selected;
@@ -169,7 +233,13 @@ class _RailButton extends StatelessWidget {
             color: selected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Icon(icon, size: 21, color: selected ? p.rail : Colors.white.withValues(alpha: 0.56)),
+          child: Icon(
+            icon,
+            size: 21,
+            color: selected
+                ? p.rail
+                : Colors.white.withValues(alpha: 0.56),
+          ),
         ),
       ),
     );
@@ -178,6 +248,7 @@ class _RailButton extends StatelessWidget {
 
 class _MobileNav extends StatelessWidget {
   const _MobileNav({required this.controller});
+
   final AppController controller;
 
   @override
@@ -186,7 +257,8 @@ class _MobileNav extends StatelessWidget {
     final current = switch (controller.page) {
       AppPage.nodes => 1,
       AppPage.shop => 2,
-      AppPage.settings => 3,
+      AppPage.account => 3,
+      AppPage.settings => 4,
       _ => 0,
     };
     return SafeArea(
@@ -194,13 +266,42 @@ class _MobileNav extends StatelessWidget {
       child: Container(
         height: 66,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        decoration: BoxDecoration(color: p.rail, borderRadius: BorderRadius.circular(22)),
+        decoration: BoxDecoration(
+          color: p.rail,
+          borderRadius: BorderRadius.circular(22),
+        ),
         child: Row(
           children: [
-            _MobileNavItem(icon: Icons.blur_circular_rounded, label: '连接', selected: current == 0, onTap: () => controller.goToPage(AppPage.dashboard)),
-            _MobileNavItem(icon: Icons.hub_rounded, label: '节点', selected: current == 1, onTap: () => controller.goToPage(AppPage.nodes)),
-            _MobileNavItem(icon: Icons.storefront_rounded, label: '套餐', selected: current == 2, onTap: () => controller.goToPage(AppPage.shop)),
-            _MobileNavItem(icon: Icons.tune_rounded, label: '设置', selected: current == 3, onTap: () => controller.goToPage(AppPage.settings)),
+            _MobileNavItem(
+              icon: Icons.blur_circular_rounded,
+              label: '连接',
+              selected: current == 0,
+              onTap: () => controller.goToPage(AppPage.dashboard),
+            ),
+            _MobileNavItem(
+              icon: Icons.hub_rounded,
+              label: '节点',
+              selected: current == 1,
+              onTap: () => controller.goToPage(AppPage.nodes),
+            ),
+            _MobileNavItem(
+              icon: Icons.storefront_rounded,
+              label: '套餐',
+              selected: current == 2,
+              onTap: () => controller.goToPage(AppPage.shop),
+            ),
+            _MobileNavItem(
+              icon: Icons.person_rounded,
+              label: '我的',
+              selected: current == 3,
+              onTap: () => controller.goToPage(AppPage.account),
+            ),
+            _MobileNavItem(
+              icon: Icons.tune_rounded,
+              label: '设置',
+              selected: current == 4,
+              onTap: () => controller.goToPage(AppPage.settings),
+            ),
           ],
         ),
       ),
@@ -209,7 +310,13 @@ class _MobileNav extends StatelessWidget {
 }
 
 class _MobileNavItem extends StatelessWidget {
-  const _MobileNavItem({required this.icon, required this.label, required this.selected, required this.onTap});
+  const _MobileNavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
   final IconData icon;
   final String label;
   final bool selected;
@@ -225,9 +332,24 @@ class _MobileNavItem extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 20, color: selected ? p.accent : Colors.white.withValues(alpha: 0.48)),
+            Icon(
+              icon,
+              size: 20,
+              color: selected
+                  ? p.accent
+                  : Colors.white.withValues(alpha: 0.48),
+            ),
             const SizedBox(height: 3),
-            Text(label, style: TextStyle(color: selected ? Colors.white : Colors.white.withValues(alpha: 0.42), fontSize: 9, fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.42),
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -259,10 +381,21 @@ class _DesktopWindowBar extends StatelessWidget {
         child: Row(
           children: [
             const SizedBox(width: 16),
-            Text('LITCHI / V3', style: TextStyle(color: p.textMuted, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.6)),
+            Text(
+              'LITCHI / V3',
+              style: TextStyle(
+                color: p.textMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.6,
+              ),
+            ),
             const Spacer(),
             if (!Platform.isMacOS) ...[
-              _WindowButton(icon: Icons.remove_rounded, onTap: windowManager.minimize),
+              _WindowButton(
+                icon: Icons.remove_rounded,
+                onTap: windowManager.minimize,
+              ),
               _WindowButton(
                 icon: Icons.crop_square_rounded,
                 onTap: () async {
@@ -273,7 +406,11 @@ class _DesktopWindowBar extends StatelessWidget {
                   }
                 },
               ),
-              _WindowButton(icon: Icons.close_rounded, danger: true, onTap: windowManager.close),
+              _WindowButton(
+                icon: Icons.close_rounded,
+                danger: true,
+                onTap: windowManager.close,
+              ),
             ] else
               const SizedBox(width: 12),
           ],
@@ -284,7 +421,12 @@ class _DesktopWindowBar extends StatelessWidget {
 }
 
 class _WindowButton extends StatelessWidget {
-  const _WindowButton({required this.icon, required this.onTap, this.danger = false});
+  const _WindowButton({
+    required this.icon,
+    required this.onTap,
+    this.danger = false,
+  });
+
   final IconData icon;
   final VoidCallback onTap;
   final bool danger;
@@ -297,7 +439,11 @@ class _WindowButton extends StatelessWidget {
       child: SizedBox(
         width: 46,
         height: 44,
-        child: Icon(icon, size: 16, color: danger ? p.danger : p.textMuted),
+        child: Icon(
+          icon,
+          size: 16,
+          color: danger ? p.danger : p.textMuted,
+        ),
       ),
     );
   }
@@ -319,11 +465,29 @@ class _V3BootView extends StatelessWidget {
               width: 48,
               height: 48,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(17)),
-              child: const Text('L', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+              decoration: BoxDecoration(
+                color: p.accent,
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: const Text(
+                'L',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
             const SizedBox(height: 16),
-            Text('STARTING LITCHI V3', style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 2.0)),
+            Text(
+              'STARTING LITCHI V3',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 2,
+              ),
+            ),
           ],
         ),
       ),
