@@ -89,27 +89,24 @@ class GreenfieldAccountSurface extends StatelessWidget {
           key: const ValueKey('greenfield-account-surface'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _ProfilePlanHero(
+            _AccountHub(
               compact: compact,
               userName: userName,
               avatarLetter: avatarLetter,
               hasPlan: hasPlan,
               planName: planName,
               expiryLabel: expiryLabel,
-              onPlanAction: onPlanAction,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _WalletOverview(
               balanceText: balanceText,
               commissionText: commissionText,
+              onPlanAction: onPlanAction,
               onWallet: onWallet,
               onRecharge: onRecharge,
               onTransfer: onTransfer,
               onWithdraw: onWithdraw,
             ),
             if (showOrders || showTraffic || showInvite || showGiftCard || showTelegram) ...[
-              const SizedBox(height: AppSpacing.lg),
-              _ServicesSection(
+              const SizedBox(height: AppSpacing.xl),
+              _ServiceLauncher(
                 compact: compact,
                 showOrders: showOrders,
                 showTraffic: showTraffic,
@@ -124,8 +121,9 @@ class GreenfieldAccountSurface extends StatelessWidget {
                 onTelegram: onTelegram,
               ),
             ],
-            const SizedBox(height: AppSpacing.lg),
-            _SecuritySection(
+            const SizedBox(height: AppSpacing.xl),
+            _AccountPreferences(
+              compact: compact,
               hasPlan: hasPlan,
               remindExpire: remindExpire,
               remindTraffic: remindTraffic,
@@ -144,8 +142,93 @@ class GreenfieldAccountSurface extends StatelessWidget {
   }
 }
 
-class _ProfilePlanHero extends StatelessWidget {
-  const _ProfilePlanHero({
+class _AccountHub extends StatelessWidget {
+  const _AccountHub({
+    required this.compact,
+    required this.userName,
+    required this.avatarLetter,
+    required this.hasPlan,
+    required this.planName,
+    required this.expiryLabel,
+    required this.balanceText,
+    required this.commissionText,
+    required this.onPlanAction,
+    required this.onWallet,
+    required this.onRecharge,
+    required this.onTransfer,
+    required this.onWithdraw,
+  });
+
+  final bool compact;
+  final String userName;
+  final String avatarLetter;
+  final bool hasPlan;
+  final String planName;
+  final String expiryLabel;
+  final String balanceText;
+  final String commissionText;
+  final VoidCallback onPlanAction;
+  final VoidCallback onWallet;
+  final VoidCallback onRecharge;
+  final VoidCallback onTransfer;
+  final VoidCallback onWithdraw;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final identity = _IdentityBlock(
+      compact: compact,
+      userName: userName,
+      avatarLetter: avatarLetter,
+      hasPlan: hasPlan,
+      planName: planName,
+      expiryLabel: expiryLabel,
+      onPlanAction: onPlanAction,
+    );
+    final assets = _AssetBlock(
+      balanceText: balanceText,
+      commissionText: commissionText,
+      onWallet: onWallet,
+      onRecharge: onRecharge,
+      onTransfer: onTransfer,
+      onWithdraw: onWithdraw,
+    );
+
+    return AppCard(
+      padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
+      color: c.cardBg,
+      borderColor: c.softBorder,
+      shadow: AppCardShadow.soft,
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                identity,
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                  child: Divider(height: 1, color: c.softBorder),
+                ),
+                assets,
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 5, child: identity),
+                Container(
+                  width: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                  color: c.softBorder,
+                ),
+                Expanded(flex: 6, child: assets),
+              ],
+            ),
+    );
+  }
+}
+
+class _IdentityBlock extends StatelessWidget {
+  const _IdentityBlock({
     required this.compact,
     required this.userName,
     required this.avatarLetter,
@@ -167,16 +250,16 @@ class _ProfilePlanHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final avatar = Container(
-      width: compact ? 58 : 68,
-      height: compact ? 58 : 68,
+      width: compact ? 54 : 62,
+      height: compact ? 54 : 62,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: c.primary,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: c.primary.withValues(alpha: 0.16),
-            blurRadius: 18,
+            color: c.primary.withValues(alpha: 0.14),
+            blurRadius: 16,
             offset: const Offset(0, 6),
           ),
         ],
@@ -189,89 +272,72 @@ class _ProfilePlanHero extends StatelessWidget {
       ),
     );
 
-    final identity = Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          userName.isEmpty ? context.l10n.account : userName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
-        ),
-        const SizedBox(height: AppSpacing.xs),
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              hasPlan ? LucideIcons.crown : LucideIcons.user,
-              size: 14,
-              color: hasPlan ? c.primary : c.textMuted,
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Flexible(
-              child: Text(
-                hasPlan ? planName : context.l10n.noCurrentPlan,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodyStrong.copyWith(
-                  color: hasPlan ? c.primary : c.textSecondary,
-                ),
+            avatar,
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    userName.isEmpty ? context.l10n.account : userName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      Icon(
+                        hasPlan ? LucideIcons.crown : LucideIcons.user,
+                        size: 14,
+                        color: hasPlan ? c.primary : c.textMuted,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          hasPlan ? planName : context.l10n.noCurrentPlan,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            color: hasPlan ? c.primary : c.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.xs),
+        const SizedBox(height: AppSpacing.md),
         Text(
           expiryLabel,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.caption.copyWith(color: c.textMuted),
         ),
+        const SizedBox(height: AppSpacing.md),
+        AppButton(
+          label: hasPlan ? context.l10n.renewPlan : context.l10n.buyPlans,
+          leadingIcon: hasPlan ? LucideIcons.refreshCw : LucideIcons.plus,
+          onPressed: onPlanAction,
+          size: AppControlSize.compact,
+          expand: compact,
+        ),
       ],
-    );
-
-    final planButton = AppButton(
-      label: hasPlan ? context.l10n.renewPlan : context.l10n.buyPlans,
-      leadingIcon: hasPlan ? LucideIcons.refreshCw : LucideIcons.plus,
-      onPressed: onPlanAction,
-      expand: compact,
-    );
-
-    return AppCard(
-      padding: EdgeInsets.all(compact ? AppSpacing.lg : AppSpacing.xl),
-      color: c.cardBg,
-      borderColor: c.softBorder,
-      shadow: AppCardShadow.soft,
-      child: compact
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    avatar,
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(child: identity),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                planButton,
-              ],
-            )
-          : Row(
-              children: [
-                avatar,
-                const SizedBox(width: AppSpacing.lg),
-                Expanded(child: identity),
-                const SizedBox(width: AppSpacing.lg),
-                planButton,
-              ],
-            ),
     );
   }
 }
 
-class _WalletOverview extends StatelessWidget {
-  const _WalletOverview({
+class _AssetBlock extends StatelessWidget {
+  const _AssetBlock({
     required this.balanceText,
     required this.commissionText,
     required this.onWallet,
@@ -290,72 +356,69 @@ class _WalletOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      shadow: AppCardShadow.none,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(LucideIcons.wallet, size: 18, color: c.primary),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  context.l10n.accountAssets,
-                  style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            Icon(LucideIcons.wallet, size: 17, color: c.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                context.l10n.accountAssets,
+                style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
               ),
-              TextButton(onPressed: onWallet, child: Text(context.l10n.wallet)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: _MoneyMetric(
-                  label: context.l10n.accountBalance,
-                  value: balanceText,
-                ),
+            ),
+            TextButton(onPressed: onWallet, child: Text(context.l10n.wallet)),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: _MoneyMetric(
+                label: context.l10n.accountBalance,
+                value: balanceText,
               ),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(
-                child: _MoneyMetric(
-                  label: context.l10n.withdrawableCommission,
-                  value: commissionText,
-                ),
+            ),
+            const SizedBox(width: AppSpacing.lg),
+            Expanded(
+              child: _MoneyMetric(
+                label: context.l10n.withdrawableCommission,
+                value: commissionText,
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              AppButton(
-                label: context.l10n.rechargeBalance,
-                leadingIcon: LucideIcons.plus,
-                onPressed: onRecharge,
-                size: AppControlSize.compact,
-              ),
-              AppButton(
-                label: context.l10n.transferCommission,
-                leadingIcon: LucideIcons.badgeDollarSign,
-                variant: AppButtonVariant.secondary,
-                onPressed: onTransfer,
-                size: AppControlSize.compact,
-              ),
-              AppButton(
-                label: context.l10n.requestWithdrawal,
-                leadingIcon: LucideIcons.wallet,
-                variant: AppButtonVariant.outline,
-                onPressed: onWithdraw,
-                size: AppControlSize.compact,
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            AppButton(
+              label: context.l10n.rechargeBalance,
+              leadingIcon: LucideIcons.plus,
+              onPressed: onRecharge,
+              size: AppControlSize.compact,
+            ),
+            AppButton(
+              label: context.l10n.transferCommission,
+              leadingIcon: LucideIcons.badgeDollarSign,
+              variant: AppButtonVariant.secondary,
+              onPressed: onTransfer,
+              size: AppControlSize.compact,
+            ),
+            AppButton(
+              label: context.l10n.requestWithdrawal,
+              leadingIcon: LucideIcons.wallet,
+              variant: AppButtonVariant.outline,
+              onPressed: onWithdraw,
+              size: AppControlSize.compact,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -385,8 +448,8 @@ class _MoneyMetric extends StatelessWidget {
   }
 }
 
-class _ServicesSection extends StatelessWidget {
-  const _ServicesSection({
+class _ServiceLauncher extends StatelessWidget {
+  const _ServiceLauncher({
     required this.compact,
     required this.showOrders,
     required this.showTraffic,
@@ -416,37 +479,37 @@ class _ServicesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = <_ServiceItem>[
+    final items = <_LauncherItem>[
       if (showOrders)
-        _ServiceItem(
+        _LauncherItem(
           icon: LucideIcons.clipboardList,
           title: context.l10n.orders,
           subtitle: context.l10n.ordersSubtitle,
           onTap: onOrders,
         ),
       if (showTraffic)
-        _ServiceItem(
+        _LauncherItem(
           icon: LucideIcons.chartColumn,
           title: context.l10n.usage,
           subtitle: context.l10n.usageSubtitle,
           onTap: onTraffic,
         ),
       if (showInvite)
-        _ServiceItem(
+        _LauncherItem(
           icon: LucideIcons.gift,
           title: context.l10n.invite,
           subtitle: context.l10n.inviteSubtitle,
           onTap: onInvite,
         ),
       if (showGiftCard)
-        _ServiceItem(
+        _LauncherItem(
           icon: LucideIcons.ticketCheck,
           title: context.l10n.giftCardTitle,
           subtitle: context.l10n.giftCardServiceSubtitle,
           onTap: onGiftCard,
         ),
       if (showTelegram)
-        _ServiceItem(
+        _LauncherItem(
           icon: LucideIcons.send,
           title: 'Telegram',
           subtitle: telegramBound
@@ -460,19 +523,21 @@ class _ServicesSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(context.l10n.accountServices, style: AppTextStyles.sectionTitle),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
         LayoutBuilder(
           builder: (context, constraints) {
-            final columns = compact ? 1 : 2;
-            final width = columns == 1
-                ? constraints.maxWidth
-                : (constraints.maxWidth - AppSpacing.sm) / 2;
+            final columns = compact ? 3 : items.length.clamp(3, 5);
+            final spacing = compact ? AppSpacing.xs : AppSpacing.sm;
+            final width = (constraints.maxWidth - (spacing * (columns - 1))) / columns;
             return Wrap(
-              spacing: AppSpacing.sm,
+              spacing: spacing,
               runSpacing: AppSpacing.sm,
               children: [
                 for (final item in items)
-                  SizedBox(width: width, child: _ServiceTile(item: item)),
+                  SizedBox(
+                    width: width,
+                    child: _LauncherTile(item: item, compact: compact),
+                  ),
               ],
             );
           },
@@ -482,8 +547,8 @@ class _ServicesSection extends StatelessWidget {
   }
 }
 
-class _ServiceItem {
-  const _ServiceItem({
+class _LauncherItem {
+  const _LauncherItem({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -496,56 +561,67 @@ class _ServiceItem {
   final VoidCallback onTap;
 }
 
-class _ServiceTile extends StatelessWidget {
-  const _ServiceTile({required this.item});
+class _LauncherTile extends StatelessWidget {
+  const _LauncherTile({required this.item, required this.compact});
 
-  final _ServiceItem item;
+  final _LauncherItem item;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return AppCard(
-      onTap: item.onTap,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      shadow: AppCardShadow.none,
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: c.primarySoft,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(item.icon, size: 18, color: c.primary),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: item.onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? AppSpacing.xs : AppSpacing.sm,
+            vertical: AppSpacing.md,
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.title, style: AppTextStyles.bodyStrong),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: compact ? 42 : 46,
+                height: compact ? 42 : 46,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: c.primarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(item.icon, size: 19, color: c.primary),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyStrong.copyWith(color: c.textPrimary),
+              ),
+              if (!compact) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   item.subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: AppTextStyles.caption.copyWith(color: c.textMuted),
                 ),
               ],
-            ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Icon(LucideIcons.chevronRight, size: 16, color: c.iconMuted),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _SecuritySection extends StatelessWidget {
-  const _SecuritySection({
+class _AccountPreferences extends StatelessWidget {
+  const _AccountPreferences({
+    required this.compact,
     required this.hasPlan,
     required this.remindExpire,
     required this.remindTraffic,
@@ -557,6 +633,7 @@ class _SecuritySection extends StatelessWidget {
     required this.onLogout,
   });
 
+  final bool compact;
   final bool hasPlan;
   final bool remindExpire;
   final bool remindTraffic;
@@ -569,75 +646,84 @@ class _SecuritySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(context.l10n.accountManagement, style: AppTextStyles.sectionTitle),
         const SizedBox(height: AppSpacing.sm),
-        AppCard(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          shadow: AppCardShadow.none,
-          child: Column(
+        if (hasPlan) ...[
+          _PreferenceRow(
+            icon: LucideIcons.calendarClock,
+            title: context.l10n.expiryReminder,
+            subtitle: context.l10n.expiryReminderSubtitle,
+            value: remindExpire,
+            onChanged: onExpireChanged,
+          ),
+          Divider(height: 1, color: c.softBorder),
+          _PreferenceRow(
+            icon: LucideIcons.gauge,
+            title: context.l10n.trafficReminder,
+            subtitle: context.l10n.trafficReminderSubtitle,
+            value: remindTraffic,
+            onChanged: onTrafficChanged,
+          ),
+          Divider(height: 1, color: c.softBorder),
+          _PreferenceRow(
+            icon: LucideIcons.refreshCw,
+            title: context.l10n.autoRenewal,
+            subtitle: context.l10n.autoRenewalSubtitle,
+            value: autoRenewal,
+            onChanged: onAutoRenewalChanged,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+        if (compact)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (hasPlan) ...[
-                _SettingSwitchRow(
-                  icon: LucideIcons.calendarClock,
-                  title: context.l10n.expiryReminder,
-                  subtitle: context.l10n.expiryReminderSubtitle,
-                  value: remindExpire,
-                  onChanged: onExpireChanged,
-                ),
-                const Divider(height: AppSpacing.xl),
-                _SettingSwitchRow(
-                  icon: LucideIcons.gauge,
-                  title: context.l10n.trafficReminder,
-                  subtitle: context.l10n.trafficReminderSubtitle,
-                  value: remindTraffic,
-                  onChanged: onTrafficChanged,
-                ),
-                const Divider(height: AppSpacing.xl),
-                _SettingSwitchRow(
-                  icon: LucideIcons.refreshCw,
-                  title: context.l10n.autoRenewal,
-                  subtitle: context.l10n.autoRenewalSubtitle,
-                  value: autoRenewal,
-                  onChanged: onAutoRenewalChanged,
-                ),
-                const Divider(height: AppSpacing.xl),
-              ],
-              Row(
-                children: [
-                  Expanded(
-                    child: AppButton(
-                      label: context.l10n.changePasswordTitle,
-                      leadingIcon: LucideIcons.lockKeyhole,
-                      variant: AppButtonVariant.secondary,
-                      onPressed: onChangePassword,
-                      expand: true,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: AppButton(
-                      label: context.l10n.logout,
-                      leadingIcon: LucideIcons.logOut,
-                      variant: AppButtonVariant.danger,
-                      onPressed: onLogout,
-                      expand: true,
-                    ),
-                  ),
-                ],
+              AppButton(
+                label: context.l10n.changePasswordTitle,
+                leadingIcon: LucideIcons.lockKeyhole,
+                variant: AppButtonVariant.secondary,
+                onPressed: onChangePassword,
+                expand: true,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              AppButton(
+                label: context.l10n.logout,
+                leadingIcon: LucideIcons.logOut,
+                variant: AppButtonVariant.danger,
+                onPressed: onLogout,
+                expand: true,
+              ),
+            ],
+          )
+        else
+          Row(
+            children: [
+              AppButton(
+                label: context.l10n.changePasswordTitle,
+                leadingIcon: LucideIcons.lockKeyhole,
+                variant: AppButtonVariant.secondary,
+                onPressed: onChangePassword,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              AppButton(
+                label: context.l10n.logout,
+                leadingIcon: LucideIcons.logOut,
+                variant: AppButtonVariant.danger,
+                onPressed: onLogout,
               ),
             ],
           ),
-        ),
       ],
     );
   }
 }
 
-class _SettingSwitchRow extends StatelessWidget {
-  const _SettingSwitchRow({
+class _PreferenceRow extends StatelessWidget {
+  const _PreferenceRow({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -654,27 +740,39 @@ class _SettingSwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Icon(icon, size: 18, color: c.primary),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: AppTextStyles.bodyStrong),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                subtitle,
-                style: AppTextStyles.caption.copyWith(color: c.textMuted),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: c.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(icon, size: 17, color: c.primary),
           ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        AppSwitch(value: value, onChanged: onChanged),
-      ],
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.bodyStrong),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.caption.copyWith(color: c.textMuted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          AppSwitch(value: value, onChanged: onChanged),
+        ],
+      ),
     );
   }
 }
