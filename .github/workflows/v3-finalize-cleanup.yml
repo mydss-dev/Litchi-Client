@@ -1,0 +1,142 @@
+name: V3 Finalize Legacy Cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v3-finalize-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          lfs: true
+          fetch-depth: 0
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.24.7'
+          cache: true
+          cache-dependency-path: core/singbox/go.sum
+
+      - name: Remove legacy presentation and legacy UI tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf lib/features
+          rm -f lib/app/app_shell.dart
+          rm -rf test/visual/goldens
+
+          find test/visual -maxdepth 1 -type f -name '*.dart' \
+            ! -name 'v3_visual_acceptance_test.dart' \
+            ! -name 'v3_visual_fixture.dart' -delete
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          skip = {
+              Path('test/v3_clean_boundary_test.dart'),
+              Path('test/visual/v3_visual_acceptance_test.dart'),
+              Path('test/visual/v3_visual_fixture.dart'),
+          }
+          markers = (
+              'lib/features/',
+              'package:litchi_client/features/',
+              "app_shell.dart",
+              'shared/layout/app_shell_spec.dart',
+              'shared/theme/app_theme.dart',
+              'shared/widgets/',
+          )
+          for path in Path('test').rglob('*.dart'):
+              if path in skip:
+                  continue
+              text = path.read_text(encoding='utf-8')
+              legacy_named = 'greenfield' in path.name.lower() or '_v2_' in path.name.lower() or path.name.endswith('_v2_test.dart')
+              if legacy_named or any(marker in text for marker in markers):
+                  print(f'removing legacy UI test: {path}')
+                  path.unlink()
+
+          shell = Path('lib/v3/app/v3_shell.dart')
+          text = shell.read_text(encoding='utf-8')
+          text = text.replace(
+              "import 'dart:io';\n\nimport 'package:flutter/material.dart';",
+              "import 'package:flutter/foundation.dart';\nimport 'package:flutter/material.dart';",
+          )
+          text = text.replace(
+              'class V3Shell extends StatelessWidget {',
+              "bool get _isDesktopTarget => !kIsWeb && switch (defaultTargetPlatform) {\n"
+              "  TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.linux => true,\n"
+              "  _ => false,\n"
+              "};\n\n"
+              'class V3Shell extends StatelessWidget {',
+              1,
+          )
+          text = text.replace(
+              '  bool get _desktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;',
+              '  bool get _desktop => _isDesktopTarget;',
+          )
+          text = text.replace(
+              '    if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) {',
+              '    if (!_isDesktopTarget) {',
+          )
+          text = text.replace(
+              '            if (!Platform.isMacOS) ...[',
+              '            if (defaultTargetPlatform != TargetPlatform.macOS) ...[',
+          )
+          if 'Platform.' in text:
+              raise SystemExit('Platform.* remained in V3 shell after target-platform migration')
+          shell.write_text(text, encoding='utf-8')
+
+          boundary = Path('test/v3_clean_boundary_test.dart')
+          text = boundary.read_text(encoding='utf-8')
+          if 'legacy presentation tree is physically removed' not in text:
+              insert = """
+
+            test('legacy presentation tree is physically removed', () {
+              expect(Directory('lib/features').existsSync(), isFalse);
+              expect(File('lib/app/app_shell.dart').existsSync(), isFalse);
+            });
+          """
+              pos = text.rfind('\n}')
+              if pos < 0:
+                  raise SystemExit('could not patch V3 boundary test')
+              text = text[:pos] + insert + text[pos:]
+              boundary.write_text(text, encoding='utf-8')
+          PY
+
+          rm -f .github/workflows/v3-finalize-cleanup.yml
+          dart format lib/v3/app/v3_shell.dart test/v3_clean_boundary_test.dart test/visual/v3_visual_acceptance_test.dart test/visual/v3_visual_fixture.dart
+
+      - run: flutter pub get
+      - name: Full Flutter tests after legacy removal
+        run: flutter test
+      - name: Analyze after legacy removal
+        run: flutter analyze
+      - name: Core bridge tests after legacy removal
+        working-directory: core/singbox
+        run: |
+          go mod download
+          go test -tags "with_clash_api,with_quic,with_utls,with_wireguard" ./...
+
+      - name: Commit finalized V3-only presentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No cleanup changes to commit.'
+            exit 0
+          fi
+          git commit -m 'refactor(v3): remove legacy presentation layer'
+          git push origin HEAD:main
