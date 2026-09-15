@@ -1096,7 +1096,7 @@ class _MobileBottomNav extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
-          gradient: c.cardGradient,
+          color: c.cardBg,
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: c.softBorder),
           boxShadow: AppShadows.soft(c),
