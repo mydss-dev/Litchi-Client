@@ -41,7 +41,7 @@ class GreenfieldDashboardHome extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             NoticeBar(notices: ctrl.notices, isLoading: ctrl.noticesLoading),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
             if (noPlan)
               GreenfieldNoPlanSurface(ctrl: ctrl, compact: compact)
             else ...[
@@ -53,13 +53,13 @@ class GreenfieldDashboardHome extends StatelessWidget {
                 onProxyModeChanged: onProxyModeChanged,
                 onNodeTap: onNodeTap,
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               GreenfieldRealtimeSurface(
                 ctrl: ctrl,
                 tick: tick,
                 compact: compact,
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.md),
               GreenfieldSubscriptionSurface(ctrl: ctrl, compact: compact),
             ],
           ],
