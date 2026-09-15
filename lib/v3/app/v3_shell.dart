@@ -10,6 +10,7 @@ import '../pages/v3_dashboard_page.dart';
 import '../pages/v3_nodes_page.dart';
 import '../pages/v3_settings_page.dart';
 import '../pages/v3_shop_page.dart';
+import '../pages/v3_wallet_page.dart';
 import '../theme/v3_palette.dart';
 
 class V3Shell extends StatelessWidget {
@@ -56,6 +57,7 @@ class _V3Workspace extends StatelessWidget {
           AppPage.nodes => const V3NodesPage(),
           AppPage.shop => const V3ShopPage(),
           AppPage.account => const V3AccountPage(),
+          AppPage.wallet => const V3WalletPage(),
           AppPage.settings => const V3SettingsPage(),
           _ => const V3DashboardPage(),
         };
@@ -101,7 +103,8 @@ class _DesktopRail extends StatelessWidget {
       AppPage.nodes => 1,
       AppPage.shop => 2,
       AppPage.settings => 3,
-      AppPage.account => 4,
+      AppPage.wallet => 4,
+      AppPage.account => 5,
       _ => 0,
     };
     return Container(
@@ -160,6 +163,13 @@ class _DesktopRail extends StatelessWidget {
             onTap: () => controller.goToPage(AppPage.settings),
           ),
           const Spacer(),
+          _RailButton(
+            icon: Icons.account_balance_wallet_rounded,
+            label: '钱包',
+            selected: current == 4,
+            onTap: () => controller.goToPage(AppPage.wallet),
+          ),
+          const SizedBox(height: 8),
           Tooltip(
             message: controller.user.name.isEmpty ? '账户' : controller.user.name,
             child: InkWell(
@@ -171,7 +181,7 @@ class _DesktopRail extends StatelessWidget {
                 height: 42,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: current == 4
+                  color: current == 5
                       ? Colors.white
                       : Colors.white.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(14),
@@ -183,7 +193,7 @@ class _DesktopRail extends StatelessWidget {
                             .substring(0, 1)
                             .toUpperCase(),
                   style: TextStyle(
-                    color: current == 4 ? p.rail : Colors.white,
+                    color: current == 5 ? p.rail : Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -257,7 +267,7 @@ class _MobileNav extends StatelessWidget {
     final current = switch (controller.page) {
       AppPage.nodes => 1,
       AppPage.shop => 2,
-      AppPage.account => 3,
+      AppPage.account || AppPage.wallet => 3,
       AppPage.settings => 4,
       _ => 0,
     };
