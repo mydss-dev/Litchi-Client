@@ -3,7 +3,7 @@ name: Visual Acceptance Snapshots
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, redesign/litchi-greenfield-settings-v2]
     paths:
       - 'test/visual/**'
       - '.github/workflows/visual-acceptance.yml'
