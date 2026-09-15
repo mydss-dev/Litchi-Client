@@ -51,6 +51,8 @@ jobs:
 
       - name: Install Android host toolchain
         run: |
+          sudo apt-get update
+          sudo apt-get install -y libpulse0
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             'platform-tools' \
