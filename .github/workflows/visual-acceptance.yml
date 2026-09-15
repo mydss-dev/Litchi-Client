@@ -3,15 +3,16 @@ name: Visual Acceptance Snapshots
 on:
   workflow_dispatch:
   pull_request:
-    branches:
-      - main
-      - redesign/litchi-greenfield-settings-v2
-      - redesign/litchi-visual-acceptance-v2
-      - redesign/litchi-dashboard-polish-v2
-      - redesign/litchi-nodes-visual-acceptance-v2
     paths:
       - 'lib/features/dashboard/**'
       - 'lib/features/nodes/**'
+      - 'lib/features/shop/**'
+      - 'lib/features/account/**'
+      - 'lib/features/invite/**'
+      - 'lib/features/traffic/**'
+      - 'lib/features/orders/**'
+      - 'lib/features/tickets/**'
+      - 'lib/features/settings/**'
       - 'lib/shared/theme/**'
       - 'test/visual/**'
       - '.github/workflows/visual-acceptance.yml'
@@ -40,7 +41,7 @@ jobs:
       - run: flutter pub get
       - name: Prepare snapshot directory
         run: mkdir -p test/visual/goldens
-      - name: Render Dashboard and Nodes light/dark snapshots
+      - name: Render primary-page light/dark snapshots
         run: >-
           flutter test
           --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
@@ -72,7 +73,7 @@ jobs:
       - name: Prepare snapshot directory
         shell: pwsh
         run: New-Item -ItemType Directory -Force test/visual/goldens | Out-Null
-      - name: Render Dashboard and Nodes light/dark snapshots
+      - name: Render primary-page light/dark snapshots
         run: >-
           flutter test
           --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
