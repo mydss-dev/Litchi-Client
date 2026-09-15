@@ -1,0 +1,38 @@
+name: Visual Acceptance Snapshots
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'test/visual/**'
+      - '.github/workflows/visual-acceptance.yml'
+
+concurrency:
+  group: visual-acceptance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  windows-dashboard:
+    name: Windows Dashboard 900x700
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          lfs: true
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Render light and dark dashboard snapshots
+        run: flutter test --update-goldens test/visual/dashboard_visual_acceptance_test.dart
+      - name: Upload dashboard snapshots
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dashboard-windows-900x700
+          path: test/visual/goldens/*.png
+          if-no-files-found: error
+          retention-days: 14
