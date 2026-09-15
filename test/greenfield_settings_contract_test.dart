@@ -21,7 +21,7 @@ void main() {
     ).readAsStringSync();
 
     expect(source, contains("ValueKey('greenfield-settings-surface')"));
-    expect(source, contains('constraints.maxWidth >= 920'));
+    expect(source, contains('constraints.maxWidth < 920'));
     expect(source, isNot(contains('app_locale_preference.dart')));
   });
 
