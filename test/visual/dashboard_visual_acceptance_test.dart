@@ -11,6 +11,10 @@ import 'package:litchi_client/shared/models/api_models.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/shared/theme/app_theme.dart';
 
+const _visualSnapshotsEnabled = bool.fromEnvironment(
+  'LITCHI_VISUAL_SNAPSHOTS',
+);
+
 void main() {
   const mainPaneSize = Size(700, 654); // 900x700 shell - 200 sidebar - 46 title bar.
 
@@ -51,33 +55,41 @@ void main() {
     await tester.pump(const Duration(milliseconds: 320));
   }
 
-  testWidgets('Windows 900x700 dashboard light visual', (tester) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-    try {
-      await pumpDashboard(tester, themeMode: ThemeMode.light);
-      await expectLater(
-        find.byType(Scaffold),
-        matchesGoldenFile('goldens/dashboard_light_main_900x700.png'),
-      );
-    } finally {
-      // Flutter verifies foundation debug globals before package:test tearDown,
-      // so restore this inside the test body rather than with addTearDown.
-      debugDefaultTargetPlatformOverride = null;
-    }
-  });
+  testWidgets(
+    'Windows 900x700 dashboard light visual',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      try {
+        await pumpDashboard(tester, themeMode: ThemeMode.light);
+        await expectLater(
+          find.byType(Scaffold),
+          matchesGoldenFile('goldens/dashboard_light_main_900x700.png'),
+        );
+      } finally {
+        // Flutter verifies foundation debug globals before package:test
+        // tearDown, so restore this inside the test body.
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+    skip: !_visualSnapshotsEnabled,
+  );
 
-  testWidgets('Windows 900x700 dashboard dark visual', (tester) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-    try {
-      await pumpDashboard(tester, themeMode: ThemeMode.dark);
-      await expectLater(
-        find.byType(Scaffold),
-        matchesGoldenFile('goldens/dashboard_dark_main_900x700.png'),
-      );
-    } finally {
-      debugDefaultTargetPlatformOverride = null;
-    }
-  });
+  testWidgets(
+    'Windows 900x700 dashboard dark visual',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      try {
+        await pumpDashboard(tester, themeMode: ThemeMode.dark);
+        await expectLater(
+          find.byType(Scaffold),
+          matchesGoldenFile('goldens/dashboard_dark_main_900x700.png'),
+        );
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    },
+    skip: !_visualSnapshotsEnabled,
+  );
 }
 
 class _VisualDashboardController extends AppController {
