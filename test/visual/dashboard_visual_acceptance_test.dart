@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/app/core_controller.dart' show ConnectionStatus;
-import 'package:litchi_client/app/nav_destinations.dart';
 import 'package:litchi_client/features/dashboard/dashboard_page.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
 import 'package:litchi_client/shared/layout/app_platform.dart';
@@ -25,7 +24,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final controller = _VisualDashboardController();
-    addTearDown(controller.dispose);
+    addTearDown(controller.disposeVisualState);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -182,10 +181,8 @@ class _VisualDashboardController extends AppController {
   @override
   List<NoticeModel> get pendingNoticePopups => const [];
 
-  @override
-  void dispose() {
+  void disposeVisualState() {
     _up.dispose();
     _down.dispose();
-    super.dispose();
   }
 }
