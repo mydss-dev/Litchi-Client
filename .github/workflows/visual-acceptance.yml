@@ -8,6 +8,7 @@ on:
       - redesign/litchi-greenfield-settings-v2
       - redesign/litchi-visual-acceptance-v2
       - redesign/litchi-dashboard-polish-v2
+      - redesign/litchi-nodes-visual-acceptance-v2
     paths:
       - 'lib/features/dashboard/**'
       - 'lib/features/nodes/**'
