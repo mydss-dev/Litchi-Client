@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   windows-dashboard:
+    # Test-only rendering of the frozen Windows desktop geometry.
     name: Windows Dashboard 900x700
     runs-on: windows-latest
     steps:
