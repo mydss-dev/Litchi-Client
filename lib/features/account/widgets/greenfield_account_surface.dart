@@ -211,17 +211,19 @@ class _AccountHub extends StatelessWidget {
                 assets,
               ],
             )
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(flex: 5, child: identity),
-                Container(
-                  width: 1,
-                  margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                  color: c.softBorder,
-                ),
-                Expanded(flex: 6, child: assets),
-              ],
+          : IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 5, child: identity),
+                  Container(
+                    width: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                    color: c.softBorder,
+                  ),
+                  Expanded(flex: 6, child: assets),
+                ],
+              ),
             ),
     );
   }
