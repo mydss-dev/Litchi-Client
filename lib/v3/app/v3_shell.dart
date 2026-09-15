@@ -7,6 +7,7 @@ import '../../app/app_controller.dart';
 import '../auth/v3_auth_view.dart';
 import '../pages/v3_account_page.dart';
 import '../pages/v3_dashboard_page.dart';
+import '../pages/v3_invite_page.dart';
 import '../pages/v3_nodes_page.dart';
 import '../pages/v3_settings_page.dart';
 import '../pages/v3_shop_page.dart';
@@ -23,17 +24,13 @@ class V3Shell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    Widget body;
-    if (controller.isInitializing) {
-      body = const _V3BootView();
-    } else if (!controller.isAuthenticated) {
-      body = const V3AuthView();
-    } else {
-      body = const _V3Workspace();
-    }
+    final body = controller.isInitializing
+        ? const _V3BootView()
+        : !controller.isAuthenticated
+        ? const V3AuthView()
+        : const _V3Workspace();
 
     if (!_desktop) return body;
-
     return Column(
       children: [
         const _DesktopWindowBar(),
@@ -58,6 +55,7 @@ class _V3Workspace extends StatelessWidget {
           AppPage.shop => const V3ShopPage(),
           AppPage.account => const V3AccountPage(),
           AppPage.wallet => const V3WalletPage(),
+          AppPage.invite => const V3InvitePage(),
           AppPage.settings => const V3SettingsPage(),
           _ => const V3DashboardPage(),
         };
@@ -66,6 +64,13 @@ class _V3Workspace extends StatelessWidget {
           return Scaffold(
             backgroundColor: p.canvas,
             body: page,
+            floatingActionButton: controller.page == AppPage.account
+                ? FloatingActionButton.small(
+                    tooltip: '邀请朋友',
+                    onPressed: () => controller.goToPage(AppPage.invite),
+                    child: const Icon(Icons.group_add_rounded),
+                  )
+                : null,
             bottomNavigationBar: _MobileNav(controller: controller),
           );
         }
@@ -94,19 +99,23 @@ class _V3Workspace extends StatelessWidget {
 
 class _DesktopRail extends StatelessWidget {
   const _DesktopRail({required this.controller});
+
   final AppController controller;
+
+  int get _current => switch (controller.page) {
+    AppPage.nodes => 1,
+    AppPage.shop => 2,
+    AppPage.settings => 3,
+    AppPage.wallet => 4,
+    AppPage.invite => 5,
+    AppPage.account || AppPage.traffic || AppPage.orders || AppPage.tickets => 6,
+    _ => 0,
+  };
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final current = switch (controller.page) {
-      AppPage.nodes => 1,
-      AppPage.shop => 2,
-      AppPage.settings => 3,
-      AppPage.wallet => 4,
-      AppPage.account => 5,
-      _ => 0,
-    };
+    final current = _current;
     return Container(
       width: 86,
       margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
@@ -170,6 +179,13 @@ class _DesktopRail extends StatelessWidget {
             onTap: () => controller.goToPage(AppPage.wallet),
           ),
           const SizedBox(height: 8),
+          _RailButton(
+            icon: Icons.group_add_rounded,
+            label: '邀请',
+            selected: current == 5,
+            onTap: () => controller.goToPage(AppPage.invite),
+          ),
+          const SizedBox(height: 8),
           Tooltip(
             message: controller.user.name.isEmpty ? '账户' : controller.user.name,
             child: InkWell(
@@ -181,7 +197,7 @@ class _DesktopRail extends StatelessWidget {
                 height: 42,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: current == 5
+                  color: current == 6
                       ? Colors.white
                       : Colors.white.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(14),
@@ -189,11 +205,9 @@ class _DesktopRail extends StatelessWidget {
                 child: Text(
                   controller.user.avatarLetter.isEmpty
                       ? 'U'
-                      : controller.user.avatarLetter
-                            .substring(0, 1)
-                            .toUpperCase(),
+                      : controller.user.avatarLetter.substring(0, 1).toUpperCase(),
                   style: TextStyle(
-                    color: current == 5 ? p.rail : Colors.white,
+                    color: current == 6 ? p.rail : Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -246,9 +260,7 @@ class _RailButton extends StatelessWidget {
           child: Icon(
             icon,
             size: 21,
-            color: selected
-                ? p.rail
-                : Colors.white.withValues(alpha: 0.56),
+            color: selected ? p.rail : Colors.white.withValues(alpha: 0.56),
           ),
         ),
       ),
@@ -267,7 +279,12 @@ class _MobileNav extends StatelessWidget {
     final current = switch (controller.page) {
       AppPage.nodes => 1,
       AppPage.shop => 2,
-      AppPage.account || AppPage.wallet => 3,
+      AppPage.account ||
+      AppPage.wallet ||
+      AppPage.invite ||
+      AppPage.traffic ||
+      AppPage.orders ||
+      AppPage.tickets => 3,
       AppPage.settings => 4,
       _ => 0,
     };
@@ -345,9 +362,7 @@ class _MobileNavItem extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color: selected
-                  ? p.accent
-                  : Colors.white.withValues(alpha: 0.48),
+              color: selected ? p.accent : Colors.white.withValues(alpha: 0.48),
             ),
             const SizedBox(height: 3),
             Text(
@@ -402,10 +417,7 @@ class _DesktopWindowBar extends StatelessWidget {
             ),
             const Spacer(),
             if (!Platform.isMacOS) ...[
-              _WindowButton(
-                icon: Icons.remove_rounded,
-                onTap: windowManager.minimize,
-              ),
+              _WindowButton(icon: Icons.remove_rounded, onTap: windowManager.minimize),
               _WindowButton(
                 icon: Icons.crop_square_rounded,
                 onTap: () async {
