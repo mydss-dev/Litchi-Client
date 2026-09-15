@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +18,11 @@ void main() {
     WidgetTester tester, {
     required ThemeMode themeMode,
   }) async {
+    // Visual acceptance always targets the Windows presentation contract, even
+    // when the snapshot is rendered by an Ubuntu fallback runner.
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
     await tester.binding.setSurfaceSize(mainPaneSize);
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -62,7 +65,6 @@ void main() {
         matchesGoldenFile('goldens/dashboard_light_main_900x700.png'),
       );
     },
-    skip: !Platform.isWindows,
   );
 
   testWidgets(
@@ -74,7 +76,6 @@ void main() {
         matchesGoldenFile('goldens/dashboard_dark_main_900x700.png'),
       );
     },
-    skip: !Platform.isWindows,
   );
 }
 
@@ -128,7 +129,8 @@ class _VisualDashboardController extends AppController {
   bool get supportsCoreConnection => true;
 
   @override
-  Duration get connectedDuration => const Duration(hours: 1, minutes: 26, seconds: 18);
+  Duration get connectedDuration =>
+      const Duration(hours: 1, minutes: 26, seconds: 18);
 
   @override
   ValueNotifier<int> get upBpsNotifier => _up;
@@ -161,7 +163,8 @@ class _VisualDashboardController extends AppController {
   double get todayTrafficGb => 2.48;
 
   @override
-  int? get expiredAt => DateTime(2026, 12, 31).millisecondsSinceEpoch ~/ 1000;
+  int? get expiredAt =>
+      DateTime(2026, 12, 31).millisecondsSinceEpoch ~/ 1000;
 
   @override
   bool get hasAccountSummary => true;
