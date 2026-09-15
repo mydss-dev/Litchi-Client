@@ -11,14 +11,16 @@ void main() {
     for (final entity in root.listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
       final source = entity.readAsStringSync();
-      final forbidden = <String>[
+      const forbidden = <String>[
         '/features/',
-        "app_shell.dart'",
+        'app_shell.dart',
         '/shared/widgets/',
       ];
       for (final pattern in forbidden) {
         if (source.contains(pattern)) {
-          violations.add('${entity.path} imports forbidden legacy UI pattern: $pattern');
+          violations.add(
+            '${entity.path} imports forbidden legacy UI pattern: $pattern',
+          );
         }
       }
     }
@@ -26,21 +28,24 @@ void main() {
     expect(
       violations,
       isEmpty,
-      reason: 'Rule #1: V3 must rebuild presentation from scratch and may only reuse business/state infrastructure.',
+      reason:
+          'Rule #1: V3 must rebuild presentation from scratch and may only reuse business/state infrastructure.',
     );
   });
 
   test('app root renders V3 instead of legacy AppShell', () {
     final source = File('lib/app/app.dart').readAsStringSync();
-    expect(source, contains('../v3/app/v3_shell.dart'));
-    expect(source, contains('V3Shell('));
-    expect(source, isNot(contains("import 'app_shell.dart'")));
-    expect(source, isNot(contains('body: AppShell(')));
+    expect(source.contains('../v3/app/v3_shell.dart'), isTrue);
+    expect(source.contains('V3Shell('), isTrue);
+    expect(source.contains('app_shell.dart'), isFalse);
+    expect(source.contains('AppShell('), isFalse);
   });
 
   test('repository instruction keeps clean V3 rule first', () {
     final source = File('AGENTS.md').readAsStringSync();
-    final ruleIndex = source.indexOf('NON-NEGOTIABLE: DO NOT REUSE OR MIX LEGACY UI');
+    final ruleIndex = source.indexOf(
+      'NON-NEGOTIABLE: DO NOT REUSE OR MIX LEGACY UI',
+    );
     final architectureIndex = source.indexOf('V3 Architecture Boundary');
     expect(ruleIndex, greaterThanOrEqualTo(0));
     expect(architectureIndex, greaterThan(ruleIndex));
