@@ -5,8 +5,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../l10n/l10n.dart';
-import '../../shared/theme/app_colors.dart';
-import '../../shared/theme/app_text_styles.dart';
+import '../../shared/theme/app_spacing.dart';
+import '../../shared/widgets/app_button.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'widgets/auth_form_parts.dart';
 import 'widgets/auth_input.dart';
@@ -145,8 +145,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     final l10n = context.l10n;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AuthInput(
           icon: LucideIcons.mail,
@@ -154,9 +153,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           requiredMark: true,
           hintText: l10n.registeredEmailHint,
           controller: _emailCtrl,
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
           onSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.lg),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -167,19 +168,22 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 requiredMark: true,
                 hintText: l10n.verificationCodeHint,
                 controller: _codeCtrl,
+                textInputAction: TextInputAction.next,
                 onSubmitted: (_) => FocusScope.of(context).nextFocus(),
               ),
             ),
-            const SizedBox(width: 10),
-            _SendCodeButton(
-              codeSent: _codeSent,
-              countdown: _countdown,
-              sending: _sending,
-              onTap: _sendCode,
+            const SizedBox(width: AppSpacing.sm),
+            SizedBox(
+              width: 118,
+              child: AppButton(
+                label: _sendCodeLabel(l10n),
+                onPressed: !_sending && _countdown == 0 ? _sendCode : null,
+                loading: _sending,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.lg),
         AuthInput(
           icon: LucideIcons.lock,
           label: l10n.newPassword,
@@ -188,9 +192,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           controller: _passwordCtrl,
           obscure: true,
           showRevealToggle: true,
+          textInputAction: TextInputAction.next,
           onSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.lg),
         AuthInput(
           icon: LucideIcons.lock,
           label: l10n.confirmPassword,
@@ -199,15 +204,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           controller: _confirmCtrl,
           obscure: true,
           showRevealToggle: true,
+          textInputAction: TextInputAction.done,
           onSubmitted: (_) => _submit(),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xxl),
         AuthPrimaryButton(
           label: l10n.resetPassword,
           isLoading: _submitting,
           onPressed: _submit,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.lg),
         Center(
           child: AuthLinkText(
             text: l10n.backToLogin,
@@ -217,55 +223,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       ],
     );
   }
-}
 
-class _SendCodeButton extends StatelessWidget {
-  const _SendCodeButton({
-    required this.codeSent,
-    required this.countdown,
-    required this.sending,
-    required this.onTap,
-  });
-
-  final bool codeSent;
-  final int countdown;
-  final bool sending;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final l10n = context.l10n;
-    final canSend = !sending && countdown == 0;
-    final label = sending
-        ? l10n.sending
-        : countdown > 0
-        ? '${countdown}s'
-        : codeSent
-        ? l10n.resend
-        : l10n.sendVerificationCode;
-
-    return MouseRegion(
-      cursor: canSend ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      child: GestureDetector(
-        onTap: canSend ? onTap : null,
-        child: Container(
-          height: 46,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: canSend ? c.primary : c.surfaceMuted,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: AppTextStyles.button.copyWith(
-              color: canSend ? Colors.white : c.textMuted,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ),
-    );
+  String _sendCodeLabel(AppLocalizations l10n) {
+    if (_sending) return l10n.sending;
+    if (_countdown > 0) return '${_countdown}s';
+    return _codeSent ? l10n.resend : l10n.sendVerificationCode;
   }
 }

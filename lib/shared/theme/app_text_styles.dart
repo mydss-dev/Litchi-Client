@@ -31,6 +31,13 @@ class AppTextStyles {
     height: 1.15,
   );
 
+  static const TextStyle heroStatus = TextStyle(
+    fontFamilyFallback: fontFamilyFallback,
+    fontSize: 18,
+    fontWeight: FontWeight.w800,
+    height: 1.15,
+  );
+
   static const TextStyle pageTitle = TextStyle(
     fontFamilyFallback: fontFamilyFallback,
     fontSize: 24,
@@ -63,6 +70,27 @@ class AppTextStyles {
   static TextStyle largeNumber({double fontSize = 28}) => TextStyle(
     fontFamilyFallback: fontFamilyFallback,
     fontSize: fontSize,
+    fontWeight: FontWeight.w800,
+    height: 1.1,
+  );
+
+  static const TextStyle metricValue = TextStyle(
+    fontFamilyFallback: fontFamilyFallback,
+    fontSize: 22,
+    fontWeight: FontWeight.w800,
+    height: 1.1,
+  );
+
+  static const TextStyle metricLabel = TextStyle(
+    fontFamilyFallback: fontFamilyFallback,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    height: 1.2,
+  );
+
+  static const TextStyle planValue = TextStyle(
+    fontFamilyFallback: fontFamilyFallback,
+    fontSize: 18,
     fontWeight: FontWeight.w800,
     height: 1.1,
   );

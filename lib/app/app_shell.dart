@@ -21,7 +21,9 @@ import '../features/shop/shop_page.dart';
 import '../features/tickets/tickets_page.dart';
 import '../features/traffic/traffic_page.dart';
 import '../l10n/l10n.dart';
-import 'nav_destinations.dart';
+import '../shared/layout/app_layout.dart';
+import '../shared/layout/app_platform.dart';
+import '../shared/layout/app_shell_spec.dart';
 import '../shared/models/app_models.dart';
 import '../shared/services/brand_asset_cache.dart';
 import '../shared/services/secure_logger.dart';
@@ -33,9 +35,9 @@ import '../shared/theme/app_spacing.dart';
 import '../shared/theme/app_text_styles.dart';
 import '../shared/widgets/brand_logo.dart';
 import 'app_controller.dart';
-import 'core_platform_support.dart';
 import 'core_controller.dart';
 import 'app_window_bar.dart';
+import 'nav_destinations.dart';
 
 bool get _isDesktop =>
     Platform.isWindows || Platform.isMacOS || Platform.isLinux;
@@ -43,7 +45,9 @@ bool get _isDesktop =>
 /// Windows/Linux draw custom controls. The Windows runner owns the final window
 /// shape; Linux clips the Navigator against its transparent host window.
 /// macOS uses its native traffic lights, corners and shadow.
-bool get _usesCustomChrome => Platform.isWindows || Platform.isLinux;
+bool get _usesCustomChrome =>
+    AppShellSpec.chromeFor(AppPlatform.current) ==
+    AppWindowChrome.customDesktop;
 
 /// Each page renders its own compact layout; the shell just picks the widget
 /// directly.
@@ -79,9 +83,8 @@ Widget _indexedBody(AppController ctrl, List<NavDestination> destinations) {
   return _pageFor(ctrl.page);
 }
 
-/// Root window shell. The whole app is clipped to an 18px rounded rectangle on
-/// a transparent window background, with a 1px border and outer shadow. Corners
-/// go square while maximized. The body inside is a single bottom-nav layout.
+/// Root window shell. Native lifecycle remains platform-owned while navigation
+/// geometry and page padding come from the shared cross-platform UI framework.
 class AppShell extends StatefulWidget {
   const AppShell({super.key, this.launchSilently = false});
 
@@ -99,13 +102,15 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   // here so `_quit()` can shut the core down and restore the system proxy
   // before the process exits (see macos/Runner/AppDelegate.swift).
   static const MethodChannel _macQuitChannel = MethodChannel('litchi/quit');
-  // Auth screens stay compact and non-resizable; once authenticated the app
+  // Auth screens stay fixed and non-resizable; once authenticated the app
   // switches once to a stable, user-resizable desktop window. Page navigation
   // never changes the outer window size.
-  static const double _authWindowWidth = 400;
-  static const Size _authMinimumSize = Size(380, 480);
-  static const Size _desktopWindowSize = Size(900, 680);
-  static const Size _desktopMinimumSize = Size(800, 600);
+  static const double _authWindowWidth =
+      AppLayoutMetrics.desktopAuthWindowWidth;
+  static const Size _authMinimumSize =
+      AppLayoutMetrics.desktopAuthMinimumWindow;
+  static const Size _desktopWindowSize = AppLayoutMetrics.desktopDefaultWindow;
+  static const Size _desktopMinimumSize = AppLayoutMetrics.desktopMinimumWindow;
   // A practical unbounded ceiling that also clears the fixed macOS auth max.
   static const Size _desktopMaximumSize = Size(10000, 10000);
   bool _maximized = false;
@@ -128,10 +133,12 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   static const Duration _authFadeInDuration = Duration(milliseconds: 150);
 
   static double _authHeightFor(AuthScreen screen) => switch (screen) {
-    AuthScreen.login => 560,
-    AuthScreen.register => 720,
-    AuthScreen.changePassword => 620,
-    AuthScreen.forgotPassword => 700,
+    AuthScreen.login => AppLayoutMetrics.desktopAuthLoginHeight,
+    AuthScreen.register => AppLayoutMetrics.desktopAuthRegisterHeight,
+    AuthScreen.changePassword =>
+      AppLayoutMetrics.desktopAuthChangePasswordHeight,
+    AuthScreen.forgotPassword =>
+      AppLayoutMetrics.desktopAuthForgotPasswordHeight,
   };
 
   // Cached so onWindowClose / tray callbacks can act without a context lookup.
@@ -674,22 +681,22 @@ class _AppShellState extends State<AppShell> with WindowListener, TrayListener {
   }
 }
 
-/// Desktop uses a persistent left sidebar; compact platforms keep bottom nav.
+/// Windows/macOS/Linux use the shared desktop shell contract; compact mobile
+/// platforms use bottom navigation.
 class _MainShell extends StatelessWidget {
   const _MainShell();
 
   @override
   Widget build(BuildContext context) {
-    if (CorePlatformSupport.isDesktop) {
+    final navigation = AppShellSpec.navigationFor(AppPlatform.current);
+    if (navigation == AppNavigationMode.sidebar) {
       return const _DesktopBody();
     }
     return const _CompactBody();
   }
 }
 
-/// Compact (bottom-nav) layout.
-/// On desktop it keeps the window chrome (custom controls / macOS drag strip)
-/// so the window is still movable and closable.
+/// Compact bottom-navigation layout used by Android and other mobile targets.
 class _CompactBody extends StatefulWidget {
   const _CompactBody();
 
@@ -709,7 +716,7 @@ class _CompactBodyState extends State<_CompactBody> {
       children: [
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+            padding: AppShellSpec.pagePaddingFor(AppPlatform.current),
             child: ScrollConfiguration(
               behavior: ScrollConfiguration.of(context)
                   .copyWith(scrollbars: false),
@@ -760,7 +767,7 @@ class _CompactBodyState extends State<_CompactBody> {
   }
 }
 
-/// Stable desktop layout with a persistent 196px navigation sidebar.
+/// Stable desktop layout with the shared 200px navigation sidebar target.
 /// Most pages use the shell's vertical scroll; long virtualized surfaces (such
 /// as the desktop node table) own a bounded inner viewport.
 class _DesktopBody extends StatelessWidget {
@@ -788,12 +795,7 @@ class _DesktopBody extends StatelessWidget {
                     top: false,
                     bottom: false,
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.xxl,
-                        AppSpacing.xl,
-                        AppSpacing.xxl,
-                        AppSpacing.xxl,
-                      ),
+                      padding: AppShellSpec.pagePaddingFor(AppPlatform.current),
                       child: KeyedSubtree(
                         key: PageStorageKey<AppPage>(ctrl.page),
                         child: page,
@@ -813,8 +815,6 @@ class _DesktopBody extends StatelessWidget {
 class _DesktopSidebar extends StatelessWidget {
   const _DesktopSidebar({required this.ctrl});
 
-  static const double _width = 196;
-
   final AppController ctrl;
 
   @override
@@ -825,7 +825,7 @@ class _DesktopSidebar extends StatelessWidget {
         .toList(growable: false);
 
     return Container(
-      width: _width,
+      width: AppLayoutMetrics.desktopSidebarWidth,
       decoration: BoxDecoration(
         color: c.cardBg,
         border: Border(right: BorderSide(color: c.softBorder)),
@@ -1084,13 +1084,19 @@ class _MobileBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
     final ctrl = AppScope.of(context);
+    final compactPadding = AppLayoutMetrics.compactPagePadding;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(18, 4, 18, bottomPadding + 10),
+      padding: EdgeInsets.fromLTRB(
+        compactPadding.left,
+        4,
+        compactPadding.right,
+        bottomPadding + compactPadding.bottom,
+      ),
       child: Container(
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
-          gradient: c.cardGradient,
+          color: c.cardBg,
           borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: c.softBorder),
           boxShadow: AppShadows.soft(c),
@@ -1141,7 +1147,7 @@ class _MobileNavButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadius.md),
           child: Ink(
-            height: 46,
+            height: AppLayoutMetrics.minTouchTarget,
             decoration: BoxDecoration(
               color: selected ? c.primarySoft : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadius.md),

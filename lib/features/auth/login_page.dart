@@ -4,12 +4,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/services/credentials_storage.dart';
+import '../../shared/theme/app_spacing.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'widgets/auth_form_parts.dart';
 import 'widgets/auth_input.dart';
 import 'widgets/auth_primary_button.dart';
 
-/// Login form occupying the right form area (§17).
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -124,8 +124,7 @@ class _LoginPageState extends State<LoginPage> {
     final l10n = context.l10n;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AuthInput(
           icon: LucideIcons.mail,
@@ -133,9 +132,11 @@ class _LoginPageState extends State<LoginPage> {
           requiredMark: true,
           hintText: l10n.emailOrUsernameHint,
           controller: _emailCtrl,
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
           onSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         AuthInput(
           icon: LucideIcons.lock,
           label: l10n.password,
@@ -144,31 +145,35 @@ class _LoginPageState extends State<LoginPage> {
           controller: _passwordCtrl,
           obscure: true,
           showRevealToggle: true,
+          textInputAction: TextInputAction.done,
           onSubmitted: (_) => _submit(),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            AuthCheckboxRow(
-              value: _remember,
-              label: l10n.rememberCredentials,
-              onChanged: (v) => setState(() => _remember = v),
+            Flexible(
+              child: AuthCheckboxRow(
+                value: _remember,
+                label: l10n.rememberCredentials,
+                onChanged: (v) => setState(() => _remember = v),
+              ),
             ),
+            const SizedBox(width: AppSpacing.sm),
             AuthLinkText(
               text: l10n.forgotPasswordAction,
               onTap: () => controller.goToAuthScreen(AuthScreen.forgotPassword),
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xxl),
         AuthPrimaryButton(
           label: l10n.login,
           isLoading: _loading,
           onPressed: _submit,
         ),
         if (controller.registerConfig.registerOpen) ...[
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.lg),
           AuthBottomJump(
             leadingText: l10n.noAccount,
             actionText: l10n.registerAccount,

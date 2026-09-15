@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../layout/app_control_metrics.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
@@ -31,8 +32,19 @@ class AppTextField extends StatelessWidget {
     this.label,
     this.maxLines = 1,
     this.prefixText,
+    this.prefix,
+    this.suffix,
     this.keyboardType,
+    this.textInputAction,
+    this.focusNode,
     this.obscureText = false,
+    this.enabled = true,
+    this.readOnly = false,
+    this.errorText,
+    this.helperText,
+    this.onChanged,
+    this.onSubmitted,
+    this.onTap,
   });
 
   final TextEditingController controller;
@@ -40,8 +52,19 @@ class AppTextField extends StatelessWidget {
   final String? label;
   final int maxLines;
   final String? prefixText;
+  final Widget? prefix;
+  final Widget? suffix;
   final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final FocusNode? focusNode;
   final bool obscureText;
+  final bool enabled;
+  final bool readOnly;
+  final String? errorText;
+  final String? helperText;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -59,19 +82,36 @@ class AppTextField extends StatelessWidget {
 
   Widget _buildField(BuildContext context) {
     final c = AppColors.of(context);
-    return TextField(
+    final field = TextField(
       controller: controller,
+      focusNode: focusNode,
+      enabled: enabled,
+      readOnly: readOnly,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
       obscureText: obscureText,
       maxLines: obscureText ? 1 : maxLines,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      onTap: onTap,
       cursorColor: c.primary,
-      style: AppTextStyles.input.copyWith(color: c.textPrimary),
+      style: AppTextStyles.input.copyWith(
+        color: enabled ? c.textPrimary : c.textMuted,
+      ),
       decoration: InputDecoration(
         prefixText: prefixText,
+        prefix: prefixText == null ? prefix : null,
+        suffix: suffix,
         hintText: hint,
+        errorText: errorText,
+        helperText: helperText,
         hintStyle: AppTextStyles.input.copyWith(color: c.textMuted),
+        helperStyle: AppTextStyles.caption.copyWith(color: c.textMuted),
+        errorStyle: AppTextStyles.caption.copyWith(color: c.danger),
         filled: true,
-        fillColor: c.surfaceMuted,
+        fillColor: enabled
+            ? c.surfaceMuted
+            : c.surfaceMuted.withValues(alpha: 0.58),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
@@ -80,6 +120,10 @@ class AppTextField extends StatelessWidget {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: BorderSide(color: c.softBorder),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: c.softBorder.withValues(alpha: 0.65)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -94,6 +138,11 @@ class AppTextField extends StatelessWidget {
           borderSide: BorderSide(color: c.danger, width: 1.5),
         ),
       ),
+    );
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: AppControlMetrics.regularHeight),
+      child: field,
     );
   }
 }

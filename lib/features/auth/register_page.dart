@@ -6,10 +6,15 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../config/app_config.dart';
 import '../../l10n/l10n.dart';
+import '../../shared/layout/app_control_metrics.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/theme/app_motion.dart';
 import '../../shared/theme/app_radius.dart';
+import '../../shared/theme/app_spacing.dart';
 import '../../shared/theme/app_text_styles.dart';
+import '../../shared/widgets/app_button.dart';
+import '../../shared/widgets/app_text_field.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'widgets/auth_form_parts.dart';
 import 'widgets/auth_input.dart';
@@ -224,7 +229,6 @@ class _RegisterPageState extends State<RegisterPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Email field
         if (_config.emailSuffixes.isNotEmpty)
           _EmailSuffixInput(
             prefixCtrl: _prefixCtrl,
@@ -242,11 +246,12 @@ class _RegisterPageState extends State<RegisterPage> {
             requiredMark: true,
             hintText: l10n.emailOrUsernameHint,
             controller: _emailCtrl,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
             onSubmitted: (_) => FocusScope.of(context).nextFocus(),
           ),
-        // Send-code button + code input (only when panel requires verification)
         if (_config.emailVerifyRequired) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.lg),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -257,10 +262,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   requiredMark: true,
                   hintText: l10n.verificationCodeHint,
                   controller: _codeCtrl,
+                  textInputAction: TextInputAction.next,
                   onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpacing.sm),
               _SendCodeRow(
                 countdown: _countdown,
                 sending: _sendingCode,
@@ -269,7 +275,7 @@ class _RegisterPageState extends State<RegisterPage> {
             ],
           ),
         ],
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.lg),
         AuthInput(
           icon: LucideIcons.lock,
           label: l10n.password,
@@ -278,9 +284,10 @@ class _RegisterPageState extends State<RegisterPage> {
           controller: _passwordCtrl,
           obscure: true,
           showRevealToggle: true,
+          textInputAction: TextInputAction.next,
           onSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.lg),
         AuthInput(
           icon: LucideIcons.lock,
           label: l10n.confirmPassword,
@@ -289,30 +296,30 @@ class _RegisterPageState extends State<RegisterPage> {
           controller: _confirmCtrl,
           obscure: true,
           showRevealToggle: true,
+          textInputAction: TextInputAction.next,
           onSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpacing.lg),
         AuthInput(
           icon: LucideIcons.ticket,
           label: l10n.inviteCode,
           hintText: l10n.inviteCodeOptional,
           controller: _inviteCtrl,
+          textInputAction: TextInputAction.done,
           onSubmitted: (_) => _submit(),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.md),
         AuthCheckboxRow(
           value: _agree,
           label: '',
           onChanged: (v) => setState(() => _agree = v),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.xs,
             children: [
               Text(
                 l10n.termsAgreementPrefix,
-                style: AppTextStyles.caption.copyWith(
-                  color: c.textSecondary,
-                  fontSize: 12,
-                ),
+                style: AppTextStyles.caption.copyWith(color: c.textSecondary),
               ),
               Text(
                 l10n.termsOfService,
@@ -321,13 +328,13 @@ class _RegisterPageState extends State<RegisterPage> {
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: AppSpacing.xl),
         AuthPrimaryButton(
           label: l10n.registerAccount,
           isLoading: _loading,
           onPressed: _submit,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         AuthBottomJump(
           leadingText: l10n.alreadyHaveAccount,
           actionText: l10n.login,
@@ -337,8 +344,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 }
-
-// ── Send-code row ─────────────────────────────────────────────────────────────
 
 class _SendCodeRow extends StatelessWidget {
   const _SendCodeRow({
@@ -353,59 +358,25 @@ class _SendCodeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
     final l10n = context.l10n;
     final disabled = sending || countdown > 0;
 
-    String label;
-    if (sending) {
-      label = l10n.sending;
-    } else if (countdown > 0) {
-      label = l10n.resendIn(countdown);
-    } else {
-      label = l10n.sendVerificationCode;
-    }
+    final label = sending
+        ? l10n.sending
+        : countdown > 0
+        ? l10n.resendIn(countdown)
+        : l10n.sendVerificationCode;
 
     return SizedBox(
-      width: 112,
-      height: 50,
-      child: MouseRegion(
-        cursor: disabled ? MouseCursor.defer : SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: disabled ? null : onTap,
-          child: Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: disabled ? c.surfaceMuted : c.primary,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: disabled ? c.softBorder : c.primary),
-            ),
-            child: sending
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.8,
-                      valueColor: AlwaysStoppedAnimation(Colors.white),
-                    ),
-                  )
-                : Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.button.copyWith(
-                      color: disabled ? c.textMuted : Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-          ),
-        ),
+      width: 124,
+      child: AppButton(
+        label: label,
+        onPressed: disabled ? null : onTap,
+        loading: sending,
       ),
     );
   }
 }
-
-// ── Email suffix input ────────────────────────────────────────────────────────
 
 class _EmailSuffixInput extends StatefulWidget {
   const _EmailSuffixInput({
@@ -452,9 +423,11 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
     final c = AppColors.of(context);
     final l10n = context.l10n;
 
-    final input = Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+    final input = AnimatedContainer(
+      duration: AppMotion.fast,
+      curve: AppMotion.standard,
+      height: AppControlMetrics.regularHeight,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       decoration: BoxDecoration(
         color: c.surfaceMuted,
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -465,12 +438,14 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
       ),
       child: Row(
         children: [
-          Icon(LucideIcons.mail, size: 17, color: c.iconMuted),
-          const SizedBox(width: 10),
+          Icon(LucideIcons.mail, size: 18, color: c.iconMuted),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: TextField(
               controller: widget.prefixCtrl,
               focusNode: _focusNode,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
               onSubmitted: widget.onSubmitted != null
                   ? (_) => widget.onSubmitted!()
                   : null,
@@ -488,7 +463,7 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 4, right: 3),
+            padding: const EdgeInsets.only(left: AppSpacing.xs),
             child: Text(
               '@',
               style: AppTextStyles.input.copyWith(color: c.textMuted),
@@ -496,32 +471,42 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
           ),
           CompositedTransformTarget(
             link: _suffixLink,
-            child: GestureDetector(
-              onTap: _toggleSuffixDropdown,
-              behavior: HitTestBehavior.opaque,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 5),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(width: 1, height: 20, color: c.softBorder),
-                      const SizedBox(width: 7),
-                      Text(
-                        widget.selected,
-                        style: AppTextStyles.input.copyWith(
-                          color: c.textPrimary,
-                          fontWeight: FontWeight.w700,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _toggleSuffixDropdown,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: AppControlMetrics.compactHeight,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.sm),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 1,
+                          height: 20,
+                          color: c.softBorder,
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        LucideIcons.chevronDown,
-                        size: 15,
-                        color: c.iconMuted,
-                      ),
-                    ],
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(
+                          widget.selected,
+                          style: AppTextStyles.input.copyWith(
+                            color: c.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Icon(
+                          LucideIcons.chevronDown,
+                          size: 15,
+                          color: c.iconMuted,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -536,26 +521,18 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
       children: [
         Row(
           children: [
-            Text(
-              l10n.email,
-              style: AppTextStyles.caption.copyWith(
-                color: c.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 4),
+            AppFieldLabel(l10n.email),
+            const SizedBox(width: AppSpacing.xs),
             Text(
               '*',
               style: AppTextStyles.caption.copyWith(
                 color: c.danger,
-                fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         input,
       ],
     );
@@ -591,12 +568,12 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
               showWhenUnlinked: false,
               targetAnchor: Alignment.bottomRight,
               followerAnchor: Alignment.topRight,
-              offset: const Offset(0, 8),
+              offset: const Offset(0, AppSpacing.sm),
               child: Material(
                 color: Colors.transparent,
                 child: Container(
                   width: 148,
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: c.cardBg,
                     borderRadius: BorderRadius.circular(AppRadius.md),
@@ -623,7 +600,7 @@ class _EmailSuffixInputState extends State<_EmailSuffixInput> {
                           },
                         ),
                         if (suffix != widget.suffixes.last)
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                       ],
                     ],
                   ),
@@ -654,31 +631,41 @@ class _EmailSuffixOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        height: compact ? 40 : 48,
-        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
-        decoration: BoxDecoration(
-          color: selected ? c.primarySoft : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                suffix,
-                style: AppTextStyles.body.copyWith(
-                  color: selected ? c.primary : c.textPrimary,
-                  fontSize: compact ? 14 : null,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+    final height = compact
+        ? AppControlMetrics.compactHeight
+        : AppControlMetrics.regularHeight;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          curve: AppMotion.standard,
+          height: height,
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? AppSpacing.sm : AppSpacing.md,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? c.primarySoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  suffix,
+                  style: AppTextStyles.body.copyWith(
+                    color: selected ? c.primary : c.textPrimary,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            if (selected) Icon(LucideIcons.check, color: c.primary, size: 16),
-          ],
+              if (selected)
+                Icon(LucideIcons.check, color: c.primary, size: 16),
+            ],
+          ),
         ),
       ),
     );

@@ -1,0 +1,137 @@
+name: Visual Acceptance Snapshots
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'lib/features/dashboard/**'
+      - 'lib/features/nodes/**'
+      - 'lib/features/shop/**'
+      - 'lib/features/account/**'
+      - 'lib/features/invite/**'
+      - 'lib/features/traffic/**'
+      - 'lib/features/orders/**'
+      - 'lib/features/tickets/**'
+      - 'lib/features/settings/**'
+      - 'lib/shared/theme/**'
+      - 'test/visual/**'
+      - '.github/workflows/visual-acceptance.yml'
+
+concurrency:
+  group: visual-acceptance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  linux-primary-pages-fallback:
+    # Render the production Windows presentation contract on an Ubuntu runner.
+    # The tests force TargetPlatform.windows, so AppPlatform/AppShellSpec still
+    # execute the Windows UI path while avoiding hosted Windows runner scarcity.
+    name: Windows-layout Primary Pages 900x700 (Linux fallback)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          lfs: true
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Prepare snapshot directory
+        run: mkdir -p test/visual/goldens
+      - name: Render primary-page light/dark snapshots
+        run: >-
+          flutter test
+          --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
+          --update-goldens
+          test/visual/dashboard_visual_acceptance_test.dart
+          test/visual/nodes_visual_acceptance_test.dart
+          test/visual/shop_visual_acceptance_test.dart
+          test/visual/account_visual_acceptance_test.dart
+          test/visual/invite_visual_acceptance_test.dart
+          test/visual/traffic_visual_acceptance_test.dart
+          test/visual/orders_visual_acceptance_test.dart
+          test/visual/tickets_visual_acceptance_test.dart
+          test/visual/settings_visual_acceptance_test.dart
+      - name: Upload primary-page snapshots
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: primary-pages-windows-layout-900x700-linux-fallback
+          path: test/visual/goldens/*.png
+          if-no-files-found: error
+          retention-days: 14
+
+  windows-primary-pages:
+    # Native Windows confirmation. Linux fallback above remains the primary
+    # visual artifact if GitHub cannot allocate a hosted Windows runner.
+    name: Windows Primary Pages 900x700 (Native)
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          lfs: true
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Prepare snapshot directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force test/visual/goldens | Out-Null
+      - name: Render primary-page light/dark snapshots
+        run: >-
+          flutter test
+          --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
+          --update-goldens
+          test/visual/dashboard_visual_acceptance_test.dart
+          test/visual/nodes_visual_acceptance_test.dart
+          test/visual/shop_visual_acceptance_test.dart
+          test/visual/account_visual_acceptance_test.dart
+          test/visual/invite_visual_acceptance_test.dart
+          test/visual/traffic_visual_acceptance_test.dart
+          test/visual/orders_visual_acceptance_test.dart
+          test/visual/tickets_visual_acceptance_test.dart
+          test/visual/settings_visual_acceptance_test.dart
+      - name: Upload primary-page snapshots
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: primary-pages-windows-900x700-native
+          path: test/visual/goldens/*.png
+          if-no-files-found: error
+          retention-days: 14
+
+  android-primary-compact:
+    # Flutter widget render with TargetPlatform.android. This is a layout and
+    # presentation acceptance pass, not an emulator/instrumentation test.
+    name: Android-layout Primary Compact 360-390 (Linux render)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          lfs: true
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Prepare fallback brand assets
+        # Release builds run the same helper whenever no signed remote brand is
+        # available. Visual tests need the bundled fallback so MobileTitleBar can
+        # render the production BrandLogo without changing application code.
+        run: dart run tool/prepare_brand_assets.dart
+      - name: Prepare snapshot directory
+        run: mkdir -p test/visual/goldens
+      - name: Render Android compact primary snapshots
+        run: >-
+          flutter test
+          --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
+          --update-goldens
+          test/visual/android_*_visual_acceptance_test.dart
+      - name: Upload Android compact primary snapshots
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-primary-compact-360-390
+          path: test/visual/goldens/android_*.png
+          if-no-files-found: error
+          retention-days: 14

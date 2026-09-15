@@ -170,7 +170,7 @@ class MobileTitleBar extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            gradient: c.cardGradient,
+            color: c.cardBg,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: c.softBorder),
             boxShadow: AppShadows.soft(c),

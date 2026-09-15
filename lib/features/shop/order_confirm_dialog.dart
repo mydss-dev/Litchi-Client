@@ -1,23 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/panel_api.dart';
-import '../../shared/theme/app_colors.dart';
-import '../../shared/theme/app_palette.dart';
-import '../../shared/theme/app_radius.dart';
-import '../../shared/theme/app_text_styles.dart';
-import '../../shared/widgets/app_bottom_sheet.dart';
 import '../../shared/widgets/app_modal.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'payment_dialog.dart';
+import 'widgets/greenfield_order_confirm_surface.dart';
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-/// Maps BillingCycle / one-time to the API period key.
 String periodKey(BillingCycle? cycle, PlanModel plan) {
   if (plan.category == PlanCategory.oneTime ||
       plan.category == PlanCategory.dataPack) {
@@ -42,8 +34,6 @@ String periodKey(BillingCycle? cycle, PlanModel plan) {
   return 'month_price';
 }
 
-// ── public entry-point ────────────────────────────────────────────────────────
-
 Future<void> showOrderConfirmDialog({
   required BuildContext context,
   required PlanModel plan,
@@ -63,17 +53,15 @@ Future<void> showOrderConfirmDialog({
 }
 
 String _periodLabel(BuildContext context, String key) => switch (key) {
-  'month_price' => context.l10n.monthly,
-  'quarter_price' => context.l10n.quarterly,
-  'half_year_price' => context.l10n.halfYear,
-  'year_price' => context.l10n.yearly,
-  'two_year_price' => context.l10n.twoYears,
-  'three_year_price' => context.l10n.threeYears,
-  'onetime_price' => context.l10n.oneTime,
-  _ => key,
-};
-
-// ── Order confirm dialog ──────────────────────────────────────────────────────
+      'month_price' => context.l10n.monthly,
+      'quarter_price' => context.l10n.quarterly,
+      'half_year_price' => context.l10n.halfYear,
+      'year_price' => context.l10n.yearly,
+      'two_year_price' => context.l10n.twoYears,
+      'three_year_price' => context.l10n.threeYears,
+      'onetime_price' => context.l10n.oneTime,
+      _ => key,
+    };
 
 class _OrderConfirmDialog extends StatefulWidget {
   const _OrderConfirmDialog({
@@ -101,14 +89,10 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
   bool _submitting = false;
   String _currencySymbol = '¥';
 
-  // ── derived prices ────────────────────────────────────────────────────────
-
   List<MapEntry<String, double>> get _availablePeriods {
     final entries = <MapEntry<String, double>>[];
     void add(String key, double? price) {
-      if (price != null) {
-        entries.add(MapEntry(key, price));
-      }
+      if (price != null) entries.add(MapEntry(key, price));
     }
 
     add('month_price', widget.plan.monthlyPrice);
@@ -122,8 +106,8 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
   }
 
   double get _originalPrice {
-    for (final e in _availablePeriods) {
-      if (e.key == _period) return e.value;
+    for (final entry in _availablePeriods) {
+      if (entry.key == _period) return entry.value;
     }
     return 0;
   }
@@ -131,12 +115,8 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
   int get _originalCents => (_originalPrice * 100).round();
 
   int get _discountCents {
-    if (!_couponApplied || _coupon == null) {
-      return 0;
-    }
-    if (_coupon!.type == 1) {
-      return _coupon!.value;
-    }
+    if (!_couponApplied || _coupon == null) return 0;
+    if (_coupon!.type == 1) return _coupon!.value;
     if (_coupon!.type == 2) {
       return (_originalCents * _coupon!.value / 100).round();
     }
@@ -160,8 +140,8 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
   }
 
   Future<void> _loadCurrencySymbol() async {
-    final sym = await widget.api.getCommCurrencySymbol();
-    if (mounted) setState(() => _currencySymbol = sym);
+    final symbol = await widget.api.getCommCurrencySymbol();
+    if (mounted) setState(() => _currencySymbol = symbol);
   }
 
   Future<void> _verifyCoupon() async {
@@ -191,11 +171,11 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
           type: AppToastType.error,
         );
       }
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
         AppToast.show(
           context,
-          context.l10n.operationFailed(context.l10n.verify, '$e'),
+          context.l10n.operationFailed(context.l10n.verify, '$error'),
           type: AppToastType.error,
         );
       }
@@ -231,11 +211,11 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
         currencySymbol: _currencySymbol,
         onPaid: widget.onPaid,
       );
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
         AppToast.show(
           context,
-          context.l10n.operationFailed(context.l10n.submitOrder, '$e'),
+          context.l10n.operationFailed(context.l10n.submitOrder, '$error'),
           type: AppToastType.error,
         );
       }
@@ -244,21 +224,19 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return AppBottomSheet(
-      title: context.l10n.confirmOrder,
-      subtitle: widget.plan.title,
-      maxHeightFactor: 0.92,
-      children: [_buildContent(c)],
-    );
+  void _selectPeriod(String key) {
+    setState(() {
+      _period = key;
+      _couponApplied = false;
+      _coupon = null;
+    });
   }
 
-  Widget _buildContent(AppColors c) {
-    final ctrl = AppScope.of(context);
-    final currentPlanId = ctrl.currentPlanId;
-    final expiresAt = ctrl.expiredAt;
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.of(context);
+    final currentPlanId = controller.currentPlanId;
+    final expiresAt = controller.expiredAt;
     final hasActivePlan =
         currentPlanId != null &&
         (expiresAt == null ||
@@ -266,362 +244,57 @@ class _OrderConfirmDialogState extends State<_OrderConfirmDialog> {
             expiresAt * 1000 > DateTime.now().millisecondsSinceEpoch);
     final switchingPlan =
         hasActivePlan && currentPlanId != int.tryParse(widget.plan.id);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (switchingPlan) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: c.warning.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: c.warning.withValues(alpha: 0.28)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(LucideIcons.triangleAlert, size: 19, color: c.warning),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    context.l10n.existingPlanSwitchWarning(
-                      ctrl.user.plan.isEmpty
-                          ? context.l10n.currentPlan
-                          : ctrl.user.plan,
-                      widget.plan.title,
-                    ),
-                    style: AppTextStyles.body.copyWith(color: c.textSecondary),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-        ],
-        _buildPeriodSelector(c),
-        const SizedBox(height: 20),
-        _buildCouponRow(c),
-        const SizedBox(height: 20),
-        _buildSummary(c),
-        const SizedBox(height: 24),
-        _buildActions(c),
-      ],
-    );
-  }
-
-  Widget _buildPeriodSelector(AppColors c) {
-    final periods = _availablePeriods;
-    if (periods.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 4),
-        Text(
-          context.l10n.selectBillingCycle,
-          style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: periods.map((e) {
-            final selected = _period == e.key;
-            return GestureDetector(
-              onTap: () => setState(() {
-                _period = e.key;
-                _couponApplied = false;
-                _coupon = null;
-              }),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: selected ? c.primarySoft : c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  border: Border.all(
-                    color: selected ? c.primary : c.border,
-                    width: selected ? 1.5 : 1,
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _periodLabel(context, e.key),
-                      style: AppTextStyles.bodyStrong.copyWith(
-                        color: selected ? c.primary : c.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$_currencySymbol${e.value.toStringAsFixed(2)}',
-                      style: AppTextStyles.body.copyWith(
-                        color: selected ? c.primary : c.textMuted,
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCouponRow(AppColors c) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.couponCode,
-          style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                height: 42,
-                decoration: BoxDecoration(
-                  color: _couponApplied
-                      ? c.success.withValues(alpha: 0.08)
-                      : c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: _couponApplied ? c.success : c.border,
-                  ),
-                ),
-                child: TextField(
-                  controller: _couponCtrl,
-                  enabled: !_couponApplied,
-                  style: AppTextStyles.body.copyWith(color: c.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: context.l10n.couponHint,
-                    hintStyle: AppTextStyles.body.copyWith(color: c.textMuted),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            if (_couponApplied)
-              _SmallBtn(
-                label: context.l10n.remove,
-                color: c.danger,
-                onTap: _removeCoupon,
-                c: c,
+    final switchWarning = switchingPlan
+        ? context.l10n.existingPlanSwitchWarning(
+            controller.user.plan.isEmpty
+                ? context.l10n.currentPlan
+                : controller.user.plan,
+            widget.plan.title,
+          )
+        : null;
+    final couponStatusText = _couponApplied && _coupon != null
+        ? _coupon!.type == 1
+            ? context.l10n.discountAmount(
+                '$_currencySymbol${(_coupon!.value / 100).toStringAsFixed(2)}',
               )
-            else
-              _SmallBtn(
-                label: _verifying
-                    ? context.l10n.verifying
-                    : context.l10n.verify,
-                color: c.primary,
-                onTap: _verifying ? null : _verifyCoupon,
-                c: c,
-              ),
-          ],
-        ),
-        if (_couponApplied && _coupon != null) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(LucideIcons.tag, size: 13, color: c.success),
-              const SizedBox(width: 6),
-              Text(
-                _coupon!.type == 1
-                    ? context.l10n.discountAmount(
-                        '$_currencySymbol${(_coupon!.value / 100).toStringAsFixed(2)}',
-                      )
-                    : context.l10n.discountPercent(_coupon!.value),
-                style: AppTextStyles.caption.copyWith(color: c.success),
-              ),
-            ],
-          ),
+            : context.l10n.discountPercent(_coupon!.value)
+        : null;
+
+    return AppAdaptiveModal(
+      title: context.l10n.confirmOrder,
+      maxWidth: 560,
+      maxHeightFactor: 0.92,
+      child: GreenfieldOrderConfirmSurface(
+        planTitle: widget.plan.title,
+        planCapacity: widget.plan.capacity,
+        switchWarning: switchWarning,
+        periods: [
+          for (final entry in _availablePeriods)
+            GreenfieldPeriodOption(
+              key: entry.key,
+              label: _periodLabel(context, entry.key),
+              priceText:
+                  '$_currencySymbol${entry.value.toStringAsFixed(2)}',
+              selected: entry.key == _period,
+            ),
         ],
-      ],
-    );
-  }
-
-  Widget _buildSummary(AppColors c) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: c.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: c.softBorder),
+        couponController: _couponCtrl,
+        couponApplied: _couponApplied,
+        couponStatusText: couponStatusText,
+        verifyingCoupon: _verifying,
+        originalPriceText:
+            '$_currencySymbol${_originalPrice.toStringAsFixed(2)}',
+        discountText: _discountCents > 0
+            ? '-$_currencySymbol${(_discountCents / 100).toStringAsFixed(2)}'
+            : null,
+        totalPriceText: '$_currencySymbol${_finalPrice.toStringAsFixed(2)}',
+        submitting: _submitting,
+        onPeriodSelected: _selectPeriod,
+        onVerifyCoupon: _verifyCoupon,
+        onRemoveCoupon: _removeCoupon,
+        onCancel: () => Navigator.of(context).pop(),
+        onSubmit: _submit,
       ),
-      child: Column(
-        children: [
-          _SummaryRow(
-            label: context.l10n.originalPrice,
-            value: '$_currencySymbol${_originalPrice.toStringAsFixed(2)}',
-            c: c,
-          ),
-          if (_discountCents > 0) ...[
-            const SizedBox(height: 8),
-            _SummaryRow(
-              label: context.l10n.discount,
-              value:
-                  '-$_currencySymbol${(_discountCents / 100).toStringAsFixed(2)}',
-              valueColor: c.danger,
-              c: c,
-            ),
-          ],
-          Divider(color: c.border, height: 20),
-          _SummaryRow(
-            label: context.l10n.totalDue,
-            value: '$_currencySymbol${_finalPrice.toStringAsFixed(2)}',
-            valueStyle: AppTextStyles.largeNumber(
-              fontSize: 20,
-            ).copyWith(color: c.primary),
-            c: c,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActions(AppColors c) {
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 44,
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: c.border),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Text(
-                context.l10n.cancel,
-                style: AppTextStyles.button.copyWith(color: c.textSecondary),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 2,
-          child: SizedBox(
-            height: 44,
-            child: ElevatedButton(
-              onPressed: _submitting ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: AppPalette.brandGradient,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Center(
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          context.l10n.submitOrder,
-                          style: AppTextStyles.button.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── small helper widgets ──────────────────────────────────────────────────────
-
-class _SmallBtn extends StatelessWidget {
-  const _SmallBtn({
-    required this.label,
-    required this.color,
-    required this.onTap,
-    required this.c,
-  });
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-  final AppColors c;
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 42,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: AppTextStyles.bodyStrong.copyWith(color: color),
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({
-    required this.label,
-    required this.value,
-    required this.c,
-    this.valueColor,
-    this.valueStyle,
-  });
-  final String label;
-  final String value;
-  final AppColors c;
-  final Color? valueColor;
-  final TextStyle? valueStyle;
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: AppTextStyles.body.copyWith(color: c.textSecondary)),
-        Text(
-          value,
-          style:
-              valueStyle ??
-              AppTextStyles.bodyStrong.copyWith(
-                color: valueColor ?? c.textPrimary,
-              ),
-        ),
-      ],
     );
   }
 }

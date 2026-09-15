@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../layout/app_control_metrics.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
 
-/// Compact select / dropdown with consistent desktop hover and focus behavior.
+/// Shared select/dropdown with adaptive pointer/touch geometry.
 class AppSelect<T> extends StatelessWidget {
   const AppSelect({
     super.key,
@@ -20,71 +21,87 @@ class AppSelect<T> extends StatelessWidget {
   final T value;
   final List<T> items;
   final String Function(T) labelOf;
-  final ValueChanged<T> onChanged;
+  final ValueChanged<T>? onChanged;
   final double minWidth;
 
   @override
   Widget build(BuildContext context) {
     final c = AppColors.of(context);
+    final enabled = onChanged != null && items.isNotEmpty;
+    final height = AppControlMetrics.regularHeight;
+
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: PopupMenuButton<T>(
-        initialValue: value,
-        onSelected: onChanged,
-        position: PopupMenuPosition.under,
-        color: c.cardBg,
-        elevation: 5,
-        tooltip: labelOf(value),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          side: BorderSide(color: c.softBorder),
-        ),
-        itemBuilder: (context) => [
-          for (final item in items)
-            PopupMenuItem<T>(
-              value: item,
-              height: 38,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      labelOf(item),
-                      style: AppTextStyles.body.copyWith(
-                        color: item == value ? c.primary : c.textPrimary,
-                        fontWeight:
-                            item == value ? FontWeight.w700 : FontWeight.w500,
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.58,
+        child: PopupMenuButton<T>(
+          enabled: enabled,
+          initialValue: value,
+          onSelected: onChanged,
+          position: PopupMenuPosition.under,
+          color: c.cardBg,
+          elevation: 5,
+          tooltip: labelOf(value),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            side: BorderSide(color: c.softBorder),
+          ),
+          itemBuilder: (context) => [
+            for (final item in items)
+              PopupMenuItem<T>(
+                value: item,
+                height: height,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        labelOf(item),
+                        style: AppTextStyles.body.copyWith(
+                          color: item == value ? c.primary : c.textPrimary,
+                          fontWeight: item == value
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  if (item == value) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    Icon(LucideIcons.check, size: 14, color: c.primary),
+                    if (item == value) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      Icon(LucideIcons.check, size: 14, color: c.primary),
+                    ],
                   ],
-                ],
+                ),
               ),
+          ],
+          child: Container(
+            height: height,
+            constraints: BoxConstraints(minWidth: minWidth),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: c.cardBg,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: enabled ? c.border : c.softBorder),
             ),
-        ],
-        child: Container(
-          height: 36,
-          constraints: BoxConstraints(minWidth: minWidth),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: c.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                labelOf(value),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.menu.copyWith(color: c.textSecondary),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Icon(LucideIcons.chevronDown, size: 14, color: c.iconMuted),
-            ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    labelOf(value),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.menu.copyWith(
+                      color: enabled ? c.textSecondary : c.textMuted,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Icon(
+                  LucideIcons.chevronDown,
+                  size: 14,
+                  color: c.iconMuted,
+                ),
+              ],
+            ),
           ),
         ),
       ),

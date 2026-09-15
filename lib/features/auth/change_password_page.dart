@@ -4,13 +4,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../app/app_controller.dart';
 import '../../l10n/l10n.dart';
 import '../../shared/theme/app_colors.dart';
+import '../../shared/theme/app_spacing.dart';
 import '../../shared/theme/app_text_styles.dart';
 import '../../shared/widgets/app_toast.dart';
 import 'widgets/auth_form_parts.dart';
 import 'widgets/auth_input.dart';
 import 'widgets/auth_primary_button.dart';
 
-/// Change-password form (§19).
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
 
@@ -87,8 +87,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     final l10n = context.l10n;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AuthInput(
           icon: LucideIcons.lock,
@@ -96,47 +95,57 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           controller: _oldCtrl,
           obscure: true,
           showRevealToggle: true,
+          textInputAction: TextInputAction.next,
           onSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.lg),
         AuthInput(
           icon: LucideIcons.lock,
           hintText: l10n.newPasswordHint,
           controller: _newCtrl,
           obscure: true,
           showRevealToggle: true,
+          textInputAction: TextInputAction.next,
           onSubmitted: (_) => FocusScope.of(context).nextFocus(),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.lg),
         AuthInput(
           icon: LucideIcons.lock,
           hintText: l10n.confirmPasswordHint,
           controller: _confirmCtrl,
           obscure: true,
           showRevealToggle: true,
+          textInputAction: TextInputAction.done,
           onSubmitted: (_) => _submit(),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.md),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(LucideIcons.shieldCheck, size: 14, color: c.textSecondary),
-            const SizedBox(width: 6),
-            Text(
-              l10n.passwordAdvice,
-              style: AppTextStyles.caption.copyWith(
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(
+                LucideIcons.shieldCheck,
+                size: 14,
                 color: c.textSecondary,
-                fontSize: 12,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                l10n.passwordAdvice,
+                style: AppTextStyles.caption.copyWith(color: c.textSecondary),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xxl),
         AuthPrimaryButton(
           label: l10n.saveChanges,
           isLoading: _loading,
           onPressed: _submit,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.lg),
         Center(
           child: AuthLinkText(
             text: l10n.backToLogin,

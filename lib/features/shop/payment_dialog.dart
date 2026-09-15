@@ -2,25 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../l10n/l10n.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../../shared/services/secure_logger.dart';
 import '../../shared/services/url_opener.dart';
-import '../../shared/theme/app_colors.dart';
-import '../../shared/theme/app_palette.dart';
-import '../../shared/theme/app_radius.dart';
-import '../../shared/theme/app_text_styles.dart';
+import '../../shared/widgets/app_bottom_sheet.dart';
+import '../../shared/widgets/app_icon_button.dart';
+import '../../shared/widgets/app_modal.dart';
 import '../../shared/widgets/app_toast.dart';
-import '../../shared/widgets/icon_action_btn.dart';
+import 'widgets/greenfield_payment_surface.dart';
 
-/// Opens the payment dialog for an existing pending order.
-///
-/// [currencySymbol] is optional — fetched from the API when omitted so
-/// callers that already have the symbol (e.g. after order submission) can
-/// skip the extra round-trip.
 Future<void> showOrderPaymentDialog({
   required BuildContext context,
   required String tradeNo,
@@ -29,30 +22,27 @@ Future<void> showOrderPaymentDialog({
   String? currencySymbol,
   Future<void> Function()? onPaid,
 }) async {
-  String sym = currencySymbol ?? '¥';
+  String symbol = currencySymbol ?? '¥';
   if (currencySymbol == null) {
     try {
-      sym = await api.getCommCurrencySymbol();
-    } catch (e) {
-      SecureLogger.debug('get currency symbol failed', e);
+      symbol = await api.getCommCurrencySymbol();
+    } catch (error) {
+      SecureLogger.debug('get currency symbol failed', error);
     }
   }
   if (!context.mounted) return;
-  return showDialog<void>(
+  return showAppAdaptiveModal<void>(
     context: context,
-    barrierColor: Colors.black54,
     builder: (_) => _PaymentDialog(
       tradeNo: tradeNo,
       finalPrice: finalPrice,
-      currencySymbol: sym,
+      currencySymbol: symbol,
       api: api,
       onPaid: onPaid,
     ),
   );
 }
 
-// Stage 1: method selection  →  Stage 2: QR code + polling  →  Stage 3: success
-// Stage 2 can also expire → Stage 4: expired (refresh available)
 enum _Stage { methods, qr, success, expired }
 
 class _PaymentDialog extends StatefulWidget {
@@ -75,7 +65,6 @@ class _PaymentDialog extends StatefulWidget {
 }
 
 class _PaymentDialogState extends State<_PaymentDialog> {
-  // method selection
   List<RemotePaymentMethod> _methods = [];
   bool _loadingMethods = true;
   bool _loadingOrderDetail = true;
@@ -84,15 +73,13 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   String _selectedName = '';
   bool _checkingOut = false;
 
-  // qr + timer
   _Stage _stage = _Stage.methods;
   String _payUrl = '';
-  int _payType = 0; // 0=qr content, 1=redirect link
+  int _payType = 0;
   Timer? _countdown;
   Timer? _pollTimer;
-  int _secondsLeft = 900; // 15 minutes
+  int _secondsLeft = 900;
 
-  // actions
   bool _manualChecking = false;
   bool _refreshing = false;
   bool _paidNotified = false;
@@ -114,21 +101,22 @@ class _PaymentDialogState extends State<_PaymentDialog> {
   Future<void> _loadMethods() async {
     try {
       final methods = await widget.api.getPaymentMethods();
-      if (mounted) {
-        setState(() {
-          _methods = methods;
-          _loadingMethods = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _loadingMethods = false);
-        AppToast.show(
-          context,
-          context.l10n.operationFailed(context.l10n.getPaymentMethods, '$e'),
-          type: AppToastType.error,
-        );
-      }
+      if (!mounted) return;
+      setState(() {
+        _methods = methods;
+        _loadingMethods = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loadingMethods = false);
+      AppToast.show(
+        context,
+        context.l10n.operationFailed(
+          context.l10n.getPaymentMethods,
+          '$error',
+        ),
+        type: AppToastType.error,
+      );
     }
   }
 
@@ -140,13 +128,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         _orderDetail = detail;
         _loadingOrderDetail = false;
       });
-      if (detail.status == 3 || detail.status == 4) {
-        _markPaid();
-      }
-    } catch (e) {
-      // This doubles as a capability probe. Older compatible backends can
-      // continue with the caller-provided amount and normal payment methods.
-      SecureLogger.debug('get order payment detail failed', e);
+      if (detail.status == 3 || detail.status == 4) _markPaid();
+    } catch (error) {
+      SecureLogger.debug('get order payment detail failed', error);
       if (mounted) setState(() => _loadingOrderDetail = false);
     }
   }
@@ -155,13 +139,9 @@ class _PaymentDialogState extends State<_PaymentDialog> {
       (_orderDetail?.totalAmount ?? (widget.finalPrice * 100).round()) / 100;
 
   int get _balanceAmount => _orderDetail?.balanceAmount ?? 0;
-
   int get _discountAmount => _orderDetail?.discountAmount ?? 0;
-
   int get _surplusAmount => _orderDetail?.surplusAmount ?? 0;
-
   int get _refundAmount => _orderDetail?.refundAmount ?? 0;
-
   int get _preHandlingAmount => _orderDetail?.preHandlingAmount ?? 0;
 
   RemotePaymentMethod? get _selectedMethod {
@@ -199,13 +179,6 @@ class _PaymentDialogState extends State<_PaymentDialog> {
     return context.l10n.paymentFeeDescription(parts.join(' + '));
   }
 
-  bool get _hasAdjustments =>
-      _discountAmount > 0 ||
-      _surplusAmount > 0 ||
-      _balanceAmount > 0 ||
-      _refundAmount > 0 ||
-      _displayFeeAmount > 0;
-
   bool get _balanceOnly => _orderDetail?.balanceOnly ?? false;
 
   Future<void> _checkout() async {
@@ -222,7 +195,6 @@ class _PaymentDialogState extends State<_PaymentDialog> {
       );
       if (!mounted) return;
       if (result.url.isEmpty) {
-        // Common for balance checkout; verify status before showing success.
         await _verifyCompletedCheckout();
       } else {
         setState(() {
@@ -235,15 +207,14 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         if (result.type == 1) unawaited(_openInBrowser(result.url));
         _startTimers();
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _checkingOut = false);
-        AppToast.show(
-          context,
-          context.l10n.operationFailed(context.l10n.startPayment, '$e'),
-          type: AppToastType.error,
-        );
-      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _checkingOut = false);
+      AppToast.show(
+        context,
+        context.l10n.operationFailed(context.l10n.startPayment, '$error'),
+        type: AppToastType.error,
+      );
     }
   }
 
@@ -266,7 +237,7 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         const Duration(seconds: 3),
         (_) => _pollStatus(),
       );
-    } catch (e) {
+    } catch (error) {
       if (!mounted) return;
       setState(() => _checkingOut = false);
       AppToast.show(
@@ -310,8 +281,8 @@ class _PaymentDialogState extends State<_PaymentDialog> {
         _pollTimer?.cancel();
         _markPaid();
       }
-    } catch (e) {
-      SecureLogger.debug('payment poll failed', e);
+    } catch (error) {
+      SecureLogger.debug('payment poll failed', error);
     }
   }
 
@@ -332,11 +303,11 @@ class _PaymentDialogState extends State<_PaymentDialog> {
           type: AppToastType.warning,
         );
       }
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
         AppToast.show(
           context,
-          context.l10n.operationFailed(context.l10n.queryPayment, '$e'),
+          context.l10n.operationFailed(context.l10n.queryPayment, '$error'),
           type: AppToastType.error,
         );
       }
@@ -375,779 +346,127 @@ class _PaymentDialogState extends State<_PaymentDialog> {
       });
       if (result.type == 1) unawaited(_openInBrowser(result.url));
       _startTimers();
-    } catch (e) {
-      if (mounted) {
-        setState(() => _refreshing = false);
-        AppToast.show(
-          context,
-          context.l10n.operationFailed(context.l10n.refreshPayment, '$e'),
-          type: AppToastType.error,
-        );
-      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _refreshing = false);
+      AppToast.show(
+        context,
+        context.l10n.operationFailed(context.l10n.refreshPayment, '$error'),
+        type: AppToastType.error,
+      );
     }
   }
 
-  String get _countdownText {
-    final m = _secondsLeft ~/ 60;
-    final s = _secondsLeft % 60;
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  void _returnToMethods() {
+    _countdown?.cancel();
+    _pollTimer?.cancel();
+    setState(() => _stage = _Stage.methods);
   }
 
-  Color _timerColor(AppColors c) {
-    if (_secondsLeft > 300) return c.textMuted;
-    if (_secondsLeft > 60) return c.warning;
-    return c.danger;
-  }
+  String _stageTitle(BuildContext context) => switch (_stage) {
+        _Stage.methods => context.l10n.selectPaymentMethod,
+        _Stage.qr => _payType == 1
+            ? context.l10n.browserPayment
+            : context.l10n.scanToPay,
+        _Stage.success => context.l10n.paymentSuccess,
+        _Stage.expired => _payType == 1
+            ? context.l10n.paymentTimedOut
+            : context.l10n.qrExpired,
+      };
+
+  GreenfieldPaymentStage get _greenfieldStage => switch (_stage) {
+        _Stage.methods => GreenfieldPaymentStage.methods,
+        _Stage.qr => GreenfieldPaymentStage.qr,
+        _Stage.success => GreenfieldPaymentStage.success,
+        _Stage.expired => GreenfieldPaymentStage.expired,
+      };
+
+  String _centsText(int cents, {String prefix = ''}) =>
+      '$prefix${widget.currencySymbol}${(cents / 100).toStringAsFixed(2)}';
+
+  List<GreenfieldPaymentAdjustment> get _adjustments => [
+        if (_discountAmount > 0)
+          GreenfieldPaymentAdjustment(
+            label: context.l10n.discount,
+            value: _centsText(_discountAmount, prefix: '-'),
+          ),
+        if (_surplusAmount > 0)
+          GreenfieldPaymentAdjustment(
+            label: context.l10n.subscriptionCredit,
+            value: _centsText(_surplusAmount, prefix: '-'),
+          ),
+        if (_balanceAmount > 0)
+          GreenfieldPaymentAdjustment(
+            label: context.l10n.balanceApplied,
+            value: _centsText(_balanceAmount, prefix: '-'),
+          ),
+        if (_refundAmount > 0)
+          GreenfieldPaymentAdjustment(
+            label: context.l10n.refundAmountLabel,
+            value: _centsText(_refundAmount),
+          ),
+        if (_displayFeeAmount > 0)
+          GreenfieldPaymentAdjustment(
+            label: context.l10n.paymentHandlingFee,
+            value: _centsText(_displayFeeAmount, prefix: '+'),
+            fee: true,
+          ),
+      ];
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: 420,
-          constraints: const BoxConstraints(maxHeight: 640),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: c.softBorder),
-            boxShadow: [
-              BoxShadow(
-                color: c.shadow,
-                blurRadius: 32,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildHeader(c),
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: switch (_stage) {
-                    _Stage.methods => _buildMethods(c),
-                    _Stage.qr => _buildQr(c),
-                    _Stage.success => _buildSuccess(c),
-                    _Stage.expired => _buildExpired(c),
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(AppColors c) {
-    final titles = {
-      _Stage.methods: context.l10n.selectPaymentMethod,
-      _Stage.qr: _payType == 1
-          ? context.l10n.browserPayment
-          : context.l10n.scanToPay,
-      _Stage.success: context.l10n.paymentSuccess,
-      _Stage.expired: _payType == 1
-          ? context.l10n.paymentTimedOut
-          : context.l10n.qrExpired,
-    };
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 16, 16),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: c.softBorder)),
-      ),
-      child: Row(
-        children: [
-          if (_stage == _Stage.qr) ...[
-            IconActionBtn(
-              icon: LucideIcons.arrowLeft,
-              onTap: () {
-                _countdown?.cancel();
-                _pollTimer?.cancel();
-                setState(() => _stage = _Stage.methods);
-              },
-              c: c,
-            ),
-            const SizedBox(width: 6),
-          ],
-          Expanded(
-            child: Text(
-              titles[_stage]!,
-              style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
-            ),
-          ),
-          if (_stage != _Stage.success)
-            IconActionBtn(
-              icon: LucideIcons.x,
-              onTap: () => Navigator.of(context).pop(),
-              c: c,
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ── Stage 1: method selection ─────────────────────────────────────────────
-
-  Widget _buildMethods(AppColors c) {
-    final ready =
-        !_loadingOrderDetail &&
+    final ready = !_loadingOrderDetail &&
         !_checkingOut &&
         (_balanceOnly || (!_loadingMethods && _selectedId != null));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final feeDescriptions = <int, String>{
+      for (final method in _methods) method.id: _feeDescription(method),
+    };
+
+    return AppBottomSheet(
+      title: _stageTitle(context),
+      leading: _stage == _Stage.qr
+          ? AppIconButton(
+              icon: LucideIcons.arrowLeft,
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+              compact: true,
+              onPressed: _returnToMethods,
+            )
+          : null,
+      showClose: _stage != _Stage.success,
+      maxHeightFactor: 0.92,
+      maxWidth: 480,
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: c.primarySoft,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: c.primary.withValues(alpha: 0.2)),
-          ),
-          child: Column(
-            children: [
-              Text(
-                context.l10n.amountDue,
-                style: AppTextStyles.caption.copyWith(
-                  color: c.primary.withValues(alpha: 0.75),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    widget.currencySymbol,
-                    style: AppTextStyles.sectionTitle.copyWith(
-                      color: c.primary,
-                    ),
-                  ),
-                  Text(
-                    _payableAmount.toStringAsFixed(2),
-                    style: AppTextStyles.largeNumber(
-                      fontSize: 26,
-                    ).copyWith(color: c.primary),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        if (_hasAdjustments) ...[
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: c.success.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: c.success.withValues(alpha: 0.18)),
-            ),
-            child: Column(
-              children: [
-                if (_discountAmount > 0)
-                  _PaymentAdjustmentRow(
-                    label: context.l10n.discount,
-                    amountCents: _discountAmount,
-                    currencySymbol: widget.currencySymbol,
-                    prefix: '-',
-                  ),
-                if (_surplusAmount > 0)
-                  _PaymentAdjustmentRow(
-                    label: context.l10n.subscriptionCredit,
-                    amountCents: _surplusAmount,
-                    currencySymbol: widget.currencySymbol,
-                    prefix: '-',
-                  ),
-                if (_balanceAmount > 0)
-                  _PaymentAdjustmentRow(
-                    label: context.l10n.balanceApplied,
-                    amountCents: _balanceAmount,
-                    currencySymbol: widget.currencySymbol,
-                    prefix: '-',
-                  ),
-                if (_refundAmount > 0)
-                  _PaymentAdjustmentRow(
-                    label: context.l10n.refundAmountLabel,
-                    amountCents: _refundAmount,
-                    currencySymbol: widget.currencySymbol,
-                  ),
-                if (_displayFeeAmount > 0)
-                  _PaymentAdjustmentRow(
-                    label: context.l10n.paymentHandlingFee,
-                    amountCents: _displayFeeAmount,
-                    currencySymbol: widget.currencySymbol,
-                    prefix: '+',
-                    fee: true,
-                  ),
-              ],
-            ),
-          ),
-        ],
-        const SizedBox(height: 20),
-        Text(
-          context.l10n.choosePaymentMethod,
-          style: AppTextStyles.sectionTitle.copyWith(color: c.textPrimary),
-        ),
-        const SizedBox(height: 12),
-        if (_loadingOrderDetail || (!_balanceOnly && _loadingMethods))
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          )
-        else if (_balanceOnly)
-          Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: c.primarySoft,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: c.primary, width: 1.5),
-            ),
-            child: Row(
-              children: [
-                Icon(LucideIcons.walletCards, size: 18, color: c.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    context.l10n.balancePayment,
-                    style: AppTextStyles.bodyStrong.copyWith(color: c.primary),
-                  ),
-                ),
-                Icon(LucideIcons.circleCheck, size: 18, color: c.primary),
-              ],
-            ),
-          )
-        else if (_methods.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text(
-              context.l10n.noPaymentMethods,
-              style: AppTextStyles.body.copyWith(color: c.textMuted),
-            ),
-          )
-        else
-          ...(_methods.map((m) {
-            final sel = _selectedId == m.id;
-            return GestureDetector(
-              onTap: () => setState(() {
-                _selectedId = m.id;
-                _selectedName = m.name;
-              }),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 100),
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: sel ? c.primarySoft : c.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(
-                    color: sel ? c.primary : c.border,
-                    width: sel ? 1.5 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    _PaymentMethodIcon(
-                      method: m,
-                      color: sel ? c.primary : c.iconDefault,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            m.name,
-                            style: AppTextStyles.bodyStrong.copyWith(
-                              color: sel ? c.primary : c.textPrimary,
-                            ),
-                          ),
-                          if (_feeDescription(m).isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              _feeDescription(m),
-                              style: AppTextStyles.caption.copyWith(
-                                color: c.textMuted,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      sel ? LucideIcons.circleCheck : LucideIcons.circle,
-                      size: 18,
-                      color: sel ? c.primary : c.iconMuted,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          })),
-        const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          height: 44,
-          child: ElevatedButton(
-            onPressed: ready ? _checkout : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              padding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-            ),
-            child: Ink(
-              decoration: BoxDecoration(
-                gradient: ready ? AppPalette.brandGradient : null,
-                color: ready ? null : c.border,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Center(
-                child: _checkingOut
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text(
-                        _balanceOnly
-                            ? context.l10n.activateWithBalance
-                            : context.l10n.payNow,
-                        style: AppTextStyles.button.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-              ),
-            ),
-          ),
+        GreenfieldPaymentSurface(
+          stage: _greenfieldStage,
+          currencySymbol: widget.currencySymbol,
+          amount: _payableAmount,
+          methods: _methods,
+          methodFeeDescriptions: feeDescriptions,
+          selectedMethodId: _selectedId,
+          selectedMethodName: _selectedName,
+          adjustments: _adjustments,
+          loadingMethods: _loadingMethods,
+          loadingOrderDetail: _loadingOrderDetail,
+          balanceOnly: _balanceOnly,
+          checkingOut: _checkingOut,
+          payUrl: _payUrl,
+          payType: _payType,
+          secondsLeft: _secondsLeft,
+          manualChecking: _manualChecking,
+          refreshing: _refreshing,
+          onMethodSelected: (method) {
+            setState(() {
+              _selectedId = method.id;
+              _selectedName = method.name;
+            });
+          },
+          onCheckout: ready ? _checkout : null,
+          onOpenBrowser: () => _openInBrowser(_payUrl),
+          onManualCheck: _manualCheck,
+          onRefresh: _refresh,
+          onCancel: () => Navigator.of(context).pop(),
         ),
       ],
-    );
-  }
-
-  // ── Stage 2: QR code ──────────────────────────────────────────────────────
-
-  Widget _buildQr(AppColors c) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(LucideIcons.creditCard, size: 15, color: c.textMuted),
-            const SizedBox(width: 6),
-            Text(
-              _selectedName,
-              style: AppTextStyles.body.copyWith(
-                color: c.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              widget.currencySymbol,
-              style: AppTextStyles.sectionTitle.copyWith(
-                color: c.primary,
-                fontSize: 18,
-              ),
-            ),
-            Text(
-              _payableAmount.toStringAsFixed(2),
-              style: AppTextStyles.largeNumber(
-                fontSize: 34,
-              ).copyWith(color: c.primary),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.07),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: QrImageView(
-            data: _payUrl,
-            version: QrVersions.auto,
-            size: 200,
-            backgroundColor: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          context.l10n.scanWithPhone,
-          style: AppTextStyles.body.copyWith(color: c.textSecondary),
-        ),
-        if (_payType == 1) ...[
-          const SizedBox(height: 6),
-          GestureDetector(
-            onTap: () => _openInBrowser(_payUrl),
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(LucideIcons.externalLink, size: 12, color: c.primary),
-                  const SizedBox(width: 4),
-                  Text(
-                    context.l10n.openInBrowser,
-                    style: AppTextStyles.caption.copyWith(color: c.primary),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: 8),
-        _buildCountdown(c),
-        const SizedBox(height: 24),
-        _buildQrActions(c),
-      ],
-    );
-  }
-
-  Widget _buildCountdown(AppColors c) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(LucideIcons.timer, size: 13, color: _timerColor(c)),
-        const SizedBox(width: 5),
-        Text(
-          context.l10n.remainingTime(_countdownText),
-          style: AppTextStyles.caption.copyWith(color: _timerColor(c)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQrActions(AppColors c) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: SizedBox(
-            height: 44,
-            child: ElevatedButton(
-              onPressed: _manualChecking ? null : _manualCheck,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: AppPalette.brandGradient,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Center(
-                  child: _manualChecking
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          context.l10n.paymentCompleted,
-                          style: AppTextStyles.button.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SizedBox(
-            height: 44,
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: c.border),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Text(
-                context.l10n.cancel,
-                style: AppTextStyles.button.copyWith(color: c.textSecondary),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Stage 3: success ──────────────────────────────────────────────────────
-
-  Widget _buildSuccess(AppColors c) {
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: c.success.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(LucideIcons.circleCheck, size: 40, color: c.success),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          '${context.l10n.paymentSuccess}!',
-          style: AppTextStyles.heroTitle.copyWith(color: c.textPrimary),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          context.l10n.orderActivated,
-          style: AppTextStyles.body.copyWith(color: c.textMuted),
-        ),
-        const SizedBox(height: 32),
-        SizedBox(
-          width: double.infinity,
-          height: 44,
-          child: ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              padding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-            ),
-            child: Ink(
-              decoration: BoxDecoration(
-                gradient: AppPalette.brandGradient,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Center(
-                child: Text(
-                  context.l10n.done,
-                  style: AppTextStyles.button.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
-    );
-  }
-
-  // ── Stage 4: expired ──────────────────────────────────────────────────────
-
-  Widget _buildExpired(AppColors c) {
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: c.warning.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(LucideIcons.timer, size: 40, color: c.warning),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          context.l10n.qrExpired,
-          style: AppTextStyles.pageTitle.copyWith(color: c.textPrimary),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          context.l10n.refreshQrCode,
-          style: AppTextStyles.body.copyWith(color: c.textMuted),
-        ),
-        const SizedBox(height: 32),
-        Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: SizedBox(
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: _refreshing ? null : _refresh,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                  ),
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      gradient: _refreshing ? null : AppPalette.brandGradient,
-                      color: _refreshing ? c.border : null,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Center(
-                      child: _refreshing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  LucideIcons.refreshCw,
-                                  size: 15,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  context.l10n.refreshQrCode,
-                                  style: AppTextStyles.button.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SizedBox(
-                height: 44,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: c.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                  ),
-                  child: Text(
-                    context.l10n.cancel,
-                    style: AppTextStyles.button.copyWith(
-                      color: c.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-      ],
-    );
-  }
-}
-
-class _PaymentAdjustmentRow extends StatelessWidget {
-  const _PaymentAdjustmentRow({
-    required this.label,
-    required this.amountCents,
-    required this.currencySymbol,
-    this.prefix = '',
-    this.fee = false,
-  });
-
-  final String label;
-  final int amountCents;
-  final String currencySymbol;
-  final String prefix;
-  final bool fee;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    final color = fee ? c.warning : c.success;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: AppTextStyles.body.copyWith(color: c.textSecondary),
-            ),
-          ),
-          Text(
-            '$prefix$currencySymbol${(amountCents / 100).toStringAsFixed(2)}',
-            style: AppTextStyles.bodyStrong.copyWith(color: color),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentMethodIcon extends StatelessWidget {
-  const _PaymentMethodIcon({required this.method, required this.color});
-
-  final RemotePaymentMethod method;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final uri = Uri.tryParse(method.iconUrl ?? '');
-    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
-      return Icon(LucideIcons.creditCard, size: 18, color: color);
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Image.network(
-        uri.toString(),
-        width: 20,
-        height: 20,
-        fit: BoxFit.contain,
-        errorBuilder: (_, _, _) =>
-            Icon(LucideIcons.creditCard, size: 18, color: color),
-      ),
     );
   }
 }

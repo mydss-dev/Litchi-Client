@@ -2,16 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n.dart';
 import '../models/app_models.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_radius.dart';
-import '../theme/app_shadows.dart';
-import '../theme/app_text_styles.dart';
+import 'app_segmented_control.dart';
 
-/// A compact three-button strip for selecting proxy mode (rule / global / direct).
-///
-/// This is the visual reference for segmented controls across the desktop UI:
-/// muted outer surface, primary-soft selected fill, restrained primary border,
-/// primary selected text, and muted unselected text.
+/// Proxy mode selector. The public API stays compatible while interaction and
+/// geometry are owned by the shared segmented-control primitive.
 class ModeStrip extends StatelessWidget {
   const ModeStrip({
     required this.selected,
@@ -24,85 +18,31 @@ class ModeStrip extends StatelessWidget {
   final ProxyMode selected;
   final ValueChanged<ProxyMode> onChanged;
   final double buttonHeight;
+
+  /// Kept for source compatibility with older call sites. Shared segmented
+  /// geometry now owns its internal padding.
   final double padding;
 
   @override
   Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return Container(
-      padding: EdgeInsets.all(padding),
-      decoration: BoxDecoration(
-        color: c.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: c.softBorder),
-      ),
-      child: Row(
-        children: [
-          for (final mode in ProxyMode.values)
-            Expanded(
-              child: _ModeButton(
-                label: switch (mode) {
-                  ProxyMode.rule => context.l10n.ruleMode,
-                  ProxyMode.global => context.l10n.globalMode,
-                  ProxyMode.direct => context.l10n.directMode,
-                },
-                selected: selected == mode,
-                height: buttonHeight,
-                onTap: () => onChanged(mode),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ModeButton extends StatelessWidget {
-  const _ModeButton({
-    required this.label,
-    required this.selected,
-    required this.height,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final double height;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = AppColors.of(context);
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Ink(
-            height: height,
-            decoration: BoxDecoration(
-              color: selected ? c.primarySoft : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: selected
-                  ? Border.all(color: c.primary.withValues(alpha: 0.22))
-                  : null,
-              boxShadow: selected ? AppShadows.soft(c) : null,
-            ),
-            child: Center(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodyStrong.copyWith(
-                  color: selected ? c.primary : c.textMuted,
-                ),
-              ),
-            ),
-          ),
+    return AppSegmentedControl<ProxyMode>(
+      selected: selected,
+      onChanged: onChanged,
+      minHeight: buttonHeight,
+      items: [
+        AppSegmentedItem(
+          value: ProxyMode.rule,
+          label: context.l10n.ruleMode,
         ),
-      ),
+        AppSegmentedItem(
+          value: ProxyMode.global,
+          label: context.l10n.globalMode,
+        ),
+        AppSegmentedItem(
+          value: ProxyMode.direct,
+          label: context.l10n.directMode,
+        ),
+      ],
     );
   }
 }
