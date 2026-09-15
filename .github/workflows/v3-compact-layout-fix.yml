@@ -28,50 +28,37 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-
           replacements = {
-              'lib/v3/pages/v3_dashboard_page.dart': [
-                  ('constraints: const BoxConstraints(minHeight: 292),', 'height: 292,'),
-              ],
-              'lib/v3/pages/v3_shop_page.dart': [
-                  ('constraints: const BoxConstraints(minHeight: 330),', 'height: 330,'),
-              ],
-              'lib/v3/pages/v3_account_page.dart': [
-                  ('constraints: const BoxConstraints(minHeight: 230),', 'height: 230,'),
-              ],
-              'lib/v3/pages/v3_invite_page.dart': [
-                  ('constraints: const BoxConstraints(minHeight: 340),', 'height: 340,'),
-              ],
-              'lib/v3/pages/v3_traffic_page.dart': [
-                  ('constraints: const BoxConstraints(minHeight: 270),', 'height: 270,'),
-              ],
+              'lib/v3/pages/v3_dashboard_page.dart': [('constraints: const BoxConstraints(minHeight: 292),', 'height: 292,')],
+              'lib/v3/pages/v3_shop_page.dart': [('constraints: const BoxConstraints(minHeight: 330),', 'height: 330,')],
+              'lib/v3/pages/v3_account_page.dart': [('constraints: const BoxConstraints(minHeight: 230),', 'height: 230,')],
+              'lib/v3/pages/v3_invite_page.dart': [('constraints: const BoxConstraints(minHeight: 340),', 'height: 340,')],
+              'lib/v3/pages/v3_traffic_page.dart': [('constraints: const BoxConstraints(minHeight: 270),', 'height: 270,')],
           }
-
           for file_name, pairs in replacements.items():
               path = Path(file_name)
               text = path.read_text(encoding='utf-8')
-              before = text
               for old, new in pairs:
-                  count = text.count(old)
-                  if count == 0:
+                  if old not in text:
                       raise SystemExit(f'expected layout contract not found in {file_name}: {old}')
                   text = text.replace(old, new)
-                  print(f'{file_name}: replaced {count} x {old}')
-              if text == before:
-                  raise SystemExit(f'no changes made in {file_name}')
               path.write_text(text, encoding='utf-8')
           PY
-          rm -f .github/workflows/v3-compact-layout-fix.yml
-          rm -f .github/workflows/v3-cleanup-diagnose.yml
-          dart format \
-            lib/v3/pages/v3_dashboard_page.dart \
-            lib/v3/pages/v3_shop_page.dart \
-            lib/v3/pages/v3_account_page.dart \
-            lib/v3/pages/v3_invite_page.dart \
-            lib/v3/pages/v3_traffic_page.dart
+          dart format lib/v3/pages/v3_dashboard_page.dart lib/v3/pages/v3_shop_page.dart lib/v3/pages/v3_account_page.dart lib/v3/pages/v3_invite_page.dart lib/v3/pages/v3_traffic_page.dart
       - run: flutter pub get
       - name: V3 Android 360 compact smoke
-        run: flutter test --name 'V3 Android 360x800' test/visual/v3_visual_acceptance_test.dart
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter test -r expanded --name 'V3 Android 360x800' test/visual/v3_visual_acceptance_test.dart 2>&1 | tee v3-compact.log
+      - name: Upload compact diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: v3-compact-log-${{ github.sha }}
+          path: v3-compact.log
+          if-no-files-found: warn
+          retention-days: 3
       - name: Full Flutter tests
         run: flutter test
       - name: Flutter analyze
@@ -80,6 +67,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          rm -f .github/workflows/v3-compact-layout-fix.yml
+          rm -f .github/workflows/v3-cleanup-diagnose.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
