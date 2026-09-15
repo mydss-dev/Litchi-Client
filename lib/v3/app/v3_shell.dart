@@ -12,6 +12,7 @@ import '../pages/v3_nodes_page.dart';
 import '../pages/v3_orders_page.dart';
 import '../pages/v3_settings_page.dart';
 import '../pages/v3_shop_page.dart';
+import '../pages/v3_tickets_page.dart';
 import '../pages/v3_traffic_page.dart';
 import '../pages/v3_wallet_page.dart';
 import '../theme/v3_palette.dart';
@@ -60,6 +61,7 @@ class _V3Workspace extends StatelessWidget {
           AppPage.invite => const V3InvitePage(),
           AppPage.traffic => const V3TrafficPage(),
           AppPage.orders => const V3OrdersPage(),
+          AppPage.tickets => const V3TicketsPage(),
           AppPage.settings => const V3SettingsPage(),
           _ => const V3DashboardPage(),
         };
@@ -107,34 +109,65 @@ class _ProfileQuickActions extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FloatingActionButton.small(
-          heroTag: 'v3-wallet',
+        _ProfileFab(
+          tag: 'v3-wallet',
           tooltip: '钱包',
+          icon: Icons.account_balance_wallet_rounded,
           onPressed: () => controller.goToPage(AppPage.wallet),
-          child: const Icon(Icons.account_balance_wallet_rounded),
         ),
-        const SizedBox(height: 10),
-        FloatingActionButton.small(
-          heroTag: 'v3-invite',
+        const SizedBox(height: 8),
+        _ProfileFab(
+          tag: 'v3-invite',
           tooltip: '邀请朋友',
+          icon: Icons.group_add_rounded,
           onPressed: () => controller.goToPage(AppPage.invite),
-          child: const Icon(Icons.group_add_rounded),
         ),
-        const SizedBox(height: 10),
-        FloatingActionButton.small(
-          heroTag: 'v3-traffic',
+        const SizedBox(height: 8),
+        _ProfileFab(
+          tag: 'v3-traffic',
           tooltip: '流量统计',
+          icon: Icons.data_usage_rounded,
           onPressed: () => controller.goToPage(AppPage.traffic),
-          child: const Icon(Icons.data_usage_rounded),
         ),
-        const SizedBox(height: 10),
-        FloatingActionButton.small(
-          heroTag: 'v3-orders',
+        const SizedBox(height: 8),
+        _ProfileFab(
+          tag: 'v3-orders',
           tooltip: '订单记录',
+          icon: Icons.receipt_long_rounded,
           onPressed: () => controller.goToPage(AppPage.orders),
-          child: const Icon(Icons.receipt_long_rounded),
+        ),
+        const SizedBox(height: 8),
+        _ProfileFab(
+          tag: 'v3-tickets',
+          tooltip: '支持工单',
+          icon: Icons.support_agent_rounded,
+          onPressed: () => controller.goToPage(AppPage.tickets),
         ),
       ],
+    );
+  }
+}
+
+class _ProfileFab extends StatelessWidget {
+  const _ProfileFab({
+    required this.tag,
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tag;
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.small(
+      heroTag: tag,
+      tooltip: tooltip,
+      onPressed: onPressed,
+      child: Icon(icon),
     );
   }
 }
@@ -152,7 +185,8 @@ class _DesktopRail extends StatelessWidget {
     AppPage.invite => 5,
     AppPage.traffic => 6,
     AppPage.orders => 7,
-    AppPage.account || AppPage.tickets => 8,
+    AppPage.tickets => 8,
+    AppPage.account => 9,
     _ => 0,
   };
 
@@ -166,39 +200,39 @@ class _DesktopRail extends StatelessWidget {
       decoration: BoxDecoration(color: p.rail, borderRadius: BorderRadius.circular(28)),
       child: Column(
         children: [
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           Container(
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(13)),
             child: const Text(
               'L',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900),
+              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900),
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
           _RailButton(
             icon: Icons.blur_circular_rounded,
             label: '连接',
             selected: current == 0,
             onTap: () => controller.goToPage(AppPage.dashboard),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           _RailButton(
             icon: Icons.hub_rounded,
             label: '节点',
             selected: current == 1,
             onTap: () => controller.goToPage(AppPage.nodes),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           _RailButton(
             icon: Icons.storefront_rounded,
             label: '套餐',
             selected: current == 2,
             onTap: () => controller.goToPage(AppPage.shop),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           _RailButton(
             icon: Icons.tune_rounded,
             label: '设置',
@@ -212,28 +246,35 @@ class _DesktopRail extends StatelessWidget {
             selected: current == 4,
             onTap: () => controller.goToPage(AppPage.wallet),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           _RailButton(
             icon: Icons.group_add_rounded,
             label: '邀请',
             selected: current == 5,
             onTap: () => controller.goToPage(AppPage.invite),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           _RailButton(
             icon: Icons.data_usage_rounded,
             label: '流量',
             selected: current == 6,
             onTap: () => controller.goToPage(AppPage.traffic),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           _RailButton(
             icon: Icons.receipt_long_rounded,
             label: '订单',
             selected: current == 7,
             onTap: () => controller.goToPage(AppPage.orders),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
+          _RailButton(
+            icon: Icons.support_agent_rounded,
+            label: '工单',
+            selected: current == 8,
+            onTap: () => controller.goToPage(AppPage.tickets),
+          ),
+          const SizedBox(height: 5),
           Tooltip(
             message: controller.user.name.isEmpty ? '账户' : controller.user.name,
             child: InkWell(
@@ -241,11 +282,11 @@ class _DesktopRail extends StatelessWidget {
               onTap: () => controller.goToPage(AppPage.account),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: current == 8
+                  color: current == 9
                       ? Colors.white
                       : Colors.white.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(14),
@@ -255,21 +296,21 @@ class _DesktopRail extends StatelessWidget {
                       ? 'U'
                       : controller.user.avatarLetter.substring(0, 1).toUpperCase(),
                   style: TextStyle(
-                    color: current == 8 ? p.rail : Colors.white,
+                    color: current == 9 ? p.rail : Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 5),
           _RailButton(
             icon: Icons.logout_rounded,
             label: '退出',
             selected: false,
             onTap: controller.logout,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -295,19 +336,19 @@ class _RailButton extends StatelessWidget {
     return Tooltip(
       message: label,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(15),
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          width: 48,
-          height: 48,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: selected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(15),
           ),
           child: Icon(
             icon,
-            size: 20,
+            size: 19,
             color: selected ? p.rail : Colors.white.withValues(alpha: 0.56),
           ),
         ),
