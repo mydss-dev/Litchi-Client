@@ -53,6 +53,7 @@ jobs:
           test/visual/invite_visual_acceptance_test.dart
           test/visual/traffic_visual_acceptance_test.dart
           test/visual/orders_visual_acceptance_test.dart
+          test/visual/tickets_visual_acceptance_test.dart
       - name: Upload primary-page snapshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -90,6 +91,7 @@ jobs:
           test/visual/invite_visual_acceptance_test.dart
           test/visual/traffic_visual_acceptance_test.dart
           test/visual/orders_visual_acceptance_test.dart
+          test/visual/tickets_visual_acceptance_test.dart
       - name: Upload primary-page snapshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
