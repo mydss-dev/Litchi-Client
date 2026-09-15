@@ -7,8 +7,10 @@ on:
       - main
       - redesign/litchi-greenfield-settings-v2
       - redesign/litchi-visual-acceptance-v2
+      - redesign/litchi-dashboard-polish-v2
     paths:
       - 'lib/features/dashboard/**'
+      - 'lib/features/nodes/**'
       - 'lib/shared/theme/**'
       - 'test/visual/**'
       - '.github/workflows/visual-acceptance.yml'
@@ -21,11 +23,11 @@ permissions:
   contents: read
 
 jobs:
-  linux-dashboard-fallback:
+  linux-primary-pages-fallback:
     # Render the production Windows presentation contract on an Ubuntu runner.
-    # The test forces TargetPlatform.windows, so AppPlatform/AppShellSpec still
+    # The tests force TargetPlatform.windows, so AppPlatform/AppShellSpec still
     # execute the Windows UI path while avoiding hosted Windows runner scarcity.
-    name: Windows-layout Dashboard 900x700 (Linux fallback)
+    name: Windows-layout Primary Pages 900x700 (Linux fallback)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -37,24 +39,25 @@ jobs:
       - run: flutter pub get
       - name: Prepare snapshot directory
         run: mkdir -p test/visual/goldens
-      - name: Render light and dark dashboard snapshots
+      - name: Render Dashboard and Nodes light/dark snapshots
         run: >-
           flutter test
           --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
           --update-goldens
           test/visual/dashboard_visual_acceptance_test.dart
-      - name: Upload dashboard snapshots
+          test/visual/nodes_visual_acceptance_test.dart
+      - name: Upload primary-page snapshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: dashboard-windows-layout-900x700-linux-fallback
+          name: primary-pages-windows-layout-900x700-linux-fallback
           path: test/visual/goldens/*.png
           if-no-files-found: error
           retention-days: 14
 
-  windows-dashboard:
+  windows-primary-pages:
     # Native Windows confirmation. Linux fallback above remains the primary
     # visual artifact if GitHub cannot allocate a hosted Windows runner.
-    name: Windows Dashboard 900x700 (Native)
+    name: Windows Primary Pages 900x700 (Native)
     runs-on: windows-latest
     continue-on-error: true
     steps:
@@ -68,16 +71,17 @@ jobs:
       - name: Prepare snapshot directory
         shell: pwsh
         run: New-Item -ItemType Directory -Force test/visual/goldens | Out-Null
-      - name: Render light and dark dashboard snapshots
+      - name: Render Dashboard and Nodes light/dark snapshots
         run: >-
           flutter test
           --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
           --update-goldens
           test/visual/dashboard_visual_acceptance_test.dart
-      - name: Upload dashboard snapshots
+          test/visual/nodes_visual_acceptance_test.dart
+      - name: Upload primary-page snapshots
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: dashboard-windows-900x700-native
+          name: primary-pages-windows-900x700-native
           path: test/visual/goldens/*.png
           if-no-files-found: error
           retention-days: 14
