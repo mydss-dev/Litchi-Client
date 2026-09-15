@@ -96,7 +96,7 @@ class V3Theme {
         headlineLarge: TextStyle(
           fontSize: 24,
           height: 1.1,
-          fontWeight: FontWeight.w750,
+          fontWeight: FontWeight.w700,
           letterSpacing: -0.5,
           color: p.text,
         ),
@@ -109,7 +109,7 @@ class V3Theme {
         titleMedium: TextStyle(
           fontSize: 14,
           height: 1.25,
-          fontWeight: FontWeight.w650,
+          fontWeight: FontWeight.w600,
           color: p.text,
         ),
         bodyMedium: TextStyle(
