@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/features/invite/widgets/greenfield_invite_surface.dart';
+import 'package:litchi_client/features/invite/widgets/invite_presentation_theme.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
 import 'package:litchi_client/shared/layout/app_platform.dart';
 import 'package:litchi_client/shared/layout/app_shell_spec.dart';
@@ -35,28 +36,30 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             padding: AppShellSpec.pagePaddingFor(AppPlatform.current),
-            child: GreenfieldInviteSurface(
-              invite: const InviteCodeModel(
-                code: 'LITCHI88',
-                link: 'https://thelitchi.com/register?aff=LITCHI88',
+            child: InvitePresentationTheme(
+              child: GreenfieldInviteSurface(
+                invite: const InviteCodeModel(
+                  code: 'LITCHI88',
+                  link: 'https://thelitchi.com/register?aff=LITCHI88',
+                ),
+                selectedIndex: 0,
+                inviteCount: 3,
+                creating: false,
+                registeredUsers: 27,
+                pendingCommission: r'$18.42',
+                earnedCommission: r'$126.80',
+                commissionRate: '20%',
+                records: _records,
+                currencySymbol: r'$',
+                onPrevious: () {},
+                onNext: () {},
+                onCreate: () {},
+                onCopy: () {},
+                onShareWechat: () {},
+                onShareQq: () {},
+                onShareTwitter: () {},
+                onShareTelegram: () {},
               ),
-              selectedIndex: 0,
-              inviteCount: 3,
-              creating: false,
-              registeredUsers: 27,
-              pendingCommission: r'$18.42',
-              earnedCommission: r'$126.80',
-              commissionRate: '20%',
-              records: _records,
-              currencySymbol: r'$',
-              onPrevious: () {},
-              onNext: () {},
-              onCreate: () {},
-              onCopy: () {},
-              onShareWechat: () {},
-              onShareQq: () {},
-              onShareTwitter: () {},
-              onShareTelegram: () {},
             ),
           ),
         ),
