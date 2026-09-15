@@ -818,7 +818,7 @@ class _TrendChart extends StatelessWidget {
                                           toY: data[index].value,
                                           width: barWidth,
                                           borderRadius: BorderRadius.circular(5),
-                                          gradient: const LinearGradient(
+                                          gradient: LinearGradient(
                                             begin: Alignment.bottomCenter,
                                             end: Alignment.topCenter,
                                             colors: [
