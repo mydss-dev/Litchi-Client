@@ -1,5 +1,6 @@
 name: UI Platform Check
 
+# Final consolidated PR validation: keep this workflow as the cross-platform build gate.
 on:
   workflow_dispatch:
   pull_request:
