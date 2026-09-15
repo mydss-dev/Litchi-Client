@@ -165,10 +165,10 @@ class _VisualCompactShell extends StatelessWidget {
               bottom: false,
               child: Column(
                 children: [
-                  Expanded(
+                  const Expanded(
                     child: Padding(
                       padding: AppLayoutMetrics.compactPagePadding,
-                      child: const _RepresentativeBody(),
+                      child: _RepresentativeBody(),
                     ),
                   ),
                   _VisualMobileBottomNav(
