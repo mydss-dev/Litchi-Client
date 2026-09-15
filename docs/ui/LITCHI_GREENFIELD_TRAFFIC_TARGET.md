@@ -25,7 +25,8 @@ Traffic is the usage-intelligence page. It should answer three questions quickly
 - No new traffic API or derived billing rule is introduced.
 
 ## Presentation rule
-The legacy desktop metric grid and compact stat-card tree are not design references. Reuse data/calculation logic, not the old card composition.
+- The legacy desktop metric grid and compact stat-card tree are not design references. Reuse data/calculation logic, not the old card composition.
+- Brand colors remain runtime-configurable through AppPalette/AppConfig. Traffic charts must consume the runtime brand getters rather than hard-code or const-fold the brand gradient.
 
 ## Validation gate
 - flutter test
