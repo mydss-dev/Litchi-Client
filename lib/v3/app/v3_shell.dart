@@ -8,6 +8,7 @@ import '../auth/v3_auth_view.dart';
 import '../pages/v3_dashboard_page.dart';
 import '../pages/v3_nodes_page.dart';
 import '../pages/v3_settings_page.dart';
+import '../pages/v3_shop_page.dart';
 import '../theme/v3_palette.dart';
 
 class V3Shell extends StatelessWidget {
@@ -52,6 +53,7 @@ class _V3Workspace extends StatelessWidget {
         final mobile = constraints.maxWidth < 680;
         final page = switch (controller.page) {
           AppPage.nodes => const V3NodesPage(),
+          AppPage.shop => const V3ShopPage(),
           AppPage.settings => const V3SettingsPage(),
           _ => const V3DashboardPage(),
         };
@@ -95,7 +97,8 @@ class _DesktopRail extends StatelessWidget {
     final p = V3Palette.of(context);
     final current = switch (controller.page) {
       AppPage.nodes => 1,
-      AppPage.settings => 2,
+      AppPage.shop => 2,
+      AppPage.settings => 3,
       _ => 0,
     };
     return Container(
@@ -117,7 +120,9 @@ class _DesktopRail extends StatelessWidget {
           const SizedBox(height: 8),
           _RailButton(icon: Icons.hub_rounded, label: '节点', selected: current == 1, onTap: () => controller.goToPage(AppPage.nodes)),
           const SizedBox(height: 8),
-          _RailButton(icon: Icons.tune_rounded, label: '设置', selected: current == 2, onTap: () => controller.goToPage(AppPage.settings)),
+          _RailButton(icon: Icons.storefront_rounded, label: '套餐', selected: current == 2, onTap: () => controller.goToPage(AppPage.shop)),
+          const SizedBox(height: 8),
+          _RailButton(icon: Icons.tune_rounded, label: '设置', selected: current == 3, onTap: () => controller.goToPage(AppPage.settings)),
           const Spacer(),
           Tooltip(
             message: controller.user.name.isEmpty ? '账户' : controller.user.name,
@@ -180,7 +185,8 @@ class _MobileNav extends StatelessWidget {
     final p = V3Palette.of(context);
     final current = switch (controller.page) {
       AppPage.nodes => 1,
-      AppPage.settings => 2,
+      AppPage.shop => 2,
+      AppPage.settings => 3,
       _ => 0,
     };
     return SafeArea(
@@ -193,7 +199,8 @@ class _MobileNav extends StatelessWidget {
           children: [
             _MobileNavItem(icon: Icons.blur_circular_rounded, label: '连接', selected: current == 0, onTap: () => controller.goToPage(AppPage.dashboard)),
             _MobileNavItem(icon: Icons.hub_rounded, label: '节点', selected: current == 1, onTap: () => controller.goToPage(AppPage.nodes)),
-            _MobileNavItem(icon: Icons.tune_rounded, label: '设置', selected: current == 2, onTap: () => controller.goToPage(AppPage.settings)),
+            _MobileNavItem(icon: Icons.storefront_rounded, label: '套餐', selected: current == 2, onTap: () => controller.goToPage(AppPage.shop)),
+            _MobileNavItem(icon: Icons.tune_rounded, label: '设置', selected: current == 3, onTap: () => controller.goToPage(AppPage.settings)),
           ],
         ),
       ),
