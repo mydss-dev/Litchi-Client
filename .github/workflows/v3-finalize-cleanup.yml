@@ -51,7 +51,7 @@ jobs:
           markers = (
               'lib/features/',
               'package:litchi_client/features/',
-              "app_shell.dart",
+              'app_shell.dart',
               'shared/layout/app_shell_spec.dart',
               'shared/theme/app_theme.dart',
               'shared/widgets/',
@@ -60,7 +60,11 @@ jobs:
               if path in skip:
                   continue
               text = path.read_text(encoding='utf-8')
-              legacy_named = 'greenfield' in path.name.lower() or '_v2_' in path.name.lower() or path.name.endswith('_v2_test.dart')
+              legacy_named = (
+                  'greenfield' in path.name.lower()
+                  or '_v2_' in path.name.lower()
+                  or path.name.endswith('_v2_test.dart')
+              )
               if legacy_named or any(marker in text for marker in markers):
                   print(f'removing legacy UI test: {path}')
                   path.unlink()
@@ -92,8 +96,14 @@ jobs:
               '            if (!Platform.isMacOS) ...[',
               '            if (defaultTargetPlatform != TargetPlatform.macOS) ...[',
           )
-          if 'Platform.' in text:
-              raise SystemExit('Platform.* remained in V3 shell after target-platform migration')
+          legacy_platform_tokens = (
+              'Platform.isWindows',
+              'Platform.isMacOS',
+              'Platform.isLinux',
+              'Platform.isAndroid',
+          )
+          if any(token in text for token in legacy_platform_tokens):
+              raise SystemExit('dart:io Platform checks remained in V3 shell')
           shell.write_text(text, encoding='utf-8')
 
           boundary = Path('test/v3_clean_boundary_test.dart')
@@ -134,9 +144,8 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          if git diff --cached --quiet; then
-            echo 'No cleanup changes to commit.'
-            exit 0
+          if ! git diff --cached --quiet; then
+            git commit -m 'refactor(v3): remove legacy presentation layer'
+            git push origin HEAD:main
           fi
-          git commit -m 'refactor(v3): remove legacy presentation layer'
-          git push origin HEAD:main
+          git push origin --delete redesign/v3-clean || true
