@@ -50,6 +50,32 @@ void main() {
     expect(source.contains('AppShell('), isFalse);
   });
 
+  test('the payment dialog is implemented exactly once', () {
+    // This dialog was duplicated: the shop carried its own copy that showed the
+    // raw error object and called the synced data 套餐数据, while the shared one
+    // unwrapped the error and said 账户数据. Nothing structural stopped a second
+    // copy existing, so removing it is only durable if this fails when one
+    // comes back.
+    final v3 = Directory('lib/v3');
+    final checkoutOwners = <String>[];
+    final dialogOwners = <String>[];
+
+    for (final entity in v3.listSync(recursive: true)) {
+      if (entity is! File || !entity.path.endsWith('.dart')) continue;
+      final source = entity.readAsStringSync();
+      final name = entity.uri.pathSegments.last;
+      if (source.contains('checkoutOrder(')) checkoutOwners.add(name);
+      if (source.contains('完成支付')) dialogOwners.add(name);
+    }
+
+    expect(checkoutOwners, [
+      'v3_payment_flow.dart',
+    ], reason: 'only the shared payment flow may drive a checkout');
+    expect(dialogOwners, [
+      'v3_payment_flow.dart',
+    ], reason: 'only the shared payment flow may present the payment dialog');
+  });
+
   test('repository instruction keeps clean V3 rule first', () {
     final source = File('AGENTS.md').readAsStringSync();
     final ruleIndex = source.indexOf(

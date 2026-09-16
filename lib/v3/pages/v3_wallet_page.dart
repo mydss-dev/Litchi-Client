@@ -46,6 +46,7 @@ class _V3WalletPageState extends State<V3WalletPage> {
         currencySymbol: controller.currencySymbol,
         api: controller.api,
         onPaid: controller.refreshData,
+        onViewOrders: () => controller.goToPage(AppPage.orders),
       );
       if (mounted) await controller.refreshData();
     } catch (error) {
