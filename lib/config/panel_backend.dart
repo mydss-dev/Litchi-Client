@@ -30,6 +30,7 @@ class PanelFeatures {
     required this.tickets,
     required this.giftCard,
     required this.onlineDevices,
+    required this.telegram,
   });
 
   final bool shop;
@@ -40,6 +41,7 @@ class PanelFeatures {
   final bool tickets;
   final bool giftCard;
   final bool onlineDevices;
+  final bool telegram;
 
   /// Keeps already-published configs behaving exactly as they did before
   /// capability switches were introduced.
@@ -52,6 +54,7 @@ class PanelFeatures {
     tickets: true,
     giftCard: true,
     onlineDevices: true,
+    telegram: true,
   );
 
   factory PanelFeatures.defaultsFor(PanelType type) => PanelFeatures(
@@ -67,6 +70,9 @@ class PanelFeatures {
     giftCard: type == PanelType.xiaoV2board,
     // EZ only presents the live device-limit feature for Xiao-V2Board.
     onlineDevices: type == PanelType.xiaoV2board,
+    // Telegram binding runs through Xiao-V2Board-only endpoints
+    // (/user/telegram/getBotInfo, /user/unbindTelegram).
+    telegram: type == PanelType.xiaoV2board,
   );
 
   PanelFeatures apply(Object? value) {
@@ -80,6 +86,7 @@ class PanelFeatures {
       tickets: _bool(value['tickets']) ?? tickets,
       giftCard: _bool(value['gift_card']) ?? giftCard,
       onlineDevices: _bool(value['online_devices']) ?? onlineDevices,
+      telegram: _bool(value['telegram']) ?? telegram,
     );
   }
 
@@ -87,5 +94,5 @@ class PanelFeatures {
 
   String get fingerprint =>
       '$shop,$invite,$wallet,$orders,$traffic,$tickets,$giftCard,'
-      '$onlineDevices';
+      '$onlineDevices,$telegram';
 }

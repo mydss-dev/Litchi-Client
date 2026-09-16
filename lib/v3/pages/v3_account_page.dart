@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../config/app_config.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_sheet.dart';
+import 'v3_telegram_page.dart';
 
 class V3AccountPage extends StatefulWidget {
   const V3AccountPage({super.key});
@@ -49,31 +52,14 @@ class _V3AccountPageState extends State<V3AccountPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '账户中心',
-                style: TextStyle(
-                  color: p.lycheeInk,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2.2,
+              V3PageHeader(
+                kicker: '账户中心',
+                title: '我的账户',
+                trailing: IconButton(
+                  tooltip: '刷新账户数据',
+                  onPressed: controller.refreshData,
+                  icon: const Icon(Icons.refresh_rounded),
                 ),
-              ),
-              const SizedBox(height: 7),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Text(
-                      '我的账户',
-                      style: Theme.of(context).textTheme.displayMedium,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: '刷新账户数据',
-                    onPressed: controller.refreshData,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                ],
               ),
               const SizedBox(height: 26),
               compact
@@ -352,7 +338,7 @@ class _FinancePanel extends StatelessWidget {
       trailing: controller.withdrawable > 0
           ? '佣金 $symbol${controller.withdrawable.toStringAsFixed(2)}'
           : null,
-      onTap: () => controller.goToPage(AppPage.wallet),
+      onTap: () => openV3Page(context, AppPage.wallet),
     );
   }
 }
@@ -494,7 +480,11 @@ class _HubPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = enabledNavItems(kMobileHub);
-    if (items.isEmpty) return const SizedBox.shrink();
+    // Telegram binding is a xiaoV2board-only capability, not a nav page, so it
+    // is gated here rather than in the nav model.
+    final telegramEnabled = AppConfig.panelFeatures.telegram;
+    if (items.isEmpty && !telegramEnabled) return const SizedBox.shrink();
+    final telegramBound = controller.accountDetails?.telegramId != null;
     return V3NavPanel(
       title: '我的服务',
       children: [
@@ -504,7 +494,19 @@ class _HubPanel extends StatelessWidget {
             icon: item.icon,
             label: item.label,
             selected: controller.page == item.page,
-            onTap: () => controller.goToPage(item.page),
+            // Every row here is a modal now, so this neither changes the
+            // page nor highlights a row: the sheet is the evidence that
+            // something opened, and the account page is still behind it.
+            onTap: () => openV3Page(context, item.page),
+          ),
+        if (telegramEnabled)
+          V3NavRow(
+            key: const ValueKey('v3-hub-telegram'),
+            icon: Icons.send_rounded,
+            label: 'Telegram 通知',
+            subtitle: telegramBound ? '已绑定，可接收账户通知' : '未绑定',
+            selected: false,
+            onTap: () => V3TelegramPage.show(context),
           ),
       ],
     );

@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3TicketsPage extends StatefulWidget {
   const V3TicketsPage({super.key});
@@ -88,47 +89,27 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '帮助与支持',
-                          style: TextStyle(
-                            color: p.lycheeInk,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.2,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          '支持工单',
-                          style: Theme.of(context).textTheme.displayMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '问题、回复和处理状态都集中在同一个支持收件箱。',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+              V3PageHeader(
+                kicker: '帮助与支持',
+                title: '支持工单',
+                description: '问题、回复和处理状态都集中在同一个支持收件箱。',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (!compact)
+                      FilledButton.icon(
+                        onPressed: _newTicket,
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('新建工单'),
+                      ),
+                    IconButton(
+                      tooltip: '刷新工单',
+                      onPressed: _loading ? null : _load,
+                      icon: const Icon(Icons.refresh_rounded),
                     ),
-                  ),
-                  if (!compact)
-                    FilledButton.icon(
-                      onPressed: _newTicket,
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('新建工单'),
-                    ),
-                  IconButton(
-                    tooltip: '刷新工单',
-                    onPressed: _loading ? null : _load,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                ],
+                  ],
+                ),
               ),
               if (compact) ...[
                 const SizedBox(height: 16),

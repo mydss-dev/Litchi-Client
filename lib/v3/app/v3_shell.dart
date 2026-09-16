@@ -19,7 +19,9 @@ import '../pages/v3_tickets_page.dart';
 import '../pages/v3_traffic_page.dart';
 import '../pages/v3_wallet_page.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_notice_bar.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_sheet.dart';
 import 'v3_nav.dart';
 
 bool get _isDesktopTarget =>
@@ -43,7 +45,9 @@ class V3Shell extends StatelessWidget {
         ? const _V3BootView()
         : !controller.isAuthenticated
         ? const V3AuthView()
-        : const _V3Workspace();
+        // The host owns no layout; it schedules the must-read notice dialogs,
+        // which is why it has to sit above the page rather than inside one.
+        : const V3NoticeHost(child: _V3Workspace());
     if (!_isDesktopTarget) {
       // Material for the same reason the desktop branch below has it: the
       // login and boot views are not inside a Scaffold, and a TextField
@@ -112,19 +116,38 @@ class _V3Workspace extends StatelessWidget {
   }
 }
 
+/// The page for [page].
+///
+/// The last three are sheets now — every normal entry point opens them as
+/// modals — but they keep a page here so that a `goToPage` this missed shows
+/// the real thing rather than a blank screen. The wrapper is what makes that
+/// work: on their own they are only sheet *content*, with no title and no
+/// scroller of their own.
 Widget _pageFor(AppPage page) => switch (page) {
   AppPage.nodes => const V3NodesPage(),
   AppPage.shop => const V3ShopPage(),
   AppPage.account => const V3AccountPage(),
-  AppPage.wallet => const V3WalletPage(),
+  AppPage.wallet => const V3SheetPageFallback(
+    kicker: 'WALLET FLOW',
+    title: '资金中心',
+    child: V3WalletPage(),
+  ),
   AppPage.invite => const V3InvitePage(),
   AppPage.traffic => const V3TrafficPage(),
-  AppPage.orders => const V3OrdersPage(),
+  AppPage.orders => const V3SheetPageFallback(
+    kicker: 'ORDER LEDGER',
+    title: '订单记录',
+    child: V3OrdersPage(),
+  ),
   AppPage.tickets => const V3TicketsPage(),
   AppPage.settings => const V3SettingsPage(),
   AppPage.dashboard => const V3DashboardPage(),
   AppPage.more => const V3MorePage(),
-  AppPage.giftCard => const V3GiftCardPage(),
+  AppPage.giftCard => const V3SheetPageFallback(
+    kicker: '兑换',
+    title: '礼品卡兑换',
+    child: V3GiftCardPage(),
+  ),
 };
 
 class _DesktopRail extends StatelessWidget {
@@ -163,22 +186,22 @@ class _DesktopRail extends StatelessWidget {
               ),
             ),
           ),
-          ...enabledNavItems(kDesktopRail).map(
+          ...[
+            ...enabledNavItems(kDesktopRail),
+            // Settings is a normal destination now, not a footer utility. As an
+            // orphaned row above the account card it read as a broken-off nav
+            // item rather than a place to go, so it joins the rail like the
+            // rest.
+            if (kRailSettings.isEnabled) kRailSettings,
+          ].map(
             (item) => _RailItem(
               key: railItemKey(item.page),
               item: item,
               selected: controller.page == item.page,
-              onTap: () => controller.goToPage(item.page),
+              onTap: () => openV3Page(context, item.page),
             ),
           ),
           const Spacer(),
-          if (kRailSettings.isEnabled)
-            _RailItem(
-              key: railItemKey(kRailSettings.page),
-              item: kRailSettings,
-              selected: controller.page == AppPage.settings,
-              onTap: () => controller.goToPage(AppPage.settings),
-            ),
           const SizedBox(height: 12),
           InkWell(
             key: kAccountCardKey,
@@ -266,43 +289,53 @@ class _RailItem extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
-        child: AnimatedContainer(
+        // One tween drives the fill, icon and label together. Letting the
+        // foreground colours snap while only the background faded made the
+        // previously-selected item flash whenever selection moved — its text
+        // jumped to muted on the same frame the fill began to fade.
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(end: selected ? 1 : 0),
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          decoration: BoxDecoration(
-            // The same soft fill the chips and the bottom bar use for "chosen",
-            // so one selected state looks like one selected state everywhere.
-            color: selected ? p.lycheeSoft : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              // A coloured icon over ink text, the pairing V3StatusBadge uses.
-              // lycheeInk rather than lychee: on the soft fill the brighter pink
-              // lands at 2.97:1, under what a graphical object needs.
-              Icon(
-                item.icon,
-                color: selected ? p.lycheeInk : p.inkMuted,
-                size: 19,
+          curve: Curves.easeOut,
+          builder: (context, t, _) {
+            final iconColor = Color.lerp(p.inkMuted, p.lycheeInk, t)!;
+            final textColor = Color.lerp(p.inkMuted, p.ink, t)!;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              decoration: BoxDecoration(
+                // The same soft fill the chips and the bottom bar use for
+                // "chosen", so one selected state reads as one selected state
+                // everywhere.
+                color: p.lycheeSoft.withValues(alpha: t),
+                borderRadius: BorderRadius.circular(14),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.label,
-                      style: TextStyle(
-                        color: selected ? p.ink : p.inkMuted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
+              child: Row(
+                children: [
+                  // A coloured icon over ink text, the pairing V3StatusBadge
+                  // uses. lycheeInk rather than lychee: on the soft fill the
+                  // brighter pink lands at 2.97:1, under what a graphical
+                  // object needs.
+                  Icon(item.icon, color: iconColor, size: 19),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -545,7 +578,11 @@ class _V3BootView extends StatelessWidget {
               width: 90,
               child: LinearProgressIndicator(
                 minHeight: 3,
-                color: p.lychee,
+                // Drawn on `hero`, which is no longer near-black in light mode:
+                // the base lychee is a fill meant for white content on top, and
+                // as a 3dp bar on a tinted ground it lands at 2.6:1. The ink is
+                // the token that survives the ground.
+                color: p.lycheeInk,
                 backgroundColor: p.ink.withValues(alpha: 0.15),
               ),
             ),

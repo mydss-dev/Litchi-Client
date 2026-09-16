@@ -3,9 +3,33 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_sheet.dart';
 
 class V3WalletPage extends StatefulWidget {
   const V3WalletPage({super.key});
+
+  /// Opens the wallet as a sheet.
+  ///
+  /// It used to be a routed page, and the shell has no history to go back
+  /// through — entering it from the account hub hid the nav's highlight and
+  /// left nothing on screen that returned. A sheet is dismissed instead of
+  /// left, so there is no way to get stuck in it.
+  static Future<void> show(BuildContext context) {
+    final controller = AppScope.read(context);
+    return showV3Sheet<void>(
+      context,
+      title: '资金中心',
+      // Moved off the page header, which the sheet now owns: the balance and
+      // the commission figures are both server state, so the refresh belongs
+      // next to the title.
+      trailing: IconButton(
+        tooltip: '刷新',
+        onPressed: controller.refreshData,
+        icon: const Icon(Icons.refresh_rounded),
+      ),
+      builder: (_) => const V3WalletPage(),
+    );
+  }
 
   @override
   State<V3WalletPage> createState() => _V3WalletPageState();
@@ -45,7 +69,13 @@ class _V3WalletPageState extends State<V3WalletPage> {
         currencySymbol: controller.currencySymbol,
         api: controller.api,
         onPaid: controller.refreshData,
-        onViewOrders: () => controller.goToPage(AppPage.orders),
+        onViewOrders: () {
+          // Orders opens as a sheet of its own, so the wallet sheet goes
+          // first — otherwise the two stack and the user has to close twice
+          // to get back to where they started.
+          closeV3Sheet(context);
+          openV3Page(context, AppPage.orders);
+        },
       );
       if (mounted) await controller.refreshData();
     } catch (error) {
@@ -135,67 +165,60 @@ class _V3WalletPageState extends State<V3WalletPage> {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final p = V3Palette.of(context);
     final symbol = controller.currencySymbol;
     final balance = controller.user.balance / 100;
     final commission = controller.withdrawable;
     final total = balance + commission;
 
+    // No page header and no page-level scroll: the sheet supplies both. The
+    // title and the refresh button moved into [show].
     return LayoutBuilder(
       builder: (context, constraints) {
+        // A sheet is never 720 wide — the dialog is 560 and the drawer is the
+        // phone's — so this always picks the stacked branch now. The wide
+        // branch stays for the routed fallback in `_pageFor`, which is still
+        // what renders if something calls `goToPage(AppPage.wallet)`.
         final compact = constraints.maxWidth < 720;
-        return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            compact ? 20 : 34,
-            26,
-            compact ? 20 : 34,
-            36,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'WALLET FLOW',
-                          style: TextStyle(
-                            color: p.lycheeInk,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.2,
-                          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _BalanceHero(
+              symbol: symbol,
+              total: total,
+              balance: balance,
+              commission: commission,
+            ),
+            const SizedBox(height: 16),
+            compact
+                ? Column(
+                    children: [
+                      _RechargePanel(
+                        controller: _rechargeController,
+                        presets: _presets,
+                        symbol: symbol,
+                        busy: _submittingRecharge,
+                        onPreset: (amount) => setState(
+                          () => _rechargeController.text = amount
+                              .toStringAsFixed(0),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '资金中心',
-                          style: Theme.of(context).textTheme.displayLarge,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: '刷新',
-                    onPressed: controller.refreshData,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 26),
-              _BalanceHero(
-                symbol: symbol,
-                total: total,
-                balance: balance,
-                commission: commission,
-              ),
-              const SizedBox(height: 16),
-              compact
-                  ? Column(
-                      children: [
-                        _RechargePanel(
+                        onSubmit: _recharge,
+                      ),
+                      const SizedBox(height: 16),
+                      _CommissionPanel(
+                        controller: controller,
+                        busy: _financialAction,
+                        onTransferAll: _transferAll,
+                        onTransfer: _openTransfer,
+                        onWithdraw: _openWithdraw,
+                      ),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 11,
+                        child: _RechargePanel(
                           controller: _rechargeController,
                           presets: _presets,
                           symbol: symbol,
@@ -206,48 +229,21 @@ class _V3WalletPageState extends State<V3WalletPage> {
                           ),
                           onSubmit: _recharge,
                         ),
-                        const SizedBox(height: 16),
-                        _CommissionPanel(
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 9,
+                        child: _CommissionPanel(
                           controller: controller,
                           busy: _financialAction,
                           onTransferAll: _transferAll,
                           onTransfer: _openTransfer,
                           onWithdraw: _openWithdraw,
                         ),
-                      ],
-                    )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 11,
-                          child: _RechargePanel(
-                            controller: _rechargeController,
-                            presets: _presets,
-                            symbol: symbol,
-                            busy: _submittingRecharge,
-                            onPreset: (amount) => setState(
-                              () => _rechargeController.text = amount
-                                  .toStringAsFixed(0),
-                            ),
-                            onSubmit: _recharge,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 9,
-                          child: _CommissionPanel(
-                            controller: controller,
-                            busy: _financialAction,
-                            onTransferAll: _transferAll,
-                            onTransfer: _openTransfer,
-                            onWithdraw: _openWithdraw,
-                          ),
-                        ),
-                      ],
-                    ),
-            ],
-          ),
+                      ),
+                    ],
+                  ),
+          ],
         );
       },
     );

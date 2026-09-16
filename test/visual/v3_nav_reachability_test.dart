@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/v3/app/v3_nav.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
+import 'package:litchi_client/v3/pages/v3_gift_card_page.dart';
+import 'package:litchi_client/v3/pages/v3_orders_page.dart';
+import 'package:litchi_client/v3/pages/v3_wallet_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
@@ -37,15 +40,26 @@ Future<_NavController> _pumpShell(WidgetTester tester, Size size) async {
 
   final controller = _NavController();
   addTearDown(controller.disposeVisual);
+  // AppScope above MaterialApp, as in `LitchiApp`: the routes a Navigator
+  // builds are siblings of `home`, not descendants of it, so a scope placed
+  // inside `home` is invisible to every dialog and sheet.
   await tester.pumpWidget(
-    MaterialApp(
-      theme: V3Theme.dark(),
-      home: AppScope(controller: controller, child: const V3Shell()),
+    AppScope(
+      controller: controller,
+      child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell()),
     ),
   );
   await tester.pump();
   return controller;
 }
+
+/// The widget each hub page shows as sheet content.
+Type _sheetType(AppPage page) => switch (page) {
+  AppPage.wallet => V3WalletPage,
+  AppPage.orders => V3OrdersPage,
+  AppPage.giftCard => V3GiftCardPage,
+  _ => throw ArgumentError('${page.name} is not a hub sheet'),
+};
 
 /// Runs [body] with the target platform pinned, restoring it before the test
 /// framework verifies that no foundation debug variable was left changed.
@@ -115,6 +129,20 @@ void main() {
             // No dedicated rail entry: identity card, then the account hub row.
             await _tap(tester, find.byKey(kAccountCardKey), 'account card');
             await _tap(tester, _hubRow(target), target.name);
+            // These three are sheets rather than pages, so reaching them is
+            // the sheet appearing — and the page underneath staying put is
+            // the point of the change, not an incidental detail.
+            expect(
+              find.byType(_sheetType(target)),
+              findsOneWidget,
+              reason: '${target.name} must open from the account hub',
+            );
+            expect(
+              controller.page,
+              AppPage.account,
+              reason: '${target.name} is a modal and must not navigate',
+            );
+            return;
           case AppPage.more:
             // Filtered out of this loop; the switch is total all the same.
             return;
@@ -145,13 +173,24 @@ void main() {
           case AppPage.wallet:
           case AppPage.orders:
           case AppPage.giftCard:
-            // Account business lives in the account page's hub.
+            // Account business lives in the account page's hub, as a sheet.
             await _tap(
               tester,
               _tab(_primaryLabel(AppPage.account)),
               'account tab',
             );
             await _tap(tester, _hubRow(target), target.name);
+            expect(
+              find.byType(_sheetType(target)),
+              findsOneWidget,
+              reason: '${target.name} must open from the account hub',
+            );
+            expect(
+              controller.page,
+              AppPage.account,
+              reason: '${target.name} is a modal and must not navigate',
+            );
+            return;
           case AppPage.traffic:
           case AppPage.invite:
           case AppPage.tickets:
@@ -275,7 +314,37 @@ void main() {
       await tester.tap(card);
       await tester.pumpAndSettle();
 
-      expect(controller.page, AppPage.wallet);
+      expect(find.byType(V3WalletPage), findsOneWidget);
+      expect(controller.page, AppPage.account);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  // The complaint that started this: 点了钱包是不能返回的. A hub sheet is
+  // dismissible rather than navigable, so the account page it was opened from
+  // is still there and closing the sheet is all it takes to see it again.
+  testWidgets('a hub sheet closes back onto the account page', (tester) async {
+    await _onPlatform(TargetPlatform.android, () async {
+      final controller = await _pumpShell(tester, _mobile);
+      controller.goToPage(AppPage.account);
+      await tester.pumpAndSettle();
+
+      for (final page in enabledNavItems(kMobileHub).map((item) => item.page)) {
+        await _tap(tester, _hubRow(page), page.name);
+        expect(find.byType(_sheetType(page)), findsOneWidget);
+
+        await _tap(tester, find.byTooltip('关闭'), 'the sheet close button');
+        expect(
+          find.byType(_sheetType(page)),
+          findsNothing,
+          reason: '${page.name} did not close',
+        );
+        expect(
+          controller.page,
+          AppPage.account,
+          reason: 'closing ${page.name} must land back on 账户',
+        );
+      }
       expect(tester.takeException(), isNull);
     });
   });

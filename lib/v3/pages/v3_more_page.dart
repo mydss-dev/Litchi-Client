@@ -4,6 +4,7 @@ import '../../app/app_controller.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_sheet.dart';
 
 /// The compact overflow tab.
 ///
@@ -48,7 +49,9 @@ class V3MorePage extends StatelessWidget {
                     icon: item.icon,
                     label: item.label,
                     selected: controller.page == item.page,
-                    onTap: () => controller.goToPage(item.page),
+                    // Not a bare `goToPage`: the three modal pages would be
+                    // routed rather than opened if one ever joined this list.
+                    onTap: () => openV3Page(context, item.page),
                   ),
               ],
             ),

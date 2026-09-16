@@ -297,7 +297,8 @@ class V3NavPanel extends StatelessWidget {
 }
 
 /// One row of a [V3NavPanel]: icon, label, and a chevron in brand colour when
-/// it is the page you are on.
+/// it is the page you are on. An optional [subtitle] sits under the label for
+/// rows that carry state worth surfacing at a glance (a binding status).
 class V3NavRow extends StatelessWidget {
   const V3NavRow({
     super.key,
@@ -305,12 +306,14 @@ class V3NavRow extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.subtitle,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -333,13 +336,29 @@ class V3NavRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: p.ink,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: p.ink,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle!,
+                      style: TextStyle(
+                        color: p.inkMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             Icon(

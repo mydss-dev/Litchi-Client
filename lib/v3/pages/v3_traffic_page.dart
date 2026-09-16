@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3TrafficPage extends StatefulWidget {
   const V3TrafficPage({super.key});
@@ -76,41 +77,15 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '使用概览',
-                          style: TextStyle(
-                            color: p.lycheeInk,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.2,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          '流量',
-                          style: Theme.of(context).textTheme.displayMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '看清今天用了多少、套餐还剩多少，以及最近的使用节奏。',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: '刷新流量',
-                    onPressed: controller.refreshData,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                ],
+              V3PageHeader(
+                kicker: '使用概览',
+                title: '流量',
+                description: '看清今天用了多少、套餐还剩多少，以及最近的使用节奏。',
+                trailing: IconButton(
+                  tooltip: '刷新流量',
+                  onPressed: controller.refreshData,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
               ),
               const SizedBox(height: 24),
               compact
@@ -224,7 +199,10 @@ class _QuotaPanel extends StatelessWidget {
               value: usedRatio,
               minHeight: 8,
               backgroundColor: p.ink.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(p.lychee),
+              // The quota panel is `hero`, and the base lychee only clears the
+              // 3:1 a UI shape owes against a light ground — on this one it is
+              // 2.6:1. The ink reads at the same weight and survives it.
+              valueColor: AlwaysStoppedAnimation<Color>(p.lycheeInk),
             ),
           ),
           const SizedBox(height: 15),

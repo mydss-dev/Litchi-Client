@@ -4,6 +4,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_node_picker.dart';
 
 class V3NodesPage extends StatefulWidget {
   const V3NodesPage({super.key});
@@ -150,7 +151,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
               final list = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _AutoRouteRow(
+                  V3AutoRouteRow(
                     controller: controller,
                     busy: _pending == 'auto',
                     onTap:
@@ -177,7 +178,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
                     ...nodes.map(
                       (node) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: _NodeRow(
+                        child: V3NodeRow(
                           node: node,
                           controller: controller,
                           busy: _pending == node.id,
@@ -317,194 +318,9 @@ class _RegionRail extends StatelessWidget {
   }
 }
 
-class _AutoRouteRow extends StatelessWidget {
-  const _AutoRouteRow({
-    required this.controller,
-    required this.onTap,
-    required this.busy,
-  });
-
-  final AppController controller;
-  final VoidCallback? onTap;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final active = controller.autoSelected;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        decoration: BoxDecoration(
-          // The same chosen-card treatment _NodeRow below uses, so the two
-          // rows in this list do not disagree about what "selected" looks like.
-          color: active ? p.lycheeSoft : p.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: active ? p.lychee : p.line),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: active ? p.citrus : p.surfaceRaised,
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                color: active ? p.night : p.ink,
-                size: 19,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '自动选择',
-                    style: TextStyle(
-                      color: p.ink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '自动选择可用节点',
-                    style: TextStyle(color: p.inkMuted, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-            if (busy)
-              const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else if (active)
-              Icon(Icons.check_circle_rounded, color: p.lychee, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NodeRow extends StatelessWidget {
-  const _NodeRow({
-    required this.node,
-    required this.controller,
-    required this.onTap,
-    required this.busy,
-  });
-
-  final NodeModel node;
-  final AppController controller;
-  final VoidCallback? onTap;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final selected =
-        !controller.autoSelected && controller.currentNode.id == node.id;
-    // The Ink variants: this drives the latency label as well as the status dot,
-    // and the label is small text that has to clear AA on a light ground.
-    final latencyColor = node.latency > 0 && node.latency <= 120
-        ? p.successInk
-        : node.latency > 120 && node.latency < 9999
-        ? p.warningInk
-        : p.inkMuted;
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? p.lycheeSoft : p.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? p.lychee : p.line),
-        ),
-        child: Row(
-          children: [
-            V3NodeFlag(code: node.code),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    node.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    node.englishName.isNotEmpty ? node.englishName : node.code,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: latencyColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 7),
-            Text(
-              _latency(node.latency),
-              style: TextStyle(
-                color: latencyColor,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 12),
-            if (busy)
-              const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else
-              Icon(
-                selected
-                    ? Icons.check_circle_rounded
-                    : Icons.chevron_right_rounded,
-                color: selected ? p.lychee : p.inkMuted,
-                size: 19,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 String _regionLabel(NodeRegion region) => switch (region) {
   NodeRegion.asia => '亚洲',
   NodeRegion.europe => '欧洲',
   NodeRegion.america => '美洲',
   NodeRegion.oceania => '大洋洲',
 };
-
-String _latency(int value) {
-  if (value == -1) return '测速中';
-  if (value <= 0) return '未测速';
-  if (value >= 9999) return '超时';
-  return '${value}ms';
-}

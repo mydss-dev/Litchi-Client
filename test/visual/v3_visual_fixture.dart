@@ -162,6 +162,12 @@ class VisualV3Controller extends AppController {
   UserModel get user => _user;
   @override
   RemoteUser? get accountDetails => _remoteUser;
+  // The real method fans out to every panel service; in a widget test that
+  // would be a network call. Nothing the visual fixtures render depends on the
+  // refreshed data, so the flows that await it (gift-card redeem, Telegram
+  // bind/unbind) complete deterministically instead.
+  @override
+  Future<void> refreshData() async {}
   @override
   TrafficModel get traffic => _traffic;
   @override
@@ -225,6 +231,12 @@ class VisualV3Controller extends AppController {
   bool get noticesLoading => false;
   @override
   List<NoticeModel> get pendingNoticePopups => const [];
+  // No update by default, so no golden depends on the host platform: the
+  // banner's action differs between desktop and the rest.
+  @override
+  UpdateInfo? get updateInfo => null;
+  @override
+  void dismissUpdate() {}
   @override
   bool get hasAccountSummary => true;
   @override
@@ -368,4 +380,13 @@ class _VisualPanelApi extends PanelApi {
   @override
   Future<TicketModel> getTicketDetail(int ticketId) async =>
       _tickets.firstWhere((ticket) => ticket.id == ticketId);
+
+  // Telegram binding runs entirely through these three, none of which touch
+  // the network in a widget test.
+  @override
+  Future<String> getTelegramBotUsername() async => 'litchi_bot';
+  @override
+  Future<String> getSubscribeUrl() async => 'https://thelitchi.com/sub/litchi';
+  @override
+  Future<void> unbindTelegram() async {}
 }

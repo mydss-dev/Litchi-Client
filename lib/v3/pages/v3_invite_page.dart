@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
+import '../ui/v3_sheet.dart';
 
 class V3InvitePage extends StatefulWidget {
   const V3InvitePage({super.key});
@@ -61,7 +63,6 @@ class _V3InvitePageState extends State<V3InvitePage> {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final p = V3Palette.of(context);
     final codes = _codes(controller);
     final safeIndex = codes.isEmpty ? 0 : _selected.clamp(0, codes.length - 1);
     final active = codes.isEmpty ? null : codes[safeIndex];
@@ -74,41 +75,15 @@ class _V3InvitePageState extends State<V3InvitePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '邀请奖励',
-                          style: TextStyle(
-                            color: p.lycheeInk,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.2,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          '邀请好友',
-                          style: Theme.of(context).textTheme.displayMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '邀请码、邀请链接与返佣数据都集中在这里。',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: '刷新邀请数据',
-                    onPressed: controller.refreshData,
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                ],
+              V3PageHeader(
+                kicker: '邀请奖励',
+                title: '邀请好友',
+                description: '邀请码、邀请链接与返佣数据都集中在这里。',
+                trailing: IconButton(
+                  tooltip: '刷新邀请数据',
+                  onPressed: controller.refreshData,
+                  icon: const Icon(Icons.refresh_rounded),
+                ),
               ),
               const SizedBox(height: 24),
               compact
@@ -424,7 +399,8 @@ class _InviteStats extends StatelessWidget {
               children: [
                 Icon(
                   Icons.account_balance_wallet_rounded,
-                  color: p.lychee,
+                  // On the soft lychee fill, the same pairing the rail uses.
+                  color: p.lycheeInk,
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -450,7 +426,7 @@ class _InviteStats extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: '前往钱包',
-                  onPressed: () => controller.goToPage(AppPage.wallet),
+                  onPressed: () => openV3Page(context, AppPage.wallet),
                   icon: const Icon(Icons.arrow_forward_rounded),
                 ),
               ],
@@ -565,7 +541,8 @@ class _ReferralLedger extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.person_add_alt_1_rounded,
-                        color: p.lychee,
+                        // surfaceRaised ground: base lychee is 2.98:1 here.
+                        color: p.lycheeInk,
                         size: 17,
                       ),
                     ),

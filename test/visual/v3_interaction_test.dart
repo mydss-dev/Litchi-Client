@@ -10,6 +10,7 @@ import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/pages/v3_nodes_page.dart';
 import 'package:litchi_client/v3/pages/v3_settings_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
+import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 
 import 'v3_visual_fixture.dart';
 
@@ -51,11 +52,15 @@ Future<void> _pump(
   await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
   addTearDown(controller.disposeVisual);
+  // AppScope above MaterialApp, as in `LitchiApp`. A dialog is built by the
+  // Navigator, so it sits beside `home` rather than under it and cannot see a
+  // scope that `home` introduces.
   await tester.pumpWidget(
-    MaterialApp(
-      theme: V3Theme.dark(),
-      home: Scaffold(
-        body: AppScope(controller: controller, child: page),
+    AppScope(
+      controller: controller,
+      child: MaterialApp(
+        theme: V3Theme.dark(),
+        home: Scaffold(body: page),
       ),
     ),
   );
@@ -103,11 +108,52 @@ void main() {
     }
   });
 
-  testWidgets('Dashboard opens node selection', (tester) async {
+  // Switching a node happens while looking at the connection it affects, so
+  // the dashboard opens the picker over itself instead of sending the user to
+  // the nodes page and back.
+  testWidgets('Dashboard opens the node picker over the page', (tester) async {
     final controller = _InteractiveController(AppPage.dashboard);
     await _pump(tester, controller, const V3DashboardPage());
     await tester.tap(find.text('切换节点'));
-    expect(controller.destination, AppPage.nodes);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(V3NodePicker), findsOneWidget);
+    expect(
+      controller.destination,
+      isNull,
+      reason: '切换节点 must open a picker, not navigate',
+    );
+
+    await tester.tap(find.text('香港 · Premium'));
+    await tester.pump();
+    controller.result.complete(null);
+    await tester.pumpAndSettle();
+
+    expect(controller.selections, 1);
+    expect(
+      find.byType(V3NodePicker),
+      findsNothing,
+      reason: 'a chosen node closes the picker',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  // The picker stays up on failure: the request was refused, so there is
+  // nothing to go back to and the list is where the retry happens.
+  testWidgets('A refused node switch leaves the picker open', (tester) async {
+    final controller = _InteractiveController(AppPage.dashboard);
+    await _pump(tester, controller, const V3DashboardPage());
+    await tester.tap(find.text('切换节点'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('香港 · Premium'));
+    await tester.pump();
+    controller.result.complete('节点切换失败');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(V3NodePicker), findsOneWidget);
+    expect(find.text('节点切换失败'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Node change prevents duplicate requests and reports failure', (

@@ -5,6 +5,9 @@ import '../../app/core_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_node_picker.dart';
+import '../ui/v3_notice_bar.dart';
+import '../ui/v3_update_banner.dart';
 
 class V3DashboardPage extends StatelessWidget {
   const V3DashboardPage({super.key});
@@ -41,6 +44,11 @@ class V3DashboardPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          // Both render nothing at all when there is nothing to say, and each
+          // carries its own bottom gap, so their absence collapses cleanly
+          // instead of leaving a hole where news used to be.
+          const V3UpdateBanner(),
+          V3NoticeBar(controller: controller),
           _ConnectionWorkspace(
             controller: controller,
             connected: connected,
@@ -194,7 +202,11 @@ class _ConnectionWorkspace extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 TextButton.icon(
-                  onPressed: () => controller.goToPage(AppPage.nodes),
+                  // Opens the picker over this page rather than navigating to
+                  // the nodes page: switching a node is a choice made while
+                  // looking at the connection it affects, and the full page
+                  // (search, regions, 测速) is still one tab away.
+                  onPressed: () => V3NodePicker.show(context),
                   style: TextButton.styleFrom(foregroundColor: p.lycheeInk),
                   icon: const Icon(Icons.swap_horiz_rounded, size: 18),
                   label: const Text('切换节点'),

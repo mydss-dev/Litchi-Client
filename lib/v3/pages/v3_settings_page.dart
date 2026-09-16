@@ -90,7 +90,8 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       _SettingRow(
                         index: '01',
                         title: '代理接管方式',
-                        description: '系统代理用于支持代理的应用；TUN 接管设备流量，可能需要管理员权限。',
+                        description: '系统代理仅接管支持代理的应用；TUN 接管全部流量。',
+                        fullWidthControl: true,
                         control: _Segment<NetworkMode>(
                           value: controller.networkMode,
                           items: const [NetworkMode.system, NetworkMode.tun],
@@ -108,6 +109,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         index: '02',
                         title: 'DNS 解析',
                         description: '使用系统 DNS，或选择其他解析服务。',
+                        fullWidthControl: true,
                         control: _Segment<DnsMode>(
                           value: controller.dnsMode,
                           items: const [
@@ -192,6 +194,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                     title: '主题',
                     description: '选择浅色或深色界面。',
                     last: true,
+                    fullWidthControl: true,
                     control: _Segment<ThemeMode>(
                       value: controller.themeMode == ThemeMode.dark
                           ? ThemeMode.dark
@@ -228,6 +231,7 @@ class _SettingRow<T> extends StatelessWidget {
     required this.description,
     required this.control,
     this.last = false,
+    this.fullWidthControl = false,
   });
 
   final String index;
@@ -235,6 +239,10 @@ class _SettingRow<T> extends StatelessWidget {
   final String description;
   final Widget control;
   final bool last;
+
+  /// Whether [control] should fill the row's width (a segmented control)
+  /// rather than sit at its natural size (a switch, a button).
+  final bool fullWidthControl;
 
   @override
   Widget build(BuildContext context) {
@@ -283,14 +291,22 @@ class _SettingRow<T> extends StatelessWidget {
                   children: [
                     copy,
                     const SizedBox(height: 14),
-                    Align(alignment: Alignment.centerRight, child: control),
+                    if (fullWidthControl)
+                      control
+                    else
+                      Align(alignment: Alignment.centerRight, child: control),
                   ],
                 )
               : Row(
                   children: [
                     Expanded(child: copy),
                     const SizedBox(width: 20),
-                    control,
+                    if (fullWidthControl)
+                      // A fixed column so every control's right edge lines up;
+                      // the segmented control fills it, a switch stays put.
+                      SizedBox(width: 240, child: control)
+                    else
+                      control,
                   ],
                 );
         },
@@ -305,64 +321,63 @@ class _Segment<T> extends StatelessWidget {
     required this.items,
     required this.label,
     required this.onChanged,
-    this.fillAvailableWidth = false,
   });
 
   final T value;
   final List<T> items;
   final String Function(T) label;
   final ValueChanged<T> onChanged;
-  final bool fillAvailableWidth;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: items.map((item) {
-        final selected = item == value;
-        final segment = InkWell(
-          borderRadius: BorderRadius.circular(9),
-          onTap: () => onChanged(item),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            // 14 rather than 8 vertical: at the 12px label's line box that
-            // puts the segment at ~45dp tall, clearing the 44dp a touch
-            // target should offer. Measured, not guessed — 12 gave 41dp.
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 14),
-            decoration: BoxDecoration(
-              color: selected ? p.surface : Colors.transparent,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Text(
-              label(item),
-              style: TextStyle(
-                color: selected ? p.lycheeInk : p.inkMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        );
-        return fillAvailableWidth ? Expanded(child: segment) : segment;
-      }).toList(),
-    );
     return Container(
-      width: fillAvailableWidth ? double.infinity : null,
+      // Always fills the width the row gives it, so the two- and three-item
+      // controls line up at one right edge and never squish under a FittedBox
+      // (the old scale-down shrank the label and padding together on narrow
+      // layouts). Each segment takes an equal share.
+      width: double.infinity,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(12),
       ),
-      // Intrinsically sized segments can outgrow narrow layouts (360dp and
-      // below); scale them down instead of overflowing.
-      child: fillAvailableWidth
-          ? row
-          : FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: row,
+      child: Row(
+        children: items.map((item) {
+          final selected = item == value;
+          final segment = InkWell(
+            // Stable handle for the touch-target test, which finds every
+            // segment across the three controls by this prefix. Labels are
+            // unique across the page.
+            key: ValueKey('v3-settings-segment-${label(item)}'),
+            borderRadius: BorderRadius.circular(9),
+            onTap: () => onChanged(item),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              // 14 rather than 8 vertical: at the 12px label's line box that
+              // puts the segment at ~45dp tall, clearing the 44dp a touch
+              // target should offer. Measured, not guessed — 12 gave 41dp.
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+              decoration: BoxDecoration(
+                color: selected ? p.surface : Colors.transparent,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                label(item),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? p.lycheeInk : p.inkMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
+          );
+          return Expanded(child: segment);
+        }).toList(),
+      ),
     );
   }
 }

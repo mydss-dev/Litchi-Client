@@ -82,18 +82,37 @@ void main() {
     group('$mode graphic contrast', () {
       // Icons and fills only owe WCAG 1.4.11's 3:1 — this is what lets the
       // brighter base colors stay in the design.
+      //
+      // The grounds below are the ones an icon is actually drawn on, read off
+      // the call sites: `hero` (the connect workspace, the traffic quota panel,
+      // the boot progress bar), `surfaceRaised` (the icon tiles in the invite
+      // and traffic rows), `lycheeSoft` (a chosen row) and `surface` (a card).
+      // `canvas` is not among them: nothing paints a bare accent glyph on the
+      // page ground, because every icon in this UI sits inside a panel or a
+      // tile. Asserting it there was checking a combination the app never
+      // produces, while the tinted grounds it *does* use went unchecked — which
+      // is how a light-mode background got darker than the accents could
+      // survive without this test noticing.
+      final grounds = <String, Color>{
+        'surface': p.surface,
+        'surfaceRaised': p.surfaceRaised,
+        'hero': p.hero,
+        'lycheeSoft': p.lycheeSoft,
+      };
+
+      // What is drawn *on* those grounds is the Ink variant, not the base fill:
+      // the base colors are tuned as large fills with white on top, and read as
+      // a smudge once the ground behind them is tinted. The rail already did
+      // this for its chosen row before the rest of the app had a reason to.
       final graphics = <String, Color>{
-        'lychee': p.lychee,
-        'success': p.success,
-        'warning': p.warning,
-        'danger': p.danger,
+        'lycheeInk': p.lycheeInk,
+        'successInk': p.successInk,
+        'warningInk': p.warningInk,
+        'dangerInk': p.dangerInk,
       };
       for (final g in graphics.entries) {
-        test('${g.key} clears AA as a graphic', () {
-          for (final ground in {
-            'surface': p.surface,
-            'canvas': p.canvas,
-          }.entries) {
+        test('${g.key} clears AA as a graphic on every ground', () {
+          for (final ground in grounds.entries) {
             final ratio = _contrast(g.value, ground.value);
             expect(
               ratio,
@@ -105,6 +124,28 @@ void main() {
           }
         });
       }
+
+      // A chosen row's soft fill is light enough to be a ground, so the base
+      // lychee is checked where it is still legitimate: as a fill on a card,
+      // which is the one place it carries white content instead of being a
+      // glyph that has to be told apart from what is behind it.
+      test('the base fills still clear AA on the card they are filled on', () {
+        for (final fill in {
+          'lychee': p.lychee,
+          'success': p.success,
+          'warning': p.warning,
+          'danger': p.danger,
+        }.entries) {
+          final ratio = _contrast(fill.value, p.surface);
+          expect(
+            ratio,
+            greaterThanOrEqualTo(_aaGraphic),
+            reason:
+                '${fill.key} on surface is ${ratio.toStringAsFixed(2)}:1, below '
+                'the $_aaGraphic:1 minimum for icons and UI shapes.',
+          );
+        }
+      });
     });
   }
 

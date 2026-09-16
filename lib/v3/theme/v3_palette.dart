@@ -64,18 +64,31 @@ class V3Palette {
   final Color dangerInk;
 
   static const light = V3Palette(
-    canvas: Color(0xFFF3F4F0),
-    surface: Color(0xFFFFFFFF),
-    surfaceRaised: Color(0xFFE8EBE5),
-    // A sage-tinted white, a step off `surface` and `surfaceRaised` so a hero
-    // panel still reads as a distinct block without resorting to black.
-    hero: Color(0xFFEFF2EE),
+    // Four tiers, darkest to lightest: canvas → hero → surfaceRaised → surface.
+    //
+    // Light mode used to run canvas #F3F4F0 under surface #FFFFFF, which is a
+    // 3% difference — the background was there, but nothing on screen showed
+    // it, so every page read as one flat white sheet with no depth. Dark mode
+    // never had that problem (canvas #0C1010 and card #151B1A are obvious
+    // steps), so these four are spaced to mirror it: a sage-green ground, a
+    // near-white card sitting clearly above it, and a hero panel a shade below
+    // the ground rather than above it, which is the direction dark mode uses
+    // for its own hero.
+    //
+    // Pure white no longer appears in light mode at all. The one exception is
+    // the QR pad in the payment flow, which scanners want white and which
+    // therefore hard-codes it rather than reading a token.
+    canvas: Color(0xFFE7EBE3),
+    surface: Color(0xFFFBFCF9),
+    surfaceRaised: Color(0xFFF0F2EC),
+    hero: Color(0xFFDFE3DA),
     night: Color(0xFF121515),
     ink: Color(0xFF121515),
-    // Darkened from #68716F, which was only 4.17:1 on `surfaceRaised` — below
-    // AA for the segmented-control labels that sit on that track.
-    inkMuted: Color(0xFF636B69),
-    line: Color(0xFFD8DEDA),
+    // Darkened from #68716F (4.17:1 on `surfaceRaised`, below AA for the
+    // segmented-control labels that sit on that track) and again from #636B69
+    // when `hero` darkened underneath it — see `hero` above.
+    inkMuted: Color(0xFF5C6462),
+    line: Color(0xFFCBD2CB),
     lychee: Color(0xFFF25472),
     lycheeSoft: Color(0xFFFFE3E8),
     citrus: Color(0xFFD7F267),
@@ -85,9 +98,13 @@ class V3Palette {
     // asks of an icon or UI shape drawn on that ground.
     warning: Color(0xFFBA771C),
     danger: Color(0xFFCC3F57),
-    lycheeInk: Color(0xFFBE2B4E),
+    // The three inks below moved with `hero`. They are read as small text on
+    // that panel, and the darker ground took them under 4.5:1: lycheeInk fell
+    // to 4.43 and warningInk to 4.21, which is the failure the contrast test
+    // exists to catch. successInk and dangerInk already had the margin.
+    lycheeInk: Color(0xFFB32747),
     successInk: Color(0xFF177045),
-    warningInk: Color(0xFF9A5A00),
+    warningInk: Color(0xFF8A5000),
     dangerInk: Color(0xFFB02E45),
   );
 

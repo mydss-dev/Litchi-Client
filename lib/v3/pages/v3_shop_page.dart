@@ -7,6 +7,7 @@ import '../../shared/services/panel_api.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_sheet.dart';
 
 class V3ShopPage extends StatefulWidget {
   const V3ShopPage({super.key});
@@ -112,7 +113,9 @@ class _V3ShopPageState extends State<V3ShopPage> {
         api: controller.api,
         currencySymbol: controller.currencySymbol,
         onPaid: controller.refreshData,
-        onViewOrders: () => controller.goToPage(AppPage.orders),
+        // The payment dialog pops itself before calling this, so the orders
+        // sheet opens onto the shop rather than onto a second modal.
+        onViewOrders: () => openV3Page(context, AppPage.orders),
       ),
     );
   }

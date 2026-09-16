@@ -44,14 +44,21 @@ void main() {
   ) async {
     try {
       await _pump(tester, AppPage.settings, const Size(390, 844));
-      final segments = find.descendant(
-        of: find.byType(FittedBox),
-        matching: find.byType(InkWell),
+      // The segmented control is now a full-width row, not a FittedBox-scaled
+      // one, so the segments are found by their own key rather than by the
+      // wrapper that used to scale them.
+      final segments = find.byWidgetPredicate(
+        (widget) =>
+            widget is InkWell &&
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith(
+              'v3-settings-segment',
+            ),
       );
       expect(
         segments,
         findsWidgets,
-        reason: 'the segmented control should render in a FittedBox',
+        reason: 'the segmented control should render its segments',
       );
       for (final element in segments.evaluate()) {
         final rect = tester.getRect(find.byWidget(element.widget));

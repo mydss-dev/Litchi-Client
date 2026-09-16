@@ -6,9 +6,33 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_sheet.dart';
 
 class V3OrdersPage extends StatefulWidget {
   const V3OrdersPage({super.key});
+
+  /// Opens the order ledger as a sheet.
+  ///
+  /// The sheet header is built outside this page's own state, so the refresh
+  /// button reaches the list through [GlobalKey] rather than through a
+  /// callback — refresh refetches into `_orders`, which nothing outside the
+  /// state can write to. One consequence: the button no longer greys out
+  /// while a load is in flight, since the header does not rebuild with the
+  /// page. The list's own spinner already says loading, and refetching twice
+  /// is harmless.
+  static Future<void> show(BuildContext context) {
+    final key = GlobalKey<_V3OrdersPageState>();
+    return showV3Sheet<void>(
+      context,
+      title: '订单记录',
+      trailing: IconButton(
+        tooltip: '刷新订单',
+        onPressed: () => key.currentState?.refresh(),
+        icon: const Icon(Icons.refresh_rounded),
+      ),
+      builder: (_) => V3OrdersPage(key: key),
+    );
+  }
 
   @override
   State<V3OrdersPage> createState() => _V3OrdersPageState();
@@ -29,6 +53,10 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
     _initialized = true;
     unawaited(_load());
   }
+
+  /// Refetches the ledger. The sheet header's refresh button calls this; see
+  /// [V3OrdersPage.show] for why it goes through a key.
+  void refresh() => unawaited(_load());
 
   Future<void> _load() async {
     if (mounted) {
@@ -134,172 +162,135 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         accent: p.aqua,
       ),
     ];
+    // No page header and no page-level scroll: the sheet supplies both. The
+    // title and the refresh button moved into [show].
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
         // Phones get one card per row; anything wider gets two rows of two.
         final phone = constraints.maxWidth < 480;
-        return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            compact ? 20 : 34,
-            26,
-            compact ? 20 : 34,
-            36,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Four across needs real width, and a sheet never has it: the
+            // dialog is 560 and the drawer is the phone's. So `compact` is now
+            // always true and the four-across branch is the routed fallback's.
+            if (!compact)
               Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'ORDER LEDGER',
-                          style: TextStyle(
-                            color: p.lycheeInk,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.2,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          '订单记录',
-                          style: Theme.of(context).textTheme.displayLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '购买、支付和取消都在同一条订单链路里完成。',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
+                  for (var i = 0; i < metrics.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 12),
+                    Expanded(child: metrics[i]),
+                  ],
+                ],
+              )
+            else if (!phone)
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: metrics[0]),
+                      const SizedBox(width: 12),
+                      Expanded(child: metrics[1]),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: '刷新订单',
-                    onPressed: _loading ? null : _load,
-                    icon: const Icon(Icons.refresh_rounded),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: metrics[2]),
+                      const SizedBox(width: 12),
+                      Expanded(child: metrics[3]),
+                    ],
                   ),
                 ],
+              )
+            else
+              Column(
+                children: [
+                  for (var i = 0; i < metrics.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    metrics[i],
+                  ],
+                ],
               ),
-              const SizedBox(height: 24),
-              // Four across needs real width: a 900x700 Windows window leaves
-              // only 666dp of content once the rail is out, so the old
-              // single-column fallback stacked all four 100dp cards and pushed
-              // the order list itself below the fold. Three densities now.
-              if (!compact)
-                Row(
-                  children: [
-                    for (var i = 0; i < metrics.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 12),
-                      Expanded(child: metrics[i]),
-                    ],
-                  ],
-                )
-              else if (!phone)
-                Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: metrics[0]),
-                        const SizedBox(width: 12),
-                        Expanded(child: metrics[1]),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: p.surface,
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: p.line),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SegmentedButton<int>(
+                      segments: const [
+                        ButtonSegment(value: 0, label: Text('全部')),
+                        ButtonSegment(value: 1, label: Text('待处理')),
+                        ButtonSegment(value: 2, label: Text('已完成')),
+                        ButtonSegment(value: 3, label: Text('已取消')),
                       ],
+                      selected: {_filter},
+                      showSelectedIcon: false,
+                      onSelectionChanged: (value) =>
+                          setState(() => _filter = value.first),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(child: metrics[2]),
-                        const SizedBox(width: 12),
-                        Expanded(child: metrics[3]),
-                      ],
-                    ),
-                  ],
-                )
-              else
-                Column(
-                  children: [
-                    for (var i = 0; i < metrics.length; i++) ...[
-                      if (i > 0) const SizedBox(height: 10),
-                      metrics[i],
-                    ],
-                  ],
-                ),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: p.surface,
-                  borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: p.line),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SegmentedButton<int>(
-                        segments: const [
-                          ButtonSegment(value: 0, label: Text('全部')),
-                          ButtonSegment(value: 1, label: Text('待处理')),
-                          ButtonSegment(value: 2, label: Text('已完成')),
-                          ButtonSegment(value: 3, label: Text('已取消')),
-                        ],
-                        selected: {_filter},
-                        showSelectedIcon: false,
-                        onSelectionChanged: (value) =>
-                            setState(() => _filter = value.first),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_loading)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(36),
+                        child: CircularProgressIndicator(),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_loading)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(36),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
-                    else if (_error != null)
-                      _OrderEmptyState(
-                        icon: Icons.error_outline_rounded,
-                        title: '订单加载失败',
-                        subtitle: _error!,
-                        actionLabel: '重试',
-                        onAction: _load,
-                      )
-                    else if (visible.isEmpty)
-                      _OrderEmptyState(
-                        icon: Icons.receipt_long_rounded,
-                        title: '这里还没有订单',
-                        subtitle: _filter == 0
-                            ? '购买套餐后，订单会出现在这里。'
-                            : '当前筛选条件下没有记录。',
-                        actionLabel: _filter == 0 ? '去购买套餐' : null,
-                        onAction: _filter == 0
-                            ? () => controller.goToPage(AppPage.shop)
-                            : null,
-                      )
-                    else
-                      for (var i = 0; i < visible.length; i++) ...[
-                        _OrderRow(
-                          order: visible[i],
-                          currencySymbol: controller.currencySymbol,
-                          busy: _busyTradeNo == visible[i].tradeNo,
-                          onPay: () => _pay(visible[i]),
-                          onCancel: () => _cancel(visible[i]),
-                        ),
-                        if (i != visible.length - 1)
-                          Divider(color: p.line, height: 1),
-                      ],
-                  ],
-                ),
+                    )
+                  else if (_error != null)
+                    _OrderEmptyState(
+                      icon: Icons.error_outline_rounded,
+                      title: '订单加载失败',
+                      subtitle: _error!,
+                      actionLabel: '重试',
+                      onAction: _load,
+                    )
+                  else if (visible.isEmpty)
+                    _OrderEmptyState(
+                      icon: Icons.receipt_long_rounded,
+                      title: '这里还没有订单',
+                      subtitle: _filter == 0
+                          ? '购买套餐后，订单会出现在这里。'
+                          : '当前筛选条件下没有记录。',
+                      actionLabel: _filter == 0 ? '去购买套餐' : null,
+                      onAction: _filter == 0
+                          // The shop is a page behind this sheet, so the sheet
+                          // closes before the shell switches — otherwise the
+                          // new page would come up with a modal still on top
+                          // of it.
+                          ? () {
+                              closeV3Sheet(context);
+                              controller.goToPage(AppPage.shop);
+                            }
+                          : null,
+                    )
+                  else
+                    for (var i = 0; i < visible.length; i++) ...[
+                      _OrderRow(
+                        order: visible[i],
+                        currencySymbol: controller.currencySymbol,
+                        busy: _busyTradeNo == visible[i].tradeNo,
+                        onPay: () => _pay(visible[i]),
+                        onCancel: () => _cancel(visible[i]),
+                      ),
+                      if (i != visible.length - 1)
+                        Divider(color: p.line, height: 1),
+                    ],
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
