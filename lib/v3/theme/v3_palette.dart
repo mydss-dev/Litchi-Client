@@ -183,8 +183,14 @@ class V3Theme {
         ),
       ),
       dividerColor: p.line,
+      // Material's expanding splash reads as too loud against this much
+      // whitespace, so it stays off — but a press still has to be visible.
+      // The palette spends colour on state (selected, connected) and not on the
+      // moment of the tap, and with the highlight transparent as well every
+      // IconButton, chip and hub row was silent. A flat tint is the quiet
+      // version of the same feedback.
       splashFactory: NoSplash.splashFactory,
-      highlightColor: Colors.transparent,
+      highlightColor: p.ink.withValues(alpha: 0.06),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: p.surfaceRaised,

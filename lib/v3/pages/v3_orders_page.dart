@@ -347,7 +347,7 @@ class _OrderMetric extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(color: p.inkMuted, fontSize: 9)),
+                Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
                 const SizedBox(height: 4),
                 Text(
                   value,
@@ -434,7 +434,7 @@ class _OrderRow extends StatelessWidget {
                   '${order.tradeNo} · ${order.dateDisplay}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 9),
+                  style: TextStyle(color: p.inkMuted, fontSize: 10),
                 ),
               ],
             ),
@@ -456,7 +456,7 @@ class _OrderRow extends StatelessWidget {
                 order.statusLabel,
                 style: TextStyle(
                   color: statusColor,
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: FontWeight.w800,
                 ),
               ),

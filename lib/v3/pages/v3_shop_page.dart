@@ -311,7 +311,7 @@ class _PlanCard extends StatelessWidget {
               plan.category == PlanCategory.recurring
                   ? _cycleLabel(cycle)
                   : '一次性付款',
-              style: TextStyle(color: p.inkMuted, fontSize: 9),
+              style: TextStyle(color: p.inkMuted, fontSize: 10),
             ),
           ],
         );
@@ -553,7 +553,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                           'CHECKOUT',
                           style: TextStyle(
                             color: p.lycheeInk,
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2,
                           ),

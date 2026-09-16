@@ -113,12 +113,19 @@ class _V3AccountPageState extends State<V3AccountPage> {
                         _DevicePanel(controller: controller),
                       ],
                     )
-                  : Row(
-                      children: [
-                        Expanded(child: _FinancePanel(controller: controller)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _DevicePanel(controller: controller)),
-                      ],
+                  // Sizes the taller of the two, so the pair still reads as one
+                  // row of equal cards now that either may grow past the floor.
+                  : IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: _FinancePanel(controller: controller),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(child: _DevicePanel(controller: controller)),
+                        ],
+                      ),
                     ),
               const SizedBox(height: 16),
               _PreferencesPanel(
@@ -156,7 +163,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
                 user.name.isEmpty ? 'LITCHI USER' : user.name,
                 style: TextStyle(
                   color: p.inkMuted,
-                  fontSize: 9,
+                  fontSize: 10,
                   letterSpacing: 1.4,
                   fontWeight: FontWeight.w700,
                 ),
@@ -234,7 +241,7 @@ class _IdentityPanel extends StatelessWidget {
                     color: controller.hasPlan
                         ? p.success
                         : Colors.white.withValues(alpha: 0.5),
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.2,
                   ),
@@ -292,7 +299,7 @@ class _PlanPanel extends StatelessWidget {
             '当前套餐',
             style: TextStyle(
               color: p.inkMuted,
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
             ),
@@ -403,7 +410,11 @@ class _MetricPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final card = Container(
-      height: 128,
+      // A floor, not a fixed height. The card holds three lines of text whose
+      // length depends on the language and on the reader's text scale, and a
+      // hard 128 clipped them: raising the 10px labels to the theme's floor was
+      // by itself enough to overflow this box.
+      constraints: const BoxConstraints(minHeight: 128),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: p.surfaceRaised,
@@ -429,7 +440,7 @@ class _MetricPanel extends StatelessWidget {
                   eyebrow,
                   style: TextStyle(
                     color: p.inkMuted,
-                    fontSize: 8,
+                    fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.4,
                   ),
@@ -457,7 +468,7 @@ class _MetricPanel extends StatelessWidget {
                 textAlign: TextAlign.end,
                 style: TextStyle(
                   color: p.inkMuted,
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -507,7 +518,7 @@ class _HubPanel extends StatelessWidget {
               '我的服务',
               style: TextStyle(
                 color: p.inkMuted,
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.5,
               ),
@@ -614,7 +625,7 @@ class _PreferencesPanel extends StatelessWidget {
                 '账户偏好',
                 style: TextStyle(
                   color: p.inkMuted,
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
                 ),
@@ -769,7 +780,7 @@ class _ActionButton extends StatelessWidget {
               label,
               style: TextStyle(
                 color: danger ? p.danger : p.ink,
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: FontWeight.w700,
               ),
             ),

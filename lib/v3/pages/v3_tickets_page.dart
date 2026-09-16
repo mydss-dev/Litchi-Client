@@ -263,7 +263,7 @@ class _TicketMetric extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: TextStyle(color: p.inkMuted, fontSize: 9)),
+              Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
               const SizedBox(height: 4),
               Text(
                 value,
@@ -332,7 +332,7 @@ class _TicketRow extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '#${ticket.id} · ${ticket.dateDisplay}',
-                    style: TextStyle(color: p.inkMuted, fontSize: 9),
+                    style: TextStyle(color: p.inkMuted, fontSize: 10),
                   ),
                 ],
               ),
@@ -348,7 +348,7 @@ class _TicketRow extends StatelessWidget {
                 ticket.levelLabel,
                 style: TextStyle(
                   color: levelColor,
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -358,7 +358,7 @@ class _TicketRow extends StatelessWidget {
               ticket.statusLabel,
               style: TextStyle(
                 color: statusColor,
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -624,7 +624,7 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
                     'TICKET #${ticket.id}',
                     style: TextStyle(
                       color: p.lycheeInk,
-                      fontSize: 9,
+                      fontSize: 10,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
                     ),
@@ -702,7 +702,7 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
                                 '${message.isAdmin ? '客服' : '我'} · ${message.timeDisplay}',
                                 style: TextStyle(
                                   color: p.inkMuted,
-                                  fontSize: 8,
+                                  fontSize: 10,
                                 ),
                               ),
                             ],

@@ -267,6 +267,11 @@ class _ConnectionWorkspace extends StatelessWidget {
   }
 }
 
+/// Identifies the connect orb for tests. It is an icon-only control, and the
+/// caption beside it carries the same words — so there is no text to find it by
+/// that would not also match the caption.
+const kConnectOrbKey = Key('v3-connect-orb');
+
 class _ConnectionOrb extends StatelessWidget {
   const _ConnectionOrb({
     required this.controller,
@@ -281,41 +286,61 @@ class _ConnectionOrb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return SizedBox(
-      width: 86,
-      height: 86,
-      child: Material(
-        color: connected ? p.citrus : p.lychee,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: controller.connectionActionLocked
-              ? null
-              : () async {
-                  final error = await controller.toggleConnection();
-                  if (error != null && context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(error)));
-                  }
-                },
-          child: Center(
-            child: connecting
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(
-                    connected
-                        ? Icons.stop_rounded
-                        : Icons.power_settings_new_rounded,
-                    color: connected ? p.night : Colors.white,
-                    size: 30,
-                  ),
+    final locked = controller.connectionActionLocked;
+    // The primary action of the whole page is an icon with no text, so a screen
+    // reader reached an unlabelled button: pressing it was a guess, and while a
+    // connection change was in flight it did not even announce that it was
+    // unavailable. The label names the action, not the glyph.
+    final label = connecting
+        ? '正在切换连接'
+        : connected
+        ? '断开连接'
+        : '连接';
+    return Semantics(
+      key: kConnectOrbKey,
+      button: true,
+      enabled: !locked,
+      label: label,
+      // The glyph contributes nothing to announce, so the label above is the
+      // whole story rather than one half of a doubled reading.
+      child: ExcludeSemantics(
+        child: SizedBox(
+          width: 86,
+          height: 86,
+          child: Material(
+            color: connected ? p.citrus : p.lychee,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: locked
+                  ? null
+                  : () async {
+                      final error = await controller.toggleConnection();
+                      if (error != null && context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(error)));
+                      }
+                    },
+              child: Center(
+                child: connecting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Icon(
+                        connected
+                            ? Icons.stop_rounded
+                            : Icons.power_settings_new_rounded,
+                        color: connected ? p.night : Colors.white,
+                        size: 30,
+                      ),
+              ),
+            ),
           ),
         ),
       ),

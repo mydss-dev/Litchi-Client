@@ -188,7 +188,7 @@ class _QuotaPanel extends StatelessWidget {
                 '套餐流量',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.5),
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.6,
                 ),
@@ -279,7 +279,7 @@ class _QuotaValue extends StatelessWidget {
           label,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.35),
-            fontSize: 9,
+            fontSize: 10,
           ),
         ),
         const SizedBox(height: 3),
@@ -319,7 +319,7 @@ class _TimingPanel extends StatelessWidget {
             '使用与有效期',
             style: TextStyle(
               color: p.inkMuted,
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
             ),
@@ -459,7 +459,7 @@ class _TrendPanel extends StatelessWidget {
                       'USAGE TREND',
                       style: TextStyle(
                         color: p.inkMuted,
-                        fontSize: 9,
+                        fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5,
                       ),
@@ -591,7 +591,7 @@ class _UsageBar extends StatelessWidget {
               ? Text(
                   '${point.date.month}/${point.date.day}',
                   maxLines: 1,
-                  style: TextStyle(color: p.inkMuted, fontSize: 8),
+                  style: TextStyle(color: p.inkMuted, fontSize: 10),
                 )
               : null,
         ),
@@ -619,7 +619,7 @@ class _TrendMetric extends StatelessWidget {
           ? CrossAxisAlignment.end
           : CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: p.inkMuted, fontSize: 9)),
+        Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
         const SizedBox(height: 3),
         Text(
           value,

@@ -236,7 +236,7 @@ class _InviteHero extends StatelessWidget {
                 '分享邀请',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.5),
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.6,
                 ),
@@ -392,7 +392,7 @@ class _InviteStats extends StatelessWidget {
             '邀请统计',
             style: TextStyle(
               color: p.inkMuted,
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
             ),
@@ -438,7 +438,7 @@ class _InviteStats extends StatelessWidget {
                     children: [
                       Text(
                         '可提现佣金',
-                        style: TextStyle(color: p.inkMuted, fontSize: 9),
+                        style: TextStyle(color: p.inkMuted, fontSize: 10),
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -496,7 +496,7 @@ class _StatLine extends StatelessWidget {
           ),
           if (suffix.isNotEmpty) ...[
             const SizedBox(width: 3),
-            Text(suffix, style: TextStyle(color: p.inkMuted, fontSize: 9)),
+            Text(suffix, style: TextStyle(color: p.inkMuted, fontSize: 10)),
           ],
         ],
       ),
@@ -530,7 +530,7 @@ class _ReferralLedger extends StatelessWidget {
                 '最近邀请',
                 style: TextStyle(
                   color: p.inkMuted,
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
                 ),
@@ -538,7 +538,7 @@ class _ReferralLedger extends StatelessWidget {
               const Spacer(),
               Text(
                 '${records.length} 条',
-                style: TextStyle(color: p.inkMuted, fontSize: 9),
+                style: TextStyle(color: p.inkMuted, fontSize: 10),
               ),
             ],
           ),
@@ -593,7 +593,7 @@ class _ReferralLedger extends StatelessWidget {
                           const SizedBox(height: 3),
                           Text(
                             record.dateDisplay,
-                            style: TextStyle(color: p.inkMuted, fontSize: 9),
+                            style: TextStyle(color: p.inkMuted, fontSize: 10),
                           ),
                         ],
                       ),
@@ -613,7 +613,7 @@ class _ReferralLedger extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text(
                           record.amountDisplay(controller.currencySymbol),
-                          style: TextStyle(color: p.inkMuted, fontSize: 9),
+                          style: TextStyle(color: p.inkMuted, fontSize: 10),
                         ),
                       ],
                     ),

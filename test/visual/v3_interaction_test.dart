@@ -19,6 +19,12 @@ class _InteractiveController extends VisualV3Controller {
   int networkChanges = 0;
   Completer<String?> result = Completer<String?>();
 
+  /// Stands in for a connection change being in flight.
+  bool locked = false;
+
+  @override
+  bool get connectionActionLocked => locked;
+
   @override
   void goToPage(AppPage page) => destination = page;
 
@@ -56,6 +62,46 @@ Future<void> _pump(
 }
 
 void main() {
+  // The connect orb is the page's primary action and carries no text of its
+  // own, so its label is the only thing a screen reader has to go on.
+  testWidgets('the connect orb announces the action it will perform', (
+    tester,
+  ) async {
+    // Released inside the body rather than in a tear-down: the framework checks
+    // for leaked handles at the end of the body, before tear-downs run.
+    final semantics = tester.ensureSemantics();
+    try {
+      // The fixture reports a live connection, so the orb's action is to end it.
+      final controller = _InteractiveController(AppPage.dashboard);
+      await _pump(tester, controller, const V3DashboardPage());
+
+      expect(
+        tester.getSemantics(find.byKey(kConnectOrbKey)),
+        isSemantics(label: '断开连接', isButton: true, isEnabled: true),
+      );
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('the connect orb reports when it cannot be pressed', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      final controller = _InteractiveController(AppPage.dashboard)
+        ..locked = true;
+      await _pump(tester, controller, const V3DashboardPage());
+
+      expect(
+        tester.getSemantics(find.byKey(kConnectOrbKey)),
+        isSemantics(label: '断开连接', isButton: true, isEnabled: false),
+      );
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('Dashboard opens node selection', (tester) async {
     final controller = _InteractiveController(AppPage.dashboard);
     await _pump(tester, controller, const V3DashboardPage());

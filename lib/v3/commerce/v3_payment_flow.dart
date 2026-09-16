@@ -259,7 +259,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                       'PAYMENT',
                       style: TextStyle(
                         color: p.lycheeInk,
-                        fontSize: 9,
+                        fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2,
                       ),

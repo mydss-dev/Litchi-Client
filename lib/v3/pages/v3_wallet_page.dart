@@ -292,7 +292,7 @@ class _BalanceHero extends StatelessWidget {
                   'TOTAL VALUE',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.42),
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.7,
                   ),
@@ -346,7 +346,7 @@ class _HeroStat extends StatelessWidget {
           label,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.42),
-            fontSize: 9,
+            fontSize: 10,
           ),
         ),
         const SizedBox(height: 5),
@@ -397,7 +397,7 @@ class _RechargePanel extends StatelessWidget {
             'TOP UP',
             style: TextStyle(
               color: p.inkMuted,
-              fontSize: 9,
+              fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
             ),
@@ -488,7 +488,7 @@ class _CommissionPanel extends StatelessWidget {
                 'COMMISSION',
                 style: TextStyle(
                   color: p.inkMuted,
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
                 ),
@@ -589,7 +589,7 @@ class _WalletAction extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(color: p.inkMuted, fontSize: 9),
+                    style: TextStyle(color: p.inkMuted, fontSize: 10),
                   ),
                 ],
               ),
