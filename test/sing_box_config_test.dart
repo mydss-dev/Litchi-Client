@@ -22,18 +22,15 @@ void main() {
   );
 
   test('builds native sing-box JSON with a stable selector', () {
-    final config = SingBoxConfig.buildFullConfig(
-      const [node],
-      selectedTag: SingBoxConfig.nodeTagFor(node),
-    );
+    final config = SingBoxConfig.buildFullConfig(const [
+      node,
+    ], selectedTag: SingBoxConfig.nodeTagFor(node));
 
     expect(config, isNotNull);
     final outbounds = (config!['outbounds'] as List).cast<Map>();
     expect(
       outbounds,
-      contains(
-        containsPair('tag', SingBoxConfig.nodeTagFor(node)),
-      ),
+      contains(containsPair('tag', SingBoxConfig.nodeTagFor(node))),
     );
     expect(
       outbounds.firstWhere(
@@ -83,13 +80,12 @@ void main() {
         '_litchi_format': 'sing-box',
       },
     );
-    final config = SingBoxConfig.buildFullConfig(
-      const [nativeNode],
-      selectedTag: SingBoxConfig.nodeTagFor(nativeNode),
-    )!;
-    final outbound = (config['outbounds'] as List)
-        .cast<Map>()
-        .firstWhere((item) => item['tag'] == 'node-ss-1');
+    final config = SingBoxConfig.buildFullConfig(const [
+      nativeNode,
+    ], selectedTag: SingBoxConfig.nodeTagFor(nativeNode))!;
+    final outbound = (config['outbounds'] as List).cast<Map>().firstWhere(
+      (item) => item['tag'] == 'node-ss-1',
+    );
 
     expect(outbound['type'], 'shadowsocks');
     expect(outbound['server_port'], 8443);
@@ -97,10 +93,9 @@ void main() {
   });
 
   test('adds a TUN inbound only in TUN mode', () {
-    final systemConfig = SingBoxConfig.buildFullConfig(
-      const [node],
-      selectedTag: SingBoxConfig.nodeTagFor(node),
-    )!;
+    final systemConfig = SingBoxConfig.buildFullConfig(const [
+      node,
+    ], selectedTag: SingBoxConfig.nodeTagFor(node))!;
     final tunConfig = SingBoxConfig.buildFullConfig(
       const [node],
       selectedTag: SingBoxConfig.nodeTagFor(node),
@@ -125,32 +120,28 @@ void main() {
       '127.0.0.1:${SingBoxConfig.defaultApiPort}',
     );
 
-    final noSecret = SingBoxConfig.buildFullConfig(
-      const [node],
-      selectedTag: SingBoxConfig.nodeTagFor(node),
-    )!;
-    final bareApi =
-        ((noSecret['experimental'] as Map)['clash_api'] as Map);
+    final noSecret = SingBoxConfig.buildFullConfig(const [
+      node,
+    ], selectedTag: SingBoxConfig.nodeTagFor(node))!;
+    final bareApi = ((noSecret['experimental'] as Map)['clash_api'] as Map);
     expect(bareApi.containsKey('secret'), isFalse);
   });
 
   test('bootstraps node domains through the local resolver', () {
-    final config = SingBoxConfig.buildFullConfig(
-      const [node],
-      selectedTag: SingBoxConfig.nodeTagFor(node),
-    )!;
+    final config = SingBoxConfig.buildFullConfig(const [
+      node,
+    ], selectedTag: SingBoxConfig.nodeTagFor(node))!;
     final route = config['route'] as Map;
-    expect(
-      route['default_domain_resolver'],
-      {'server': 'dns-local', 'strategy': 'ipv4_only'},
-    );
+    expect(route['default_domain_resolver'], {
+      'server': 'dns-local',
+      'strategy': 'ipv4_only',
+    });
   });
 
   test('routes mainland China domains and IPs directly', () {
-    final config = SingBoxConfig.buildFullConfig(
-      const [node],
-      selectedTag: SingBoxConfig.nodeTagFor(node),
-    )!;
+    final config = SingBoxConfig.buildFullConfig(const [
+      node,
+    ], selectedTag: SingBoxConfig.nodeTagFor(node))!;
     final route = config['route'] as Map;
     final ruleSets = (route['rule_set'] as List).cast<Map>();
     expect(
@@ -195,11 +186,8 @@ void main() {
         selectedTag: SingBoxConfig.nodeTagFor(node),
         dnsMode: mode,
       )!;
-      final servers = ((config['dns'] as Map)['servers'] as List)
-          .cast<Map>();
-      final remote = servers.firstWhere(
-        (s) => s['tag'] == 'dns-remote',
-      );
+      final servers = ((config['dns'] as Map)['servers'] as List).cast<Map>();
+      final remote = servers.firstWhere((s) => s['tag'] == 'dns-remote');
       expect(remote['detour'], SingBoxConfig.selectorTag);
     }
   });
@@ -221,46 +209,47 @@ void main() {
           '_litchi_format': 'sing-box',
         },
       );
-      final config = SingBoxConfig.buildFullConfig(
-        [badNode],
-        selectedTag: SingBoxConfig.nodeTagFor(badNode),
-      );
+      final config = SingBoxConfig.buildFullConfig([
+        badNode,
+      ], selectedTag: SingBoxConfig.nodeTagFor(badNode));
       // No usable nodes remain → no config is produced at all.
       expect(config, isNull, reason: '$unsupported must be skipped');
     }
   });
 
-  test('keeps usable nodes when a profile mixes supported and unsupported types',
-      () {
-    const snellNode = NodeModel(
-      id: 'snell-1',
-      name: 'Snell',
-      flag: '',
-      latency: 0,
-      rawOutbound: {
-        'type': 'snell',
-        'server': 'snell.example.com',
-        'server_port': 8443,
-        'psk': 'secret',
-        '_litchi_format': 'sing-box',
-      },
-    );
-    final config = SingBoxConfig.buildFullConfig(
-      const [node, snellNode],
-      selectedTag: SingBoxConfig.nodeTagFor(node),
-    );
+  test(
+    'keeps usable nodes when a profile mixes supported and unsupported types',
+    () {
+      const snellNode = NodeModel(
+        id: 'snell-1',
+        name: 'Snell',
+        flag: '',
+        latency: 0,
+        rawOutbound: {
+          'type': 'snell',
+          'server': 'snell.example.com',
+          'server_port': 8443,
+          'psk': 'secret',
+          '_litchi_format': 'sing-box',
+        },
+      );
+      final config = SingBoxConfig.buildFullConfig(const [
+        node,
+        snellNode,
+      ], selectedTag: SingBoxConfig.nodeTagFor(node));
 
-    expect(config, isNotNull);
-    final outbounds = (config!['outbounds'] as List).cast<Map>();
-    final tags = outbounds.map((o) => o['tag']).toSet();
-    expect(tags, contains('node-hk-1'));
-    expect(tags, isNot(contains('node-snell-1')));
-    // The selector must not reference the dropped node.
-    final selector = outbounds.firstWhere(
-      (outbound) => outbound['tag'] == SingBoxConfig.selectorTag,
-    );
-    expect(selector['outbounds'], isNot(contains('node-snell-1')));
-  });
+      expect(config, isNotNull);
+      final outbounds = (config!['outbounds'] as List).cast<Map>();
+      final tags = outbounds.map((o) => o['tag']).toSet();
+      expect(tags, contains('node-hk-1'));
+      expect(tags, isNot(contains('node-snell-1')));
+      // The selector must not reference the dropped node.
+      final selector = outbounds.firstWhere(
+        (outbound) => outbound['tag'] == SingBoxConfig.selectorTag,
+      );
+      expect(selector['outbounds'], isNot(contains('node-snell-1')));
+    },
+  );
 
   test('pins dns-local to an explicit upstream when servers are provided', () {
     final config = SingBoxConfig.buildFullConfig(
@@ -278,10 +267,9 @@ void main() {
   });
 
   test('keeps dns-local as the OS resolver without explicit servers', () {
-    final config = SingBoxConfig.buildFullConfig(
-      const [node],
-      selectedTag: SingBoxConfig.nodeTagFor(node),
-    )!;
+    final config = SingBoxConfig.buildFullConfig(const [
+      node,
+    ], selectedTag: SingBoxConfig.nodeTagFor(node))!;
     final servers = ((config['dns'] as Map)['servers'] as List).cast<Map>();
     final local = servers.firstWhere((s) => s['tag'] == 'dns-local');
     expect(local['type'], 'local');

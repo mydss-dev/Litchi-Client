@@ -189,7 +189,8 @@ class VisualV3Controller extends AppController {
   @override
   bool get supportsCoreConnection => true;
   @override
-  Duration get connectedDuration => const Duration(hours: 1, minutes: 26, seconds: 18);
+  Duration get connectedDuration =>
+      const Duration(hours: 1, minutes: 26, seconds: 18);
   @override
   ValueNotifier<int> get upBpsNotifier => _up;
   @override
@@ -242,11 +243,36 @@ class VisualV3Controller extends AppController {
   List<double> get dailyUsage => const [1.8, 2.4, 3.1, 2.2, 4.8, 3.6, 2.48];
   @override
   List<TrafficUsagePoint> get trafficUsage => [
-    TrafficUsagePoint(date: DateTime(2026, 9, 11), totalGb: 2.4, uploadGb: 0.4, downloadGb: 2.0),
-    TrafficUsagePoint(date: DateTime(2026, 9, 12), totalGb: 3.1, uploadGb: 0.5, downloadGb: 2.6),
-    TrafficUsagePoint(date: DateTime(2026, 9, 13), totalGb: 2.2, uploadGb: 0.4, downloadGb: 1.8),
-    TrafficUsagePoint(date: DateTime(2026, 9, 14), totalGb: 4.8, uploadGb: 0.8, downloadGb: 4.0),
-    TrafficUsagePoint(date: DateTime(2026, 9, 15), totalGb: 3.6, uploadGb: 0.6, downloadGb: 3.0),
+    TrafficUsagePoint(
+      date: DateTime(2026, 9, 11),
+      totalGb: 2.4,
+      uploadGb: 0.4,
+      downloadGb: 2.0,
+    ),
+    TrafficUsagePoint(
+      date: DateTime(2026, 9, 12),
+      totalGb: 3.1,
+      uploadGb: 0.5,
+      downloadGb: 2.6,
+    ),
+    TrafficUsagePoint(
+      date: DateTime(2026, 9, 13),
+      totalGb: 2.2,
+      uploadGb: 0.4,
+      downloadGb: 1.8,
+    ),
+    TrafficUsagePoint(
+      date: DateTime(2026, 9, 14),
+      totalGb: 4.8,
+      uploadGb: 0.8,
+      downloadGb: 4.0,
+    ),
+    TrafficUsagePoint(
+      date: DateTime(2026, 9, 15),
+      totalGb: 3.6,
+      uploadGb: 0.6,
+      downloadGb: 3.0,
+    ),
   ];
   @override
   List<InviteCodeModel> get inviteCodes => _inviteCodes;

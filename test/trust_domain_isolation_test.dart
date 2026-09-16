@@ -146,20 +146,23 @@ void main() {
     expect(UpdateManifestVerifier.isConfigured, isFalse);
   });
 
-  test('manifest URL resolution requires HTTPS and defaults to update.json', () {
-    expect(
-      UpdateService.resolveManifestUrl(
-        configUrl: 'http://cdn.example.com/config.json',
-      ),
-      isEmpty,
-    );
-    expect(
-      UpdateService.resolveManifestUrl(
-        configUrl: 'https://cdn.example.com/config.json',
-      ),
-      'https://cdn.example.com/update.json',
-    );
-  });
+  test(
+    'manifest URL resolution requires HTTPS and defaults to update.json',
+    () {
+      expect(
+        UpdateService.resolveManifestUrl(
+          configUrl: 'http://cdn.example.com/config.json',
+        ),
+        isEmpty,
+      );
+      expect(
+        UpdateService.resolveManifestUrl(
+          configUrl: 'https://cdn.example.com/config.json',
+        ),
+        'https://cdn.example.com/update.json',
+      );
+    },
+  );
 }
 
 class _Key {

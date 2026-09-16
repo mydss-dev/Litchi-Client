@@ -90,8 +90,7 @@ final class WindowsTunServiceManager {
       if (detail.isNotEmpty) {
         _lastError = detail;
       } else if (response == null) {
-        _lastError =
-            'Windows TUN 控制接口启动请求超时（127.0.0.1:${credentials.port}）';
+        _lastError = 'Windows TUN 控制接口启动请求超时（127.0.0.1:${credentials.port}）';
       } else {
         _lastError =
             'Windows TUN 服务启动失败 (HTTP ${response.statusCode}, state: ${state.isEmpty ? 'unknown' : state})';

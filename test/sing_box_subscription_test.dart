@@ -29,9 +29,7 @@ void main() {
           'tls': {'enabled': true, 'insecure': true},
         },
       ],
-      'route': {
-        'final': '节点选择',
-      },
+      'route': {'final': '节点选择'},
     });
 
     final profile = SubscriptionParser.parseProfile(body);
@@ -40,10 +38,9 @@ void main() {
     expect(profile.nodes.single.rawOutbound?['_litchi_format'], 'sing-box');
 
     final node = ModelMappers.toNode(profile.nodes.single);
-    final config = SingBoxConfig.buildFullConfig(
-      <NodeModel>[node],
-      selectedTag: SingBoxConfig.nodeTagFor(node),
-    );
+    final config = SingBoxConfig.buildFullConfig(<NodeModel>[
+      node,
+    ], selectedTag: SingBoxConfig.nodeTagFor(node));
     expect(config, isNotNull);
     final outbounds = config!['outbounds'] as List<dynamic>;
     final imported = outbounds.whereType<Map<String, dynamic>>().firstWhere(
@@ -64,47 +61,51 @@ void main() {
   });
 
   test('imports V2Board hysteria port hopping outbounds', () {
-    final nodes = SubscriptionParser.parse(jsonEncode({
-      'outbounds': [
-        {
-          'type': 'hysteria',
-          'tag': 'Hysteria hopping',
-          'server': 'hy.example.com',
-          'server_ports': ['20000:30000'],
-          'auth_str': 'secret',
-          'tls': {'enabled': true},
-        },
-      ],
-    }));
+    final nodes = SubscriptionParser.parse(
+      jsonEncode({
+        'outbounds': [
+          {
+            'type': 'hysteria',
+            'tag': 'Hysteria hopping',
+            'server': 'hy.example.com',
+            'server_ports': ['20000:30000'],
+            'auth_str': 'secret',
+            'tls': {'enabled': true},
+          },
+        ],
+      }),
+    );
     expect(nodes, hasLength(1));
     expect(nodes.single.port, 20000);
   });
 
   test('drops node types the pinned core does not support', () {
-    final nodes = SubscriptionParser.parse(jsonEncode({
-      'outbounds': [
-        {
-          'type': 'snell',
-          'tag': 'Snell 01',
-          'server': 'snell.example.com',
-          'server_port': 8443,
-          'psk': 'secret',
-        },
-        {
-          'type': 'mieru',
-          'tag': 'Mieru 01',
-          'server': 'mieru.example.com',
-          'server_port': 443,
-        },
-        {
-          'type': 'trojan',
-          'tag': 'Trojan 01',
-          'server': 'trojan.example.com',
-          'server_port': 443,
-          'password': 'password',
-        },
-      ],
-    }));
+    final nodes = SubscriptionParser.parse(
+      jsonEncode({
+        'outbounds': [
+          {
+            'type': 'snell',
+            'tag': 'Snell 01',
+            'server': 'snell.example.com',
+            'server_port': 8443,
+            'psk': 'secret',
+          },
+          {
+            'type': 'mieru',
+            'tag': 'Mieru 01',
+            'server': 'mieru.example.com',
+            'server_port': 443,
+          },
+          {
+            'type': 'trojan',
+            'tag': 'Trojan 01',
+            'server': 'trojan.example.com',
+            'server_port': 443,
+            'password': 'password',
+          },
+        ],
+      }),
+    );
 
     // Only the trojan node survives; snell/mieru are rejected at parse time.
     expect(nodes, hasLength(1));

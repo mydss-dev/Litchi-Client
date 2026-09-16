@@ -28,21 +28,29 @@ abstract final class SystemDns {
 
   static final DynamicLibrary _iphlpapi = DynamicLibrary.open('iphlpapi.dll');
 
-  static final _getNetworkParams = _iphlpapi.lookupFunction<
-    Int32 Function(Pointer<_FixedInfo>, Pointer<Uint32>),
-    int Function(Pointer<_FixedInfo>, Pointer<Uint32>)
-  >('GetNetworkParams');
+  static final _getNetworkParams = _iphlpapi
+      .lookupFunction<
+        Int32 Function(Pointer<_FixedInfo>, Pointer<Uint32>),
+        int Function(Pointer<_FixedInfo>, Pointer<Uint32>)
+      >('GetNetworkParams');
 
-  static final _getAdaptersAddresses = _iphlpapi.lookupFunction<
-    Uint32 Function(
-      Uint32,
-      Uint32,
-      Pointer<Void>,
-      Pointer<_AdapterAddresses>,
-      Pointer<Uint32>,
-    ),
-    int Function(int, int, Pointer<Void>, Pointer<_AdapterAddresses>, Pointer<Uint32>)
-  >('GetAdaptersAddresses');
+  static final _getAdaptersAddresses = _iphlpapi
+      .lookupFunction<
+        Uint32 Function(
+          Uint32,
+          Uint32,
+          Pointer<Void>,
+          Pointer<_AdapterAddresses>,
+          Pointer<Uint32>,
+        ),
+        int Function(
+          int,
+          int,
+          Pointer<Void>,
+          Pointer<_AdapterAddresses>,
+          Pointer<Uint32>,
+        )
+      >('GetAdaptersAddresses');
 
   /// Returns the system's IPv4 DNS server addresses, deduplicated and in the
   /// order the system prefers them. Empty on non-Windows or on failure, in
@@ -109,7 +117,9 @@ abstract final class SystemDns {
           size,
         );
         if (rc != _success) return const <String>[];
-        return filterDnsServers(_walkAdapters(buffer.cast<_AdapterAddresses>()));
+        return filterDnsServers(
+          _walkAdapters(buffer.cast<_AdapterAddresses>()),
+        );
       } finally {
         calloc.free(buffer);
       }

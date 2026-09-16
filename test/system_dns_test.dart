@@ -17,10 +17,10 @@ void main() {
   });
 
   test('retains loopback forwarders and drops IPv6', () {
-    expect(
-      SystemDns.filterDnsServers(['127.0.0.1', '::1', '223.5.5.5']),
-      ['127.0.0.1', '223.5.5.5'],
-    );
+    expect(SystemDns.filterDnsServers(['127.0.0.1', '::1', '223.5.5.5']), [
+      '127.0.0.1',
+      '223.5.5.5',
+    ]);
   });
 
   test('returns empty for empty or non-IPv4 input', () {

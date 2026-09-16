@@ -261,9 +261,7 @@ class ApiClient {
           () => _dio!.get(
             path,
             queryParameters: params,
-            options: silent
-                ? Options(extra: {silentPollExtraKey: true})
-                : null,
+            options: silent ? Options(extra: {silentPollExtraKey: true}) : null,
           ),
         ),
       );

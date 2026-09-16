@@ -33,15 +33,15 @@ abstract final class RemoteConfigService {
   /// Store the public key in a CI variable (CONFIG_PUBLIC_KEY) and keep
   /// the private key offline.
   static const configUrl = String.fromEnvironment('CONFIG_URL');
-  static const publicKeyBase64Url =
-      String.fromEnvironment('CONFIG_PUBLIC_KEY');
+  static const publicKeyBase64Url = String.fromEnvironment('CONFIG_PUBLIC_KEY');
 
   /// Previous Ed25519 public key, accepted alongside [publicKeyBase64Url]
   /// during key rotation so configs signed with the outgoing key keep verifying
   /// while new releases (which bake in the incoming key) roll out. Empty when
   /// no rotation is in progress.
-  static const previousPublicKeyBase64Url =
-      String.fromEnvironment('CONFIG_PREVIOUS_PUBLIC_KEY');
+  static const previousPublicKeyBase64Url = String.fromEnvironment(
+    'CONFIG_PREVIOUS_PUBLIC_KEY',
+  );
 
   // ── Internal settings ─────────────────────────────────────────────────────
 

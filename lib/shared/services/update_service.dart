@@ -169,12 +169,12 @@ abstract final class UpdateService {
       // Use a dedicated downloads directory instead of the system temp folder
       // so the installer survives temp cleanup and the user can find it.
       final baseDir = Platform.isWindows
-          ? (Platform.environment['LOCALAPPDATA'] ??
-              Directory.systemTemp.path)
+          ? (Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path)
           : (Platform.environment['HOME'] ?? Directory.systemTemp.path);
-      final downloadDir =
-          Directory('$baseDir${Platform.pathSeparator}$installerPrefix'
-              '${Platform.pathSeparator}downloads');
+      final downloadDir = Directory(
+        '$baseDir${Platform.pathSeparator}$installerPrefix'
+        '${Platform.pathSeparator}downloads',
+      );
       await downloadDir.create(recursive: true);
       file = File(
         '${downloadDir.path}${Platform.pathSeparator}'

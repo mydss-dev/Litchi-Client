@@ -32,8 +32,7 @@ abstract final class SignedPayloadVerifier {
       return null;
     }
     if (decoded is! Map<String, dynamic>) return null;
-    if (decoded['payload_b64'] is! String ||
-        decoded['signature'] is! String) {
+    if (decoded['payload_b64'] is! String || decoded['signature'] is! String) {
       return null;
     }
 

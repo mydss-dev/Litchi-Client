@@ -5,10 +5,7 @@ import '../models/model_mappers.dart';
 import 'panel_api.dart';
 
 class SubscriptionNodesResult {
-  const SubscriptionNodesResult({
-    this.nodes = const [],
-    this.traffic,
-  });
+  const SubscriptionNodesResult({this.nodes = const [], this.traffic});
 
   final List<NodeModel> nodes;
   final TrafficModel? traffic;

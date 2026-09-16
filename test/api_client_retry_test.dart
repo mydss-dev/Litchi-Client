@@ -103,10 +103,7 @@ void main() {
     }
 
     // Expired responses on normal (user-initiated) requests do log out.
-    expect(
-      ApiClient.shouldHandleSessionExpired(response(code: 401)),
-      isTrue,
-    );
+    expect(ApiClient.shouldHandleSessionExpired(response(code: 401)), isTrue);
     expect(
       ApiClient.shouldHandleSessionExpired(response(message: '未登录')),
       isTrue,
@@ -131,10 +128,7 @@ void main() {
     );
 
     // Successful responses are ignored.
-    expect(
-      ApiClient.shouldHandleSessionExpired(response(code: 200)),
-      isFalse,
-    );
+    expect(ApiClient.shouldHandleSessionExpired(response(code: 200)), isFalse);
 
     // Public auth paths are never treated as session-expired.
     final publicPath = Response(

@@ -35,7 +35,10 @@ const _aaText = 4.5;
 const _aaGraphic = 3.0;
 
 void main() {
-  for (final (mode, p) in [('light', V3Palette.light), ('dark', V3Palette.dark)]) {
+  for (final (mode, p) in [
+    ('light', V3Palette.light),
+    ('dark', V3Palette.dark),
+  ]) {
     // Every ground a colored label can legitimately sit on.
     final grounds = <String, Color>{
       'surface': p.surface,
@@ -100,7 +103,6 @@ void main() {
         });
       }
     });
-
   }
 
   test('light-mode inks are darker than the semantic fills they replace', () {

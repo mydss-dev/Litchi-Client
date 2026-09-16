@@ -21,16 +21,16 @@ abstract final class UpdateManifestVerifier {
   /// Previous update-signing Ed25519 public key, accepted alongside
   /// [publicKeyBase64Url] during key rotation. Empty when no rotation is in
   /// progress.
-  static const previousPublicKeyBase64Url =
-      String.fromEnvironment('UPDATE_PREVIOUS_PUBLIC_KEY');
+  static const previousPublicKeyBase64Url = String.fromEnvironment(
+    'UPDATE_PREVIOUS_PUBLIC_KEY',
+  );
 
   static const _timeout = Duration(seconds: 5);
 
   static bool get isConfigured {
     try {
-      return SignedPayloadVerifier.base64UrlDecode(
-        publicKeyBase64Url,
-      ).length == 32;
+      return SignedPayloadVerifier.base64UrlDecode(publicKeyBase64Url).length ==
+          32;
     } catch (_) {
       return false;
     }

@@ -58,7 +58,8 @@ void main() {
         expect(
           rect.height,
           greaterThanOrEqualTo(minimum),
-          reason: 'segment ${rect.width.toStringAsFixed(0)}dp wide is only '
+          reason:
+              'segment ${rect.width.toStringAsFixed(0)}dp wide is only '
               '${rect.height.toStringAsFixed(1)}dp tall',
         );
       }
@@ -77,7 +78,8 @@ void main() {
         expect(
           rect.height,
           greaterThanOrEqualTo(minimum),
-          reason: 'a region chip is only '
+          reason:
+              'a region chip is only '
               '${rect.height.toStringAsFixed(1)}dp tall',
         );
       }
