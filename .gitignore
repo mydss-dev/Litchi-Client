@@ -46,6 +46,9 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Golden-test diff output, regenerated every time a visual test fails.
+/test/visual/failures/
+
 # White-label images are generated from LOGO_URL before desktop/mobile builds.
 /assets/images/*
 !/assets/images/.gitkeep
