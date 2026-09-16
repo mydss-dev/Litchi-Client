@@ -167,7 +167,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
         constraints: const BoxConstraints(maxHeight: 680),
         padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(
-          color: p.panel,
+          color: p.surface,
           borderRadius: BorderRadius.circular(30),
         ),
         child: _paid ? _paidView(context) : _paymentView(context),
@@ -194,7 +194,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
         const SizedBox(height: 8),
         Text(
           '账户数据正在同步到 Litchi。',
-          style: TextStyle(color: p.textMuted, fontSize: 11),
+          style: TextStyle(color: p.inkMuted, fontSize: 11),
         ),
         const SizedBox(height: 24),
         SizedBox(
@@ -224,7 +224,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                     Text(
                       'PAYMENT',
                       style: TextStyle(
-                        color: p.accent,
+                        color: p.lychee,
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2,
@@ -247,7 +247,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
           const SizedBox(height: 8),
           Text(
             '订单 ${widget.tradeNo}',
-            style: TextStyle(color: p.textMuted, fontSize: 10),
+            style: TextStyle(color: p.inkMuted, fontSize: 10),
           ),
           const SizedBox(height: 22),
           if (_loading)
@@ -261,7 +261,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: p.rail,
+                color: p.night,
                 borderRadius: BorderRadius.circular(22),
               ),
               child: Row(
@@ -290,7 +290,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               Text(
                 '支付方式',
                 style: TextStyle(
-                  color: p.textMuted,
+                  color: p.inkMuted,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                 ),
@@ -331,10 +331,8 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               const SizedBox(height: 14),
               Center(
                 child: Text(
-                  _paymentType == 1
-                      ? '支付页面已尝试在浏览器打开'
-                      : '请使用对应支付应用扫码',
-                  style: TextStyle(color: p.textMuted, fontSize: 11),
+                  _paymentType == 1 ? '支付页面已尝试在浏览器打开' : '请使用对应支付应用扫码',
+                  style: TextStyle(color: p.inkMuted, fontSize: 11),
                 ),
               ),
               const SizedBox(height: 14),
@@ -350,10 +348,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               const SizedBox(height: 10),
             ],
             if (_error != null) ...[
-              Text(
-                _error!,
-                style: TextStyle(color: p.danger, fontSize: 11),
-              ),
+              Text(_error!, style: TextStyle(color: p.danger, fontSize: 11)),
               const SizedBox(height: 12),
             ],
             SizedBox(
@@ -364,7 +359,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                     ? (_checkingOut ? null : _checkout)
                     : (_checkingStatus ? null : _checkStatus),
                 style: FilledButton.styleFrom(
-                  backgroundColor: p.accent,
+                  backgroundColor: p.lychee,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -388,5 +383,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
   }
 }
 
-String _message(Object error) =>
-    error.toString().replaceFirst('ApiException: ', '').replaceFirst('Exception: ', '');
+String _message(Object error) => error
+    .toString()
+    .replaceFirst('ApiException: ', '')
+    .replaceFirst('Exception: ', '');

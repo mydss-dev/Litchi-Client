@@ -103,14 +103,17 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                         Text(
                           'SUPPORT INBOX',
                           style: TextStyle(
-                            color: p.accent,
+                            color: p.lychee,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,
                           ),
                         ),
                         const SizedBox(height: 7),
-                        Text('支持工单', style: Theme.of(context).textTheme.displayLarge),
+                        Text(
+                          '支持工单',
+                          style: Theme.of(context).textTheme.displayLarge,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           '问题、回复和处理状态都集中在同一个支持收件箱。',
@@ -150,7 +153,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                     child: _TicketMetric(
                       label: '全部工单',
                       value: '${_tickets.length}',
-                      accent: p.accent,
+                      accent: p.lychee,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -176,9 +179,9 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: p.panel,
+                  color: p.surface,
                   borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: p.border),
+                  border: Border.all(color: p.line),
                 ),
                 child: _loading
                     ? const Center(
@@ -211,7 +214,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                               onTap: () => _openTicket(_tickets[i]),
                             ),
                             if (i != _tickets.length - 1)
-                              Divider(color: p.border, height: 1),
+                              Divider(color: p.line, height: 1),
                           ],
                         ],
                       ),
@@ -225,7 +228,11 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
 }
 
 class _TicketMetric extends StatelessWidget {
-  const _TicketMetric({required this.label, required this.value, required this.accent});
+  const _TicketMetric({
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
 
   final String label;
   final String value;
@@ -238,7 +245,7 @@ class _TicketMetric extends StatelessWidget {
       height: 96,
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: p.panelStrong,
+        color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
@@ -246,18 +253,25 @@ class _TicketMetric extends StatelessWidget {
           Container(
             width: 4,
             height: 44,
-            decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
           const SizedBox(width: 12),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: TextStyle(color: p.textMuted, fontSize: 9)),
+              Text(label, style: TextStyle(color: p.inkMuted, fontSize: 9)),
               const SizedBox(height: 4),
               Text(
                 value,
-                style: TextStyle(color: p.text, fontSize: 19, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ],
           ),
@@ -280,7 +294,7 @@ class _TicketRow extends StatelessWidget {
     final levelColor = switch (ticket.level) {
       2 => p.danger,
       1 => p.warning,
-      _ => p.cyan,
+      _ => p.aqua,
     };
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -307,12 +321,16 @@ class _TicketRow extends StatelessWidget {
                     ticket.subject.trim().isEmpty ? '未命名工单' : ticket.subject,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.text, fontSize: 12, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      color: p.ink,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '#${ticket.id} · ${ticket.dateDisplay}',
-                    style: TextStyle(color: p.textMuted, fontSize: 9),
+                    style: TextStyle(color: p.inkMuted, fontSize: 9),
                   ),
                 ],
               ),
@@ -326,16 +344,24 @@ class _TicketRow extends StatelessWidget {
               ),
               child: Text(
                 ticket.levelLabel,
-                style: TextStyle(color: levelColor, fontSize: 9, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: levelColor,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(width: 9),
             Text(
               ticket.statusLabel,
-              style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(width: 5),
-            Icon(Icons.chevron_right_rounded, color: p.textMuted, size: 18),
+            Icon(Icons.chevron_right_rounded, color: p.inkMuted, size: 18),
           ],
         ),
       ),
@@ -379,7 +405,11 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       _error = null;
     });
     try {
-      await widget.api.createTicket(subject: subject, level: _level, message: message);
+      await widget.api.createTicket(
+        subject: subject,
+        level: _level,
+        message: message,
+      );
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
       if (mounted) {
@@ -395,7 +425,7 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return AlertDialog(
-      backgroundColor: p.panel,
+      backgroundColor: p.surface,
       title: const Text('新建工单'),
       content: SizedBox(
         width: 520,
@@ -408,7 +438,7 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
                 decoration: const InputDecoration(labelText: '主题'),
               ),
               const SizedBox(height: 16),
-              Text('优先级', style: TextStyle(color: p.textMuted, fontSize: 10)),
+              Text('优先级', style: TextStyle(color: p.inkMuted, fontSize: 10)),
               const SizedBox(height: 8),
               SegmentedButton<int>(
                 segments: const [
@@ -418,7 +448,8 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
                 ],
                 selected: {_level},
                 showSelectedIcon: false,
-                onSelectionChanged: (value) => setState(() => _level = value.first),
+                onSelectionChanged: (value) =>
+                    setState(() => _level = value.first),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -440,7 +471,9 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          onPressed: _submitting
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: const Text('取消'),
         ),
         FilledButton(
@@ -552,7 +585,10 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
         width: 680,
         constraints: const BoxConstraints(maxHeight: 720),
         padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(color: p.panel, borderRadius: BorderRadius.circular(30)),
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(30),
+        ),
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null && _ticket == null
@@ -582,14 +618,17 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
                   Text(
                     'TICKET #${ticket.id}',
                     style: TextStyle(
-                      color: p.accent,
+                      color: p.lychee,
                       fontSize: 9,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
                     ),
                   ),
                   const SizedBox(height: 5),
-                  Text(ticket.subject, style: Theme.of(context).textTheme.headlineLarge),
+                  Text(
+                    ticket.subject,
+                    style: Theme.of(context).textTheme.headlineLarge,
+                  ),
                 ],
               ),
             ),
@@ -610,14 +649,14 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: p.panelStrong,
+              color: p.surfaceRaised,
               borderRadius: BorderRadius.circular(20),
             ),
             child: ticket.messages.isEmpty
                 ? Center(
                     child: Text(
                       '暂无消息',
-                      style: TextStyle(color: p.textMuted, fontSize: 11),
+                      style: TextStyle(color: p.inkMuted, fontSize: 11),
                     ),
                   )
                 : ListView.separated(
@@ -633,9 +672,11 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
                           constraints: const BoxConstraints(maxWidth: 470),
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: message.isAdmin ? p.panel : p.accentSoft,
+                            color: message.isAdmin ? p.surface : p.lycheeSoft,
                             borderRadius: BorderRadius.circular(16),
-                            border: message.isAdmin ? Border.all(color: p.border) : null,
+                            border: message.isAdmin
+                                ? Border.all(color: p.line)
+                                : null,
                           ),
                           child: Column(
                             crossAxisAlignment: message.isAdmin
@@ -644,12 +685,19 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
                             children: [
                               Text(
                                 message.message,
-                                style: TextStyle(color: p.text, fontSize: 11, height: 1.45),
+                                style: TextStyle(
+                                  color: p.ink,
+                                  fontSize: 11,
+                                  height: 1.45,
+                                ),
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 '${message.isAdmin ? '客服' : '我'} · ${message.timeDisplay}',
-                                style: TextStyle(color: p.textMuted, fontSize: 8),
+                                style: TextStyle(
+                                  color: p.inkMuted,
+                                  fontSize: 8,
+                                ),
                               ),
                             ],
                           ),
@@ -663,7 +711,10 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(_error!, style: TextStyle(color: p.danger, fontSize: 10)),
+            child: Text(
+              _error!,
+              style: TextStyle(color: p.danger, fontSize: 10),
+            ),
           ),
         ],
         if (ticket.isOpen) ...[
@@ -719,14 +770,17 @@ class _TicketEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: p.textMuted, size: 28),
+            Icon(icon, color: p.inkMuted, size: 28),
             const SizedBox(height: 12),
-            Text(title, style: TextStyle(color: p.text, fontWeight: FontWeight.w800)),
+            Text(
+              title,
+              style: TextStyle(color: p.ink, fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 6),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(color: p.textMuted, fontSize: 10),
+              style: TextStyle(color: p.inkMuted, fontSize: 10),
             ),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 16),
@@ -739,5 +793,7 @@ class _TicketEmptyState extends StatelessWidget {
   }
 }
 
-String _message(Object error) =>
-    error.toString().replaceFirst('ApiException: ', '').replaceFirst('Exception: ', '');
+String _message(Object error) => error
+    .toString()
+    .replaceFirst('ApiException: ', '')
+    .replaceFirst('Exception: ', '');

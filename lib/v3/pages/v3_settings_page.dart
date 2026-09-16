@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3SettingsPage extends StatelessWidget {
   const V3SettingsPage({super.key});
@@ -10,84 +11,125 @@ class V3SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final p = V3Palette.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 760;
+        final compact = constraints.maxWidth < 520;
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(compact ? 20 : 34, 26, compact ? 20 : 34, 36),
+          padding: EdgeInsets.fromLTRB(
+            compact ? 20 : 30,
+            28,
+            compact ? 20 : 30,
+            34,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('SYSTEM CONTROL', style: TextStyle(color: p.accent, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.2)),
-              const SizedBox(height: 7),
-              Text('网络控制台', style: Theme.of(context).textTheme.displayLarge),
-              const SizedBox(height: 9),
-              Text('不再用旧版“设置卡片堆叠”。V3 把关键网络行为放进连续控制轨道。', style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 28),
-              _SettingBand(
-                index: '01',
-                title: '接管方式',
-                description: '决定 Litchi 如何接管系统流量。TUN 适合完整接管，系统代理更轻量。',
-                trailing: _Segment<NetworkMode>(
-                  value: controller.networkMode,
-                  items: const [NetworkMode.system, NetworkMode.tun],
-                  label: (value) => value == NetworkMode.system ? '系统代理' : 'TUN',
-                  onChanged: controller.setNetworkMode,
-                ),
-              ),
-              _SettingBand(
-                index: '02',
-                title: 'DNS 路径',
-                description: '选择隧道使用的解析路径；系统 DNS 更贴近本机，Cloudflare / Google 更独立。',
-                trailing: _Segment<DnsMode>(
-                  value: controller.dnsMode,
-                  items: const [DnsMode.system, DnsMode.cloudflare, DnsMode.google],
-                  label: (value) => switch (value) {
-                    DnsMode.system => '系统',
-                    DnsMode.cloudflare => 'CF',
-                    DnsMode.google => 'Google',
-                  },
-                  onChanged: controller.setDnsMode,
-                ),
-              ),
-              _SettingBand(
-                index: '03',
-                title: 'Kill Switch',
-                description: 'TUN 意外中断时阻止流量绕过隧道。只在需要严格防泄漏时开启。',
-                trailing: _V3Switch(value: controller.killSwitch, onChanged: controller.setKillSwitch),
-              ),
-              _SettingBand(
-                index: '04',
-                title: '随系统启动',
-                description: 'Windows / macOS 登录后自动启动 Litchi。',
-                trailing: _V3Switch(value: controller.autoStart, onChanged: controller.setAutoStart),
-              ),
-              _SettingBand(
-                index: '05',
-                title: '静默启动',
-                description: '自动启动时隐藏主窗口，只保留后台连接能力。',
-                trailing: _V3Switch(value: controller.silentStart, onChanged: controller.setSilentStart),
-              ),
-              _SettingBand(
-                index: '06',
-                title: '自动更新',
-                description: '允许 Litchi 检查签名更新清单并提示新版本。',
-                trailing: _V3Switch(value: controller.autoUpdate, onChanged: controller.setAutoUpdate),
-              ),
-              _SettingBand(
-                index: '07',
-                title: '界面主题',
-                description: 'V3 仅保留 Light / Dark，两套界面分别设计，不增加多余颜色模式。',
-                trailing: _Segment<ThemeMode>(
-                  value: controller.themeMode == ThemeMode.dark ? ThemeMode.dark : ThemeMode.light,
-                  items: const [ThemeMode.light, ThemeMode.dark],
-                  label: (value) => value == ThemeMode.dark ? 'Dark' : 'Light',
-                  onChanged: controller.setThemeMode,
-                ),
+              const V3PageHeader(
+                kicker: 'System control',
+                title: 'Make the network yours',
+                description:
+                    'Every setting is a deliberate trade-off between reach, privacy, and convenience.',
               ),
               const SizedBox(height: 24),
-              _DiagnosticsStrip(controller: controller),
+              V3Panel(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    _SettingRow(
+                      index: '01',
+                      title: 'Traffic capture',
+                      description:
+                          'Choose how Litchi takes ownership of device traffic.',
+                      control: _Segment<NetworkMode>(
+                        value: controller.networkMode,
+                        items: const [NetworkMode.system, NetworkMode.tun],
+                        label: (v) =>
+                            v == NetworkMode.system ? 'System proxy' : 'TUN',
+                        onChanged: controller.setNetworkMode,
+                        fillAvailableWidth: compact,
+                      ),
+                    ),
+                    _SettingRow(
+                      index: '02',
+                      title: 'DNS route',
+                      description:
+                          'Keep resolution local or send it through an independent resolver.',
+                      control: _Segment<DnsMode>(
+                        value: controller.dnsMode,
+                        items: const [
+                          DnsMode.system,
+                          DnsMode.cloudflare,
+                          DnsMode.google,
+                        ],
+                        label: (v) => switch (v) {
+                          DnsMode.system => 'System',
+                          DnsMode.cloudflare => 'Cloudflare',
+                          DnsMode.google => 'Google',
+                        },
+                        onChanged: controller.setDnsMode,
+                        fillAvailableWidth: compact,
+                      ),
+                    ),
+                    _SettingRow(
+                      index: '03',
+                      title: 'Kill switch',
+                      description:
+                          'Block traffic if the tunnel drops unexpectedly.',
+                      control: _V3Switch(
+                        value: controller.killSwitch,
+                        onChanged: controller.setKillSwitch,
+                      ),
+                    ),
+                    _SettingRow(
+                      index: '04',
+                      title: 'Launch with system',
+                      description: 'Start Litchi when you sign in.',
+                      control: _V3Switch(
+                        value: controller.autoStart,
+                        onChanged: controller.setAutoStart,
+                      ),
+                    ),
+                    _SettingRow(
+                      index: '05',
+                      title: 'Quiet launch',
+                      description:
+                          'Keep the workspace hidden while the service starts.',
+                      control: _V3Switch(
+                        value: controller.silentStart,
+                        onChanged: controller.setSilentStart,
+                      ),
+                    ),
+                    _SettingRow(
+                      index: '06',
+                      title: 'Automatic updates',
+                      description:
+                          'Check signed release metadata in the background.',
+                      control: _V3Switch(
+                        value: controller.autoUpdate,
+                        onChanged: controller.setAutoUpdate,
+                      ),
+                    ),
+                    _SettingRow(
+                      index: '07',
+                      title: 'Appearance',
+                      description:
+                          'Light and dark are separate compositions of the Litchi palette.',
+                      control: _Segment<ThemeMode>(
+                        value: controller.themeMode == ThemeMode.dark
+                            ? ThemeMode.dark
+                            : ThemeMode.light,
+                        items: const [ThemeMode.light, ThemeMode.dark],
+                        label: (v) => v == ThemeMode.dark ? 'Dark' : 'Light',
+                        onChanged: controller.setThemeMode,
+                        fillAvailableWidth: compact,
+                      ),
+                      last: true,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _RecoveryPanel(controller: controller),
             ],
           ),
         );
@@ -96,64 +138,78 @@ class V3SettingsPage extends StatelessWidget {
   }
 }
 
-class _SettingBand extends StatelessWidget {
-  const _SettingBand({
+class _SettingRow<T> extends StatelessWidget {
+  const _SettingRow({
     required this.index,
     required this.title,
     required this.description,
-    required this.trailing,
+    required this.control,
+    this.last = false,
   });
 
   final String index;
   final String title;
   final String description;
-  final Widget trailing;
+  final Widget control;
+  final bool last;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Container(
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: p.border))),
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.fromLTRB(20, 17, 20, 17),
+      decoration: BoxDecoration(
+        border: last ? null : Border(bottom: BorderSide(color: p.line)),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 620;
-          final text = Row(
+          final stacked = constraints.maxWidth < 560;
+          final copy = Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                width: 42,
-                child: Text(index, style: TextStyle(color: p.accent, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.6)),
+                width: 38,
+                child: Text(
+                  index,
+                  style: TextStyle(
+                    color: p.lychee,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.4,
+                  ),
+                ),
               ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: TextStyle(color: p.text, fontSize: 14, fontWeight: FontWeight.w800)),
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 5),
-                    Text(description, style: TextStyle(color: p.textMuted, fontSize: 11, height: 1.45)),
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
             ],
           );
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                text,
-                const SizedBox(height: 14),
-                Align(alignment: Alignment.centerRight, child: trailing),
-              ],
-            );
-          }
-          return Row(
-            children: [
-              Expanded(child: text),
-              const SizedBox(width: 26),
-              trailing,
-            ],
-          );
+          return stacked
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    copy,
+                    const SizedBox(height: 14),
+                    Align(alignment: Alignment.centerRight, child: control),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: copy),
+                    const SizedBox(width: 20),
+                    control,
+                  ],
+                );
         },
       ),
     );
@@ -166,39 +222,50 @@ class _Segment<T> extends StatelessWidget {
     required this.items,
     required this.label,
     required this.onChanged,
+    this.fillAvailableWidth = false,
   });
 
   final T value;
   final List<T> items;
-  final String Function(T value) label;
+  final String Function(T) label;
   final ValueChanged<T> onChanged;
+  final bool fillAvailableWidth;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Container(
+      width: fillAvailableWidth ? double.infinity : null,
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: p.panelStrong, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: p.surfaceRaised,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: items.map((item) {
           final selected = item == value;
-          return InkWell(
-            borderRadius: BorderRadius.circular(10),
+          final segment = InkWell(
+            borderRadius: BorderRadius.circular(9),
             onTap: () => onChanged(item),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
               decoration: BoxDecoration(
-                color: selected ? p.panel : Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: selected
-                    ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4))]
-                    : null,
+                color: selected ? p.surface : Colors.transparent,
+                borderRadius: BorderRadius.circular(9),
               ),
-              child: Text(label(item), style: TextStyle(color: selected ? p.text : p.textMuted, fontSize: 10, fontWeight: FontWeight.w800)),
+              child: Text(
+                label(item),
+                style: TextStyle(
+                  color: selected ? p.lychee : p.inkMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           );
+          return fillAvailableWidth ? Expanded(child: segment) : segment;
         }).toList(),
       ),
     );
@@ -207,57 +274,89 @@ class _Segment<T> extends StatelessWidget {
 
 class _V3Switch extends StatelessWidget {
   const _V3Switch({required this.value, required this.onChanged});
+
   final bool value;
   final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () => onChanged(!value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 50,
-        height: 30,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(color: value ? p.accent : p.panelStrong, borderRadius: BorderRadius.circular(20)),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 180),
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(width: 22, height: 22, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+    return Semantics(
+      button: true,
+      toggled: value,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(99),
+        onTap: () => onChanged(!value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: 52,
+          height: 30,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: value ? p.lychee : p.surfaceRaised,
+            borderRadius: BorderRadius.circular(99),
+          ),
+          child: AnimatedAlign(
+            duration: const Duration(milliseconds: 160),
+            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: value ? Colors.white : p.inkMuted,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _DiagnosticsStrip extends StatelessWidget {
-  const _DiagnosticsStrip({required this.controller});
+class _RecoveryPanel extends StatelessWidget {
+  const _RecoveryPanel({required this.controller});
+
   final AppController controller;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Container(
-      decoration: BoxDecoration(color: p.rail, borderRadius: BorderRadius.circular(24)),
-      padding: const EdgeInsets.all(20),
+    return V3Panel(
+      tone: V3PanelTone.ink,
       child: Row(
         children: [
           Container(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(14)),
-            child: const Icon(Icons.build_circle_outlined, color: Colors.white, size: 20),
+            decoration: BoxDecoration(
+              color: p.citrus,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(Icons.build_circle_outlined, color: p.night, size: 21),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('NETWORK RECOVERY', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                const SizedBox(height: 4),
-                Text('当前代理端口 ${controller.activeProxyPort} · ${controller.networkMode.label}', style: TextStyle(color: Colors.white.withValues(alpha: 0.48), fontSize: 10)),
+                const Text(
+                  'RECOVERY CONSOLE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Port ${controller.activeProxyPort} · ${controller.networkMode.label}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
@@ -265,10 +364,12 @@ class _DiagnosticsStrip extends StatelessWidget {
             onPressed: controller.fixProxy,
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('修复代理'),
+            child: const Text('Repair'),
           ),
         ],
       ),

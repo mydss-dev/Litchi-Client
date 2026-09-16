@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -17,12 +18,19 @@ import '../pages/v3_traffic_page.dart';
 import '../pages/v3_wallet_page.dart';
 import '../theme/v3_palette.dart';
 
+bool get _isDesktopTarget =>
+    !kIsWeb &&
+    switch (defaultTargetPlatform) {
+      TargetPlatform.windows ||
+      TargetPlatform.macOS ||
+      TargetPlatform.linux => true,
+      _ => false,
+    };
+
 class V3Shell extends StatelessWidget {
   const V3Shell({super.key, this.launchSilently = false});
 
   final bool launchSilently;
-
-  bool get _desktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +40,15 @@ class V3Shell extends StatelessWidget {
         : !controller.isAuthenticated
         ? const V3AuthView()
         : const _V3Workspace();
-
-    if (!_desktop) return body;
-    return Column(
-      children: [
-        const _DesktopWindowBar(),
-        Expanded(child: body),
-      ],
+    if (!_isDesktopTarget) return body;
+    return Material(
+      color: V3Palette.of(context).canvas,
+      child: Column(
+        children: [
+          const _DesktopWindowBar(),
+          Expanded(child: body),
+        ],
+      ),
     );
   }
 }
@@ -52,31 +62,15 @@ class _V3Workspace extends StatelessWidget {
     final p = V3Palette.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final mobile = constraints.maxWidth < 680;
-        final page = switch (controller.page) {
-          AppPage.nodes => const V3NodesPage(),
-          AppPage.shop => const V3ShopPage(),
-          AppPage.account => const V3AccountPage(),
-          AppPage.wallet => const V3WalletPage(),
-          AppPage.invite => const V3InvitePage(),
-          AppPage.traffic => const V3TrafficPage(),
-          AppPage.orders => const V3OrdersPage(),
-          AppPage.tickets => const V3TicketsPage(),
-          AppPage.settings => const V3SettingsPage(),
-          _ => const V3DashboardPage(),
-        };
-
-        if (mobile) {
+        final compact = constraints.maxWidth < 760;
+        final page = _pageFor(controller.page);
+        if (compact) {
           return Scaffold(
             backgroundColor: p.canvas,
             body: page,
-            floatingActionButton: controller.page == AppPage.account
-                ? _ProfileQuickActions(controller: controller)
-                : null,
-            bottomNavigationBar: _MobileNav(controller: controller),
+            bottomNavigationBar: _MobileNavigation(controller: controller),
           );
         }
-
         return ColoredBox(
           color: p.canvas,
           child: Row(
@@ -84,11 +78,8 @@ class _V3Workspace extends StatelessWidget {
               _DesktopRail(controller: controller),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 0, 10, 10),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
-                    child: ColoredBox(color: p.canvas, child: page),
-                  ),
+                  padding: const EdgeInsets.fromLTRB(0, 0, 18, 18),
+                  child: page,
                 ),
               ),
             ],
@@ -99,257 +90,260 @@ class _V3Workspace extends StatelessWidget {
   }
 }
 
-class _ProfileQuickActions extends StatelessWidget {
-  const _ProfileQuickActions({required this.controller});
-
-  final AppController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _ProfileFab(
-          tag: 'v3-wallet',
-          tooltip: '钱包',
-          icon: Icons.account_balance_wallet_rounded,
-          onPressed: () => controller.goToPage(AppPage.wallet),
-        ),
-        const SizedBox(height: 8),
-        _ProfileFab(
-          tag: 'v3-invite',
-          tooltip: '邀请朋友',
-          icon: Icons.group_add_rounded,
-          onPressed: () => controller.goToPage(AppPage.invite),
-        ),
-        const SizedBox(height: 8),
-        _ProfileFab(
-          tag: 'v3-traffic',
-          tooltip: '流量统计',
-          icon: Icons.data_usage_rounded,
-          onPressed: () => controller.goToPage(AppPage.traffic),
-        ),
-        const SizedBox(height: 8),
-        _ProfileFab(
-          tag: 'v3-orders',
-          tooltip: '订单记录',
-          icon: Icons.receipt_long_rounded,
-          onPressed: () => controller.goToPage(AppPage.orders),
-        ),
-        const SizedBox(height: 8),
-        _ProfileFab(
-          tag: 'v3-tickets',
-          tooltip: '支持工单',
-          icon: Icons.support_agent_rounded,
-          onPressed: () => controller.goToPage(AppPage.tickets),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProfileFab extends StatelessWidget {
-  const _ProfileFab({
-    required this.tag,
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  final String tag;
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return FloatingActionButton.small(
-      heroTag: tag,
-      tooltip: tooltip,
-      onPressed: onPressed,
-      child: Icon(icon),
-    );
-  }
-}
+Widget _pageFor(AppPage page) => switch (page) {
+  AppPage.nodes => const V3NodesPage(),
+  AppPage.shop => const V3ShopPage(),
+  AppPage.account => const V3AccountPage(),
+  AppPage.wallet => const V3WalletPage(),
+  AppPage.invite => const V3InvitePage(),
+  AppPage.traffic => const V3TrafficPage(),
+  AppPage.orders => const V3OrdersPage(),
+  AppPage.tickets => const V3TicketsPage(),
+  AppPage.settings => const V3SettingsPage(),
+  AppPage.dashboard => const V3DashboardPage(),
+};
 
 class _DesktopRail extends StatelessWidget {
   const _DesktopRail({required this.controller});
 
   final AppController controller;
 
-  int get _current => switch (controller.page) {
-    AppPage.nodes => 1,
-    AppPage.shop => 2,
-    AppPage.settings => 3,
-    AppPage.wallet => 4,
-    AppPage.invite => 5,
-    AppPage.traffic => 6,
-    AppPage.orders => 7,
-    AppPage.tickets => 8,
-    AppPage.account => 9,
-    _ => 0,
-  };
+  static const _items =
+      <({AppPage page, IconData icon, String label, String hint})>[
+        (
+          page: AppPage.dashboard,
+          icon: Icons.radar_rounded,
+          label: 'Control',
+          hint: 'overview',
+        ),
+        (
+          page: AppPage.nodes,
+          icon: Icons.hub_rounded,
+          label: 'Routes',
+          hint: 'nodes',
+        ),
+        (
+          page: AppPage.shop,
+          icon: Icons.shopping_bag_outlined,
+          label: 'Plans',
+          hint: 'upgrade',
+        ),
+        (
+          page: AppPage.traffic,
+          icon: Icons.insights_rounded,
+          label: 'Pulse',
+          hint: 'usage',
+        ),
+        (
+          page: AppPage.invite,
+          icon: Icons.auto_awesome_rounded,
+          label: 'Circle',
+          hint: 'invite',
+        ),
+        (
+          page: AppPage.tickets,
+          icon: Icons.forum_outlined,
+          label: 'Help',
+          hint: 'support',
+        ),
+      ];
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final current = _current;
+    final user = controller.user;
     return Container(
-      width: 86,
-      margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      decoration: BoxDecoration(color: p.rail, borderRadius: BorderRadius.circular(28)),
+      width: 232,
+      margin: const EdgeInsets.fromLTRB(18, 18, 14, 18),
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
+      decoration: BoxDecoration(
+        color: p.night,
+        borderRadius: BorderRadius.circular(24),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 14),
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(13)),
-            child: const Text(
-              'L',
-              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _RailButton(
-            icon: Icons.blur_circular_rounded,
-            label: '连接',
-            selected: current == 0,
-            onTap: () => controller.goToPage(AppPage.dashboard),
-          ),
-          const SizedBox(height: 4),
-          _RailButton(
-            icon: Icons.hub_rounded,
-            label: '节点',
-            selected: current == 1,
-            onTap: () => controller.goToPage(AppPage.nodes),
-          ),
-          const SizedBox(height: 4),
-          _RailButton(
-            icon: Icons.storefront_rounded,
-            label: '套餐',
-            selected: current == 2,
-            onTap: () => controller.goToPage(AppPage.shop),
-          ),
-          const SizedBox(height: 4),
-          _RailButton(
-            icon: Icons.tune_rounded,
-            label: '设置',
-            selected: current == 3,
-            onTap: () => controller.goToPage(AppPage.settings),
-          ),
-          const Spacer(),
-          _RailButton(
-            icon: Icons.account_balance_wallet_rounded,
-            label: '钱包',
-            selected: current == 4,
-            onTap: () => controller.goToPage(AppPage.wallet),
-          ),
-          const SizedBox(height: 4),
-          _RailButton(
-            icon: Icons.group_add_rounded,
-            label: '邀请',
-            selected: current == 5,
-            onTap: () => controller.goToPage(AppPage.invite),
-          ),
-          const SizedBox(height: 4),
-          _RailButton(
-            icon: Icons.data_usage_rounded,
-            label: '流量',
-            selected: current == 6,
-            onTap: () => controller.goToPage(AppPage.traffic),
-          ),
-          const SizedBox(height: 4),
-          _RailButton(
-            icon: Icons.receipt_long_rounded,
-            label: '订单',
-            selected: current == 7,
-            onTap: () => controller.goToPage(AppPage.orders),
-          ),
-          const SizedBox(height: 4),
-          _RailButton(
-            icon: Icons.support_agent_rounded,
-            label: '工单',
-            selected: current == 8,
-            onTap: () => controller.goToPage(AppPage.tickets),
-          ),
-          const SizedBox(height: 5),
-          Tooltip(
-            message: controller.user.name.isEmpty ? '账户' : controller.user.name,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => controller.goToPage(AppPage.account),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: current == 9
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.09),
-                  borderRadius: BorderRadius.circular(14),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 8, 26),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: p.citrus,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.blur_on_rounded, color: p.night, size: 20),
                 ),
-                child: Text(
-                  controller.user.avatarLetter.isEmpty
-                      ? 'U'
-                      : controller.user.avatarLetter.substring(0, 1).toUpperCase(),
+                const SizedBox(width: 10),
+                const Text(
+                  'LITCHI',
                   style: TextStyle(
-                    color: current == 9 ? p.rail : Colors.white,
-                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.8,
                   ),
                 ),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(left: 10, bottom: 10),
+            child: Text(
+              'WORKSPACE',
+              style: TextStyle(
+                color: Color(0xFF8E9A95),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.5,
               ),
             ),
           ),
-          const SizedBox(height: 5),
-          _RailButton(
-            icon: Icons.logout_rounded,
-            label: '退出',
-            selected: false,
-            onTap: controller.logout,
+          ..._items.map(
+            (item) => _RailItem(
+              item: item,
+              selected: controller.page == item.page,
+              onTap: () => controller.goToPage(item.page),
+            ),
           ),
-          const SizedBox(height: 10),
+          const Spacer(),
+          _RailItem(
+            item: (
+              page: AppPage.settings,
+              icon: Icons.tune_rounded,
+              label: 'System',
+              hint: 'settings',
+            ),
+            selected: controller.page == AppPage.settings,
+            onTap: () => controller.goToPage(AppPage.settings),
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => controller.goToPage(AppPage.account),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: p.lychee,
+                    child: Text(
+                      user.avatarLetter.isEmpty ? '?' : user.avatarLetter,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.name.isEmpty ? 'Guest' : user.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          user.plan.isEmpty ? 'No plan' : user.plan,
+                          style: const TextStyle(
+                            color: Color(0xFF9BA8A3),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white.withValues(alpha: 0.45),
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _RailButton extends StatelessWidget {
-  const _RailButton({
-    required this.icon,
-    required this.label,
+class _RailItem extends StatelessWidget {
+  const _RailItem({
+    required this.item,
     required this.selected,
     required this.onTap,
   });
 
-  final IconData icon;
-  final String label;
+  final ({AppPage page, IconData icon, String label, String hint}) item;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Tooltip(
-      message: label,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
       child: InkWell(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          width: 44,
-          height: 44,
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(15),
+            color: selected ? p.lychee : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(
-            icon,
-            size: 19,
-            color: selected ? p.rail : Colors.white.withValues(alpha: 0.56),
+          child: Row(
+            children: [
+              Icon(
+                item.icon,
+                color: selected ? Colors.white : const Color(0xFF9BA8A3),
+                size: 19,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.label,
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white
+                            : const Color(0xFFE3E9E5),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      item.hint,
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white.withValues(alpha: 0.7)
+                            : const Color(0xFF7C8983),
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -357,197 +351,217 @@ class _RailButton extends StatelessWidget {
   }
 }
 
-class _MobileNav extends StatelessWidget {
-  const _MobileNav({required this.controller});
+class _MobileNavigation extends StatelessWidget {
+  const _MobileNavigation({required this.controller});
 
   final AppController controller;
 
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final current = switch (controller.page) {
-      AppPage.nodes => 1,
-      AppPage.shop => 2,
-      AppPage.account ||
-      AppPage.wallet ||
-      AppPage.invite ||
-      AppPage.traffic ||
-      AppPage.orders ||
-      AppPage.tickets => 3,
-      AppPage.settings => 4,
-      _ => 0,
-    };
-    return SafeArea(
-      top: false,
-      child: Container(
-        height: 66,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        decoration: BoxDecoration(color: p.rail, borderRadius: BorderRadius.circular(22)),
-        child: Row(
-          children: [
-            _MobileNavItem(
-              icon: Icons.blur_circular_rounded,
-              label: '连接',
-              selected: current == 0,
-              onTap: () => controller.goToPage(AppPage.dashboard),
-            ),
-            _MobileNavItem(
-              icon: Icons.hub_rounded,
-              label: '节点',
-              selected: current == 1,
-              onTap: () => controller.goToPage(AppPage.nodes),
-            ),
-            _MobileNavItem(
-              icon: Icons.storefront_rounded,
-              label: '套餐',
-              selected: current == 2,
-              onTap: () => controller.goToPage(AppPage.shop),
-            ),
-            _MobileNavItem(
-              icon: Icons.person_rounded,
-              label: '我的',
-              selected: current == 3,
-              onTap: () => controller.goToPage(AppPage.account),
-            ),
-            _MobileNavItem(
-              icon: Icons.tune_rounded,
-              label: '设置',
-              selected: current == 4,
-              onTap: () => controller.goToPage(AppPage.settings),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MobileNavItem extends StatelessWidget {
-  const _MobileNavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  static const _pages = [
+    AppPage.dashboard,
+    AppPage.nodes,
+    AppPage.shop,
+    AppPage.account,
+  ];
+  static const _icons = [
+    Icons.radar_rounded,
+    Icons.hub_rounded,
+    Icons.shopping_bag_outlined,
+    Icons.person_outline_rounded,
+  ];
+  static const _labels = ['Control', 'Routes', 'Plans', 'Account'];
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: selected ? p.accent : Colors.white.withValues(alpha: 0.48),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.42),
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
+    final selected = _pages
+        .indexOf(controller.page)
+        .clamp(0, _pages.length - 1);
+    return NavigationBar(
+      height: 72,
+      backgroundColor: p.surface,
+      indicatorColor: p.lycheeSoft,
+      selectedIndex: selected,
+      onDestinationSelected: (index) => controller.goToPage(_pages[index]),
+      destinations: [
+        for (var i = 0; i < _pages.length; i++)
+          NavigationDestination(
+            icon: Icon(_icons[i]),
+            selectedIcon: Icon(_icons[i], color: p.lychee),
+            label: _labels[i],
+          ),
+      ],
     );
   }
 }
 
-class _DesktopWindowBar extends StatelessWidget {
+class _DesktopWindowBar extends StatefulWidget {
   const _DesktopWindowBar();
 
   @override
-  Widget build(BuildContext context) {
-    if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) {
-      return const SizedBox.shrink();
+  State<_DesktopWindowBar> createState() => _DesktopWindowBarState();
+}
+
+class _DesktopWindowBarState extends State<_DesktopWindowBar>
+    with WindowListener {
+  bool _maximized = false;
+
+  bool get _usesNativeControls => defaultTargetPlatform == TargetPlatform.macOS;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _syncWindowState();
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<void> _syncWindowState() async {
+    try {
+      final maximized = await windowManager.isMaximized();
+      if (mounted && maximized != _maximized) {
+        setState(() => _maximized = maximized);
+      }
+    } catch (_) {
+      // Native window APIs are unavailable in widget tests.
     }
+  }
+
+  Future<void> _toggleMaximize() async {
+    try {
+      if (await windowManager.isMaximized()) {
+        await windowManager.unmaximize();
+      } else {
+        await windowManager.maximize();
+      }
+    } catch (_) {
+      // Native window APIs are unavailable in widget tests.
+    }
+  }
+
+  Future<void> _closeWindow() async {
+    try {
+      await AppScope.of(context).shutdown();
+      await windowManager.close();
+    } catch (_) {
+      // Native window APIs are unavailable in widget tests.
+    }
+  }
+
+  @override
+  void onWindowMaximize() {
+    if (mounted && !_maximized) setState(() => _maximized = true);
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    if (mounted && _maximized) setState(() => _maximized = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return GestureDetector(
+    final draggableBrand = GestureDetector(
       behavior: HitTestBehavior.translucent,
       onPanStart: (_) => windowManager.startDragging(),
-      onDoubleTap: () async {
-        if (await windowManager.isMaximized()) {
-          await windowManager.unmaximize();
-        } else {
-          await windowManager.maximize();
-        }
-      },
-      child: SizedBox(
-        height: 44,
-        child: Row(
-          children: [
-            const SizedBox(width: 16),
-            Text(
-              'LITCHI / V3',
-              style: TextStyle(
-                color: p.textMuted,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.6,
-              ),
+      onDoubleTap: _toggleMaximize,
+      child: Row(
+        children: [
+          Text(
+            'LITCHI / PRIVATE NETWORK',
+            style: TextStyle(
+              color: p.inkMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.4,
             ),
-            const Spacer(),
-            if (!Platform.isMacOS) ...[
-              _WindowButton(icon: Icons.remove_rounded, onTap: windowManager.minimize),
-              _WindowButton(
-                icon: Icons.crop_square_rounded,
-                onTap: () async {
-                  if (await windowManager.isMaximized()) {
-                    await windowManager.unmaximize();
-                  } else {
-                    await windowManager.maximize();
-                  }
-                },
-              ),
-              _WindowButton(
-                icon: Icons.close_rounded,
-                danger: true,
-                onTap: windowManager.close,
-              ),
-            ] else
-              const SizedBox(width: 12),
+          ),
+          const Spacer(),
+          Text(
+            'V3',
+            style: TextStyle(
+              color: p.lychee,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const SizedBox(width: 14),
+        ],
+      ),
+    );
+    return Container(
+      height: 42,
+      color: p.canvas,
+      child: Row(
+        children: [
+          if (_usesNativeControls) const SizedBox(width: 76),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 22),
+              child: draggableBrand,
+            ),
+          ),
+          if (!_usesNativeControls) ...[
+            _V3WindowButton(
+              tooltip: 'Minimize',
+              icon: Icons.remove_rounded,
+              onPressed: windowManager.minimize,
+            ),
+            _V3WindowButton(
+              tooltip: _maximized ? 'Restore' : 'Maximize',
+              icon: _maximized
+                  ? Icons.filter_none_rounded
+                  : Icons.crop_square_rounded,
+              onPressed: _toggleMaximize,
+            ),
+            _V3WindowButton(
+              tooltip: 'Close',
+              icon: Icons.close_rounded,
+              close: true,
+              onPressed: _closeWindow,
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _WindowButton extends StatelessWidget {
-  const _WindowButton({
+class _V3WindowButton extends StatelessWidget {
+  const _V3WindowButton({
+    required this.tooltip,
     required this.icon,
-    required this.onTap,
-    this.danger = false,
+    required this.onPressed,
+    this.close = false,
   });
 
+  final String tooltip;
   final IconData icon;
-  final VoidCallback onTap;
-  final bool danger;
+  final Future<void> Function() onPressed;
+  final bool close;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return InkWell(
-      onTap: onTap,
-      child: SizedBox(
-        width: 46,
-        height: 44,
-        child: Icon(icon, size: 16, color: danger ? p.danger : p.textMuted),
+    return SizedBox(
+      width: 46,
+      height: 42,
+      child: IconButton(
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        style: IconButton.styleFrom(
+          shape: const RoundedRectangleBorder(),
+          foregroundColor: close ? p.lychee : p.inkMuted,
+          hoverColor: close ? p.lychee : p.surfaceRaised,
+          highlightColor: close ? p.lychee : p.line,
+        ),
+        onPressed: () => unawaited(onPressed()),
+        icon: Icon(icon, size: 17),
       ),
     );
   }
@@ -560,29 +574,37 @@ class _V3BootView extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return ColoredBox(
-      color: p.rail,
+      color: p.night,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 48,
-              height: 48,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: p.accent, borderRadius: BorderRadius.circular(17)),
-              child: const Text(
-                'L',
-                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: p.citrus,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(Icons.blur_on_rounded, color: p.night, size: 34),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'LITCHI',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 3,
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'STARTING LITCHI V3',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.55),
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 2,
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 90,
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                color: p.lychee,
+                backgroundColor: Colors.white24,
               ),
             ),
           ],

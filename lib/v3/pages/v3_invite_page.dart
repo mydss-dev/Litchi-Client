@@ -53,7 +53,9 @@ class _V3InvitePageState extends State<V3InvitePage> {
   }
 
   void _toast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -87,7 +89,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
                         Text(
                           'REFERRAL SIGNAL',
                           style: TextStyle(
-                            color: p.accent,
+                            color: p.lychee,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,
@@ -127,7 +129,8 @@ class _V3InvitePageState extends State<V3InvitePage> {
                               ? null
                               : () => setState(() {
                                   _selected =
-                                      (safeIndex - 1 + codes.length) % codes.length;
+                                      (safeIndex - 1 + codes.length) %
+                                      codes.length;
                                 }),
                           onNext: codes.length <= 1
                               ? null
@@ -136,7 +139,8 @@ class _V3InvitePageState extends State<V3InvitePage> {
                                 }),
                           onCreate: _createCode,
                           onCopyCode: () => _copy(active?.code ?? '', '邀请码已复制'),
-                          onCopyLink: () => _copy(active?.link ?? '', '邀请链接已复制'),
+                          onCopyLink: () =>
+                              _copy(active?.link ?? '', '邀请链接已复制'),
                         ),
                         const SizedBox(height: 16),
                         _InviteStats(controller: controller),
@@ -157,7 +161,8 @@ class _V3InvitePageState extends State<V3InvitePage> {
                                 ? null
                                 : () => setState(() {
                                     _selected =
-                                        (safeIndex - 1 + codes.length) % codes.length;
+                                        (safeIndex - 1 + codes.length) %
+                                        codes.length;
                                   }),
                             onNext: codes.length <= 1
                                 ? null
@@ -165,8 +170,10 @@ class _V3InvitePageState extends State<V3InvitePage> {
                                     _selected = (safeIndex + 1) % codes.length;
                                   }),
                             onCreate: _createCode,
-                            onCopyCode: () => _copy(active?.code ?? '', '邀请码已复制'),
-                            onCopyLink: () => _copy(active?.link ?? '', '邀请链接已复制'),
+                            onCopyCode: () =>
+                                _copy(active?.code ?? '', '邀请码已复制'),
+                            onCopyLink: () =>
+                                _copy(active?.link ?? '', '邀请链接已复制'),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -219,7 +226,7 @@ class _InviteHero extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 340),
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
-        color: p.rail,
+        color: p.night,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Column(
@@ -273,7 +280,7 @@ class _InviteHero extends StatelessWidget {
               height: 1.5,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 28),
           if (hasCode) ...[
             Row(
               children: [
@@ -315,7 +322,7 @@ class _InviteHero extends StatelessWidget {
                 onPressed: creating ? null : onCreate,
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: p.rail,
+                  foregroundColor: p.ink,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -377,9 +384,9 @@ class _InviteStats extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 340),
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: p.panel,
+        color: p.surface,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: p.border),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,7 +394,7 @@ class _InviteStats extends StatelessWidget {
           Text(
             'REFERRAL STATS',
             style: TextStyle(
-              color: p.textMuted,
+              color: p.inkMuted,
               fontSize: 9,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
@@ -412,17 +419,21 @@ class _InviteStats extends StatelessWidget {
             label: '待确认',
             value: '$symbol${controller.pendingCommission.toStringAsFixed(2)}',
           ),
-          const Spacer(),
+          const SizedBox(height: 22),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: p.accentSoft,
+              color: p.lycheeSoft,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
               children: [
-                Icon(Icons.account_balance_wallet_rounded, color: p.accent, size: 20),
+                Icon(
+                  Icons.account_balance_wallet_rounded,
+                  color: p.lychee,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -430,13 +441,13 @@ class _InviteStats extends StatelessWidget {
                     children: [
                       Text(
                         '可提现佣金',
-                        style: TextStyle(color: p.textMuted, fontSize: 9),
+                        style: TextStyle(color: p.inkMuted, fontSize: 9),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         '$symbol${controller.withdrawable.toStringAsFixed(2)}',
                         style: TextStyle(
-                          color: p.text,
+                          color: p.ink,
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                         ),
@@ -473,15 +484,22 @@ class _StatLine extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: TextStyle(color: p.textMuted, fontSize: 10)),
+            child: Text(
+              label,
+              style: TextStyle(color: p.inkMuted, fontSize: 10),
+            ),
           ),
           Text(
             value,
-            style: TextStyle(color: p.text, fontSize: 16, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: p.ink,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           if (suffix.isNotEmpty) ...[
             const SizedBox(width: 3),
-            Text(suffix, style: TextStyle(color: p.textMuted, fontSize: 9)),
+            Text(suffix, style: TextStyle(color: p.inkMuted, fontSize: 9)),
           ],
         ],
       ),
@@ -502,9 +520,9 @@ class _ReferralLedger extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: p.panel,
+        color: p.surface,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: p.border),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +532,7 @@ class _ReferralLedger extends StatelessWidget {
               Text(
                 'RECENT REFERRALS',
                 style: TextStyle(
-                  color: p.textMuted,
+                  color: p.inkMuted,
                   fontSize: 9,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
@@ -523,7 +541,7 @@ class _ReferralLedger extends StatelessWidget {
               const Spacer(),
               Text(
                 '${records.length} 条',
-                style: TextStyle(color: p.textMuted, fontSize: 9),
+                style: TextStyle(color: p.inkMuted, fontSize: 9),
               ),
             ],
           ),
@@ -534,7 +552,7 @@ class _ReferralLedger extends StatelessWidget {
               child: Center(
                 child: Text(
                   '还没有邀请记录',
-                  style: TextStyle(color: p.textMuted, fontSize: 11),
+                  style: TextStyle(color: p.inkMuted, fontSize: 11),
                 ),
               ),
             )
@@ -549,10 +567,14 @@ class _ReferralLedger extends StatelessWidget {
                       height: 36,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: p.panelStrong,
+                        color: p.surfaceRaised,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(Icons.person_add_alt_1_rounded, color: p.accent, size: 17),
+                      child: Icon(
+                        Icons.person_add_alt_1_rounded,
+                        color: p.lychee,
+                        size: 17,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -560,11 +582,13 @@ class _ReferralLedger extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            record.userName.trim().isEmpty ? '新用户' : record.userName,
+                            record.userName.trim().isEmpty
+                                ? '新用户'
+                                : record.userName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: p.text,
+                              color: p.ink,
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                             ),
@@ -572,7 +596,7 @@ class _ReferralLedger extends StatelessWidget {
                           const SizedBox(height: 3),
                           Text(
                             record.dateDisplay,
-                            style: TextStyle(color: p.textMuted, fontSize: 9),
+                            style: TextStyle(color: p.inkMuted, fontSize: 9),
                           ),
                         ],
                       ),
@@ -592,7 +616,7 @@ class _ReferralLedger extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text(
                           record.amountDisplay(controller.currencySymbol),
-                          style: TextStyle(color: p.textMuted, fontSize: 9),
+                          style: TextStyle(color: p.inkMuted, fontSize: 9),
                         ),
                       ],
                     ),

@@ -7,6 +7,7 @@ import '../../shared/models/app_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../../shared/services/url_opener.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3ShopPage extends StatefulWidget {
   const V3ShopPage({super.key});
@@ -21,7 +22,6 @@ class _V3ShopPageState extends State<V3ShopPage> {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final p = V3Palette.of(context);
     final plans = controller.plans
         .where((plan) => _category == null || plan.category == _category)
         .toList(growable: false);
@@ -29,13 +29,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 700;
-        final columns = constraints.maxWidth >= 1040 ? 3 : compact ? 1 : 2;
         final horizontalPadding = compact ? 20.0 : 34.0;
-        const gap = 16.0;
-        final usableWidth = constraints.maxWidth - horizontalPadding * 2;
-        final cardWidth = columns == 1
-            ? usableWidth
-            : (usableWidth - gap * (columns - 1)) / columns;
 
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
@@ -47,79 +41,54 @@ class _V3ShopPageState extends State<V3ShopPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PLAN LAB',
-                          style: TextStyle(
-                            color: p.accent,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2.2,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          '选择你的线路配额',
-                          style: Theme.of(context).textTheme.displayLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '周期套餐、不限时套餐和流量包，都从同一套新购买流程进入。',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (!compact)
-                    _CurrentPlanBadge(
-                      plan: controller.user.plan,
-                      remainGb: controller.traffic.remainGb,
-                    ),
-                ],
+              V3PageHeader(
+                kicker: 'Plan library',
+                title: 'Build your access',
+                description:
+                    'Choose capacity now. Billing period and discounts belong to checkout.',
+                trailing: compact
+                    ? null
+                    : V3StatusBadge(
+                        label:
+                            '${controller.traffic.remainGb.toStringAsFixed(1)} GB left',
+                        color: V3Palette.of(context).success,
+                      ),
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 20),
+              _CurrentPlanBadge(
+                plan: controller.user.plan,
+                remainGb: controller.traffic.remainGb,
+              ),
+              const SizedBox(height: 14),
               _CategoryDeck(
                 selected: _category,
                 onChanged: (value) => setState(() => _category = value),
               ),
-              if (compact) ...[
-                const SizedBox(height: 14),
-                _CurrentPlanBadge(
-                  plan: controller.user.plan,
-                  remainGb: controller.traffic.remainGb,
-                ),
-              ],
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
               if (plans.isEmpty)
                 _EmptyPlans(onRefresh: controller.refreshData)
               else
-                Wrap(
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: [
-                    for (var index = 0; index < plans.length; index++)
-                      SizedBox(
-                        width: cardWidth,
-                        child: _PlanCard(
+                V3Panel(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      for (var index = 0; index < plans.length; index++) ...[
+                        _PlanCard(
                           plan: plans[index],
                           currencySymbol: controller.currencySymbol,
                           emphasis:
                               plans[index].featured ||
                               (index == 0 && plans.length > 1),
-                          onBuy: (cycle) => _openOrder(
+                          onBuy: () => _openOrder(
                             controller,
                             plans[index],
-                            cycle,
+                            _defaultCycle(plans[index]),
                           ),
                         ),
-                      ),
-                  ],
+                        if (index != plans.length - 1) const V3Rule(),
+                      ],
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -163,44 +132,39 @@ class _CategoryDeck extends StatelessWidget {
       (PlanCategory.dataPack, 'Boost', '流量包'),
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: p.panel,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: p.border),
-      ),
+    return V3Panel(
+      padding: const EdgeInsets.all(5),
+      tone: V3PanelTone.raised,
       child: Row(
         children: [
           for (final item in items)
             Expanded(
               child: InkWell(
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(9),
                 onTap: () => onChanged(item.$1),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
-                    color: selected == item.$1 ? p.rail : Colors.transparent,
-                    borderRadius: BorderRadius.circular(15),
+                    color: selected == item.$1 ? p.night : Colors.transparent,
+                    borderRadius: BorderRadius.circular(9),
                   ),
                   child: Column(
                     children: [
                       Text(
                         item.$2,
                         style: TextStyle(
-                          color: selected == item.$1 ? Colors.white : p.text,
+                          color: selected == item.$1 ? Colors.white : p.ink,
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 2),
                       Text(
                         item.$3,
                         style: TextStyle(
                           color: selected == item.$1
-                              ? Colors.white.withValues(alpha: 0.48)
-                              : p.textMuted,
+                              ? Colors.white.withValues(alpha: 0.7)
+                              : p.inkMuted,
                           fontSize: 9,
                         ),
                       ),
@@ -224,15 +188,10 @@ class _CurrentPlanBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Container(
-      constraints: const BoxConstraints(minWidth: 180, maxWidth: 260),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: p.panelStrong,
-        borderRadius: BorderRadius.circular(18),
-      ),
+    return V3Panel(
+      tone: V3PanelTone.ink,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 9,
@@ -248,8 +207,8 @@ class _CurrentPlanBadge extends StatelessWidget {
                   plan.trim().isEmpty ? '暂无激活套餐' : plan.trim(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: p.text,
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                   ),
@@ -257,7 +216,10 @@ class _CurrentPlanBadge extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   '剩余 ${remainGb.toStringAsFixed(1)} GB',
-                  style: TextStyle(color: p.textMuted, fontSize: 9),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 10,
+                  ),
                 ),
               ],
             ),
@@ -268,7 +230,7 @@ class _CurrentPlanBadge extends StatelessWidget {
   }
 }
 
-class _PlanCard extends StatefulWidget {
+class _PlanCard extends StatelessWidget {
   const _PlanCard({
     required this.plan,
     required this.currencySymbol,
@@ -279,185 +241,110 @@ class _PlanCard extends StatefulWidget {
   final PlanModel plan;
   final String currencySymbol;
   final bool emphasis;
-  final ValueChanged<BillingCycle> onBuy;
-
-  @override
-  State<_PlanCard> createState() => _PlanCardState();
-}
-
-class _PlanCardState extends State<_PlanCard> {
-  late BillingCycle _cycle;
-
-  @override
-  void initState() {
-    super.initState();
-    _cycle = _defaultCycle(widget.plan);
-  }
+  final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final cycles = _availableCycles(widget.plan);
-    final price = _price(widget.plan, _cycle);
-    final dark = widget.emphasis;
-    final foreground = dark ? Colors.white : p.text;
-    final muted = dark ? Colors.white.withValues(alpha: 0.5) : p.textMuted;
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 330),
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: dark ? p.rail : p.panel,
-        borderRadius: BorderRadius.circular(28),
-        border: dark ? null : Border.all(color: p.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                decoration: BoxDecoration(
-                  color: dark
-                      ? Colors.white.withValues(alpha: 0.1)
-                      : p.panelStrong,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  _categoryLabel(widget.plan.category),
-                  style: TextStyle(
-                    color: muted,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.1,
-                  ),
-                ),
+    final cycle = _defaultCycle(plan);
+    final price = _price(plan, cycle);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        final identity = Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: emphasis ? p.citrus : p.surfaceRaised,
+                borderRadius: BorderRadius.circular(10),
               ),
-              const Spacer(),
-              if (widget.plan.hot || widget.emphasis)
-                Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 18,
-                  color: dark ? p.cyan : p.accent,
-                ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text(
-            widget.plan.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: foreground,
-              fontSize: 21,
-              fontWeight: FontWeight.w800,
-              height: 1.05,
+              child: Icon(
+                emphasis ? Icons.bolt_rounded : Icons.layers_outlined,
+                color: emphasis ? p.night : p.ink,
+                size: 19,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.plan.capacity,
-            style: TextStyle(
-              color: dark ? p.cyan : p.accent,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 22),
-          if (cycles.length > 1)
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final cycle in cycles)
-                  InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () => setState(() => _cycle = cycle),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _cycle == cycle
-                            ? (dark ? Colors.white : p.accentSoft)
-                            : (dark
-                                  ? Colors.white.withValues(alpha: 0.07)
-                                  : p.panelStrong),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _cycleLabel(cycle),
-                        style: TextStyle(
-                          color: _cycle == cycle
-                              ? (dark ? p.rail : p.accent)
-                              : muted,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    plan.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${_categoryLabel(plan.category)}  /  ${plan.capacity}',
+                    style: TextStyle(
+                      color: p.inkMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
-          const Spacer(),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        );
+        final priceBlock = Column(
+          crossAxisAlignment: compact
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.end,
+          children: [
+            Text(
+              price == null
+                  ? '--'
+                  : '$currencySymbol${price.toStringAsFixed(2)}',
+              style: TextStyle(
+                color: p.ink,
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              plan.category == PlanCategory.recurring
+                  ? 'from / period at checkout'
+                  : 'one-time',
+              style: TextStyle(color: p.inkMuted, fontSize: 9),
+            ),
+          ],
+        );
+        final action = V3ActionButton(
+          label: plan.soldOut ? 'Sold out' : 'Choose',
+          icon: Icons.arrow_forward_rounded,
+          onPressed: plan.soldOut || price == null ? null : onBuy,
+        );
+        final purchase = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [priceBlock, const SizedBox(width: 14), action],
+        );
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+          child: compact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'PRICE',
-                      style: TextStyle(
-                        color: muted,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      price == null
-                          ? '--'
-                          : '${widget.currencySymbol}${price.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: foreground,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.7,
-                      ),
-                    ),
+                    identity,
+                    const SizedBox(height: 14),
+                    priceBlock,
+                    const SizedBox(height: 12),
+                    SizedBox(width: double.infinity, child: action),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: identity),
+                    const SizedBox(width: 18),
+                    purchase,
                   ],
                 ),
-              ),
-              SizedBox(
-                height: 46,
-                child: FilledButton.icon(
-                  onPressed: widget.plan.soldOut || price == null
-                      ? null
-                      : () => widget.onBuy(_cycle),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: dark ? Colors.white : p.accent,
-                    foregroundColor: dark ? p.rail : Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  icon: const Icon(Icons.arrow_outward_rounded, size: 17),
-                  label: Text(
-                    widget.plan.soldOut ? '售罄' : '选择',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -470,26 +357,20 @@ class _EmptyPlans extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Container(
-      width: double.infinity,
+    return V3Panel(
       padding: const EdgeInsets.symmetric(vertical: 54),
-      decoration: BoxDecoration(
-        color: p.panel,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: p.border),
-      ),
       child: Column(
         children: [
-          Icon(Icons.inventory_2_outlined, color: p.textMuted, size: 28),
+          Icon(Icons.inventory_2_outlined, color: p.inkMuted, size: 28),
           const SizedBox(height: 12),
           Text(
             '当前分类没有可购买套餐',
-            style: TextStyle(color: p.text, fontWeight: FontWeight.w800),
+            style: TextStyle(color: p.ink, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
             '可以刷新服务端数据后再试。',
-            style: TextStyle(color: p.textMuted, fontSize: 11),
+            style: TextStyle(color: p.inkMuted, fontSize: 11),
           ),
           const SizedBox(height: 18),
           OutlinedButton(
@@ -634,7 +515,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
         constraints: const BoxConstraints(maxHeight: 640),
         padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(
-          color: p.panel,
+          color: p.surface,
           borderRadius: BorderRadius.circular(30),
         ),
         child: SingleChildScrollView(
@@ -650,7 +531,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                         Text(
                           'CHECKOUT',
                           style: TextStyle(
-                            color: p.accent,
+                            color: p.lychee,
                             fontSize: 9,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2,
@@ -674,7 +555,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
               Text(
                 '选择周期',
                 style: TextStyle(
-                  color: p.textMuted,
+                  color: p.inkMuted,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                 ),
@@ -699,7 +580,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
               Text(
                 '优惠码',
                 style: TextStyle(
-                  color: p.textMuted,
+                  color: p.inkMuted,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                 ),
@@ -713,7 +594,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                       decoration: InputDecoration(
                         hintText: '可选',
                         filled: true,
-                        fillColor: p.panelStrong,
+                        fillColor: p.surfaceRaised,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide.none,
@@ -744,16 +625,13 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
               ],
               if (_error != null) ...[
                 const SizedBox(height: 10),
-                Text(
-                  _error!,
-                  style: TextStyle(color: p.danger, fontSize: 11),
-                ),
+                Text(_error!, style: TextStyle(color: p.danger, fontSize: 11)),
               ],
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: p.panelStrong,
+                  color: p.surfaceRaised,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -763,13 +641,13 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                       children: [
                         Text(
                           '应付金额',
-                          style: TextStyle(color: p.textMuted, fontSize: 10),
+                          style: TextStyle(color: p.inkMuted, fontSize: 10),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${widget.currencySymbol}${_finalPrice.toStringAsFixed(2)}',
                           style: TextStyle(
-                            color: p.text,
+                            color: p.ink,
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
                           ),
@@ -796,7 +674,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                 child: FilledButton(
                   onPressed: _submitting ? null : _submit,
                   style: FilledButton.styleFrom(
-                    backgroundColor: p.accent,
+                    backgroundColor: p.lychee,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -955,7 +833,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
         constraints: const BoxConstraints(maxHeight: 680),
         padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(
-          color: p.panel,
+          color: p.surface,
           borderRadius: BorderRadius.circular(30),
         ),
         child: _paid
@@ -973,7 +851,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                               Text(
                                 'PAYMENT',
                                 style: TextStyle(
-                                  color: p.accent,
+                                  color: p.lychee,
                                   fontSize: 9,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 2,
@@ -982,7 +860,9 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                               const SizedBox(height: 7),
                               Text(
                                 '完成支付',
-                                style: Theme.of(context).textTheme.headlineLarge,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineLarge,
                               ),
                             ],
                           ),
@@ -996,7 +876,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                     const SizedBox(height: 8),
                     Text(
                       '订单 ${widget.tradeNo}',
-                      style: TextStyle(color: p.textMuted, fontSize: 10),
+                      style: TextStyle(color: p.inkMuted, fontSize: 10),
                     ),
                     const SizedBox(height: 22),
                     if (_loading)
@@ -1010,7 +890,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                       Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          color: p.rail,
+                          color: p.night,
                           borderRadius: BorderRadius.circular(22),
                         ),
                         child: Row(
@@ -1039,7 +919,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                         Text(
                           '支付方式',
                           style: TextStyle(
-                            color: p.textMuted,
+                            color: p.inkMuted,
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
                           ),
@@ -1081,13 +961,8 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                         const SizedBox(height: 14),
                         Center(
                           child: Text(
-                            _paymentType == 1
-                                ? '支付页面已尝试在浏览器打开'
-                                : '请使用对应支付应用扫码',
-                            style: TextStyle(
-                              color: p.textMuted,
-                              fontSize: 11,
-                            ),
+                            _paymentType == 1 ? '支付页面已尝试在浏览器打开' : '请使用对应支付应用扫码',
+                            style: TextStyle(color: p.inkMuted, fontSize: 11),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -1120,7 +995,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                               ? (_checkingOut ? null : _checkout)
                               : (_checkingStatus ? null : _checkStatus),
                           style: FilledButton.styleFrom(
-                            backgroundColor: p.accent,
+                            backgroundColor: p.lychee,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -1171,7 +1046,7 @@ class _PaidView extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           '套餐数据正在同步到 Litchi。',
-          style: TextStyle(color: p.textMuted, fontSize: 11),
+          style: TextStyle(color: p.inkMuted, fontSize: 11),
         ),
         const SizedBox(height: 24),
         SizedBox(

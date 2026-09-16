@@ -160,9 +160,8 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
     // Match the first logged-out frame. Starting large and shrinking after
     // Flutter paints can leave a duplicated surface on Windows with DPI scale.
     size: const Size(400, 560),
-    // Small floor so the shell can shrink the window to a compact card-sized
-    // login window (see _AppShellState._syncWindowSize). User resize stays off
-    // via setResizable(false); this only gates programmatic setSize.
+    // Keep the native pre-Flutter surface compact. V3WindowBootstrap establishes
+    // the final workspace size as soon as the first V3 frame is available.
     minimumSize: const Size(380, 480),
     center: true,
     backgroundColor: Platform.isLinux ? Colors.transparent : null,

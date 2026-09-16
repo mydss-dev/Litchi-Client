@@ -93,12 +93,16 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
   }
 
   void _toast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   List<RemoteOrder> get _visibleOrders => switch (_filter) {
-    1 => _orders.where((order) => order.status == 0 || order.status == 1).toList(),
-    2 => _orders.where((order) => order.status == 3 || order.status == 4).toList(),
+    1 =>
+      _orders.where((order) => order.status == 0 || order.status == 1).toList(),
+    2 =>
+      _orders.where((order) => order.status == 3 || order.status == 4).toList(),
     3 => _orders.where((order) => order.status == 2).toList(),
     _ => _orders,
   };
@@ -108,8 +112,12 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
     final visible = _visibleOrders;
-    final pending = _orders.where((order) => order.status == 0 || order.status == 1).length;
-    final completed = _orders.where((order) => order.status == 3 || order.status == 4).length;
+    final pending = _orders
+        .where((order) => order.status == 0 || order.status == 1)
+        .length;
+    final completed = _orders
+        .where((order) => order.status == 3 || order.status == 4)
+        .length;
     final spent = _orders
         .where((order) => order.status == 3 || order.status == 4)
         .fold<int>(0, (sum, order) => sum + order.totalAmount);
@@ -137,14 +145,17 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                         Text(
                           'ORDER LEDGER',
                           style: TextStyle(
-                            color: p.accent,
+                            color: p.lychee,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,
                           ),
                         ),
                         const SizedBox(height: 7),
-                        Text('订单记录', style: Theme.of(context).textTheme.displayLarge),
+                        Text(
+                          '订单记录',
+                          style: Theme.of(context).textTheme.displayLarge,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           '购买、支付和取消都在同一条订单链路里完成。',
@@ -167,7 +178,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                         _OrderMetric(
                           label: '全部订单',
                           value: '${_orders.length}',
-                          accent: p.accent,
+                          accent: p.lychee,
                         ),
                         const SizedBox(height: 10),
                         _OrderMetric(
@@ -184,8 +195,9 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                         const SizedBox(height: 10),
                         _OrderMetric(
                           label: '累计支付',
-                          value: '${controller.currencySymbol}${(spent / 100).toStringAsFixed(2)}',
-                          accent: p.cyan,
+                          value:
+                              '${controller.currencySymbol}${(spent / 100).toStringAsFixed(2)}',
+                          accent: p.aqua,
                         ),
                       ],
                     )
@@ -195,7 +207,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                           child: _OrderMetric(
                             label: '全部订单',
                             value: '${_orders.length}',
-                            accent: p.accent,
+                            accent: p.lychee,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -218,8 +230,9 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                         Expanded(
                           child: _OrderMetric(
                             label: '累计支付',
-                            value: '${controller.currencySymbol}${(spent / 100).toStringAsFixed(2)}',
-                            accent: p.cyan,
+                            value:
+                                '${controller.currencySymbol}${(spent / 100).toStringAsFixed(2)}',
+                            accent: p.aqua,
                           ),
                         ),
                       ],
@@ -229,9 +242,9 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: p.panel,
+                  color: p.surface,
                   borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: p.border),
+                  border: Border.all(color: p.line),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +260,8 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                         ],
                         selected: {_filter},
                         showSelectedIcon: false,
-                        onSelectionChanged: (value) => setState(() => _filter = value.first),
+                        onSelectionChanged: (value) =>
+                            setState(() => _filter = value.first),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -270,7 +284,9 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                       _OrderEmptyState(
                         icon: Icons.receipt_long_rounded,
                         title: '这里还没有订单',
-                        subtitle: _filter == 0 ? '购买套餐后，订单会出现在这里。' : '当前筛选条件下没有记录。',
+                        subtitle: _filter == 0
+                            ? '购买套餐后，订单会出现在这里。'
+                            : '当前筛选条件下没有记录。',
                         actionLabel: _filter == 0 ? '去购买套餐' : null,
                         onAction: _filter == 0
                             ? () => controller.goToPage(AppPage.shop)
@@ -285,7 +301,8 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                           onPay: () => _pay(visible[i]),
                           onCancel: () => _cancel(visible[i]),
                         ),
-                        if (i != visible.length - 1) Divider(color: p.border, height: 1),
+                        if (i != visible.length - 1)
+                          Divider(color: p.line, height: 1),
                       ],
                   ],
                 ),
@@ -316,7 +333,7 @@ class _OrderMetric extends StatelessWidget {
       height: 100,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: p.panelStrong,
+        color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
@@ -324,7 +341,10 @@ class _OrderMetric extends StatelessWidget {
           Container(
             width: 4,
             height: 48,
-            decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -332,13 +352,17 @@ class _OrderMetric extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(color: p.textMuted, fontSize: 9)),
+                Text(label, style: TextStyle(color: p.inkMuted, fontSize: 9)),
                 const SizedBox(height: 4),
                 Text(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.text, fontSize: 18, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
@@ -369,10 +393,10 @@ class _OrderRow extends StatelessWidget {
     final p = V3Palette.of(context);
     final statusColor = switch (order.status) {
       0 => p.warning,
-      1 => p.cyan,
-      2 => p.textMuted,
+      1 => p.aqua,
+      2 => p.inkMuted,
       3 || 4 => p.success,
-      _ => p.textMuted,
+      _ => p.inkMuted,
     };
     final title = order.planName?.trim().isNotEmpty == true
         ? order.planName!.trim()
@@ -389,7 +413,11 @@ class _OrderRow extends StatelessWidget {
               color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Icon(Icons.receipt_long_rounded, color: statusColor, size: 20),
+            child: Icon(
+              Icons.receipt_long_rounded,
+              color: statusColor,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 13),
           Expanded(
@@ -400,14 +428,18 @@ class _OrderRow extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.text, fontSize: 12, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${order.tradeNo} · ${order.dateDisplay}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.textMuted, fontSize: 9),
+                  style: TextStyle(color: p.inkMuted, fontSize: 9),
                 ),
               ],
             ),
@@ -418,19 +450,31 @@ class _OrderRow extends StatelessWidget {
             children: [
               Text(
                 order.amountDisplay(currencySymbol),
-                style: TextStyle(color: p.text, fontSize: 12, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 order.statusLabel,
-                style: TextStyle(color: statusColor, fontSize: 9, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ],
           ),
           if (order.status == 0) ...[
             const SizedBox(width: 12),
             if (busy)
-              const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             else
               PopupMenuButton<String>(
                 tooltip: '订单操作',
@@ -474,14 +518,17 @@ class _OrderEmptyState extends StatelessWidget {
       child: Center(
         child: Column(
           children: [
-            Icon(icon, color: p.textMuted, size: 28),
+            Icon(icon, color: p.inkMuted, size: 28),
             const SizedBox(height: 12),
-            Text(title, style: TextStyle(color: p.text, fontWeight: FontWeight.w800)),
+            Text(
+              title,
+              style: TextStyle(color: p.ink, fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 6),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(color: p.textMuted, fontSize: 10),
+              style: TextStyle(color: p.inkMuted, fontSize: 10),
             ),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 16),
@@ -503,15 +550,19 @@ class _CancelOrderDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return AlertDialog(
-      backgroundColor: p.panel,
+      backgroundColor: p.surface,
       title: const Text('取消这个订单？'),
-      content: Text(
-        '订单 ${order.tradeNo} 将被取消。取消后如果还需要该套餐，需要重新创建订单。',
-      ),
+      content: Text('订单 ${order.tradeNo} 将被取消。取消后如果还需要该套餐，需要重新创建订单。'),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('保留订单')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('保留订单'),
+        ),
         FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: p.danger, foregroundColor: Colors.white),
+          style: FilledButton.styleFrom(
+            backgroundColor: p.danger,
+            foregroundColor: Colors.white,
+          ),
           onPressed: () => Navigator.of(context).pop(true),
           child: const Text('确认取消'),
         ),
@@ -520,5 +571,7 @@ class _CancelOrderDialog extends StatelessWidget {
   }
 }
 
-String _message(Object error) =>
-    error.toString().replaceFirst('ApiException: ', '').replaceFirst('Exception: ', '');
+String _message(Object error) => error
+    .toString()
+    .replaceFirst('ApiException: ', '')
+    .replaceFirst('Exception: ', '');

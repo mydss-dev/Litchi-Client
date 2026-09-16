@@ -28,9 +28,9 @@ class _V3AccountPageState extends State<V3AccountPage> {
     );
     if (!mounted) return;
     setState(() => _updatingPreferences = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error ?? '账户设置已更新')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error ?? '账户设置已更新')));
   }
 
   @override
@@ -55,7 +55,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
               Text(
                 'ACCOUNT SIGNAL',
                 style: TextStyle(
-                  color: p.accent,
+                  color: p.lychee,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2.2,
@@ -153,7 +153,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
               Text(
                 user.name.isEmpty ? 'LITCHI USER' : user.name,
                 style: TextStyle(
-                  color: p.textMuted,
+                  color: p.inkMuted,
                   fontSize: 9,
                   letterSpacing: 1.4,
                   fontWeight: FontWeight.w700,
@@ -192,7 +192,7 @@ class _IdentityPanel extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 230),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: p.rail,
+        color: p.night,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Column(
@@ -205,7 +205,7 @@ class _IdentityPanel extends StatelessWidget {
                 height: 58,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: p.accent,
+                  color: p.lychee,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -241,7 +241,7 @@ class _IdentityPanel extends StatelessWidget {
               ),
             ],
           ),
-          const Spacer(),
+          const SizedBox(height: 28),
           Text(
             user.name.trim().isEmpty ? 'Litchi User' : user.name.trim(),
             maxLines: 1,
@@ -282,9 +282,9 @@ class _PlanPanel extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 230),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: p.panel,
+        color: p.surface,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: p.border),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,7 +292,7 @@ class _PlanPanel extends StatelessWidget {
           Text(
             'CURRENT PLAN',
             style: TextStyle(
-              color: p.textMuted,
+              color: p.inkMuted,
               fontSize: 9,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
@@ -300,9 +300,7 @@ class _PlanPanel extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            controller.hasPlan
-                ? (plan.isEmpty ? '已激活套餐' : plan)
-                : '还没有套餐',
+            controller.hasPlan ? (plan.isEmpty ? '已激活套餐' : plan) : '还没有套餐',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineLarge,
@@ -314,14 +312,14 @@ class _PlanPanel extends StatelessWidget {
                 : '选择套餐后即可开始连接',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const Spacer(),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             height: 44,
             child: FilledButton.icon(
               onPressed: () => controller.goToPage(AppPage.shop),
               style: FilledButton.styleFrom(
-                backgroundColor: p.accent,
+                backgroundColor: p.lychee,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -351,7 +349,7 @@ class _FinancePanel extends StatelessWidget {
       eyebrow: 'WALLET',
       title: '$symbol${balance.toStringAsFixed(2)}',
       subtitle: '账户余额',
-      accent: p.accent,
+      accent: p.lychee,
       trailing: controller.withdrawable > 0
           ? '佣金 $symbol${controller.withdrawable.toStringAsFixed(2)}'
           : null,
@@ -373,7 +371,7 @@ class _DevicePanel extends StatelessWidget {
       eyebrow: 'DEVICE WINDOW',
       title: alive == null ? '--' : '$alive',
       subtitle: limit == null ? '当前在线设备' : '在线设备 / 上限 $limit',
-      accent: p.cyan,
+      accent: p.aqua,
       trailing: '${controller.traffic.remainGb.toStringAsFixed(1)} GB 剩余',
     );
   }
@@ -401,7 +399,7 @@ class _MetricPanel extends StatelessWidget {
       height: 128,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: p.panelStrong,
+        color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
@@ -423,7 +421,7 @@ class _MetricPanel extends StatelessWidget {
                 Text(
                   eyebrow,
                   style: TextStyle(
-                    color: p.textMuted,
+                    color: p.inkMuted,
                     fontSize: 8,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.4,
@@ -433,14 +431,14 @@ class _MetricPanel extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    color: p.text,
+                    color: p.ink,
                     fontSize: 21,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(color: p.textMuted, fontSize: 10),
+                  style: TextStyle(color: p.inkMuted, fontSize: 10),
                 ),
               ],
             ),
@@ -451,7 +449,7 @@ class _MetricPanel extends StatelessWidget {
                 trailing!,
                 textAlign: TextAlign.end,
                 style: TextStyle(
-                  color: p.textMuted,
+                  color: p.inkMuted,
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                 ),
@@ -484,9 +482,9 @@ class _PreferencesPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: p.panel,
+        color: p.surface,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: p.border),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,7 +494,7 @@ class _PreferencesPanel extends StatelessWidget {
               Text(
                 'ACCOUNT AUTOMATION',
                 style: TextStyle(
-                  color: p.textMuted,
+                  color: p.inkMuted,
                   fontSize: 9,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
@@ -518,14 +516,14 @@ class _PreferencesPanel extends StatelessWidget {
             value: controller.user.remindExpire,
             onChanged: busy ? null : onExpireChanged,
           ),
-          Divider(color: p.border, height: 1),
+          Divider(color: p.line, height: 1),
           _PreferenceRow(
             title: '流量提醒',
             subtitle: '剩余流量不足时提醒我',
             value: controller.user.remindTraffic,
             onChanged: busy ? null : onTrafficChanged,
           ),
-          Divider(color: p.border, height: 1),
+          Divider(color: p.line, height: 1),
           _PreferenceRow(
             title: '自动续费',
             subtitle: '允许服务端在条件满足时自动续费',
@@ -565,7 +563,7 @@ class _PreferenceRow extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    color: p.text,
+                    color: p.ink,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -573,7 +571,7 @@ class _PreferenceRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: TextStyle(color: p.textMuted, fontSize: 10),
+                  style: TextStyle(color: p.inkMuted, fontSize: 10),
                 ),
               ],
             ),
@@ -602,7 +600,7 @@ class _AccountActions extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: p.panelStrong,
+        color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -658,12 +656,12 @@ class _ActionButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 6),
         child: Column(
           children: [
-            Icon(icon, size: 18, color: danger ? p.danger : p.textMuted),
+            Icon(icon, size: 18, color: danger ? p.danger : p.inkMuted),
             const SizedBox(height: 5),
             Text(
               label,
               style: TextStyle(
-                color: danger ? p.danger : p.text,
+                color: danger ? p.danger : p.ink,
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
               ),
@@ -722,9 +720,9 @@ class _PasswordDialogState extends State<_PasswordDialog> {
       );
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('密码修改成功')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('密码修改成功')));
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -745,7 +743,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
         width: 430,
         padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(
-          color: p.panel,
+          color: p.surface,
           borderRadius: BorderRadius.circular(28),
         ),
         child: Column(
@@ -774,10 +772,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
             _PasswordField(controller: _confirmPassword, label: '确认新密码'),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: TextStyle(color: p.danger, fontSize: 11),
-              ),
+              Text(_error!, style: TextStyle(color: p.danger, fontSize: 11)),
             ],
             const SizedBox(height: 20),
             SizedBox(
@@ -786,7 +781,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
               child: FilledButton(
                 onPressed: _busy ? null : _submit,
                 style: FilledButton.styleFrom(
-                  backgroundColor: p.accent,
+                  backgroundColor: p.lychee,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
@@ -817,7 +812,7 @@ class _PasswordField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         filled: true,
-        fillColor: p.panelStrong,
+        fillColor: p.surfaceRaised,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,

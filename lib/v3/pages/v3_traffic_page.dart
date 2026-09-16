@@ -25,16 +25,19 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
           margin: const EdgeInsets.all(24),
           padding: const EdgeInsets.all(30),
           decoration: BoxDecoration(
-            color: p.panel,
+            color: p.surface,
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: p.border),
+            border: Border.all(color: p.line),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.data_usage_rounded, color: p.accent, size: 34),
+              Icon(Icons.data_usage_rounded, color: p.lychee, size: 34),
               const SizedBox(height: 16),
-              Text('还没有可统计的套餐', style: Theme.of(context).textTheme.headlineLarge),
+              Text(
+                '还没有可统计的套餐',
+                style: Theme.of(context).textTheme.headlineLarge,
+              ),
               const SizedBox(height: 8),
               Text(
                 '激活套餐后，这里会显示每天的流量趋势、重置时间与剩余额度。',
@@ -56,7 +59,10 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     final points = _usagePoints(controller, _days);
     final totalPeriod = points.fold<double>(0, (sum, point) => sum + point.gb);
     final average = points.isEmpty ? 0.0 : totalPeriod / points.length;
-    final maxGb = points.fold<double>(0, (max, point) => point.gb > max ? point.gb : max);
+    final maxGb = points.fold<double>(
+      0,
+      (max, point) => point.gb > max ? point.gb : max,
+    );
     final traffic = controller.traffic;
     final usedRatio = traffic.totalGb <= 0
         ? 0.0
@@ -85,14 +91,17 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                         Text(
                           'USAGE INTELLIGENCE',
                           style: TextStyle(
-                            color: p.accent,
+                            color: p.lychee,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,
                           ),
                         ),
                         const SizedBox(height: 7),
-                        Text('流量使用中心', style: Theme.of(context).textTheme.displayLarge),
+                        Text(
+                          '流量使用中心',
+                          style: Theme.of(context).textTheme.displayLarge,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           '看清今天用了多少、套餐还剩多少，以及最近的使用节奏。',
@@ -169,7 +178,7 @@ class _QuotaPanel extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 270),
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
-        color: p.rail,
+        color: p.night,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Column(
@@ -190,7 +199,7 @@ class _QuotaPanel extends StatelessWidget {
               Text(
                 '${(usedRatio * 100).toStringAsFixed(0)}%',
                 style: TextStyle(
-                  color: p.cyan,
+                  color: p.aqua,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                 ),
@@ -216,14 +225,14 @@ class _QuotaPanel extends StatelessWidget {
               fontSize: 11,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 28),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: usedRatio,
               minHeight: 8,
               backgroundColor: Colors.white.withValues(alpha: 0.08),
-              valueColor: AlwaysStoppedAnimation<Color>(p.accent),
+              valueColor: AlwaysStoppedAnimation<Color>(p.lychee),
             ),
           ),
           const SizedBox(height: 15),
@@ -264,7 +273,9 @@ class _QuotaValue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -301,9 +312,9 @@ class _TimingPanel extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 270),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: p.panel,
+        color: p.surface,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: p.border),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +322,7 @@ class _TimingPanel extends StatelessWidget {
           Text(
             'CYCLE CLOCK',
             style: TextStyle(
-              color: p.textMuted,
+              color: p.inkMuted,
               fontSize: 9,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
@@ -322,13 +333,13 @@ class _TimingPanel extends StatelessWidget {
             icon: Icons.today_rounded,
             label: '今日已用',
             value: '${controller.todayTrafficGb.toStringAsFixed(2)} GB',
-            accent: p.accent,
+            accent: p.lychee,
           ),
           _TimingRow(
             icon: Icons.event_available_rounded,
             label: '套餐有效期',
             value: expiry.isEmpty ? '永久' : expiry,
-            accent: p.cyan,
+            accent: p.aqua,
           ),
           _TimingRow(
             icon: Icons.restart_alt_rounded,
@@ -390,12 +401,15 @@ class _TimingRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(label, style: TextStyle(color: p.textMuted, fontSize: 10)),
+            child: Text(
+              label,
+              style: TextStyle(color: p.inkMuted, fontSize: 10),
+            ),
           ),
           Text(
             value,
             style: TextStyle(
-              color: p.text,
+              color: p.ink,
               fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
@@ -432,9 +446,9 @@ class _TrendPanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: p.panel,
+        color: p.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: p.border),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,7 +462,7 @@ class _TrendPanel extends StatelessWidget {
                     Text(
                       'USAGE TREND',
                       style: TextStyle(
-                        color: p.textMuted,
+                        color: p.inkMuted,
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5,
@@ -458,7 +472,7 @@ class _TrendPanel extends StatelessWidget {
                     Text(
                       '$periodDays 天共使用 ${periodTotal.toStringAsFixed(2)} GB',
                       style: TextStyle(
-                        color: p.text,
+                        color: p.ink,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),
@@ -484,7 +498,7 @@ class _TrendPanel extends StatelessWidget {
                 ? Center(
                     child: Text(
                       '暂时没有每日流量记录',
-                      style: TextStyle(color: p.textMuted, fontSize: 11),
+                      style: TextStyle(color: p.inkMuted, fontSize: 11),
                     ),
                   )
                 : LayoutBuilder(
@@ -498,7 +512,10 @@ class _TrendPanel extends StatelessWidget {
                               child: _UsageBar(
                                 point: points[i],
                                 maxGb: maxGb,
-                                showLabel: periodDays == 7 || i % 5 == 0 || i == points.length - 1,
+                                showLabel:
+                                    periodDays == 7 ||
+                                    i % 5 == 0 ||
+                                    i == points.length - 1,
                               ),
                             ),
                             if (i != points.length - 1) SizedBox(width: gap),
@@ -539,7 +556,11 @@ class _TrendPanel extends StatelessWidget {
 }
 
 class _UsageBar extends StatelessWidget {
-  const _UsageBar({required this.point, required this.maxGb, required this.showLabel});
+  const _UsageBar({
+    required this.point,
+    required this.maxGb,
+    required this.showLabel,
+  });
 
   final _UsagePoint point;
   final double maxGb;
@@ -562,7 +583,7 @@ class _UsageBar extends StatelessWidget {
             height: height,
             constraints: const BoxConstraints(maxWidth: 34),
             decoration: BoxDecoration(
-              color: ratio >= 0.75 ? p.accent : p.cyan.withValues(alpha: 0.78),
+              color: ratio >= 0.75 ? p.lychee : p.aqua.withValues(alpha: 0.78),
               borderRadius: BorderRadius.circular(8),
             ),
           ),
@@ -574,7 +595,7 @@ class _UsageBar extends StatelessWidget {
               ? Text(
                   '${point.date.month}/${point.date.day}',
                   maxLines: 1,
-                  style: TextStyle(color: p.textMuted, fontSize: 8),
+                  style: TextStyle(color: p.inkMuted, fontSize: 8),
                 )
               : null,
         ),
@@ -584,7 +605,11 @@ class _UsageBar extends StatelessWidget {
 }
 
 class _TrendMetric extends StatelessWidget {
-  const _TrendMetric({required this.label, required this.value, this.alignEnd = false});
+  const _TrendMetric({
+    required this.label,
+    required this.value,
+    this.alignEnd = false,
+  });
 
   final String label;
   final String value;
@@ -594,13 +619,19 @@ class _TrendMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Column(
-      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: p.textMuted, fontSize: 9)),
+        Text(label, style: TextStyle(color: p.inkMuted, fontSize: 9)),
         const SizedBox(height: 3),
         Text(
           value,
-          style: TextStyle(color: p.text, fontSize: 12, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            color: p.ink,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ],
     );
@@ -621,7 +652,11 @@ List<_UsagePoint> _usagePoints(AppController controller, int days) {
   if (controller.trafficUsage.isNotEmpty) {
     return controller.trafficUsage
         .where((point) {
-          final date = DateTime(point.date.year, point.date.month, point.date.day);
+          final date = DateTime(
+            point.date.year,
+            point.date.month,
+            point.date.day,
+          );
           return !date.isBefore(cutoff) && !date.isAfter(today);
         })
         .map((point) => _UsagePoint(point.date, point.totalGb))
@@ -649,7 +684,9 @@ int? _daysUntilReset(int? resetDay) {
   final today = DateTime(now.year, now.month, now.day);
 
   DateTime targetFor(int year, int month) {
-    final nextMonth = month == 12 ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
+    final nextMonth = month == 12
+        ? DateTime(year + 1, 1, 1)
+        : DateTime(year, month + 1, 1);
     final lastDay = nextMonth.subtract(const Duration(days: 1)).day;
     return DateTime(year, month, resetDay > lastDay ? lastDay : resetDay);
   }

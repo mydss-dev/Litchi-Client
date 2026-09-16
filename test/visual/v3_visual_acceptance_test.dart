@@ -29,49 +29,49 @@ void main() {
     for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
       final themeName = themeMode == ThemeMode.light ? 'light' : 'dark';
 
-      testWidgets(
-        'V3 Windows 900x700 $name $themeName visual',
-        (tester) async {
-          debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-          try {
-            await _pumpV3(
-              tester,
-              size: const Size(900, 700),
-              themeMode: themeMode,
-              page: page,
-            );
+      testWidgets('V3 Windows 900x700 $name $themeName visual', (tester) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+        try {
+          await _pumpV3(
+            tester,
+            size: const Size(900, 700),
+            themeMode: themeMode,
+            page: page,
+          );
+          if (_visualSnapshotsEnabled) {
             await expectLater(
               find.byType(V3Shell),
-              matchesGoldenFile('goldens/v3_windows_${name}_${themeName}_900x700.png'),
+              matchesGoldenFile(
+                'goldens/v3_windows_${name}_${themeName}_900x700.png',
+              ),
             );
-          } finally {
-            debugDefaultTargetPlatformOverride = null;
           }
-        },
-        skip: !_visualSnapshotsEnabled,
-      );
+        } finally {
+          debugDefaultTargetPlatformOverride = null;
+        }
+      });
 
-      testWidgets(
-        'V3 Android 390x844 $name $themeName visual',
-        (tester) async {
-          debugDefaultTargetPlatformOverride = TargetPlatform.android;
-          try {
-            await _pumpV3(
-              tester,
-              size: const Size(390, 844),
-              themeMode: themeMode,
-              page: page,
-            );
+      testWidgets('V3 Android 390x844 $name $themeName visual', (tester) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        try {
+          await _pumpV3(
+            tester,
+            size: const Size(390, 844),
+            themeMode: themeMode,
+            page: page,
+          );
+          if (_visualSnapshotsEnabled) {
             await expectLater(
               find.byType(V3Shell),
-              matchesGoldenFile('goldens/v3_android_${name}_${themeName}_390x844.png'),
+              matchesGoldenFile(
+                'goldens/v3_android_${name}_${themeName}_390x844.png',
+              ),
             );
-          } finally {
-            debugDefaultTargetPlatformOverride = null;
           }
-        },
-        skip: !_visualSnapshotsEnabled,
-      );
+        } finally {
+          debugDefaultTargetPlatformOverride = null;
+        }
+      });
     }
 
     testWidgets('V3 Android 360x800 $name compact smoke', (tester) async {

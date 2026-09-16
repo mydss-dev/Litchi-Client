@@ -15,6 +15,7 @@ void main() {
         '/features/',
         'app_shell.dart',
         '/shared/widgets/',
+        '/shared/layout/',
       ];
       for (final pattern in forbidden) {
         if (source.contains(pattern)) {
@@ -31,6 +32,14 @@ void main() {
       reason:
           'Rule #1: V3 must rebuild presentation from scratch and may only reuse business/state infrastructure.',
     );
+  });
+
+  test('legacy presentation layer is physically removed', () {
+    expect(Directory('lib/features').existsSync(), isFalse);
+    expect(Directory('lib/shared/widgets').existsSync(), isFalse);
+    expect(Directory('lib/shared/layout').existsSync(), isFalse);
+    expect(File('lib/app/app_shell.dart').existsSync(), isFalse);
+    expect(File('lib/app/app_window_bar.dart').existsSync(), isFalse);
   });
 
   test('app root renders V3 instead of legacy AppShell', () {

@@ -164,8 +164,8 @@ class CoreController extends ChangeNotifier {
     unawaited(_windowsTunExitSub?.cancel());
     if (Platform.isWindows) {
       // Never bypass the fail-closed Windows shutdown path during widget
-      // teardown. AppShell normally awaited shutdown() before native exit; this
-      // is the idempotent fallback for tests, hot teardown, and unusual exits.
+      // teardown. The V3 window close action awaits shutdown(); this remains an
+      // idempotent fallback for tests, hot teardown, and unusual exits.
       unawaited(shutdown());
     } else {
       unawaited(_androidCore.dispose());

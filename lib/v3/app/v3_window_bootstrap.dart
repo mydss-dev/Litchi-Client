@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -15,7 +14,14 @@ class V3WindowBootstrap extends StatefulWidget {
 class _V3WindowBootstrapState extends State<V3WindowBootstrap> {
   bool _synced = false;
 
-  bool get _desktop => Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+  bool get _desktop =>
+      !kIsWeb &&
+      switch (defaultTargetPlatform) {
+        TargetPlatform.windows ||
+        TargetPlatform.macOS ||
+        TargetPlatform.linux => true,
+        _ => false,
+      };
 
   @override
   void didChangeDependencies() {

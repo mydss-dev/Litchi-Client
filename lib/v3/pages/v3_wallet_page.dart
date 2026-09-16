@@ -168,7 +168,7 @@ class _V3WalletPageState extends State<V3WalletPage> {
                         Text(
                           'WALLET FLOW',
                           style: TextStyle(
-                            color: p.accent,
+                            color: p.lychee,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,
@@ -206,8 +206,8 @@ class _V3WalletPageState extends State<V3WalletPage> {
                           symbol: symbol,
                           busy: _submittingRecharge,
                           onPreset: (amount) => setState(
-                            () => _rechargeController.text =
-                                amount.toStringAsFixed(0),
+                            () => _rechargeController.text = amount
+                                .toStringAsFixed(0),
                           ),
                           onSubmit: _recharge,
                         ),
@@ -232,8 +232,8 @@ class _V3WalletPageState extends State<V3WalletPage> {
                             symbol: symbol,
                             busy: _submittingRecharge,
                             onPreset: (amount) => setState(
-                              () => _rechargeController.text =
-                                  amount.toStringAsFixed(0),
+                              () => _rechargeController.text = amount
+                                  .toStringAsFixed(0),
                             ),
                             onSubmit: _recharge,
                           ),
@@ -279,7 +279,7 @@ class _BalanceHero extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
-        color: p.rail,
+        color: p.night,
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
@@ -321,7 +321,7 @@ class _BalanceHero extends StatelessWidget {
             width: 10,
             height: 56,
             decoration: BoxDecoration(
-              color: p.cyan,
+              color: p.aqua,
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -386,9 +386,9 @@ class _RechargePanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: p.panel,
+        color: p.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: p.border),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +396,7 @@ class _RechargePanel extends StatelessWidget {
           Text(
             'TOP UP',
             style: TextStyle(
-              color: p.textMuted,
+              color: p.inkMuted,
               fontSize: 9,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
@@ -412,7 +412,7 @@ class _RechargePanel extends StatelessWidget {
               prefixText: '$symbol ',
               hintText: '100',
               filled: true,
-              fillColor: p.panelStrong,
+              fillColor: p.surfaceRaised,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
@@ -438,7 +438,7 @@ class _RechargePanel extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: busy ? null : onSubmit,
               style: FilledButton.styleFrom(
-                backgroundColor: p.accent,
+                backgroundColor: p.lychee,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
@@ -476,7 +476,7 @@ class _CommissionPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: p.panelStrong,
+        color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
@@ -487,7 +487,7 @@ class _CommissionPanel extends StatelessWidget {
               Text(
                 'COMMISSION',
                 style: TextStyle(
-                  color: p.textMuted,
+                  color: p.inkMuted,
                   fontSize: 9,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
@@ -506,16 +506,13 @@ class _CommissionPanel extends StatelessWidget {
           Text(
             '$symbol${controller.withdrawable.toStringAsFixed(2)}',
             style: TextStyle(
-              color: p.text,
+              color: p.ink,
               fontSize: 27,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            '当前可操作佣金',
-            style: TextStyle(color: p.textMuted, fontSize: 10),
-          ),
+          Text('当前可操作佣金', style: TextStyle(color: p.inkMuted, fontSize: 10)),
           const SizedBox(height: 20),
           _WalletAction(
             icon: Icons.south_west_rounded,
@@ -569,13 +566,13 @@ class _WalletAction extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: p.panel,
+          color: p.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: p.border),
+          border: Border.all(color: p.line),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: p.accent),
+            Icon(icon, size: 18, color: p.lychee),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -584,7 +581,7 @@ class _WalletAction extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: p.text,
+                      color: p.ink,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                     ),
@@ -592,12 +589,12 @@ class _WalletAction extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: TextStyle(color: p.textMuted, fontSize: 9),
+                    style: TextStyle(color: p.inkMuted, fontSize: 9),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: p.textMuted, size: 18),
+            Icon(Icons.chevron_right_rounded, color: p.inkMuted, size: 18),
           ],
         ),
       ),
@@ -635,7 +632,9 @@ class _AmountDialogState extends State<_AmountDialog> {
   void _submit() {
     final amount = double.tryParse(_controller.text.trim()) ?? 0;
     if (amount <= 0 || amount > widget.maximum) {
-      setState(() => _error = '请输入 0 到 ${widget.maximum.toStringAsFixed(2)} 之间的金额');
+      setState(
+        () => _error = '请输入 0 到 ${widget.maximum.toStringAsFixed(2)} 之间的金额',
+      );
       return;
     }
     Navigator.of(context).pop(amount);
@@ -650,26 +649,34 @@ class _AmountDialogState extends State<_AmountDialog> {
         width: 400,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: p.panel,
+          color: p.surface,
           borderRadius: BorderRadius.circular(26),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.title, style: Theme.of(context).textTheme.headlineMedium),
+            Text(
+              widget.title,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
             const SizedBox(height: 6),
-            Text(widget.subtitle, style: TextStyle(color: p.textMuted, fontSize: 10)),
+            Text(
+              widget.subtitle,
+              style: TextStyle(color: p.inkMuted, fontSize: 10),
+            ),
             const SizedBox(height: 18),
             TextField(
               controller: _controller,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               onSubmitted: (_) => _submit(),
               decoration: InputDecoration(
                 prefixText: '${widget.currencySymbol} ',
                 filled: true,
-                fillColor: p.panelStrong,
+                fillColor: p.surfaceRaised,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide.none,
@@ -684,7 +691,10 @@ class _AmountDialogState extends State<_AmountDialog> {
             SizedBox(
               width: double.infinity,
               height: 46,
-              child: FilledButton(onPressed: _submit, child: const Text('确认转入')),
+              child: FilledButton(
+                onPressed: _submit,
+                child: const Text('确认转入'),
+              ),
             ),
           ],
         ),
@@ -735,18 +745,20 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
     final method = _method?.trim() ?? '';
     final min = widget.minimum > 0 ? widget.minimum : 0;
     if (amount <= 0 || amount > widget.maximum || amount < min) {
-      setState(() => _error = min > 0
-          ? '金额需在 ${widget.currencySymbol}${min.toStringAsFixed(2)} 到 ${widget.currencySymbol}${widget.maximum.toStringAsFixed(2)} 之间'
-          : '请输入有效提现金额');
+      setState(
+        () => _error = min > 0
+            ? '金额需在 ${widget.currencySymbol}${min.toStringAsFixed(2)} 到 ${widget.currencySymbol}${widget.maximum.toStringAsFixed(2)} 之间'
+            : '请输入有效提现金额',
+      );
       return;
     }
     if (account.isEmpty || method.isEmpty) {
       setState(() => _error = '请选择提现方式并填写收款账号');
       return;
     }
-    Navigator.of(context).pop(
-      _WithdrawRequest(amount: amount, account: account, method: method),
-    );
+    Navigator.of(
+      context,
+    ).pop(_WithdrawRequest(amount: amount, account: account, method: method));
   }
 
   @override
@@ -758,7 +770,7 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
         width: 430,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: p.panel,
+          color: p.surface,
           borderRadius: BorderRadius.circular(26),
         ),
         child: Column(
@@ -770,7 +782,10 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
             DropdownButtonFormField<String>(
               initialValue: _method,
               items: widget.methods
-                  .map((method) => DropdownMenuItem(value: method, child: Text(method)))
+                  .map(
+                    (method) =>
+                        DropdownMenuItem(value: method, child: Text(method)),
+                  )
                   .toList(growable: false),
               onChanged: (value) => setState(() => _method = value),
               decoration: const InputDecoration(labelText: '提现方式'),
@@ -783,7 +798,9 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 labelText: '提现金额',
                 prefixText: '${widget.currencySymbol} ',
@@ -797,7 +814,10 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
             SizedBox(
               width: double.infinity,
               height: 46,
-              child: FilledButton(onPressed: _submit, child: const Text('提交提现申请')),
+              child: FilledButton(
+                onPressed: _submit,
+                child: const Text('提交提现申请'),
+              ),
             ),
           ],
         ),
@@ -818,5 +838,7 @@ class _WithdrawRequest {
   final String method;
 }
 
-String _message(Object error) =>
-    error.toString().replaceFirst('ApiException: ', '').replaceFirst('Exception: ', '');
+String _message(Object error) => error
+    .toString()
+    .replaceFirst('ApiException: ', '')
+    .replaceFirst('Exception: ', '');

@@ -39,7 +39,9 @@ class _V3AuthViewState extends State<V3AuthView> {
     try {
       await AppScope.read(context).loginWithCredentials(email, password);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) {
+        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -61,7 +63,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                   child: Container(
                     margin: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: p.rail,
+                      color: p.night,
                       borderRadius: BorderRadius.circular(28),
                     ),
                     padding: const EdgeInsets.all(34),
@@ -81,7 +83,10 @@ class _V3AuthViewState extends State<V3AuthView> {
                               children: [
                                 Text(
                                   'A QUIETER WAY\nTO CROSS THE NET.',
-                                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displayLarge
+                                      ?.copyWith(
                                         color: Colors.white,
                                         fontSize: 42,
                                         height: 0.98,
@@ -109,7 +114,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: p.accent.withValues(alpha: 0.65),
+                                color: p.lychee.withValues(alpha: 0.65),
                                 width: 24,
                               ),
                             ),
@@ -122,7 +127,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                             width: 12,
                             height: 82,
                             decoration: BoxDecoration(
-                              color: p.cyan,
+                              color: p.aqua,
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
@@ -145,12 +150,18 @@ class _V3AuthViewState extends State<V3AuthView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (!wide) ...[
-                            _BrandMark(color: p.text),
+                            _BrandMark(color: p.ink),
                             const SizedBox(height: 44),
                           ],
-                          Text('欢迎回来', style: Theme.of(context).textTheme.headlineLarge),
+                          Text(
+                            '欢迎回来',
+                            style: Theme.of(context).textTheme.headlineLarge,
+                          ),
                           const SizedBox(height: 8),
-                          Text('登录后继续连接你的 Litchi 网络。', style: Theme.of(context).textTheme.bodySmall),
+                          Text(
+                            '登录后继续连接你的 Litchi 网络。',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                           const SizedBox(height: 32),
                           _V3Field(
                             controller: _email,
@@ -165,18 +176,24 @@ class _V3AuthViewState extends State<V3AuthView> {
                             hint: '••••••••',
                             obscureText: _obscure,
                             trailing: IconButton(
-                              onPressed: () => setState(() => _obscure = !_obscure),
+                              onPressed: () =>
+                                  setState(() => _obscure = !_obscure),
                               icon: Icon(
-                                _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                _obscure
+                                    ? Icons.visibility_off_rounded
+                                    : Icons.visibility_rounded,
                                 size: 18,
-                                color: p.textMuted,
+                                color: p.inkMuted,
                               ),
                             ),
                             onSubmitted: (_) => _login(),
                           ),
                           if (_error != null) ...[
                             const SizedBox(height: 14),
-                            Text(_error!, style: TextStyle(color: p.danger, fontSize: 12)),
+                            Text(
+                              _error!,
+                              style: TextStyle(color: p.danger, fontSize: 12),
+                            ),
                           ],
                           const SizedBox(height: 24),
                           SizedBox(
@@ -185,7 +202,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                             child: FilledButton(
                               onPressed: _busy ? null : _login,
                               style: FilledButton.styleFrom(
-                                backgroundColor: p.accent,
+                                backgroundColor: p.lychee,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
@@ -198,7 +215,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                           Text(
                             'V3 CLEAN VISUAL RESET',
                             style: TextStyle(
-                              color: p.textMuted,
+                              color: p.inkMuted,
                               fontSize: 10,
                               letterSpacing: 1.8,
                               fontWeight: FontWeight.w700,
@@ -236,10 +253,20 @@ class _BrandMark extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           alignment: Alignment.center,
-          child: const Text('L', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+          child: const Text(
+            'L',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+          ),
         ),
         const SizedBox(width: 10),
-        Text('LITCHI', style: TextStyle(color: color, fontWeight: FontWeight.w900, letterSpacing: 1.8)),
+        Text(
+          'LITCHI',
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.8,
+          ),
+        ),
       ],
     );
   }
@@ -270,7 +297,15 @@ class _V3Field extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: p.textMuted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+        Text(
+          label,
+          style: TextStyle(
+            color: p.inkMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.5,
+          ),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -281,11 +316,23 @@ class _V3Field extends StatelessWidget {
             hintText: hint,
             suffixIcon: trailing,
             filled: true,
-            fillColor: p.panel,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: p.border)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: p.border)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: p.accent, width: 1.5)),
+            fillColor: p.surface,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: p.line),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: p.line),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: p.lychee, width: 1.5),
+            ),
           ),
         ),
       ],
