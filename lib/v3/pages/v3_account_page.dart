@@ -352,6 +352,7 @@ class _FinancePanel extends StatelessWidget {
       trailing: controller.withdrawable > 0
           ? '佣金 $symbol${controller.withdrawable.toStringAsFixed(2)}'
           : null,
+      onTap: () => controller.goToPage(AppPage.wallet),
     );
   }
 }
@@ -383,6 +384,7 @@ class _MetricPanel extends StatelessWidget {
     required this.subtitle,
     required this.accent,
     this.trailing,
+    this.onTap,
   });
 
   final String eyebrow;
@@ -391,10 +393,16 @@ class _MetricPanel extends StatelessWidget {
   final Color accent;
   final String? trailing;
 
+  /// Turns the whole card into a target. Only the wallet card sets it: the card
+  /// reports a balance the user can act on, so a card that reads 钱包 and does
+  /// nothing when tapped is a dead end — 钱包 was otherwise reachable only by
+  /// finding its row in the hub below.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Container(
+    final card = Container(
       height: 128,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -455,6 +463,15 @@ class _MetricPanel extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+    if (onTap == null) return card;
+    return Semantics(
+      button: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: card,
       ),
     );
   }

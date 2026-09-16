@@ -212,6 +212,31 @@ void main() {
     });
   });
 
+  // The balance card reports a figure the user can act on, so it reads as
+  // something to tap. It was inert, leaving the hub row below as the only way
+  // to reach 钱包 from the page that shows its balance.
+  testWidgets('the account balance card opens the wallet', (tester) async {
+    await _onPlatform(TargetPlatform.android, () async {
+      final controller = await _pumpShell(tester, _mobile);
+      controller.goToPage(AppPage.account);
+      await tester.pumpAndSettle();
+
+      final card = find.text('账户余额');
+      expect(
+        card,
+        findsOneWidget,
+        reason: 'the balance card must be on screen',
+      );
+      await tester.ensureVisible(card);
+      await tester.pumpAndSettle();
+      await tester.tap(card);
+      await tester.pumpAndSettle();
+
+      expect(controller.page, AppPage.wallet);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   // The highlight asserted above is only honest if the page also offers a way
   // back to the tab it claims the user is on. Five of the six hub pages had no
   // back control at all, so drilling into 邀请 told the user they were on 账户

@@ -265,3 +265,58 @@ class V3BackToAccount extends StatelessWidget {
     icon: const Icon(Icons.arrow_back_rounded),
   );
 }
+
+/// The Litchi mark.
+///
+/// The login screen and the desktop rail each drew their own: a pink square
+/// holding a letter "L" on one, a citrus square holding a glyph on the other.
+/// The pink was a hard-coded literal rather than a palette colour, so it stayed
+/// pink through a theme change while everything around it did not — and two
+/// marks for one product is not a mark.
+class V3BrandMark extends StatelessWidget {
+  const V3BrandMark({
+    super.key,
+    this.boxSize = 30,
+    this.labelColor,
+    this.labelSize = 15,
+  });
+
+  final double boxSize;
+  final Color? labelColor;
+  final double labelSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: boxSize,
+          height: boxSize,
+          decoration: BoxDecoration(
+            color: p.citrus,
+            // Kept proportional so the 30dp rail mark and the 34dp login mark
+            // stay the same shape rather than two rounded squares by accident.
+            borderRadius: BorderRadius.circular(boxSize / 3),
+          ),
+          child: Icon(
+            Icons.blur_on_rounded,
+            color: p.night,
+            size: boxSize * 2 / 3,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'LITCHI',
+          style: TextStyle(
+            color: labelColor ?? p.ink,
+            fontSize: labelSize,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.8,
+          ),
+        ),
+      ],
+    );
+  }
+}

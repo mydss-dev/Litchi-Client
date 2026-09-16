@@ -17,6 +17,7 @@ import '../pages/v3_tickets_page.dart';
 import '../pages/v3_traffic_page.dart';
 import '../pages/v3_wallet_page.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 import 'v3_nav.dart';
 
 bool get _isDesktopTarget =>
@@ -142,31 +143,9 @@ class _DesktopRail extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(2, 0, 2, 26),
-            child: Row(
-              children: [
-                Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: p.citrus,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.blur_on_rounded, color: p.night, size: 20),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'LITCHI',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.8,
-                  ),
-                ),
-              ],
-            ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(2, 0, 2, 26),
+            child: V3BrandMark(labelColor: Colors.white),
           ),
           const Padding(
             padding: EdgeInsets.only(left: 10, bottom: 10),

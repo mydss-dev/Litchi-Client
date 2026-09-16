@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3AuthView extends StatefulWidget {
   const V3AuthView({super.key});
@@ -71,7 +72,10 @@ class _V3AuthViewState extends State<V3AuthView> {
                       children: [
                         const Align(
                           alignment: Alignment.topLeft,
-                          child: _BrandMark(color: Colors.white),
+                          child: V3BrandMark(
+                            boxSize: 34,
+                            labelColor: Colors.white,
+                          ),
                         ),
                         Align(
                           alignment: Alignment.centerLeft,
@@ -94,7 +98,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                                 ),
                                 const SizedBox(height: 20),
                                 Text(
-                                  'Litchi V3 不再继承旧客户端的页面轮廓。连接、节点与网络状态会成为真正的产品中心。',
+                                  '选择线路、查看流量、确认连接状态，都在一个界面里完成。',
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.62),
                                     fontSize: 13,
@@ -150,7 +154,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (!wide) ...[
-                            _BrandMark(color: p.ink),
+                            V3BrandMark(boxSize: 34, labelColor: p.ink),
                             const SizedBox(height: 44),
                           ],
                           Text(
@@ -193,7 +197,10 @@ class _V3AuthViewState extends State<V3AuthView> {
                             const SizedBox(height: 14),
                             Text(
                               _error!,
-                              style: TextStyle(color: p.dangerInk, fontSize: 12),
+                              style: TextStyle(
+                                color: p.dangerInk,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                           const SizedBox(height: 24),
@@ -214,7 +221,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                           ),
                           const SizedBox(height: 18),
                           Text(
-                            'V3 CLEAN VISUAL RESET',
+                            '登录遇到问题？请联系你的服务商。',
                             style: TextStyle(
                               color: p.inkMuted,
                               fontSize: 10,
@@ -232,43 +239,6 @@ class _V3AuthViewState extends State<V3AuthView> {
           );
         },
       ),
-    );
-  }
-}
-
-class _BrandMark extends StatelessWidget {
-  const _BrandMark({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEE5E91),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'L',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'LITCHI',
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.8,
-          ),
-        ),
-      ],
     );
   }
 }
