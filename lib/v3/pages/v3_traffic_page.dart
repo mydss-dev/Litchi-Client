@@ -72,12 +72,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            compact ? 20 : 34,
-            26,
-            compact ? 20 : 34,
-            36,
-          ),
+          padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -89,7 +84,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'USAGE INTELLIGENCE',
+                          '使用概览',
                           style: TextStyle(
                             color: p.lychee,
                             fontSize: 10,
@@ -99,8 +94,8 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                         ),
                         const SizedBox(height: 7),
                         Text(
-                          '流量使用中心',
-                          style: Theme.of(context).textTheme.displayLarge,
+                          '流量',
+                          style: Theme.of(context).textTheme.displayMedium,
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -175,7 +170,6 @@ class _QuotaPanel extends StatelessWidget {
     final p = V3Palette.of(context);
     final traffic = controller.traffic;
     return Container(
-      constraints: const BoxConstraints(minHeight: 270),
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
         color: p.night,
@@ -187,7 +181,7 @@ class _QuotaPanel extends StatelessWidget {
           Row(
             children: [
               Text(
-                'SUBSCRIPTION QUOTA',
+                '套餐流量',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 9,
@@ -197,7 +191,7 @@ class _QuotaPanel extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${(usedRatio * 100).toStringAsFixed(0)}%',
+                '已用 ${(usedRatio * 100).toStringAsFixed(0)}%',
                 style: TextStyle(
                   color: p.aqua,
                   fontSize: 12,
@@ -206,7 +200,7 @@ class _QuotaPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: 18),
           Text(
             '${traffic.remainGb.toStringAsFixed(1)} GB',
             style: const TextStyle(
@@ -225,7 +219,7 @@ class _QuotaPanel extends StatelessWidget {
               fontSize: 11,
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 18),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
@@ -309,7 +303,6 @@ class _TimingPanel extends StatelessWidget {
     final expiry = controller.user.expiry.trim();
     final resetDays = _daysUntilReset(controller.resetDay);
     return Container(
-      constraints: const BoxConstraints(minHeight: 270),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: p.surface,
@@ -320,7 +313,7 @@ class _TimingPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'CYCLE CLOCK',
+            '使用与有效期',
             style: TextStyle(
               color: p.inkMuted,
               fontSize: 9,

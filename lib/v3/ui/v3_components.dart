@@ -1,6 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:country_flags/country_flags.dart';
 
 import '../theme/v3_palette.dart';
+
+class V3NodeFlag extends StatelessWidget {
+  const V3NodeFlag({super.key, required this.code});
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!RegExp(r'^[A-Za-z]{2}$').hasMatch(code.trim())) {
+      return const SizedBox(
+        width: 28,
+        height: 20,
+        child: Icon(Icons.public_rounded, size: 20),
+      );
+    }
+    return CountryFlag.fromCountryCode(
+      code.trim(),
+      theme: const ImageTheme(
+        width: 28,
+        height: 20,
+        shape: RoundedRectangle(3),
+      ),
+    );
+  }
+}
 
 class V3Panel extends StatelessWidget {
   const V3Panel({

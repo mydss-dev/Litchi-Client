@@ -43,17 +43,12 @@ class _V3AccountPageState extends State<V3AccountPage> {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 720;
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            compact ? 20 : 34,
-            26,
-            compact ? 20 : 34,
-            36,
-          ),
+          padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'ACCOUNT SIGNAL',
+                '账户中心',
                 style: TextStyle(
                   color: p.lychee,
                   fontSize: 10,
@@ -67,8 +62,8 @@ class _V3AccountPageState extends State<V3AccountPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      '你的 Litchi 身份',
-                      style: Theme.of(context).textTheme.displayLarge,
+                      '我的账户',
+                      style: Theme.of(context).textTheme.displayMedium,
                     ),
                   ),
                   IconButton(
@@ -189,7 +184,6 @@ class _IdentityPanel extends StatelessWidget {
         : user.avatarLetter.trim().substring(0, 1).toUpperCase();
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 230),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: p.night,
@@ -228,7 +222,7 @@ class _IdentityPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  controller.hasPlan ? 'ACTIVE' : 'NO PLAN',
+                  controller.hasPlan ? '套餐有效' : '暂无套餐',
                   style: TextStyle(
                     color: controller.hasPlan
                         ? p.success
@@ -279,7 +273,6 @@ class _PlanPanel extends StatelessWidget {
     final plan = controller.user.plan.trim();
     final expiry = controller.user.expiry.trim();
     return Container(
-      constraints: const BoxConstraints(minHeight: 230),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: p.surface,
@@ -290,7 +283,7 @@ class _PlanPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'CURRENT PLAN',
+            '当前套餐',
             style: TextStyle(
               color: p.inkMuted,
               fontSize: 9,
@@ -346,7 +339,7 @@ class _FinancePanel extends StatelessWidget {
     final symbol = controller.currencySymbol;
     final balance = controller.user.balance / 100;
     return _MetricPanel(
-      eyebrow: 'WALLET',
+      eyebrow: '钱包',
       title: '$symbol${balance.toStringAsFixed(2)}',
       subtitle: '账户余额',
       accent: p.lychee,
@@ -368,7 +361,7 @@ class _DevicePanel extends StatelessWidget {
     final alive = controller.aliveIp;
     final limit = controller.deviceLimit;
     return _MetricPanel(
-      eyebrow: 'DEVICE WINDOW',
+      eyebrow: '设备',
       title: alive == null ? '--' : '$alive',
       subtitle: limit == null ? '当前在线设备' : '在线设备 / 上限 $limit',
       accent: p.aqua,
@@ -492,7 +485,7 @@ class _PreferencesPanel extends StatelessWidget {
           Row(
             children: [
               Text(
-                'ACCOUNT AUTOMATION',
+                '账户偏好',
                 style: TextStyle(
                   color: p.inkMuted,
                   fontSize: 9,

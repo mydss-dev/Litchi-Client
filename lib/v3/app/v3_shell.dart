@@ -113,37 +113,37 @@ class _DesktopRail extends StatelessWidget {
         (
           page: AppPage.dashboard,
           icon: Icons.radar_rounded,
-          label: 'Control',
+          label: '连接',
           hint: 'overview',
         ),
         (
           page: AppPage.nodes,
           icon: Icons.hub_rounded,
-          label: 'Routes',
+          label: '节点',
           hint: 'nodes',
         ),
         (
           page: AppPage.shop,
           icon: Icons.shopping_bag_outlined,
-          label: 'Plans',
+          label: '套餐',
           hint: 'upgrade',
         ),
         (
           page: AppPage.traffic,
           icon: Icons.insights_rounded,
-          label: 'Pulse',
+          label: '流量',
           hint: 'usage',
         ),
         (
           page: AppPage.invite,
           icon: Icons.auto_awesome_rounded,
-          label: 'Circle',
+          label: '邀请',
           hint: 'invite',
         ),
         (
           page: AppPage.tickets,
           icon: Icons.forum_outlined,
-          label: 'Help',
+          label: '工单',
           hint: 'support',
         ),
       ];
@@ -153,7 +153,7 @@ class _DesktopRail extends StatelessWidget {
     final p = V3Palette.of(context);
     final user = controller.user;
     return Container(
-      width: 232,
+      width: 184,
       margin: const EdgeInsets.fromLTRB(18, 18, 14, 18),
       padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
       decoration: BoxDecoration(
@@ -164,7 +164,7 @@ class _DesktopRail extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 8, 26),
+            padding: const EdgeInsets.fromLTRB(2, 0, 2, 26),
             child: Row(
               children: [
                 Container(
@@ -192,7 +192,7 @@ class _DesktopRail extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.only(left: 10, bottom: 10),
             child: Text(
-              'WORKSPACE',
+              '工作空间',
               style: TextStyle(
                 color: Color(0xFF8E9A95),
                 fontSize: 10,
@@ -213,7 +213,7 @@ class _DesktopRail extends StatelessWidget {
             item: (
               page: AppPage.settings,
               icon: Icons.tune_rounded,
-              label: 'System',
+              label: '设置',
               hint: 'settings',
             ),
             selected: controller.page == AppPage.settings,
@@ -259,7 +259,11 @@ class _DesktopRail extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          user.plan.isEmpty ? 'No plan' : user.plan,
+                          controller.hasPlan
+                              ? (user.plan.trim().isEmpty ? '已激活套餐' : user.plan)
+                              : '暂无套餐',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Color(0xFF9BA8A3),
                             fontSize: 10,
@@ -306,14 +310,16 @@ class _RailItem extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? p.lychee : Colors.transparent,
+            color: selected
+                ? p.lychee.withValues(alpha: 0.18)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
             children: [
               Icon(
                 item.icon,
-                color: selected ? Colors.white : const Color(0xFF9BA8A3),
+                color: selected ? p.lychee : const Color(0xFF9BA8A3),
                 size: 19,
               ),
               const SizedBox(width: 12),
@@ -329,15 +335,6 @@ class _RailItem extends StatelessWidget {
                             : const Color(0xFFE3E9E5),
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      item.hint,
-                      style: TextStyle(
-                        color: selected
-                            ? Colors.white.withValues(alpha: 0.7)
-                            : const Color(0xFF7C8983),
-                        fontSize: 9,
                       ),
                     ),
                   ],
@@ -368,14 +365,17 @@ class _MobileNavigation extends StatelessWidget {
     Icons.shopping_bag_outlined,
     Icons.person_outline_rounded,
   ];
-  static const _labels = ['Control', 'Routes', 'Plans', 'Account'];
+  static const _labels = ['连接', '节点', '套餐', '账户'];
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final selected = _pages
-        .indexOf(controller.page)
-        .clamp(0, _pages.length - 1);
+    final selected = switch (controller.page) {
+      AppPage.dashboard => 0,
+      AppPage.nodes => 1,
+      AppPage.shop => 2,
+      _ => 3,
+    };
     return NavigationBar(
       height: 72,
       backgroundColor: p.surface,

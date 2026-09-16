@@ -29,7 +29,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 700;
-        final horizontalPadding = compact ? 20.0 : 34.0;
+        final horizontalPadding = 24.0;
 
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
@@ -42,10 +42,9 @@ class _V3ShopPageState extends State<V3ShopPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               V3PageHeader(
-                kicker: 'Plan library',
-                title: 'Build your access',
-                description:
-                    'Choose capacity now. Billing period and discounts belong to checkout.',
+                kicker: '套餐商城',
+                title: '选择套餐',
+                description: '选择适合的流量额度，确认订单时可调整付款周期。',
                 trailing: compact
                     ? null
                     : V3StatusBadge(
@@ -57,6 +56,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
               const SizedBox(height: 20),
               _CurrentPlanBadge(
                 plan: controller.user.plan,
+                hasPlan: controller.hasPlan,
                 remainGb: controller.traffic.remainGb,
               ),
               const SizedBox(height: 14),
@@ -126,10 +126,10 @@ class _CategoryDeck extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     const items = <(PlanCategory?, String, String)>[
-      (null, 'All', '全部'),
-      (PlanCategory.recurring, 'Cycle', '周期'),
-      (PlanCategory.oneTime, 'Forever', '不限时'),
-      (PlanCategory.dataPack, 'Boost', '流量包'),
+      (null, '全部', '全部'),
+      (PlanCategory.recurring, '周期', '周期'),
+      (PlanCategory.oneTime, '不限时', '不限时'),
+      (PlanCategory.dataPack, '流量包', '流量包'),
     ];
 
     return V3Panel(
@@ -159,15 +159,6 @@ class _CategoryDeck extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      Text(
-                        item.$3,
-                        style: TextStyle(
-                          color: selected == item.$1
-                              ? Colors.white.withValues(alpha: 0.7)
-                              : p.inkMuted,
-                          fontSize: 9,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -180,9 +171,14 @@ class _CategoryDeck extends StatelessWidget {
 }
 
 class _CurrentPlanBadge extends StatelessWidget {
-  const _CurrentPlanBadge({required this.plan, required this.remainGb});
+  const _CurrentPlanBadge({
+    required this.plan,
+    required this.remainGb,
+    required this.hasPlan,
+  });
 
   final String plan;
+  final bool hasPlan;
   final double remainGb;
 
   @override
@@ -196,7 +192,10 @@ class _CurrentPlanBadge extends StatelessWidget {
           Container(
             width: 9,
             height: 9,
-            decoration: BoxDecoration(color: p.success, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: hasPlan ? p.success : p.inkMuted,
+              shape: BoxShape.circle,
+            ),
           ),
           const SizedBox(width: 10),
           Flexible(
@@ -204,7 +203,9 @@ class _CurrentPlanBadge extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  plan.trim().isEmpty ? '暂无激活套餐' : plan.trim(),
+                  hasPlan
+                      ? (plan.trim().isEmpty ? '已激活套餐' : plan.trim())
+                      : '暂无套餐',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -308,14 +309,15 @@ class _PlanCard extends StatelessWidget {
             ),
             Text(
               plan.category == PlanCategory.recurring
-                  ? 'from / period at checkout'
-                  : 'one-time',
+                  ? _cycleLabel(cycle)
+                  : '一次性付款',
               style: TextStyle(color: p.inkMuted, fontSize: 9),
             ),
           ],
         );
         final action = V3ActionButton(
-          label: plan.soldOut ? 'Sold out' : 'Choose',
+          label: plan.soldOut ? '已售罄' : '选择套餐',
+          secondary: !emphasis,
           icon: Icons.arrow_forward_rounded,
           onPressed: plan.soldOut || price == null ? null : onBuy,
         );
@@ -331,9 +333,13 @@ class _PlanCard extends StatelessWidget {
                   children: [
                     identity,
                     const SizedBox(height: 14),
-                    priceBlock,
-                    const SizedBox(height: 12),
-                    SizedBox(width: double.infinity, child: action),
+                    Row(
+                      children: [
+                        Expanded(child: priceBlock),
+                        const SizedBox(width: 12),
+                        action,
+                      ],
+                    ),
                   ],
                 )
               : Row(
@@ -1105,7 +1111,7 @@ String _cycleLabel(BillingCycle cycle) => switch (cycle) {
 };
 
 String _categoryLabel(PlanCategory category) => switch (category) {
-  PlanCategory.recurring => 'RECURRING',
-  PlanCategory.oneTime => 'LIFETIME',
-  PlanCategory.dataPack => 'DATA BOOST',
+  PlanCategory.recurring => '周期套餐',
+  PlanCategory.oneTime => '不限时套餐',
+  PlanCategory.dataPack => '流量包',
 };

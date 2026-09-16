@@ -84,12 +84,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            compact ? 20 : 34,
-            26,
-            compact ? 20 : 34,
-            36,
-          ),
+          padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -101,7 +96,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'SUPPORT INBOX',
+                          '帮助与支持',
                           style: TextStyle(
                             color: p.lychee,
                             fontSize: 10,
@@ -112,7 +107,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                         const SizedBox(height: 7),
                         Text(
                           '支持工单',
-                          style: Theme.of(context).textTheme.displayLarge,
+                          style: Theme.of(context).textTheme.displayMedium,
                         ),
                         const SizedBox(height: 8),
                         Text(

@@ -140,18 +140,20 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (_settings.proxyPort != old) unawaited(_reloadCoreConfig());
   }
 
-  void setKillSwitch(bool v) {
+  Future<String?> setKillSwitch(bool v) async {
     _settings.setKillSwitch(v);
-    unawaited(_applyKillSwitchSetting(v));
+    return _applyKillSwitchSetting(v);
   }
 
-  Future<void> _applyKillSwitchSetting(bool enabled) async {
+  Future<String?> _applyKillSwitchSetting(bool enabled) async {
     final applied = await _core.setKillSwitchEnabled(enabled);
     if (!applied && enabled) {
       _settings.setKillSwitch(false);
       _startupMessage = CoreErrorMessageService.tunKillSwitchUnavailable;
       notifyListeners();
+      return CoreErrorMessageService.tunKillSwitchUnavailable;
     }
+    return null;
   }
 
   Future<String?> setProxyMode(ProxyMode v) async {
@@ -171,16 +173,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     return null;
   }
 
-  void setNetworkMode(NetworkMode v) {
+  Future<String?> setNetworkMode(NetworkMode v) async {
     final old = _settings.networkMode;
     _settings.setNetworkMode(v);
-    if (_settings.networkMode != old) unawaited(_reloadCoreConfig());
+    if (_settings.networkMode != v) return '当前平台不支持此网络模式';
+    if (_settings.networkMode != old) return _reloadCoreConfig();
+    return null;
   }
 
-  void setDnsMode(DnsMode v) {
+  Future<String?> setDnsMode(DnsMode v) async {
     final old = _settings.dnsMode;
     _settings.setDnsMode(v);
-    if (_settings.dnsMode != old) unawaited(_reloadCoreConfig());
+    if (_settings.dnsMode != old) return _reloadCoreConfig();
+    return null;
   }
 
   ConnectionStatus get connectionStatus => _core.connectionStatus;
@@ -1065,22 +1070,23 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     await _testLatenciesInBackground();
   }
 
-  Future<void> _reloadCoreConfig({bool startIfStopped = false}) async {
-    if (!supportsCoreConnection) return;
-    if (_nodes.isEmpty) return;
-    if (!startIfStopped && !coreProcessRunning) return;
+  Future<String?> _reloadCoreConfig({bool startIfStopped = false}) async {
+    if (!supportsCoreConnection) return null;
+    if (_nodes.isEmpty) return null;
+    if (!startIfStopped && !coreProcessRunning) return null;
 
     final error = await _core.reloadCore(_buildConnectionRequest());
     if (error != null && error.isNotEmpty) {
       _startupMessage = error;
       notifyListeners();
-      return;
+      return error;
     }
 
     if (coreProcessRunning) {
       await Future.delayed(const Duration(milliseconds: 1000));
       unawaited(_testLatenciesInBackground());
     }
+    return null;
   }
 
   Future<bool> testLatencies() async {

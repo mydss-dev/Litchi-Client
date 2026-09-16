@@ -27,21 +27,20 @@ class V3DashboardPage extends StatelessWidget {
     };
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(30, 28, 30, 34),
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: 'Control room',
-            title: 'Your private network',
-            description:
-                'One clear place to connect, route, and understand the session.',
+            kicker: '连接中心',
+            title: '连接',
+            description: '选择节点与代理模式，开始连接。',
             trailing: V3StatusBadge(
               label: _statusLabel(status),
               color: statusColor,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           _ConnectionWorkspace(
             controller: controller,
             connected: connected,
@@ -77,24 +76,19 @@ class _ConnectionWorkspace extends StatelessWidget {
   Widget build(BuildContext context) {
     final node = controller.currentNode;
     final title = switch (controller.connectionStatus) {
-      ConnectionStatus.connected => 'Protected and online',
-      ConnectionStatus.connecting => 'Finding a clear route',
-      ConnectionStatus.disconnecting => 'Closing the session',
-      ConnectionStatus.error => 'Connection needs attention',
-      ConnectionStatus.disconnected => 'Ready when you are',
+      ConnectionStatus.connected => '连接已建立',
+      ConnectionStatus.connecting => '正在连接',
+      ConnectionStatus.disconnecting => '正在断开',
+      ConnectionStatus.error => '连接遇到问题',
+      ConnectionStatus.disconnected => '准备连接',
     };
     final detail = switch (controller.connectionStatus) {
-      ConnectionStatus.connected =>
-        'All selected traffic is flowing through Litchi.',
-      ConnectionStatus.connecting =>
-        'The local core is negotiating your route.',
-      ConnectionStatus.disconnecting => 'Finishing outstanding network work.',
+      ConnectionStatus.connected => '流量将按当前代理模式处理。',
+      ConnectionStatus.connecting => '正在建立连接，请稍候。',
+      ConnectionStatus.disconnecting => '正在结束当前连接。',
       ConnectionStatus.error =>
-        controller.coreError.isEmpty
-            ? 'Try reconnecting or choose another route.'
-            : controller.coreError,
-      ConnectionStatus.disconnected =>
-        'Start a session to protect this device.',
+        controller.coreError.isEmpty ? '请重试连接，或切换其他节点。' : controller.coreError,
+      ConnectionStatus.disconnected => '点击电源按钮，连接当前节点。',
     };
     return V3Panel(
       tone: V3PanelTone.ink,
@@ -102,7 +96,7 @@ class _ConnectionWorkspace extends StatelessWidget {
       radius: 24,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final stacked = constraints.maxWidth < 680;
+          final stacked = constraints.maxWidth < 500;
           final intro = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -118,7 +112,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'SESSION / 01',
+                    '连接状态',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.55),
                       fontSize: 10,
@@ -133,7 +127,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                 title,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 28,
+                  fontSize: 24,
                   height: 1.05,
                   fontWeight: FontWeight.w800,
                 ),
@@ -150,7 +144,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   _ConnectionOrb(
@@ -159,38 +153,39 @@ class _ConnectionWorkspace extends StatelessWidget {
                     connecting: connecting,
                   ),
                   const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        connected
-                            ? 'CONNECTED'
-                            : connecting
-                            ? 'WORKING'
-                            : 'CONNECT',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.3,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          connected
+                              ? '断开连接'
+                              : connecting
+                              ? '处理中'
+                              : '开始连接',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.3,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _duration(controller.connectedDuration),
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: 12,
+                        const SizedBox(height: 4),
+                        Text(
+                          _duration(controller.connectedDuration),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
             ],
           );
           final route = Container(
-            constraints: const BoxConstraints(minWidth: 220),
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
@@ -201,7 +196,7 @@ class _ConnectionWorkspace extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'CURRENT ROUTE',
+                  '当前节点',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 10,
@@ -209,21 +204,16 @@ class _ConnectionWorkspace extends StatelessWidget {
                     letterSpacing: 1.3,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Row(
                   children: [
-                    Text(
-                      node.flag.isEmpty ? '◎' : node.flag,
-                      style: const TextStyle(fontSize: 28),
-                    ),
+                    V3NodeFlag(code: node.code),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         controller.autoSelected
-                            ? 'Litchi Auto'
-                            : (node.name.isEmpty
-                                  ? 'No route selected'
-                                  : node.name),
+                            ? '自动选择'
+                            : (node.name.isEmpty ? '尚未选择节点' : node.name),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -236,16 +226,24 @@ class _ConnectionWorkspace extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     _DarkMeta(
                       label: node.latency > 0 && node.latency < 9999
                           ? '${node.latency} ms'
-                          : '-- ms',
+                          : '未测速',
                     ),
-                    const SizedBox(width: 8),
                     _DarkMeta(label: controller.networkMode.label),
                   ],
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => controller.goToPage(AppPage.nodes),
+                  style: TextButton.styleFrom(foregroundColor: Colors.white),
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                  label: const Text('切换节点'),
                 ),
               ],
             ),
@@ -253,14 +251,14 @@ class _ConnectionWorkspace extends StatelessWidget {
           return stacked
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [intro, const SizedBox(height: 24), route],
+                  children: [intro, const SizedBox(height: 16), route],
                 )
               : Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(child: intro),
                     const SizedBox(width: 22),
-                    route,
+                    Expanded(child: route),
                   ],
                 );
         },
@@ -315,7 +313,7 @@ class _ConnectionOrb extends StatelessWidget {
                     connected
                         ? Icons.stop_rounded
                         : Icons.power_settings_new_rounded,
-                    color: connected ? p.ink : Colors.white,
+                    color: connected ? p.night : Colors.white,
                     size: 30,
                   ),
           ),
@@ -402,19 +400,19 @@ class _SessionMetrics extends StatelessWidget {
       final compact = constraints.maxWidth < 430;
       final metrics = [
         _Metric(
-          label: 'DOWNLOAD',
+          label: '下载速度',
           value: _speed(controller.downBps),
           icon: Icons.arrow_downward_rounded,
           compact: compact,
         ),
         _Metric(
-          label: 'UPLOAD',
+          label: '上传速度',
           value: _speed(controller.upBps),
           icon: Icons.arrow_upward_rounded,
           compact: compact,
         ),
         _Metric(
-          label: 'DURATION',
+          label: '连接时长',
           value: _duration(controller.connectedDuration),
           icon: Icons.schedule_rounded,
           compact: compact,
@@ -525,23 +523,23 @@ class _PlanSummary extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'PLAN / ${user.plan.isEmpty ? 'NO PLAN' : user.plan.toUpperCase()}',
+                      controller.hasPlan
+                          ? (user.plan.trim().isEmpty ? '已激活套餐' : user.plan)
+                          : '暂无套餐',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                     const SizedBox(height: 5),
                     Text(
                       total > 0
-                          ? '${controller.traffic.remainGb.toStringAsFixed(1)} GB remaining'
-                          : 'No traffic data yet',
+                          ? '剩余 ${controller.traffic.remainGb.toStringAsFixed(1)} GB'
+                          : '暂无流量数据',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ],
                 ),
               ),
               Text(
-                user.expiry.isEmpty
-                    ? 'No expiry date'
-                    : 'Renews ${user.expiry}',
+                user.expiry.isEmpty ? '未提供到期时间' : '到期 ${user.expiry}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -561,8 +559,8 @@ class _PlanSummary extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               total > 0
-                  ? '${used.toStringAsFixed(1)} GB used of ${total.toStringAsFixed(1)} GB'
-                  : 'Choose a plan to start routing',
+                  ? '已用 ${used.toStringAsFixed(1)} GB / 共 ${total.toStringAsFixed(1)} GB'
+                  : '选择套餐后开始使用',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),
@@ -596,22 +594,22 @@ class _DarkMeta extends StatelessWidget {
 }
 
 String _statusLabel(ConnectionStatus status) => switch (status) {
-  ConnectionStatus.connected => 'Online',
-  ConnectionStatus.connecting || ConnectionStatus.disconnecting => 'Working',
-  ConnectionStatus.error => 'Attention',
-  ConnectionStatus.disconnected => 'Standby',
+  ConnectionStatus.connected => '已连接',
+  ConnectionStatus.connecting || ConnectionStatus.disconnecting => '处理中',
+  ConnectionStatus.error => '连接异常',
+  ConnectionStatus.disconnected => '未连接',
 };
 
 String _modeTitle(ProxyMode mode) => switch (mode) {
-  ProxyMode.rule => 'Smart',
-  ProxyMode.global => 'Global',
-  ProxyMode.direct => 'Direct',
+  ProxyMode.rule => '规则',
+  ProxyMode.global => '全局',
+  ProxyMode.direct => '直连',
 };
 
 String _modeHint(ProxyMode mode) => switch (mode) {
-  ProxyMode.rule => 'Rule based',
-  ProxyMode.global => 'Proxy all',
-  ProxyMode.direct => 'Bypass all',
+  ProxyMode.rule => '按规则分流',
+  ProxyMode.global => '全部使用代理',
+  ProxyMode.direct => '全部直接连接',
 };
 
 String _speed(int value) {

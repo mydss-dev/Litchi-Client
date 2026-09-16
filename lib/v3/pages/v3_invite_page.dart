@@ -70,12 +70,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
         return SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            compact ? 20 : 34,
-            26,
-            compact ? 20 : 34,
-            36,
-          ),
+          padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -87,7 +82,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'REFERRAL SIGNAL',
+                          '邀请奖励',
                           style: TextStyle(
                             color: p.lychee,
                             fontSize: 10,
@@ -97,8 +92,8 @@ class _V3InvitePageState extends State<V3InvitePage> {
                         ),
                         const SizedBox(height: 7),
                         Text(
-                          '邀请朋友，一起升级',
-                          style: Theme.of(context).textTheme.displayLarge,
+                          '邀请好友',
+                          style: Theme.of(context).textTheme.displayMedium,
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -223,7 +218,6 @@ class _InviteHero extends StatelessWidget {
     final p = V3Palette.of(context);
     final hasCode = code.trim().isNotEmpty || link.trim().isNotEmpty;
     return Container(
-      constraints: const BoxConstraints(minHeight: 340),
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
         color: p.night,
@@ -235,7 +229,7 @@ class _InviteHero extends StatelessWidget {
           Row(
             children: [
               Text(
-                'INVITE PASS',
+                '分享邀请',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 9,
@@ -246,7 +240,7 @@ class _InviteHero extends StatelessWidget {
               const Spacer(),
               if (total > 0)
                 Text(
-                  '${currentIndex + 1} / $total',
+                  '第 ${currentIndex + 1} 个，共 $total 个',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.42),
                     fontSize: 10,
@@ -322,7 +316,7 @@ class _InviteHero extends StatelessWidget {
                 onPressed: creating ? null : onCreate,
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: p.ink,
+                  foregroundColor: p.night,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -381,7 +375,6 @@ class _InviteStats extends StatelessWidget {
     final p = V3Palette.of(context);
     final symbol = controller.currencySymbol;
     return Container(
-      constraints: const BoxConstraints(minHeight: 340),
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: p.surface,
@@ -392,7 +385,7 @@ class _InviteStats extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'REFERRAL STATS',
+            '邀请统计',
             style: TextStyle(
               color: p.inkMuted,
               fontSize: 9,
@@ -530,7 +523,7 @@ class _ReferralLedger extends StatelessWidget {
           Row(
             children: [
               Text(
-                'RECENT REFERRALS',
+                '最近邀请',
                 style: TextStyle(
                   color: p.inkMuted,
                   fontSize: 9,

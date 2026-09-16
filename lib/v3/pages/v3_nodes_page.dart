@@ -16,6 +16,38 @@ class _V3NodesPageState extends State<V3NodesPage> {
   String _query = '';
   NodeRegion? _region;
   bool _testing = false;
+  String? _pending;
+  String? _feedback;
+  bool _failed = false;
+
+  Future<void> _run(
+    String id,
+    Future<String?> Function() action,
+    String success,
+  ) async {
+    if (_pending != null || _testing) return;
+    setState(() {
+      _pending = id;
+      _feedback = null;
+    });
+    try {
+      final error = await action();
+      if (!mounted) return;
+      setState(() {
+        _failed = error != null;
+        _feedback = error ?? success;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _failed = true;
+          _feedback = '操作失败，请检查网络后重试。';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _pending = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,26 +62,39 @@ class _V3NodesPageState extends State<V3NodesPage> {
       return matchesQuery && (_region == null || node.region == _region);
     }).toList();
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(30, 28, 30, 34),
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: 'Route library',
-            title: 'Choose your route',
-            description:
-                'Fast, transparent node selection with one calm default.',
+            kicker: '节点列表',
+            title: '选择节点',
+            description: '选择可用节点，或交给自动选择。',
             trailing: V3ActionButton(
-              label: _testing ? 'Testing' : 'Test all',
+              label: _testing ? '测速中' : '全部测速',
               icon: Icons.speed_rounded,
               busy: _testing,
               secondary: true,
-              onPressed: _testing || controller.nodes.isEmpty
+              onPressed:
+                  _testing || _pending != null || controller.nodes.isEmpty
                   ? null
                   : () async {
                       setState(() => _testing = true);
                       try {
-                        await controller.testLatencies();
+                        final ok = await controller.testLatencies();
+                        if (mounted) {
+                          setState(() {
+                            _failed = !ok;
+                            _feedback = ok ? '测速完成' : '测速未完成，请检查连接后重试。';
+                          });
+                        }
+                      } catch (_) {
+                        if (mounted) {
+                          setState(() {
+                            _failed = true;
+                            _feedback = '测速失败，请重试。';
+                          });
+                        }
                       } finally {
                         if (mounted) setState(() => _testing = false);
                       }
@@ -60,26 +105,65 @@ class _V3NodesPageState extends State<V3NodesPage> {
           TextField(
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search_rounded),
-              hintText: 'Search country, city, or code',
+              hintText: '搜索国家、城市或节点名称',
             ),
             onChanged: (value) => setState(() => _query = value),
           ),
           const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _pending != null
+                      ? '正在处理，请稍候…'
+                      : _feedback ?? '已选节点不代表已经连接，请在连接页确认状态。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _failed && _pending == null
+                        ? V3Palette.of(context).danger
+                        : V3Palette.of(context).inkMuted,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _pending != null || _testing
+                    ? null
+                    : () => _run('refresh', () async {
+                        await controller.refreshData();
+                        return controller.dataLoadError;
+                      }, '节点已刷新'),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('刷新'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
               final desktop = constraints.maxWidth >= 720;
               final list = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _AutoRouteRow(controller: controller),
+                  _AutoRouteRow(
+                    controller: controller,
+                    busy: _pending == 'auto',
+                    onTap:
+                        _pending != null || _testing || controller.autoSelected
+                        ? null
+                        : () => _run(
+                            'auto',
+                            controller.selectAuto,
+                            '已选择自动节点，请在连接页确认连接状态。',
+                          ),
+                  ),
                   const SizedBox(height: 12),
                   if (nodes.isEmpty)
                     V3Panel(
                       padding: const EdgeInsets.all(28),
                       child: Text(
                         controller.nodes.isEmpty
-                            ? 'No routes available yet.'
-                            : 'No routes match this search.',
+                            ? '暂无可用节点，请刷新订阅后重试。'
+                            : '没有匹配的节点，请调整搜索或地区筛选。',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     )
@@ -87,7 +171,22 @@ class _V3NodesPageState extends State<V3NodesPage> {
                     ...nodes.map(
                       (node) => Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: _NodeRow(node: node, controller: controller),
+                        child: _NodeRow(
+                          node: node,
+                          controller: controller,
+                          busy: _pending == node.id,
+                          onTap:
+                              _pending != null ||
+                                  _testing ||
+                                  (!controller.autoSelected &&
+                                      controller.currentNode.id == node.id)
+                              ? null
+                              : () => _run(
+                                  node.id,
+                                  () => controller.setCurrentNode(node),
+                                  '已选择 ${node.name}，请在连接页确认连接状态。',
+                                ),
+                        ),
                       ),
                     ),
                 ],
@@ -99,6 +198,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
                     _RegionRail(
                       selected: _region,
                       onSelected: (value) => setState(() => _region = value),
+                      horizontal: true,
                     ),
                     const SizedBox(height: 14),
                     list,
@@ -128,18 +228,42 @@ class _V3NodesPageState extends State<V3NodesPage> {
 }
 
 class _RegionRail extends StatelessWidget {
-  const _RegionRail({required this.selected, required this.onSelected});
+  const _RegionRail({
+    required this.selected,
+    required this.onSelected,
+    this.horizontal = false,
+  });
 
   final NodeRegion? selected;
   final ValueChanged<NodeRegion?> onSelected;
+  final bool horizontal;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final items = <(NodeRegion?, String)>[
-      (null, 'All routes'),
+      (null, '全部'),
       ...NodeRegion.values.map((region) => (region, _regionLabel(region))),
     ];
+    if (horizontal) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final item in items)
+            ChoiceChip(
+              label: Text(item.$2),
+              selected: selected == item.$1,
+              onSelected: (_) => onSelected(item.$1),
+              selectedColor: p.lycheeSoft,
+              labelStyle: TextStyle(
+                color: selected == item.$1 ? p.lychee : p.ink,
+              ),
+              showCheckmark: false,
+            ),
+        ],
+      );
+    }
     return V3Panel(
       padding: const EdgeInsets.all(10),
       tone: V3PanelTone.raised,
@@ -148,7 +272,7 @@ class _RegionRail extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(8, 4, 8, 8),
-            child: V3SectionLabel('Regions'),
+            child: V3SectionLabel('地区'),
           ),
           ...items.map((item) {
             final active = item.$1 == selected;
@@ -185,9 +309,15 @@ class _RegionRail extends StatelessWidget {
 }
 
 class _AutoRouteRow extends StatelessWidget {
-  const _AutoRouteRow({required this.controller});
+  const _AutoRouteRow({
+    required this.controller,
+    required this.onTap,
+    required this.busy,
+  });
 
   final AppController controller;
+  final VoidCallback? onTap;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -195,14 +325,7 @@ class _AutoRouteRow extends StatelessWidget {
     final active = controller.autoSelected;
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () async {
-        final error = await controller.selectAuto();
-        if (error != null && context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(error)));
-        }
-      },
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -232,7 +355,7 @@ class _AutoRouteRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Litchi Auto',
+                    '自动选择',
                     style: TextStyle(
                       color: active ? Colors.white : p.ink,
                       fontSize: 14,
@@ -241,7 +364,7 @@ class _AutoRouteRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Best available route, selected automatically',
+                    '自动选择可用节点',
                     style: TextStyle(
                       color: active
                           ? Colors.white.withValues(alpha: 0.55)
@@ -252,7 +375,13 @@ class _AutoRouteRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (active)
+            if (busy)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else if (active)
               const Icon(
                 Icons.check_circle_rounded,
                 color: Colors.white,
@@ -266,10 +395,17 @@ class _AutoRouteRow extends StatelessWidget {
 }
 
 class _NodeRow extends StatelessWidget {
-  const _NodeRow({required this.node, required this.controller});
+  const _NodeRow({
+    required this.node,
+    required this.controller,
+    required this.onTap,
+    required this.busy,
+  });
 
   final NodeModel node;
   final AppController controller;
+  final VoidCallback? onTap;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -283,14 +419,7 @@ class _NodeRow extends StatelessWidget {
         : p.inkMuted;
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () async {
-        final error = await controller.setCurrentNode(node);
-        if (error != null && context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(error)));
-        }
-      },
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -301,10 +430,7 @@ class _NodeRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(
-              node.flag.isEmpty ? '◎' : node.flag,
-              style: const TextStyle(fontSize: 22),
-            ),
+            V3NodeFlag(code: node.code),
             const SizedBox(width: 13),
             Expanded(
               child: Column(
@@ -344,13 +470,20 @@ class _NodeRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Icon(
-              selected
-                  ? Icons.check_circle_rounded
-                  : Icons.chevron_right_rounded,
-              color: selected ? p.lychee : p.inkMuted,
-              size: 19,
-            ),
+            if (busy)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.chevron_right_rounded,
+                color: selected ? p.lychee : p.inkMuted,
+                size: 19,
+              ),
           ],
         ),
       ),
@@ -359,15 +492,15 @@ class _NodeRow extends StatelessWidget {
 }
 
 String _regionLabel(NodeRegion region) => switch (region) {
-  NodeRegion.asia => 'Asia',
-  NodeRegion.europe => 'Europe',
-  NodeRegion.america => 'Americas',
-  NodeRegion.oceania => 'Oceania',
+  NodeRegion.asia => '亚洲',
+  NodeRegion.europe => '欧洲',
+  NodeRegion.america => '美洲',
+  NodeRegion.oceania => '大洋洲',
 };
 
 String _latency(int value) {
-  if (value == -1) return 'TEST';
-  if (value <= 0) return '--';
-  if (value >= 9999) return 'TIMEOUT';
+  if (value == -1) return '测速中';
+  if (value <= 0) return '未测速';
+  if (value >= 9999) return '超时';
   return '${value}ms';
 }

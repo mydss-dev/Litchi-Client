@@ -140,7 +140,7 @@ class V3Theme {
         ),
         bodyLarge: TextStyle(fontSize: 14, height: 1.45, color: p.ink),
         bodyMedium: TextStyle(fontSize: 13, height: 1.4, color: p.ink),
-        bodySmall: TextStyle(fontSize: 11, height: 1.35, color: p.inkMuted),
+        bodySmall: TextStyle(fontSize: 12, height: 1.4, color: p.inkMuted),
         labelLarge: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
