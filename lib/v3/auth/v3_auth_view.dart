@@ -64,18 +64,16 @@ class _V3AuthViewState extends State<V3AuthView> {
                   child: Container(
                     margin: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: p.night,
+                      color: p.hero,
                       borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: p.line),
                     ),
                     padding: const EdgeInsets.all(34),
                     child: Stack(
                       children: [
                         const Align(
                           alignment: Alignment.topLeft,
-                          child: V3BrandMark(
-                            boxSize: 34,
-                            labelColor: Colors.white,
-                          ),
+                          child: V3BrandMark(boxSize: 34),
                         ),
                         Align(
                           alignment: Alignment.centerLeft,
@@ -91,7 +89,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                                       .textTheme
                                       .displayLarge
                                       ?.copyWith(
-                                        color: Colors.white,
+                                        color: p.ink,
                                         fontSize: 42,
                                         height: 0.98,
                                       ),
@@ -100,7 +98,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                                 Text(
                                   '选择线路、查看流量、确认连接状态，都在一个界面里完成。',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.62),
+                                    color: p.ink.withValues(alpha: 0.62),
                                     fontSize: 13,
                                     height: 1.55,
                                   ),
@@ -131,7 +129,15 @@ class _V3AuthViewState extends State<V3AuthView> {
                             width: 12,
                             height: 82,
                             decoration: BoxDecoration(
-                              color: p.aqua,
+                              // Aqua is tuned against the near-black the brand
+                              // block used to be; on the light one it lands at
+                              // 1.5:1 and reads as a smudge. The brand ink
+                              // carries the same accent shape there.
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? p.aqua
+                                  : p.lycheeInk,
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),

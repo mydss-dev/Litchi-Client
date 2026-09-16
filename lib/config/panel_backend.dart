@@ -28,6 +28,7 @@ class PanelFeatures {
     required this.orders,
     required this.traffic,
     required this.tickets,
+    required this.giftCard,
     required this.onlineDevices,
   });
 
@@ -37,6 +38,7 @@ class PanelFeatures {
   final bool orders;
   final bool traffic;
   final bool tickets;
+  final bool giftCard;
   final bool onlineDevices;
 
   /// Keeps already-published configs behaving exactly as they did before
@@ -48,6 +50,7 @@ class PanelFeatures {
     orders: true,
     traffic: true,
     tickets: true,
+    giftCard: true,
     onlineDevices: true,
   );
 
@@ -59,6 +62,9 @@ class PanelFeatures {
     orders: true,
     traffic: true,
     tickets: true,
+    // Gift-card redemption is a Xiao-V2Board endpoint (/user/redeemgiftcard);
+    // the other panels have no route for it, so the same switch as wallet.
+    giftCard: type == PanelType.xiaoV2board,
     // EZ only presents the live device-limit feature for Xiao-V2Board.
     onlineDevices: type == PanelType.xiaoV2board,
   );
@@ -72,6 +78,7 @@ class PanelFeatures {
       orders: _bool(value['orders']) ?? orders,
       traffic: _bool(value['traffic']) ?? traffic,
       tickets: _bool(value['tickets']) ?? tickets,
+      giftCard: _bool(value['gift_card']) ?? giftCard,
       onlineDevices: _bool(value['online_devices']) ?? onlineDevices,
     );
   }
@@ -79,5 +86,6 @@ class PanelFeatures {
   static bool? _bool(Object? value) => value is bool ? value : null;
 
   String get fingerprint =>
-      '$shop,$invite,$wallet,$orders,$traffic,$tickets,$onlineDevices';
+      '$shop,$invite,$wallet,$orders,$traffic,$tickets,$giftCard,'
+      '$onlineDevices';
 }

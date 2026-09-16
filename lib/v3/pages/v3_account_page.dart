@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3AccountPage extends StatefulWidget {
   const V3AccountPage({super.key});
@@ -83,8 +84,11 @@ class _V3AccountPageState extends State<V3AccountPage> {
                         _PlanPanel(controller: controller),
                       ],
                     )
+                  // Start, not stretch: the identity band is a band now, and
+                  // stretching it to the plan card's height would rebuild the
+                  // empty space it just lost.
                   : Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           flex: 11,
@@ -197,78 +201,67 @@ class _IdentityPanel extends StatelessWidget {
         ? 'L'
         : user.avatarLetter.trim().substring(0, 1).toUpperCase();
 
+    // One row, not a stack. It used to be a 58dp avatar, a 28dp gap, a 22pt
+    // name and an email line, spread down a panel half the width of the page —
+    // four small facts holding up a large empty card. The same four facts fit
+    // one band, with the badge where the eye already is.
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: p.night,
-        borderRadius: BorderRadius.circular(30),
+        color: p.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: p.line),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: p.lychee,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  letter,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+          Container(
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: p.lychee,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              letter,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
               ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  controller.hasPlan ? '套餐有效' : '暂无套餐',
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  user.name.trim().isEmpty ? 'Litchi User' : user.name.trim(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: controller.hasPlan
-                        ? p.success
-                        : Colors.white.withValues(alpha: 0.5),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
+                    color: p.ink,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Text(
-            user.name.trim().isEmpty ? 'Litchi User' : user.name.trim(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
+                const SizedBox(height: 4),
+                Text(
+                  controller.accountDetails?.email ?? 'Secure Litchi account',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.inkMuted, fontSize: 11),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            controller.accountDetails?.email ?? 'Secure Litchi account',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.48),
-              fontSize: 11,
-            ),
+          const SizedBox(width: 12),
+          V3StatusBadge(
+            label: controller.hasPlan ? '套餐有效' : '暂无套餐',
+            color: controller.hasPlan ? p.success : p.inkMuted,
+            compact: true,
           ),
         ],
       ),
@@ -488,10 +481,11 @@ class _MetricPanel extends StatelessWidget {
   }
 }
 
-/// Secondary destinations, surfaced as a list on the account page.
+/// What belongs to the account: money owed, money spent, money added.
 ///
-/// This is the compact layout's navigation hub: without it, wallet, orders,
-/// traffic, invite, tickets and settings have no compact entry point at all.
+/// It used to list six destinations, four of which were routing rather than
+/// account business — traffic, invites, tickets and settings are shared with
+/// the desktop rail and now live in the compact 更多 tab.
 class _HubPanel extends StatelessWidget {
   const _HubPanel({required this.controller});
 
@@ -499,94 +493,20 @@ class _HubPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
     final items = enabledNavItems(kMobileHub);
     if (items.isEmpty) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: p.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 10, bottom: 6),
-            child: Text(
-              '我的服务',
-              style: TextStyle(
-                color: p.inkMuted,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.5,
-              ),
-            ),
+    return V3NavPanel(
+      title: '我的服务',
+      children: [
+        for (final item in items)
+          V3NavRow(
+            key: hubRowKey(item.page),
+            icon: item.icon,
+            label: item.label,
+            selected: controller.page == item.page,
+            onTap: () => controller.goToPage(item.page),
           ),
-          for (final item in items)
-            _HubRow(
-              key: hubRowKey(item.page),
-              item: item,
-              selected: controller.page == item.page,
-              onTap: () => controller.goToPage(item.page),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HubRow extends StatelessWidget {
-  const _HubRow({
-    super.key,
-    required this.item,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final V3NavItem item;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: p.surfaceRaised,
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(item.icon, size: 18, color: p.inkMuted),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                item.label,
-                style: TextStyle(
-                  color: p.ink,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 19,
-              color: selected ? p.lychee : p.inkMuted,
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }

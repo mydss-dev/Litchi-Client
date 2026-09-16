@@ -45,7 +45,6 @@ class V3DashboardPage extends StatelessWidget {
             controller: controller,
             connected: connected,
             connecting: connecting,
-            statusColor: statusColor,
           ),
           const SizedBox(height: 14),
           _ModeRail(controller: controller),
@@ -64,133 +63,88 @@ class _ConnectionWorkspace extends StatelessWidget {
     required this.controller,
     required this.connected,
     required this.connecting,
-    required this.statusColor,
   });
 
   final AppController controller;
   final bool connected;
   final bool connecting;
-  final Color statusColor;
 
   @override
   Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
     final node = controller.currentNode;
-    final title = switch (controller.connectionStatus) {
-      ConnectionStatus.connected => '连接已建立',
-      ConnectionStatus.connecting => '正在连接',
-      ConnectionStatus.disconnecting => '正在断开',
-      ConnectionStatus.error => '连接遇到问题',
-      ConnectionStatus.disconnected => '准备连接',
-    };
-    final detail = switch (controller.connectionStatus) {
-      ConnectionStatus.connected => '流量将按当前代理模式处理。',
-      ConnectionStatus.connecting => '正在建立连接，请稍候。',
-      ConnectionStatus.disconnecting => '正在结束当前连接。',
-      ConnectionStatus.error =>
-        controller.coreError.isEmpty ? '请重试连接，或切换其他节点。' : controller.coreError,
-      ConnectionStatus.disconnected => '点击电源按钮，连接当前节点。',
-    };
+    final actionLabel = connected
+        ? '断开连接'
+        : connecting
+        ? '处理中'
+        : '开始连接';
+    // The workspace used to open with a status dot, a "连接状态" kicker, a
+    // one-line verdict ("连接已建立") and a second line explaining it. The badge
+    // in the page header already names the state and the orb caption already
+    // names the action, so all four lines said what two other places said
+    // first. What has no other home is the core's own error text.
+    final error = controller.connectionStatus == ConnectionStatus.error
+        ? (controller.coreError.isEmpty
+              ? '请重试连接，或切换其他节点。'
+              : controller.coreError)
+        : null;
     return V3Panel(
-      tone: V3PanelTone.ink,
+      tone: V3PanelTone.hero,
       padding: const EdgeInsets.all(24),
       radius: 24,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final stacked = constraints.maxWidth < 500;
           final intro = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            // Orb, action, elapsed time — one centred stack, so the primary
+            // control sits over the middle of its own column instead of
+            // hanging off the left edge under two paragraphs of prose.
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '连接状态',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.4,
-                    ),
-                  ),
-                ],
+              _ConnectionOrb(
+                controller: controller,
+                connected: connected,
+                connecting: connecting,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
               Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  height: 1.05,
-                  fontWeight: FontWeight.w800,
+                actionLabel,
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.3,
                 ),
               ),
-              const SizedBox(height: 9),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Text(
-                  detail,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.62),
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
+              const SizedBox(height: 4),
+              Text(
+                _duration(controller.connectedDuration),
+                style: TextStyle(color: p.inkMuted, fontSize: 12),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  _ConnectionOrb(
-                    controller: controller,
-                    connected: connected,
-                    connecting: connecting,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          connected
-                              ? '断开连接'
-                              : connecting
-                              ? '处理中'
-                              : '开始连接',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.3,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _duration(controller.connectedDuration),
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+              if (error != null) ...[
+                const SizedBox(height: 10),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  child: Text(
+                    error,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: p.dangerInk,
+                      fontSize: 11,
+                      height: 1.35,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ],
           );
           final route = Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: p.surface,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              border: Border.all(color: p.line),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -198,7 +152,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                 Text(
                   '当前节点',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: p.inkMuted,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.3,
@@ -216,8 +170,8 @@ class _ConnectionWorkspace extends StatelessWidget {
                             : (node.name.isEmpty ? '尚未选择节点' : node.name),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: p.ink,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -230,18 +184,18 @@ class _ConnectionWorkspace extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _DarkMeta(
+                    _NodeMeta(
                       label: node.latency > 0 && node.latency < 9999
                           ? '${node.latency} ms'
                           : '未测速',
                     ),
-                    _DarkMeta(label: controller.networkMode.label),
+                    _NodeMeta(label: controller.networkMode.label),
                   ],
                 ),
                 const SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: () => controller.goToPage(AppPage.nodes),
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
+                  style: TextButton.styleFrom(foregroundColor: p.lycheeInk),
                   icon: const Icon(Icons.swap_horiz_rounded, size: 18),
                   label: const Text('切换节点'),
                 ),
@@ -250,11 +204,16 @@ class _ConnectionWorkspace extends StatelessWidget {
           );
           return stacked
               ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  // Stretch so the centred orb stack has the full width to
+                  // centre within on a phone, the same place it sits on a
+                  // desktop.
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [intro, const SizedBox(height: 16), route],
                 )
               : Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  // Centre, not start: the node card is the taller of the two,
+                  // so the orb stack rides the middle of it rather than the top.
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: intro),
                     const SizedBox(width: 22),
@@ -423,6 +382,9 @@ class _SessionMetrics extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final compact = constraints.maxWidth < 430;
+      // Elapsed time lives under the orb, where it belongs to the connection it
+      // measures. It used to be a third cell here as well — the same clock,
+      // ticking in two places on one screen, a few centimetres apart.
       final metrics = [
         _Metric(
           label: '下载速度',
@@ -436,12 +398,6 @@ class _SessionMetrics extends StatelessWidget {
           icon: Icons.arrow_upward_rounded,
           compact: compact,
         ),
-        _Metric(
-          label: '连接时长',
-          value: _duration(controller.connectedDuration),
-          icon: Icons.schedule_rounded,
-          compact: compact,
-        ),
       ];
       return V3Panel(
         tone: V3PanelTone.surface,
@@ -452,8 +408,6 @@ class _SessionMetrics extends StatelessWidget {
                   metrics[0],
                   const _MetricDivider(horizontal: true),
                   metrics[1],
-                  const _MetricDivider(horizontal: true),
-                  metrics[2],
                 ],
               )
             : Row(
@@ -461,8 +415,6 @@ class _SessionMetrics extends StatelessWidget {
                   Expanded(child: metrics[0]),
                   const _MetricDivider(),
                   Expanded(child: metrics[1]),
-                  const _MetricDivider(),
-                  Expanded(child: metrics[2]),
                 ],
               ),
       );
@@ -597,27 +549,34 @@ class _PlanSummary extends StatelessWidget {
   }
 }
 
-class _DarkMeta extends StatelessWidget {
-  const _DarkMeta({required this.label});
+/// A small fact about the node — its latency, the proxy mode — as a chip.
+///
+/// Named for the dark panel it used to sit on; the panel is light now and the
+/// name would be the only thing left saying otherwise.
+class _NodeMeta extends StatelessWidget {
+  const _NodeMeta({required this.label});
 
   final String label;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.72),
-        fontSize: 10,
-        fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: p.surfaceRaised,
+        borderRadius: BorderRadius.circular(8),
       ),
-    ),
-  );
+      child: Text(
+        label,
+        style: TextStyle(
+          color: p.ink,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
 }
 
 String _statusLabel(ConnectionStatus status) => switch (status) {

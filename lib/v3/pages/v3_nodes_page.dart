@@ -257,14 +257,14 @@ class _RegionRail extends StatelessWidget {
         runSpacing: 8,
         children: [
           for (final item in items)
+            // Fill, label and border all come from the theme's chip styling;
+            // the checkmark stays off because this row is a dense Wrap and
+            // showing it would resize every chip in it on each tap.
             ChoiceChip(
               label: Text(item.$2),
               selected: selected == item.$1,
               onSelected: (_) => onSelected(item.$1),
-              selectedColor: p.lycheeSoft,
-              labelStyle: TextStyle(
-                color: selected == item.$1 ? p.lychee : p.ink,
-              ),
+              side: v3ChipSide(p, selected: selected == item.$1),
               showCheckmark: false,
             ),
         ],
@@ -293,13 +293,16 @@ class _RegionRail extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: active ? p.lychee : Colors.transparent,
+                    // Raised track, so the chosen segment is the raised pill the
+                    // shop deck and the mode rail use — not a lychee block with
+                    // white 12px text on it, which is 3.4:1.
+                    color: active ? p.surface : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     item.$2,
                     style: TextStyle(
-                      color: active ? Colors.white : p.ink,
+                      color: active ? p.lycheeInk : p.ink,
                       fontSize: 12,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                     ),
@@ -336,9 +339,11 @@ class _AutoRouteRow extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         decoration: BoxDecoration(
-          color: active ? p.night : p.surface,
+          // The same chosen-card treatment _NodeRow below uses, so the two
+          // rows in this list do not disagree about what "selected" looks like.
+          color: active ? p.lycheeSoft : p.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: active ? p.night : p.line),
+          border: Border.all(color: active ? p.lychee : p.line),
         ),
         child: Row(
           children: [
@@ -363,7 +368,7 @@ class _AutoRouteRow extends StatelessWidget {
                   Text(
                     '自动选择',
                     style: TextStyle(
-                      color: active ? Colors.white : p.ink,
+                      color: p.ink,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
@@ -371,12 +376,7 @@ class _AutoRouteRow extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     '自动选择可用节点',
-                    style: TextStyle(
-                      color: active
-                          ? Colors.white.withValues(alpha: 0.55)
-                          : p.inkMuted,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: p.inkMuted, fontSize: 11),
                   ),
                 ],
               ),
@@ -388,11 +388,7 @@ class _AutoRouteRow extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             else if (active)
-              const Icon(
-                Icons.check_circle_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
+              Icon(Icons.check_circle_rounded, color: p.lychee, size: 20),
           ],
         ),
       ),

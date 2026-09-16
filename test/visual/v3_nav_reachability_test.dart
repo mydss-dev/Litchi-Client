@@ -63,6 +63,7 @@ Future<void> _onPlatform(
 
 Finder _rail(AppPage page) => find.byKey(railItemKey(page));
 Finder _hubRow(AppPage page) => find.byKey(hubRowKey(page));
+Finder _moreRow(AppPage page) => find.byKey(moreRowKey(page));
 
 /// The bottom bar is a public Material widget, so its destinations can be
 /// scoped precisely rather than by ambiguous label text.
@@ -87,7 +88,11 @@ void main() {
   // no inbound link at all and five pages were unreachable on compact layouts.
   final reachable = AppPage.values.where(isPageEnabled).toList();
 
-  for (final target in reachable) {
+  // 更多 is the compact overflow. Wide layouts reach the four pages behind it
+  // from the rail, so the tab itself has no desktop entry point by design.
+  final desktopReachable = reachable.where((page) => page != AppPage.more);
+
+  for (final target in desktopReachable) {
     testWidgets('desktop can reach ${target.name}', (tester) async {
       await _onPlatform(TargetPlatform.windows, () async {
         final controller = await _pumpShell(tester, _desktop);
@@ -106,9 +111,13 @@ void main() {
             await _tap(tester, find.byKey(kAccountCardKey), 'account card');
           case AppPage.wallet:
           case AppPage.orders:
+          case AppPage.giftCard:
             // No dedicated rail entry: identity card, then the account hub row.
             await _tap(tester, find.byKey(kAccountCardKey), 'account card');
             await _tap(tester, _hubRow(target), target.name);
+          case AppPage.more:
+            // Filtered out of this loop; the switch is total all the same.
+            return;
         }
 
         expect(
@@ -118,7 +127,9 @@ void main() {
         );
       });
     });
+  }
 
+  for (final target in reachable) {
     testWidgets('mobile can reach ${target.name}', (tester) async {
       await _onPlatform(TargetPlatform.android, () async {
         final controller = await _pumpShell(tester, _mobile);
@@ -129,20 +140,25 @@ void main() {
           case AppPage.nodes:
           case AppPage.shop:
           case AppPage.account:
+          case AppPage.more:
             await _tap(tester, _tab(_primaryLabel(target)), target.name);
           case AppPage.wallet:
           case AppPage.orders:
-          case AppPage.traffic:
-          case AppPage.invite:
-          case AppPage.tickets:
-          case AppPage.settings:
-            // Secondary pages live in the account hub on compact layouts.
+          case AppPage.giftCard:
+            // Account business lives in the account page's hub.
             await _tap(
               tester,
               _tab(_primaryLabel(AppPage.account)),
               'account tab',
             );
             await _tap(tester, _hubRow(target), target.name);
+          case AppPage.traffic:
+          case AppPage.invite:
+          case AppPage.tickets:
+          case AppPage.settings:
+            // Neither a tab nor an account concern: the 更多 overflow.
+            await _tap(tester, _tab(_primaryLabel(AppPage.more)), 'more tab');
+            await _tap(tester, _moreRow(target), target.name);
         }
 
         expect(
@@ -160,6 +176,7 @@ void main() {
     for (final surface in <(String, List<V3NavItem>)>[
       ('kMobilePrimary', kMobilePrimary),
       ('kMobileHub', kMobileHub),
+      ('kMobileMore', kMobileMore),
       ('kDesktopRail', [...kDesktopRail, kRailSettings]),
     ]) {
       final (name, items) = surface;
@@ -212,6 +229,32 @@ void main() {
     });
   });
 
+  // The counterpart for the overflow: 流量, 邀请, 工单 and 设置 are not account
+  // business, so they must not light up 账户.
+  testWidgets('overflow pages highlight the 更多 tab', (tester) async {
+    await _onPlatform(TargetPlatform.android, () async {
+      final controller = await _pumpShell(tester, _mobile);
+      final moreIndex = enabledNavItems(
+        kMobilePrimary,
+      ).indexWhere((item) => item.page == AppPage.more);
+      expect(moreIndex, isNonNegative, reason: '更多 must be a primary tab');
+
+      for (final page in enabledNavItems(
+        kMobileMore,
+      ).map((item) => item.page)) {
+        controller.goToPage(page);
+        await tester.pumpAndSettle();
+        final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+        expect(
+          bar.selectedIndex,
+          moreIndex,
+          reason: '${page.name} should read as a 更多 sub-page',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   // The balance card reports a figure the user can act on, so it reads as
   // something to tap. It was inert, leaving the hub row below as the only way
   // to reach 钱包 from the page that shows its balance.
@@ -238,30 +281,33 @@ void main() {
   });
 
   // The highlight asserted above is only honest if the page also offers a way
-  // back to the tab it claims the user is on. Five of the six hub pages had no
-  // back control at all, so drilling into 邀请 told the user they were on 账户
-  // while giving them no route there.
-  testWidgets('every hub page offers a working way back to the account tab', (
+  // back to the tab it claims the user is on. Every sub-page used to carry its
+  // own 返回账户 button for this, which the user reported as redundant — the
+  // bottom bar already does the job, and it is on screen the whole time.
+  testWidgets('every sub-page gets back to its tab through the bottom bar', (
     tester,
   ) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, _mobile);
-      for (final page in enabledNavItems(kMobileHub).map((item) => item.page)) {
-        controller.goToPage(page);
-        await tester.pumpAndSettle();
-        final back = find.byTooltip('返回账户');
-        expect(
-          back,
-          findsOneWidget,
-          reason: '${page.name} highlights 账户 but offers no way back to it',
-        );
-        await tester.tap(back);
-        await tester.pumpAndSettle();
-        expect(
-          controller.page,
-          AppPage.account,
-          reason: 'the back control on ${page.name} did not reach 账户',
-        );
+      for (final (tab, items) in <(AppPage, List<V3NavItem>)>[
+        (AppPage.account, kMobileHub),
+        (AppPage.more, kMobileMore),
+      ]) {
+        for (final page in enabledNavItems(items).map((item) => item.page)) {
+          controller.goToPage(page);
+          await tester.pumpAndSettle();
+          expect(
+            find.byTooltip('返回账户'),
+            findsNothing,
+            reason: '${page.name} should not repeat the bottom bar',
+          );
+          await _tap(tester, _tab(_primaryLabel(tab)), '${tab.name} tab');
+          expect(
+            controller.page,
+            tab,
+            reason: 'the bottom bar did not leave ${page.name} for ${tab.name}',
+          );
+        }
       }
       expect(tester.takeException(), isNull);
     });

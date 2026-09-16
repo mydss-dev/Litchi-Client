@@ -8,7 +8,9 @@ import '../../app/app_controller.dart';
 import '../auth/v3_auth_view.dart';
 import '../pages/v3_account_page.dart';
 import '../pages/v3_dashboard_page.dart';
+import '../pages/v3_gift_card_page.dart';
 import '../pages/v3_invite_page.dart';
+import '../pages/v3_more_page.dart';
 import '../pages/v3_nodes_page.dart';
 import '../pages/v3_orders_page.dart';
 import '../pages/v3_settings_page.dart';
@@ -121,6 +123,8 @@ Widget _pageFor(AppPage page) => switch (page) {
   AppPage.tickets => const V3TicketsPage(),
   AppPage.settings => const V3SettingsPage(),
   AppPage.dashboard => const V3DashboardPage(),
+  AppPage.more => const V3MorePage(),
+  AppPage.giftCard => const V3GiftCardPage(),
 };
 
 class _DesktopRail extends StatelessWidget {
@@ -137,7 +141,7 @@ class _DesktopRail extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(18, 18, 14, 18),
       padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
       decoration: BoxDecoration(
-        color: p.night,
+        color: p.hero,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -145,14 +149,14 @@ class _DesktopRail extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(2, 0, 2, 26),
-            child: V3BrandMark(labelColor: Colors.white),
+            child: V3BrandMark(),
           ),
-          const Padding(
-            padding: EdgeInsets.only(left: 10, bottom: 10),
+          Padding(
+            padding: const EdgeInsets.only(left: 10, bottom: 10),
             child: Text(
               '工作空间',
               style: TextStyle(
-                color: Color(0xFF8E9A95),
+                color: p.inkMuted,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.5,
@@ -183,8 +187,9 @@ class _DesktopRail extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: p.surface,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: p.line),
               ),
               child: Row(
                 children: [
@@ -208,8 +213,8 @@ class _DesktopRail extends StatelessWidget {
                           user.name.isEmpty ? 'Guest' : user.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: p.ink,
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
                           ),
@@ -221,17 +226,14 @@ class _DesktopRail extends StatelessWidget {
                               : '暂无套餐',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFF9BA8A3),
-                            fontSize: 10,
-                          ),
+                          style: TextStyle(color: p.inkMuted, fontSize: 10),
                         ),
                       ],
                     ),
                   ),
                   Icon(
                     Icons.chevron_right_rounded,
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: p.ink.withValues(alpha: 0.45),
                     size: 18,
                   ),
                 ],
@@ -268,16 +270,19 @@ class _RailItem extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
-            color: selected
-                ? p.lychee.withValues(alpha: 0.18)
-                : Colors.transparent,
+            // The same soft fill the chips and the bottom bar use for "chosen",
+            // so one selected state looks like one selected state everywhere.
+            color: selected ? p.lycheeSoft : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
             children: [
+              // A coloured icon over ink text, the pairing V3StatusBadge uses.
+              // lycheeInk rather than lychee: on the soft fill the brighter pink
+              // lands at 2.97:1, under what a graphical object needs.
               Icon(
                 item.icon,
-                color: selected ? p.lychee : const Color(0xFF9BA8A3),
+                color: selected ? p.lycheeInk : p.inkMuted,
                 size: 19,
               ),
               const SizedBox(width: 12),
@@ -288,9 +293,7 @@ class _RailItem extends StatelessWidget {
                     Text(
                       item.label,
                       style: TextStyle(
-                        color: selected
-                            ? Colors.white
-                            : const Color(0xFFE3E9E5),
+                        color: selected ? p.ink : p.inkMuted,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
@@ -513,7 +516,7 @@ class _V3BootView extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return ColoredBox(
-      color: p.night,
+      color: p.hero,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -528,10 +531,10 @@ class _V3BootView extends StatelessWidget {
               child: Icon(Icons.blur_on_rounded, color: p.night, size: 34),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'LITCHI',
               style: TextStyle(
-                color: Colors.white,
+                color: p.ink,
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 3,
@@ -543,7 +546,7 @@ class _V3BootView extends StatelessWidget {
               child: LinearProgressIndicator(
                 minHeight: 3,
                 color: p.lychee,
-                backgroundColor: Colors.white24,
+                backgroundColor: p.ink.withValues(alpha: 0.15),
               ),
             ),
           ],

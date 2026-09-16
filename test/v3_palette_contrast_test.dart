@@ -44,6 +44,9 @@ void main() {
       'surface': p.surface,
       'canvas': p.canvas,
       'surfaceRaised': p.surfaceRaised,
+      // The large panels (connect workspace, login brand block, rail, wallet
+      // total) paint `hero` and write the muted inks straight onto it.
+      'hero': p.hero,
       // Error banners paint the semantic color at 10-12% behind their own text.
       'warning@12% on surface': _over(p.warning, 0.12, p.surface),
       'danger@12% on surface': _over(p.danger, 0.12, p.surface),
@@ -104,6 +107,65 @@ void main() {
       }
     });
   }
+
+  // The hero panels used to be near-black in both modes with hardcoded white
+  // text. Every one of them now paints `hero` and writes `ink` on top, so that
+  // pairing carries body copy and owes the full AA ratio in both modes.
+  test('ink on hero clears AA in both modes', () {
+    for (final (mode, p) in [
+      ('light', V3Palette.light),
+      ('dark', V3Palette.dark),
+    ]) {
+      final ratio = _contrast(p.ink, p.hero);
+      expect(
+        ratio,
+        greaterThanOrEqualTo(_aaText),
+        reason:
+            '$mode ink on hero is ${ratio.toStringAsFixed(2)}:1, below the '
+            '$_aaText:1 WCAG AA minimum for text.',
+      );
+    }
+  });
+
+  // The reported bug: picking 月付/季付 in the payment dialog left the label on
+  // Material's own `secondaryContainer`, which is a pale lilac both label
+  // colours disappear into. The theme now supplies the pair, so the theme is
+  // what this asserts — every selectable chip in the app inherits it.
+  test('theme chips keep their labels legible in both states', () {
+    for (final (mode, theme) in [
+      ('light', V3Theme.light()),
+      ('dark', V3Theme.dark()),
+    ]) {
+      final chip = theme.chipTheme;
+      final pairs = <String, (Color?, Color?)>{
+        'chosen': (chip.secondaryLabelStyle?.color, chip.selectedColor),
+        'unchosen': (chip.labelStyle?.color, chip.backgroundColor),
+        'checkmark': (chip.checkmarkColor, chip.selectedColor),
+      };
+      for (final entry in pairs.entries) {
+        final (foreground, background) = entry.value;
+        expect(
+          foreground,
+          isNotNull,
+          reason: '$mode ${entry.key} chip has no foreground colour',
+        );
+        expect(
+          background,
+          isNotNull,
+          reason: '$mode ${entry.key} chip has no background colour',
+        );
+        final ratio = _contrast(foreground!, background!);
+        final floor = entry.key == 'checkmark' ? _aaGraphic : _aaText;
+        expect(
+          ratio,
+          greaterThanOrEqualTo(floor),
+          reason:
+              '$mode ${entry.key} chip is ${ratio.toStringAsFixed(2)}:1, below '
+              'the $floor:1 minimum.',
+        );
+      }
+    }
+  });
 
   test('light-mode inks are darker than the semantic fills they replace', () {
     for (final pair in [

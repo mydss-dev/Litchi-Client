@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
-import '../ui/v3_components.dart';
 
 class V3InvitePage extends StatefulWidget {
   const V3InvitePage({super.key});
@@ -103,9 +102,6 @@ class _V3InvitePageState extends State<V3InvitePage> {
                         ),
                       ],
                     ),
-                  ),
-                  V3BackToAccount(
-                    onTap: () => controller.goToPage(AppPage.account),
                   ),
                   IconButton(
                     tooltip: '刷新邀请数据',
@@ -224,8 +220,9 @@ class _InviteHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
-        color: p.night,
+        color: p.hero,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,7 +232,7 @@ class _InviteHero extends StatelessWidget {
               Text(
                 '分享邀请',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: p.inkMuted,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.6,
@@ -246,7 +243,7 @@ class _InviteHero extends StatelessWidget {
                 Text(
                   '第 ${currentIndex + 1} 个，共 $total 个',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.42),
+                    color: p.inkMuted,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
@@ -258,8 +255,8 @@ class _InviteHero extends StatelessWidget {
             hasCode ? (code.trim().isEmpty ? 'LITCHI' : code.trim()) : '还没有邀请码',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: p.ink,
               fontSize: 34,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.4,
@@ -272,11 +269,7 @@ class _InviteHero extends StatelessWidget {
                 : '创建一个邀请码后，就可以开始邀请。',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 11,
-              height: 1.5,
-            ),
+            style: TextStyle(color: p.inkMuted, fontSize: 11, height: 1.5),
           ),
           const SizedBox(height: 28),
           if (hasCode) ...[
@@ -307,20 +300,22 @@ class _InviteHero extends StatelessWidget {
                 tooltip: '上一个邀请码',
                 onPressed: onPrevious,
                 icon: const Icon(Icons.chevron_left_rounded),
-                color: Colors.white,
+                color: p.ink,
               ),
               IconButton(
                 tooltip: '下一个邀请码',
                 onPressed: onNext,
                 icon: const Icon(Icons.chevron_right_rounded),
-                color: Colors.white,
+                color: p.ink,
               ),
               const Spacer(),
               FilledButton.icon(
                 onPressed: creating ? null : onCreate,
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: p.night,
+                  // Was a white button for a dark panel. On the light panel it
+                  // is the app's own primary action instead.
+                  backgroundColor: p.lychee,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -355,11 +350,12 @@ class _HeroButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
     return OutlinedButton.icon(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
+        foregroundColor: p.ink,
+        side: BorderSide(color: p.line),
         padding: const EdgeInsets.symmetric(vertical: 13),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),

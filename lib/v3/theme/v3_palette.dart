@@ -9,6 +9,7 @@ class V3Palette {
     required this.surface,
     required this.surfaceRaised,
     required this.night,
+    required this.hero,
     required this.ink,
     required this.inkMuted,
     required this.line,
@@ -28,6 +29,15 @@ class V3Palette {
   final Color canvas;
   final Color surface;
   final Color surfaceRaised;
+
+  /// Background for the large "hero" panels — the connect workspace, the login
+  /// brand block, the sidebar.
+  ///
+  /// These used to be [night], which is near-black in *both* modes and turned
+  /// every one of them into a black slab on an otherwise light screen. [night]
+  /// is now only a *foreground* colour (something drawn on top of [citrus]);
+  /// this is the surface behind it.
+  final Color hero;
   final Color night;
   final Color ink;
   final Color inkMuted;
@@ -57,6 +67,9 @@ class V3Palette {
     canvas: Color(0xFFF3F4F0),
     surface: Color(0xFFFFFFFF),
     surfaceRaised: Color(0xFFE8EBE5),
+    // A sage-tinted white, a step off `surface` and `surfaceRaised` so a hero
+    // panel still reads as a distinct block without resorting to black.
+    hero: Color(0xFFEFF2EE),
     night: Color(0xFF121515),
     ink: Color(0xFF121515),
     // Darkened from #68716F, which was only 4.17:1 on `surfaceRaised` — below
@@ -82,6 +95,8 @@ class V3Palette {
     canvas: Color(0xFF0C1010),
     surface: Color(0xFF151B1A),
     surfaceRaised: Color(0xFF202826),
+    // Dark mode keeps the near-black it always had; only light mode moves.
+    hero: Color(0xFF080B0A),
     night: Color(0xFF080B0A),
     ink: Color(0xFFF0F5F0),
     inkMuted: Color(0xFF9BA8A3),
@@ -191,6 +206,30 @@ class V3Theme {
       // version of the same feedback.
       splashFactory: NoSplash.splashFactory,
       highlightColor: p.ink.withValues(alpha: 0.06),
+      // Every ChoiceChip in the app was falling through to Material's defaults,
+      // which paint the chosen chip in `secondaryContainer` — a lilac that
+      // appears nowhere else in this palette — under `onSecondaryContainer`
+      // text at about 2.4:1. The subscription-cycle and payment-method pickers
+      // were, literally, unreadable. Selection speaks the app's own colour
+      // instead: a soft lychee fill, lychee ink for the label (4.9:1 on that
+      // fill), and the checkmark that says which one is on.
+      chipTheme: ChipThemeData(
+        backgroundColor: p.surface,
+        selectedColor: p.lycheeSoft,
+        side: BorderSide(color: p.line),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        labelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: p.ink,
+        ),
+        secondaryLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: p.lycheeInk,
+        ),
+        checkmarkColor: p.lycheeInk,
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: p.surfaceRaised,

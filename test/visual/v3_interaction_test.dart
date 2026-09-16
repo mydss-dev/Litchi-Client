@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
+import 'package:litchi_client/v3/app/v3_nav.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/pages/v3_nodes_page.dart';
@@ -144,13 +145,17 @@ void main() {
     expect(controller.networkChanges, 1);
   });
 
-  for (final page in [
-    AppPage.traffic,
-    AppPage.invite,
-    AppPage.settings,
-    AppPage.orders,
+  // Compact IA: account business sits under 账户, everything else under 更多.
+  // Expected indexes are read off the nav model rather than hardcoded, so a tab
+  // added or removed later cannot leave a stale number behind.
+  for (final (page, tab) in [
+    (AppPage.orders, AppPage.account),
+    (AppPage.wallet, AppPage.account),
+    (AppPage.traffic, AppPage.more),
+    (AppPage.invite, AppPage.more),
+    (AppPage.settings, AppPage.more),
   ]) {
-    testWidgets('Compact navigation places $page under account', (
+    testWidgets('Compact navigation places $page under ${tab.name}', (
       tester,
     ) async {
       final controller = _InteractiveController(page);
@@ -160,9 +165,13 @@ void main() {
         const V3Shell(),
         size: const Size(390, 844),
       );
+      final expected = enabledNavItems(
+        kMobilePrimary,
+      ).indexWhere((item) => item.page == tab);
+      expect(expected, isNonNegative, reason: '${tab.name} must be a tab');
       expect(
         tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-        3,
+        expected,
       );
       expect(tester.takeException(), isNull);
     });

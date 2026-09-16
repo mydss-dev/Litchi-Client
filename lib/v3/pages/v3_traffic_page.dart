@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../theme/v3_palette.dart';
-import '../ui/v3_components.dart';
 
 class V3TrafficPage extends StatefulWidget {
   const V3TrafficPage({super.key});
@@ -106,9 +105,6 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                       ],
                     ),
                   ),
-                  V3BackToAccount(
-                    onTap: () => controller.goToPage(AppPage.account),
-                  ),
                   IconButton(
                     tooltip: '刷新流量',
                     onPressed: controller.refreshData,
@@ -176,8 +172,9 @@ class _QuotaPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
-        color: p.night,
+        color: p.hero,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +184,7 @@ class _QuotaPanel extends StatelessWidget {
               Text(
                 '套餐流量',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: p.inkMuted,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.6,
@@ -196,8 +193,11 @@ class _QuotaPanel extends StatelessWidget {
               const Spacer(),
               Text(
                 '已用 ${(usedRatio * 100).toStringAsFixed(0)}%',
+                // Aqua is a bright accent tuned against black; on the light
+                // panel it lands at 1.5:1. The brand ink pairs with the bar it
+                // labels instead.
                 style: TextStyle(
-                  color: p.aqua,
+                  color: p.lycheeInk,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                 ),
@@ -207,8 +207,8 @@ class _QuotaPanel extends StatelessWidget {
           const SizedBox(height: 18),
           Text(
             '${traffic.remainGb.toStringAsFixed(1)} GB',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: p.ink,
               fontSize: 38,
               height: 1,
               fontWeight: FontWeight.w900,
@@ -216,20 +216,14 @@ class _QuotaPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            '剩余流量',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 11,
-            ),
-          ),
+          Text('剩余流量', style: TextStyle(color: p.inkMuted, fontSize: 11)),
           const SizedBox(height: 18),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: usedRatio,
               minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              backgroundColor: p.ink.withValues(alpha: 0.1),
               valueColor: AlwaysStoppedAnimation<Color>(p.lychee),
             ),
           ),
@@ -270,23 +264,18 @@ class _QuotaValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
     return Column(
       crossAxisAlignment: alignEnd
           ? CrossAxisAlignment.end
           : CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.35),
-            fontSize: 10,
-          ),
-        ),
+        Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
         const SizedBox(height: 3),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: p.ink,
             fontSize: 11,
             fontWeight: FontWeight.w800,
           ),

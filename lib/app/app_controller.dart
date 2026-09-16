@@ -42,6 +42,12 @@ enum AppPage {
   wallet,
   orders,
   tickets,
+  giftCard,
+
+  /// The compact layout's "更多" tab: a list of the secondary destinations
+  /// that have no tab of their own. It is a container, not a feature, so no
+  /// capability switch applies to it.
+  more,
 }
 
 /// Whether [page] is available under the active panel's capability switches.
@@ -56,6 +62,7 @@ bool isPageEnabled(AppPage page) => switch (page) {
   AppPage.orders => AppConfig.panelFeatures.orders,
   AppPage.traffic => AppConfig.panelFeatures.traffic,
   AppPage.tickets => AppConfig.panelFeatures.tickets,
+  AppPage.giftCard => AppConfig.panelFeatures.giftCard,
   _ => true,
 };
 

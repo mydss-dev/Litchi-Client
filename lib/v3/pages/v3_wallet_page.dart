@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
-import '../ui/v3_components.dart';
 
 class V3WalletPage extends StatefulWidget {
   const V3WalletPage({super.key});
@@ -157,10 +156,6 @@ class _V3WalletPageState extends State<V3WalletPage> {
             children: [
               Row(
                 children: [
-                  V3BackToAccount(
-                    onTap: () => controller.goToPage(AppPage.account),
-                  ),
-                  const SizedBox(width: 6),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,8 +274,9 @@ class _BalanceHero extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(26),
       decoration: BoxDecoration(
-        color: p.night,
+        color: p.hero,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: p.line),
       ),
       child: Row(
         children: [
@@ -291,7 +287,7 @@ class _BalanceHero extends StatelessWidget {
                 Text(
                   'TOTAL VALUE',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.42),
+                    color: p.inkMuted,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.7,
@@ -300,8 +296,8 @@ class _BalanceHero extends StatelessWidget {
                 const SizedBox(height: 9),
                 Text(
                   '$symbol${total.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: p.ink,
                     fontSize: 34,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -1,
@@ -339,21 +335,16 @@ class _HeroStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.42),
-            fontSize: 10,
-          ),
-        ),
+        Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
         const SizedBox(height: 5),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: p.ink,
             fontSize: 13,
             fontWeight: FontWeight.w800,
           ),

@@ -53,13 +53,10 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          V3PageHeader(
+          const V3PageHeader(
             kicker: '偏好与诊断',
             title: '设置',
             description: '管理网络连接、启动方式与外观。',
-            trailing: V3BackToAccount(
-              onTap: () => controller.goToPage(AppPage.account),
-            ),
           ),
           const SizedBox(height: 20),
           if (_message != null) ...[
@@ -422,7 +419,7 @@ class _RecoveryPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return V3Panel(
-      tone: V3PanelTone.ink,
+      tone: V3PanelTone.hero,
       child: Row(
         children: [
           Container(
@@ -439,10 +436,10 @@ class _RecoveryPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '系统代理修复',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: p.ink,
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.2,
@@ -451,10 +448,7 @@ class _RecoveryPanel extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   '端口 ${controller.activeProxyPort} · ${controller.networkMode.label}',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: p.inkMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -462,8 +456,8 @@ class _RecoveryPanel extends StatelessWidget {
           OutlinedButton(
             onPressed: onRepair,
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.22)),
+              foregroundColor: p.ink,
+              side: BorderSide(color: p.line),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),

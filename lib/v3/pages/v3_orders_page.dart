@@ -6,7 +6,6 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
-import '../ui/v3_components.dart';
 
 class V3OrdersPage extends StatefulWidget {
   const V3OrdersPage({super.key});
@@ -178,9 +177,6 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                         ),
                       ],
                     ),
-                  ),
-                  V3BackToAccount(
-                    onTap: () => controller.goToPage(AppPage.account),
                   ),
                   IconButton(
                     tooltip: '刷新订单',

@@ -5,6 +5,7 @@ import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../../shared/services/url_opener.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 /// The one payment dialog. Every entry point that can take money — a plan
 /// purchase, a wallet top-up, an unpaid order — goes through here.
@@ -296,23 +297,21 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: p.night,
+                color: p.hero,
                 borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: p.line),
               ),
               child: Row(
                 children: [
                   Text(
                     '需支付',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 10,
-                    ),
+                    style: TextStyle(color: p.inkMuted, fontSize: 10),
                   ),
                   const Spacer(),
                   Text(
                     '${widget.currencySymbol}${_amountDue.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: p.ink,
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
                     ),
@@ -345,6 +344,10 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                       ChoiceChip(
                         label: Text(method.name),
                         selected: _selectedMethodId == method.id,
+                        side: v3ChipSide(
+                          p,
+                          selected: _selectedMethodId == method.id,
+                        ),
                         onSelected: (_) =>
                             setState(() => _selectedMethodId = method.id),
                       ),

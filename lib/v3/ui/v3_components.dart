@@ -47,12 +47,13 @@ class V3Panel extends StatelessWidget {
     final color = switch (tone) {
       V3PanelTone.surface => p.surface,
       V3PanelTone.raised => p.surfaceRaised,
-      V3PanelTone.ink => p.night,
+      V3PanelTone.hero => p.hero,
       V3PanelTone.signal => p.lychee,
     };
-    final border = tone == V3PanelTone.ink || tone == V3PanelTone.signal
-        ? Colors.transparent
-        : p.line;
+    // The hero panel used to be `p.night`, which is near-black in both modes —
+    // so it needed no border to separate itself. Now that it is a light block
+    // in light mode, it reads as a panel only if it is drawn like one.
+    final border = tone == V3PanelTone.signal ? Colors.transparent : p.line;
     return Container(
       padding: padding,
       decoration: BoxDecoration(
@@ -65,7 +66,21 @@ class V3Panel extends StatelessWidget {
   }
 }
 
-enum V3PanelTone { surface, raised, ink, signal }
+/// Which palette colour a [V3Panel] is painted with.
+///
+/// `hero` was called `ink` until the light theme stopped painting its large
+/// panels black — the name described the old colour, not the role.
+enum V3PanelTone { surface, raised, hero, signal }
+
+/// The border for a chip that has a chosen state.
+///
+/// [ChoiceChip.side] is a plain [BorderSide] rather than a state-resolved
+/// property, so it cannot come from `ChipThemeData` with two values and every
+/// selectable chip has to ask for its own. All of them want the same answer:
+/// the brand colour when chosen, a hairline otherwise.
+BorderSide v3ChipSide(V3Palette p, {required bool selected}) => selected
+    ? BorderSide(color: p.lychee, width: 1.5)
+    : BorderSide(color: p.line);
 
 class V3PageHeader extends StatelessWidget {
   const V3PageHeader({
@@ -238,32 +253,105 @@ class V3SectionLabel extends StatelessWidget {
       Text(text.toUpperCase(), style: Theme.of(context).textTheme.labelSmall);
 }
 
-class V3Rule extends StatelessWidget {
-  const V3Rule({super.key});
+/// A titled panel of navigation rows.
+///
+/// The account hub ("我的服务") and the compact "更多" tab are the same control
+/// with different contents, so they are the same widget. Presentational: the
+/// caller supplies the rows and the callback.
+class V3NavPanel extends StatelessWidget {
+  const V3NavPanel({super.key, required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) =>
-      Divider(height: 1, color: V3Palette.of(context).line);
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: p.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 10, bottom: 6),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: p.inkMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+          ...children,
+        ],
+      ),
+    );
+  }
 }
 
-/// Back affordance for the account-hub sub-pages (钱包/订单/流量/邀请/工单/设置).
-///
-/// On compact the bottom bar keeps 账户 highlighted while any of these is open.
-/// That is a drill-down, and it is only honest if there is a way back out of it
-/// — without one, five of the six pages left the user told they were on 账户
-/// with nothing to say how to get there. Takes a callback rather than reaching
-/// for the controller so this file stays presentational.
-class V3BackToAccount extends StatelessWidget {
-  const V3BackToAccount({super.key, required this.onTap});
+/// One row of a [V3NavPanel]: icon, label, and a chevron in brand colour when
+/// it is the page you are on.
+class V3NavRow extends StatelessWidget {
+  const V3NavRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
+  final IconData icon;
+  final String label;
+  final bool selected;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: '返回账户',
-    onPressed: onTap,
-    icon: const Icon(Icons.arrow_back_rounded),
-  );
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: p.surfaceRaised,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(icon, size: 18, color: p.inkMuted),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 19,
+              color: selected ? p.lychee : p.inkMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// The Litchi mark.

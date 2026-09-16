@@ -67,28 +67,30 @@ class _V3ShopPageState extends State<V3ShopPage> {
               if (plans.isEmpty)
                 _EmptyPlans(onRefresh: controller.refreshData)
               else
-                V3Panel(
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      for (var index = 0; index < plans.length; index++) ...[
-                        _PlanCard(
-                          plan: plans[index],
-                          currencySymbol: controller.currencySymbol,
-                          emphasis:
-                              plans[index].featured ||
-                              (index == 0 && plans.length > 1),
-                          onBuy: () => _openOrder(
-                            controller,
-                            plans[index],
-                            _defaultCycle(plans[index]),
-                          ),
+                // One card per plan rather than one long box with rules through
+                // it: a plan is a thing you choose between, and a stack of
+                // separate cards is what "choose between" looks like.
+                for (var index = 0; index < plans.length; index++)
+                  Padding(
+                    padding: EdgeInsets.only(
+                      bottom: index == plans.length - 1 ? 0 : 12,
+                    ),
+                    child: V3Panel(
+                      padding: const EdgeInsets.all(18),
+                      child: _PlanCard(
+                        plan: plans[index],
+                        currencySymbol: controller.currencySymbol,
+                        emphasis:
+                            plans[index].featured ||
+                            (index == 0 && plans.length > 1),
+                        onBuy: () => _openOrder(
+                          controller,
+                          plans[index],
+                          _defaultCycle(plans[index]),
                         ),
-                        if (index != plans.length - 1) const V3Rule(),
-                      ],
-                    ],
+                      ),
+                    ),
                   ),
-                ),
             ],
           ),
         );
@@ -146,15 +148,27 @@ class _CategoryDeck extends StatelessWidget {
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
-                    color: selected == item.$1 ? p.night : Colors.transparent,
+                    // A white pill on the raised track, with the same soft
+                    // shadow and lychee ink the mode rail on the connect page
+                    // uses — one segmented control, one look. The black pill it
+                    // replaces was the same black as the old hero panels.
+                    color: selected == item.$1 ? p.surface : Colors.transparent,
                     borderRadius: BorderRadius.circular(9),
+                    boxShadow: selected == item.$1
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                            ),
+                          ]
+                        : null,
                   ),
                   child: Column(
                     children: [
                       Text(
                         item.$2,
                         style: TextStyle(
-                          color: selected == item.$1 ? Colors.white : p.ink,
+                          color: selected == item.$1 ? p.lycheeInk : p.ink,
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
@@ -185,7 +199,7 @@ class _CurrentPlanBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return V3Panel(
-      tone: V3PanelTone.ink,
+      tone: V3PanelTone.hero,
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
       child: Row(
         children: [
@@ -208,8 +222,8 @@ class _CurrentPlanBadge extends StatelessWidget {
                       : '暂无套餐',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: p.ink,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                   ),
@@ -217,10 +231,7 @@ class _CurrentPlanBadge extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   '剩余 ${remainGb.toStringAsFixed(1)} GB',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
+                  style: TextStyle(color: p.inkMuted, fontSize: 10),
                 ),
               ],
             ),
@@ -325,32 +336,105 @@ class _PlanCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [priceBlock, const SizedBox(width: 14), action],
         );
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-          child: compact
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    identity,
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(child: priceBlock),
-                        const SizedBox(width: 12),
-                        action,
-                      ],
-                    ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    Expanded(child: identity),
-                    const SizedBox(width: 18),
-                    purchase,
-                  ],
-                ),
-        );
+        final described = plan.features.isEmpty
+            ? identity
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  identity,
+                  const SizedBox(height: 14),
+                  _PlanFeatures(features: plan.features),
+                ],
+              );
+        return compact
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  described,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: priceBlock),
+                      const SizedBox(width: 12),
+                      action,
+                    ],
+                  ),
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: described),
+                  const SizedBox(width: 18),
+                  purchase,
+                ],
+              );
       },
+    );
+  }
+}
+
+/// What the plan's own description says it includes.
+///
+/// The API's description was already being stripped of markup and split into
+/// lines on the way into [PlanModel.features] — and then never read, so every
+/// card showed a category and a byte count and nothing the panel had written
+/// about the plan.
+class _PlanFeatures extends StatelessWidget {
+  const _PlanFeatures({required this.features});
+
+  final List<String> features;
+
+  /// Enough to say what the plan is without turning one card into a page.
+  static const _shown = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final lines = features.take(_shown).toList(growable: false);
+    final hidden = features.length - lines.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final line in lines)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Container(
+                    width: 4,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: p.lychee,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    line,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: p.inkMuted,
+                      fontSize: 11,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (hidden > 0)
+          Text(
+            '等 $hidden 项',
+            style: TextStyle(color: p.inkMuted, fontSize: 10),
+          ),
+      ],
     );
   }
 }
@@ -591,6 +675,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                     ChoiceChip(
                       label: Text(_cycleLabel(cycle)),
                       selected: _cycle == cycle,
+                      side: v3ChipSide(p, selected: _cycle == cycle),
                       onSelected: (_) => setState(() {
                         _cycle = cycle;
                         _couponResult = null;
