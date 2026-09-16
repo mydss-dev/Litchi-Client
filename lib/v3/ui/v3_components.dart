@@ -94,7 +94,7 @@ class V3PageHeader extends StatelessWidget {
               Text(
                 kicker.toUpperCase(),
                 style: TextStyle(
-                  color: p.lychee,
+                  color: p.lycheeInk,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.8,

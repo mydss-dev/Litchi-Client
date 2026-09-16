@@ -86,7 +86,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                         Text(
                           '使用概览',
                           style: TextStyle(
-                            color: p.lychee,
+                            color: p.lycheeInk,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,

@@ -84,7 +84,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
                         Text(
                           '邀请奖励',
                           style: TextStyle(
-                            color: p.lychee,
+                            color: p.lycheeInk,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,
@@ -601,7 +601,7 @@ class _ReferralLedger extends StatelessWidget {
                         Text(
                           record.commissionDisplay(controller.currencySymbol),
                           style: TextStyle(
-                            color: p.success,
+                            color: p.successInk,
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
                           ),

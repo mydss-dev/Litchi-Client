@@ -113,15 +113,21 @@ class _V3NodesPageState extends State<V3NodesPage> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  _pending != null
-                      ? '正在处理，请稍候…'
-                      : _feedback ?? '已选节点不代表已经连接，请在连接页确认状态。',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _failed && _pending == null
-                        ? V3Palette.of(context).danger
-                        : V3Palette.of(context).inkMuted,
+                // Live region: this line is where a failed latency test or
+                // refresh reports back, and it changes without focus moving.
+                // Without it a screen reader never learns the outcome.
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _pending != null
+                        ? '正在处理，请稍候…'
+                        : _feedback ?? '已选节点不代表已经连接，请在连接页确认状态。',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _failed && _pending == null
+                          ? V3Palette.of(context).dangerInk
+                          : V3Palette.of(context).inkMuted,
+                    ),
                   ),
                 ),
               ),
@@ -412,10 +418,12 @@ class _NodeRow extends StatelessWidget {
     final p = V3Palette.of(context);
     final selected =
         !controller.autoSelected && controller.currentNode.id == node.id;
+    // The Ink variants: this drives the latency label as well as the status dot,
+    // and the label is small text that has to clear AA on a light ground.
     final latencyColor = node.latency > 0 && node.latency <= 120
-        ? p.success
+        ? p.successInk
         : node.latency > 120 && node.latency < 9999
-        ? p.warning
+        ? p.warningInk
         : p.inkMuted;
     return InkWell(
       borderRadius: BorderRadius.circular(16),

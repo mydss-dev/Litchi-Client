@@ -176,6 +176,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                             hint: '••••••••',
                             obscureText: _obscure,
                             trailing: IconButton(
+                              tooltip: _obscure ? '显示密码' : '隐藏密码',
                               onPressed: () =>
                                   setState(() => _obscure = !_obscure),
                               icon: Icon(
@@ -192,7 +193,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                             const SizedBox(height: 14),
                             Text(
                               _error!,
-                              style: TextStyle(color: p.danger, fontSize: 12),
+                              style: TextStyle(color: p.dangerInk, fontSize: 12),
                             ),
                           ],
                           const SizedBox(height: 24),

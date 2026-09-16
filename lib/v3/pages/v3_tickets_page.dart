@@ -98,7 +98,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                         Text(
                           '帮助与支持',
                           style: TextStyle(
-                            color: p.lychee,
+                            color: p.lycheeInk,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,
@@ -285,10 +285,12 @@ class _TicketRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final statusColor = ticket.isOpen ? p.warning : p.success;
+    // Ink variants: both drive small status labels, and the tints they paint at
+    // 10% alpha only gain depth from the darker base.
+    final statusColor = ticket.isOpen ? p.warningInk : p.successInk;
     final levelColor = switch (ticket.level) {
-      2 => p.danger,
-      1 => p.warning,
+      2 => p.dangerInk,
+      1 => p.warningInk,
       _ => p.aqua,
     };
     return InkWell(
@@ -458,7 +460,7 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
-                Text(_error!, style: TextStyle(color: p.danger, fontSize: 11)),
+                Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 11)),
               ],
             ],
           ),
@@ -613,7 +615,7 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
                   Text(
                     'TICKET #${ticket.id}',
                     style: TextStyle(
-                      color: p.lychee,
+                      color: p.lycheeInk,
                       fontSize: 9,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.5,
@@ -633,6 +635,7 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
                 child: Text(_closing ? '关闭中…' : '关闭工单'),
               ),
             IconButton(
+              tooltip: '关闭',
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.close_rounded),
             ),
@@ -708,7 +711,7 @@ class _TicketDetailDialogState extends State<_TicketDetailDialog> {
             alignment: Alignment.centerLeft,
             child: Text(
               _error!,
-              style: TextStyle(color: p.danger, fontSize: 10),
+              style: TextStyle(color: p.dangerInk, fontSize: 10),
             ),
           ),
         ],

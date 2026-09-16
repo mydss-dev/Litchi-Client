@@ -145,7 +145,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                         Text(
                           'ORDER LEDGER',
                           style: TextStyle(
-                            color: p.lychee,
+                            color: p.lycheeInk,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,

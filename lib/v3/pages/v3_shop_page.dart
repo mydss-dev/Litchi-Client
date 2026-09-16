@@ -537,7 +537,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                         Text(
                           'CHECKOUT',
                           style: TextStyle(
-                            color: p.lychee,
+                            color: p.lycheeInk,
                             fontSize: 9,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2,
@@ -552,6 +552,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                     ),
                   ),
                   IconButton(
+                    tooltip: '关闭',
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -623,7 +624,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                 Text(
                   '优惠码已生效',
                   style: TextStyle(
-                    color: p.success,
+                    color: p.successInk,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -631,7 +632,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
               ],
               if (_error != null) ...[
                 const SizedBox(height: 10),
-                Text(_error!, style: TextStyle(color: p.danger, fontSize: 11)),
+                Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 11)),
               ],
               const SizedBox(height: 24),
               Container(
@@ -665,7 +666,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                       Text(
                         '-${widget.currencySymbol}${(_discountCents / 100).toStringAsFixed(2)}',
                         style: TextStyle(
-                          color: p.success,
+                          color: p.successInk,
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
@@ -857,7 +858,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                               Text(
                                 'PAYMENT',
                                 style: TextStyle(
-                                  color: p.lychee,
+                                  color: p.lycheeInk,
                                   fontSize: 9,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 2,
@@ -874,6 +875,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                           ),
                         ),
                         IconButton(
+                          tooltip: '关闭',
                           onPressed: () => Navigator.of(context).pop(),
                           icon: const Icon(Icons.close_rounded),
                         ),
@@ -934,7 +936,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                         if (_methods.isEmpty)
                           Text(
                             '当前没有可用支付方式',
-                            style: TextStyle(color: p.danger, fontSize: 11),
+                            style: TextStyle(color: p.dangerInk, fontSize: 11),
                           )
                         else
                           Wrap(
@@ -989,7 +991,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                       if (_error != null) ...[
                         Text(
                           _error!,
-                          style: TextStyle(color: p.danger, fontSize: 11),
+                          style: TextStyle(color: p.dangerInk, fontSize: 11),
                         ),
                         const SizedBox(height: 12),
                       ],

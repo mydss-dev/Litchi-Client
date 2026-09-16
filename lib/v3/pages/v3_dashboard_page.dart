@@ -368,7 +368,7 @@ class _ModeRail extends StatelessWidget {
                     Text(
                       _modeTitle(mode),
                       style: TextStyle(
-                        color: selected ? p.lychee : p.inkMuted,
+                        color: selected ? p.lycheeInk : p.inkMuted,
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                       ),

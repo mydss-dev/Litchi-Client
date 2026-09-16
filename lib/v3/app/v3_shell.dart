@@ -17,6 +17,7 @@ import '../pages/v3_tickets_page.dart';
 import '../pages/v3_traffic_page.dart';
 import '../pages/v3_wallet_page.dart';
 import '../theme/v3_palette.dart';
+import 'v3_nav.dart';
 
 bool get _isDesktopTarget =>
     !kIsWeb &&
@@ -108,46 +109,6 @@ class _DesktopRail extends StatelessWidget {
 
   final AppController controller;
 
-  static const _items =
-      <({AppPage page, IconData icon, String label, String hint})>[
-        (
-          page: AppPage.dashboard,
-          icon: Icons.radar_rounded,
-          label: '连接',
-          hint: 'overview',
-        ),
-        (
-          page: AppPage.nodes,
-          icon: Icons.hub_rounded,
-          label: '节点',
-          hint: 'nodes',
-        ),
-        (
-          page: AppPage.shop,
-          icon: Icons.shopping_bag_outlined,
-          label: '套餐',
-          hint: 'upgrade',
-        ),
-        (
-          page: AppPage.traffic,
-          icon: Icons.insights_rounded,
-          label: '流量',
-          hint: 'usage',
-        ),
-        (
-          page: AppPage.invite,
-          icon: Icons.auto_awesome_rounded,
-          label: '邀请',
-          hint: 'invite',
-        ),
-        (
-          page: AppPage.tickets,
-          icon: Icons.forum_outlined,
-          label: '工单',
-          hint: 'support',
-        ),
-      ];
-
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
@@ -201,26 +162,25 @@ class _DesktopRail extends StatelessWidget {
               ),
             ),
           ),
-          ..._items.map(
+          ...enabledNavItems(kDesktopRail).map(
             (item) => _RailItem(
+              key: railItemKey(item.page),
               item: item,
               selected: controller.page == item.page,
               onTap: () => controller.goToPage(item.page),
             ),
           ),
           const Spacer(),
-          _RailItem(
-            item: (
-              page: AppPage.settings,
-              icon: Icons.tune_rounded,
-              label: '设置',
-              hint: 'settings',
+          if (kRailSettings.isEnabled)
+            _RailItem(
+              key: railItemKey(kRailSettings.page),
+              item: kRailSettings,
+              selected: controller.page == AppPage.settings,
+              onTap: () => controller.goToPage(AppPage.settings),
             ),
-            selected: controller.page == AppPage.settings,
-            onTap: () => controller.goToPage(AppPage.settings),
-          ),
           const SizedBox(height: 12),
           InkWell(
+            key: kAccountCardKey,
             borderRadius: BorderRadius.circular(16),
             onTap: () => controller.goToPage(AppPage.account),
             child: Container(
@@ -289,12 +249,13 @@ class _DesktopRail extends StatelessWidget {
 
 class _RailItem extends StatelessWidget {
   const _RailItem({
+    super.key,
     required this.item,
     required this.selected,
     required this.onTap,
   });
 
-  final ({AppPage page, IconData icon, String label, String hint}) item;
+  final V3NavItem item;
   final bool selected;
   final VoidCallback onTap;
 
@@ -353,41 +314,22 @@ class _MobileNavigation extends StatelessWidget {
 
   final AppController controller;
 
-  static const _pages = [
-    AppPage.dashboard,
-    AppPage.nodes,
-    AppPage.shop,
-    AppPage.account,
-  ];
-  static const _icons = [
-    Icons.radar_rounded,
-    Icons.hub_rounded,
-    Icons.shopping_bag_outlined,
-    Icons.person_outline_rounded,
-  ];
-  static const _labels = ['连接', '节点', '套餐', '账户'];
-
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final selected = switch (controller.page) {
-      AppPage.dashboard => 0,
-      AppPage.nodes => 1,
-      AppPage.shop => 2,
-      _ => 3,
-    };
+    final pages = enabledNavItems(kMobilePrimary);
     return NavigationBar(
       height: 72,
       backgroundColor: p.surface,
       indicatorColor: p.lycheeSoft,
-      selectedIndex: selected,
-      onDestinationSelected: (index) => controller.goToPage(_pages[index]),
+      selectedIndex: selectedPrimaryIndex(controller.page) ?? 0,
+      onDestinationSelected: (index) => controller.goToPage(pages[index].page),
       destinations: [
-        for (var i = 0; i < _pages.length; i++)
+        for (final item in pages)
           NavigationDestination(
-            icon: Icon(_icons[i]),
-            selectedIcon: Icon(_icons[i], color: p.lychee),
-            label: _labels[i],
+            icon: Icon(item.icon),
+            selectedIcon: Icon(item.icon, color: p.lychee),
+            label: item.label,
           ),
       ],
     );
@@ -484,7 +426,7 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
           Text(
             'V3',
             style: TextStyle(
-              color: p.lychee,
+              color: p.lycheeInk,
               fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.4,

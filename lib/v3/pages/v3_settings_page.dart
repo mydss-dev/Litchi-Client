@@ -65,7 +65,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
               child: Text(
                 _message!,
                 style: TextStyle(
-                  color: _failed ? p.danger : p.inkMuted,
+                  color: _failed ? p.dangerInk : p.inkMuted,
                   fontSize: 13,
                 ),
               ),
@@ -255,7 +255,7 @@ class _SettingRow<T> extends StatelessWidget {
                 child: Text(
                   index,
                   style: TextStyle(
-                    color: p.lychee,
+                    color: p.lycheeInk,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.4,
@@ -326,7 +326,10 @@ class _Segment<T> extends StatelessWidget {
           onTap: () => onChanged(item),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+            // 14 rather than 8 vertical: at the 12px label's line box that
+            // puts the segment at ~45dp tall, clearing the 44dp a touch
+            // target should offer. Measured, not guessed — 12 gave 41dp.
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 14),
             decoration: BoxDecoration(
               color: selected ? p.surface : Colors.transparent,
               borderRadius: BorderRadius.circular(9),
@@ -334,7 +337,7 @@ class _Segment<T> extends StatelessWidget {
             child: Text(
               label(item),
               style: TextStyle(
-                color: selected ? p.lychee : p.inkMuted,
+                color: selected ? p.lycheeInk : p.inkMuted,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),

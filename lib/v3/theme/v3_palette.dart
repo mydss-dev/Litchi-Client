@@ -19,6 +19,10 @@ class V3Palette {
     required this.success,
     required this.warning,
     required this.danger,
+    required this.lycheeInk,
+    required this.successInk,
+    required this.warningInk,
+    required this.dangerInk,
   });
 
   final Color canvas;
@@ -36,21 +40,42 @@ class V3Palette {
   final Color warning;
   final Color danger;
 
+  /// Text-safe variants of the semantic colors.
+  ///
+  /// The four colors above are tuned as fills and icons: on a light ground they
+  /// sit between 3.2:1 and 4.8:1, which clears the 3:1 WCAG asks of graphical
+  /// objects but not the 4.5:1 it asks of body text. Small colored labels and
+  /// error messages therefore use these darker inks, which clear 4.5:1 against
+  /// every light surface. Dark mode already exceeds the ratio, so there the inks
+  /// are simply the base colors.
+  final Color lycheeInk;
+  final Color successInk;
+  final Color warningInk;
+  final Color dangerInk;
+
   static const light = V3Palette(
     canvas: Color(0xFFF3F4F0),
     surface: Color(0xFFFFFFFF),
     surfaceRaised: Color(0xFFE8EBE5),
     night: Color(0xFF121515),
     ink: Color(0xFF121515),
-    inkMuted: Color(0xFF68716F),
+    // Darkened from #68716F, which was only 4.17:1 on `surfaceRaised` — below
+    // AA for the segmented-control labels that sit on that track.
+    inkMuted: Color(0xFF636B69),
     line: Color(0xFFD8DEDA),
     lychee: Color(0xFFF25472),
     lycheeSoft: Color(0xFFFFE3E8),
     citrus: Color(0xFFD7F267),
     aqua: Color(0xFF70D7D5),
     success: Color(0xFF249A6A),
-    warning: Color(0xFFC68122),
+    // Darkened from #C68122, which was 2.90:1 on `canvas` — below the 3:1 WCAG
+    // asks of an icon or UI shape drawn on that ground.
+    warning: Color(0xFFBA771C),
     danger: Color(0xFFCC3F57),
+    lycheeInk: Color(0xFFBE2B4E),
+    successInk: Color(0xFF177045),
+    warningInk: Color(0xFF9A5A00),
+    dangerInk: Color(0xFFB02E45),
   );
 
   static const dark = V3Palette(
@@ -68,6 +93,10 @@ class V3Palette {
     success: Color(0xFF57D39A),
     warning: Color(0xFFF1BD59),
     danger: Color(0xFFFF7188),
+    lycheeInk: Color(0xFFFF6683),
+    successInk: Color(0xFF57D39A),
+    warningInk: Color(0xFFF1BD59),
+    dangerInk: Color(0xFFFF7188),
   );
 
   static V3Palette of(BuildContext context) =>

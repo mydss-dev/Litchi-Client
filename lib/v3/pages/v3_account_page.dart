@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
 
 class V3AccountPage extends StatefulWidget {
@@ -50,7 +51,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
               Text(
                 '账户中心',
                 style: TextStyle(
-                  color: p.lychee,
+                  color: p.lycheeInk,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 2.2,
@@ -97,6 +98,13 @@ class _V3AccountPageState extends State<V3AccountPage> {
                       ],
                     ),
               const SizedBox(height: 16),
+              // Directly under the account summary, on every layout: on compact
+              // this hub is the only route to wallet, orders, traffic, invite,
+              // tickets and settings, and further down it sat a full screen
+              // below the fold. Keeping one placement also means resizing the
+              // window never moves a navigation landmark.
+              _HubPanel(controller: controller),
+              const SizedBox(height: 16),
               compact
                   ? Column(
                       children: [
@@ -126,7 +134,6 @@ class _V3AccountPageState extends State<V3AccountPage> {
               const SizedBox(height: 16),
               _AccountActions(
                 onPassword: () => _showPasswordDialog(context),
-                onSettings: () => controller.goToPage(AppPage.settings),
                 onLogout: controller.logout,
               ),
               if (controller.dataLoadError != null) ...[
@@ -140,7 +147,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
                   ),
                   child: Text(
                     controller.dataLoadError!,
-                    style: TextStyle(color: p.warning, fontSize: 11),
+                    style: TextStyle(color: p.warningInk, fontSize: 11),
                   ),
                 ),
               ],
@@ -454,6 +461,109 @@ class _MetricPanel extends StatelessWidget {
   }
 }
 
+/// Secondary destinations, surfaced as a list on the account page.
+///
+/// This is the compact layout's navigation hub: without it, wallet, orders,
+/// traffic, invite, tickets and settings have no compact entry point at all.
+class _HubPanel extends StatelessWidget {
+  const _HubPanel({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final items = enabledNavItems(kMobileHub);
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: p.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 10, bottom: 6),
+            child: Text(
+              '我的服务',
+              style: TextStyle(
+                color: p.inkMuted,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+          for (final item in items)
+            _HubRow(
+              key: hubRowKey(item.page),
+              item: item,
+              selected: controller.page == item.page,
+              onTap: () => controller.goToPage(item.page),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HubRow extends StatelessWidget {
+  const _HubRow({
+    super.key,
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final V3NavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: p.surfaceRaised,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(item.icon, size: 18, color: p.inkMuted),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                item.label,
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 19,
+              color: selected ? p.lychee : p.inkMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PreferencesPanel extends StatelessWidget {
   const _PreferencesPanel({
     required this.controller,
@@ -579,12 +689,10 @@ class _PreferenceRow extends StatelessWidget {
 class _AccountActions extends StatelessWidget {
   const _AccountActions({
     required this.onPassword,
-    required this.onSettings,
     required this.onLogout,
   });
 
   final VoidCallback onPassword;
-  final VoidCallback onSettings;
   final VoidCallback onLogout;
 
   @override
@@ -603,13 +711,6 @@ class _AccountActions extends StatelessWidget {
               icon: Icons.password_rounded,
               label: '修改密码',
               onTap: onPassword,
-            ),
-          ),
-          Expanded(
-            child: _ActionButton(
-              icon: Icons.tune_rounded,
-              label: '客户端设置',
-              onTap: onSettings,
             ),
           ),
           Expanded(
@@ -752,6 +853,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                   ),
                 ),
                 IconButton(
+                  tooltip: '关闭',
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close_rounded),
                 ),
@@ -765,7 +867,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
             _PasswordField(controller: _confirmPassword, label: '确认新密码'),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: p.danger, fontSize: 11)),
+              Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 11)),
             ],
             const SizedBox(height: 20),
             SizedBox(

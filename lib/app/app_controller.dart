@@ -44,6 +44,21 @@ enum AppPage {
   tickets,
 }
 
+/// Whether [page] is available under the active panel's capability switches.
+///
+/// Single source of truth: every navigation surface, `goToPage` and the
+/// account hub consult this, so a page a panel does not expose can neither be
+/// listed nor navigated to.
+bool isPageEnabled(AppPage page) => switch (page) {
+  AppPage.shop => AppConfig.panelFeatures.shop,
+  AppPage.invite => AppConfig.panelFeatures.invite,
+  AppPage.wallet => AppConfig.panelFeatures.wallet,
+  AppPage.orders => AppConfig.panelFeatures.orders,
+  AppPage.traffic => AppConfig.panelFeatures.traffic,
+  AppPage.tickets => AppConfig.panelFeatures.tickets,
+  _ => true,
+};
+
 enum AuthScreen { login, register, changePassword, forgotPassword }
 
 class AppController extends ChangeNotifier with WidgetsBindingObserver {
@@ -79,7 +94,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool _isInitializing = true;
   AppPage _page = AppPage.dashboard;
   AuthScreen _authScreen = AuthScreen.login;
-  bool _mobileProfileChildPage = false;
 
   List<PlanModel> _plans = const [];
   int? _currentPlanId;
@@ -221,7 +235,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get isInitializing => _isInitializing;
   AppPage get page => _page;
   AuthScreen get authScreen => _authScreen;
-  bool get mobileProfileChildPage => _mobileProfileChildPage;
 
   UserModel get user => _account.user;
   RemoteUser? get accountDetails => _account.remoteUser;
@@ -657,24 +670,13 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       AppConfig.effectiveApiBases,
       forceRebuild: true,
     );
-    if (!_isPageEnabled(_page)) {
+    if (!isPageEnabled(_page)) {
       _page = AppPage.dashboard;
-      _mobileProfileChildPage = false;
     }
     unawaited(refreshRegisterConfigCache());
     unawaited(_checkForUpdate());
     notifyListeners();
   }
-
-  bool _isPageEnabled(AppPage page) => switch (page) {
-    AppPage.shop => AppConfig.panelFeatures.shop,
-    AppPage.invite => AppConfig.panelFeatures.invite,
-    AppPage.wallet => AppConfig.panelFeatures.wallet,
-    AppPage.orders => AppConfig.panelFeatures.orders,
-    AppPage.traffic => AppConfig.panelFeatures.traffic,
-    AppPage.tickets => AppConfig.panelFeatures.tickets,
-    _ => true,
-  };
 
   void _onCoreChanged() {
     final status = _core.connectionStatus;
@@ -688,20 +690,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void goToPage(AppPage page) {
-    if (!_isPageEnabled(page)) return;
-    _mobileProfileChildPage = false;
+    if (!isPageEnabled(page)) return;
     if (_page == page) return;
-    _page = page;
-    notifyListeners();
-  }
-
-  void goToProfileChildPage(AppPage page) {
-    if (!_isPageEnabled(page)) return;
-    _mobileProfileChildPage = page != AppPage.account;
-    if (_page == page) {
-      notifyListeners();
-      return;
-    }
     _page = page;
     notifyListeners();
   }

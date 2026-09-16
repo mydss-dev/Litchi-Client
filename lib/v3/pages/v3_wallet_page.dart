@@ -168,7 +168,7 @@ class _V3WalletPageState extends State<V3WalletPage> {
                         Text(
                           'WALLET FLOW',
                           style: TextStyle(
-                            color: p.lychee,
+                            color: p.lycheeInk,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2.2,
@@ -685,7 +685,7 @@ class _AmountDialogState extends State<_AmountDialog> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 10),
-              Text(_error!, style: TextStyle(color: p.danger, fontSize: 10)),
+              Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 10)),
             ],
             const SizedBox(height: 18),
             SizedBox(
@@ -808,7 +808,7 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 10),
-              Text(_error!, style: TextStyle(color: p.danger, fontSize: 10)),
+              Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 10)),
             ],
             const SizedBox(height: 18),
             SizedBox(
