@@ -413,6 +413,19 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
   final _couponController = TextEditingController();
   CouponResult? _couponResult;
   bool _checkingCoupon = false;
+
+  /// The code [_couponResult] was verified for. The coupon only counts while
+  /// the field still holds this exact text, so the discount on screen can never
+  /// belong to one code while a different one is submitted.
+  String? _appliedCode;
+
+  /// The coupon that actually applies right now, or null. Derived rather than
+  /// stored: clearing it on edit alone would still leave programmatic text
+  /// changes and revert-then-retype able to resurrect a stale discount.
+  CouponResult? get _activeCoupon =>
+      _couponResult != null && _couponController.text.trim() == _appliedCode
+      ? _couponResult
+      : null;
   bool _submitting = false;
   String? _error;
 
@@ -431,7 +444,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
   double get _originalPrice => _price(widget.plan, _cycle) ?? 0;
 
   int get _discountCents {
-    final coupon = _couponResult;
+    final coupon = _activeCoupon;
     if (coupon == null) return 0;
     if (coupon.type == 1) return coupon.value;
     if (coupon.type == 2) {
@@ -463,6 +476,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
       if (!mounted) return;
       setState(() {
         _couponResult = result;
+        _appliedCode = result == null ? null : code;
         if (result == null) _error = '优惠码无效或不可用于当前套餐';
       });
     } catch (error) {
@@ -482,9 +496,9 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
       final tradeNo = await widget.api.submitOrder(
         planId: int.parse(widget.plan.id),
         period: _periodKey(widget.plan, _cycle),
-        couponCode: _couponResult == null
-            ? null
-            : _couponController.text.trim(),
+        // Send the code the discount was computed from, and only when that
+        // discount is still the one on screen.
+        couponCode: _activeCoupon == null ? null : _appliedCode,
       );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -598,6 +612,10 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                   Expanded(
                     child: TextField(
                       controller: _couponController,
+                      // Rebuild on every keystroke so the derived discount and
+                      // the "已生效" note drop the moment the code no longer
+                      // matches the one that was verified.
+                      onChanged: (_) => setState(() => _error = null),
                       decoration: InputDecoration(
                         hintText: '可选',
                         filled: true,
@@ -619,7 +637,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                   ),
                 ],
               ),
-              if (_couponResult != null) ...[
+              if (_activeCoupon != null) ...[
                 const SizedBox(height: 9),
                 Text(
                   '优惠码已生效',
@@ -632,7 +650,10 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
               ],
               if (_error != null) ...[
                 const SizedBox(height: 10),
-                Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 11)),
+                Text(
+                  _error!,
+                  style: TextStyle(color: p.dangerInk, fontSize: 11),
+                ),
               ],
               const SizedBox(height: 24),
               Container(

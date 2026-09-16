@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3OrdersPage extends StatefulWidget {
   const V3OrdersPage({super.key});
@@ -122,9 +123,23 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         .where((order) => order.status == 3 || order.status == 4)
         .fold<int>(0, (sum, order) => sum + order.totalAmount);
 
+    // Built once so the three density branches below cannot drift apart.
+    final metrics = <Widget>[
+      _OrderMetric(label: '全部订单', value: '${_orders.length}', accent: p.lychee),
+      _OrderMetric(label: '待处理', value: '$pending', accent: p.warning),
+      _OrderMetric(label: '已完成', value: '$completed', accent: p.success),
+      _OrderMetric(
+        label: '累计支付',
+        value:
+            '${controller.currencySymbol}${(spent / 100).toStringAsFixed(2)}',
+        accent: p.aqua,
+      ),
+    ];
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
+        // Phones get one card per row; anything wider gets two rows of two.
+        final phone = constraints.maxWidth < 480;
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
             compact ? 20 : 34,
@@ -164,6 +179,9 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                       ],
                     ),
                   ),
+                  V3BackToAccount(
+                    onTap: () => controller.goToPage(AppPage.account),
+                  ),
                   IconButton(
                     tooltip: '刷新订单',
                     onPressed: _loading ? null : _load,
@@ -172,71 +190,48 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                 ],
               ),
               const SizedBox(height: 24),
-              compact
-                  ? Column(
+              // Four across needs real width: a 900x700 Windows window leaves
+              // only 666dp of content once the rail is out, so the old
+              // single-column fallback stacked all four 100dp cards and pushed
+              // the order list itself below the fold. Three densities now.
+              if (!compact)
+                Row(
+                  children: [
+                    for (var i = 0; i < metrics.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 12),
+                      Expanded(child: metrics[i]),
+                    ],
+                  ],
+                )
+              else if (!phone)
+                Column(
+                  children: [
+                    Row(
                       children: [
-                        _OrderMetric(
-                          label: '全部订单',
-                          value: '${_orders.length}',
-                          accent: p.lychee,
-                        ),
-                        const SizedBox(height: 10),
-                        _OrderMetric(
-                          label: '待处理',
-                          value: '$pending',
-                          accent: p.warning,
-                        ),
-                        const SizedBox(height: 10),
-                        _OrderMetric(
-                          label: '已完成',
-                          value: '$completed',
-                          accent: p.success,
-                        ),
-                        const SizedBox(height: 10),
-                        _OrderMetric(
-                          label: '累计支付',
-                          value:
-                              '${controller.currencySymbol}${(spent / 100).toStringAsFixed(2)}',
-                          accent: p.aqua,
-                        ),
-                      ],
-                    )
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: _OrderMetric(
-                            label: '全部订单',
-                            value: '${_orders.length}',
-                            accent: p.lychee,
-                          ),
-                        ),
+                        Expanded(child: metrics[0]),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: _OrderMetric(
-                            label: '待处理',
-                            value: '$pending',
-                            accent: p.warning,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _OrderMetric(
-                            label: '已完成',
-                            value: '$completed',
-                            accent: p.success,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _OrderMetric(
-                            label: '累计支付',
-                            value:
-                                '${controller.currencySymbol}${(spent / 100).toStringAsFixed(2)}',
-                            accent: p.aqua,
-                          ),
-                        ),
+                        Expanded(child: metrics[1]),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: metrics[2]),
+                        const SizedBox(width: 12),
+                        Expanded(child: metrics[3]),
+                      ],
+                    ),
+                  ],
+                )
+              else
+                Column(
+                  children: [
+                    for (var i = 0; i < metrics.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 10),
+                      metrics[i],
+                    ],
+                  ],
+                ),
               const SizedBox(height: 16),
               Container(
                 width: double.infinity,

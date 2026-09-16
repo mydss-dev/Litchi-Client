@@ -245,3 +245,23 @@ class V3Rule extends StatelessWidget {
   Widget build(BuildContext context) =>
       Divider(height: 1, color: V3Palette.of(context).line);
 }
+
+/// Back affordance for the account-hub sub-pages (钱包/订单/流量/邀请/工单/设置).
+///
+/// On compact the bottom bar keeps 账户 highlighted while any of these is open.
+/// That is a drill-down, and it is only honest if there is a way back out of it
+/// — without one, five of the six pages left the user told they were on 账户
+/// with nothing to say how to get there. Takes a callback rather than reaching
+/// for the controller so this file stays presentational.
+class V3BackToAccount extends StatelessWidget {
+  const V3BackToAccount({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: '返回账户',
+    onPressed: onTap,
+    icon: const Icon(Icons.arrow_back_rounded),
+  );
+}

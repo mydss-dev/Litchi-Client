@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3InvitePage extends StatefulWidget {
   const V3InvitePage({super.key});
@@ -102,6 +103,9 @@ class _V3InvitePageState extends State<V3InvitePage> {
                         ),
                       ],
                     ),
+                  ),
+                  V3BackToAccount(
+                    onTap: () => controller.goToPage(AppPage.account),
                   ),
                   IconButton(
                     tooltip: '刷新邀请数据',

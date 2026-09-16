@@ -41,7 +41,25 @@ class V3Shell extends StatelessWidget {
         : !controller.isAuthenticated
         ? const V3AuthView()
         : const _V3Workspace();
-    if (!_isDesktopTarget) return body;
+    if (!_isDesktopTarget) {
+      // Material for the same reason the desktop branch below has it: the
+      // login and boot views are not inside a Scaffold, and a TextField
+      // without a Material ancestor trips debugCheckHasMaterial. The
+      // authenticated pages were only accidentally safe because their own
+      // Scaffold supplies one.
+      //
+      // SafeArea for the status bar: Android draws it over the top of the
+      // window and nothing in the pages accounts for it. The tests could not
+      // see this either — setSurfaceSize produces a surface with zero padding,
+      // so the header measured 26dp from the top on every device: 2dp of
+      // clearance under a 24dp status bar, and covered outright by the 48dp
+      // inset of a notched one. Bottom is deliberately left alone; Scaffold
+      // and NavigationBar already clear the gesture bar.
+      return Material(
+        color: V3Palette.of(context).canvas,
+        child: SafeArea(bottom: false, child: body),
+      );
+    }
     return Material(
       color: V3Palette.of(context).canvas,
       child: Column(

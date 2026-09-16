@@ -53,10 +53,13 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const V3PageHeader(
+          V3PageHeader(
             kicker: '偏好与诊断',
             title: '设置',
             description: '管理网络连接、启动方式与外观。',
+            trailing: V3BackToAccount(
+              onTap: () => controller.goToPage(AppPage.account),
+            ),
           ),
           const SizedBox(height: 20),
           if (_message != null) ...[

@@ -278,7 +278,6 @@ class _PlanPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final plan = controller.user.plan.trim();
-    final expiry = controller.user.expiry.trim();
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -308,7 +307,7 @@ class _PlanPanel extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             controller.hasPlan
-                ? '有效期 ${expiry.isEmpty ? '永久' : expiry}'
+                ? '有效期 ${controller.planExpiryLabel}'
                 : '选择套餐后即可开始连接',
             style: Theme.of(context).textTheme.bodySmall,
           ),
@@ -687,10 +686,7 @@ class _PreferenceRow extends StatelessWidget {
 }
 
 class _AccountActions extends StatelessWidget {
-  const _AccountActions({
-    required this.onPassword,
-    required this.onLogout,
-  });
+  const _AccountActions({required this.onPassword, required this.onLogout});
 
   final VoidCallback onPassword;
   final VoidCallback onLogout;

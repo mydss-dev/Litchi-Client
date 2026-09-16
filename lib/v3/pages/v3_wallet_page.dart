@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3WalletPage extends StatefulWidget {
   const V3WalletPage({super.key});
@@ -155,10 +156,8 @@ class _V3WalletPageState extends State<V3WalletPage> {
             children: [
               Row(
                 children: [
-                  IconButton(
-                    tooltip: '返回账户',
-                    onPressed: () => controller.goToPage(AppPage.account),
-                    icon: const Icon(Icons.arrow_back_rounded),
+                  V3BackToAccount(
+                    onTap: () => controller.goToPage(AppPage.account),
                   ),
                   const SizedBox(width: 6),
                   Expanded(

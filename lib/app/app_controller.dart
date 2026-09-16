@@ -248,6 +248,27 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _currentPlanId != null ||
       _account.user.plan.trim().isNotEmpty ||
       _subscription.subscribeUrl.trim().isNotEmpty;
+
+  /// User-facing plan-expiry text — the single source of truth for every page
+  /// that reports one, so they cannot disagree with each other again.
+  ///
+  /// The panel reports three distinct states and only one of them is
+  /// "permanent":
+  ///   * no plan at all                  -> '暂无套餐'
+  ///   * a plan whose expiry it did not  -> '未提供'
+  ///     report (a stale or partial sync)
+  ///   * a plan with an expiry           -> the value, e.g. '2026-07-08'
+  ///
+  /// Only [SubscriptionInfo.expiryDisplay] may produce '永久', and only when
+  /// the panel said so. Reading an empty expiry as "permanent" is what made the
+  /// account and traffic pages tell users with no plan that they had a
+  /// permanent one.
+  String get planExpiryLabel {
+    final value = user.expiry.trim();
+    if (value.isNotEmpty) return value;
+    return hasPlan ? '未提供' : '暂无套餐';
+  }
+
   List<InviteCodeModel> get inviteCodes => _invite.inviteCodes;
   String get inviteCode => _invite.inviteCode;
   String get inviteLink => _invite.inviteLink;

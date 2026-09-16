@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3TicketsPage extends StatefulWidget {
   const V3TicketsPage({super.key});
@@ -123,6 +124,10 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                       icon: const Icon(Icons.add_rounded),
                       label: const Text('新建工单'),
                     ),
+                  V3BackToAccount(
+                    onTap: () =>
+                        AppScope.read(context).goToPage(AppPage.account),
+                  ),
                   IconButton(
                     tooltip: '刷新工单',
                     onPressed: _loading ? null : _load,
@@ -460,7 +465,10 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
-                Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 11)),
+                Text(
+                  _error!,
+                  style: TextStyle(color: p.dangerInk, fontSize: 11),
+                ),
               ],
             ],
           ),

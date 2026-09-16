@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 
 class V3TrafficPage extends StatefulWidget {
   const V3TrafficPage({super.key});
@@ -104,6 +105,9 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                         ),
                       ],
                     ),
+                  ),
+                  V3BackToAccount(
+                    onTap: () => controller.goToPage(AppPage.account),
                   ),
                   IconButton(
                     tooltip: '刷新流量',
@@ -300,7 +304,6 @@ class _TimingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final expiry = controller.user.expiry.trim();
     final resetDays = _daysUntilReset(controller.resetDay);
     return Container(
       padding: const EdgeInsets.all(24),
@@ -331,7 +334,7 @@ class _TimingPanel extends StatelessWidget {
           _TimingRow(
             icon: Icons.event_available_rounded,
             label: '套餐有效期',
-            value: expiry.isEmpty ? '永久' : expiry,
+            value: controller.planExpiryLabel,
             accent: p.aqua,
           ),
           _TimingRow(

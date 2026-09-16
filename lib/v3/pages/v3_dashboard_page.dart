@@ -539,7 +539,9 @@ class _PlanSummary extends StatelessWidget {
                 ),
               ),
               Text(
-                user.expiry.isEmpty ? '未提供到期时间' : '到期 ${user.expiry}',
+                controller.hasPlan
+                    ? '到期 ${controller.planExpiryLabel}'
+                    : '尚未开通套餐',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],

@@ -49,7 +49,10 @@ Future<_NavController> _pumpShell(WidgetTester tester, Size size) async {
 
 /// Runs [body] with the target platform pinned, restoring it before the test
 /// framework verifies that no foundation debug variable was left changed.
-Future<void> _onPlatform(TargetPlatform platform, Future<void> Function() body) async {
+Future<void> _onPlatform(
+  TargetPlatform platform,
+  Future<void> Function() body,
+) async {
   debugDefaultTargetPlatformOverride = platform;
   try {
     await body();
@@ -63,10 +66,8 @@ Finder _hubRow(AppPage page) => find.byKey(hubRowKey(page));
 
 /// The bottom bar is a public Material widget, so its destinations can be
 /// scoped precisely rather than by ambiguous label text.
-Finder _tab(String label) => find.descendant(
-  of: find.byType(NavigationBar),
-  matching: find.text(label),
-);
+Finder _tab(String label) =>
+    find.descendant(of: find.byType(NavigationBar), matching: find.text(label));
 
 Future<void> _tap(WidgetTester tester, Finder finder, String what) async {
   await tester.ensureVisible(finder);
@@ -76,8 +77,9 @@ Future<void> _tap(WidgetTester tester, Finder finder, String what) async {
   expect(tester.takeException(), isNull, reason: 'tapping $what threw');
 }
 
-String _primaryLabel(AppPage page) =>
-    enabledNavItems(kMobilePrimary).firstWhere((item) => item.page == page).label;
+String _primaryLabel(AppPage page) => enabledNavItems(
+  kMobilePrimary,
+).firstWhere((item) => item.page == page).label;
 
 void main() {
   // The invariant: every page the current panel exposes is reachable from the
@@ -135,7 +137,11 @@ void main() {
           case AppPage.tickets:
           case AppPage.settings:
             // Secondary pages live in the account hub on compact layouts.
-            await _tap(tester, _tab(_primaryLabel(AppPage.account)), 'account tab');
+            await _tap(
+              tester,
+              _tab(_primaryLabel(AppPage.account)),
+              'account tab',
+            );
             await _tap(tester, _hubRow(target), target.name);
         }
 
@@ -200,6 +206,36 @@ void main() {
           bar.selectedIndex,
           accountIndex,
           reason: '${page.name} should read as an account sub-page',
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  // The highlight asserted above is only honest if the page also offers a way
+  // back to the tab it claims the user is on. Five of the six hub pages had no
+  // back control at all, so drilling into 邀请 told the user they were on 账户
+  // while giving them no route there.
+  testWidgets('every hub page offers a working way back to the account tab', (
+    tester,
+  ) async {
+    await _onPlatform(TargetPlatform.android, () async {
+      final controller = await _pumpShell(tester, _mobile);
+      for (final page in enabledNavItems(kMobileHub).map((item) => item.page)) {
+        controller.goToPage(page);
+        await tester.pumpAndSettle();
+        final back = find.byTooltip('返回账户');
+        expect(
+          back,
+          findsOneWidget,
+          reason: '${page.name} highlights 账户 but offers no way back to it',
+        );
+        await tester.tap(back);
+        await tester.pumpAndSettle();
+        expect(
+          controller.page,
+          AppPage.account,
+          reason: 'the back control on ${page.name} did not reach 账户',
         );
       }
       expect(tester.takeException(), isNull);
