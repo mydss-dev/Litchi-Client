@@ -386,45 +386,9 @@ class _InviteStats extends StatelessWidget {
             label: '待确认',
             value: '$symbol${controller.pendingCommission.toStringAsFixed(2)}',
           ),
-          const SizedBox(height: 22),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: p.lycheeSoft,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.account_balance_wallet_rounded,
-                  // On the soft lychee fill, the same pairing the rail uses.
-                  color: p.lycheeInk,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '可提现佣金',
-                        style: TextStyle(color: p.inkMuted, fontSize: 10),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '$symbol${controller.withdrawable.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          color: p.ink,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          _StatLine(
+            label: '可提现佣金',
+            value: '$symbol${controller.withdrawable.toStringAsFixed(2)}',
           ),
         ],
       ),

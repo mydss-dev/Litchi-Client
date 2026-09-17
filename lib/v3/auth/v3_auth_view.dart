@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../shared/services/credentials_storage.dart';
+import '../../shared/services/secure_logger.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 
@@ -12,11 +14,195 @@ class V3AuthView extends StatefulWidget {
 }
 
 class _V3AuthViewState extends State<V3AuthView> {
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.of(context);
+    final p = V3Palette.of(context);
+    return ColoredBox(
+      color: p.canvas,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 760;
+          return Row(
+            children: [
+              if (wide) const Expanded(flex: 11, child: _AuthBrandPanel()),
+              Expanded(
+                flex: wide ? 9 : 1,
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: wide ? 52 : 28,
+                      vertical: 32,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 380),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!wide) ...[
+                            V3BrandMark(boxSize: 34, labelColor: p.ink),
+                            const SizedBox(height: 44),
+                          ],
+                          switch (controller.authScreen) {
+                            AuthScreen.login => const _LoginForm(),
+                            AuthScreen.register => const _RegisterForm(),
+                            AuthScreen.forgotPassword =>
+                              const _ForgotPasswordForm(),
+                            // Password change is reached from the signed-in
+                            // account page; there is no standalone entry here.
+                            AuthScreen.changePassword => const _LoginForm(),
+                          },
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The left-hand brand block shown on wide layouts.
+class _AuthBrandPanel extends StatelessWidget {
+  const _AuthBrandPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      margin: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: p.hero,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: p.line),
+      ),
+      padding: const EdgeInsets.all(34),
+      child: Stack(
+        children: [
+          const Align(
+            alignment: Alignment.topLeft,
+            child: V3BrandMark(boxSize: 34),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 390),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'A QUIETER WAY\nTO CROSS THE NET.',
+                    style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      color: p.ink,
+                      fontSize: 42,
+                      height: 0.98,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    '选择线路、查看流量、确认连接状态，都在一个界面里完成。',
+                    style: TextStyle(
+                      color: p.ink.withValues(alpha: 0.62),
+                      fontSize: 13,
+                      height: 1.55,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            right: -34,
+            bottom: -46,
+            child: Container(
+              width: 210,
+              height: 210,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: p.lychee.withValues(alpha: 0.65),
+                  width: 24,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 78,
+            top: 90,
+            child: Container(
+              width: 12,
+              height: 82,
+              decoration: BoxDecoration(
+                // Aqua is tuned against the near-black the brand block used to
+                // be; on the light one it lands at 1.5:1 and reads as a smudge.
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? p.aqua
+                    : p.lycheeInk,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoginForm extends StatefulWidget {
+  const _LoginForm();
+
+  @override
+  State<_LoginForm> createState() => _LoginFormState();
+}
+
+class _LoginFormState extends State<_LoginForm> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _busy = false;
   bool _obscure = true;
+  bool _remember = true;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSaved();
+  }
+
+  /// Fills the form from the credential store, if anything was remembered.
+  ///
+  /// A JWT in the password slot means an older build wrote the auth token
+  /// there; that is not a password, so it is dropped and only the email is
+  /// kept.
+  Future<void> _loadSaved() async {
+    // Reading the store touches the platform's secure backend, which can be
+    // unavailable. Failing to autofill is a blank field; failing here would be
+    // a login page that will not open.
+    try {
+      final saved = await CredentialsStorage.load();
+      if (saved == null || !mounted) return;
+      if (_looksLikeJwt(saved.password)) {
+        await CredentialsStorage.clearPassword();
+        if (!mounted) return;
+        setState(() => _email.text = saved.email);
+        return;
+      }
+      setState(() {
+        _email.text = saved.email;
+        _password.text = saved.password;
+      });
+    } catch (error) {
+      SecureLogger.warn('Login autofill failed', error);
+    }
+  }
+
+  static bool _looksLikeJwt(String value) =>
+      value.startsWith('eyJ') && value.split('.').length == 3;
 
   @override
   void dispose() {
@@ -38,11 +224,22 @@ class _V3AuthViewState extends State<V3AuthView> {
       _error = null;
     });
     try {
-      await AppScope.read(context).loginWithCredentials(email, password);
+      final remember = _remember;
+      await AppScope.read(context).loginWithCredentials(
+        email,
+        password,
+        // Runs only after the panel has accepted the credentials, so a typo
+        // never overwrites good ones.
+        onAuthenticated: (_) async {
+          if (remember) {
+            await CredentialsStorage.save(email: email, password: password);
+          } else {
+            await CredentialsStorage.clear();
+          }
+        },
+      );
     } catch (e) {
-      if (mounted) {
-        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
-      }
+      if (mounted) setState(() => _error = _authError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -51,200 +248,532 @@ class _V3AuthViewState extends State<V3AuthView> {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return ColoredBox(
-      color: p.canvas,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 760;
-          return Row(
-            children: [
-              if (wide)
-                Expanded(
-                  flex: 11,
-                  child: Container(
-                    margin: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: p.hero,
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: p.line),
-                    ),
-                    padding: const EdgeInsets.all(34),
-                    child: Stack(
-                      children: [
-                        const Align(
-                          alignment: Alignment.topLeft,
-                          child: V3BrandMark(boxSize: 34),
-                        ),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 390),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'A QUIETER WAY\nTO CROSS THE NET.',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .displayLarge
-                                      ?.copyWith(
-                                        color: p.ink,
-                                        fontSize: 42,
-                                        height: 0.98,
-                                      ),
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  '选择线路、查看流量、确认连接状态，都在一个界面里完成。',
-                                  style: TextStyle(
-                                    color: p.ink.withValues(alpha: 0.62),
-                                    fontSize: 13,
-                                    height: 1.55,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: -34,
-                          bottom: -46,
-                          child: Container(
-                            width: 210,
-                            height: 210,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: p.lychee.withValues(alpha: 0.65),
-                                width: 24,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 78,
-                          top: 90,
-                          child: Container(
-                            width: 12,
-                            height: 82,
-                            decoration: BoxDecoration(
-                              // Aqua is tuned against the near-black the brand
-                              // block used to be; on the light one it lands at
-                              // 1.5:1 and reads as a smudge. The brand ink
-                              // carries the same accent shape there.
-                              color:
-                                  Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? p.aqua
-                                  : p.lycheeInk,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              Expanded(
-                flex: wide ? 9 : 1,
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: wide ? 52 : 28,
-                      vertical: 32,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 380),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (!wide) ...[
-                            V3BrandMark(boxSize: 34, labelColor: p.ink),
-                            const SizedBox(height: 44),
-                          ],
-                          Text(
-                            '欢迎回来',
-                            style: Theme.of(context).textTheme.headlineLarge,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '登录后继续连接你的 Litchi 网络。',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 32),
-                          _V3Field(
-                            controller: _email,
-                            label: 'EMAIL',
-                            hint: 'name@example.com',
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          const SizedBox(height: 16),
-                          _V3Field(
-                            controller: _password,
-                            label: 'PASSWORD',
-                            hint: '••••••••',
-                            obscureText: _obscure,
-                            trailing: IconButton(
-                              tooltip: _obscure ? '显示密码' : '隐藏密码',
-                              onPressed: () =>
-                                  setState(() => _obscure = !_obscure),
-                              icon: Icon(
-                                _obscure
-                                    ? Icons.visibility_off_rounded
-                                    : Icons.visibility_rounded,
-                                size: 18,
-                                color: p.inkMuted,
-                              ),
-                            ),
-                            onSubmitted: (_) => _login(),
-                          ),
-                          if (_error != null) ...[
-                            const SizedBox(height: 14),
-                            Text(
-                              _error!,
-                              style: TextStyle(
-                                color: p.dangerInk,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 24),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 52,
-                            child: FilledButton(
-                              onPressed: _busy ? null : _login,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: p.lychee,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: Text(_busy ? '正在登录…' : '进入 Litchi'),
-                            ),
-                          ),
-                          const SizedBox(height: 18),
-                          Text(
-                            '登录遇到问题？请联系你的服务商。',
-                            style: TextStyle(
-                              color: p.inkMuted,
-                              fontSize: 10,
-                              letterSpacing: 1.8,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+    final controller = AppScope.of(context);
+    final registerOpen = controller.registerConfig.registerOpen;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('欢迎回来', style: Theme.of(context).textTheme.headlineLarge),
+        const SizedBox(height: 8),
+        Text(
+          '登录后继续连接你的 Litchi 网络。',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 32),
+        _V3Field(
+          controller: _email,
+          label: 'EMAIL',
+          hint: 'name@example.com',
+          keyboardType: TextInputType.emailAddress,
+        ),
+        const SizedBox(height: 16),
+        _V3Field(
+          controller: _password,
+          label: 'PASSWORD',
+          hint: '••••••••',
+          obscureText: _obscure,
+          trailing: IconButton(
+            tooltip: _obscure ? '显示密码' : '隐藏密码',
+            onPressed: () => setState(() => _obscure = !_obscure),
+            icon: Icon(
+              _obscure
+                  ? Icons.visibility_off_rounded
+                  : Icons.visibility_rounded,
+              size: 18,
+              color: p.inkMuted,
+            ),
+          ),
+          onSubmitted: (_) => _login(),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _RememberToggle(
+              value: _remember,
+              onChanged: (value) => setState(() => _remember = value),
+            ),
+            const Spacer(),
+            _InlineTextButton(
+              label: '忘记密码？',
+              onPressed: () =>
+                  controller.goToAuthScreen(AuthScreen.forgotPassword),
+            ),
+          ],
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 14),
+          Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 12)),
+        ],
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: FilledButton(
+            onPressed: _busy ? null : _login,
+            style: FilledButton.styleFrom(
+              backgroundColor: p.lychee,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
-            ],
-          );
-        },
+            ),
+            child: Text(_busy ? '正在登录…' : '进入 Litchi'),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('还没有账户？', style: TextStyle(color: p.inkMuted, fontSize: 11)),
+            if (registerOpen)
+              _InlineTextButton(
+                label: '注册',
+                accent: true,
+                onPressed: () => controller.goToAuthScreen(AuthScreen.register),
+              )
+            else
+              Text(
+                ' 暂未开放注册',
+                style: TextStyle(color: p.inkMuted, fontSize: 11),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _RegisterForm extends StatefulWidget {
+  const _RegisterForm();
+
+  @override
+  State<_RegisterForm> createState() => _RegisterFormState();
+}
+
+class _RegisterFormState extends State<_RegisterForm> {
+  final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _confirm = TextEditingController();
+  final _inviteCode = TextEditingController();
+  final _emailCode = TextEditingController();
+  bool _busy = false;
+  bool _sendingCode = false;
+  bool _obscure = true;
+  String? _error;
+  String? _notice;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    _confirm.dispose();
+    _inviteCode.dispose();
+    _emailCode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendCode() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      setState(() => _error = '请先填写邮箱');
+      return;
+    }
+    if (_sendingCode) return;
+    setState(() {
+      _sendingCode = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      await AppScope.read(context).api.sendEmailVerify(email);
+      if (mounted) setState(() => _notice = '验证码已发送，请查收邮箱');
+    } catch (e) {
+      if (mounted) setState(() => _error = _authError(e));
+    } finally {
+      if (mounted) setState(() => _sendingCode = false);
+    }
+  }
+
+  Future<void> _register() async {
+    if (_busy) return;
+    final email = _email.text.trim();
+    final password = _password.text;
+    final confirm = _confirm.text;
+    final inviteCode = _inviteCode.text.trim();
+    final emailCode = _emailCode.text.trim();
+    final config = AppScope.read(context).registerConfig;
+
+    if (email.isEmpty || password.isEmpty || confirm.isEmpty) {
+      setState(() => _error = '请填写邮箱和密码');
+      return;
+    }
+    if (password != confirm) {
+      setState(() => _error = '两次输入的密码不一致');
+      return;
+    }
+    if (config.emailVerifyRequired && emailCode.isEmpty) {
+      setState(() => _error = '请输入邮箱验证码');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      await AppScope.read(context).registerWithCredentials(
+        email: email,
+        password: password,
+        passwordConfirmation: confirm,
+        inviteCode: inviteCode.isEmpty ? null : inviteCode,
+        emailCode: emailCode.isEmpty ? null : emailCode,
+      );
+    } catch (e) {
+      if (mounted) setState(() => _error = _authError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final controller = AppScope.of(context);
+    final emailVerifyRequired = controller.registerConfig.emailVerifyRequired;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('创建账户', style: Theme.of(context).textTheme.headlineLarge),
+        const SizedBox(height: 8),
+        Text('注册一个新的 Litchi 账户。', style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 32),
+        _V3Field(
+          controller: _email,
+          label: 'EMAIL',
+          hint: 'name@example.com',
+          keyboardType: TextInputType.emailAddress,
+        ),
+        const SizedBox(height: 16),
+        _V3Field(
+          controller: _password,
+          label: 'PASSWORD',
+          hint: '••••••••',
+          obscureText: _obscure,
+          trailing: IconButton(
+            tooltip: _obscure ? '显示密码' : '隐藏密码',
+            onPressed: () => setState(() => _obscure = !_obscure),
+            icon: Icon(
+              _obscure
+                  ? Icons.visibility_off_rounded
+                  : Icons.visibility_rounded,
+              size: 18,
+              color: p.inkMuted,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _V3Field(
+          controller: _confirm,
+          label: 'CONFIRM PASSWORD',
+          hint: '••••••••',
+          obscureText: _obscure,
+        ),
+        const SizedBox(height: 16),
+        _V3Field(controller: _inviteCode, label: '邀请码（选填）', hint: '如有邀请码可填写'),
+        if (emailVerifyRequired) ...[
+          const SizedBox(height: 16),
+          _V3Field(
+            controller: _emailCode,
+            label: '邮箱验证码',
+            hint: '6 位验证码',
+            keyboardType: TextInputType.number,
+            trailing: _InlineTextButton(
+              label: _sendingCode ? '发送中…' : '发送验证码',
+              onPressed: _sendingCode ? null : _sendCode,
+            ),
+          ),
+        ],
+        if (_error != null) ...[
+          const SizedBox(height: 14),
+          Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 12)),
+        ],
+        if (_notice != null) ...[
+          const SizedBox(height: 14),
+          Text(_notice!, style: TextStyle(color: p.successInk, fontSize: 12)),
+        ],
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: FilledButton(
+            onPressed: _busy ? null : _register,
+            style: FilledButton.styleFrom(
+              backgroundColor: p.lychee,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Text(_busy ? '正在注册…' : '创建账户'),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Center(
+          child: _InlineTextButton(
+            label: '已有账户？返回登录',
+            onPressed: () => controller.goToAuthScreen(AuthScreen.login),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ForgotPasswordForm extends StatefulWidget {
+  const _ForgotPasswordForm();
+
+  @override
+  State<_ForgotPasswordForm> createState() => _ForgotPasswordFormState();
+}
+
+class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
+  final _email = TextEditingController();
+  final _code = TextEditingController();
+  final _password = TextEditingController();
+  final _confirm = TextEditingController();
+  bool _busy = false;
+  bool _sendingCode = false;
+  bool _obscure = true;
+  String? _error;
+  String? _notice;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _code.dispose();
+    _password.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendCode() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      setState(() => _error = '请先填写邮箱');
+      return;
+    }
+    if (_sendingCode) return;
+    setState(() {
+      _sendingCode = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      await AppScope.read(
+        context,
+      ).api.sendEmailVerify(email, isForgetPassword: true);
+      if (mounted) setState(() => _notice = '验证码已发送，请查收邮箱');
+    } catch (e) {
+      if (mounted) setState(() => _error = _authError(e));
+    } finally {
+      if (mounted) setState(() => _sendingCode = false);
+    }
+  }
+
+  Future<void> _reset() async {
+    if (_busy) return;
+    final email = _email.text.trim();
+    final code = _code.text.trim();
+    final password = _password.text;
+    final confirm = _confirm.text;
+    if (email.isEmpty || code.isEmpty || password.isEmpty || confirm.isEmpty) {
+      setState(() => _error = '请完整填写所有字段');
+      return;
+    }
+    if (password != confirm) {
+      setState(() => _error = '两次输入的新密码不一致');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      await AppScope.read(context).api.resetPassword(
+        email: email,
+        emailCode: code,
+        password: password,
+        passwordConfirmation: confirm,
+      );
+      if (!mounted) return;
+      AppScope.read(context).goToAuthScreen(AuthScreen.login);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('密码已重置，请使用新密码登录')));
+    } catch (e) {
+      if (mounted) setState(() => _error = _authError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final controller = AppScope.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('找回密码', style: Theme.of(context).textTheme.headlineLarge),
+        const SizedBox(height: 8),
+        Text('通过邮箱验证码重置你的密码。', style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 32),
+        _V3Field(
+          controller: _email,
+          label: 'EMAIL',
+          hint: 'name@example.com',
+          keyboardType: TextInputType.emailAddress,
+        ),
+        const SizedBox(height: 16),
+        _V3Field(
+          controller: _code,
+          label: '邮箱验证码',
+          hint: '6 位验证码',
+          keyboardType: TextInputType.number,
+          trailing: _InlineTextButton(
+            label: _sendingCode ? '发送中…' : '发送验证码',
+            onPressed: _sendingCode ? null : _sendCode,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _V3Field(
+          controller: _password,
+          label: '新密码',
+          hint: '••••••••',
+          obscureText: _obscure,
+          trailing: IconButton(
+            tooltip: _obscure ? '显示密码' : '隐藏密码',
+            onPressed: () => setState(() => _obscure = !_obscure),
+            icon: Icon(
+              _obscure
+                  ? Icons.visibility_off_rounded
+                  : Icons.visibility_rounded,
+              size: 18,
+              color: p.inkMuted,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _V3Field(
+          controller: _confirm,
+          label: '确认新密码',
+          hint: '••••••••',
+          obscureText: _obscure,
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 14),
+          Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 12)),
+        ],
+        if (_notice != null) ...[
+          const SizedBox(height: 14),
+          Text(_notice!, style: TextStyle(color: p.successInk, fontSize: 12)),
+        ],
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: FilledButton(
+            onPressed: _busy ? null : _reset,
+            style: FilledButton.styleFrom(
+              backgroundColor: p.lychee,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Text(_busy ? '正在重置…' : '重置密码'),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Center(
+          child: _InlineTextButton(
+            label: '返回登录',
+            onPressed: () => controller.goToAuthScreen(AuthScreen.login),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The "记住账号密码" box on the login form.
+///
+/// A checkbox plus its own label: [CheckboxListTile] would bring a whole
+/// ListTile's padding to a row that already sits between two fields.
+class _RememberToggle extends StatelessWidget {
+  const _RememberToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: Checkbox(
+                value: value,
+                onChanged: (next) => onChanged(next ?? false),
+                activeColor: p.lychee,
+                side: BorderSide(color: p.line),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text('记住账号密码', style: TextStyle(color: p.inkMuted, fontSize: 11)),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// A compact text button that reads as a link inside a form.
+class _InlineTextButton extends StatelessWidget {
+  const _InlineTextButton({
+    required this.label,
+    required this.onPressed,
+    this.accent = false,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: accent ? p.lycheeInk : p.inkMuted,
+        padding: EdgeInsets.zero,
+        minimumSize: const Size(0, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+      ),
+      child: Text(label),
     );
   }
 }
@@ -316,3 +845,8 @@ class _V3Field extends StatelessWidget {
     );
   }
 }
+
+String _authError(Object error) => error
+    .toString()
+    .replaceFirst('ApiException: ', '')
+    .replaceFirst('Exception: ', '');

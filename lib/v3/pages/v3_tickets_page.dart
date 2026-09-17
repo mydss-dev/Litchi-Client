@@ -16,40 +16,18 @@ class V3TicketsPage extends StatefulWidget {
 }
 
 class _V3TicketsPageState extends State<V3TicketsPage> {
-  bool _initialized = false;
-  bool _loading = true;
-  String? _error;
-  List<TicketModel> _tickets = const [];
+  bool _refreshed = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_initialized) return;
-    _initialized = true;
-    unawaited(_load());
-  }
-
-  Future<void> _load() async {
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-    try {
-      final tickets = await AppScope.read(context).api.getTickets();
-      if (!mounted) return;
-      setState(() {
-        _tickets = tickets;
-        _loading = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = _message(error);
-      });
-    }
+    if (_refreshed) return;
+    _refreshed = true;
+    // Deferred out of the build phase: refreshTickets() notifies listeners,
+    // and notifying an ancestor while this page is still building would mark
+    // it dirty mid-build. The controller's own guard also stops a duplicate
+    // when a background refresh is already in flight.
+    Future.microtask(AppScope.read(context).refreshTickets);
   }
 
   Future<void> _openTicket(TicketModel ticket) async {
@@ -60,7 +38,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
       builder: (_) => _TicketDetailDialog(
         ticketId: ticket.id,
         api: controller.api,
-        onChanged: _load,
+        onChanged: controller.refreshTickets,
       ),
     );
   }
@@ -72,14 +50,20 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
       barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (_) => _NewTicketDialog(api: controller.api),
     );
-    if (created == true && mounted) await _load();
+    if (created == true && mounted) await controller.refreshTickets();
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = AppScope.of(context);
     final p = V3Palette.of(context);
-    final openCount = _tickets.where((ticket) => ticket.isOpen).length;
-    final closedCount = _tickets.length - openCount;
+    final tickets = controller.tickets;
+    final openCount = tickets.where((ticket) => ticket.isOpen).length;
+    final closedCount = tickets.length - openCount;
+    final error = controller.ticketsError;
+    // The skeleton covers both "first load in flight" and "about to load";
+    // once the list is cached, a later background refresh never flashes it.
+    final skeleton = !controller.ticketsLoaded && error == null;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -105,7 +89,9 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                       ),
                     IconButton(
                       tooltip: '刷新工单',
-                      onPressed: _loading ? null : _load,
+                      onPressed: controller.ticketsLoading
+                          ? null
+                          : controller.refreshTickets,
                       icon: const Icon(Icons.refresh_rounded),
                     ),
                   ],
@@ -128,9 +114,9 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                   Expanded(
                     child: _TicketMetric(
                       label: '全部工单',
-                      value: '${_tickets.length}',
+                      value: '${tickets.length}',
                       accent: p.lychee,
-                      loading: _loading,
+                      loading: skeleton,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -139,7 +125,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                       label: '处理中',
                       value: '$openCount',
                       accent: p.warning,
-                      loading: _loading,
+                      loading: skeleton,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -148,7 +134,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                       label: '已关闭',
                       value: '$closedCount',
                       accent: p.success,
-                      loading: _loading,
+                      loading: skeleton,
                     ),
                   ),
                 ],
@@ -162,17 +148,17 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                   borderRadius: BorderRadius.circular(26),
                   border: Border.all(color: p.line),
                 ),
-                child: _loading
+                child: skeleton
                     ? const _TicketsSkeleton()
-                    : _error != null
+                    : error != null
                     ? _TicketEmptyState(
                         icon: Icons.error_outline_rounded,
                         title: '工单加载失败',
-                        subtitle: _error!,
+                        subtitle: error,
                         actionLabel: '重试',
-                        onAction: _load,
+                        onAction: controller.refreshTickets,
                       )
-                    : _tickets.isEmpty
+                    : tickets.isEmpty
                     ? _TicketEmptyState(
                         icon: Icons.support_agent_rounded,
                         title: '还没有工单',
@@ -182,12 +168,12 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                       )
                     : Column(
                         children: [
-                          for (var i = 0; i < _tickets.length; i++) ...[
+                          for (var i = 0; i < tickets.length; i++) ...[
                             _TicketRow(
-                              ticket: _tickets[i],
-                              onTap: () => _openTicket(_tickets[i]),
+                              ticket: tickets[i],
+                              onTap: () => _openTicket(tickets[i]),
                             ),
-                            if (i != _tickets.length - 1)
+                            if (i != tickets.length - 1)
                               Divider(color: p.line, height: 1),
                           ],
                         ],

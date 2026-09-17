@@ -43,120 +43,79 @@ class _V3AccountPageState extends State<V3AccountPage> {
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
-    final user = controller.user;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 720;
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              V3PageHeader(
-                kicker: '账户中心',
-                title: '我的账户',
-                trailing: IconButton(
-                  tooltip: '刷新账户数据',
-                  onPressed: controller.refreshData,
-                  icon: const Icon(Icons.refresh_rounded),
-                ),
-              ),
-              const SizedBox(height: 26),
-              compact
-                  ? Column(
-                      children: [
-                        _IdentityPanel(controller: controller),
-                        const SizedBox(height: 16),
-                        _PlanPanel(controller: controller),
-                      ],
-                    )
-                  // Start, not stretch: the identity band is a band now, and
-                  // stretching it to the plan card's height would rebuild the
-                  // empty space it just lost.
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 11,
-                          child: _IdentityPanel(controller: controller),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 9,
-                          child: _PlanPanel(controller: controller),
-                        ),
-                      ],
-                    ),
-              const SizedBox(height: 16),
-              // Directly under the account summary, on every layout: on compact
-              // this hub is the only route to wallet, orders, traffic, invite,
-              // tickets and settings, and further down it sat a full screen
-              // below the fold. Keeping one placement also means resizing the
-              // window never moves a navigation landmark.
-              _HubPanel(controller: controller),
-              const SizedBox(height: 16),
-              // The wallet and the device card used to sit here as a pair of
-              // metric cards. The device one said what the traffic page already
-              // says — online devices, remaining GB — and the wallet one opened
-              // a "资金中心" sheet that held every money action at once. What is
-              // left is the balance plus the three verbs, so the money lives on
-              // the page that shows it and the usage lives on the usage page.
-              //
-              // Every panel has a balance a user can spend at checkout, so the
-              // panel shows for all of them; topping it up is the one action
-              // that is Xiao-V2Board-only, and that button is what the switch
-              // gates.
-              if (AppConfig.panelFeatures.wallet ||
-                  controller.user.balance > 0) ...[
-                const SizedBox(height: 16),
-                const _WalletPanel(),
-              ],
-              const SizedBox(height: 16),
-              _PreferencesPanel(
-                controller: controller,
-                busy: _updatingPreferences,
-                onExpireChanged: (value) =>
-                    _updatePreferences(remindExpire: value),
-                onTrafficChanged: (value) =>
-                    _updatePreferences(remindTraffic: value),
-                onAutoRenewalChanged: (value) =>
-                    _updatePreferences(autoRenewal: value),
-              ),
-              const SizedBox(height: 16),
-              _AccountActions(
-                onPassword: () => _showPasswordDialog(context),
-                onLogout: controller.logout,
-              ),
-              if (controller.dataLoadError != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: p.warning.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    controller.dataLoadError!,
-                    style: TextStyle(color: p.warningInk, fontSize: 11),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 6),
-              Text(
-                user.name.isEmpty ? 'LITCHI USER' : user.name,
-                style: TextStyle(
-                  color: p.inkMuted,
-                  fontSize: 10,
-                  letterSpacing: 1.4,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          V3PageHeader(
+            kicker: '账户中心',
+            title: '我的账户',
+            trailing: IconButton(
+              tooltip: '刷新账户数据',
+              onPressed: controller.refreshData,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
           ),
-        );
-      },
+          const SizedBox(height: 26),
+          _AccountSummaryPanel(controller: controller),
+          const SizedBox(height: 16),
+          // Directly under the account summary, on every layout: on compact
+          // this hub is the only route to wallet, orders, traffic, invite,
+          // tickets and settings, and further down it sat a full screen
+          // below the fold. Keeping one placement also means resizing the
+          // window never moves a navigation landmark.
+          _HubPanel(controller: controller),
+          const SizedBox(height: 16),
+          // The wallet and the device card used to sit here as a pair of
+          // metric cards. The device one said what the traffic page already
+          // says — online devices, remaining GB — and the wallet one opened
+          // a "资金中心" sheet that held every money action at once. What is
+          // left is the balance plus the three verbs, so the money lives on
+          // the page that shows it and the usage lives on the usage page.
+          //
+          // Every panel has a balance a user can spend at checkout, so the
+          // panel shows for all of them; topping it up is the one action
+          // that is Xiao-V2Board-only, and that button is what the switch
+          // gates.
+          if (AppConfig.panelFeatures.wallet ||
+              controller.user.balance > 0) ...[
+            const SizedBox(height: 16),
+            const _WalletPanel(),
+          ],
+          const SizedBox(height: 16),
+          _PreferencesPanel(
+            controller: controller,
+            busy: _updatingPreferences,
+            onExpireChanged: (value) => _updatePreferences(remindExpire: value),
+            onTrafficChanged: (value) =>
+                _updatePreferences(remindTraffic: value),
+            onAutoRenewalChanged: (value) =>
+                _updatePreferences(autoRenewal: value),
+          ),
+          const SizedBox(height: 16),
+          _AccountActions(
+            onPassword: () => _showPasswordDialog(context),
+            onLogout: controller.logout,
+          ),
+          if (controller.dataLoadError != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: p.warning.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                controller.dataLoadError!,
+                style: TextStyle(color: p.warningInk, fontSize: 11),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -169,8 +128,13 @@ class _V3AccountPageState extends State<V3AccountPage> {
   }
 }
 
-class _IdentityPanel extends StatelessWidget {
-  const _IdentityPanel({required this.controller});
+/// The account in one card: who you are, and what plan you are on.
+///
+/// Identity and plan used to be two cards side by side, each holding four
+/// small facts and a lot of empty space. The same facts fit one card — the
+/// identity band on top, the plan with its one action below a divider.
+class _AccountSummaryPanel extends StatelessWidget {
+  const _AccountSummaryPanel({required this.controller});
 
   final AppController controller;
 
@@ -178,136 +142,133 @@ class _IdentityPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final user = controller.user;
+    final plan = user.plan.trim();
     final letter = user.avatarLetter.trim().isEmpty
         ? 'L'
         : user.avatarLetter.trim().substring(0, 1).toUpperCase();
 
-    // One row, not a stack. It used to be a 58dp avatar, a 28dp gap, a 22pt
-    // name and an email line, spread down a panel half the width of the page —
-    // four small facts holding up a large empty card. The same four facts fit
-    // one band, with the badge where the eye already is.
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: p.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: p.line),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: p.lychee,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              letter,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  user.name.trim().isEmpty ? 'Litchi User' : user.name.trim(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: p.ink,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  controller.accountDetails?.email ?? 'Secure Litchi account',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          V3StatusBadge(
-            label: controller.hasPlan ? '套餐有效' : '暂无套餐',
-            color: controller.hasPlan ? p.success : p.inkMuted,
-            compact: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlanPanel extends StatelessWidget {
-  const _PlanPanel({required this.controller});
-
-  final AppController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final plan = controller.user.plan.trim();
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: p.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '当前套餐',
-            style: TextStyle(
-              color: p.inkMuted,
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            controller.hasPlan ? (plan.isEmpty ? '已激活套餐' : plan) : '还没有套餐',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            controller.hasPlan
-                ? '有效期 ${controller.planExpiryLabel}'
-                : '选择套餐后即可开始连接',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: FilledButton.icon(
-              onPressed: () => controller.goToPage(AppPage.shop),
-              style: FilledButton.styleFrom(
-                backgroundColor: p.lychee,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: p.lychee,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  letter,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
-              icon: const Icon(Icons.storefront_rounded, size: 17),
-              label: Text(controller.hasPlan ? '管理套餐' : '选择套餐'),
-            ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      user.name.trim().isEmpty
+                          ? 'Litchi User'
+                          : user.name.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: p.ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      controller.accountDetails?.email ??
+                          'Secure Litchi account',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: p.inkMuted, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              V3StatusBadge(
+                label: controller.hasPlan ? '套餐有效' : '暂无套餐',
+                color: controller.hasPlan ? p.success : p.inkMuted,
+                compact: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Divider(color: p.line, height: 1),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '当前套餐',
+                      style: TextStyle(
+                        color: p.inkMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      controller.hasPlan
+                          ? (plan.isEmpty ? '已激活套餐' : plan)
+                          : '还没有套餐',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: p.ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      controller.hasPlan
+                          ? '有效期 ${controller.planExpiryLabel}'
+                          : '选择套餐后即可开始连接',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              FilledButton.icon(
+                onPressed: () => controller.goToPage(AppPage.shop),
+                style: FilledButton.styleFrom(
+                  backgroundColor: p.lychee,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.storefront_rounded, size: 17),
+                label: Text(controller.hasPlan ? '管理套餐' : '选择套餐'),
+              ),
+            ],
           ),
         ],
       ),
@@ -342,50 +303,35 @@ class _WalletPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            '钱包',
+            style: TextStyle(
+              color: p.inkMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '钱包',
-                      style: TextStyle(
-                        color: p.inkMuted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      '$symbol${balance.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: p.ink,
-                        fontSize: 21,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    Text(
-                      '账户余额',
-                      style: TextStyle(color: p.inkMuted, fontSize: 10),
-                    ),
-                  ],
+                child: _MoneyStat(
+                  label: '账户余额',
+                  value: '$symbol${balance.toStringAsFixed(2)}',
                 ),
               ),
-              if (commission > 0)
-                Text(
-                  '佣金 $symbol${commission.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: p.inkMuted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
+              Container(width: 1, height: 46, color: p.line),
+              const SizedBox(width: 22),
+              Expanded(
+                child: _MoneyStat(
+                  label: '可提现佣金',
+                  value: '$symbol${commission.toStringAsFixed(2)}',
                 ),
+              ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           Row(
             children: [
               if (AppConfig.panelFeatures.wallet) ...[
@@ -471,6 +417,41 @@ class _WalletActionButton extends StatelessWidget {
               icon: Icon(icon, size: 17),
               label: Text(label),
             ),
+    );
+  }
+}
+
+/// One labelled amount inside the wallet panel.
+class _MoneyStat extends StatelessWidget {
+  const _MoneyStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: p.inkMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            color: p.ink,
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
     );
   }
 }

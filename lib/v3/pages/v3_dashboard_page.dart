@@ -37,7 +37,6 @@ class V3DashboardPage extends StatelessWidget {
           V3PageHeader(
             kicker: '连接中心',
             title: '连接',
-            description: '选择节点与代理模式，开始连接。',
             trailing: V3StatusBadge(
               label: _statusLabel(status),
               color: statusColor,

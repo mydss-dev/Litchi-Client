@@ -106,6 +106,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   String? _startupMessage;
   UpdateInfo? _updateInfo;
   RegisterConfig _registerConfig = const RegisterConfig();
+  List<TicketModel> _tickets = const [];
+  bool _ticketsLoaded = false;
+  bool _ticketsLoading = false;
+  String? _ticketsError;
   bool _disposed = false;
   bool _isInitialLoading = false;
   bool _logoutInFlight = false;
@@ -316,6 +320,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   PanelApi get api => _api;
   UpdateInfo? get updateInfo => _updateInfo;
   RegisterConfig get registerConfig => _registerConfig;
+  List<TicketModel> get tickets => _tickets;
+  bool get ticketsLoaded => _ticketsLoaded;
+  bool get ticketsLoading => _ticketsLoading;
+  String? get ticketsError => _ticketsError;
   List<NoticeModel> get notices => _notices.notices;
   bool get noticesLoading => _notices.isLoading;
   bool get hasUnreadNotice => _notices.hasUnreadNotice;
@@ -824,6 +832,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _subscription.reset();
     _dataLoadError = null;
     _notices.reset();
+    _tickets = const [];
+    _ticketsLoaded = false;
+    _ticketsLoading = false;
+    _ticketsError = null;
     await NodeCacheService.clear();
     await NoticeCacheService.clear();
     await _accountSummarySave;
@@ -854,6 +866,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _subscription.reset();
       _dataLoadError = null;
       _notices.reset();
+      _tickets = const [];
+      _ticketsLoaded = false;
+      _ticketsLoading = false;
+      _ticketsError = null;
       await NodeCacheService.clear();
       await _accountSummarySave;
       await AccountSummaryCache.clear();
@@ -953,6 +969,32 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       }
     }
     notifyListeners();
+  }
+
+  /// Fetches the ticket list and caches it for the tickets page.
+  ///
+  /// The page is rebuilt from scratch on every navigation, so the list lives
+  /// here — like nodes and notices — so reopening the page shows the cached
+  /// tickets immediately and refreshes them in the background instead of
+  /// flashing a skeleton on every visit.
+  Future<void> refreshTickets() async {
+    if (_ticketsLoading || !_isAuthenticated) return;
+    _ticketsLoading = true;
+    _ticketsError = null;
+    if (!_disposed) notifyListeners();
+    try {
+      final tickets = await api.getTickets();
+      _tickets = tickets;
+      _ticketsLoaded = true;
+    } catch (error) {
+      _ticketsError = error
+          .toString()
+          .replaceFirst('ApiException: ', '')
+          .replaceFirst('Exception: ', '');
+    } finally {
+      _ticketsLoading = false;
+      if (!_disposed) notifyListeners();
+    }
   }
 
   Future<String?> createInviteCode() => _invite.createInviteCode();

@@ -347,6 +347,10 @@ class _AmountDialogState extends State<_AmountDialog> {
               onSubmitted: (_) => _submit(),
               decoration: InputDecoration(
                 prefixText: '${widget.currencySymbol} ',
+                suffixIcon: _AllAmountButton(
+                  onTap: () =>
+                      _controller.text = widget.maximum.toStringAsFixed(2),
+                ),
                 filled: true,
                 fillColor: p.surfaceRaised,
                 border: OutlineInputBorder(
@@ -490,6 +494,10 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
               decoration: InputDecoration(
                 labelText: '提现金额',
                 prefixText: '${widget.currencySymbol} ',
+                suffixIcon: _AllAmountButton(
+                  onTap: () => _amountController.text = widget.maximum
+                      .toStringAsFixed(2),
+                ),
               ),
             ),
             if (_error != null) ...[
@@ -508,6 +516,32 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Sets the amount field to the maximum the user may submit.
+///
+/// Withdraw and transfer both cap at a figure the user has to look up
+/// elsewhere; a single "全部" tap puts that figure in the box.
+class _AllAmountButton extends StatelessWidget {
+  const _AllAmountButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        foregroundColor: p.lycheeInk,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        minimumSize: const Size(0, 40),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+      ),
+      child: const Text('全部'),
     );
   }
 }
