@@ -2,12 +2,11 @@ import '../../config/app_config.dart';
 import 'api_models.dart';
 import 'app_models.dart';
 
-/// Pure static converters from remote API models to UI view models.
+/// Pure converters from the panel API models into UI view models.
 abstract final class ModelMappers {
   static UserModel toUser(RemoteUser info) {
     final name = info.email.contains('@')
-        ? info.email.split('@').first
-        : info.email;
+        ? info.email.split('@').first : info.email;
     return UserModel(
       name: name,
       plan: info.planLabel,
@@ -45,34 +44,20 @@ abstract final class ModelMappers {
   }
 
   static PlanModel toPlan(RemotePlan plan) {
-    PlanCategory category;
-    if (plan.monthPrice == null &&
-        plan.quarterPrice == null &&
-        plan.halfYearPrice == null &&
-        plan.yearPrice == null &&
-        plan.twoYearPrice == null &&
-        plan.threeYearPrice == null) {
-      category = plan.onetimePrice != null
-          ? PlanCategory.oneTime
-          : PlanCategory.dataPack;
-    } else {
-      category = PlanCategory.recurring;
-    }
-
-    final rawDesc = plan.description ?? '';
-    final stripped = rawDesc
-        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>');
-    final features = stripped
-        .split('\n')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .take(6)
-        .toList();
+    final hasRecurring = plan.monthPrice != null ||
+        plan.quarterPrice != null || plan.halfYearPrice != null ||
+        plan.yearPrice != null || plan.twoYearPrice != null ||
+        plan.threeYearPrice != null;
+    // V2Board-compatible plan responses have no explicit product type. Never
+    // call a product a traffic pack simply because every price is disabled.
+    // A positively named traffic pack with a one-time price is purchasable;
+    // otherwise it is a one-time plan (possibly unavailable).
+    final name = plan.name.toLowerCase();
+    final namedDataPack = name.contains('流量包') ||
+        name.contains('traffic pack') || name.contains('data pack');
+    final category = hasRecurring
+        ? PlanCategory.recurring
+        : namedDataPack ? PlanCategory.dataPack : PlanCategory.oneTime;
 
     return PlanModel(
       id: plan.id.toString(),
@@ -81,49 +66,56 @@ abstract final class ModelMappers {
       category: category,
       monthlyPrice: plan.monthPrice != null ? plan.monthPrice! / 100.0 : null,
       quarterlyPrice: plan.quarterPrice != null
-          ? plan.quarterPrice! / 100.0
-          : null,
+          ? plan.quarterPrice! / 100.0 : null,
       halfYearPrice: plan.halfYearPrice != null
-          ? plan.halfYearPrice! / 100.0
-          : null,
+          ? plan.halfYearPrice! / 100.0 : null,
       yearlyPrice: plan.yearPrice != null ? plan.yearPrice! / 100.0 : null,
       twoYearPrice: plan.twoYearPrice != null
-          ? plan.twoYearPrice! / 100.0
-          : null,
+          ? plan.twoYearPrice! / 100.0 : null,
       threeYearPrice: plan.threeYearPrice != null
-          ? plan.threeYearPrice! / 100.0
-          : null,
+          ? plan.threeYearPrice! / 100.0 : null,
       oneTimePrice: plan.onetimePrice != null
-          ? plan.onetimePrice! / 100.0
-          : null,
+          ? plan.onetimePrice! / 100.0 : null,
       deviceLimit: plan.deviceLimit,
       capacityLimit: plan.capacityLimit,
-      features: features,
+      features: _descriptionLines(plan.description ?? ''),
     );
+  }
+
+  /// Separate HTML paragraphs and list items before removing markup. The
+  /// previous mapper only preserved <br> and discarded everything after the
+  /// sixth line, so the 'full description' could never actually be full.
+  static List<String> _descriptionLines(String html) {
+    if (html.trim().isEmpty) return const [];
+    final text = html
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'</?(p|div|li|ul|ol)\b[^>]*>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<[^>]+>'), '')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'");
+    return text
+        .split(RegExp(r'\n+'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList(growable: false);
   }
 
   // ── Flag / region helpers ─────────────────────────────────────────────────
 
   static String _flagFor(String name) {
     final n = name.toLowerCase();
-    // Pass 1: Chinese keywords + unambiguous long Latin names.
-    // Short 2-letter codes (hk, jp, tw…) are excluded here to avoid
-    // false positives when they appear as a prefix (e.g. "HK-台湾01").
+    // Chinese and long Latin names take precedence over two-letter prefixes.
     if (_any(n, ['新加坡', 'singapore'])) return '🇸🇬';
     if (_any(n, ['香港', 'hong kong', 'hongkong'])) return '🇭🇰';
     if (_any(n, ['日本', 'japan', 'tokyo', 'osaka'])) return '🇯🇵';
     if (_any(n, ['台湾', 'taiwan'])) return '🇹🇼';
     if (_any(n, ['韩国', 'korea', 'seoul'])) return '🇰🇷';
-    if (_any(n, [
-      '美国',
-      'united states',
-      'usa',
-      'los angeles',
-      'new york',
-      'chicago',
-    ])) {
-      return '🇺🇸';
-    }
+    if (_any(n, ['美国', 'united states', 'usa',
+      'los angeles', 'new york', 'chicago'])) return '🇺🇸';
     if (_any(n, ['英国', 'united kingdom', 'london', 'britain'])) return '🇬🇧';
     if (_any(n, ['德国', 'germany', 'frankfurt', 'berlin'])) return '🇩🇪';
     if (_any(n, ['法国', 'france', 'paris'])) return '🇫🇷';
@@ -135,12 +127,11 @@ abstract final class ModelMappers {
     if (_any(n, ['俄罗斯', 'russia', 'moscow'])) return '🇷🇺';
     if (_any(n, ['土耳其', 'turkey', 'istanbul'])) return '🇹🇷';
     if (_any(n, ['越南', 'vietnam'])) return '🇻🇳';
-    if (_any(n, ['泰国', 'thailand', 'bangkok'])) return '🇹🇭';
-    if (_any(n, ['马来西亚', 'malaysia', 'kuala lumpur'])) return '🇲🇾';
-    if (_any(n, ['菲律宾', 'philippines', 'manila'])) return '🇵🇭';
+    if (_any(n, ['泰国', 'thailand'])) return '🇹🇭';
+    if (_any(n, ['马来西亚', 'malaysia'])) return '🇲🇾';
+    if (_any(n, ['菲律宾', 'philippines'])) return '🇵🇭';
     if (_any(n, ['印尼', 'indonesia', 'jakarta'])) return '🇮🇩';
-    // Pass 2: Short 2-letter codes, matched only as standalone tokens
-    // (surrounded by non-alpha characters) so "HK-" prefix is ignored.
+    // Match short ISO codes only as standalone tokens.
     if (_token(n, 'sg')) return '🇸🇬';
     if (_token(n, 'hk')) return '🇭🇰';
     if (_token(n, 'jp')) return '🇯🇵';
@@ -163,14 +154,12 @@ abstract final class ModelMappers {
     return '🌐';
   }
 
-  /// True if [code] appears in [s] as a standalone token —
-  /// not preceded or followed by another ASCII letter.
   static bool _token(String s, String code) {
     var idx = s.indexOf(code);
     while (idx != -1) {
       final before = idx == 0 || !_isAlpha(s[idx - 1]);
-      final after =
-          idx + code.length >= s.length || !_isAlpha(s[idx + code.length]);
+      final after = idx + code.length >= s.length ||
+          !_isAlpha(s[idx + code.length]);
       if (before && after) return true;
       idx = s.indexOf(code, idx + 1);
     }
@@ -183,69 +172,26 @@ abstract final class ModelMappers {
   static NodeRegion _regionFor(String name) {
     final n = name.toLowerCase();
     if (_any(n, [
-      '新加坡',
-      '香港',
-      '日本',
-      '台湾',
-      '韩国',
-      '印度',
-      '越南',
-      '泰国',
-      '马来',
-      '菲律宾',
-      '印尼',
-      'singapore',
-      'hong kong',
-      'japan',
-      'taiwan',
-      'korea',
-      'india',
-      'tokyo',
-      'seoul',
-      'bangkok',
-      'asia',
-    ])) {
-      return NodeRegion.asia;
-    }
+      '新加坡', '香港', '日本', '台湾', '韩国', '印度', '越南', '泰国',
+      '马来', '菲律宾', '印尼', 'singapore', 'hong kong', 'japan',
+      'taiwan', 'korea', 'india', 'tokyo', 'seoul', 'bangkok', 'asia',
+    ])) return NodeRegion.asia;
     if (_any(n, [
-      '英国',
-      '德国',
-      '法国',
-      '荷兰',
-      '俄罗斯',
-      '土耳其',
-      'uk',
-      'germany',
-      'france',
-      'netherlands',
-      'london',
-      'frankfurt',
-      'amsterdam',
-      'europe',
-    ])) {
-      return NodeRegion.europe;
-    }
+      '英国', '德国', '法国', '荷兰', '俄罗斯', '土耳其', 'uk',
+      'germany', 'france', 'netherlands', 'london', 'frankfurt',
+      'amsterdam', 'europe',
+    ])) return NodeRegion.europe;
     if (_any(n, [
-      '美国',
-      '加拿大',
-      '巴西',
-      'usa',
-      'united states',
-      'canada',
-      'brazil',
-      'los angeles',
-      'new york',
-      'america',
-    ])) {
-      return NodeRegion.america;
-    }
-    if (_any(n, ['澳大利亚', '新西兰', 'australia', 'sydney', 'melbourne'])) {
-      return NodeRegion.oceania;
-    }
+      '美国', '加拿大', '巴西', 'usa', 'united states', 'canada',
+      'brazil', 'los angeles', 'new york', 'america',
+    ])) return NodeRegion.america;
+    if (_any(n, ['澳大利亚', '新西兰', 'australia',
+      'sydney', 'melbourne'])) return NodeRegion.oceania;
     return NodeRegion.asia;
   }
 
-  static bool _any(String s, List<String> keywords) => keywords.any(s.contains);
+  static bool _any(String s, List<String> keywords) =>
+      keywords.any(s.contains);
 
   static String _codeFor(String flag) {
     final runes = flag.runes.toList();
@@ -258,28 +204,17 @@ abstract final class ModelMappers {
 
   static String _englishFor(String flag) {
     const m = {
-      '🇸🇬': 'Singapore',
-      '🇭🇰': 'Hong Kong',
-      '🇯🇵': 'Japan',
-      '🇹🇼': 'Taiwan',
-      '🇰🇷': 'South Korea',
-      '🇺🇸': 'United States',
-      '🇬🇧': 'United Kingdom',
-      '🇩🇪': 'Germany',
-      '🇫🇷': 'France',
-      '🇳🇱': 'Netherlands',
-      '🇦🇺': 'Australia',
-      '🇨🇦': 'Canada',
-      '🇮🇳': 'India',
-      '🇧🇷': 'Brazil',
-      '🇷🇺': 'Russia',
-      '🇹🇷': 'Turkey',
-      '🇻🇳': 'Vietnam',
-      '🇹🇭': 'Thailand',
-      '🇲🇾': 'Malaysia',
-      '🇵🇭': 'Philippines',
-      '🇮🇩': 'Indonesia',
-      '🇨🇳': 'China',
+      '🇸🇬': 'Singapore', '🇭🇰': 'Hong Kong',
+      '🇯🇵': 'Japan', '🇹🇼': 'Taiwan',
+      '🇰🇷': 'South Korea', '🇺🇸': 'United States',
+      '🇬🇧': 'United Kingdom', '🇩🇪': 'Germany',
+      '🇫🇷': 'France', '🇳🇱': 'Netherlands',
+      '🇦🇺': 'Australia', '🇨🇦': 'Canada',
+      '🇮🇳': 'India', '🇧🇷': 'Brazil',
+      '🇷🇺': 'Russia', '🇹🇷': 'Turkey',
+      '🇻🇳': 'Vietnam', '🇹🇭': 'Thailand',
+      '🇲🇾': 'Malaysia', '🇵🇭': 'Philippines',
+      '🇮🇩': 'Indonesia', '🇨🇳': 'China',
     };
     return m[flag] ?? '';
   }
