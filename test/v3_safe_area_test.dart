@@ -8,15 +8,9 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'visual/v3_visual_fixture.dart';
 
-/// Android draws its status bar over the top of the window, and the gesture bar
-/// over the bottom.
-///
-/// Nothing else in this suite can see whether the layout respects them:
-/// `setSurfaceSize` produces a surface with zero padding, so every page
-/// measured its content 26dp from the top on every device — 2dp of clearance
-/// under a 24dp status bar and covered outright by the 48dp inset of a notched
-/// one. These tests fake a real device's insets so the next regression is
-/// caught here instead of on a phone.
+/// Assert safe-area clearance for the actual text elements. Looking up each
+/// Text widget by identity is ambiguous when repeated plan cards reuse a const
+/// label; the Element, unlike that immutable widget, is unique in the tree.
 class _Controller extends VisualV3Controller {
   _Controller(super.page, {this.authed = true});
   final bool authed;
@@ -25,7 +19,6 @@ class _Controller extends VisualV3Controller {
   bool get isAuthenticated => authed;
 }
 
-/// A notched Android phone: 48dp status bar, 48dp gesture bar.
 const double _statusBar = 48;
 const double _gestureBar = 48;
 const Size _phone = Size(390, 844);
@@ -45,14 +38,17 @@ Future<void> _pump(
 
   final controller = _Controller(page, authed: authed);
   addTearDown(controller.disposeVisual);
-  await tester.pumpWidget(
-    MaterialApp(
-      theme: V3Theme.light(),
-      home: AppScope(controller: controller, child: const V3Shell()),
-    ),
-  );
+  await tester.pumpWidget(MaterialApp(
+    theme: V3Theme.light(),
+    home: AppScope(controller: controller, child: const V3Shell()),
+  ));
   await tester.pumpAndSettle();
 }
+
+/// A finder anchored to one Element avoids collisions between identical Text
+/// widgets (e.g. '查看完整说明' on three plan cards).
+Finder _elementFinder(Element element) =>
+    find.byElementPredicate((candidate) => identical(candidate, element));
 
 void main() {
   final pages = <AppPage>[
@@ -65,7 +61,7 @@ void main() {
       try {
         await _pump(tester, page);
         for (final element in find.byType(Text).evaluate()) {
-          final rect = tester.getRect(find.byWidget(element.widget));
+          final rect = tester.getRect(_elementFinder(element));
           expect(
             rect.top,
             greaterThanOrEqualTo(_statusBar),
@@ -85,7 +81,7 @@ void main() {
     try {
       await _pump(tester, AppPage.dashboard, authed: false);
       for (final element in find.byType(Text).evaluate()) {
-        final rect = tester.getRect(find.byWidget(element.widget));
+        final rect = tester.getRect(_elementFinder(element));
         expect(
           rect.top,
           greaterThanOrEqualTo(_statusBar),
@@ -105,11 +101,10 @@ void main() {
       await _pump(tester, AppPage.dashboard);
       final nav = find.byType(NavigationBar);
       final rect = tester.getRect(nav);
-      // NavigationBar pads itself internally, so its own box may extend to the
-      // screen edge — what matters is that its content sits above the bar.
+      // The nav's own box can extend into the gesture inset; its text cannot.
       for (final element
           in find.descendant(of: nav, matching: find.byType(Text)).evaluate()) {
-        final label = tester.getRect(find.byWidget(element.widget));
+        final label = tester.getRect(_elementFinder(element));
         expect(
           label.bottom,
           lessThanOrEqualTo(_phone.height - _gestureBar),
