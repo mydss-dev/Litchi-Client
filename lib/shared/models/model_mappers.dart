@@ -59,20 +59,27 @@ abstract final class ModelMappers {
       category = PlanCategory.recurring;
     }
 
+    // Preserve ALL of the backend's description in the model. The card itself
+    // chooses a three-item preview; its details sheet shows the rest. Mapping
+    // used to discard everything after six lines before the UI could see it.
+    // Paragraph/list closing tags must become line breaks BEFORE stripping
+    // markup or a backend description composed with <p>/<li> becomes one line.
     final rawDesc = plan.description ?? '';
     final stripped = rawDesc
         .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'</(?:p|li|div|h[1-6])\s*>', caseSensitive: false), '\n')
         .replaceAll(RegExp(r'<[^>]+>'), '')
         .replaceAll('&nbsp;', ' ')
         .replaceAll('&amp;', '&')
         .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>');
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'");
     final features = stripped
-        .split('\n')
+        .split(RegExp(r'\n+'))
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
-        .take(6)
-        .toList();
+        .toList(growable: false);
 
     return PlanModel(
       id: plan.id.toString(),
@@ -132,10 +139,10 @@ abstract final class ModelMappers {
     if (_any(n, ['加拿大', 'canada', 'toronto', 'vancouver'])) return '🇨🇦';
     if (_any(n, ['印度', 'india', 'mumbai'])) return '🇮🇳';
     if (_any(n, ['巴西', 'brazil'])) return '🇧🇷';
-    if (_any(n, ['俄罗斯', 'russia', 'moscow'])) return '🇷🇺';
+    if (_any(n, ['俄罗斯', 'russia'])) return '🇷🇺';
     if (_any(n, ['土耳其', 'turkey', 'istanbul'])) return '🇹🇷';
     if (_any(n, ['越南', 'vietnam'])) return '🇻🇳';
-    if (_any(n, ['泰国', 'thailand', 'bangkok'])) return '🇹🇭';
+    if (_any(n, ['泰国', 'thailand'])) return '🇹🇭';
     if (_any(n, ['马来西亚', 'malaysia', 'kuala lumpur'])) return '🇲🇾';
     if (_any(n, ['菲律宾', 'philippines', 'manila'])) return '🇵🇭';
     if (_any(n, ['印尼', 'indonesia', 'jakarta'])) return '🇮🇩';
