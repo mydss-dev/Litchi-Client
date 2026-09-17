@@ -16,10 +16,11 @@ class TrafficHistorySeries {
 
   int get recordedDays => days.where((day) => day.gb != null).length;
   bool get hasGaps => recordedDays < days.length;
-  double get totalGb => days.fold(0, (sum, day) => sum + (day.gb ?? 0));
-  double get averageGb => recordedDays == 0 ? 0 : totalGb / recordedDays;
-  double get maxGb => days.fold(0, (max, day) {
-    final gb = day.gb ?? 0;
+  double get totalGb => days.fold<double>(
+    0.0, (sum, day) => sum + (day.gb ?? 0.0));
+  double get averageGb => recordedDays == 0 ? 0.0 : totalGb / recordedDays;
+  double get maxGb => days.fold<double>(0.0, (max, day) {
+    final gb = day.gb ?? 0.0;
     return gb > max ? gb : max;
   });
 
@@ -41,7 +42,7 @@ class TrafficHistorySeries {
       for (final point in trafficUsage) {
         final date = DateTime(point.date.year, point.date.month, point.date.day);
         if (date.isBefore(first) || date.isAfter(today)) continue;
-        amounts[date] = (amounts[date] ?? 0) + point.totalGb;
+        amounts[date] = (amounts[date] ?? 0.0) + point.totalGb;
       }
     } else {
       final length = dailyUsage.length < windowDays
