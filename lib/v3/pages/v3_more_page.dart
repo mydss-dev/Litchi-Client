@@ -1,38 +1,54 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../l10n/generated/app_localizations_zh.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 
-/// The compact overflow tab.
-///
-/// Wide layouts reach these four pages from the rail, so this page only ever
-/// appears on narrow ones — but it is built from the same nav model either way,
-/// so a page that gains or loses a rail entry stays in step here.
+/// The compact overflow tab. Its labels use the same app locale as settings;
+/// the nav model still owns order and visibility, not presentation language.
 class V3MorePage extends StatelessWidget {
   const V3MorePage({super.key});
+
+  String _label(AppLocalizations l, V3NavItem item) => switch (item.page) {
+    AppPage.traffic => l.usage,
+    AppPage.invite => l.inviteFriends,
+    AppPage.tickets => l.ticketSupport,
+    AppPage.settings => l.settings,
+    _ => item.label,
+  };
 
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
+    final l = Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+        AppLocalizationsZh();
+    final english = l.localeName.startsWith('en');
+    final traditional = l.localeName.toLowerCase().contains('tw');
     final items = enabledNavItems(kMobileMore);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const V3PageHeader(
-            kicker: '更多',
-            title: '更多服务',
-            description: '不属于账户，也不常驻底栏的功能都在这里。',
+          V3PageHeader(
+            kicker: english ? 'More' : '更多',
+            title: english ? 'More services' : traditional ? '更多服務' : '更多服务',
+            description: english
+                ? 'Features outside the account and primary tabs live here.'
+                : traditional
+                    ? '帳戶及主要分頁以外的功能都在這裡。'
+                    : '不属于账户，也不常驻底栏的功能都在这里。',
           ),
           const SizedBox(height: 22),
           if (items.isEmpty)
             V3Panel(
               child: Text(
-                '当前服务端没有提供其他功能。',
+                english ? 'No additional features are enabled on this server.'
+                    : traditional ? '目前伺服器沒有提供其他功能。' : '当前服务端没有提供其他功能。',
                 style: TextStyle(
                   color: V3Palette.of(context).inkMuted,
                   fontSize: 12,
@@ -41,16 +57,14 @@ class V3MorePage extends StatelessWidget {
             )
           else
             V3NavPanel(
-              title: '全部功能',
+              title: english ? 'All features' : traditional ? '全部功能' : '全部功能',
               children: [
                 for (final item in items)
                   V3NavRow(
                     key: moreRowKey(item.page),
                     icon: item.icon,
-                    label: item.label,
+                    label: _label(l, item),
                     selected: controller.page == item.page,
-                    // Not a bare `goToPage`: the three modal pages would be
-                    // routed rather than opened if one ever joined this list.
                     onTap: () => openV3Page(context, item.page),
                   ),
               ],
