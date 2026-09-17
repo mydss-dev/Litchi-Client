@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../config/app_config.dart';
+import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
@@ -69,11 +70,13 @@ class _V3AccountPageState extends State<V3AccountPage> {
             children: [
               if (isPageEnabled(AppPage.orders)) ...[
                 Expanded(child: _ServiceTile(
+                  key: hubRowKey(AppPage.orders),
                   icon: Icons.receipt_long_outlined,
                   label: '订单记录',
                   onTap: () => openV3Page(context, AppPage.orders),
                 )),
-                const SizedBox(width: 10),
+                if (hasWallet || isPageEnabled(AppPage.giftCard))
+                  const SizedBox(width: 10),
               ],
               if (hasWallet) ...[
                 Expanded(child: _ServiceTile(
@@ -81,10 +84,12 @@ class _V3AccountPageState extends State<V3AccountPage> {
                   label: '我的钱包',
                   onTap: () => _showWallet(context),
                 )),
-                const SizedBox(width: 10),
+                if (isPageEnabled(AppPage.giftCard))
+                  const SizedBox(width: 10),
               ],
               if (isPageEnabled(AppPage.giftCard))
                 Expanded(child: _ServiceTile(
+                  key: hubRowKey(AppPage.giftCard),
                   icon: Icons.card_giftcard_rounded,
                   label: '兑换码',
                   onTap: () => openV3Page(context, AppPage.giftCard),
@@ -98,50 +103,57 @@ class _V3AccountPageState extends State<V3AccountPage> {
           const SizedBox(height: 14),
           V3Panel(
             padding: EdgeInsets.zero,
-            child: Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                title: const Text('账户偏好与安全', style: TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: const Text('通知、续费与密码', style: TextStyle(fontSize: 12)),
-                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                children: [
-                  if (_updatingPreferences) const LinearProgressIndicator(minHeight: 2),
-                  SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    title: const Text('到期提醒'),
-                    value: controller.user.remindExpire,
-                    onChanged: _updatingPreferences ? null : (value) => _updatePreferences(remindExpire: value),
-                  ),
-                  SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    title: const Text('流量提醒'),
-                    value: controller.user.remindTraffic,
-                    onChanged: _updatingPreferences ? null : (value) => _updatePreferences(remindTraffic: value),
-                  ),
-                  SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    title: const Text('自动续费'),
-                    value: controller.user.autoRenewal,
-                    onChanged: _updatingPreferences ? null : (value) => _updatePreferences(autoRenewal: value),
-                  ),
-                  if (AppConfig.panelFeatures.telegram)
-                    ListTile(
-                      leading: const Icon(Icons.send_rounded),
-                      title: const Text('Telegram 通知'),
-                      subtitle: Text(controller.accountDetails?.telegramId == null ? '未绑定' : '已绑定'),
-                      onTap: () => V3TelegramPage.show(context),
+            // V3Panel paints with a decorated Container. An ExpansionTile
+            // creates a ListTile whose ink must paint ABOVE that decoration.
+            // Give it a local Material instead of inheriting the Scaffold's.
+            child: Material(
+              type: MaterialType.transparency,
+              child: Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  title: const Text('账户偏好与安全', style: TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: const Text('通知、续费与密码', style: TextStyle(fontSize: 12)),
+                  childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  children: [
+                    if (_updatingPreferences) const LinearProgressIndicator(minHeight: 2),
+                    SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      title: const Text('到期提醒'),
+                      value: controller.user.remindExpire,
+                      onChanged: _updatingPreferences ? null : (value) => _updatePreferences(remindExpire: value),
                     ),
-                  ListTile(
-                    leading: const Icon(Icons.password_rounded),
-                    title: const Text('修改密码'),
-                    onTap: () => showDialog<void>(context: context, builder: (_) => const _PasswordDialog()),
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.logout_rounded, color: p.dangerInk),
-                    title: Text('退出登录', style: TextStyle(color: p.dangerInk)),
-                    onTap: controller.logout,
-                  ),
-                ],
+                    SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      title: const Text('流量提醒'),
+                      value: controller.user.remindTraffic,
+                      onChanged: _updatingPreferences ? null : (value) => _updatePreferences(remindTraffic: value),
+                    ),
+                    SwitchListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      title: const Text('自动续费'),
+                      value: controller.user.autoRenewal,
+                      onChanged: _updatingPreferences ? null : (value) => _updatePreferences(autoRenewal: value),
+                    ),
+                    if (AppConfig.panelFeatures.telegram)
+                      ListTile(
+                        key: const ValueKey('v3-hub-telegram'),
+                        leading: const Icon(Icons.send_rounded),
+                        title: const Text('Telegram 通知'),
+                        subtitle: Text(controller.accountDetails?.telegramId == null ? '未绑定' : '已绑定'),
+                        onTap: () => V3TelegramPage.show(context),
+                      ),
+                    ListTile(
+                      leading: const Icon(Icons.password_rounded),
+                      title: const Text('修改密码'),
+                      onTap: () => showDialog<void>(context: context, builder: (_) => const _PasswordDialog()),
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.logout_rounded, color: p.dangerInk),
+                      title: Text('退出登录', style: TextStyle(color: p.dangerInk)),
+                      onTap: controller.logout,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -206,7 +218,7 @@ class _IdentityCard extends StatelessWidget {
 }
 
 class _ServiceTile extends StatelessWidget {
-  const _ServiceTile({required this.icon, required this.label, required this.onTap});
+  const _ServiceTile({super.key, required this.icon, required this.label, required this.onTap});
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -338,51 +350,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
       return;
     }
     if (_new.text != _confirm.text) {
-      setState(() => _error = '两次输入的新密码不一致');
-      return;
+      setState(() => _error = '$error');
     }
-    setState(() { _busy = true; _error = null; });
-    try {
-      await AppScope.read(context).changePasswordApi(
-        oldPassword: _old.text, newPassword: _new.text,
-        passwordConfirmation: _confirm.text,
-      );
-      if (!mounted) return;
-      Navigator.of(context).pop();
-    } catch (error) {
-      if (mounted) setState(() { _busy = false; _error = '$error'; });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return AlertDialog(
-      backgroundColor: p.surface,
-      title: const Text('修改密码'),
-      content: SizedBox(
-        width: 380,
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: _old, obscureText: true,
-            decoration: const InputDecoration(labelText: '原密码')),
-          const SizedBox(height: 12),
-          TextField(controller: _new, obscureText: true,
-            decoration: const InputDecoration(labelText: '新密码')),
-          const SizedBox(height: 12),
-          TextField(controller: _confirm, obscureText: true,
-            decoration: const InputDecoration(labelText: '确认新密码')),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(_error!, style: TextStyle(color: p.dangerInk)),
-          ],
-        ]),
-      ),
-      actions: [
-        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('取消')),
-        FilledButton(onPressed: _busy ? null : _save,
-          child: Text(_busy ? '提交中…' : '确认修改')),
-      ],
-    );
   }
 }
