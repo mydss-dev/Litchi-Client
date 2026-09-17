@@ -103,9 +103,8 @@ class _V3AccountPageState extends State<V3AccountPage> {
           const SizedBox(height: 14),
           V3Panel(
             padding: EdgeInsets.zero,
-            // V3Panel paints with a decorated Container. An ExpansionTile
-            // creates a ListTile whose ink must paint ABOVE that decoration.
-            // Give it a local Material instead of inheriting the Scaffold's.
+            // V3Panel uses a decorated Container. A local Material ensures
+            // ExpansionTile/ListTile ink paints above its background.
             child: Material(
               type: MaterialType.transparency,
               child: Theme(
@@ -350,7 +349,51 @@ class _PasswordDialogState extends State<_PasswordDialog> {
       return;
     }
     if (_new.text != _confirm.text) {
-      setState(() => _error = '$error');
+      setState(() => _error = '两次输入的新密码不一致');
+      return;
     }
+    setState(() { _busy = true; _error = null; });
+    try {
+      await AppScope.read(context).changePasswordApi(
+        oldPassword: _old.text, newPassword: _new.text,
+        passwordConfirmation: _confirm.text,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) setState(() { _busy = false; _error = '$error'; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return AlertDialog(
+      backgroundColor: p.surface,
+      title: const Text('修改密码'),
+      content: SizedBox(
+        width: 380,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: _old, obscureText: true,
+            decoration: const InputDecoration(labelText: '原密码')),
+          const SizedBox(height: 12),
+          TextField(controller: _new, obscureText: true,
+            decoration: const InputDecoration(labelText: '新密码')),
+          const SizedBox(height: 12),
+          TextField(controller: _confirm, obscureText: true,
+            decoration: const InputDecoration(labelText: '确认新密码')),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: TextStyle(color: p.dangerInk)),
+          ],
+        ]),
+      ),
+      actions: [
+        TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: const Text('取消')),
+        FilledButton(onPressed: _busy ? null : _save,
+          child: Text(_busy ? '提交中…' : '确认修改')),
+      ],
+    );
   }
 }
