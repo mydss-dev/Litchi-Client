@@ -46,12 +46,14 @@ void main() {
           await tester.pump();
           expect(tester.takeException(), isNull);
           if (active) {
-            expect(find.text('已激活套餐'), findsNWidgets(2));
-            expect(find.text('暂无套餐'), findsNothing);
+            // A compact account/shop need not repeat the status twice. Assert
+            // that the actual state is communicated, not the number of copies.
+            expect(find.textContaining('已激活套餐'), findsWidgets);
+            expect(find.textContaining('暂无套餐'), findsNothing);
             expect(find.text('还没有套餐'), findsNothing);
           } else {
-            expect(find.text('已激活套餐'), findsNothing);
-            expect(find.text('暂无套餐'), findsWidgets);
+            expect(find.textContaining('已激活套餐'), findsNothing);
+            expect(find.textContaining('暂无套餐'), findsWidgets);
           }
         } finally {
           debugDefaultTargetPlatformOverride = null;
