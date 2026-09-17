@@ -14,6 +14,7 @@ const _summary = TicketModel(
   level: 1,
   status: 0,
   createdAt: 1789430400,
+  updatedAt: 1789430400,
 );
 
 const _detail = TicketModel(
@@ -22,6 +23,7 @@ const _detail = TicketModel(
   level: 1,
   status: 0,
   createdAt: 1789430400,
+  updatedAt: 1789430400,
   messages: [
     TicketMessageModel(
       id: 1,
