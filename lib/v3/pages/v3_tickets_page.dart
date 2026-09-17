@@ -7,6 +7,7 @@ import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import 'v3_ticket_detail_dialog.dart';
 
 class V3TicketsPage extends StatefulWidget {
   const V3TicketsPage({super.key});
@@ -23,10 +24,8 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
     super.didChangeDependencies();
     if (_refreshed) return;
     _refreshed = true;
-    // Deferred out of the build phase: refreshTickets() notifies listeners,
-    // and notifying an ancestor while this page is still building would mark
-    // it dirty mid-build. The controller's own guard also stops a duplicate
-    // when a background refresh is already in flight.
+    // Refresh after the first build: controller notifications during a build
+    // would otherwise dirty the parent shell and shift its layout.
     Future.microtask(AppScope.read(context).refreshTickets);
   }
 
@@ -35,8 +34,8 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
     await showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.5),
-      builder: (_) => _TicketDetailDialog(
-        ticketId: ticket.id,
+      builder: (_) => V3TicketDetailDialog(
+        summary: ticket,
         api: controller.api,
         onChanged: controller.refreshTickets,
       ),
@@ -61,8 +60,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
     final openCount = tickets.where((ticket) => ticket.isOpen).length;
     final closedCount = tickets.length - openCount;
     final error = controller.ticketsError;
-    // The skeleton covers both "first load in flight" and "about to load";
-    // once the list is cached, a later background refresh never flashes it.
+    // A cached list stays visible during subsequent background refreshes.
     final skeleton = !controller.ticketsLoaded && error == null;
 
     return LayoutBuilder(
@@ -151,33 +149,33 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                 child: skeleton
                     ? const _TicketsSkeleton()
                     : error != null
-                    ? _TicketEmptyState(
-                        icon: Icons.error_outline_rounded,
-                        title: '工单加载失败',
-                        subtitle: error,
-                        actionLabel: '重试',
-                        onAction: controller.refreshTickets,
-                      )
-                    : tickets.isEmpty
-                    ? _TicketEmptyState(
-                        icon: Icons.support_agent_rounded,
-                        title: '还没有工单',
-                        subtitle: '遇到问题时，可以直接从这里联系支持。',
-                        actionLabel: '创建第一张工单',
-                        onAction: _newTicket,
-                      )
-                    : Column(
-                        children: [
-                          for (var i = 0; i < tickets.length; i++) ...[
-                            _TicketRow(
-                              ticket: tickets[i],
-                              onTap: () => _openTicket(tickets[i]),
-                            ),
-                            if (i != tickets.length - 1)
-                              Divider(color: p.line, height: 1),
-                          ],
-                        ],
-                      ),
+                        ? _TicketEmptyState(
+                            icon: Icons.error_outline_rounded,
+                            title: '工单加载失败',
+                            subtitle: error,
+                            actionLabel: '重试',
+                            onAction: controller.refreshTickets,
+                          )
+                        : tickets.isEmpty
+                            ? _TicketEmptyState(
+                                icon: Icons.support_agent_rounded,
+                                title: '还没有工单',
+                                subtitle: '遇到问题时，可以直接从这里联系支持。',
+                                actionLabel: '创建第一张工单',
+                                onAction: _newTicket,
+                              )
+                            : Column(
+                                children: [
+                                  for (var i = 0; i < tickets.length; i++) ...[
+                                    _TicketRow(
+                                      ticket: tickets[i],
+                                      onTap: () => _openTicket(tickets[i]),
+                                    ),
+                                    if (i != tickets.length - 1)
+                                      Divider(color: p.line, height: 1),
+                                  ],
+                                ],
+                              ),
               ),
             ],
           ),
@@ -246,12 +244,7 @@ class _TicketMetric extends StatelessWidget {
   }
 }
 
-/// The loading shape for the ticket list.
-///
-/// Placeholder rows sit where the real rows will land, so the page's first
-/// frame is already laid out the way the loaded list is. A centred spinner
-/// instead would sit alone in an empty well and then the list would snap in
-/// from the left — which read as a flash and a misalignment on every open.
+/// Skeleton rows match the horizontal geometry of loaded ticket rows.
 class _TicketsSkeleton extends StatelessWidget {
   const _TicketsSkeleton();
 
@@ -315,8 +308,6 @@ class _TicketRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    // Ink variants: both drive small status labels, and the tints they paint at
-    // 10% alpha only gain depth from the darker base.
     final statusColor = ticket.isOpen ? p.warningInk : p.successInk;
     final levelColor = switch (ticket.level) {
       2 => p.dangerInk,
@@ -510,268 +501,6 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
           onPressed: _submitting ? null : _submit,
           child: Text(_submitting ? '提交中…' : '提交工单'),
         ),
-      ],
-    );
-  }
-}
-
-class _TicketDetailDialog extends StatefulWidget {
-  const _TicketDetailDialog({
-    required this.ticketId,
-    required this.api,
-    required this.onChanged,
-  });
-
-  final int ticketId;
-  final PanelApi api;
-  final Future<void> Function() onChanged;
-
-  @override
-  State<_TicketDetailDialog> createState() => _TicketDetailDialogState();
-}
-
-class _TicketDetailDialogState extends State<_TicketDetailDialog> {
-  final _reply = TextEditingController();
-  TicketModel? _ticket;
-  bool _loading = true;
-  bool _sending = false;
-  bool _closing = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_load());
-  }
-
-  @override
-  void dispose() {
-    _reply.dispose();
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    try {
-      final ticket = await widget.api.getTicketDetail(widget.ticketId);
-      if (!mounted) return;
-      setState(() {
-        _ticket = ticket;
-        _loading = false;
-        _error = null;
-      });
-    } catch (error) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = _message(error);
-        });
-      }
-    }
-  }
-
-  Future<void> _send() async {
-    final text = _reply.text.trim();
-    if (text.isEmpty || _sending) return;
-    setState(() {
-      _sending = true;
-      _error = null;
-    });
-    try {
-      await widget.api.replyTicket(ticketId: widget.ticketId, message: text);
-      _reply.clear();
-      await _load();
-      await widget.onChanged();
-    } catch (error) {
-      if (mounted) setState(() => _error = _message(error));
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  Future<void> _closeTicket() async {
-    if (_closing) return;
-    setState(() {
-      _closing = true;
-      _error = null;
-    });
-    try {
-      await widget.api.closeTicket(widget.ticketId);
-      await _load();
-      await widget.onChanged();
-    } catch (error) {
-      if (mounted) setState(() => _error = _message(error));
-    } finally {
-      if (mounted) setState(() => _closing = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(22),
-      child: Container(
-        width: 680,
-        constraints: const BoxConstraints(maxHeight: 720),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: p.surface,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null && _ticket == null
-            ? _TicketEmptyState(
-                icon: Icons.error_outline_rounded,
-                title: '无法打开工单',
-                subtitle: _error!,
-                actionLabel: '重试',
-                onAction: _load,
-              )
-            : _detail(context),
-      ),
-    );
-  }
-
-  Widget _detail(BuildContext context) {
-    final p = V3Palette.of(context);
-    final ticket = _ticket!;
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TICKET #${ticket.id}',
-                    style: TextStyle(
-                      color: p.lycheeInk,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    ticket.subject,
-                    style: Theme.of(context).textTheme.headlineLarge,
-                  ),
-                ],
-              ),
-            ),
-            if (ticket.isOpen)
-              OutlinedButton(
-                onPressed: _closing ? null : _closeTicket,
-                child: Text(_closing ? '关闭中…' : '关闭工单'),
-              ),
-            IconButton(
-              tooltip: '关闭',
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.close_rounded),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: p.surfaceRaised,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: ticket.messages.isEmpty
-                ? Center(
-                    child: Text(
-                      '暂无消息',
-                      style: TextStyle(color: p.inkMuted, fontSize: 11),
-                    ),
-                  )
-                : ListView.separated(
-                    itemCount: ticket.messages.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final message = ticket.messages[index];
-                      return Align(
-                        alignment: message.isAdmin
-                            ? Alignment.centerLeft
-                            : Alignment.centerRight,
-                        child: Container(
-                          constraints: const BoxConstraints(maxWidth: 470),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: message.isAdmin ? p.surface : p.lycheeSoft,
-                            borderRadius: BorderRadius.circular(16),
-                            border: message.isAdmin
-                                ? Border.all(color: p.line)
-                                : null,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: message.isAdmin
-                                ? CrossAxisAlignment.start
-                                : CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                message.message,
-                                style: TextStyle(
-                                  color: p.ink,
-                                  fontSize: 11,
-                                  height: 1.45,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${message.isAdmin ? '客服' : '我'} · ${message.timeDisplay}',
-                                style: TextStyle(
-                                  color: p.inkMuted,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ),
-        if (_error != null) ...[
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              _error!,
-              style: TextStyle(color: p.dangerInk, fontSize: 10),
-            ),
-          ),
-        ],
-        if (ticket.isOpen) ...[
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _reply,
-                  minLines: 1,
-                  maxLines: 4,
-                  decoration: const InputDecoration(hintText: '输入回复…'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: _sending ? null : _send,
-                  icon: const Icon(Icons.send_rounded, size: 17),
-                  label: Text(_sending ? '发送中' : '发送'),
-                ),
-              ),
-            ],
-          ),
-        ],
       ],
     );
   }
