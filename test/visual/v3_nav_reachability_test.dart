@@ -10,15 +10,11 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
 
-/// Tracks navigation issued through the real shell, without private state.
 class _NavController extends VisualV3Controller {
   _NavController() : super(AppPage.dashboard);
-
   AppPage _current = AppPage.dashboard;
-
   @override
   AppPage get page => _current;
-
   @override
   void goToPage(AppPage target) {
     if (!isPageEnabled(target)) return;
@@ -35,7 +31,6 @@ Future<_NavController> _pumpShell(WidgetTester tester, Size size) async {
   addTearDown(() => tester.binding.setSurfaceSize(null));
   final controller = _NavController();
   addTearDown(controller.disposeVisual);
-  // Routes are siblings of home, so scope the controller above MaterialApp.
   await tester.pumpWidget(AppScope(
     controller: controller,
     child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell()),
@@ -77,7 +72,6 @@ String _primaryLabel(AppPage page) => enabledNavItems(kMobilePrimary)
     .firstWhere((item) => item.page == page).label;
 
 void main() {
-  // Every enabled destination must be reachable from its declared surface.
   final reachable = AppPage.values.where(isPageEnabled).toList();
   final desktopReachable = reachable.where((page) => page != AppPage.more);
 
@@ -207,7 +201,7 @@ void main() {
     });
   });
 
-  testWidgets('each wallet action opens a dialog within the wallet sheet',
+  testWidgets('each wallet action opens the correct dialog above its sheet',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, _mobile);
@@ -217,7 +211,7 @@ void main() {
           reason: 'balance summary belongs on the account page');
       await _tap(tester, find.text('我的钱包'), 'wallet service tile');
       expect(find.text('可提现佣金 ¥71.80'), findsOneWidget);
-
+      const actionTitles = ['充值余额', '申请提现', '佣金转余额'];
       for (final (label, dialogTitle) in <(String, String)>[
         ('充值', '充值余额'),
         ('提现', '申请提现'),
@@ -225,15 +219,22 @@ void main() {
       ]) {
         await _tap(tester, find.text(label), label);
         expect(find.text(dialogTitle), findsOneWidget,
-            reason: '$label must open its correct dialog');
-        expect(find.byType(Dialog), findsOneWidget,
-            reason: '$label must not stack extra action dialogs');
-        final dialogClose = find.descendant(
-          of: find.byType(Dialog), matching: find.byTooltip('关闭'));
-        await _tap(tester, dialogClose, '$label dialog close');
-        expect(find.byType(Dialog), findsNothing);
+            reason: '$label must open its own dialog');
+        for (final other in actionTitles.where((title) => title != dialogTitle)) {
+          expect(find.text(other), findsNothing,
+              reason: '$label must not open unrelated action dialogs');
+        }
+        // On wide test MediaQuery configurations the wallet *parent* sheet is
+        // a Dialog too. Close only the action dialog identified by its title.
+        final activeDialog = find.ancestor(
+          of: find.text(dialogTitle), matching: find.byType(Dialog)).first;
+        expect(activeDialog, findsOneWidget);
+        await _tap(tester, find.descendant(
+          of: activeDialog, matching: find.byTooltip('关闭')),
+          '$label dialog close');
+        expect(find.text(dialogTitle), findsNothing);
         expect(find.text('可提现佣金 ¥71.80'), findsOneWidget,
-            reason: 'closing a dialog should return to the wallet sheet');
+            reason: 'closing an action returns to wallet management');
         expect(controller.page, AppPage.account);
       }
       await _tap(tester, find.byTooltip('关闭'), 'wallet sheet close');
