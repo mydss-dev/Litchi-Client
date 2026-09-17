@@ -161,15 +161,23 @@ void main() {
   ) async {
     final controller = _InteractiveController(AppPage.nodes);
     await _pump(tester, controller, const V3NodesPage());
+    // The coverage map pushes node rows below the first 900×700 viewport.
+    // Scroll like an actual user instead of tapping an off-screen render box.
+    await tester.ensureVisible(find.text('香港 · Premium'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('香港 · Premium'));
     await tester.pump();
     expect(find.text('正在处理，请稍候…'), findsOneWidget);
+    await tester.ensureVisible(find.text('新加坡 · Standard'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('新加坡 · Standard'));
     expect(controller.selections, 1);
     controller.result.complete('节点切换失败');
     await tester.pump();
     expect(find.text('节点切换失败'), findsOneWidget);
     controller.result = Completer<String?>();
+    await tester.ensureVisible(find.text('香港 · Premium'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('香港 · Premium'));
     expect(controller.selections, 2);
     controller.result.complete(null);
