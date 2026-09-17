@@ -9,8 +9,7 @@ import '../ui/v3_sheet.dart';
 import 'v3_telegram_page.dart';
 import 'v3_wallet_actions.dart';
 
-/// Account-owned destinations belong together, rather than being mixed into
-/// the side rail or scattered between unrelated pages.
+/// Account identity and account-owned operations stay together.
 class V3AccountPage extends StatefulWidget {
   const V3AccountPage({super.key});
 
@@ -33,7 +32,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
     if (!mounted) return;
     setState(() => _updating = false);
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error ?? '账户设置已更新')));
+      SnackBar(content: Text(error ?? '账户设置已更新')));
   }
 
   @override
@@ -64,7 +63,8 @@ class _V3AccountPageState extends State<V3AccountPage> {
                     key: hubRowKey(AppPage.orders),
                     icon: Icons.receipt_long_rounded, label: '订单记录',
                     onTap: () => openV3Page(context, AppPage.orders))),
-                  const SizedBox(width: 8),
+                  if (walletEnabled || isPageEnabled(AppPage.giftCard))
+                    const SizedBox(width: 8),
                 ],
                 if (walletEnabled) ...[
                   Expanded(child: _ServiceTile(
@@ -83,55 +83,70 @@ class _V3AccountPageState extends State<V3AccountPage> {
             ])),
         if (walletEnabled) ...[
           const SizedBox(height: 14),
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => _openWallet(context),
-            child: V3Panel(radius: 20, tone: V3PanelTone.raised,
-              padding: const EdgeInsets.all(16),
-              child: Row(children: [
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('账户余额', style: TextStyle(color: p.inkMuted,
-                      fontSize: 12)),
-                    const SizedBox(height: 5),
-                    Text('${controller.currencySymbol}${(controller.user.balance / 100).toStringAsFixed(2)}',
-                      style: TextStyle(color: p.ink,
-                        fontSize: 23, fontWeight: FontWeight.w900)),
+          V3Panel(radius: 20, tone: V3PanelTone.raised,
+            padding: const EdgeInsets.all(16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                InkWell(borderRadius: BorderRadius.circular(8),
+                  onTap: () => _openWallet(context),
+                  child: Row(children: [
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('账户余额', style: TextStyle(color: p.inkMuted,
+                          fontSize: 12)),
+                        const SizedBox(height: 5),
+                        Text('${controller.currencySymbol}${(controller.user.balance / 100).toStringAsFixed(2)}',
+                          style: TextStyle(color: p.ink,
+                            fontSize: 23, fontWeight: FontWeight.w900)),
+                      ])),
+                    Text('钱包管理', style: TextStyle(color: p.lycheeInk,
+                      fontSize: 12, fontWeight: FontWeight.w700)),
+                    Icon(Icons.chevron_right_rounded, color: p.lycheeInk),
                   ])),
-                Text('钱包管理', style: TextStyle(color: p.lycheeInk,
-                  fontSize: 12, fontWeight: FontWeight.w700)),
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded, color: p.lycheeInk),
+                const SizedBox(height: 14),
+                Row(children: [
+                  if (AppConfig.panelFeatures.wallet) ...[
+                    Expanded(child: _MoneyAction(label: '充值',
+                      primary: true,
+                      onPressed: () => showV3RechargeDialog(context))),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(child: _MoneyAction(label: '提现',
+                    onPressed: () => showV3WithdrawDialog(context))),
+                  const SizedBox(width: 8),
+                  Expanded(child: _MoneyAction(label: '划转',
+                    onPressed: () => showV3TransferDialog(context))),
+                ]),
               ])),
-          ),
         ],
         const SizedBox(height: 14),
-        V3Panel(radius: 20, padding: const EdgeInsets.all(10),
+        Material(
+          color: p.surface,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: p.line)),
           child: Theme(data: Theme.of(context).copyWith(
               dividerColor: Colors.transparent),
             child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 10),
+              tilePadding: const EdgeInsets.symmetric(horizontal: 18),
               title: Text('账户偏好与安全', style: TextStyle(color: p.ink,
                 fontSize: 14, fontWeight: FontWeight.w800)),
               subtitle: Text('到期提醒、流量提醒、续费与密码',
                 style: TextStyle(color: p.inkMuted, fontSize: 11)),
               children: [
                 if (_updating) const LinearProgressIndicator(minHeight: 2),
-                SwitchListTile.adaptive(
-                  title: const Text('到期提醒'),
+                SwitchListTile.adaptive(title: const Text('到期提醒'),
                   value: controller.user.remindExpire,
                   onChanged: _updating ? null : (v) => _update(expire: v)),
-                SwitchListTile.adaptive(
-                  title: const Text('流量提醒'),
+                SwitchListTile.adaptive(title: const Text('流量提醒'),
                   value: controller.user.remindTraffic,
                   onChanged: _updating ? null : (v) => _update(traffic: v)),
-                SwitchListTile.adaptive(
-                  title: const Text('自动续费'),
+                SwitchListTile.adaptive(title: const Text('自动续费'),
                   value: controller.user.autoRenewal,
                   onChanged: _updating ? null : (v) => _update(renew: v)),
-                ListTile(
-                  leading: const Icon(Icons.lock_outline_rounded),
+                ListTile(leading: const Icon(Icons.lock_outline_rounded),
                   title: const Text('修改密码'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => showDialog<void>(context: context,
@@ -141,20 +156,23 @@ class _V3AccountPageState extends State<V3AccountPage> {
           )),
         if (AppConfig.panelFeatures.telegram) ...[
           const SizedBox(height: 12),
-          V3Panel(radius: 18, padding: EdgeInsets.zero,
+          Material(color: p.surface, clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(color: p.line)),
             child: ListTile(
+              key: const ValueKey('v3-hub-telegram'),
               leading: const Icon(Icons.send_rounded),
               title: const Text('Telegram 通知'),
               subtitle: Text(controller.accountDetails?.telegramId == null
-                  ? '未绑定' : '已绑定'),
+                  ? '未绑定' : '已绑定，可接收账户通知'),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => V3TelegramPage.show(context))),
         ],
         const SizedBox(height: 12),
         OutlinedButton.icon(onPressed: controller.logout,
           icon: Icon(Icons.logout_rounded, color: p.dangerInk),
-          label: Text('退出登录',
-            style: TextStyle(color: p.dangerInk))),
+          label: Text('退出登录', style: TextStyle(color: p.dangerInk))),
         if (controller.dataLoadError != null) ...[
           const SizedBox(height: 12),
           Text(controller.dataLoadError!,
@@ -171,7 +189,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
       Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         V3Panel(tone: V3PanelTone.raised, child: Column(
           crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('账户余额', style: TextStyle(color: p.inkMuted,
+            Text('账户可用余额', style: TextStyle(color: p.inkMuted,
               fontSize: 12)),
             const SizedBox(height: 5),
             Text('${controller.currencySymbol}${(controller.user.balance / 100).toStringAsFixed(2)}',
@@ -191,7 +209,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
           icon: Icons.account_balance_rounded,
           onPressed: () { closeV3Sheet(context); showV3WithdrawDialog(context); }),
         const SizedBox(height: 10),
-        V3ActionButton(label: '佣金划转', secondary: true,
+        V3ActionButton(label: '划转', secondary: true,
           icon: Icons.swap_horiz_rounded,
           onPressed: () { closeV3Sheet(context); showV3TransferDialog(context); }),
       ]));
@@ -207,6 +225,9 @@ class _IdentityCard extends StatelessWidget {
     final p = V3Palette.of(context);
     final user = controller.user;
     final name = user.name.trim().isEmpty ? 'Litchi User' : user.name.trim();
+    final planName = controller.hasPlan
+        ? (user.plan.trim().isEmpty ? '已激活套餐' : user.plan.trim())
+        : '暂无套餐';
     return V3Panel(radius: 20, padding: const EdgeInsets.all(16),
       child: Row(children: [
         Container(width: 46, height: 46, alignment: Alignment.center,
@@ -216,8 +237,8 @@ class _IdentityCard extends StatelessWidget {
             style: const TextStyle(color: Colors.white,
               fontSize: 20, fontWeight: FontWeight.w900))),
         const SizedBox(width: 12),
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
               style: TextStyle(color: p.ink,
                 fontSize: 15, fontWeight: FontWeight.w800)),
@@ -226,11 +247,13 @@ class _IdentityCard extends StatelessWidget {
               maxLines: 1, overflow: TextOverflow.ellipsis,
               style: TextStyle(color: p.inkMuted, fontSize: 11)),
             const SizedBox(height: 5),
-            Text(controller.hasPlan
-                ? '${user.plan.trim().isEmpty ? '已激活套餐' : user.plan.trim()} · ${controller.planExpiryLabel}'
-                : '暂无套餐',
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+            Text(planName, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.ink, fontSize: 11,
+                fontWeight: FontWeight.w700)),
+            if (controller.hasPlan)
+              Text('有效期 ${controller.planExpiryLabel}',
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: p.inkMuted, fontSize: 11)),
           ])),
         const SizedBox(width: 8),
         IconButton(tooltip: '管理套餐',
@@ -249,12 +272,10 @@ class _ServiceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return InkWell(onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 16),
-        decoration: BoxDecoration(
-          color: p.surfaceRaised,
+        decoration: BoxDecoration(color: p.surfaceRaised,
           borderRadius: BorderRadius.circular(14)),
         child: Column(children: [
           Icon(icon, size: 23, color: p.lycheeInk),
@@ -264,6 +285,26 @@ class _ServiceTile extends StatelessWidget {
               fontWeight: FontWeight.w700)),
         ]),
       ));
+  }
+}
+
+class _MoneyAction extends StatelessWidget {
+  const _MoneyAction({required this.label, required this.onPressed,
+    this.primary = false});
+  final String label;
+  final VoidCallback onPressed;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return SizedBox(height: 42, child: primary
+      ? FilledButton(onPressed: onPressed,
+          style: FilledButton.styleFrom(backgroundColor: p.lychee,
+            foregroundColor: Colors.white), child: Text(label))
+      : OutlinedButton(onPressed: onPressed,
+          style: OutlinedButton.styleFrom(foregroundColor: p.ink,
+            side: BorderSide(color: p.line)), child: Text(label)));
   }
 }
 
@@ -289,12 +330,10 @@ class _PasswordDialogState extends State<_PasswordDialog> {
   Future<void> _submit() async {
     if (_busy) return;
     if (_old.text.isEmpty || _new.text.isEmpty || _confirm.text.isEmpty) {
-      setState(() => _error = '请完整填写密码');
-      return;
+      setState(() => _error = '请完整填写密码'); return;
     }
     if (_new.text != _confirm.text) {
-      setState(() => _error = '两次输入的新密码不一致');
-      return;
+      setState(() => _error = '两次输入的新密码不一致'); return;
     }
     setState(() { _busy = true; _error = null; });
     try {
@@ -313,8 +352,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return AlertDialog(
-      title: const Text('修改账户密码'),
+    return AlertDialog(title: const Text('修改账户密码'),
       content: SizedBox(width: 390,
         child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min, children: [
