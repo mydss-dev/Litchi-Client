@@ -82,6 +82,38 @@ BorderSide v3ChipSide(V3Palette p, {required bool selected}) => selected
     ? BorderSide(color: p.lychee, width: 1.5)
     : BorderSide(color: p.line);
 
+/// A grey block standing in for a value that has not loaded yet.
+///
+/// Loading lists render these in place of their text and icon blocks, so the
+/// first frame already occupies the layout the loaded list will. A centred
+/// spinner instead sits alone and then the list snaps in from the left — which
+/// reads as a flash and a misalignment on every open.
+class V3SkeletonBlock extends StatelessWidget {
+  const V3SkeletonBlock({
+    super.key,
+    this.width,
+    required this.height,
+    this.radius = 6,
+  });
+
+  final double? width;
+  final double height;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: p.ink.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+}
+
 class V3PageHeader extends StatelessWidget {
   const V3PageHeader({
     super.key,
@@ -175,7 +207,7 @@ class V3ActionButton extends StatelessWidget {
                 foregroundColor: p.ink,
                 side: BorderSide(color: p.line),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: child,
@@ -186,7 +218,7 @@ class V3ActionButton extends StatelessWidget {
                 backgroundColor: p.lychee,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: child,

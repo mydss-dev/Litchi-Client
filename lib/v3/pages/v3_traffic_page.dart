@@ -162,7 +162,7 @@ class _QuotaPanel extends StatelessWidget {
                   color: p.inkMuted,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 1.6,
+                  letterSpacing: 1.5,
                 ),
               ),
               const Spacer(),

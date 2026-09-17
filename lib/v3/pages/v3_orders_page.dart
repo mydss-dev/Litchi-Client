@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 
 class V3OrdersPage extends StatefulWidget {
@@ -152,14 +153,30 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
 
     // Built once so the three density branches below cannot drift apart.
     final metrics = <Widget>[
-      _OrderMetric(label: '全部订单', value: '${_orders.length}', accent: p.lychee),
-      _OrderMetric(label: '待处理', value: '$pending', accent: p.warning),
-      _OrderMetric(label: '已完成', value: '$completed', accent: p.success),
+      _OrderMetric(
+        label: '全部订单',
+        value: '${_orders.length}',
+        accent: p.lychee,
+        loading: _loading,
+      ),
+      _OrderMetric(
+        label: '待处理',
+        value: '$pending',
+        accent: p.warning,
+        loading: _loading,
+      ),
+      _OrderMetric(
+        label: '已完成',
+        value: '$completed',
+        accent: p.success,
+        loading: _loading,
+      ),
       _OrderMetric(
         label: '累计支付',
         value:
             '${controller.currencySymbol}${(spent / 100).toStringAsFixed(2)}',
         accent: p.aqua,
+        loading: _loading,
       ),
     ];
     // No page header and no page-level scroll: the sheet supplies both. The
@@ -242,12 +259,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                   ),
                   const SizedBox(height: 16),
                   if (_loading)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(36),
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
+                    const _OrdersSkeleton()
                   else if (_error != null)
                     _OrderEmptyState(
                       icon: Icons.error_outline_rounded,
@@ -302,11 +314,13 @@ class _OrderMetric extends StatelessWidget {
     required this.label,
     required this.value,
     required this.accent,
+    this.loading = false,
   });
 
   final String label;
   final String value;
   final Color accent;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -336,18 +350,88 @@ class _OrderMetric extends StatelessWidget {
               children: [
                 Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
                 const SizedBox(height: 4),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: p.ink,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                if (loading)
+                  const V3SkeletonBlock(width: 30, height: 16)
+                else
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: p.ink,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The loading shape for the order list.
+///
+/// Placeholder rows sit where the real rows will land, so the sheet's first
+/// frame is already laid out the way the loaded list is — a centred spinner
+/// instead would sit alone in an empty well and then the list would snap in
+/// from the left, the same flash the tickets page used to have.
+class _OrdersSkeleton extends StatelessWidget {
+  const _OrdersSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Column(
+      children: [
+        for (var i = 0; i < 3; i++) ...[
+          const _OrderSkeletonRow(),
+          if (i != 2) Divider(color: p.line, height: 1),
+        ],
+      ],
+    );
+  }
+}
+
+class _OrderSkeletonRow extends StatelessWidget {
+  const _OrderSkeletonRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 15),
+      child: Row(
+        children: [
+          V3SkeletonBlock(width: 44, height: 44, radius: 15),
+          SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FractionallySizedBox(
+                  widthFactor: 0.7,
+                  alignment: Alignment.centerLeft,
+                  child: V3SkeletonBlock(height: 12),
+                ),
+                SizedBox(height: 7),
+                FractionallySizedBox(
+                  widthFactor: 0.45,
+                  alignment: Alignment.centerLeft,
+                  child: V3SkeletonBlock(height: 9),
                 ),
               ],
             ),
+          ),
+          SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              V3SkeletonBlock(width: 44, height: 12),
+              SizedBox(height: 7),
+              V3SkeletonBlock(width: 30, height: 9),
+            ],
           ),
         ],
       ),

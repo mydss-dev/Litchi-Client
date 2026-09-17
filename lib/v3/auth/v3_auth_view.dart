@@ -219,7 +219,7 @@ class _V3AuthViewState extends State<V3AuthView> {
                                 backgroundColor: p.lychee,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
                               child: Text(_busy ? '正在登录…' : '进入 Litchi'),

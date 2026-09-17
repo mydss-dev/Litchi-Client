@@ -421,7 +421,7 @@ class _MetricPanel extends StatelessWidget {
                     color: p.inkMuted,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.4,
+                    letterSpacing: 1.5,
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -825,7 +825,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                   backgroundColor: p.lychee,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: Text(_busy ? '正在提交…' : '保存新密码'),

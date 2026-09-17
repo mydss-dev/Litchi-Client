@@ -130,6 +130,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                       label: '全部工单',
                       value: '${_tickets.length}',
                       accent: p.lychee,
+                      loading: _loading,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -138,6 +139,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                       label: '处理中',
                       value: '$openCount',
                       accent: p.warning,
+                      loading: _loading,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -146,6 +148,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                       label: '已关闭',
                       value: '$closedCount',
                       accent: p.success,
+                      loading: _loading,
                     ),
                   ),
                 ],
@@ -160,12 +163,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                   border: Border.all(color: p.line),
                 ),
                 child: _loading
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(40),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
+                    ? const _TicketsSkeleton()
                     : _error != null
                     ? _TicketEmptyState(
                         icon: Icons.error_outline_rounded,
@@ -208,11 +206,13 @@ class _TicketMetric extends StatelessWidget {
     required this.label,
     required this.value,
     required this.accent,
+    this.loading = false,
   });
 
   final String label;
   final String value;
   final Color accent;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -241,16 +241,79 @@ class _TicketMetric extends StatelessWidget {
             children: [
               Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
               const SizedBox(height: 4),
-              Text(
-                value,
-                style: TextStyle(
-                  color: p.ink,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w900,
+              if (loading)
+                const V3SkeletonBlock(width: 30, height: 16)
+              else
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The loading shape for the ticket list.
+///
+/// Placeholder rows sit where the real rows will land, so the page's first
+/// frame is already laid out the way the loaded list is. A centred spinner
+/// instead would sit alone in an empty well and then the list would snap in
+/// from the left — which read as a flash and a misalignment on every open.
+class _TicketsSkeleton extends StatelessWidget {
+  const _TicketsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Column(
+      children: [
+        for (var i = 0; i < 3; i++) ...[
+          const _TicketSkeletonRow(),
+          if (i != 2) Divider(color: p.line, height: 1),
+        ],
+      ],
+    );
+  }
+}
+
+class _TicketSkeletonRow extends StatelessWidget {
+  const _TicketSkeletonRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 15),
+      child: Row(
+        children: [
+          V3SkeletonBlock(width: 44, height: 44, radius: 15),
+          SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FractionallySizedBox(
+                  widthFactor: 0.72,
+                  alignment: Alignment.centerLeft,
+                  child: V3SkeletonBlock(height: 12),
+                ),
+                SizedBox(height: 7),
+                FractionallySizedBox(
+                  widthFactor: 0.45,
+                  alignment: Alignment.centerLeft,
+                  child: V3SkeletonBlock(height: 9),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 12),
+          V3SkeletonBlock(width: 44, height: 20, radius: 10),
         ],
       ),
     );

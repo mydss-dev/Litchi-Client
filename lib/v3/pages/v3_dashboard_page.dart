@@ -163,7 +163,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                     color: p.inkMuted,
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 1.3,
+                    letterSpacing: 1.5,
                   ),
                 ),
                 const SizedBox(height: 16),

@@ -286,7 +286,7 @@ class _BalanceHero extends StatelessWidget {
                     color: p.inkMuted,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.7,
+                    letterSpacing: 1.5,
                   ),
                 ),
                 const SizedBox(height: 9),
@@ -428,7 +428,7 @@ class _RechargePanel extends StatelessWidget {
                 backgroundColor: p.lychee,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               icon: const Icon(Icons.add_card_rounded, size: 18),

@@ -457,7 +457,6 @@ class _RecoveryPanel extends StatelessWidget {
                     color: p.ink,
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -474,7 +473,7 @@ class _RecoveryPanel extends StatelessWidget {
               foregroundColor: p.ink,
               side: BorderSide(color: p.line),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
             child: const Text('修复'),

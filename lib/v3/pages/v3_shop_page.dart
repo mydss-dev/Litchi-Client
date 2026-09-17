@@ -642,7 +642,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                             color: p.lycheeInk,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: 2,
+                            letterSpacing: 1.8,
                           ),
                         ),
                         const SizedBox(height: 7),
@@ -794,7 +794,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                     backgroundColor: p.lychee,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   child: Text(_submitting ? '正在创建订单…' : '确认并创建订单'),
