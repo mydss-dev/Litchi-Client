@@ -161,15 +161,24 @@ void main() {
   ) async {
     final controller = _InteractiveController(AppPage.nodes);
     await _pump(tester, controller, const V3NodesPage());
+    // The map puts nodes below the first viewport; reach each row before tap.
+    await tester.ensureVisible(find.text('香港 · Premium'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('香港 · Premium'));
     await tester.pump();
     expect(find.text('正在处理，请稍候…'), findsOneWidget);
+    await tester.ensureVisible(find.text('新加坡 · Standard'));
+    // An unfinished request displays an indeterminate progress spinner.
+    // pumpAndSettle would wait forever here; one frame is enough after scroll.
+    await tester.pump();
     await tester.tap(find.text('新加坡 · Standard'));
     expect(controller.selections, 1);
     controller.result.complete('节点切换失败');
     await tester.pump();
     expect(find.text('节点切换失败'), findsOneWidget);
     controller.result = Completer<String?>();
+    await tester.ensureVisible(find.text('香港 · Premium'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('香港 · Premium'));
     expect(controller.selections, 2);
     controller.result.complete(null);
