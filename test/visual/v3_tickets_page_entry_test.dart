@@ -27,6 +27,7 @@ class _TicketListController extends VisualV3Controller {
             level: 1,
             status: 0,
             createdAt: 1789430400,
+            updatedAt: 1789430400,
           ),
         ]
       : const [];
