@@ -56,6 +56,12 @@ Future<VisualV3Controller> _pumpAccount(
     ),
   );
   await tester.pumpAndSettle();
+  // Telegram is intentionally a secondary account preference, not a
+  // top-level service tile. Open its parent before checking the row.
+  expect(find.text('账户偏好与安全'), findsOneWidget);
+  await tester.tap(find.text('账户偏好与安全'));
+  await tester.pumpAndSettle();
+  expect(tester.takeException(), isNull);
   return controller;
 }
 
@@ -80,7 +86,7 @@ Future<void> _tap(WidgetTester tester, Finder finder, String what) async {
 }
 
 void main() {
-  testWidgets('the account hub lists Telegram with its bound status', (
+  testWidgets('the account preferences list Telegram with its bound status', (
     tester,
   ) async {
     await _onPlatform(TargetPlatform.android, () async {
@@ -100,9 +106,7 @@ void main() {
       await _tap(tester, find.byKey(_telegramRow), 'the Telegram row');
 
       expect(find.byType(V3TelegramPage), findsOneWidget);
-      // The fixture's bot resolves after the initial load.
       expect(find.text('@litchi_bot'), findsOneWidget);
-      // A sheet, not a page: the account page stays underneath.
       expect(controller.page, AppPage.account);
       expect(tester.takeException(), isNull);
     });
@@ -142,7 +146,7 @@ void main() {
   testWidgets('a bound account can unbind', (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       await _pumpAccount(tester, bound: true);
-      expect(find.text('已绑定，可接收账户通知'), findsOneWidget);
+      expect(find.text('已绑定'), findsOneWidget);
 
       await _tap(tester, find.byKey(_telegramRow), 'the Telegram row');
       expect(find.text('解除绑定'), findsOneWidget);
