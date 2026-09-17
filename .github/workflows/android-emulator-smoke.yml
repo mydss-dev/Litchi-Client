@@ -207,15 +207,42 @@ jobs:
           echo "Litchi PID: $pid"
       - name: Capture host-level evidence
         run: |
-          mkdir -p build/emulator-smoke
-          adb exec-out screencap -p > build/emulator-smoke/launch-logical-390x844.png
-          adb shell wm size > build/emulator-smoke/wm-size.txt
-          adb shell wm density > build/emulator-smoke/wm-density.txt
-          adb shell dumpsys window > build/emulator-smoke/window.txt
-          adb shell dumpsys activity top > build/emulator-smoke/activity-top.txt
-          adb shell dumpsys display > build/emulator-smoke/display.txt
-          adb logcat -d > build/emulator-smoke/logcat.txt
-          test -s build/emulator-smoke/launch-logical-390x844.png
+          set -euo pipefail
+          evidence=build/emulator-smoke
+          mkdir -p "$evidence"
+          adb devices -l | tee "$evidence/adb-before-capture.txt"
+          capture() {
+            local label="$1" output="$2"
+            shift 2
+            local attempt result
+            for attempt in 1 2 3; do
+              echo "Capture [$label] attempt $attempt/3: adb $*"
+              if timeout 45s adb "$@" > "$output" 2> "$evidence/$label-stderr.txt"; then
+                echo "Capture [$label] OK: $(wc -c < "$output") bytes"
+                return 0
+              else
+                result=$?
+                echo "::warning::Capture [$label] failed with exit $result (attempt $attempt/3)"
+                cat "$evidence/$label-stderr.txt" || true
+                adb devices -l || true
+                sleep 3
+              fi
+            done
+            echo "::error::Capture [$label] failed after three attempts"
+            tail -n 60 "$evidence/emulator.log" || true
+            return 1
+          }
+          capture screenshot "$evidence/launch-logical-390x844.png" exec-out screencap -p
+          test -s "$evidence/launch-logical-390x844.png"
+          capture wm-size "$evidence/wm-size.txt" shell wm size
+          capture wm-density "$evidence/wm-density.txt" shell wm density
+          capture window "$evidence/window.txt" shell dumpsys window
+          capture activity-top "$evidence/activity-top.txt" shell dumpsys activity top
+          capture display "$evidence/display.txt" shell dumpsys display
+          # The unbounded dump intermittently returned 255 after writing partial logs.
+          # Limit output and retry instead of failing the whole UI smoke on a transient ADB error.
+          capture logcat "$evidence/logcat.txt" logcat -d -t 3000
+          test -s "$evidence/logcat.txt"
       - name: Check startup crash and Android back behavior
         run: |
           if grep -A 30 -B 2 -F 'FATAL EXCEPTION' build/emulator-smoke/logcat.txt | grep -Fq "Process: $PACKAGE_ID"; then
