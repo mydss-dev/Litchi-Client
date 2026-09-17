@@ -4,6 +4,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_node_coverage_map.dart';
 import '../ui/v3_node_picker.dart';
 
 class V3NodesPage extends StatefulWidget {
@@ -16,6 +17,7 @@ class V3NodesPage extends StatefulWidget {
 class _V3NodesPageState extends State<V3NodesPage> {
   String _query = '';
   NodeRegion? _region;
+  String? _countryCode;
   bool _testing = false;
   String? _pending;
   String? _feedback;
@@ -53,14 +55,24 @@ class _V3NodesPageState extends State<V3NodesPage> {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
+    final availableCodes = controller.nodes
+        .where((node) => !node.isAuto)
+        .map((node) => node.code.trim().toUpperCase())
+        .where((code) => RegExp(r'^[A-Z]{2}$').hasMatch(code))
+        .toSet();
+    // A refreshed subscription can remove the chosen country. Never strand
+    // users on a zero-result filter they can no longer see or clear.
+    final countryCode = availableCodes.contains(_countryCode) ? _countryCode : null;
+    final query = _query.trim().toLowerCase();
     final nodes = controller.nodes.where((node) {
-      final query = _query.trim().toLowerCase();
       final matchesQuery =
           query.isEmpty ||
           node.name.toLowerCase().contains(query) ||
           node.englishName.toLowerCase().contains(query) ||
           node.code.toLowerCase().contains(query);
-      return matchesQuery && (_region == null || node.region == _region);
+      return matchesQuery &&
+          (_region == null || node.region == _region) &&
+          (countryCode == null || node.code.trim().toUpperCase() == countryCode);
     }).toList();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
@@ -70,7 +82,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
           V3PageHeader(
             kicker: '节点列表',
             title: '选择节点',
-            description: '选择可用节点，或交给自动选择。',
+            description: '地图筛选地区，列表选择节点；选中不等于已经连接。',
             trailing: V3ActionButton(
               label: _testing ? '测速中' : '全部测速',
               icon: Icons.speed_rounded,
@@ -102,7 +114,18 @@ class _V3NodesPageState extends State<V3NodesPage> {
                     },
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 20),
+          V3NodeCoverageMap(
+            nodes: controller.nodes,
+            selectedCode: countryCode,
+            onSelected: (code) => setState(() {
+              _countryCode = code;
+              // Country and continent are alternative navigation filters:
+              // a HK tap must work even when Europe was selected earlier.
+              _region = null;
+            }),
+          ),
+          const SizedBox(height: 20),
           TextField(
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search_rounded),
@@ -114,9 +137,6 @@ class _V3NodesPageState extends State<V3NodesPage> {
           Row(
             children: [
               Expanded(
-                // Live region: this line is where a failed latency test or
-                // refresh reports back, and it changes without focus moving.
-                // Without it a screen reader never learns the outcome.
                 child: Semantics(
                   liveRegion: true,
                   child: Text(
@@ -204,7 +224,10 @@ class _V3NodesPageState extends State<V3NodesPage> {
                   children: [
                     _RegionRail(
                       selected: _region,
-                      onSelected: (value) => setState(() => _region = value),
+                      onSelected: (value) => setState(() {
+                        _region = value;
+                        _countryCode = null;
+                      }),
                       horizontal: true,
                     ),
                     const SizedBox(height: 14),
@@ -219,7 +242,10 @@ class _V3NodesPageState extends State<V3NodesPage> {
                     width: 172,
                     child: _RegionRail(
                       selected: _region,
-                      onSelected: (value) => setState(() => _region = value),
+                      onSelected: (value) => setState(() {
+                        _region = value;
+                        _countryCode = null;
+                      }),
                     ),
                   ),
                   const SizedBox(width: 18),
@@ -258,9 +284,6 @@ class _RegionRail extends StatelessWidget {
         runSpacing: 8,
         children: [
           for (final item in items)
-            // Fill, label and border all come from the theme's chip styling;
-            // the checkmark stays off because this row is a dense Wrap and
-            // showing it would resize every chip in it on each tap.
             ChoiceChip(
               label: Text(item.$2),
               selected: selected == item.$1,
@@ -294,9 +317,6 @@ class _RegionRail extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    // Raised track, so the chosen segment is the raised pill the
-                    // shop deck and the mode rail use — not a lychee block with
-                    // white 12px text on it, which is 3.4:1.
                     color: active ? p.surface : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
                   ),
