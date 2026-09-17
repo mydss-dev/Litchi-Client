@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/plan_presentation.dart';
 import '../../config/app_config.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
@@ -103,8 +104,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
           const SizedBox(height: 14),
           V3Panel(
             padding: EdgeInsets.zero,
-            // V3Panel uses a decorated Container. A local Material ensures
-            // ExpansionTile/ListTile ink paints above its background.
+            // A local Material keeps ExpansionTile/ListTile ink visible.
             child: Material(
               type: MaterialType.transparency,
               child: Theme(
@@ -174,6 +174,7 @@ class _IdentityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final user = controller.user;
+    final plan = PlanPresentation.fromController(controller);
     final letter = user.avatarLetter.trim().isEmpty ? 'L' : user.avatarLetter.trim().substring(0, 1);
     return V3Panel(
       padding: const EdgeInsets.all(16),
@@ -199,17 +200,21 @@ class _IdentityCard extends StatelessWidget {
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: p.inkMuted, fontSize: 11)),
                 const SizedBox(height: 5),
-                Text(controller.hasPlan
-                    ? '${user.plan.trim().isEmpty ? '已激活套餐' : user.plan.trim()} · ${controller.planExpiryLabel}'
-                    : '暂无套餐',
+                Text(plan.shortLabel,
                     maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.inkMuted, fontSize: 11)),
+                    style: TextStyle(color: plan.usable ? p.successInk : p.inkMuted, fontSize: 11)),
+                if (controller.hasPlan) ...[
+                  const SizedBox(height: 3),
+                  Text(plan.expiry,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: p.inkMuted, fontSize: 10)),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Icon(Icons.verified_rounded, size: 17,
-              color: controller.hasPlan ? p.success : p.inkMuted),
+          Icon(plan.usable ? Icons.verified_rounded : Icons.info_outline_rounded,
+              size: 17, color: plan.usable ? p.success : p.inkMuted),
         ],
       ),
     );

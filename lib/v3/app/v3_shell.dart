@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/plan_presentation.dart';
 import '../auth/v3_auth_view.dart';
 import '../pages/v3_account_page.dart';
 import '../pages/v3_dashboard_page.dart';
@@ -44,23 +45,8 @@ class V3Shell extends StatelessWidget {
         ? const _V3BootView()
         : !controller.isAuthenticated
         ? const V3AuthView()
-        // The host owns no layout; it schedules the must-read notice dialogs,
-        // which is why it has to sit above the page rather than inside one.
         : const V3NoticeHost(child: _V3Workspace());
     if (!_isDesktopTarget) {
-      // Material for the same reason the desktop branch below has it: the
-      // login and boot views are not inside a Scaffold, and a TextField
-      // without a Material ancestor trips debugCheckHasMaterial. The
-      // authenticated pages were only accidentally safe because their own
-      // Scaffold supplies one.
-      //
-      // SafeArea for the status bar: Android draws it over the top of the
-      // window and nothing in the pages accounts for it. The tests could not
-      // see this either — setSurfaceSize produces a surface with zero padding,
-      // so the header measured 26dp from the top on every device: 2dp of
-      // clearance under a 24dp status bar, and covered outright by the 48dp
-      // inset of a notched one. Bottom is deliberately left alone; Scaffold
-      // and NavigationBar already clear the gesture bar.
       return Material(
         color: V3Palette.of(context).canvas,
         child: SafeArea(bottom: false, child: body),
@@ -115,13 +101,6 @@ class _V3Workspace extends StatelessWidget {
   }
 }
 
-/// The page for [page].
-///
-/// Orders and the gift card are sheets now — every normal entry point opens
-/// them as modals — but they keep a page here so that a `goToPage` this missed
-/// shows the real thing rather than a blank screen. The wrapper is what makes
-/// that work: on their own they are only sheet *content*, with no title and no
-/// scroller of their own.
 Widget _pageFor(AppPage page) => switch (page) {
   AppPage.nodes => const V3NodesPage(),
   AppPage.shop => const V3ShopPage(),
@@ -153,6 +132,7 @@ class _DesktopRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final user = controller.user;
+    final plan = PlanPresentation.fromController(controller);
     return Container(
       width: 184,
       margin: const EdgeInsets.fromLTRB(18, 18, 14, 18),
@@ -182,10 +162,6 @@ class _DesktopRail extends StatelessWidget {
           ),
           ...[
             ...enabledNavItems(kDesktopRail),
-            // Settings is a normal destination now, not a footer utility. As an
-            // orphaned row above the account card it read as a broken-off nav
-            // item rather than a place to go, so it joins the rail like the
-            // rest.
             if (kRailSettings.isEnabled) kRailSettings,
           ].map(
             (item) => _RailItem(
@@ -237,13 +213,17 @@ class _DesktopRail extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          controller.hasPlan
-                              ? (user.plan.trim().isEmpty ? '已激活套餐' : user.plan)
-                              : '暂无套餐',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: p.inkMuted, fontSize: 10),
+                        Tooltip(
+                          message: '${plan.shortLabel} · ${plan.expiry}',
+                          child: Text(
+                            plan.shortLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: plan.usable ? p.successInk : p.inkMuted,
+                              fontSize: 10,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -283,10 +263,6 @@ class _RailItem extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
-        // One tween drives the fill, icon and label together. Letting the
-        // foreground colours snap while only the background faded made the
-        // previously-selected item flash whenever selection moved — its text
-        // jumped to muted on the same frame the fill began to fade.
         child: TweenAnimationBuilder<double>(
           tween: Tween<double>(end: selected ? 1 : 0),
           duration: const Duration(milliseconds: 160),
@@ -297,18 +273,11 @@ class _RailItem extends StatelessWidget {
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               decoration: BoxDecoration(
-                // The same soft fill the chips and the bottom bar use for
-                // "chosen", so one selected state reads as one selected state
-                // everywhere.
                 color: p.lycheeSoft.withValues(alpha: t),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 children: [
-                  // A coloured icon over ink text, the pairing V3StatusBadge
-                  // uses. lycheeInk rather than lychee: on the soft fill the
-                  // brighter pink lands at 2.97:1, under what a graphical
-                  // object needs.
                   Icon(item.icon, color: iconColor, size: 19),
                   const SizedBox(width: 12),
                   Expanded(
@@ -572,10 +541,6 @@ class _V3BootView extends StatelessWidget {
               width: 90,
               child: LinearProgressIndicator(
                 minHeight: 3,
-                // Drawn on `hero`, which is no longer near-black in light mode:
-                // the base lychee is a fill meant for white content on top, and
-                // as a 3dp bar on a tinted ground it lands at 2.6:1. The ink is
-                // the token that survives the ground.
                 color: p.lycheeInk,
                 backgroundColor: p.ink.withValues(alpha: 0.15),
               ),
