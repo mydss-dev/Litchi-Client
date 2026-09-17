@@ -1,21 +1,57 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../l10n/generated/app_localizations_zh.dart';
+import '../../shared/services/app_error_message_service.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 
-/// Redeem a gift card into the account balance.
-///
-/// Only xiaoV2board panels expose the endpoint, so the page is gated behind
-/// [PanelFeatures.giftCard] like the wallet it credits.
+AppLocalizations _copy(BuildContext context) =>
+    Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+    AppLocalizationsZh();
+
+/// The panel may redeem balance, traffic, time, or plans. Never promise that
+/// every code credits wallet balance; the exact benefit is decided by the API.
+String _redemptionIntro(AppLocalizations l) {
+  if (l.localeName.startsWith('en')) {
+    return 'Enter your redemption code. The benefit depends on the code and may include balance, traffic, duration, or a plan.';
+  }
+  if (l.localeName.toLowerCase().contains('tw')) {
+    return '輸入兌換碼；實際權益依兌換碼而定，可能包含餘額、流量、時長或套餐。';
+  }
+  return '输入兑换码；实际权益以兑换码为准，可能包含余额、流量、时长或套餐。';
+}
+
+String _redemptionHelp(AppLocalizations l) {
+  if (l.localeName.startsWith('en')) {
+    return 'Enter the code exactly as provided. After redeeming, check the updated benefits in your account.';
+  }
+  if (l.localeName.toLowerCase().contains('tw')) {
+    return '請依照原樣輸入兌換碼。兌換後可到帳戶頁查看更新的權益。';
+  }
+  return '请按原样输入兑换码。兑换后可到账户页查看更新的权益。';
+}
+
+String _refreshFailedAfterRedeem(AppLocalizations l) {
+  if (l.localeName.startsWith('en')) {
+    return 'Redeemed successfully, but account refresh failed. Refresh later; do not redeem the same code again.';
+  }
+  if (l.localeName.toLowerCase().contains('tw')) {
+    return '兌換已成功，但帳戶資料刷新失敗。請稍後刷新，不要重複兌換。';
+  }
+  return '兑换已成功，但账户数据刷新失败。请稍后刷新，不要重复兑换。';
+}
+
+/// Redeem a code for the backend-defined account benefit. Only compatible
+/// panels expose this endpoint, so navigation remains feature-gated.
 class V3GiftCardPage extends StatefulWidget {
   const V3GiftCardPage({super.key});
 
-  /// Opens the redemption form as a sheet.
   static Future<void> show(BuildContext context) => showV3Sheet<void>(
     context,
-    title: '礼品卡兑换',
+    title: _copy(context).giftCardTitle,
     builder: (_) => const V3GiftCardPage(),
   );
 
@@ -37,10 +73,11 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
 
   Future<void> _redeem() async {
     if (_busy) return;
+    final l = _copy(context);
     final code = _code.text.trim();
     if (code.isEmpty) {
       setState(() {
-        _error = '请输入兑换码';
+        _error = l.giftCardEnterRequired;
         _success = null;
       });
       return;
@@ -52,20 +89,32 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
       _success = null;
     });
     try {
-      await controller.api.redeemGiftCard(code);
+      try {
+        await controller.api.redeemGiftCard(code);
+      } catch (error) {
+        if (mounted) {
+          setState(() => _error = AppErrorMessageService.userFacing(error, _copy(context)));
+        }
+        return;
+      }
+
+      // Redemption succeeded. Refresh is a separate, best-effort operation:
+      // a network failure here must never be shown as a failed redemption or
+      // invite a duplicate submission of a one-use code.
       if (!mounted) return;
       _code.clear();
-      setState(() => _success = '兑换成功，余额已更新');
-      await controller.refreshData();
-    } catch (error) {
-      if (mounted) {
-        setState(
-          () => _error = error
-              .toString()
-              .replaceFirst('ApiException: ', '')
-              .replaceFirst('Exception: ', ''),
-        );
+      var refreshFailed = false;
+      try {
+        await controller.refreshData();
+      } catch (_) {
+        refreshFailed = true;
       }
+      if (!mounted) return;
+      setState(() {
+        _success = refreshFailed
+            ? _refreshFailedAfterRedeem(_copy(context))
+            : _copy(context).giftCardRedeemed;
+      });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -74,13 +123,13 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    // No page header and no page-level scroll: the sheet supplies the title and
-    // the scroller, so this is only the form.
+    final l = _copy(context);
+    // The surrounding sheet owns the title and scrolling; this is form content.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '输入礼品卡上的兑换码，金额会直接充入账户余额。',
+          _redemptionIntro(l),
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 18),
@@ -91,7 +140,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '兑换码',
+                l.giftCardTitle,
                 style: TextStyle(
                   color: p.inkMuted,
                   fontSize: 10,
@@ -106,7 +155,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
                 autofocus: true,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _redeem(),
-                decoration: const InputDecoration(hintText: '粘贴或输入兑换码'),
+                decoration: InputDecoration(hintText: l.giftCardEnterHint),
               ),
               if (_error != null || _success != null) ...[
                 const SizedBox(height: 12),
@@ -134,7 +183,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Text(_busy ? '兑换中…' : '立即兑换'),
+                  child: Text(_busy ? l.giftCardRedeeming : l.giftCardRedeemNow),
                 ),
               ),
             ],
@@ -149,7 +198,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '兑换码区分大小写，且每个兑换码只能使用一次。兑换后余额可在账户页的钱包中查看。',
+                  _redemptionHelp(l),
                   style: TextStyle(
                     color: p.inkMuted,
                     fontSize: 11,
