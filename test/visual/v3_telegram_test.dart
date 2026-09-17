@@ -10,11 +10,8 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
 
-/// The account is bound when `telegram_id` is set. The visual fixture's user
-/// has no `telegram_id`, so this controller supplies one for the bound flows.
 class _BoundController extends VisualV3Controller {
   _BoundController() : super(AppPage.account);
-
   static const _boundUser = RemoteUser(
     id: 7,
     email: 'litchi-user@example.com',
@@ -30,45 +27,29 @@ class _BoundController extends VisualV3Controller {
     autoRenewal: false,
     telegramId: '123456789',
   );
-
   @override
   RemoteUser? get accountDetails => _boundUser;
 }
 
-const _telegramRow = ValueKey('v3-hub-telegram');
+// The account page now renders Telegram as a concise account row, rather
+// than as an item within the previous navigation hub panel.
+Finder get _telegramRow => find.text('Telegram 通知');
 const _mobile = Size(390, 844);
 
-Future<VisualV3Controller> _pumpAccount(
-  WidgetTester tester, {
-  bool bound = false,
-}) async {
+Future<VisualV3Controller> _pumpAccount(WidgetTester tester, {bool bound = false}) async {
   await tester.binding.setSurfaceSize(_mobile);
   addTearDown(() => tester.binding.setSurfaceSize(null));
-
-  final controller = bound
-      ? _BoundController()
-      : VisualV3Controller(AppPage.account);
+  final controller = bound ? _BoundController() : VisualV3Controller(AppPage.account);
   addTearDown(controller.disposeVisual);
-  await tester.pumpWidget(
-    AppScope(
-      controller: controller,
-      child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell()),
-    ),
-  );
+  await tester.pumpWidget(AppScope(controller: controller,
+    child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell())));
   await tester.pumpAndSettle();
   return controller;
 }
 
-Future<void> _onPlatform(
-  TargetPlatform platform,
-  Future<void> Function() body,
-) async {
+Future<void> _onPlatform(TargetPlatform platform, Future<void> Function() body) async {
   debugDefaultTargetPlatformOverride = platform;
-  try {
-    await body();
-  } finally {
-    debugDefaultTargetPlatformOverride = null;
-  }
+  try { await body(); } finally { debugDefaultTargetPlatformOverride = null; }
 }
 
 Future<void> _tap(WidgetTester tester, Finder finder, String what) async {
@@ -80,59 +61,42 @@ Future<void> _tap(WidgetTester tester, Finder finder, String what) async {
 }
 
 void main() {
-  testWidgets('the account hub lists Telegram with its bound status', (
-    tester,
-  ) async {
+  testWidgets('the account lists Telegram with its bound status', (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       await _pumpAccount(tester);
-      expect(find.byKey(_telegramRow), findsOneWidget);
-      expect(find.text('Telegram 通知'), findsOneWidget);
+      expect(_telegramRow, findsOneWidget);
       expect(find.text('未绑定'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
 
-  testWidgets('the Telegram row opens a sheet with the bot username', (
-    tester,
-  ) async {
+  testWidgets('Telegram opens a sheet with the bot username', (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpAccount(tester);
-      await _tap(tester, find.byKey(_telegramRow), 'the Telegram row');
-
+      await _tap(tester, _telegramRow, 'Telegram');
       expect(find.byType(V3TelegramPage), findsOneWidget);
-      // The fixture's bot resolves after the initial load.
       expect(find.text('@litchi_bot'), findsOneWidget);
-      // A sheet, not a page: the account page stays underneath.
       expect(controller.page, AppPage.account);
       expect(tester.takeException(), isNull);
     });
   });
 
-  testWidgets('copy bind command writes /bind plus the subscribe url', (
-    tester,
-  ) async {
+  testWidgets('copy bind command writes /bind plus the subscribe URL', (tester) async {
     final writes = <String>[];
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async {
+      SystemChannels.platform, (call) async {
         if (call.method == 'Clipboard.setData') {
           writes.add((call.arguments as Map)['text'] as String);
         }
         return null;
       },
     );
-    addTearDown(
-      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        SystemChannels.platform,
-        null,
-      ),
-    );
-
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+      .setMockMethodCallHandler(SystemChannels.platform, null));
     await _onPlatform(TargetPlatform.android, () async {
       await _pumpAccount(tester);
-      await _tap(tester, find.byKey(_telegramRow), 'the Telegram row');
+      await _tap(tester, _telegramRow, 'Telegram');
       await _tap(tester, find.text('复制绑定命令'), 'copy bind command');
-
       expect(writes, ['/bind https://thelitchi.com/sub/litchi']);
       expect(find.text('绑定命令已复制，去 Telegram 粘贴发送'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -142,11 +106,9 @@ void main() {
   testWidgets('a bound account can unbind', (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       await _pumpAccount(tester, bound: true);
-      expect(find.text('已绑定，可接收账户通知'), findsOneWidget);
-
-      await _tap(tester, find.byKey(_telegramRow), 'the Telegram row');
+      expect(find.text('已绑定'), findsOneWidget);
+      await _tap(tester, _telegramRow, 'Telegram');
       expect(find.text('解除绑定'), findsOneWidget);
-
       await _tap(tester, find.text('解除绑定'), 'unbind');
       expect(find.text('Telegram 已解绑'), findsOneWidget);
       expect(tester.takeException(), isNull);

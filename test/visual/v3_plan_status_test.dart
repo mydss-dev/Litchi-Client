@@ -10,47 +10,39 @@ import 'v3_visual_fixture.dart';
 
 class _UnnamedPlanController extends VisualV3Controller {
   _UnnamedPlanController(super.page, this.active);
-
   final bool active;
-
   @override
   bool get hasPlan => active;
-
   @override
   UserModel get user => const UserModel(
-    name: 'Test user',
-    plan: '',
-    avatarLetter: 'T',
-    expiry: '2026-12-31',
+    name: 'Test user', plan: '', avatarLetter: 'T', expiry: '2026-12-31',
   );
 }
 
 void main() {
   for (final page in [AppPage.dashboard, AppPage.shop, AppPage.account]) {
     for (final active in [true, false]) {
-      testWidgets('Unnamed plan on $page uses subscription state $active', (
-        tester,
-      ) async {
+      testWidgets('Unnamed plan on $page uses subscription state $active', (tester) async {
         debugDefaultTargetPlatformOverride = TargetPlatform.windows;
         try {
           await tester.binding.setSurfaceSize(const Size(900, 700));
           addTearDown(() => tester.binding.setSurfaceSize(null));
           final controller = _UnnamedPlanController(page, active);
           addTearDown(controller.disposeVisual);
-          await tester.pumpWidget(
-            MaterialApp(
-              theme: V3Theme.dark(),
-              home: AppScope(controller: controller, child: const V3Shell()),
-            ),
-          );
+          await tester.pumpWidget(MaterialApp(
+            theme: V3Theme.dark(),
+            home: AppScope(controller: controller, child: const V3Shell()),
+          ));
           await tester.pump();
           expect(tester.takeException(), isNull);
           if (active) {
-            expect(find.text('已激活套餐'), findsNWidgets(2));
+            // The shop now combines the plan label and remaining quota into
+            // one readable line, so counting exact Text widgets is brittle.
+            expect(find.textContaining('已激活套餐'), findsWidgets);
             expect(find.text('暂无套餐'), findsNothing);
             expect(find.text('还没有套餐'), findsNothing);
           } else {
-            expect(find.text('已激活套餐'), findsNothing);
+            expect(find.textContaining('已激活套餐'), findsNothing);
             expect(find.text('暂无套餐'), findsWidgets);
           }
         } finally {
