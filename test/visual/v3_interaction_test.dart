@@ -196,7 +196,6 @@ void main() {
   // added or removed later cannot leave a stale number behind.
   for (final (page, tab) in [
     (AppPage.orders, AppPage.account),
-    (AppPage.wallet, AppPage.account),
     (AppPage.traffic, AppPage.more),
     (AppPage.invite, AppPage.more),
     (AppPage.settings, AppPage.more),

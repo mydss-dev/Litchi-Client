@@ -7,6 +7,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 import 'v3_telegram_page.dart';
+import 'v3_wallet_actions.dart';
 
 class V3AccountPage extends StatefulWidget {
   const V3AccountPage({super.key});
@@ -95,28 +96,22 @@ class _V3AccountPageState extends State<V3AccountPage> {
               // window never moves a navigation landmark.
               _HubPanel(controller: controller),
               const SizedBox(height: 16),
-              compact
-                  ? Column(
-                      children: [
-                        _FinancePanel(controller: controller),
-                        const SizedBox(height: 16),
-                        _DevicePanel(controller: controller),
-                      ],
-                    )
-                  // Sizes the taller of the two, so the pair still reads as one
-                  // row of equal cards now that either may grow past the floor.
-                  : IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: _FinancePanel(controller: controller),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(child: _DevicePanel(controller: controller)),
-                        ],
-                      ),
-                    ),
+              // The wallet and the device card used to sit here as a pair of
+              // metric cards. The device one said what the traffic page already
+              // says — online devices, remaining GB — and the wallet one opened
+              // a "资金中心" sheet that held every money action at once. What is
+              // left is the balance plus the three verbs, so the money lives on
+              // the page that shows it and the usage lives on the usage page.
+              //
+              // Every panel has a balance a user can spend at checkout, so the
+              // panel shows for all of them; topping it up is the one action
+              // that is Xiao-V2Board-only, and that button is what the switch
+              // gates.
+              if (AppConfig.panelFeatures.wallet ||
+                  controller.user.balance > 0) ...[
+                const SizedBox(height: 16),
+                const _WalletPanel(),
+              ],
               const SizedBox(height: 16),
               _PreferencesPanel(
                 controller: controller,
@@ -320,149 +315,162 @@ class _PlanPanel extends StatelessWidget {
   }
 }
 
-class _FinancePanel extends StatelessWidget {
-  const _FinancePanel({required this.controller});
-
-  final AppController controller;
+/// The account's money: what is in it, and the three things you can do to it.
+///
+/// It reports the balance rather than hiding it behind a tap, and each action
+/// opens only its own dialog — 充值 asks for an amount, 提现 asks for a method,
+/// an account number and an amount, 划转 moves commission into the balance.
+/// They shared one sheet before, which meant reading a page of figures before
+/// reaching the field you came for.
+class _WalletPanel extends StatelessWidget {
+  const _WalletPanel();
 
   @override
   Widget build(BuildContext context) {
+    final controller = AppScope.of(context);
     final p = V3Palette.of(context);
     final symbol = controller.currencySymbol;
     final balance = controller.user.balance / 100;
-    return _MetricPanel(
-      eyebrow: '钱包',
-      title: '$symbol${balance.toStringAsFixed(2)}',
-      subtitle: '账户余额',
-      accent: p.lychee,
-      trailing: controller.withdrawable > 0
-          ? '佣金 $symbol${controller.withdrawable.toStringAsFixed(2)}'
-          : null,
-      onTap: () => openV3Page(context, AppPage.wallet),
-    );
-  }
-}
+    final commission = controller.withdrawable;
 
-class _DevicePanel extends StatelessWidget {
-  const _DevicePanel({required this.controller});
-
-  final AppController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final alive = controller.aliveIp;
-    final limit = controller.deviceLimit;
-    return _MetricPanel(
-      eyebrow: '设备',
-      title: alive == null ? '--' : '$alive',
-      subtitle: limit == null ? '当前在线设备' : '在线设备 / 上限 $limit',
-      accent: p.aqua,
-      trailing: '${controller.traffic.remainGb.toStringAsFixed(1)} GB 剩余',
-    );
-  }
-}
-
-class _MetricPanel extends StatelessWidget {
-  const _MetricPanel({
-    required this.eyebrow,
-    required this.title,
-    required this.subtitle,
-    required this.accent,
-    this.trailing,
-    this.onTap,
-  });
-
-  final String eyebrow;
-  final String title;
-  final String subtitle;
-  final Color accent;
-  final String? trailing;
-
-  /// Turns the whole card into a target. Only the wallet card sets it: the card
-  /// reports a balance the user can act on, so a card that reads 钱包 and does
-  /// nothing when tapped is a dead end — 钱包 was otherwise reachable only by
-  /// finding its row in the hub below.
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final card = Container(
-      // A floor, not a fixed height. The card holds three lines of text whose
-      // length depends on the language and on the reader's text scale, and a
-      // hard 128 clipped them: raising the 10px labels to the theme's floor was
-      // by itself enough to overflow this box.
-      constraints: const BoxConstraints(minHeight: 128),
+    return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(24),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 4,
-            height: 58,
-            decoration: BoxDecoration(
-              color: accent,
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '钱包',
+                      style: TextStyle(
+                        color: p.inkMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '$symbol${balance.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: p.ink,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      '账户余额',
+                      style: TextStyle(color: p.inkMuted, fontSize: 10),
+                    ),
+                  ],
+                ),
+              ),
+              if (commission > 0)
                 Text(
-                  eyebrow,
+                  '佣金 $symbol${commission.toStringAsFixed(2)}',
                   style: TextStyle(
                     color: p.inkMuted,
                     fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: p.ink,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: p.inkMuted, fontSize: 10),
-                ),
-              ],
-            ),
+            ],
           ),
-          if (trailing != null)
-            Flexible(
-              child: Text(
-                trailing!,
-                textAlign: TextAlign.end,
-                style: TextStyle(
-                  color: p.inkMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              if (AppConfig.panelFeatures.wallet) ...[
+                Expanded(
+                  child: _WalletActionButton(
+                    icon: Icons.add_card_rounded,
+                    label: '充值',
+                    primary: true,
+                    onTap: () => showV3RechargeDialog(context),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: _WalletActionButton(
+                  icon: Icons.account_balance_rounded,
+                  label: '提现',
+                  onTap: () => showV3WithdrawDialog(context),
                 ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _WalletActionButton(
+                  icon: Icons.swap_horiz_rounded,
+                  label: '划转',
+                  onTap: () => showV3TransferDialog(context),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
-    if (onTap == null) return card;
-    return Semantics(
-      button: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
-        child: card,
-      ),
+  }
+}
+
+class _WalletActionButton extends StatelessWidget {
+  const _WalletActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.primary = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  /// Top-up is the one action that brings money in, so it is the one that
+  /// reads as the primary button; the other two are outlined.
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final foreground = primary ? Colors.white : p.ink;
+    return SizedBox(
+      height: 46,
+      child: primary
+          ? FilledButton.icon(
+              onPressed: onTap,
+              style: FilledButton.styleFrom(
+                backgroundColor: p.lychee,
+                foregroundColor: foreground,
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: Icon(icon, size: 17),
+              label: Text(label),
+            )
+          : OutlinedButton.icon(
+              onPressed: onTap,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: foreground,
+                side: BorderSide(color: p.line),
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: Icon(icon, size: 17),
+              label: Text(label),
+            ),
     );
   }
 }

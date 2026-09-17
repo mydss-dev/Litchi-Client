@@ -6,7 +6,6 @@ import 'package:litchi_client/v3/app/v3_nav.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/pages/v3_gift_card_page.dart';
 import 'package:litchi_client/v3/pages/v3_orders_page.dart';
-import 'package:litchi_client/v3/pages/v3_wallet_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
@@ -55,7 +54,6 @@ Future<_NavController> _pumpShell(WidgetTester tester, Size size) async {
 
 /// The widget each hub page shows as sheet content.
 Type _sheetType(AppPage page) => switch (page) {
-  AppPage.wallet => V3WalletPage,
   AppPage.orders => V3OrdersPage,
   AppPage.giftCard => V3GiftCardPage,
   _ => throw ArgumentError('${page.name} is not a hub sheet'),
@@ -123,13 +121,12 @@ void main() {
             await _tap(tester, _rail(target), target.name);
           case AppPage.account:
             await _tap(tester, find.byKey(kAccountCardKey), 'account card');
-          case AppPage.wallet:
           case AppPage.orders:
           case AppPage.giftCard:
             // No dedicated rail entry: identity card, then the account hub row.
             await _tap(tester, find.byKey(kAccountCardKey), 'account card');
             await _tap(tester, _hubRow(target), target.name);
-            // These three are sheets rather than pages, so reaching them is
+            // These two are sheets rather than pages, so reaching them is
             // the sheet appearing — and the page underneath staying put is
             // the point of the change, not an incidental detail.
             expect(
@@ -170,7 +167,6 @@ void main() {
           case AppPage.account:
           case AppPage.more:
             await _tap(tester, _tab(_primaryLabel(target)), target.name);
-          case AppPage.wallet:
           case AppPage.orders:
           case AppPage.giftCard:
             // Account business lives in the account page's hub, as a sheet.
@@ -294,28 +290,48 @@ void main() {
     });
   });
 
-  // The balance card reports a figure the user can act on, so it reads as
-  // something to tap. It was inert, leaving the hub row below as the only way
-  // to reach 钱包 from the page that shows its balance.
-  testWidgets('the account balance card opens the wallet', (tester) async {
+  // The wallet used to be one 资金中心 sheet holding every money action at
+  // once, reached by tapping a balance card that did nothing else. The three
+  // verbs are buttons on the account page now, and each opens its own dialog:
+  // a tap on 充值 must not also offer 提现.
+  testWidgets('each wallet action opens its own dialog', (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, _mobile);
       controller.goToPage(AppPage.account);
       await tester.pumpAndSettle();
 
-      final card = find.text('账户余额');
       expect(
-        card,
+        find.text('账户余额'),
         findsOneWidget,
-        reason: 'the balance card must be on screen',
+        reason: 'the balance must be on the account page, not behind a tap',
       );
-      await tester.ensureVisible(card);
-      await tester.pumpAndSettle();
-      await tester.tap(card);
-      await tester.pumpAndSettle();
 
-      expect(find.byType(V3WalletPage), findsOneWidget);
-      expect(controller.page, AppPage.account);
+      for (final (label, dialogTitle) in <(String, String)>[
+        ('充值', '充值余额'),
+        ('提现', '申请提现'),
+        ('划转', '佣金转余额'),
+      ]) {
+        await _tap(tester, find.text(label), label);
+        expect(
+          find.text(dialogTitle),
+          findsOneWidget,
+          reason: '$label must open its own dialog',
+        );
+        // Exactly one dialog at a time: opening 充值 must not bring the other
+        // two actions along with it.
+        expect(
+          find.byType(Dialog),
+          findsOneWidget,
+          reason: '$label stacked more than one dialog',
+        );
+        await _tap(tester, find.byTooltip('关闭'), '$label close button');
+        expect(
+          find.byType(Dialog),
+          findsNothing,
+          reason: '$label did not close',
+        );
+        expect(controller.page, AppPage.account);
+      }
       expect(tester.takeException(), isNull);
     });
   });

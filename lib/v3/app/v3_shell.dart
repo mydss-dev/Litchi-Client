@@ -17,7 +17,6 @@ import '../pages/v3_settings_page.dart';
 import '../pages/v3_shop_page.dart';
 import '../pages/v3_tickets_page.dart';
 import '../pages/v3_traffic_page.dart';
-import '../pages/v3_wallet_page.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_notice_bar.dart';
 import '../ui/v3_components.dart';
@@ -118,20 +117,15 @@ class _V3Workspace extends StatelessWidget {
 
 /// The page for [page].
 ///
-/// The last three are sheets now — every normal entry point opens them as
-/// modals — but they keep a page here so that a `goToPage` this missed shows
-/// the real thing rather than a blank screen. The wrapper is what makes that
-/// work: on their own they are only sheet *content*, with no title and no
+/// Orders and the gift card are sheets now — every normal entry point opens
+/// them as modals — but they keep a page here so that a `goToPage` this missed
+/// shows the real thing rather than a blank screen. The wrapper is what makes
+/// that work: on their own they are only sheet *content*, with no title and no
 /// scroller of their own.
 Widget _pageFor(AppPage page) => switch (page) {
   AppPage.nodes => const V3NodesPage(),
   AppPage.shop => const V3ShopPage(),
   AppPage.account => const V3AccountPage(),
-  AppPage.wallet => const V3SheetPageFallback(
-    kicker: 'WALLET FLOW',
-    title: '资金中心',
-    child: V3WalletPage(),
-  ),
   AppPage.invite => const V3InvitePage(),
   AppPage.traffic => const V3TrafficPage(),
   AppPage.orders => const V3SheetPageFallback(

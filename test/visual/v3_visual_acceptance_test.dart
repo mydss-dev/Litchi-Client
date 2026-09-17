@@ -14,7 +14,6 @@ const _pages = <(AppPage, String)>[
   (AppPage.nodes, 'nodes'),
   (AppPage.shop, 'shop'),
   (AppPage.account, 'account'),
-  (AppPage.wallet, 'wallet'),
   (AppPage.invite, 'invite'),
   (AppPage.traffic, 'traffic'),
   (AppPage.orders, 'orders'),

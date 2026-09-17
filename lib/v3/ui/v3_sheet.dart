@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../pages/v3_gift_card_page.dart';
 import '../pages/v3_orders_page.dart';
-import '../pages/v3_wallet_page.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
 
@@ -22,8 +21,8 @@ const double kV3CompactBreakpoint = 760;
 /// the same sheet: the header, the scroll container and the surface treatment
 /// come from here, so a caller writes only its content.
 ///
-/// This exists because the account's sub-pages (wallet, orders, gift card) were
-/// routed pages with no way back — the shell's navigation is a page swap with no
+/// This exists because the account's sub-pages (orders, gift card) were routed
+/// pages with no way back — the shell's navigation is a page swap with no
 /// history, so entering one from the account hub meant leaving the bar's
 /// highlighted tab behind and having nothing on screen to return by. A modal
 /// does not need a way back: dismissing it is the way back, and the page
@@ -143,17 +142,16 @@ class V3SheetHeader extends StatelessWidget {
 
 /// Opens [page] the way that page is meant to be opened.
 ///
-/// Wallet, orders and the gift card are modals; everything else is still a
-/// page swap. Being total is the point — a nav list can hand this every entry
-/// it has without asking which kind each one is, and a page added to the
-/// account hub later opens correctly instead of becoming a dead row.
+/// Orders and the gift card are modals; everything else is still a page swap.
+/// Being total is the point — a nav list can hand this every entry it has
+/// without asking which kind each one is, and a page added to the account hub
+/// later opens correctly instead of becoming a dead row.
 ///
 /// Returns nothing on purpose: every caller opens something and walks away,
 /// and there is no result to hand back. Saying so keeps the call sites from
 /// each needing `unawaited`.
 void openV3Page(BuildContext context, AppPage page) {
   final Future<void> Function(BuildContext)? sheet = switch (page) {
-    AppPage.wallet => V3WalletPage.show,
     AppPage.orders => V3OrdersPage.show,
     AppPage.giftCard => V3GiftCardPage.show,
     _ => null,
@@ -167,7 +165,7 @@ void openV3Page(BuildContext context, AppPage page) {
 
 /// Renders a page that is normally a sheet as a full page instead.
 ///
-/// `_pageFor` still answers for wallet, orders and the gift card, because a
+/// `_pageFor` still answers for orders and the gift card, because a
 /// stray `goToPage` should land on the real thing rather than a blank screen.
 /// What those pages can no longer do on their own is be a *page*: the sheet
 /// owns their title and their scrolling, so this puts both back.

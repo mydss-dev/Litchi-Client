@@ -149,7 +149,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '兑换码区分大小写，且每个兑换码只能使用一次。兑换后余额可在「我的钱包」查看。',
+                  '兑换码区分大小写，且每个兑换码只能使用一次。兑换后余额可在账户页的钱包中查看。',
                   style: TextStyle(
                     color: p.inkMuted,
                     fontSize: 11,

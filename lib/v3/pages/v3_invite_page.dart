@@ -5,7 +5,6 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
-import '../ui/v3_sheet.dart';
 
 class V3InvitePage extends StatefulWidget {
   const V3InvitePage({super.key});
@@ -423,11 +422,6 @@ class _InviteStats extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-                IconButton(
-                  tooltip: '前往钱包',
-                  onPressed: () => openV3Page(context, AppPage.wallet),
-                  icon: const Icon(Icons.arrow_forward_rounded),
                 ),
               ],
             ),

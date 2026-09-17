@@ -78,17 +78,11 @@ const List<V3NavItem> kMobilePrimary = [
 
 /// Account business, listed in the account page's hub.
 ///
-/// This list is the answer to "what belongs to my account": money owed, money
-/// spent, money added. Traffic, invites, tickets and settings are none of those
-/// — they lived here because the hub was the only way to reach them, which is a
-/// routing problem, and it now has a routing answer ([kMobileMore]).
+/// This list is the answer to "what belongs to my account": money spent and
+/// money redeemed. Money *held* is not a destination any more — the account
+/// page shows the balance in its own wallet panel, so a 我的钱包 row would only
+/// lead to a second place that says the same number.
 const List<V3NavItem> kMobileHub = [
-  V3NavItem(
-    page: AppPage.wallet,
-    icon: Icons.account_balance_wallet_outlined,
-    label: '我的钱包',
-    placement: V3NavPlacement.mobileHub,
-  ),
   V3NavItem(
     page: AppPage.orders,
     icon: Icons.receipt_long_outlined,

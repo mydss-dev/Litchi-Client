@@ -39,7 +39,6 @@ enum AppPage {
   invite,
   settings,
   account,
-  wallet,
   orders,
   tickets,
   giftCard,
@@ -58,7 +57,6 @@ enum AppPage {
 bool isPageEnabled(AppPage page) => switch (page) {
   AppPage.shop => AppConfig.panelFeatures.shop,
   AppPage.invite => AppConfig.panelFeatures.invite,
-  AppPage.wallet => AppConfig.panelFeatures.wallet,
   AppPage.orders => AppConfig.panelFeatures.orders,
   AppPage.traffic => AppConfig.panelFeatures.traffic,
   AppPage.tickets => AppConfig.panelFeatures.tickets,
