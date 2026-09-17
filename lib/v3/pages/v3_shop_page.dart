@@ -9,11 +9,9 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 
-/// Product cards are independent surfaces. The 900px desktop window has about
-/// 618px of usable shop width, so two cards fit with a 12px gutter; three do not.
+/// Each plan is a separate product card. Two fit the default desktop window.
 class V3ShopPage extends StatefulWidget {
   const V3ShopPage({super.key});
-
   @override
   State<V3ShopPage> createState() => _V3ShopPageState();
 }
@@ -28,92 +26,81 @@ class _V3ShopPageState extends State<V3ShopPage> {
     final plans = controller.plans
         .where((plan) => _category == null || plan.category == _category)
         .toList(growable: false);
-    return LayoutBuilder(builder: (context, viewport) {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          V3PageHeader(kicker: '套餐商城', title: '选择套餐'),
-          const SizedBox(height: 18),
-          V3Panel(
-            tone: V3PanelTone.raised,
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-            child: Row(children: [
-              Icon(Icons.verified_rounded,
-                  color: controller.hasPlan ? p.successInk : p.inkMuted,
-                  size: 18),
-              const SizedBox(width: 9),
-              Expanded(child: Text(
-                controller.hasPlan
-                    ? '当前：${controller.user.plan.trim().isEmpty ? '已激活套餐' : controller.user.plan.trim()}'
-                    : '当前没有已激活套餐',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: p.ink, fontSize: 12,
-                    fontWeight: FontWeight.w700),
-              )),
-              Text('${controller.traffic.remainGb.toStringAsFixed(1)} GB',
-                  style: TextStyle(color: p.inkMuted, fontSize: 11)),
-            ]),
-          ),
-          const SizedBox(height: 14),
-          _CategorySelector(value: _category,
-              onChanged: (category) => setState(() => _category = category)),
-          const SizedBox(height: 14),
-          if (plans.isEmpty)
-            V3Panel(child: Column(children: [
-              const Text('当前分类暂无可购买套餐'),
-              const SizedBox(height: 12),
-              OutlinedButton(onPressed: controller.refreshData,
-                  child: const Text('刷新套餐')),
-            ]))
-          else
-            LayoutBuilder(builder: (context, grid) {
-              final twoColumns = grid.maxWidth >= 590;
-              final cards = <Widget>[];
-              for (var i = 0; i < plans.length; i += twoColumns ? 2 : 1) {
-                cards.add(Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: IntrinsicHeight(child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (var j = i;
-                          j < plans.length && j < i + (twoColumns ? 2 : 1);
-                          j++) ...[
-                        if (j > i) const SizedBox(width: 12),
-                        Expanded(child: _PlanCard(
-                          plan: plans[j],
-                          symbol: controller.currencySymbol,
-                          onBuy: () => _openOrder(controller, plans[j]),
-                        )),
-                      ],
-                      if (twoColumns && i + 1 >= plans.length) ...[
-                        const SizedBox(width: 12),
-                        const Expanded(child: SizedBox.shrink()),
-                      ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const V3PageHeader(kicker: '套餐商城', title: '选择套餐'),
+        const SizedBox(height: 18),
+        V3Panel(tone: V3PanelTone.raised,
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+          child: Row(children: [
+            Icon(Icons.verified_rounded,
+              color: controller.hasPlan ? p.successInk : p.inkMuted, size: 18),
+            const SizedBox(width: 9),
+            Expanded(child: Text(
+              controller.hasPlan
+                ? '当前：${controller.user.plan.trim().isEmpty ? '已激活套餐' : controller.user.plan.trim()}'
+                : '当前没有已激活套餐',
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.ink, fontSize: 12,
+                fontWeight: FontWeight.w700))),
+            Text('${controller.traffic.remainGb.toStringAsFixed(1)} GB',
+              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+          ])),
+        const SizedBox(height: 14),
+        _CategorySelector(value: _category,
+          onChanged: (v) => setState(() => _category = v)),
+        const SizedBox(height: 14),
+        if (plans.isEmpty)
+          V3Panel(child: Column(children: [
+            const Text('当前分类暂无可购买套餐'),
+            const SizedBox(height: 12),
+            OutlinedButton(onPressed: controller.refreshData,
+              child: const Text('刷新套餐')),
+          ]))
+        else
+          LayoutBuilder(builder: (context, constraints) {
+            final twoColumns = constraints.maxWidth >= 590;
+            final cards = <Widget>[];
+            for (var i = 0; i < plans.length; i += twoColumns ? 2 : 1) {
+              cards.add(Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: IntrinsicHeight(child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var j = i;
+                      j < plans.length && j < i + (twoColumns ? 2 : 1);
+                      j++) ...[
+                      if (j > i) const SizedBox(width: 12),
+                      Expanded(child: _PlanCard(
+                        plan: plans[j], symbol: controller.currencySymbol,
+                        onBuy: () => _openOrder(controller, plans[j]))),
                     ],
-                  )),
-                ));
-              }
-              return Column(children: cards);
-            }),
-        ]),
-      );
-    });
+                    if (twoColumns && i + 1 >= plans.length) ...[
+                      const SizedBox(width: 12),
+                      const Expanded(child: SizedBox.shrink()),
+                    ],
+                  ],
+                )),
+              ));
+            }
+            return Column(children: cards);
+          }),
+      ]),
+    );
   }
 
   Future<void> _openOrder(AppController controller, PlanModel plan) =>
-      showDialog<void>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.48),
-        builder: (_) => _OrderDialog(
-          hostContext: context,
-          plan: plan,
-          symbol: controller.currencySymbol,
-          api: controller.api,
-          onPaid: controller.refreshData,
-          onViewOrders: () => openV3Page(context, AppPage.orders),
-        ),
-      );
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.48),
+      builder: (_) => _OrderDialog(
+        hostContext: context, plan: plan,
+        symbol: controller.currencySymbol, api: controller.api,
+        onPaid: controller.refreshData,
+        onViewOrders: () => openV3Page(context, AppPage.orders),
+      ),
+    );
 }
 
 class _CategorySelector extends StatelessWidget {
@@ -142,8 +129,7 @@ class _CategorySelector extends StatelessWidget {
                 color: value == option.$1 ? p.surface : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: value == option.$1
-                    ? p.line : Colors.transparent),
-              ),
+                  ? p.line : Colors.transparent)),
               child: Text(option.$2, textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
                   color: value == option.$1 ? p.lycheeInk : p.ink)),
@@ -201,29 +187,30 @@ class _PlanCard extends StatelessWidget {
                   Icon(Icons.check_circle_outline_rounded,
                     color: p.successInk, size: 15),
                   const SizedBox(width: 7),
-                  Expanded(child: Text(feature,
-                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                  Expanded(child: Text(feature, maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: p.inkMuted,
                       fontSize: 12, height: 1.4))),
                 ])),
-        if (plan.features.length > summary.length)
+        // Show the full description even for a single long paragraph that was
+        // abbreviated to two lines in the card.
+        if (plan.features.isNotEmpty)
           Align(alignment: Alignment.centerLeft,
             child: TextButton(
               onPressed: () => _showPlanDetails(context, plan),
-              child: const Text('查看完整说明'),
-            )),
+              child: const Text('查看完整说明'))),
         const Spacer(),
         const SizedBox(height: 15),
         Divider(color: p.line, height: 1),
         const SizedBox(height: 12),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Expanded(child: Text(price == null ? '暂不可购买'
-                : '$symbol${price.toStringAsFixed(2)}',
-              style: TextStyle(color: p.ink, fontSize: 23,
-                fontWeight: FontWeight.w900))),
+              : '$symbol${price.toStringAsFixed(2)}',
+            style: TextStyle(color: p.ink, fontSize: 23,
+              fontWeight: FontWeight.w900))),
           Text(plan.category == PlanCategory.recurring
-                ? '起 / ${_cycleLabel(cycle!)}' : '一次性',
-              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+              ? '起 / ${_cycleLabel(cycle!)}' : '一次性',
+            style: TextStyle(color: p.inkMuted, fontSize: 11)),
         ]),
         const SizedBox(height: 12),
         SizedBox(height: 44, child: FilledButton(
@@ -245,12 +232,12 @@ void _showPlanDetails(BuildContext context, PlanModel plan) {
     builder: (_) => Column(crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('${_categoryLabel(plan.category)} · ${plan.capacity}',
-            style: TextStyle(color: p.inkMuted, fontSize: 12)),
+          style: TextStyle(color: p.inkMuted, fontSize: 12)),
         const SizedBox(height: 16),
         for (final line in plan.features)
           Padding(padding: const EdgeInsets.only(bottom: 12),
             child: Text(line, style: TextStyle(color: p.ink,
-                fontSize: 13, height: 1.5))),
+              fontSize: 13, height: 1.5))),
       ]));
 }
 
@@ -264,7 +251,6 @@ class _OrderDialog extends StatefulWidget {
   final PanelApi api;
   final Future<void> Function() onPaid;
   final VoidCallback onViewOrders;
-
   @override
   State<_OrderDialog> createState() => _OrderDialogState();
 }
@@ -283,7 +269,6 @@ class _OrderDialogState extends State<_OrderDialog> {
     super.initState();
     _cycle = _availableCycles(widget.plan).firstOrNull ?? BillingCycle.monthly;
   }
-
   @override
   void dispose() {
     _couponField.dispose();
@@ -312,7 +297,7 @@ class _OrderDialogState extends State<_OrderDialog> {
     setState(() { _checking = true; _error = null; _coupon = null; });
     try {
       final result = await widget.api.verifyCoupon(
-          code, int.parse(widget.plan.id));
+        code, int.parse(widget.plan.id));
       if (!mounted) return;
       setState(() {
         if (code == _couponField.text.trim() && cycle == _cycle) {
@@ -404,7 +389,7 @@ class _OrderDialogState extends State<_OrderDialog> {
                 }),
               const SizedBox(height: 24),
               Text('优惠码', style: TextStyle(color: p.ink,
-                  fontSize: 13, fontWeight: FontWeight.w800)),
+                fontSize: 13, fontWeight: FontWeight.w800)),
               const SizedBox(height: 9),
               Row(children: [
                 Expanded(child: TextField(
@@ -429,20 +414,19 @@ class _OrderDialogState extends State<_OrderDialog> {
                 padding: const EdgeInsets.all(14),
                 child: Column(children: [
                   _BillRow(label: '原价', value:
-                      '${widget.symbol}${_original.toStringAsFixed(2)}'),
+                    '${widget.symbol}${_original.toStringAsFixed(2)}'),
                   if (_discount > 0) ...[
                     const SizedBox(height: 8),
                     _BillRow(label: '优惠', value:
-                        '-${widget.symbol}${(_discount / 100).toStringAsFixed(2)}'),
+                      '-${widget.symbol}${(_discount / 100).toStringAsFixed(2)}'),
                   ],
                   const SizedBox(height: 9),
                   Divider(color: p.line, height: 1),
                   const SizedBox(height: 9),
                   _BillRow(label: '实付金额', value:
-                      '${widget.symbol}${_total.toStringAsFixed(2)}',
-                      prominent: true),
-                ]),
-              ),
+                    '${widget.symbol}${_total.toStringAsFixed(2)}',
+                    prominent: true),
+                ])),
               const SizedBox(height: 16),
               SizedBox(width: double.infinity, height: 48,
                 child: FilledButton(
@@ -527,8 +511,8 @@ List<BillingCycle> _availableCycles(PlanModel plan) {
 }
 
 double? _price(PlanModel plan, BillingCycle cycle) =>
-    plan.category == PlanCategory.recurring
-        ? plan.priceForCycle(cycle) : plan.oneTimePrice;
+  plan.category == PlanCategory.recurring
+    ? plan.priceForCycle(cycle) : plan.oneTimePrice;
 
 String _periodKey(PlanModel plan, BillingCycle cycle) {
   if (plan.category != PlanCategory.recurring) return 'onetime_price';
