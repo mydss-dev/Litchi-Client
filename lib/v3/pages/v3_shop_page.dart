@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/plan_presentation.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/panel_api.dart';
@@ -9,8 +10,6 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 
-/// Each plan owns a separate product card. At the default 900x700 window,
-/// the content is just wide enough for two ~300dp cards, not three.
 class V3ShopPage extends StatefulWidget {
   const V3ShopPage({super.key});
 
@@ -139,20 +138,24 @@ class _CurrentPlanBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final name = controller.user.plan.trim();
+    final plan = PlanPresentation.fromController(controller);
     return V3Panel(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
       child: Row(children: [
-        Icon(Icons.verified_rounded, size: 17,
-          color: controller.hasPlan ? p.success : p.inkMuted),
+        Icon(plan.usable ? Icons.verified_rounded : Icons.info_outline_rounded,
+          size: 17, color: plan.usable ? p.success : p.inkMuted),
         const SizedBox(width: 9),
-        Expanded(child: Text(
-          controller.hasPlan ? (name.isEmpty ? '当前套餐' : name) : '暂无套餐',
-          maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: p.ink, fontSize: 12, fontWeight: FontWeight.w700),
+        Expanded(child: Tooltip(
+          message: '${plan.shortLabel} · ${plan.expiry}',
+          child: Text(
+            plan.shortLabel,
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: p.ink, fontSize: 12, fontWeight: FontWeight.w700),
+          ),
         )),
-        Text('剩余 ${controller.traffic.remainGb.toStringAsFixed(1)} GB',
-          style: TextStyle(color: p.inkMuted, fontSize: 11)),
+        if (controller.traffic.totalGb > 0)
+          Text('剩余 ${controller.traffic.remainGb.toStringAsFixed(1)} GB',
+            style: TextStyle(color: p.inkMuted, fontSize: 11)),
       ]),
     );
   }
