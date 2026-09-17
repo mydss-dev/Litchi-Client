@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/core_controller.dart';
+import '../../app/plan_presentation.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
@@ -43,9 +44,6 @@ class V3DashboardPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // Both render nothing at all when there is nothing to say, and each
-          // carries its own bottom gap, so their absence collapses cleanly
-          // instead of leaving a hole where news used to be.
           const V3UpdateBanner(),
           V3NoticeBar(controller: controller),
           _ConnectionWorkspace(
@@ -85,11 +83,6 @@ class _ConnectionWorkspace extends StatelessWidget {
         : connecting
         ? '处理中'
         : '开始连接';
-    // The workspace used to open with a status dot, a "连接状态" kicker, a
-    // one-line verdict ("连接已建立") and a second line explaining it. The badge
-    // in the page header already names the state and the orb caption already
-    // names the action, so all four lines said what two other places said
-    // first. What has no other home is the core's own error text.
     final error = controller.connectionStatus == ConnectionStatus.error
         ? (controller.coreError.isEmpty
               ? '请重试连接，或切换其他节点。'
@@ -104,9 +97,6 @@ class _ConnectionWorkspace extends StatelessWidget {
           final stacked = constraints.maxWidth < 500;
           final intro = Column(
             mainAxisSize: MainAxisSize.min,
-            // Orb, action, elapsed time — one centred stack, so the primary
-            // control sits over the middle of its own column instead of
-            // hanging off the left edge under two paragraphs of prose.
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _ConnectionOrb(
@@ -201,10 +191,6 @@ class _ConnectionWorkspace extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 TextButton.icon(
-                  // Opens the picker over this page rather than navigating to
-                  // the nodes page: switching a node is a choice made while
-                  // looking at the connection it affects, and the full page
-                  // (search, regions, 测速) is still one tab away.
                   onPressed: () => V3NodePicker.show(context),
                   style: TextButton.styleFrom(foregroundColor: p.lycheeInk),
                   icon: const Icon(Icons.swap_horiz_rounded, size: 18),
@@ -215,15 +201,10 @@ class _ConnectionWorkspace extends StatelessWidget {
           );
           return stacked
               ? Column(
-                  // Stretch so the centred orb stack has the full width to
-                  // centre within on a phone, the same place it sits on a
-                  // desktop.
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [intro, const SizedBox(height: 16), route],
                 )
               : Row(
-                  // Centre, not start: the node card is the taller of the two,
-                  // so the orb stack rides the middle of it rather than the top.
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(child: intro),
@@ -237,9 +218,6 @@ class _ConnectionWorkspace extends StatelessWidget {
   }
 }
 
-/// Identifies the connect orb for tests. It is an icon-only control, and the
-/// caption beside it carries the same words — so there is no text to find it by
-/// that would not also match the caption.
 const kConnectOrbKey = Key('v3-connect-orb');
 
 class _ConnectionOrb extends StatelessWidget {
@@ -257,10 +235,6 @@ class _ConnectionOrb extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final locked = controller.connectionActionLocked;
-    // The primary action of the whole page is an icon with no text, so a screen
-    // reader reached an unlabelled button: pressing it was a guess, and while a
-    // connection change was in flight it did not even announce that it was
-    // unavailable. The label names the action, not the glyph.
     final label = connecting
         ? '正在切换连接'
         : connected
@@ -271,8 +245,6 @@ class _ConnectionOrb extends StatelessWidget {
       button: true,
       enabled: !locked,
       label: label,
-      // The glyph contributes nothing to announce, so the label above is the
-      // whole story rather than one half of a doubled reading.
       child: ExcludeSemantics(
         child: SizedBox(
           width: 86,
@@ -287,9 +259,9 @@ class _ConnectionOrb extends StatelessWidget {
                   : () async {
                       final error = await controller.toggleConnection();
                       if (error != null && context.mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(error)));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error)),
+                        );
                       }
                     },
               child: Center(
@@ -338,9 +310,9 @@ class _ModeRail extends StatelessWidget {
               onTap: () async {
                 final error = await controller.setProxyMode(mode);
                 if (error != null && context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(error)));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error)),
+                  );
                 }
               },
               child: AnimatedContainer(
@@ -393,9 +365,6 @@ class _SessionMetrics extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final compact = constraints.maxWidth < 430;
-      // Elapsed time lives under the orb, where it belongs to the connection it
-      // measures. It used to be a third cell here as well — the same clock,
-      // ticking in two places on one screen, a few centimetres apart.
       final metrics = [
         _Metric(
           label: '下载速度',
@@ -499,7 +468,7 @@ class _PlanSummary extends StatelessWidget {
     final total = controller.traffic.totalGb;
     final used = controller.traffic.usedGb;
     final ratio = total <= 0 ? 0.0 : (used / total).clamp(0.0, 1.0);
-    final user = controller.user;
+    final plan = PlanPresentation.fromController(controller);
     return V3Panel(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -511,9 +480,7 @@ class _PlanSummary extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      controller.hasPlan
-                          ? (user.plan.trim().isEmpty ? '已激活套餐' : user.plan)
-                          : '暂无套餐',
+                      plan.shortLabel,
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                     const SizedBox(height: 5),
@@ -527,9 +494,7 @@ class _PlanSummary extends StatelessWidget {
                 ),
               ),
               Text(
-                controller.hasPlan
-                    ? '到期 ${controller.planExpiryLabel}'
-                    : '尚未开通套餐',
+                plan.expiry,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
@@ -560,10 +525,6 @@ class _PlanSummary extends StatelessWidget {
   }
 }
 
-/// A small fact about the node — its latency, the proxy mode — as a chip.
-///
-/// Named for the dark panel it used to sit on; the panel is light now and the
-/// name would be the only thing left saying otherwise.
 class _NodeMeta extends StatelessWidget {
   const _NodeMeta({required this.label});
 
