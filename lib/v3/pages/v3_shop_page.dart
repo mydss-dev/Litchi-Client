@@ -405,8 +405,8 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
               style: TextStyle(color: p.ink, fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             if (widget.plan.category != PlanCategory.recurring)
-              V3Panel(tone: V3PanelTone.raised, padding: const EdgeInsets.all(12),
-                child: const Text('一次性购买'))
+              const V3Panel(tone: V3PanelTone.raised, padding: EdgeInsets.all(12),
+                child: Text('一次性购买'))
             else
               Wrap(spacing: 9, runSpacing: 9, children: [
                 for (final cycle in cycles)
