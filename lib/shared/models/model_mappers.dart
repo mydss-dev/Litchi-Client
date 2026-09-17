@@ -48,10 +48,8 @@ abstract final class ModelMappers {
         plan.quarterPrice != null || plan.halfYearPrice != null ||
         plan.yearPrice != null || plan.twoYearPrice != null ||
         plan.threeYearPrice != null;
-    // V2Board-compatible plan responses have no explicit product type. Never
-    // call a product a traffic pack simply because every price is disabled.
-    // A positively named traffic pack with a one-time price is purchasable;
-    // otherwise it is a one-time plan (possibly unavailable).
+    // V2Board-compatible responses expose no explicit product type. Infer a
+    // traffic pack only from its name, never from disabled price fields.
     final name = plan.name.toLowerCase();
     final namedDataPack = name.contains('流量包') ||
         name.contains('traffic pack') || name.contains('data pack');
@@ -82,9 +80,7 @@ abstract final class ModelMappers {
     );
   }
 
-  /// Separate HTML paragraphs and list items before removing markup. The
-  /// previous mapper only preserved <br> and discarded everything after the
-  /// sixth line, so the 'full description' could never actually be full.
+  /// Preserve HTML paragraphs/list-item boundaries and all description lines.
   static List<String> _descriptionLines(String html) {
     if (html.trim().isEmpty) return const [];
     final text = html
@@ -97,8 +93,7 @@ abstract final class ModelMappers {
         .replaceAll('&gt;', '>')
         .replaceAll('&quot;', '"')
         .replaceAll('&#39;', "'");
-    return text
-        .split(RegExp(r'\n+'))
+    return text.split(RegExp(r'\n+'))
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
         .toList(growable: false);
@@ -108,14 +103,15 @@ abstract final class ModelMappers {
 
   static String _flagFor(String name) {
     final n = name.toLowerCase();
-    // Chinese and long Latin names take precedence over two-letter prefixes.
     if (_any(n, ['新加坡', 'singapore'])) return '🇸🇬';
     if (_any(n, ['香港', 'hong kong', 'hongkong'])) return '🇭🇰';
     if (_any(n, ['日本', 'japan', 'tokyo', 'osaka'])) return '🇯🇵';
     if (_any(n, ['台湾', 'taiwan'])) return '🇹🇼';
     if (_any(n, ['韩国', 'korea', 'seoul'])) return '🇰🇷';
     if (_any(n, ['美国', 'united states', 'usa',
-      'los angeles', 'new york', 'chicago'])) return '🇺🇸';
+      'los angeles', 'new york', 'chicago'])) {
+      return '🇺🇸';
+    }
     if (_any(n, ['英国', 'united kingdom', 'london', 'britain'])) return '🇬🇧';
     if (_any(n, ['德国', 'germany', 'frankfurt', 'berlin'])) return '🇩🇪';
     if (_any(n, ['法国', 'france', 'paris'])) return '🇫🇷';
@@ -131,7 +127,6 @@ abstract final class ModelMappers {
     if (_any(n, ['马来西亚', 'malaysia'])) return '🇲🇾';
     if (_any(n, ['菲律宾', 'philippines'])) return '🇵🇭';
     if (_any(n, ['印尼', 'indonesia', 'jakarta'])) return '🇮🇩';
-    // Match short ISO codes only as standalone tokens.
     if (_token(n, 'sg')) return '🇸🇬';
     if (_token(n, 'hk')) return '🇭🇰';
     if (_token(n, 'jp')) return '🇯🇵';
@@ -175,18 +170,26 @@ abstract final class ModelMappers {
       '新加坡', '香港', '日本', '台湾', '韩国', '印度', '越南', '泰国',
       '马来', '菲律宾', '印尼', 'singapore', 'hong kong', 'japan',
       'taiwan', 'korea', 'india', 'tokyo', 'seoul', 'bangkok', 'asia',
-    ])) return NodeRegion.asia;
+    ])) {
+      return NodeRegion.asia;
+    }
     if (_any(n, [
       '英国', '德国', '法国', '荷兰', '俄罗斯', '土耳其', 'uk',
       'germany', 'france', 'netherlands', 'london', 'frankfurt',
       'amsterdam', 'europe',
-    ])) return NodeRegion.europe;
+    ])) {
+      return NodeRegion.europe;
+    }
     if (_any(n, [
       '美国', '加拿大', '巴西', 'usa', 'united states', 'canada',
       'brazil', 'los angeles', 'new york', 'america',
-    ])) return NodeRegion.america;
+    ])) {
+      return NodeRegion.america;
+    }
     if (_any(n, ['澳大利亚', '新西兰', 'australia',
-      'sydney', 'melbourne'])) return NodeRegion.oceania;
+      'sydney', 'melbourne'])) {
+      return NodeRegion.oceania;
+    }
     return NodeRegion.asia;
   }
 
