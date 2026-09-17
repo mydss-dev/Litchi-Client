@@ -59,19 +59,26 @@ abstract final class ModelMappers {
       category = PlanCategory.recurring;
     }
 
+    // Preserve the whole backend description. Cards decide how many items to
+    // preview; the details sheet must never lose the rest during conversion.
+    // Recognise block HTML as separators before removing markup, otherwise
+    // <p>first</p><p>second</p> collapses into "firstsecond".
     final rawDesc = plan.description ?? '';
     final stripped = rawDesc
         .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'</(?:p|div|li|ul|ol|h[1-6])\s*>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<li(?:\s[^>]*)?>', caseSensitive: false), '• ')
         .replaceAll(RegExp(r'<[^>]+>'), '')
         .replaceAll('&nbsp;', ' ')
         .replaceAll('&amp;', '&')
         .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>');
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'");
     final features = stripped
         .split('\n')
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
-        .take(6)
         .toList();
 
     return PlanModel(
@@ -102,7 +109,7 @@ abstract final class ModelMappers {
     );
   }
 
-  // ── Flag / region helpers ─────────────────────────────────────────────────
+  // ── Flag / region helpers ───────────────────────────────────────────────
 
   static String _flagFor(String name) {
     final n = name.toLowerCase();
@@ -132,10 +139,10 @@ abstract final class ModelMappers {
     if (_any(n, ['加拿大', 'canada', 'toronto', 'vancouver'])) return '🇨🇦';
     if (_any(n, ['印度', 'india', 'mumbai'])) return '🇮🇳';
     if (_any(n, ['巴西', 'brazil'])) return '🇧🇷';
-    if (_any(n, ['俄罗斯', 'russia', 'moscow'])) return '🇷🇺';
+    if (_any(n, ['俄罗斯', 'russia'])) return '🇷🇺';
     if (_any(n, ['土耳其', 'turkey', 'istanbul'])) return '🇹🇷';
     if (_any(n, ['越南', 'vietnam'])) return '🇻🇳';
-    if (_any(n, ['泰国', 'thailand', 'bangkok'])) return '🇹🇭';
+    if (_any(n, ['泰国', 'thailand'])) return '🇹🇭';
     if (_any(n, ['马来西亚', 'malaysia', 'kuala lumpur'])) return '🇲🇾';
     if (_any(n, ['菲律宾', 'philippines', 'manila'])) return '🇵🇭';
     if (_any(n, ['印尼', 'indonesia', 'jakarta'])) return '🇮🇩';
