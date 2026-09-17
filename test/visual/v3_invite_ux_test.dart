@@ -128,7 +128,7 @@ void main() {
     expect(find.text('1 / 2'), findsOneWidget);
   });
 
-  testWidgets('successful creation reveals new code; error never claims success', (tester) async {
+  testWidgets('successful creation reveals the new code', (tester) async {
     final fixture = _InviteFixture([_a])..afterCreate = [_a, _b];
     await _pump(tester, fixture);
     await tester.tap(find.byKey(const ValueKey('v3-invite-create')));
@@ -136,11 +136,19 @@ void main() {
     expect(find.text('CODE-B'), findsOneWidget);
     expect(find.text('2 / 2'), findsOneWidget);
     expect(find.text('邀请码已创建'), findsOneWidget);
+  });
 
-    fixture.createError = '创建权限不足';
+  testWidgets('creation error is shown instead of a success message', (tester) async {
+    // Start with a fresh messenger: Flutter deliberately queues consecutive
+    // snackbars, so asserting a second snackbar immediately after a success
+    // would be testing the queue rather than the error-handling path.
+    final fixture = _InviteFixture([_a])..createError = '创建权限不足';
+    await _pump(tester, fixture);
     await tester.tap(find.byKey(const ValueKey('v3-invite-create')));
     await tester.pumpAndSettle();
     expect(find.text('创建权限不足'), findsOneWidget);
+    expect(find.text('邀请码已创建'), findsNothing);
+    expect(find.text('CODE-A'), findsOneWidget);
   });
 
   for (final mode in [ThemeMode.light, ThemeMode.dark]) {
