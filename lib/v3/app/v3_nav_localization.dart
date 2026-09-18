@@ -5,12 +5,16 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
 import 'v3_nav.dart';
 
-/// Use the current app locale for navigation copy without changing the stable
-/// route definitions or their Chinese identifiers used by existing tests.
+/// Navigation routes stay static; only presentation changes with the locale.
+/// Keep the existing simplified-Chinese labels and the stable nav-test model.
 extension V3LocalizedNavigation on V3NavItem {
   String localizedLabel(BuildContext context) {
     final l = Localizations.of<AppLocalizations>(context, AppLocalizations) ??
         AppLocalizationsZh();
+    if (!l.localeName.startsWith('en') &&
+        !l.localeName.toLowerCase().contains('tw')) {
+      return label;
+    }
     return switch (page) {
       AppPage.dashboard => l.startConnection,
       AppPage.nodes => l.nodes,
