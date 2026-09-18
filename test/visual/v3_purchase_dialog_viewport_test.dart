@@ -30,11 +30,13 @@ void main() {
       final submit = find.widgetWithText(FilledButton, '确认并创建订单');
       expect(dialog, findsOneWidget);
       expect(submit, findsOneWidget);
-      expect(tester.getTopLeft(submit).dy, greaterThan(0));
-      expect(tester.getBottomRight(submit).dy,
-        lessThanOrEqualTo(size.height - 8));
-      expect(tester.getSize(dialog).height,
-        lessThanOrEqualTo(size.height - 16));
+      final button = tester.getRect(submit);
+      // Dialog itself expands to the overlay's dimensions, even though its
+      // content card has viewport bounds. Verify the actionable footer itself.
+      expect(button.top, greaterThan(0));
+      expect(button.bottom, lessThanOrEqualTo(size.height - 8));
+      expect(button.left, greaterThanOrEqualTo(0));
+      expect(button.right, lessThanOrEqualTo(size.width));
       expect(tester.takeException(), isNull);
     });
   }
