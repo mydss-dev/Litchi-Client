@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
+import 'package:litchi_client/l10n/generated/app_localizations.dart';
 import 'package:litchi_client/v3/app/v3_nav.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/pages/v3_gift_card_page.dart';
@@ -32,7 +33,11 @@ Future<_NavController> _pumpShell(WidgetTester tester, Size size) async {
   final controller = _NavController();
   addTearDown(controller.disposeVisual);
   await tester.pumpWidget(AppScope(controller: controller,
-    child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell())));
+    child: MaterialApp(
+      theme: V3Theme.dark(),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const V3Shell())));
   await tester.pump();
   return controller;
 }
