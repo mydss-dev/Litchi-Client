@@ -333,10 +333,12 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
       setState(() {
         _couponResult = result;
         _appliedCode = result == null ? null : code;
-        if (result == null) _error = _tr(context,
-          '优惠码无效或不可用于当前套餐',
-          'Coupon is invalid or not applicable to this plan',
-          '優惠碼無效或不適用於目前方案');
+        if (result == null) {
+          _error = _tr(context,
+            '优惠码无效或不可用于当前套餐',
+            'Coupon is invalid or not applicable to this plan',
+            '優惠碼無效或不適用於目前方案');
+        }
       });
     } catch (error) {
       if (mounted) setState(() => _error = '$error');
