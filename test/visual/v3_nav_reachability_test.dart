@@ -34,6 +34,7 @@ Future<_NavController> _pumpShell(WidgetTester tester, Size size) async {
   addTearDown(controller.disposeVisual);
   await tester.pumpWidget(AppScope(controller: controller,
     child: MaterialApp(
+      locale: const Locale('en'),
       theme: V3Theme.dark(),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
