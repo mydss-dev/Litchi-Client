@@ -230,7 +230,6 @@ class _TrendPanel extends StatelessWidget {
   final ValueChanged<int> onPeriodChanged;
 
   Future<void> _showDay(BuildContext context, TrafficHistoryDay point) async {
-    final p = V3Palette.of(context);
     final details = _DayDetails.forDate(point, usagePoints);
     await showDialog<void>(context: context,
       builder: (ctx) => Dialog(
@@ -320,11 +319,12 @@ class _TrendPanel extends StatelessWidget {
             ? Center(child: Text('暂时没有每日流量记录',
                 style: TextStyle(color: p.inkMuted, fontSize: 11)))
             : LayoutBuilder(builder: (context, constraints) {
-                // At 30 days, one narrow pixel strip cannot be a usable touch
-                // target. Scroll horizontally rather than shrinking hit areas.
-                final width = periodDays == 7 ? constraints.maxWidth :
-                  (constraints.maxWidth > periodDays * 44.0
-                    ? constraints.maxWidth : periodDays * 44.0);
+                // Give every day a real touch target on narrow 7/30-day views.
+                final spacing = periodDays == 7 ? 12.0 : 3.0;
+                final minChartWidth = periodDays * 44.0 +
+                  (periodDays - 1) * spacing;
+                final width = constraints.maxWidth > minChartWidth
+                  ? constraints.maxWidth : minChartWidth;
                 return SingleChildScrollView(scrollDirection: Axis.horizontal,
                   child: SizedBox(width: width,
                     child: Row(crossAxisAlignment: CrossAxisAlignment.end,
@@ -337,7 +337,7 @@ class _TrendPanel extends StatelessWidget {
                               i == series.days.length - 1,
                             onTap: () => _showDay(context, series.days[i]))),
                           if (i != series.days.length - 1)
-                            SizedBox(width: periodDays == 7 ? 12 : 3),
+                            SizedBox(width: spacing),
                         ],
                       ]),
                   ),
