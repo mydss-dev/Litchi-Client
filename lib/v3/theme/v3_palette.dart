@@ -98,12 +98,10 @@ class V3Palette {
     // asks of an icon or UI shape drawn on that ground.
     warning: Color(0xFFBA771C),
     danger: Color(0xFFCC3F57),
-    // The three inks below moved with `hero`. They are read as small text on
-    // that panel, and the darker ground took them under 4.5:1: lycheeInk fell
-    // to 4.43 and warningInk to 4.21, which is the failure the contrast test
-    // exists to catch. successInk and dangerInk already had the margin.
+    // Keep text safe even on a green-tinted hero: #177045 only reached 4.18:1
+    // after the 12% success tint was composited onto the darker hero surface.
     lycheeInk: Color(0xFFB32747),
-    successInk: Color(0xFF177045),
+    successInk: Color(0xFF11613A),
     warningInk: Color(0xFF8A5000),
     dangerInk: Color(0xFFB02E45),
   );
@@ -148,7 +146,9 @@ class V3Theme {
       primary: p.lychee,
       onPrimary: Colors.white,
       secondary: p.citrus,
-      onSecondary: p.ink,
+      // Ink becomes near-white in dark mode. A bright lime selection must
+      // retain the intentionally dark foreground in *both* appearances.
+      onSecondary: p.night,
       error: p.danger,
       onError: Colors.white,
       surface: p.surface,

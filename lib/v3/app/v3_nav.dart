@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// Where a destination is surfaced in the v3 shell.
 ///
@@ -26,16 +27,34 @@ class V3NavItem {
   const V3NavItem({
     required this.page,
     required this.icon,
-    required this.label,
     required this.placement,
   });
 
   final AppPage page;
   final IconData icon;
-  final String label;
   final V3NavPlacement placement;
 
   bool get isEnabled => isPageEnabled(page);
+
+  /// Localized label for this nav item.
+  String localizedLabel(BuildContext context) {
+    final l = Localizations.of<AppLocalizations>(context, AppLocalizations);
+    if (l == null) return '';
+    return switch (page) {
+      AppPage.dashboard => l.connection,
+      AppPage.nodes => l.nodes,
+      AppPage.shop => l.plans,
+      AppPage.account => l.account,
+      AppPage.more => l.more,
+      AppPage.traffic => l.trafficUsage,
+      AppPage.invite => l.inviteFriends,
+      AppPage.tickets => l.support,
+      AppPage.settings => l.clientSettings,
+      AppPage.orders => l.orders,
+      AppPage.giftCard => l.giftCardRedemption,
+      _ => '',
+    };
+  }
 }
 
 // ── Compact IA ──────────────────────────────────────────────────────────────
@@ -47,31 +66,26 @@ const List<V3NavItem> kMobilePrimary = [
   V3NavItem(
     page: AppPage.dashboard,
     icon: Icons.radar_rounded,
-    label: '连接',
     placement: V3NavPlacement.mobilePrimary,
   ),
   V3NavItem(
     page: AppPage.nodes,
     icon: Icons.hub_rounded,
-    label: '节点',
     placement: V3NavPlacement.mobilePrimary,
   ),
   V3NavItem(
     page: AppPage.shop,
     icon: Icons.shopping_bag_outlined,
-    label: '套餐',
     placement: V3NavPlacement.mobilePrimary,
   ),
   V3NavItem(
     page: AppPage.account,
     icon: Icons.person_outline_rounded,
-    label: '账户',
     placement: V3NavPlacement.mobilePrimary,
   ),
   V3NavItem(
     page: AppPage.more,
     icon: Icons.more_horiz_rounded,
-    label: '更多',
     placement: V3NavPlacement.mobilePrimary,
   ),
 ];
@@ -86,13 +100,11 @@ const List<V3NavItem> kMobileHub = [
   V3NavItem(
     page: AppPage.orders,
     icon: Icons.receipt_long_outlined,
-    label: '订单记录',
     placement: V3NavPlacement.mobileHub,
   ),
   V3NavItem(
     page: AppPage.giftCard,
     icon: Icons.card_giftcard_rounded,
-    label: '礼品卡兑换',
     placement: V3NavPlacement.mobileHub,
   ),
 ];
@@ -103,25 +115,21 @@ const List<V3NavItem> kMobileMore = [
   V3NavItem(
     page: AppPage.traffic,
     icon: Icons.insights_rounded,
-    label: '流量用量',
     placement: V3NavPlacement.mobileMore,
   ),
   V3NavItem(
     page: AppPage.invite,
     icon: Icons.auto_awesome_rounded,
-    label: '邀请好友',
     placement: V3NavPlacement.mobileMore,
   ),
   V3NavItem(
     page: AppPage.tickets,
     icon: Icons.forum_outlined,
-    label: '工单支持',
     placement: V3NavPlacement.mobileMore,
   ),
   V3NavItem(
     page: AppPage.settings,
     icon: Icons.tune_rounded,
-    label: '客户端设置',
     placement: V3NavPlacement.mobileMore,
   ),
 ];
@@ -135,37 +143,31 @@ const List<V3NavItem> kDesktopRail = [
   V3NavItem(
     page: AppPage.dashboard,
     icon: Icons.radar_rounded,
-    label: '连接',
     placement: V3NavPlacement.desktopRail,
   ),
   V3NavItem(
     page: AppPage.nodes,
     icon: Icons.hub_rounded,
-    label: '节点',
     placement: V3NavPlacement.desktopRail,
   ),
   V3NavItem(
     page: AppPage.shop,
     icon: Icons.shopping_bag_outlined,
-    label: '套餐',
     placement: V3NavPlacement.desktopRail,
   ),
   V3NavItem(
     page: AppPage.traffic,
     icon: Icons.insights_rounded,
-    label: '流量',
     placement: V3NavPlacement.desktopRail,
   ),
   V3NavItem(
     page: AppPage.invite,
     icon: Icons.auto_awesome_rounded,
-    label: '邀请',
     placement: V3NavPlacement.desktopRail,
   ),
   V3NavItem(
     page: AppPage.tickets,
     icon: Icons.forum_outlined,
-    label: '工单',
     placement: V3NavPlacement.desktopRail,
   ),
 ];
@@ -173,14 +175,12 @@ const List<V3NavItem> kDesktopRail = [
 const V3NavItem kRailSettings = V3NavItem(
   page: AppPage.settings,
   icon: Icons.tune_rounded,
-  label: '设置',
   placement: V3NavPlacement.desktopRail,
 );
 
 const V3NavItem kAccountDestination = V3NavItem(
   page: AppPage.account,
   icon: Icons.person_outline_rounded,
-  label: '账户',
   placement: V3NavPlacement.mobilePrimary,
 );
 

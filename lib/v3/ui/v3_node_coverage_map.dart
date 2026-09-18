@@ -3,50 +3,30 @@ import 'package:flutter/material.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
+import 'v3_locale_copy.dart';
 
-/// A schematic, offline coverage map. The dots represent locations reported by
-/// the actual node list, NOT country borders, live connectivity or geolocation.
-/// Unknown codes remain in the accessible filter chips rather than silently
-/// vanishing from the coverage count.
+/// An offline schematic of locations present in the actual node list.
 class V3NodeCoverageMap extends StatelessWidget {
-  const V3NodeCoverageMap({
-    super.key,
-    required this.nodes,
-    required this.selectedCode,
-    required this.onSelected,
-  });
-
+  const V3NodeCoverageMap({super.key, required this.nodes,
+    required this.selectedCode, required this.onSelected});
   final List<NodeModel> nodes;
   final String? selectedCode;
   final ValueChanged<String?> onSelected;
 
   static const Map<String, Offset> _positions = {
-    'US': Offset(.18, .42),
-    'CA': Offset(.19, .25),
-    'MX': Offset(.16, .59),
-    'BR': Offset(.31, .76),
-    'GB': Offset(.46, .27),
-    'FR': Offset(.48, .37),
-    'DE': Offset(.53, .33),
-    'NL': Offset(.50, .29),
-    'ES': Offset(.46, .45),
-    'IT': Offset(.54, .47),
-    'RU': Offset(.68, .21),
-    'IN': Offset(.71, .58),
-    'HK': Offset(.78, .59),
-    'TW': Offset(.83, .65),
-    'JP': Offset(.90, .42),
-    'KR': Offset(.83, .44),
-    'SG': Offset(.77, .79),
-    'MY': Offset(.73, .73),
-    'TH': Offset(.73, .65),
-    'VN': Offset(.78, .69),
-    'PH': Offset(.88, .72),
-    'ID': Offset(.80, .84),
-    'AU': Offset(.89, .88),
-    'NZ': Offset(.96, .92),
-    'ZA': Offset(.54, .88),
-    'AE': Offset(.61, .53),
+    'US': Offset(.18, .42), 'CA': Offset(.19, .25),
+    'MX': Offset(.16, .59), 'BR': Offset(.31, .76),
+    'GB': Offset(.46, .27), 'FR': Offset(.48, .37),
+    'DE': Offset(.53, .33), 'NL': Offset(.50, .29),
+    'ES': Offset(.46, .45), 'IT': Offset(.54, .47),
+    'RU': Offset(.68, .21), 'IN': Offset(.71, .58),
+    'HK': Offset(.78, .59), 'TW': Offset(.83, .65),
+    'JP': Offset(.90, .42), 'KR': Offset(.83, .44),
+    'SG': Offset(.77, .79), 'MY': Offset(.73, .73),
+    'TH': Offset(.73, .65), 'VN': Offset(.78, .69),
+    'PH': Offset(.88, .72), 'ID': Offset(.80, .84),
+    'AU': Offset(.89, .88), 'NZ': Offset(.96, .92),
+    'ZA': Offset(.54, .88), 'AE': Offset(.61, .53),
     'TR': Offset(.59, .43),
   };
 
@@ -59,8 +39,31 @@ class V3NodeCoverageMap extends StatelessWidget {
     'PH': '菲律宾', 'ID': '印度尼西亚', 'AU': '澳大利亚',
     'NZ': '新西兰', 'ZA': '南非', 'AE': '阿联酋', 'TR': '土耳其',
   };
+  static const Map<String, String> _englishNames = {
+    'US': 'United States', 'CA': 'Canada', 'MX': 'Mexico', 'BR': 'Brazil',
+    'GB': 'United Kingdom', 'FR': 'France', 'DE': 'Germany',
+    'NL': 'Netherlands', 'ES': 'Spain', 'IT': 'Italy', 'RU': 'Russia',
+    'IN': 'India', 'HK': 'Hong Kong', 'TW': 'Taiwan', 'JP': 'Japan',
+    'KR': 'South Korea', 'SG': 'Singapore', 'MY': 'Malaysia',
+    'TH': 'Thailand', 'VN': 'Vietnam', 'PH': 'Philippines',
+    'ID': 'Indonesia', 'AU': 'Australia', 'NZ': 'New Zealand',
+    'ZA': 'South Africa', 'AE': 'United Arab Emirates', 'TR': 'Turkey',
+  };
+  static const Map<String, String> _traditionalNames = {
+    'US': '美國', 'CA': '加拿大', 'MX': '墨西哥', 'BR': '巴西',
+    'GB': '英國', 'FR': '法國', 'DE': '德國', 'NL': '荷蘭',
+    'ES': '西班牙', 'IT': '義大利', 'RU': '俄羅斯', 'IN': '印度',
+    'HK': '香港', 'TW': '台灣', 'JP': '日本', 'KR': '韓國',
+    'SG': '新加坡', 'MY': '馬來西亞', 'TH': '泰國', 'VN': '越南',
+    'PH': '菲律賓', 'ID': '印尼', 'AU': '澳洲', 'NZ': '紐西蘭',
+    'ZA': '南非', 'AE': '阿拉伯聯合大公國', 'TR': '土耳其',
+  };
 
   static String _code(NodeModel node) => node.code.trim().toUpperCase();
+  static String _country(BuildContext context, String code) => v3Copy(context,
+    zh: _names[code] ?? code,
+    en: _englishNames[code] ?? code,
+    tw: _traditionalNames[code] ?? code);
 
   @override
   Widget build(BuildContext context) {
@@ -78,140 +81,121 @@ class V3NodeCoverageMap extends StatelessWidget {
     final codes = counts.keys.toList()..sort();
     final mapped = codes.where(_positions.containsKey).toList();
     final active = counts.containsKey(selectedCode) ? selectedCode : null;
-
     return V3Panel(
       padding: const EdgeInsets.all(16),
       tone: V3PanelTone.raised,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.public_rounded, size: 18, color: p.lycheeInk),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text('节点覆盖地图', style: Theme.of(context).textTheme.titleMedium),
-              ),
-              Text(
-                '${codes.length} 个地区 · $nodeCount 个节点',
-                style: TextStyle(color: p.inkMuted, fontSize: 11),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              height: 178,
-              width: double.infinity,
-              color: p.surface,
-              child: LayoutBuilder(
-                builder: (context, constraints) => Stack(
-                  children: [
-                    Positioned.fill(
-                      child: CustomPaint(painter: _WorldSketchPainter(p)),
-                    ),
-                    for (final code in mapped)
-                      Positioned(
-                        key: ValueKey('v3-map-marker-$code'),
-                        left: (constraints.maxWidth - 32) * _positions[code]!.dx,
-                        top: 146 * _positions[code]!.dy,
-                        child: Semantics(
-                          button: true,
-                          selected: active == code,
-                          label: '${_names[code] ?? code}，${counts[code]} 个节点，筛选地区',
-                          child: Tooltip(
-                            message: '${_names[code] ?? code} · ${counts[code]} 个节点',
-                            child: InkWell(
-                              onTap: () => onSelected(active == code ? null : code),
-                              customBorder: const CircleBorder(),
-                              child: SizedBox(
-                                width: 32,
-                                height: 32,
-                                child: Center(
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 150),
-                                    width: active == code ? 18 : 13,
-                                    height: active == code ? 18 : 13,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: active == code ? p.citrus : p.lychee,
-                                      border: Border.all(color: p.ink, width: 1.2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: p.lychee.withValues(alpha: .22),
-                                          blurRadius: 7,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (nodes.isEmpty)
-                      Center(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: p.surface,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Text('暂无节点，地图将在同步后点亮',
-                                style: TextStyle(color: p.inkMuted, fontSize: 12)),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text('离线示意图，光点表示有节点的地区；不代表实时在线状态或精确位置。',
-              style: TextStyle(color: p.inkMuted, fontSize: 10)),
-          if (codes.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.public_rounded, size: 18, color: p.lycheeInk),
+          const SizedBox(width: 8),
+          Expanded(child: Text(v3Copy(context, zh: '节点覆盖地图',
+            en: 'Node coverage map', tw: '節點覆蓋地圖'),
+            style: Theme.of(context).textTheme.titleMedium)),
+          Text(v3Copy(context,
+            zh: '${codes.length} 个地区 · $nodeCount 个节点',
+            en: '${codes.length} regions · $nodeCount nodes',
+            tw: '${codes.length} 個地區 · $nodeCount 個節點'),
+            style: TextStyle(color: p.inkMuted, fontSize: 11)),
+        ]),
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            height: 178, width: double.infinity, color: p.surface,
+            child: LayoutBuilder(builder: (context, constraints) => Stack(
               children: [
-                ChoiceChip(
-                  key: const ValueKey('v3-map-country-all'),
-                  label: const Text('全部地区'),
-                  selected: active == null,
-                  showCheckmark: false,
-                  side: v3ChipSide(p, selected: active == null),
-                  onSelected: (_) => onSelected(null),
-                ),
-                for (final code in codes)
-                  ChoiceChip(
-                    key: ValueKey('v3-map-country-$code'),
-                    label: Text('${_names[code] ?? code} ${counts[code]}'),
-                    selected: active == code,
-                    showCheckmark: false,
-                    side: v3ChipSide(p, selected: active == code),
-                    onSelected: (_) => onSelected(active == code ? null : code),
+                Positioned.fill(child: CustomPaint(painter: _WorldSketchPainter(p))),
+                for (final code in mapped)
+                  Positioned(
+                    key: ValueKey('v3-map-marker-$code'),
+                    left: (constraints.maxWidth - 32) * _positions[code]!.dx,
+                    top: 146 * _positions[code]!.dy,
+                    child: Semantics(
+                      button: true,
+                      selected: active == code,
+                      label: v3Copy(context,
+                        zh: '${_country(context, code)}，${counts[code]} 个节点，筛选地区',
+                        en: '${_country(context, code)}, ${counts[code]} nodes, filter region',
+                        tw: '${_country(context, code)}，${counts[code]} 個節點，篩選地區'),
+                      child: Tooltip(
+                        message: v3Copy(context,
+                          zh: '${_country(context, code)} · ${counts[code]} 个节点',
+                          en: '${_country(context, code)} · ${counts[code]} nodes',
+                          tw: '${_country(context, code)} · ${counts[code]} 個節點'),
+                        child: InkWell(
+                          onTap: () => onSelected(active == code ? null : code),
+                          customBorder: const CircleBorder(),
+                          child: SizedBox(width: 32, height: 32,
+                            child: Center(child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: active == code ? 18 : 13,
+                              height: active == code ? 18 : 13,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: active == code ? p.citrus : p.lychee,
+                                border: Border.all(color: p.ink, width: 1.2),
+                                boxShadow: [BoxShadow(
+                                  color: p.lychee.withValues(alpha: .22),
+                                  blurRadius: 7, spreadRadius: 2)],
+                              ),
+                            )),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
+                if (nodes.isEmpty)
+                  Center(child: DecoratedBox(
+                    decoration: BoxDecoration(color: p.surface,
+                      borderRadius: BorderRadius.circular(10)),
+                    child: Padding(padding: const EdgeInsets.all(10),
+                      child: Text(v3Copy(context,
+                        zh: '暂无节点，地图将在同步后点亮',
+                        en: 'No nodes yet. The map will light up after sync.',
+                        tw: '暫無節點，地圖會在同步後亮起'),
+                        style: TextStyle(color: p.inkMuted, fontSize: 12))),
+                  )),
               ],
+            )),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(v3Copy(context,
+          zh: '离线示意图，光点表示有节点的地区；不代表实时在线状态或精确位置。',
+          en: 'Offline schematic: dots indicate regions with nodes, not live status or exact locations.',
+          tw: '離線示意圖：光點表示有節點的地區，不代表即時連線狀態或精確位置。'),
+          style: TextStyle(color: p.inkMuted, fontSize: 10)),
+        if (codes.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(spacing: 7, runSpacing: 7, children: [
+            ChoiceChip(
+              key: const ValueKey('v3-map-country-all'),
+              label: Text(v3Copy(context,
+                zh: '全部地区', en: 'All regions', tw: '全部地區')),
+              selected: active == null,
+              showCheckmark: false,
+              side: v3ChipSide(p, selected: active == null),
+              onSelected: (_) => onSelected(null),
             ),
-          ],
+            for (final code in codes)
+              ChoiceChip(
+                key: ValueKey('v3-map-country-$code'),
+                label: Text('${_country(context, code)} ${counts[code]}'),
+                selected: active == code,
+                showCheckmark: false,
+                side: v3ChipSide(p, selected: active == code),
+                onSelected: (_) => onSelected(active == code ? null : code),
+              ),
+          ]),
         ],
-      ),
+      ]),
     );
   }
 }
 
-/// Low-detail silhouettes only. No boundaries or geographical precision are
-/// implied; locations are represented by the distinct dots above.
 class _WorldSketchPainter extends CustomPainter {
   const _WorldSketchPainter(this.palette);
   final V3Palette palette;
-
   static const _shapes = <List<Offset>>[
     [Offset(.07,.23), Offset(.17,.15), Offset(.29,.18), Offset(.33,.32),
      Offset(.26,.41), Offset(.23,.55), Offset(.17,.56), Offset(.12,.43)],
@@ -230,8 +214,7 @@ class _WorldSketchPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final grid = Paint()
-      ..color = palette.line.withValues(alpha: .42)
+    final grid = Paint()..color = palette.line.withValues(alpha: .42)
       ..strokeWidth = .6;
     for (var i = 1; i < 5; i++) {
       final y = size.height * i / 5;
@@ -242,12 +225,11 @@ class _WorldSketchPainter extends CustomPainter {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
     }
     final fill = Paint()..color = palette.inkMuted.withValues(alpha: .15);
-    final stroke = Paint()
-      ..color = palette.line
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
+    final stroke = Paint()..color = palette.line
+      ..strokeWidth = 1..style = PaintingStyle.stroke;
     for (final polygon in _shapes) {
-      final path = Path()..moveTo(polygon.first.dx * size.width, polygon.first.dy * size.height);
+      final path = Path()
+        ..moveTo(polygon.first.dx * size.width, polygon.first.dy * size.height);
       for (final point in polygon.skip(1)) {
         path.lineTo(point.dx * size.width, point.dy * size.height);
       }
