@@ -281,7 +281,9 @@ class _RegisterFormState extends State<_RegisterForm> {
         en: 'Verification code sent. Check your inbox.',
         tw: '驗證碼已寄出，請查收信箱'));
     } catch (error) {
-      if (mounted) setState(() => _error = _authError(error));
+      if (mounted) {
+        setState(() => _error = _authError(error));
+      }
     } finally {
       if (mounted) setState(() => _sendingCode = false);
     }
@@ -440,7 +442,9 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
         en: 'Verification code sent. Check your inbox.',
         tw: '驗證碼已寄出，請查收信箱'));
     } catch (error) {
-      if (mounted) setState(() => _error = _authError(error));
+      if (mounted) {
+        setState(() => _error = _authError(error));
+      }
     } finally {
       if (mounted) setState(() => _sendingCode = false);
     }
