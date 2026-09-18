@@ -71,18 +71,19 @@ Future<void> _tap(WidgetTester tester, Finder finder, String what) async {
 
 String _primaryLabel(AppPage page) {
   // Return the Chinese label for mobile primary nav items.
-  // This matches the zh locale set in _pumpShell.
+  // This matches the zh locale set in _pumpShell and the actual
+  // localization strings in app_zh.arb.
   return switch (page) {
     AppPage.dashboard => '连接',
     AppPage.nodes => '节点',
     AppPage.shop => '套餐',
-    AppPage.account => '账户',
+    AppPage.account => '我的',
     AppPage.more => '更多',
-    AppPage.traffic => '流量',
+    AppPage.traffic => '流量用量',
     AppPage.invite => '邀请好友',
-    AppPage.tickets => '工单',
+    AppPage.tickets => '工单支持',
     AppPage.settings => '客户端设置',
-    AppPage.orders => '订单',
+    AppPage.orders => '订单记录',
     AppPage.giftCard => '礼品卡兑换',
   };
 }
