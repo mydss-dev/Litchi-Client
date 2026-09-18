@@ -276,10 +276,12 @@ class _RegisterFormState extends State<_RegisterForm> {
     setState(() { _sendingCode = true; _error = null; _notice = null; });
     try {
       await AppScope.read(context).api.sendEmailVerify(email);
-      if (mounted) setState(() => _notice = v3Copy(context,
-        zh: '验证码已发送，请查收邮箱',
-        en: 'Verification code sent. Check your inbox.',
-        tw: '驗證碼已寄出，請查收信箱'));
+      if (mounted) {
+        setState(() => _notice = v3Copy(context,
+          zh: '验证码已发送，请查收邮箱',
+          en: 'Verification code sent. Check your inbox.',
+          tw: '驗證碼已寄出，請查收信箱'));
+      }
     } catch (error) {
       if (mounted) {
         setState(() => _error = _authError(error));
@@ -437,10 +439,12 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
     try {
       await AppScope.read(context).api.sendEmailVerify(email,
         isForgetPassword: true);
-      if (mounted) setState(() => _notice = v3Copy(context,
-        zh: '验证码已发送，请查收邮箱',
-        en: 'Verification code sent. Check your inbox.',
-        tw: '驗證碼已寄出，請查收信箱'));
+      if (mounted) {
+        setState(() => _notice = v3Copy(context,
+          zh: '验证码已发送，请查收邮箱',
+          en: 'Verification code sent. Check your inbox.',
+          tw: '驗證碼已寄出，請查收信箱'));
+      }
     } catch (error) {
       if (mounted) {
         setState(() => _error = _authError(error));
