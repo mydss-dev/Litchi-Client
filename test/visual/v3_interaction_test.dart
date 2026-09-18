@@ -59,6 +59,7 @@ Future<void> _pump(
     AppScope(
       controller: controller,
       child: MaterialApp(
+        locale: const Locale('en'),
         theme: V3Theme.dark(),
         home: Scaffold(body: page),
       ),

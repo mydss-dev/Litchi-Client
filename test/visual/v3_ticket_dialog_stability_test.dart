@@ -57,6 +57,7 @@ Future<void> _pumpDialog(
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
     MaterialApp(
+        locale: const Locale('en'),
       theme: V3Theme.light(),
       home: Scaffold(
         body: V3TicketDetailDialog(

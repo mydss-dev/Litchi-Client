@@ -53,6 +53,7 @@ void main() {
         AppScope(
           controller: controller,
           child: MaterialApp(
+        locale: const Locale('en'),
             theme: V3Theme.light(),
             home: const Scaffold(body: V3TicketsPage()),
           ),

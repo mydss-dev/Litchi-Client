@@ -46,6 +46,7 @@ void main() {
   testWidgets('coverage only counts real nodes; unknown codes keep a chip',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
       theme: V3Theme.light(),
       home: Scaffold(
         body: V3NodeCoverageMap(
@@ -64,6 +65,7 @@ void main() {
   testWidgets('map chips select a code and all clears it', (tester) async {
     String? selected;
     await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
       theme: V3Theme.light(),
       home: StatefulBuilder(
         builder: (context, setState) => Scaffold(
@@ -90,6 +92,7 @@ void main() {
     final fixture = _NodeFixture();
     addTearDown(fixture.disposeVisual);
     await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
       theme: V3Theme.light(),
       home: AppScope(
         controller: fixture,
@@ -119,6 +122,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(360, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
         theme: V3Theme.light(),
         darkTheme: V3Theme.dark(),
         themeMode: theme,

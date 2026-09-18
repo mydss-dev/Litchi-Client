@@ -17,7 +17,8 @@ void main() {
       addTearDown(controller.disposeVisual);
       await tester.pumpWidget(AppScope(
         controller: controller,
-        child: MaterialApp(theme: V3Theme.light(),
+        child: MaterialApp(
+        locale: const Locale('en'),theme: V3Theme.light(),
           home: const Scaffold(body: V3ShopPage())),
       ));
       await tester.pumpAndSettle();

@@ -113,6 +113,7 @@ Future<void> _pumpPage(
     AppScope(
       controller: controller,
       child: MaterialApp(
+        locale: const Locale('en'),
         theme: V3Theme.light(),
         home: Scaffold(body: page),
       ),
@@ -223,7 +224,8 @@ void main() {
     await tester.pumpWidget(
       AppScope(
         controller: controller,
-        child: MaterialApp(theme: V3Theme.light(), home: const V3Shell()),
+        child: MaterialApp(
+        locale: const Locale('en'),theme: V3Theme.light(), home: const V3Shell()),
       ),
     );
     await tester.pumpAndSettle();
@@ -252,7 +254,8 @@ void main() {
     await tester.pumpWidget(
       AppScope(
         controller: controller,
-        child: MaterialApp(theme: V3Theme.light(), home: const V3Shell()),
+        child: MaterialApp(
+        locale: const Locale('en'),theme: V3Theme.light(), home: const V3Shell()),
       ),
     );
     await _frames(tester);
@@ -286,7 +289,8 @@ void main() {
     await tester.pumpWidget(
       AppScope(
         controller: controller,
-        child: MaterialApp(theme: V3Theme.light(), home: const V3Shell()),
+        child: MaterialApp(
+        locale: const Locale('en'),theme: V3Theme.light(), home: const V3Shell()),
       ),
     );
     await tester.pumpAndSettle();

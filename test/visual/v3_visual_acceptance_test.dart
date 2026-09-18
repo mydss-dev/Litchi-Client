@@ -145,6 +145,7 @@ Future<void> _pumpV3(
 
   await tester.pumpWidget(
     MaterialApp(
+        locale: const Locale('en'),
       debugShowCheckedModeBanner: false,
       theme: V3Theme.light(),
       darkTheme: V3Theme.dark(),
@@ -171,6 +172,7 @@ Future<void> _pumpSignIn(
 
   await tester.pumpWidget(
     MaterialApp(
+        locale: const Locale('en'),
       debugShowCheckedModeBanner: false,
       theme: V3Theme.light(),
       darkTheme: V3Theme.dark(),

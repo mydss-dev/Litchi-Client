@@ -52,6 +52,7 @@ Future<void> _pump(
   addTearDown(() => tester.binding.setSurfaceSize(null));
   addTearDown(controller.disposeVisual);
   await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
     theme: V3Theme.light(),
     darkTheme: V3Theme.dark(),
     themeMode: mode,

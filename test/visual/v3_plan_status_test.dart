@@ -80,6 +80,7 @@ void main() {
           addTearDown(controller.disposeVisual);
           await tester.pumpWidget(
             MaterialApp(
+        locale: const Locale('en'),
               theme: V3Theme.dark(),
               home: AppScope(controller: controller, child: const V3Shell()),
             ),

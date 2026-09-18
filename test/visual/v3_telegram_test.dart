@@ -34,7 +34,8 @@ Future<VisualV3Controller> _pumpAccount(WidgetTester tester,
       ? _BoundController() : VisualV3Controller(AppPage.account);
   addTearDown(controller.disposeVisual);
   await tester.pumpWidget(AppScope(controller: controller,
-    child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell())));
+    child: MaterialApp(
+        locale: const Locale('en'),theme: V3Theme.dark(), home: const V3Shell())));
   await tester.pumpAndSettle();
   // Previous layout exposes the service directly: no expansion is needed.
   expect(find.text('账户偏好与安全'), findsNothing);
