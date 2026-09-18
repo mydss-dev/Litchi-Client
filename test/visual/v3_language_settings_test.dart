@@ -83,8 +83,8 @@ void main() {
         controller.goToPage(AppPage.more);
         await tester.pumpAndSettle();
         expect(find.text('More services'), findsOneWidget);
-        expect(find.text('Ticket support'), findsOneWidget);
-        expect(find.text('Settings'), findsWidgets);
+        expect(find.text('Support'), findsOneWidget);
+        expect(find.text('Client settings'), findsOneWidget);
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
