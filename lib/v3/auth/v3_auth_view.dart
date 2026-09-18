@@ -18,30 +18,38 @@ class _V3AuthViewState extends State<V3AuthView> {
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
-    return ColoredBox(color: p.canvas,
+    return ColoredBox(
+      color: p.canvas,
       child: LayoutBuilder(builder: (context, constraints) {
         final wide = constraints.maxWidth >= 760;
         return Row(children: [
           if (wide) const Expanded(flex: 11, child: _AuthBrandPanel()),
-          Expanded(flex: wide ? 9 : 1,
-            child: Center(child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: wide ? 52 : 28,
-                vertical: 32),
-              child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 380),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!wide) ...[
-                      V3BrandMark(boxSize: 34, labelColor: p.ink),
-                      const SizedBox(height: 44),
+          Expanded(
+            flex: wide ? 9 : 1,
+            child: Center(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: wide ? 52 : 28, vertical: 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 380),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!wide) ...[
+                        V3BrandMark(boxSize: 34, labelColor: p.ink),
+                        const SizedBox(height: 44),
+                      ],
+                      switch (controller.authScreen) {
+                        AuthScreen.login => const _LoginForm(),
+                        AuthScreen.register => const _RegisterForm(),
+                        AuthScreen.forgotPassword => const _ForgotPasswordForm(),
+                        AuthScreen.changePassword => const _LoginForm(),
+                      },
                     ],
-                    switch (controller.authScreen) {
-                      AuthScreen.login => const _LoginForm(),
-                      AuthScreen.register => const _RegisterForm(),
-                      AuthScreen.forgotPassword => const _ForgotPasswordForm(),
-                      AuthScreen.changePassword => const _LoginForm(),
-                    },
-                  ]))),
-            )),
+                  ),
+                ),
+              ),
+            ),
           ),
         ]);
       }),
