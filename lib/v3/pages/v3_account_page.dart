@@ -4,8 +4,10 @@ import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
 import '../../config/app_config.dart';
 import '../app/v3_nav.dart';
+import '../app/v3_nav_localization.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 import 'v3_telegram_page.dart';
 import 'v3_wallet_actions.dart';
@@ -33,14 +35,15 @@ class _V3AccountPageState extends State<V3AccountPage> {
         autoRenewal: autoRenewal ?? controller.user.autoRenewal,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error ?? '账户设置已更新')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
+        error ?? v3Copy(context, zh: '账户设置已更新',
+          en: 'Account preferences updated', tw: '帳戶設定已更新'))));
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('更新账户偏好失败：$error')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
+          v3Copy(context, zh: '更新账户偏好失败：$error',
+            en: 'Could not update account preferences: $error',
+            tw: '更新帳戶偏好失敗：$error'))));
       }
     } finally {
       if (mounted) setState(() => _updatingPreferences = false);
@@ -55,8 +58,12 @@ class _V3AccountPageState extends State<V3AccountPage> {
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(
-          kicker: '账户中心', title: '我的账户',
-          trailing: IconButton(tooltip: '刷新账户数据',
+          kicker: v3Copy(context, zh: '账户中心',
+            en: 'ACCOUNT CENTER', tw: '帳戶中心'),
+          title: v3Copy(context, zh: '我的账户',
+            en: 'My account', tw: '我的帳戶'),
+          trailing: IconButton(tooltip: v3Copy(context,
+              zh: '刷新账户数据', en: 'Refresh account', tw: '重新整理帳戶資料'),
             onPressed: controller.refreshData,
             icon: const Icon(Icons.refresh_rounded)),
         ),
@@ -142,9 +149,11 @@ class _AccountSummaryPanel extends StatelessWidget {
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('当前套餐', style: TextStyle(color: p.inkMuted,
-                fontSize: 10, fontWeight: FontWeight.w900,
-                letterSpacing: 1.5)),
+              Text(v3Copy(context, zh: '当前套餐',
+                en: 'CURRENT PLAN', tw: '目前方案'),
+                style: TextStyle(color: p.inkMuted,
+                  fontSize: 10, fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5)),
               const SizedBox(height: 6),
               Text(plan.shortLabel, maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -161,7 +170,9 @@ class _AccountSummaryPanel extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14))),
             icon: const Icon(Icons.storefront_rounded, size: 17),
-            label: Text(controller.hasPlan ? '管理套餐' : '选择套餐')),
+            label: Text(controller.hasPlan
+              ? v3Copy(context, zh: '管理套餐', en: 'Manage plan', tw: '管理方案')
+              : v3Copy(context, zh: '选择套餐', en: 'Choose plan', tw: '選擇方案'))),
         ]),
       ]),
     );
@@ -180,31 +191,37 @@ class _WalletPanel extends StatelessWidget {
       decoration: BoxDecoration(color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(24)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('钱包', style: TextStyle(color: p.inkMuted, fontSize: 10,
-          fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+        Text(v3Copy(context, zh: '钱包', en: 'WALLET', tw: '錢包'),
+          style: TextStyle(color: p.inkMuted, fontSize: 10,
+            fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         const SizedBox(height: 16),
         Row(children: [
-          Expanded(child: _MoneyStat(label: '账户余额',
+          Expanded(child: _MoneyStat(label: v3Copy(context,
+              zh: '账户余额', en: 'Account balance', tw: '帳戶餘額'),
             value: '$symbol${(controller.user.balance / 100).toStringAsFixed(2)}')),
           Container(width: 1, height: 46, color: p.line),
           const SizedBox(width: 22),
-          Expanded(child: _MoneyStat(label: '可提现佣金',
+          Expanded(child: _MoneyStat(label: v3Copy(context,
+              zh: '可提现佣金', en: 'Available commission', tw: '可提領佣金'),
             value: '$symbol${controller.withdrawable.toStringAsFixed(2)}')),
         ]),
         const SizedBox(height: 20),
         Row(children: [
           if (AppConfig.panelFeatures.wallet) ...[
             Expanded(child: _WalletActionButton(
-              icon: Icons.add_card_rounded, label: '充值', primary: true,
-              onTap: () => showV3RechargeDialog(context))),
+              icon: Icons.add_card_rounded,
+              label: v3Copy(context, zh: '充值', en: 'Top up', tw: '儲值'),
+              primary: true, onTap: () => showV3RechargeDialog(context))),
             const SizedBox(width: 10),
           ],
           Expanded(child: _WalletActionButton(
-            icon: Icons.account_balance_rounded, label: '提现',
+            icon: Icons.account_balance_rounded,
+            label: v3Copy(context, zh: '提现', en: 'Withdraw', tw: '提領'),
             onTap: () => showV3WithdrawDialog(context))),
           const SizedBox(width: 10),
           Expanded(child: _WalletActionButton(
-            icon: Icons.swap_horiz_rounded, label: '划转',
+            icon: Icons.swap_horiz_rounded,
+            label: v3Copy(context, zh: '划转', en: 'Transfer', tw: '轉帳'),
             onTap: () => showV3TransferDialog(context))),
         ]),
       ]),
@@ -265,15 +282,22 @@ class _HubPanel extends StatelessWidget {
     final telegramEnabled = AppConfig.panelFeatures.telegram;
     if (items.isEmpty && !telegramEnabled) return const SizedBox.shrink();
     final bound = controller.accountDetails?.telegramId != null;
-    return V3NavPanel(title: '我的服务', children: [
+    return V3NavPanel(title: v3Copy(context, zh: '我的服务',
+      en: 'My services', tw: '我的服務'), children: [
       for (final item in items)
         V3NavRow(key: hubRowKey(item.page), icon: item.icon,
-          label: item.label, selected: controller.page == item.page,
+          label: item.localizedLabel(context), selected: controller.page == item.page,
           onTap: () => openV3Page(context, item.page)),
       if (telegramEnabled)
         V3NavRow(key: const ValueKey('v3-hub-telegram'),
-          icon: Icons.send_rounded, label: 'Telegram 通知',
-          subtitle: bound ? '已绑定，可接收账户通知' : '未绑定',
+          icon: Icons.send_rounded,
+          label: v3Copy(context, zh: 'Telegram 通知',
+            en: 'Telegram notifications', tw: 'Telegram 通知'),
+          subtitle: bound
+            ? v3Copy(context, zh: '已绑定，可接收账户通知',
+                en: 'Linked; account notifications enabled',
+                tw: '已綁定，可接收帳戶通知')
+            : v3Copy(context, zh: '未绑定', en: 'Not linked', tw: '未綁定'),
           selected: false, onTap: () => V3TelegramPage.show(context)),
     ]);
   }
@@ -297,22 +321,35 @@ class _PreferencesPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Text('账户偏好', style: TextStyle(color: p.inkMuted, fontSize: 10,
-            fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+          Text(v3Copy(context, zh: '账户偏好',
+            en: 'ACCOUNT PREFERENCES', tw: '帳戶偏好'),
+            style: TextStyle(color: p.inkMuted, fontSize: 10,
+              fontWeight: FontWeight.w900, letterSpacing: 1.5)),
           const Spacer(),
           if (busy) const SizedBox(width: 14, height: 14,
             child: CircularProgressIndicator(strokeWidth: 2)),
         ]),
         const SizedBox(height: 12),
-        _PreferenceRow(title: '到期提醒', subtitle: '套餐接近到期时提醒我',
+        _PreferenceRow(title: v3Copy(context, zh: '到期提醒',
+            en: 'Expiry reminder', tw: '到期提醒'),
+          subtitle: v3Copy(context, zh: '套餐接近到期时提醒我',
+            en: 'Notify me when the plan is near expiry',
+            tw: '方案即將到期時提醒我'),
           value: controller.user.remindExpire,
           onChanged: busy ? null : onExpireChanged),
         Divider(color: p.line, height: 1),
-        _PreferenceRow(title: '流量提醒', subtitle: '剩余流量不足时提醒我',
+        _PreferenceRow(title: v3Copy(context, zh: '流量提醒',
+            en: 'Data reminder', tw: '流量提醒'),
+          subtitle: v3Copy(context, zh: '剩余流量不足时提醒我',
+            en: 'Notify me when data runs low', tw: '剩餘流量不足時提醒我'),
           value: controller.user.remindTraffic,
           onChanged: busy ? null : onTrafficChanged),
         Divider(color: p.line, height: 1),
-        _PreferenceRow(title: '自动续费', subtitle: '允许服务端在条件满足时自动续费',
+        _PreferenceRow(title: v3Copy(context, zh: '自动续费',
+            en: 'Auto-renewal', tw: '自動續費'),
+          subtitle: v3Copy(context, zh: '允许服务端在条件满足时自动续费',
+            en: 'Allow the service to renew when eligible',
+            tw: '允許服務端在符合條件時自動續費'),
           value: controller.user.autoRenewal,
           onChanged: busy ? null : onAutoRenewalChanged),
       ]),
@@ -357,9 +394,12 @@ class _AccountActions extends StatelessWidget {
         borderRadius: BorderRadius.circular(20)),
       child: Row(children: [
         Expanded(child: _AccountAction(icon: Icons.password_rounded,
-          label: '修改密码', onTap: onPassword)),
+          label: v3Copy(context, zh: '修改密码',
+            en: 'Change password', tw: '修改密碼'), onTap: onPassword)),
         Expanded(child: _AccountAction(icon: Icons.logout_rounded,
-          label: '退出登录', danger: true, onTap: onLogout)),
+          label: v3Copy(context, zh: '退出登录',
+            en: 'Log out', tw: '登出'),
+          danger: true, onTap: onLogout)),
       ]),
     );
   }
@@ -410,11 +450,13 @@ class _PasswordDialogState extends State<_PasswordDialog> {
   Future<void> _submit() async {
     if (_busy) return;
     if (_old.text.isEmpty || _next.text.isEmpty || _confirmation.text.isEmpty) {
-      setState(() => _error = '请完整填写密码');
+      setState(() => _error = v3Copy(context, zh: '请完整填写密码',
+        en: 'Fill in all password fields', tw: '請完整填寫密碼'));
       return;
     }
     if (_next.text != _confirmation.text) {
-      setState(() => _error = '两次输入的新密码不一致');
+      setState(() => _error = v3Copy(context, zh: '两次输入的新密码不一致',
+        en: 'New passwords do not match', tw: '兩次輸入的新密碼不一致'));
       return;
     }
     setState(() { _busy = true; _error = null; });
@@ -424,8 +466,9 @@ class _PasswordDialogState extends State<_PasswordDialog> {
         passwordConfirmation: _confirmation.text);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('密码修改成功')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
+        v3Copy(context, zh: '密码修改成功',
+          en: 'Password changed', tw: '密碼修改成功'))));
     } catch (error) {
       if (mounted) setState(() { _busy = false; _error = '$error'; });
     }
@@ -442,18 +485,23 @@ class _PasswordDialogState extends State<_PasswordDialog> {
         child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text('修改账户密码',
+              Expanded(child: Text(v3Copy(context, zh: '修改账户密码',
+                  en: 'Change account password', tw: '修改帳戶密碼'),
                 style: Theme.of(context).textTheme.headlineLarge)),
-              IconButton(tooltip: '关闭',
+              IconButton(tooltip: v3Copy(context, zh: '关闭',
+                  en: 'Close', tw: '關閉'),
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close_rounded)),
             ]),
             const SizedBox(height: 18),
-            _PasswordField(controller: _old, label: '当前密码'),
+            _PasswordField(controller: _old, label: v3Copy(context,
+              zh: '当前密码', en: 'Current password', tw: '目前密碼')),
             const SizedBox(height: 12),
-            _PasswordField(controller: _next, label: '新密码'),
+            _PasswordField(controller: _next, label: v3Copy(context,
+              zh: '新密码', en: 'New password', tw: '新密碼')),
             const SizedBox(height: 12),
-            _PasswordField(controller: _confirmation, label: '确认新密码'),
+            _PasswordField(controller: _confirmation, label: v3Copy(context,
+              zh: '确认新密码', en: 'Confirm new password', tw: '確認新密碼')),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 11)),
@@ -465,7 +513,11 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14))),
-                child: Text(_busy ? '正在提交…' : '保存新密码'))),
+                child: Text(_busy
+                  ? v3Copy(context, zh: '正在提交…',
+                      en: 'Submitting…', tw: '正在提交…')
+                  : v3Copy(context, zh: '保存新密码',
+                      en: 'Save password', tw: '儲存新密碼')))),
           ]),
       ),
     );
