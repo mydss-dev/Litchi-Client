@@ -28,7 +28,7 @@ const _detail = TicketModel(
     TicketMessageModel(
       id: 1,
       isAdmin: true,
-      message: '已排查线�?,
+      message: '已排查线路',
       createdAt: 1789430400,
     ),
   ],
@@ -107,7 +107,7 @@ void main() {
       api.first.complete(_detail);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('已排查线�?), findsOneWidget);
+      expect(find.text('已排查线路'), findsOneWidget);
       _assertFixedGeometry(tester, frame, title);
     });
   }
@@ -136,7 +136,7 @@ void main() {
     api.second.complete(_detail);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('已排查线�?), findsOneWidget);
+    expect(find.text('已排查线路'), findsOneWidget);
     _assertFixedGeometry(tester, frame, title);
   });
 }

@@ -23,7 +23,7 @@ const _pages = <(AppPage, String)>[
   (AppPage.giftCard, 'giftCard'),
 ];
 
-/// The same fixture, signed out â€?enough to reach [V3AuthView].
+/// The same fixture, signed out â€” enough to reach [V3AuthView].
 class _SignedOutController extends VisualV3Controller {
   _SignedOutController() : super(AppPage.dashboard);
 

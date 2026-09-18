@@ -55,7 +55,7 @@ void main() {
         ),
       ),
     ));
-    expect(find.text('2 个地�?· 3 个节�?), findsOneWidget);
+    expect(find.text('2 个地区 · 3 个节点'), findsOneWidget);
     expect(find.byKey(const ValueKey('v3-map-marker-HK')), findsOneWidget);
     expect(find.byKey(const ValueKey('v3-map-marker-ZZ')), findsNothing);
     expect(find.byKey(const ValueKey('v3-map-country-ZZ')), findsOneWidget);

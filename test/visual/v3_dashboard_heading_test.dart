@@ -30,7 +30,7 @@ void main() {
     expect(find.byType(V3PageHeader), findsNothing);
     expect(find.text('连接中心'), findsNothing);
     expect(find.text('当前节点'), findsOneWidget);
-    expect(find.text('已连�?), findsOneWidget);
+    expect(find.text('已连接'), findsOneWidget);
     expect(find.textContaining('服务公告  ·  香港、日本线路已完成优化'),
         findsOneWidget);
     expect(tester.takeException(), isNull);
