@@ -52,7 +52,7 @@ void main() {
     await tester.tap(bar);
     await tester.pumpAndSettle();
     expect(find.text('流量详情 · $yesterday'), findsOneWidget);
-    expect(find.text('该日总流�?2.00 GB'), findsOneWidget);
+    expect(find.text('该日总流量 2.00 GB'), findsOneWidget);
     expect(find.text('上传 0.50 GB'), findsOneWidget);
     expect(find.text('下载 1.50 GB'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -66,8 +66,8 @@ void main() {
     await tester.ensureVisible(bar);
     await tester.tap(bar);
     await tester.pumpAndSettle();
-    expect(find.text('该日总流�?2.00 GB'), findsOneWidget);
-    expect(find.text('后台未提供上传、下载明�?), findsOneWidget);
+    expect(find.text('该日总流量 2.00 GB'), findsOneWidget);
+    expect(find.text('后台未提供上传、下载明细'), findsOneWidget);
     expect(find.text('上传 0.00 GB'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -81,7 +81,7 @@ void main() {
     await tester.tap(bar);
     await tester.pumpAndSettle();
     expect(find.text('该日暂无记录'), findsOneWidget);
-    expect(find.text('该日总流�?0.00 GB'), findsNothing);
+    expect(find.text('该日总流量 0.00 GB'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

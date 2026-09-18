@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../l10n/generated/app_localizations_zh.dart';
 
 /// Where a destination is surfaced in the v3 shell.
 ///
@@ -38,7 +39,11 @@ class V3NavItem {
 
   /// Localized label for this nav item.
   String localizedLabel(BuildContext context) {
-    final l = AppLocalizations.of(context);
+    // Standalone widget previews and tests may omit the generated delegates.
+    // Match v3Copy's Chinese fallback instead of crashing the entire shell.
+    final l = Localizations.of<AppLocalizations>(
+      context, AppLocalizations,
+    ) ?? AppLocalizationsZh();
     return switch (page) {
       AppPage.dashboard => l.connection,
       AppPage.nodes => l.nodes,

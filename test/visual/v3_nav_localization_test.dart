@@ -32,13 +32,13 @@ void main() {
   testWidgets('English navigation contains no hard-coded Chinese labels',
       (tester) async {
     await check(tester, const Locale('en'), {
-      AppPage.dashboard: 'Connection',
+      AppPage.dashboard: 'Connect',
       AppPage.nodes: 'Nodes',
       AppPage.shop: 'Plans',
       AppPage.account: 'Account',
       AppPage.more: 'More',
       AppPage.orders: 'Orders',
-      AppPage.traffic: 'Traffic usage',
+      AppPage.traffic: 'Traffic',
       AppPage.invite: 'Invite friends',
       AppPage.tickets: 'Support',
       AppPage.settings: 'Client settings',

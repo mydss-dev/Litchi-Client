@@ -5,6 +5,7 @@ import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/l10n/app_locale_preference.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
 import 'package:litchi_client/shared/services/settings_service.dart';
+import 'package:litchi_client/v3/app/v3_nav.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -83,8 +84,20 @@ void main() {
         controller.goToPage(AppPage.more);
         await tester.pumpAndSettle();
         expect(find.text('More services'), findsOneWidget);
-        expect(find.text('Ticket support'), findsOneWidget);
-        expect(find.text('Settings'), findsWidgets);
+        expect(
+          find.descendant(
+            of: find.byKey(moreRowKey(AppPage.tickets)),
+            matching: find.text('Support'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(moreRowKey(AppPage.settings)),
+            matching: find.text('Client settings'),
+          ),
+          findsOneWidget,
+        );
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
