@@ -30,15 +30,17 @@ void main() {
     ('light', V3Palette.light),
     ('dark', V3Palette.dark),
   ]) {
-    test('$mode: selected lime background uses readable dark foreground', () {
-      // The selected map marker and the active auto-route icon use this pair.
-      expect(_contrast(p.night, p.citrus), greaterThanOrEqualTo(4.5));
-      expect(_contrast(p.ink, p.citrus), greaterThanOrEqualTo(4.5));
-      // White text is *not* a safe default on citrus.
+    test('$mode: lime selection declares a dark, readable foreground', () {
+      final theme = mode == 'light' ? V3Theme.light() : V3Theme.dark();
+      expect(theme.colorScheme.secondary, p.citrus);
+      expect(theme.colorScheme.onSecondary, p.night);
+      expect(_contrast(theme.colorScheme.onSecondary, p.citrus),
+        greaterThanOrEqualTo(4.5));
+      // White text is not a safe default on this green selection fill.
       expect(_contrast(Colors.white, p.citrus), lessThan(4.5));
     });
 
-    test('$mode: selected green status ink is readable on tinted panels', () {
+    test('$mode: selected green labels remain readable on all tinted panels', () {
       for (final background in [p.surface, p.hero, p.surfaceRaised]) {
         final selectedFill = _over(p.success, .12, background);
         expect(_contrast(p.successInk, selectedFill),
@@ -52,7 +54,7 @@ void main() {
       expect(chip.selectedColor, isNotNull);
       expect(chip.secondaryLabelStyle?.color, isNotNull);
       expect(_contrast(chip.secondaryLabelStyle!.color!, chip.selectedColor!),
-          greaterThanOrEqualTo(4.5));
+        greaterThanOrEqualTo(4.5));
     });
   }
 }
