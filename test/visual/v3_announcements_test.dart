@@ -12,8 +12,8 @@ import 'package:litchi_client/v3/ui/v3_update_banner.dart';
 import 'v3_visual_fixture.dart';
 
 /// The two "news" surfaces the rebuild dropped: notices and the update prompt.
-/// Both had their data sources running the whole time — the controllers were
-/// never removed, only their rendering — so these tests are about the widgets
+/// Both had their data sources running the whole time �?the controllers were
+/// never removed, only their rendering �?so these tests are about the widgets
 /// consuming state that already exists.
 class _NewsController extends VisualV3Controller {
   _NewsController({List<NoticeModel> notices = const [], this.update})
@@ -55,21 +55,21 @@ const _notice = NoticeModel(
   id: 4,
   title: '服务公告',
   // HTML on purpose: panels send markup and the bar has to flatten it.
-  content: '<p>香港、日本线路<b>已完成优化</b>。</p>',
+  content: '<p>香港、日本线�?b>已完成优�?/b>�?/p>',
   createdAt: 1789430400,
 );
 
 const _older = NoticeModel(
   id: 3,
   title: '维护通知',
-  content: '凌晨例行维护。',
+  content: '凌晨例行维护�?,
   createdAt: 1789344000,
 );
 
 const _popup = NoticeModel(
   id: 9,
   title: '隐私政策更新',
-  content: '请阅读并同意新的隐私政策。',
+  content: '请阅读并同意新的隐私政策�?,
   tags: ['弹窗'],
   createdAt: 1789516800,
 );
@@ -77,7 +77,7 @@ const _popup = NoticeModel(
 const _popup2 = NoticeModel(
   id: 10,
   title: '服务条款更新',
-  content: '请阅读并同意新的服务条款。',
+  content: '请阅读并同意新的服务条款�?,
   tags: ['弹窗'],
   createdAt: 1789603200,
 );
@@ -85,7 +85,7 @@ const _popup2 = NoticeModel(
 const _update = UpdateInfo(
   version: '9.9.9',
   downloadUrl: 'https://example.com/litchi-9.9.9.exe',
-  changelog: '修复了若干问题',
+  changelog: '修复了若干问�?,
 );
 
 const _phone = Size(390, 844);
@@ -113,7 +113,6 @@ Future<void> _pumpPage(
     AppScope(
       controller: controller,
       child: MaterialApp(
-        locale: const Locale('en'),
         theme: V3Theme.light(),
         home: Scaffold(body: page),
       ),
@@ -184,7 +183,7 @@ void main() {
 
     expect(find.byType(V3NoticeDialog), findsOneWidget);
     // Exact match, so this is the dialog's body and not the bar's one-liner.
-    expect(find.text('香港、日本线路已完成优化。'), findsOneWidget);
+    expect(find.text('香港、日本线路已完成优化�?), findsOneWidget);
 
     await tester.tap(find.widgetWithText(FilledButton, '关闭'));
     await tester.pumpAndSettle();
@@ -199,8 +198,8 @@ void main() {
     await _pumpPage(tester, controller, const V3DashboardPage());
 
     expect(find.byType(V3UpdateBanner), findsOneWidget);
-    expect(find.text('发现新版本 9.9.9'), findsOneWidget);
-    expect(find.text('修复了若干问题'), findsOneWidget);
+    expect(find.text('发现新版�?9.9.9'), findsOneWidget);
+    expect(find.text('修复了若干问�?), findsOneWidget);
 
     // The label of the action button is deliberately not asserted: it differs
     // between desktop (install in place) and the rest (open the release page).
@@ -208,7 +207,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.dismissals, 1);
-    expect(find.text('发现新版本 9.9.9'), findsNothing);
+    expect(find.text('发现新版�?9.9.9'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -225,7 +224,7 @@ void main() {
       AppScope(
         controller: controller,
         child: MaterialApp(
-        locale: const Locale('en'),theme: V3Theme.light(), home: const V3Shell()),
+        theme: V3Theme.light(), home: const V3Shell()),
       ),
     );
     await tester.pumpAndSettle();
@@ -255,7 +254,7 @@ void main() {
       AppScope(
         controller: controller,
         child: MaterialApp(
-        locale: const Locale('en'),theme: V3Theme.light(), home: const V3Shell()),
+        theme: V3Theme.light(), home: const V3Shell()),
       ),
     );
     await _frames(tester);
@@ -279,7 +278,7 @@ void main() {
   });
 
   // A notice the user has already dismissed must not come back on the next
-  // frame — and the host has to be present for that to mean anything, so this
+  // frame �?and the host has to be present for that to mean anything, so this
   // asserts it is wired in rather than only that nothing appeared.
   testWidgets('a must-read notice already seen is not shown', (tester) async {
     final controller = _NewsController(notices: const [_popup])..seen.add(9);
@@ -290,7 +289,7 @@ void main() {
       AppScope(
         controller: controller,
         child: MaterialApp(
-        locale: const Locale('en'),theme: V3Theme.light(), home: const V3Shell()),
+        theme: V3Theme.light(), home: const V3Shell()),
       ),
     );
     await tester.pumpAndSettle();

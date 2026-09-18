@@ -28,7 +28,7 @@ const _detail = TicketModel(
     TicketMessageModel(
       id: 1,
       isAdmin: true,
-      message: '已排查线路',
+      message: '已排查线�?,
       createdAt: 1789430400,
     ),
   ],
@@ -57,7 +57,6 @@ Future<void> _pumpDialog(
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
     MaterialApp(
-        locale: const Locale('en'),
       theme: V3Theme.light(),
       home: Scaffold(
         body: V3TicketDetailDialog(
@@ -108,7 +107,7 @@ void main() {
       api.first.complete(_detail);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('已排查线路'), findsOneWidget);
+      expect(find.text('已排查线�?), findsOneWidget);
       _assertFixedGeometry(tester, frame, title);
     });
   }
@@ -137,7 +136,7 @@ void main() {
     api.second.complete(_detail);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('已排查线路'), findsOneWidget);
+    expect(find.text('已排查线�?), findsOneWidget);
     _assertFixedGeometry(tester, frame, title);
   });
 }

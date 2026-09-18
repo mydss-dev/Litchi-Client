@@ -57,10 +57,10 @@ void main() {
   for (final page in [AppPage.dashboard, AppPage.shop, AppPage.account]) {
     for (final scenario in <({String label, bool evidence, String name, String expiry, int? status, int? expiryTimestamp, String expected})>[
       (label: 'no plan', evidence: false, name: '', expiry: '', status: null, expiryTimestamp: null, expected: '暂无套餐'),
-      (label: 'unnamed', evidence: true, name: '', expiry: '2026-12-31', status: null, expiryTimestamp: null, expected: '套餐名称待同步 · 使用中'),
-      (label: 'named', evidence: true, name: 'Litchi Ultra', expiry: '2026-12-31', status: null, expiryTimestamp: null, expected: 'Litchi Ultra · 使用中'),
-      (label: 'expired', evidence: true, name: 'Litchi Ultra', expiry: '2026-12-31', status: 1, expiryTimestamp: null, expected: 'Litchi Ultra · 已到期'),
-      (label: 'unknown', evidence: true, name: '', expiry: '', status: null, expiryTimestamp: null, expected: '套餐名称待同步 · 状态待同步'),
+      (label: 'unnamed', evidence: true, name: '', expiry: '2026-12-31', status: null, expiryTimestamp: null, expected: '套餐名称待同�?· 使用�?),
+      (label: 'named', evidence: true, name: 'Litchi Ultra', expiry: '2026-12-31', status: null, expiryTimestamp: null, expected: 'Litchi Ultra · 使用�?),
+      (label: 'expired', evidence: true, name: 'Litchi Ultra', expiry: '2026-12-31', status: 1, expiryTimestamp: null, expected: 'Litchi Ultra · 已到�?),
+      (label: 'unknown', evidence: true, name: '', expiry: '', status: null, expiryTimestamp: null, expected: '套餐名称待同�?· 状态待同步'),
     ]) {
       testWidgets('${scenario.label} on $page has factual plan status', (
         tester,
@@ -80,7 +80,6 @@ void main() {
           addTearDown(controller.disposeVisual);
           await tester.pumpWidget(
             MaterialApp(
-        locale: const Locale('en'),
               theme: V3Theme.dark(),
               home: AppScope(controller: controller, child: const V3Shell()),
             ),
@@ -88,9 +87,9 @@ void main() {
           await tester.pump();
           expect(tester.takeException(), isNull);
           expect(find.textContaining(scenario.expected), findsWidgets);
-          expect(find.textContaining('已激活套餐'), findsNothing);
+          expect(find.textContaining('已激活套�?), findsNothing);
           if (!scenario.evidence) {
-            expect(find.textContaining('套餐名称待同步'), findsNothing);
+            expect(find.textContaining('套餐名称待同�?), findsNothing);
           }
         } finally {
           debugDefaultTargetPlatformOverride = null;

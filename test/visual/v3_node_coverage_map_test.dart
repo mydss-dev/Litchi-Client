@@ -46,7 +46,6 @@ void main() {
   testWidgets('coverage only counts real nodes; unknown codes keep a chip',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
-        locale: const Locale('en'),
       theme: V3Theme.light(),
       home: Scaffold(
         body: V3NodeCoverageMap(
@@ -56,7 +55,7 @@ void main() {
         ),
       ),
     ));
-    expect(find.text('2 个地区 · 3 个节点'), findsOneWidget);
+    expect(find.text('2 个地�?· 3 个节�?), findsOneWidget);
     expect(find.byKey(const ValueKey('v3-map-marker-HK')), findsOneWidget);
     expect(find.byKey(const ValueKey('v3-map-marker-ZZ')), findsNothing);
     expect(find.byKey(const ValueKey('v3-map-country-ZZ')), findsOneWidget);
@@ -65,7 +64,6 @@ void main() {
   testWidgets('map chips select a code and all clears it', (tester) async {
     String? selected;
     await tester.pumpWidget(MaterialApp(
-        locale: const Locale('en'),
       theme: V3Theme.light(),
       home: StatefulBuilder(
         builder: (context, setState) => Scaffold(
@@ -92,7 +90,6 @@ void main() {
     final fixture = _NodeFixture();
     addTearDown(fixture.disposeVisual);
     await tester.pumpWidget(MaterialApp(
-        locale: const Locale('en'),
       theme: V3Theme.light(),
       home: AppScope(
         controller: fixture,
@@ -122,7 +119,6 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(360, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(MaterialApp(
-        locale: const Locale('en'),
         theme: V3Theme.light(),
         darkTheme: V3Theme.dark(),
         themeMode: theme,

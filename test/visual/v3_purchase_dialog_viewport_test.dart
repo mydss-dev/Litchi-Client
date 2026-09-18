@@ -18,7 +18,7 @@ void main() {
       await tester.pumpWidget(AppScope(
         controller: controller,
         child: MaterialApp(
-        locale: const Locale('en'),theme: V3Theme.light(),
+        theme: V3Theme.light(),
           home: const Scaffold(body: V3ShopPage())),
       ));
       await tester.pumpAndSettle();
@@ -28,7 +28,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final dialog = find.byType(Dialog);
-      final submit = find.widgetWithText(FilledButton, '确认并创建订单');
+      final submit = find.widgetWithText(FilledButton, '确认并创建订�?);
       expect(dialog, findsOneWidget);
       expect(submit, findsOneWidget);
       final button = tester.getRect(submit);

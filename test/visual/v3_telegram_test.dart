@@ -35,10 +35,10 @@ Future<VisualV3Controller> _pumpAccount(WidgetTester tester,
   addTearDown(controller.disposeVisual);
   await tester.pumpWidget(AppScope(controller: controller,
     child: MaterialApp(
-        locale: const Locale('en'),theme: V3Theme.dark(), home: const V3Shell())));
+        theme: V3Theme.dark(), home: const V3Shell())));
   await tester.pumpAndSettle();
   // Previous layout exposes the service directly: no expansion is needed.
-  expect(find.text('账户偏好与安全'), findsNothing);
+  expect(find.text('账户偏好与安�?), findsNothing);
   expect(find.byKey(_telegramRow), findsOneWidget);
   expect(tester.takeException(), isNull);
   return controller;
@@ -65,7 +65,7 @@ void main() {
       await _pumpAccount(tester);
       expect(find.byKey(_telegramRow), findsOneWidget);
       expect(find.text('Telegram 通知'), findsOneWidget);
-      expect(find.text('未绑定'), findsOneWidget);
+      expect(find.text('未绑�?), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
@@ -100,7 +100,7 @@ void main() {
       await _tap(tester, find.byKey(_telegramRow), 'Telegram row');
       await _tap(tester, find.text('复制绑定命令'), 'copy bind command');
       expect(writes, ['/bind https://thelitchi.com/sub/litchi']);
-      expect(find.text('绑定命令已复制，去 Telegram 粘贴发送'), findsOneWidget);
+      expect(find.text('绑定命令已复制，�?Telegram 粘贴发�?), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
@@ -108,11 +108,11 @@ void main() {
   testWidgets('a bound account can unbind', (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       await _pumpAccount(tester, bound: true);
-      expect(find.textContaining('已绑定'), findsWidgets);
+      expect(find.textContaining('已绑�?), findsWidgets);
       await _tap(tester, find.byKey(_telegramRow), 'Telegram row');
       expect(find.text('解除绑定'), findsOneWidget);
       await _tap(tester, find.text('解除绑定'), 'unbind');
-      expect(find.text('Telegram 已解绑'), findsOneWidget);
+      expect(find.text('Telegram 已解�?), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

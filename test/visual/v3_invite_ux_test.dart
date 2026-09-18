@@ -52,7 +52,6 @@ Future<void> _pump(
   addTearDown(() => tester.binding.setSurfaceSize(null));
   addTearDown(controller.disposeVisual);
   await tester.pumpWidget(MaterialApp(
-        locale: const Locale('en'),
     theme: V3Theme.light(),
     darkTheme: V3Theme.dark(),
     themeMode: mode,
@@ -74,9 +73,9 @@ void main() {
     expect(find.text('还没有邀请码'), findsOneWidget);
     expect(_copyButton(tester, 'v3-invite-copy-code').onPressed, isNull);
     expect(_copyButton(tester, 'v3-invite-copy-link').onPressed, isNull);
-    expect(find.text('邀请人数'), findsOneWidget);
-    expect(find.text('成功邀请'), findsNothing);
-    expect(find.text('最近返佣记录'), findsOneWidget);
+    expect(find.text('邀请人�?), findsOneWidget);
+    expect(find.text('成功邀�?), findsNothing);
+    expect(find.text('最近返佣记�?), findsOneWidget);
   });
 
   testWidgets('code without link enables only the real copy action', (tester) async {
@@ -136,7 +135,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('CODE-B'), findsOneWidget);
     expect(find.text('2 / 2'), findsOneWidget);
-    expect(find.text('邀请码已创建'), findsOneWidget);
+    expect(find.text('邀请码已创�?), findsOneWidget);
   });
 
   testWidgets('creation error is shown instead of a success message', (tester) async {
@@ -148,7 +147,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('v3-invite-create')));
     await tester.pumpAndSettle();
     expect(find.text('创建权限不足'), findsOneWidget);
-    expect(find.text('邀请码已创建'), findsNothing);
+    expect(find.text('邀请码已创�?), findsNothing);
     expect(find.text('CODE-A'), findsOneWidget);
   });
 

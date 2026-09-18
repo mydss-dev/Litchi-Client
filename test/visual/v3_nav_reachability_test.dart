@@ -34,7 +34,7 @@ Future<_NavController> _pumpShell(WidgetTester tester, Size size) async {
   addTearDown(controller.disposeVisual);
   await tester.pumpWidget(AppScope(controller: controller,
     child: MaterialApp(
-      locale: const Locale('en'),
+      
       theme: V3Theme.dark(),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -224,15 +224,15 @@ void main() {
       controller.goToPage(AppPage.account);
       await tester.pumpAndSettle();
       expect(find.text('账户余额'), findsOneWidget);
-      expect(find.text('可提现佣金'), findsOneWidget,
+      expect(find.text('可提现佣�?), findsOneWidget,
         reason: 'commission must be visible without opening a wallet sheet');
       expect(find.text('我的钱包'), findsNothing,
         reason: 'restored layout uses direct wallet controls');
-      const actionTitles = ['充值余额', '申请提现', '佣金转余额'];
+      const actionTitles = ['充值余�?, '申请提现', '佣金转余�?];
       for (final (label, dialogTitle) in <(String, String)>[
-        ('充值', '充值余额'),
+        ('充�?, '充值余�?),
         ('提现', '申请提现'),
-        ('划转', '佣金转余额'),
+        ('划转', '佣金转余�?),
       ]) {
         await _tap(tester, find.text(label), label);
         expect(find.text(dialogTitle), findsOneWidget,
@@ -248,7 +248,7 @@ void main() {
           of: activeDialog, matching: find.byTooltip('关闭')),
           '$label dialog close');
         expect(find.text(dialogTitle), findsNothing);
-        expect(find.text('可提现佣金'), findsOneWidget,
+        expect(find.text('可提现佣�?), findsOneWidget,
           reason: 'closing dialog returns to visible wallet area');
         expect(controller.page, AppPage.account);
       }

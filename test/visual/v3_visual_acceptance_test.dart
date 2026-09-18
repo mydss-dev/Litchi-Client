@@ -23,7 +23,7 @@ const _pages = <(AppPage, String)>[
   (AppPage.giftCard, 'giftCard'),
 ];
 
-/// The same fixture, signed out â€” enough to reach [V3AuthView].
+/// The same fixture, signed out â€?enough to reach [V3AuthView].
 class _SignedOutController extends VisualV3Controller {
   _SignedOutController() : super(AppPage.dashboard);
 
@@ -145,7 +145,6 @@ Future<void> _pumpV3(
 
   await tester.pumpWidget(
     MaterialApp(
-        locale: const Locale('en'),
       debugShowCheckedModeBanner: false,
       theme: V3Theme.light(),
       darkTheme: V3Theme.dark(),
@@ -172,7 +171,6 @@ Future<void> _pumpSignIn(
 
   await tester.pumpWidget(
     MaterialApp(
-        locale: const Locale('en'),
       debugShowCheckedModeBanner: false,
       theme: V3Theme.light(),
       darkTheme: V3Theme.dark(),
