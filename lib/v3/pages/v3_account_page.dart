@@ -4,7 +4,6 @@ import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
 import '../../config/app_config.dart';
 import '../app/v3_nav.dart';
-import '../app/v3_nav_localization.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';

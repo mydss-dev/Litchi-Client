@@ -160,6 +160,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nodes => '节点';
 
   @override
+  String get connection => '连接';
+
+  @override
+  String get more => '更多';
+
+  @override
+  String get trafficUsage => '流量用量';
+
+  @override
+  String get clientSettings => '客户端设置';
+
+  @override
+  String get giftCardRedemption => '礼品卡兑换';
+
+  @override
   String get wallet => '我的钱包';
 
   @override
@@ -1915,6 +1930,21 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get nodes => '節點';
+
+  @override
+  String get connection => '連線';
+
+  @override
+  String get more => '更多';
+
+  @override
+  String get trafficUsage => '流量用量';
+
+  @override
+  String get clientSettings => '用戶端設定';
+
+  @override
+  String get giftCardRedemption => '禮品卡兌換';
 
   @override
   String get wallet => '我的錢包';

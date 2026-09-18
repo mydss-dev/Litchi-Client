@@ -22,7 +22,6 @@ extension V3LocalizedNavigation on V3NavItem {
       AppPage.settings => l.clientSettings,
       AppPage.orders => l.orders,
       AppPage.giftCard => l.giftCardRedemption,
-      _ => '',
     };
   }
 }

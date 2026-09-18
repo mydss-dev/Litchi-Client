@@ -169,6 +169,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nodes => 'Nodes';
 
   @override
+  String get connection => 'Connection';
+
+  @override
+  String get more => 'More';
+
+  @override
+  String get trafficUsage => 'Traffic usage';
+
+  @override
+  String get clientSettings => 'Client settings';
+
+  @override
+  String get giftCardRedemption => 'Gift card redemption';
+
+  @override
   String get wallet => 'Wallet';
 
   @override

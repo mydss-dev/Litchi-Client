@@ -399,6 +399,36 @@ abstract class AppLocalizations {
   /// **'Nodes'**
   String get nodes;
 
+  /// No description provided for @connection.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get connection;
+
+  /// No description provided for @more.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get more;
+
+  /// No description provided for @trafficUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic usage'**
+  String get trafficUsage;
+
+  /// No description provided for @clientSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Client settings'**
+  String get clientSettings;
+
+  /// No description provided for @giftCardRedemption.
+  ///
+  /// In en, this message translates to:
+  /// **'Gift card redemption'**
+  String get giftCardRedemption;
+
   /// No description provided for @wallet.
   ///
   /// In en, this message translates to:

@@ -25,7 +25,6 @@ import '../ui/v3_notice_bar.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 import 'v3_nav.dart';
-import 'v3_nav_localization.dart';
 
 bool get _isDesktopTarget =>
     !kIsWeb &&

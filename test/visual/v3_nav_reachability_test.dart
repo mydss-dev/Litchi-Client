@@ -63,8 +63,18 @@ Future<void> _tap(WidgetTester tester, Finder finder, String what) async {
   expect(tester.takeException(), isNull, reason: 'tapping $what threw');
 }
 
-String _primaryLabel(AppPage page) => enabledNavItems(kMobilePrimary)
-    .firstWhere((item) => item.page == page).label;
+String _primaryLabel(AppPage page) {
+  // Return the English label for mobile primary nav items.
+  // This matches the default AppLocalizations used in tests.
+  return switch (page) {
+    AppPage.dashboard => 'Connection',
+    AppPage.nodes => 'Nodes',
+    AppPage.shop => 'Plans',
+    AppPage.account => 'Account',
+    AppPage.more => 'More',
+    _ => page.name,
+  };
+}
 
 void main() {
   final reachable = AppPage.values.where(isPageEnabled).toList();
