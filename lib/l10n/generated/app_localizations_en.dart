@@ -169,13 +169,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nodes => 'Nodes';
 
   @override
-  String get connection => 'Connection';
+  String get connection => 'Connect';
 
   @override
   String get more => 'More';
 
   @override
-  String get trafficUsage => 'Traffic usage';
+  String get trafficUsage => 'Traffic';
 
   @override
   String get clientSettings => 'Client settings';
