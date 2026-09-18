@@ -38,8 +38,7 @@ class V3NavItem {
 
   /// Localized label for this nav item.
   String localizedLabel(BuildContext context) {
-    final l = Localizations.of<AppLocalizations>(context, AppLocalizations);
-    if (l == null) return '';
+    final l = AppLocalizations.of(context);
     return switch (page) {
       AppPage.dashboard => l.connection,
       AppPage.nodes => l.nodes,
