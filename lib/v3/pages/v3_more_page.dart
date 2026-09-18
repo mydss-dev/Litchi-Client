@@ -13,14 +13,6 @@ import '../ui/v3_sheet.dart';
 class V3MorePage extends StatelessWidget {
   const V3MorePage({super.key});
 
-  String _label(AppLocalizations l, V3NavItem item) => switch (item.page) {
-    AppPage.traffic => l.usage,
-    AppPage.invite => l.inviteFriends,
-    AppPage.tickets => l.ticketSupport,
-    AppPage.settings => l.settings,
-    _ => item.label,
-  };
-
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
@@ -63,7 +55,7 @@ class V3MorePage extends StatelessWidget {
                   V3NavRow(
                     key: moreRowKey(item.page),
                     icon: item.icon,
-                    label: _label(l, item),
+                    label: item.localizedLabel(context),
                     selected: controller.page == item.page,
                     onTap: () => openV3Page(context, item.page),
                   ),
