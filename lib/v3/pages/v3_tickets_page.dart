@@ -72,8 +72,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
               crossAxisAlignment: CrossAxisAlignment.end, children: [
                 if (!compact)
                   FilledButton.icon(onPressed: _newTicket,
-                    icon: const Icon(Icons.add_rounded), child: Text(createLabel),
-                    label: Text(createLabel)),
+                    icon: const Icon(Icons.add_rounded), label: Text(createLabel)),
                 IconButton(tooltip: v3Copy(context, zh: '刷新工单',
                     en: 'Refresh tickets', tw: '重新整理工單'),
                   onPressed: controller.ticketsLoading
