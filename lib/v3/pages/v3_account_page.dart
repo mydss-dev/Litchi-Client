@@ -37,9 +37,11 @@ class _V3AccountPageState extends State<V3AccountPage> {
         SnackBar(content: Text(error ?? '账户设置已更新')),
       );
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('更新账户偏好失败：$error')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('更新账户偏好失败：$error')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _updatingPreferences = false);
     }
@@ -62,8 +64,6 @@ class _V3AccountPageState extends State<V3AccountPage> {
         _AccountSummaryPanel(controller: controller),
         const SizedBox(height: 16),
         _HubPanel(controller: controller),
-        // The balance and direct actions belong in the account page, not a
-        // second modal. Show money even when wallet top-ups are disabled.
         if (AppConfig.panelFeatures.wallet || controller.user.balance > 0 ||
             controller.withdrawable > 0) ...[
           const SizedBox(height: 16),
@@ -146,7 +146,6 @@ class _AccountSummaryPanel extends StatelessWidget {
                 fontSize: 10, fontWeight: FontWeight.w900,
                 letterSpacing: 1.5)),
               const SizedBox(height: 6),
-              // A plan id without a name is NOT proof of an activated plan.
               Text(plan.shortLabel, maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: p.ink, fontSize: 18,
@@ -169,7 +168,6 @@ class _AccountSummaryPanel extends StatelessWidget {
   }
 }
 
-/// Old inline wallet: balance, commission and all applicable operations visible.
 class _WalletPanel extends StatelessWidget {
   const _WalletPanel();
   @override
@@ -258,7 +256,6 @@ class _WalletActionButton extends StatelessWidget {
   }
 }
 
-/// Services remain visible, including Telegram when supported by the backend.
 class _HubPanel extends StatelessWidget {
   const _HubPanel({required this.controller});
   final AppController controller;
