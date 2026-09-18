@@ -5,22 +5,17 @@ import '../../app/app_controller.dart';
 import '../../shared/services/url_opener.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 
-/// Bind the account to a Telegram bot so expiry and traffic notices reach the
-/// user out of the app.
-///
-/// The bind happens outside the app: Litchi copies a `/bind <subscribe-url>`
-/// command, the user sends it to the panel's bot, and the result shows up in
-/// the account's `telegram_id`. Only Xiao-V2Board exposes the endpoints, so the
-/// row that opens this is gated behind [PanelFeatures.telegram].
+/// The bind command is copied, never rendered with the subscription URL.
 class V3TelegramPage extends StatefulWidget {
   const V3TelegramPage({super.key});
 
-  /// Opens the Telegram binding flow as a sheet.
   static Future<void> show(BuildContext context) => showV3Sheet<void>(
     context,
-    title: 'Telegram 通知',
+    title: v3Copy(context, zh: 'Telegram 通知',
+      en: 'Telegram notifications', tw: 'Telegram 通知'),
     builder: (_) => const V3TelegramPage(),
   );
 
@@ -45,9 +40,7 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
 
   Future<void> _loadBot() async {
     try {
-      final username = await AppScope.read(
-        context,
-      ).api.getTelegramBotUsername();
+      final username = await AppScope.read(context).api.getTelegramBotUsername();
       if (!mounted) return;
       setState(() {
         _botUsername = username;
@@ -64,15 +57,14 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
 
   Future<void> _copyBindCommand() async {
     if (_working) return;
-    setState(() {
-      _working = true;
-      _error = null;
-      _notice = null;
-    });
+    final copied = v3Copy(context, zh: '绑定命令已复制，去 Telegram 粘贴发送',
+      en: 'Bind command copied. Paste and send it in Telegram.',
+      tw: '綁定指令已複製，請到 Telegram 貼上並傳送');
+    setState(() { _working = true; _error = null; _notice = null; });
     try {
       final subscribeUrl = await AppScope.read(context).api.getSubscribeUrl();
       await Clipboard.setData(ClipboardData(text: '/bind $subscribeUrl'));
-      if (mounted) setState(() => _notice = '绑定命令已复制，去 Telegram 粘贴发送');
+      if (mounted) setState(() => _notice = copied);
     } catch (error) {
       if (mounted) setState(() => _error = _clean(error));
     } finally {
@@ -82,17 +74,18 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
 
   Future<void> _openTelegram() async {
     if (_botUsername.isEmpty) return;
+    final unavailable = v3Copy(context,
+      zh: '无法打开 Telegram，请手动搜索 @$_botUsername',
+      en: 'Cannot open Telegram. Search for @$_botUsername manually.',
+      tw: '無法開啟 Telegram，請手動搜尋 @$_botUsername');
     final opened = await UrlOpener.open('https://t.me/$_botUsername');
     if (!mounted || opened) return;
-    setState(() => _error = '无法打开 Telegram，请手动搜索 @$_botUsername');
+    setState(() => _error = unavailable);
   }
 
   Future<void> _refreshStatus() async {
     if (_working) return;
-    setState(() {
-      _working = true;
-      _error = null;
-    });
+    setState(() { _working = true; _error = null; });
     try {
       await AppScope.read(context).refreshData();
       if (mounted) setState(() {});
@@ -106,14 +99,13 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
   Future<void> _unbind() async {
     if (_working) return;
     final controller = AppScope.read(context);
-    setState(() {
-      _working = true;
-      _error = null;
-    });
+    final success = v3Copy(context, zh: 'Telegram 已解绑',
+      en: 'Telegram unlinked', tw: 'Telegram 已解除綁定');
+    setState(() { _working = true; _error = null; });
     try {
       await controller.api.unbindTelegram();
       await controller.refreshData();
-      if (mounted) setState(() => _notice = 'Telegram 已解绑');
+      if (mounted) setState(() => _notice = success);
     } catch (error) {
       if (mounted) setState(() => _error = _clean(error));
     } finally {
@@ -121,8 +113,7 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
     }
   }
 
-  static String _clean(Object error) => error
-      .toString()
+  static String _clean(Object error) => error.toString()
       .replaceFirst('ApiException: ', '')
       .replaceFirst('Exception: ', '');
 
@@ -130,103 +121,73 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final bound = _bound;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        V3Panel(
-          tone: V3PanelTone.hero,
-          padding: const EdgeInsets.all(16),
-          child: Row(
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      V3Panel(
+        tone: V3PanelTone.hero,
+        padding: const EdgeInsets.all(16),
+        child: Row(children: [
+          Container(width: 42, height: 42,
+            decoration: BoxDecoration(color: p.lycheeSoft,
+              borderRadius: BorderRadius.circular(13)),
+            child: Icon(Icons.send_rounded, size: 20, color: p.lycheeInk)),
+          const SizedBox(width: 13),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: p.lycheeSoft,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(Icons.send_rounded, size: 20, color: p.lycheeInk),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _loading
-                          ? '正在读取机器人…'
-                          : _botUsername.isEmpty
-                          ? 'Telegram Bot'
-                          : '@$_botUsername',
-                      style: TextStyle(
-                        color: p.ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      bound ? '已绑定，可接收账户通知' : '未绑定，按下方步骤连接',
-                      style: TextStyle(
-                        color: bound ? p.successInk : p.inkMuted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              Text(_loading ? v3Copy(context, zh: '正在读取机器人…',
+                    en: 'Loading bot…', tw: '正在讀取機器人…')
+                  : _botUsername.isEmpty ? 'Telegram Bot' : '@$_botUsername',
+                style: TextStyle(color: p.ink, fontSize: 13,
+                  fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(bound ? v3Copy(context,
+                    zh: '已绑定，可接收账户通知',
+                    en: 'Linked. Account alerts are enabled.',
+                    tw: '已綁定，可接收帳戶通知')
+                  : v3Copy(context, zh: '未绑定，按下方步骤连接',
+                    en: 'Not linked. Follow the steps below.',
+                    tw: '尚未綁定，請按照以下步驟連結'),
+                style: TextStyle(color: bound ? p.successInk : p.inkMuted,
+                  fontSize: 11, fontWeight: FontWeight.w700)),
             ],
-          ),
-        ),
-        if (_error != null || _notice != null) ...[
-          const SizedBox(height: 12),
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              _error ?? _notice!,
-              style: TextStyle(
-                color: _error != null ? p.dangerInk : p.successInk,
-                fontSize: 11,
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: 18),
-        if (bound)
-          V3ActionButton(
-            label: '解除绑定',
-            icon: Icons.link_off_rounded,
-            secondary: true,
-            busy: _working,
-            onPressed: _working ? null : _unbind,
-          )
-        else ...[
-          Text(
-            '复制绑定命令，打开机器人后粘贴发送。订阅地址不会在这里显示。',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 16),
-          V3ActionButton(
-            label: '复制绑定命令',
-            icon: Icons.content_copy_rounded,
-            busy: _working,
-            onPressed: _working || _loading ? null : _copyBindCommand,
-          ),
-          const SizedBox(height: 10),
-          V3ActionButton(
-            label: '打开 Telegram',
-            icon: Icons.send_rounded,
-            secondary: true,
-            onPressed: _loading || _botUsername.isEmpty ? null : _openTelegram,
-          ),
-          const SizedBox(height: 4),
-          TextButton(
-            onPressed: _working ? null : _refreshStatus,
-            child: const Text('我已完成绑定，刷新状态'),
-          ),
-        ],
+          )),
+        ]),
+      ),
+      if (_error != null || _notice != null) ...[
+        const SizedBox(height: 12),
+        Semantics(liveRegion: true,
+          child: Text(_error ?? _notice!,
+            style: TextStyle(color: _error != null ? p.dangerInk : p.successInk,
+              fontSize: 11))),
       ],
-    );
+      const SizedBox(height: 18),
+      if (bound)
+        V3ActionButton(label: v3Copy(context, zh: '解除绑定',
+          en: 'Unlink Telegram', tw: '解除綁定'),
+          icon: Icons.link_off_rounded, secondary: true,
+          busy: _working, onPressed: _working ? null : _unbind)
+      else ...[
+        Text(v3Copy(context,
+          zh: '复制绑定命令，打开机器人后粘贴发送。订阅地址不会在这里显示。',
+          en: 'Copy the bind command, then paste and send it to the bot. Your subscription URL is not shown here.',
+          tw: '複製綁定指令，開啟機器人後貼上並傳送。訂閱網址不會顯示在此處。'),
+          style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 16),
+        V3ActionButton(label: v3Copy(context, zh: '复制绑定命令',
+          en: 'Copy bind command', tw: '複製綁定指令'),
+          icon: Icons.content_copy_rounded, busy: _working,
+          onPressed: _working || _loading ? null : _copyBindCommand),
+        const SizedBox(height: 10),
+        V3ActionButton(label: v3Copy(context, zh: '打开 Telegram',
+          en: 'Open Telegram', tw: '開啟 Telegram'),
+          icon: Icons.send_rounded, secondary: true,
+          onPressed: _loading || _botUsername.isEmpty ? null : _openTelegram),
+        const SizedBox(height: 4),
+        TextButton(onPressed: _working ? null : _refreshStatus,
+          child: Text(v3Copy(context, zh: '我已完成绑定，刷新状态',
+            en: 'I’ve linked it. Refresh status.',
+            tw: '我已完成綁定，重新整理狀態'))),
+      ],
+    ]);
   }
 }
