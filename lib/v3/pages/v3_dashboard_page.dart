@@ -16,34 +16,17 @@ class V3DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final p = V3Palette.of(context);
     final status = controller.connectionStatus;
     final connected = status == ConnectionStatus.connected;
     final connecting =
         status == ConnectionStatus.connecting ||
         status == ConnectionStatus.disconnecting;
-    final statusColor = switch (status) {
-      ConnectionStatus.connected => p.success,
-      ConnectionStatus.connecting ||
-      ConnectionStatus.disconnecting => p.warning,
-      ConnectionStatus.error => p.danger,
-      ConnectionStatus.disconnected => p.inkMuted,
-    };
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          V3PageHeader(
-            kicker: '连接中心',
-            title: '连接',
-            trailing: V3StatusBadge(
-              label: _statusLabel(status),
-              color: statusColor,
-            ),
-          ),
-          const SizedBox(height: 16),
           const V3UpdateBanner(),
           V3NoticeBar(controller: controller),
           _ConnectionWorkspace(
@@ -78,6 +61,14 @@ class _ConnectionWorkspace extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final node = controller.currentNode;
+    final status = controller.connectionStatus;
+    final statusColor = switch (status) {
+      ConnectionStatus.connected => p.success,
+      ConnectionStatus.connecting ||
+      ConnectionStatus.disconnecting => p.warning,
+      ConnectionStatus.error => p.danger,
+      ConnectionStatus.disconnected => p.inkMuted,
+    };
     final actionLabel = connected
         ? '断开连接'
         : connecting
@@ -146,14 +137,23 @@ class _ConnectionWorkspace extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '当前节点',
-                  style: TextStyle(
-                    color: p.inkMuted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.5,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '当前节点',
+                      style: TextStyle(
+                        color: p.inkMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    V3StatusBadge(
+                      label: _statusLabel(status),
+                      color: statusColor,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Row(

@@ -31,10 +31,8 @@ Future<_NavController> _pumpShell(WidgetTester tester, Size size) async {
   addTearDown(() => tester.binding.setSurfaceSize(null));
   final controller = _NavController();
   addTearDown(controller.disposeVisual);
-  await tester.pumpWidget(AppScope(
-    controller: controller,
-    child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell()),
-  ));
+  await tester.pumpWidget(AppScope(controller: controller,
+    child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell())));
   await tester.pump();
   return controller;
 }
@@ -45,20 +43,17 @@ Type _sheetType(AppPage page) => switch (page) {
   _ => throw ArgumentError('${page.name} is not an account sheet'),
 };
 
-Future<void> _onPlatform(TargetPlatform platform, Future<void> Function() body) async {
+Future<void> _onPlatform(TargetPlatform platform,
+    Future<void> Function() body) async {
   debugDefaultTargetPlatformOverride = platform;
-  try {
-    await body();
-  } finally {
-    debugDefaultTargetPlatformOverride = null;
-  }
+  try { await body(); } finally { debugDefaultTargetPlatformOverride = null; }
 }
 
 Finder _rail(AppPage page) => find.byKey(railItemKey(page));
 Finder _hubRow(AppPage page) => find.byKey(hubRowKey(page));
 Finder _moreRow(AppPage page) => find.byKey(moreRowKey(page));
-Finder _tab(String label) =>
-    find.descendant(of: find.byType(NavigationBar), matching: find.text(label));
+Finder _tab(String label) => find.descendant(
+    of: find.byType(NavigationBar), matching: find.text(label));
 
 Future<void> _tap(WidgetTester tester, Finder finder, String what) async {
   await tester.ensureVisible(finder);
@@ -96,15 +91,15 @@ void main() {
             await _tap(tester, find.byKey(kAccountCardKey), 'account card');
             await _tap(tester, _hubRow(target), target.name);
             expect(find.byType(_sheetType(target)), findsOneWidget,
-                reason: '${target.name} must open from account');
+              reason: '${target.name} must open from account');
             expect(controller.page, AppPage.account,
-                reason: '${target.name} should not replace the account page');
+              reason: '${target.name} should not replace the account page');
             return;
           case AppPage.more:
             return;
         }
         expect(controller.page, target,
-            reason: '${target.name} must be reachable from the desktop rail');
+          reason: '${target.name} must be reachable from the desktop rail');
       });
     });
   }
@@ -127,7 +122,7 @@ void main() {
             await _tap(tester, _hubRow(target), target.name);
             expect(find.byType(_sheetType(target)), findsOneWidget);
             expect(controller.page, AppPage.account,
-                reason: '${target.name} is an account modal');
+              reason: '${target.name} is an account modal');
             return;
           case AppPage.traffic:
           case AppPage.invite:
@@ -137,7 +132,7 @@ void main() {
             await _tap(tester, _moreRow(target), target.name);
         }
         expect(controller.page, target,
-            reason: '${target.name} must be reachable at 390dp');
+          reason: '${target.name} must be reachable at 390dp');
       });
     });
   }
@@ -153,7 +148,7 @@ void main() {
       final seen = <AppPage>{};
       for (final item in items) {
         expect(seen.add(item.page), isTrue,
-            reason: '${item.page.name} is declared twice in $name');
+          reason: '${item.page.name} is declared twice in $name');
       }
     }
     final declared = {
@@ -164,7 +159,7 @@ void main() {
     };
     for (final page in AppPage.values) {
       expect(declared.contains(page), isTrue,
-          reason: '${page.name} is missing from the nav model entirely');
+        reason: '${page.name} is missing from the nav model entirely');
     }
   });
 
@@ -179,7 +174,7 @@ void main() {
         controller.goToPage(page);
         await tester.pumpAndSettle();
         expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-            accountIndex, reason: '${page.name} should highlight account');
+          accountIndex, reason: '${page.name} should highlight account');
       }
       expect(tester.takeException(), isNull);
     });
@@ -195,37 +190,36 @@ void main() {
         controller.goToPage(page);
         await tester.pumpAndSettle();
         expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-            moreIndex, reason: '${page.name} should highlight 更多');
+          moreIndex, reason: '${page.name} should highlight 更多');
       }
       expect(tester.takeException(), isNull);
     });
   });
 
-  testWidgets('each wallet action opens the correct dialog above its sheet',
+  testWidgets('inline wallet actions open their own dialogs and remain visible',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, _mobile);
       controller.goToPage(AppPage.account);
       await tester.pumpAndSettle();
-      expect(find.text('账户余额'), findsOneWidget,
-          reason: 'balance summary belongs on the account page');
-      await _tap(tester, find.text('我的钱包'), 'wallet service tile');
-      expect(find.text('可提现佣金 ¥71.80'), findsOneWidget);
+      expect(find.text('账户余额'), findsOneWidget);
+      expect(find.text('可提现佣金'), findsOneWidget,
+        reason: 'commission must be visible without opening a wallet sheet');
+      expect(find.text('我的钱包'), findsNothing,
+        reason: 'restored layout uses direct wallet controls');
       const actionTitles = ['充值余额', '申请提现', '佣金转余额'];
       for (final (label, dialogTitle) in <(String, String)>[
         ('充值', '充值余额'),
         ('提现', '申请提现'),
-        ('佣金划转', '佣金转余额'),
+        ('划转', '佣金转余额'),
       ]) {
         await _tap(tester, find.text(label), label);
         expect(find.text(dialogTitle), findsOneWidget,
-            reason: '$label must open its own dialog');
+          reason: '$label must open its own dialog');
         for (final other in actionTitles.where((title) => title != dialogTitle)) {
           expect(find.text(other), findsNothing,
-              reason: '$label must not open unrelated action dialogs');
+            reason: '$label must not open unrelated dialogs');
         }
-        // On wide test MediaQuery configurations the wallet *parent* sheet is
-        // a Dialog too. Close only the action dialog identified by its title.
         final activeDialog = find.ancestor(
           of: find.text(dialogTitle), matching: find.byType(Dialog)).first;
         expect(activeDialog, findsOneWidget);
@@ -233,12 +227,11 @@ void main() {
           of: activeDialog, matching: find.byTooltip('关闭')),
           '$label dialog close');
         expect(find.text(dialogTitle), findsNothing);
-        expect(find.text('可提现佣金 ¥71.80'), findsOneWidget,
-            reason: 'closing an action returns to wallet management');
+        expect(find.text('可提现佣金'), findsOneWidget,
+          reason: 'closing dialog returns to visible wallet area');
         expect(controller.page, AppPage.account);
       }
-      await _tap(tester, find.byTooltip('关闭'), 'wallet sheet close');
-      expect(find.text('账户服务'), findsOneWidget);
+      expect(find.text('我的服务'), findsOneWidget);
       expect(controller.page, AppPage.account);
       expect(tester.takeException(), isNull);
     });
@@ -254,7 +247,7 @@ void main() {
         expect(find.byType(_sheetType(page)), findsOneWidget);
         await _tap(tester, find.byTooltip('关闭'), 'account sheet close');
         expect(find.byType(_sheetType(page)), findsNothing,
-            reason: '${page.name} did not close');
+          reason: '${page.name} did not close');
         expect(controller.page, AppPage.account);
       }
       expect(tester.takeException(), isNull);
@@ -273,10 +266,10 @@ void main() {
           controller.goToPage(page);
           await tester.pumpAndSettle();
           expect(find.byTooltip('返回账户'), findsNothing,
-              reason: '${page.name} should not repeat the bottom bar');
+            reason: '${page.name} should not repeat the bottom bar');
           await _tap(tester, _tab(_primaryLabel(tab)), '${tab.name} tab');
           expect(controller.page, tab,
-              reason: 'bottom nav must leave ${page.name} for ${tab.name}');
+            reason: 'bottom nav must leave ${page.name} for ${tab.name}');
         }
       }
       expect(tester.takeException(), isNull);
