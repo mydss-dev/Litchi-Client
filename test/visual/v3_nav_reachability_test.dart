@@ -77,7 +77,12 @@ String _primaryLabel(AppPage page) {
     AppPage.shop => 'Plans',
     AppPage.account => 'Account',
     AppPage.more => 'More',
-    _ => page.name,
+    AppPage.traffic => 'Traffic',
+    AppPage.invite => 'Invite friends',
+    AppPage.tickets => 'Support',
+    AppPage.settings => 'Client settings',
+    AppPage.orders => 'Orders',
+    AppPage.giftCard => 'Gift card redemption',
   };
 }
 
