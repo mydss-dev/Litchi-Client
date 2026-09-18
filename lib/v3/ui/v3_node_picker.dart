@@ -30,14 +30,17 @@ class _V3NodePickerState extends State<V3NodePicker> {
     if (_pending != null) return;
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    // Resolve locale before awaiting. A failed request must not use a stale context.
+    final failureMessage = v3Copy(context,
+      zh: '操作失败，请检查网络后重试。',
+      en: 'Operation failed. Check your network and retry.',
+      tw: '操作失敗，請檢查網路後重試。');
     setState(() => _pending = id);
     String? error;
     try {
       error = await action();
     } catch (_) {
-      error = v3Copy(context, zh: '操作失败，请检查网络后重试。',
-        en: 'Operation failed. Check your network and retry.',
-        tw: '操作失敗，請檢查網路後重試。');
+      error = failureMessage;
     }
     if (!mounted) return;
     messenger.showSnackBar(SnackBar(content: Text(error ?? success)));
@@ -223,12 +226,15 @@ class V3NodeRow extends StatelessWidget {
 }
 
 String _localizedLatencyLabel(BuildContext context, int value) {
-  if (value == -1) return v3Copy(context, zh: '测速中',
-    en: 'Testing', tw: '測速中');
-  if (value <= 0) return v3Copy(context, zh: '未测速',
-    en: 'Not tested', tw: '未測速');
-  if (value >= 9999) return v3Copy(context, zh: '超时',
-    en: 'Timeout', tw: '逾時');
+  if (value == -1) {
+    return v3Copy(context, zh: '测速中', en: 'Testing', tw: '測速中');
+  }
+  if (value <= 0) {
+    return v3Copy(context, zh: '未测速', en: 'Not tested', tw: '未測速');
+  }
+  if (value >= 9999) {
+    return v3Copy(context, zh: '超时', en: 'Timeout', tw: '逾時');
+  }
   return '${value}ms';
 }
 
