@@ -61,7 +61,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
             _QuotaPanel(controller: controller, usedRatio: usedRatio),
             const SizedBox(height: 16),
             _TimingPanel(controller: controller),
-          ] else Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          ] else Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(flex: 11,
               child: _QuotaPanel(controller: controller, usedRatio: usedRatio)),
             const SizedBox(width: 16),
