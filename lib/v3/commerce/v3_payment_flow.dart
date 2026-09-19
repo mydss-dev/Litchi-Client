@@ -6,6 +6,7 @@ import '../../shared/services/panel_api.dart';
 import '../../shared/services/url_opener.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_locale_copy.dart';
 
 /// The one payment dialog. Every entry point that can take money — a plan
 /// purchase, a wallet top-up, an unpaid order — goes through here.
@@ -16,7 +17,7 @@ import '../ui/v3_components.dart';
 ///
 /// [onViewOrders] adds a way to go and check the order. Paying is rarely the
 /// user's last step, and the only alternative was to close the dialog and hunt
-/// for 订单 in the account hub.
+/// for the order page in the account hub.
 Future<void> showV3PaymentFlow({
   required BuildContext context,
   required String tradeNo,
@@ -79,6 +80,9 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
     final cents = _detail?.totalAmount;
     return cents == null ? widget.fallbackAmount : cents / 100;
   }
+
+  String _copy({required String zh, required String en, required String tw}) =>
+      v3Copy(context, zh: zh, en: en, tw: tw);
 
   @override
   void initState() {
@@ -155,7 +159,13 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
       if (status == 3 || status == 4) {
         await _markPaid();
       } else {
-        setState(() => _error = '暂未检测到支付完成，可以稍后再次检查。');
+        setState(
+          () => _error = _copy(
+            zh: '暂未检测到支付完成，可以稍后再次检查。',
+            en: 'Payment has not been confirmed yet. You can check again later.',
+            tw: '暫未檢測到支付完成，可以稍後再次檢查。',
+          ),
+        );
       }
     } catch (error) {
       if (mounted) setState(() => _error = _message(error));
@@ -205,14 +215,17 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
           child: Icon(Icons.check_rounded, color: p.success, size: 34),
         ),
         const SizedBox(height: 18),
-        Text('支付完成', style: Theme.of(context).textTheme.headlineLarge),
-        const SizedBox(height: 8),
-        // One wording for all three entry points. The shop's own copy of this
-        // dialog said 套餐数据 because a plan is what it usually buys, but this
-        // dialog also serves top-ups and renewals — and two wordings for one
-        // dialog is how the copies started drifting apart.
         Text(
-          '账户数据正在同步到 Litchi。',
+          _copy(zh: '支付完成', en: 'Payment complete', tw: '支付完成'),
+          style: Theme.of(context).textTheme.headlineLarge,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _copy(
+            zh: '账户数据正在同步到 Litchi。',
+            en: 'Your account data is syncing to Litchi.',
+            tw: '帳戶資料正在同步到 Litchi。',
+          ),
           style: TextStyle(color: p.inkMuted, fontSize: 11),
         ),
         const SizedBox(height: 24),
@@ -221,7 +234,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
           height: 48,
           child: FilledButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('完成'),
+            child: Text(_copy(zh: '完成', en: 'Done', tw: '完成')),
           ),
         ),
         if (widget.onViewOrders != null) ...[
@@ -230,13 +243,13 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
             width: double.infinity,
             height: 44,
             child: OutlinedButton(
-              // Close first: the callback navigates the shell, and leaving the
-              // dialog mounted over the new page would strand it there.
               onPressed: () {
                 Navigator.of(context).pop();
                 widget.onViewOrders!();
               },
-              child: const Text('查看订单'),
+              child: Text(
+                _copy(zh: '查看订单', en: 'View orders', tw: '查看訂單'),
+              ),
             ),
           ),
         ],
@@ -267,14 +280,14 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                     ),
                     const SizedBox(height: 7),
                     Text(
-                      '完成支付',
+                      _copy(zh: '完成支付', en: 'Complete payment', tw: '完成支付'),
                       style: Theme.of(context).textTheme.headlineLarge,
                     ),
                   ],
                 ),
               ),
               IconButton(
-                tooltip: '关闭',
+                tooltip: _copy(zh: '关闭', en: 'Close', tw: '關閉'),
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close_rounded),
               ),
@@ -282,7 +295,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
           ),
           const SizedBox(height: 8),
           Text(
-            '订单 ${widget.tradeNo}',
+            '${_copy(zh: '订单', en: 'Order', tw: '訂單')} ${widget.tradeNo}',
             style: TextStyle(color: p.inkMuted, fontSize: 10),
           ),
           const SizedBox(height: 22),
@@ -304,7 +317,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               child: Row(
                 children: [
                   Text(
-                    '需支付',
+                    _copy(zh: '需支付', en: 'Amount due', tw: '需支付'),
                     style: TextStyle(color: p.inkMuted, fontSize: 10),
                   ),
                   const Spacer(),
@@ -322,7 +335,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
             const SizedBox(height: 18),
             if (!_balanceOnly && _paymentUrl == null) ...[
               Text(
-                '支付方式',
+                _copy(zh: '支付方式', en: 'Payment method', tw: '支付方式'),
                 style: TextStyle(
                   color: p.inkMuted,
                   fontSize: 10,
@@ -332,7 +345,11 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               const SizedBox(height: 10),
               if (_methods.isEmpty)
                 Text(
-                  '当前没有可用支付方式',
+                  _copy(
+                    zh: '当前没有可用支付方式',
+                    en: 'No payment methods are currently available',
+                    tw: '目前沒有可用支付方式',
+                  ),
                   style: TextStyle(color: p.dangerInk, fontSize: 11),
                 )
               else
@@ -369,7 +386,17 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               const SizedBox(height: 14),
               Center(
                 child: Text(
-                  _paymentType == 1 ? '支付页面已尝试在浏览器打开' : '请使用对应支付应用扫码',
+                  _paymentType == 1
+                      ? _copy(
+                          zh: '支付页面已尝试在浏览器打开',
+                          en: 'The payment page was opened in your browser',
+                          tw: '支付頁面已嘗試在瀏覽器開啟',
+                        )
+                      : _copy(
+                          zh: '请使用对应支付应用扫码',
+                          en: 'Scan the code with the corresponding payment app',
+                          tw: '請使用對應支付應用程式掃碼',
+                        ),
                   style: TextStyle(color: p.inkMuted, fontSize: 11),
                 ),
               ),
@@ -380,7 +407,13 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                   child: OutlinedButton.icon(
                     onPressed: () => UrlOpener.open(_paymentUrl!),
                     icon: const Icon(Icons.open_in_new_rounded, size: 17),
-                    label: const Text('重新打开支付页面'),
+                    label: Text(
+                      _copy(
+                        zh: '重新打开支付页面',
+                        en: 'Reopen payment page',
+                        tw: '重新開啟支付頁面',
+                      ),
+                    ),
                   ),
                 ),
               const SizedBox(height: 10),
@@ -406,11 +439,33 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                 child: Text(
                   _paymentUrl == null
                       ? (_checkingOut
-                            ? '正在发起支付…'
+                            ? _copy(
+                                zh: '正在发起支付…',
+                                en: 'Starting payment…',
+                                tw: '正在發起支付…',
+                              )
                             : _balanceOnly
-                            ? '使用余额完成订单'
-                            : '继续支付')
-                      : (_checkingStatus ? '正在检查…' : '我已完成支付'),
+                            ? _copy(
+                                zh: '使用余额完成订单',
+                                en: 'Complete order with balance',
+                                tw: '使用餘額完成訂單',
+                              )
+                            : _copy(
+                                zh: '继续支付',
+                                en: 'Continue to pay',
+                                tw: '繼續支付',
+                              ))
+                      : (_checkingStatus
+                            ? _copy(
+                                zh: '正在检查…',
+                                en: 'Checking…',
+                                tw: '正在檢查…',
+                              )
+                            : _copy(
+                                zh: '我已完成支付',
+                                en: 'I have completed payment',
+                                tw: '我已完成支付',
+                              )),
                 ),
               ),
             ),
