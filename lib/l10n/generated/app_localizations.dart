@@ -402,7 +402,7 @@ abstract class AppLocalizations {
   /// No description provided for @connection.
   ///
   /// In en, this message translates to:
-  /// **'Connect'**
+  /// **'Connection'**
   String get connection;
 
   /// No description provided for @more.
@@ -414,7 +414,7 @@ abstract class AppLocalizations {
   /// No description provided for @trafficUsage.
   ///
   /// In en, this message translates to:
-  /// **'Traffic'**
+  /// **'Traffic usage'**
   String get trafficUsage;
 
   /// No description provided for @clientSettings.
