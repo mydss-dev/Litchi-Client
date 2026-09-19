@@ -1,0 +1,51 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:litchi_client/app/plan_presentation.dart';
+import 'package:litchi_client/shared/models/api_models.dart';
+import 'package:litchi_client/shared/models/model_mappers.dart';
+
+RemoteUser _user({int? expiredAt, bool hasPlan = true}) {
+  return RemoteUser.fromJson({
+    'id': 1,
+    'email': 'test@example.com',
+    if (hasPlan) 'plan_id': 7,
+    if (expiredAt != null) 'expired_at': expiredAt,
+  });
+}
+
+void main() {
+  test('missing expiry on a real plan is unknown, never permanent', () {
+    final info = _user();
+    final user = ModelMappers.toUser(info);
+    expect(user.expiry, '未提供');
+
+    final display = PlanPresentation.resolve(
+      hasPlan: true,
+      name: 'Litchi Ultra',
+      subscribeStatus: info.subscribeStatus,
+      expiredAt: info.expiredAt,
+      expiryLabel: user.expiry,
+      quotaGb: 512,
+      remainingGb: 100,
+      now: DateTime(2026, 9, 19),
+    );
+    expect(display.expiry, '有效期待同步');
+    expect(display.status, '状态待同步');
+    expect(display.usable, isFalse);
+  });
+
+  test('an explicit zero expiry retains permanent meaning', () {
+    final user = ModelMappers.toUser(_user(expiredAt: 0));
+    expect(user.expiry, '永久');
+  });
+
+  test('a positive expiry preserves the actual date', () {
+    final timestamp = DateTime(2026, 12, 31).millisecondsSinceEpoch ~/ 1000;
+    final user = ModelMappers.toUser(_user(expiredAt: timestamp));
+    expect(user.expiry, '2026-12-31');
+  });
+
+  test('an account without a plan still has no expiry', () {
+    final user = ModelMappers.toUser(_user(hasPlan: false));
+    expect(user.expiry, isEmpty);
+  });
+}
