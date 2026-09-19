@@ -105,6 +105,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool _isInitialLoading = false;
   bool _logoutInFlight = false;
   int _latencyRunId = 0;
+  bool _latencyTestInFlight = false;
+  bool get isLatencyTesting => _latencyTestInFlight;
   String? _authData;
   Future<void>? _accountSummarySave;
   bool _hasAccountSummary = false;
@@ -366,7 +368,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _invalidateLatencyRuns();
     _nodes.setNodes(cached);
     _restoreLastNode();
-    if (supportsCoreConnection) unawaited(_preloadCoreAndTestLatencies());
+    if (supportsCoreConnection) unawaited(_preloadCoreOnly());
   }
 
   Future<void> _restoreCachedAccountSummary(String authData) async {
@@ -441,17 +443,23 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       if (!_isSessionCurrent(sessionEpoch)) return;
       final subscribe = await _api.getSubscribeInfo(silent: true);
       if (!_isSessionCurrent(sessionEpoch)) return;
-      final planConfirmed = info.hasPlanEvidence ||
+      final planConfirmed =
+          info.hasPlanEvidence ||
           (subscribe.planId != null && subscribe.planId! > 0) ||
           subscribe.subscribeUrl.trim().isNotEmpty ||
           subscribe.transferEnable > 0;
       final expiredAt = subscribe.expiredAt ?? info.expiredAt;
-      final expired = expiredAt != null && expiredAt > 0 &&
+      final expired =
+          expiredAt != null &&
+          expiredAt > 0 &&
           expiredAt <= DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final quotaExhausted = subscribe.transferEnable > 0
           ? subscribe.upload + subscribe.download >= subscribe.transferEnable
           : info.transferEnable > 0 && info.used >= info.transferEnable;
-      if (!planConfirmed || info.subscribeStatus != 0 || expired || quotaExhausted) {
+      if (!planConfirmed ||
+          info.subscribeStatus != 0 ||
+          expired ||
+          quotaExhausted) {
         _settings.setWasConnected(false);
         _dataLoadError = '套餐不可用或状态未确认，已停止自动连接，请检查账户状态';
         notifyListeners();
@@ -689,7 +697,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     final status = _core.connectionStatus;
     if (status == ConnectionStatus.connected) {
       _settings.setWasConnected(true);
-      unawaited(_testLatenciesInBackground());
+      if (!autoSelected && currentNode.latency == 0) {
+        unawaited(testNodeLatency(currentNode));
+      }
     } else if (status == ConnectionStatus.disconnected) {
       _settings.setWasConnected(false);
       if (!_core.coreProcessRunning) _nodes.markAllLatency(0);
@@ -868,7 +878,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     return _core.toggleConnection(_buildConnectionRequest());
   }
 
-  static Future<bool> checkAdminPrivileges() async => checkWindowsAdminPrivilege();
+  static Future<bool> checkAdminPrivileges() async =>
+      checkWindowsAdminPrivilege();
 
   bool _isSessionCurrent(int sessionEpoch) =>
       !_disposed && _isAuthenticated && sessionEpoch == _sessionEpoch;
@@ -887,7 +898,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _lastNodesRefreshAt = DateTime.now();
       unawaited(NodeCacheService.save(_nodes.nodes));
       _restoreLastNode();
-      if (supportsCoreConnection) unawaited(_preloadCoreAndTestLatencies());
+      if (supportsCoreConnection) unawaited(_preloadCoreOnly());
     }
     if (!_disposed) notifyListeners();
 
@@ -1089,6 +1100,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
     _nodes.selectNode(node);
     _settings.setLastNodeId(node.id);
+    if (node.latency == 0) unawaited(testNodeLatency(node));
     return null;
   }
 
@@ -1102,11 +1114,47 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     return null;
   }
 
-  Future<void> _preloadCoreAndTestLatencies() async {
-    if (!supportsCoreConnection || _nodes.isEmpty) return;
-    final ready = await _preloadCoreOnly();
-    if (!ready) return;
-    await _testLatenciesInBackground();
+  /// Probe only a newly selected, untested node. Never clear other results.
+  Future<void> testNodeLatency(NodeModel node) async {
+    if (!supportsCoreConnection || _latencyTestInFlight || node.latency != 0) {
+      return;
+    }
+    final runId = _latencyRunId;
+    final candidates = _nodes.nodes
+        .where(
+          (item) =>
+              item.id == node.id &&
+              item.server == node.server &&
+              item.port == node.port &&
+              item.name == node.name,
+        )
+        .toList();
+    if (candidates.length != 1) return;
+    _nodes.markNodeLatency(node.id, -1);
+    try {
+      if (!coreProcessRunning && !await _preloadCoreOnly()) {
+        if (_isCurrentLatencyRun(runId)) _nodes.markNodeLatency(node.id, 9999);
+        return;
+      }
+      await _core.testLatencies(
+        [node],
+        onResult: (index, updated) {
+          if (!_isCurrentLatencyRun(runId)) return;
+          final current = _nodes.nodes
+              .where((item) => item.id == node.id)
+              .toList();
+          if (current.length != 1 ||
+              current.single.server != node.server ||
+              current.single.port != node.port ||
+              current.single.name != node.name) {
+            return;
+          }
+          _nodes.markNodeLatency(node.id, updated.latency);
+        },
+      );
+    } catch (_) {
+      if (_isCurrentLatencyRun(runId)) _nodes.markNodeLatency(node.id, 9999);
+    }
   }
 
   Future<String?> _reloadCoreConfig({bool startIfStopped = false}) async {
@@ -1119,47 +1167,40 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       notifyListeners();
       return error;
     }
-    if (coreProcessRunning) {
-      await Future.delayed(const Duration(milliseconds: 1000));
-      unawaited(_testLatenciesInBackground());
-    }
+    // Reloading connection configuration does not initiate a full test.
     return null;
   }
 
+  /// Explicit button action: bounded batches with progressive per-node UI.
   Future<bool> testLatencies() async {
-    if (!supportsCoreConnection || _nodes.isEmpty) return false;
+    if (!supportsCoreConnection || _nodes.isEmpty || _latencyTestInFlight) {
+      return false;
+    }
+    _latencyTestInFlight = true;
+    notifyListeners();
     final runId = _nextLatencyRunId();
-    _nodes.markAllLatency(-1);
     final snapshot = List<NodeModel>.from(_nodes.nodes);
-    if (!coreProcessRunning) {
-      final ready = await _preloadCoreOnly();
-      if (!ready) {
+    _nodes.markAllLatency(-1);
+    try {
+      if (!coreProcessRunning && !await _preloadCoreOnly()) {
         _markLatencyTestFailed(runId, snapshot);
         return false;
       }
+      await _core.testLatencies(
+        snapshot,
+        onResult: (idx, updated) {
+          if (_isCurrentLatencyRun(runId)) _nodes.applyLatencyAt(idx, updated);
+        },
+      );
+      return _isCurrentLatencyRun(runId) &&
+          _nodes.nodes.any((node) => node.latency > 0 && node.latency < 9999);
+    } catch (_) {
+      _markLatencyTestFailed(runId, snapshot);
+      return false;
+    } finally {
+      _latencyTestInFlight = false;
+      if (!_disposed) notifyListeners();
     }
-    await _core.testLatencies(
-      snapshot,
-      onResult: (idx, updated) {
-        if (_isCurrentLatencyRun(runId)) _nodes.applyLatencyAt(idx, updated);
-      },
-    );
-    return _isCurrentLatencyRun(runId) &&
-        _nodes.nodes.any((node) => node.latency > 0 && node.latency < 9999);
-  }
-
-  Future<void> _testLatenciesInBackground() async {
-    if (!supportsCoreConnection || _nodes.isEmpty || !coreProcessRunning) {
-      return;
-    }
-    final runId = _nextLatencyRunId();
-    final snapshot = List<NodeModel>.from(_nodes.nodes);
-    await _core.testLatencies(
-      snapshot,
-      onResult: (idx, updated) {
-        if (_isCurrentLatencyRun(runId)) _nodes.applyLatencyAt(idx, updated);
-      },
-    );
   }
 
   Future<bool> _preloadCoreOnly() async {
@@ -1175,8 +1216,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   int _nextLatencyRunId() => ++_latencyRunId;
   void _invalidateLatencyRuns() {
+    // New snapshots are merged against unchanged endpoints by NodeController.
+    // Do not blank an already displayed result just because labels refreshed.
     _latencyRunId++;
-    _nodes.markAllLatency(0);
   }
 
   bool _isCurrentLatencyRun(int id) => !_disposed && id == _latencyRunId;

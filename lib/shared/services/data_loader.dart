@@ -3,6 +3,7 @@ import '../models/api_models.dart';
 import '../models/app_models.dart';
 import '../models/model_mappers.dart';
 import 'network_error_classifier.dart';
+import 'node_tag_matcher.dart';
 import 'panel_api.dart';
 import 'plan_data_service.dart';
 import 'secure_logger.dart';
@@ -218,7 +219,16 @@ class DataLoader {
     try {
       final result = await _api.fetchSubscription(url);
       if (result.nodes.isNotEmpty) {
-        snap.nodes = result.nodes.map(ModelMappers.toNode).toList();
+        var mapped = result.nodes.map(ModelMappers.toNode).toList();
+        // Metadata is optional. A metadata failure must never break the
+        // connectable subscription or overwrite it with non-connectable rows.
+        try {
+          final metadata = await _api.getNodeMetadata();
+          mapped = NodeTagMatcher.apply(nodes: mapped, metadata: metadata);
+        } catch (e) {
+          SecureLogger.debug('node tags metadata unavailable', e);
+        }
+        snap.nodes = mapped;
       } else {
         // The parser cannot yet distinguish an intentionally empty profile
         // from a truncated/unsupported response. Keep cached/live nodes.

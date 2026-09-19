@@ -5,6 +5,7 @@ import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import 'v3_locale_copy.dart';
+import 'v3_node_tags.dart';
 import 'v3_sheet.dart';
 
 /// Pick a node without leaving the current page.
@@ -25,16 +26,21 @@ class _V3NodePickerState extends State<V3NodePicker> {
   String _query = '';
   String? _pending;
 
-  Future<void> _select(String id, Future<String?> Function() action,
-      String success) async {
+  Future<void> _select(
+    String id,
+    Future<String?> Function() action,
+    String success,
+  ) async {
     if (_pending != null) return;
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     // Resolve locale before awaiting. A failed request must not use a stale context.
-    final failureMessage = v3Copy(context,
+    final failureMessage = v3Copy(
+      context,
       zh: '操作失败，请检查网络后重试。',
       en: 'Operation failed. Check your network and retry.',
-      tw: '操作失敗，請檢查網路後重試。');
+      tw: '操作失敗，請檢查網路後重試。',
+    );
     setState(() => _pending = id);
     String? error;
     try {
@@ -55,63 +61,149 @@ class _V3NodePickerState extends State<V3NodePicker> {
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final query = _query.trim().toLowerCase();
-    final nodes = controller.nodes.where((node) => query.isEmpty ||
-      node.name.toLowerCase().contains(query) ||
-      node.englishName.toLowerCase().contains(query) ||
-      node.code.toLowerCase().contains(query)).toList();
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      TextField(
-        autofocus: true,
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.search_rounded),
-          hintText: v3Copy(context, zh: '搜索国家、城市或节点名称',
-            en: 'Search country, city or node name',
-            tw: '搜尋國家、城市或節點名稱'),
+    final nodes = controller.nodes
+        .where(
+          (node) =>
+              query.isEmpty ||
+              node.name.toLowerCase().contains(query) ||
+              node.englishName.toLowerCase().contains(query) ||
+              node.code.toLowerCase().contains(query) ||
+              node.tags.any((tag) => tag.toLowerCase().contains(query)),
+        )
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                autofocus: true,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  hintText: v3Copy(
+                    context,
+                    zh: '搜索节点',
+                    en: 'Search nodes',
+                    tw: '搜尋節點',
+                  ),
+                ),
+                onChanged: (value) => setState(() => _query = value),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton.icon(
+                key: const Key('v3-node-speed-test'),
+                onPressed:
+                    controller.isLatencyTesting ||
+                        _pending != null ||
+                        controller.nodes.isEmpty
+                    ? null
+                    : () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final failureText = v3Copy(
+                          context,
+                          zh: '测速失败或所有节点超时',
+                          en: 'Test failed or all nodes timed out',
+                          tw: '測速失敗或所有節點逾時',
+                        );
+                        final ok = await controller.testLatencies();
+                        if (!ok && mounted) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text(failureText)),
+                          );
+                        }
+                      },
+                icon: controller.isLatencyTesting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.speed_rounded, size: 17),
+                label: Text(v3Copy(context, zh: '测速', en: 'Test', tw: '測速')),
+              ),
+            ),
+          ],
         ),
-        onChanged: (value) => setState(() => _query = value),
-      ),
-      const SizedBox(height: 16),
-      V3AutoRouteRow(
-        controller: controller,
-        busy: _pending == 'auto',
-        onTap: _pending != null || controller.autoSelected ? null
-          : () => _select('auto', controller.selectAuto,
-              v3Copy(context,
-                zh: '已选择自动节点，请在连接页确认连接状态。',
-                en: 'Automatic node selected. Confirm your connection on the connection page.',
-                tw: '已選擇自動節點，請至連線頁確認連線狀態。')),
-      ),
-      const SizedBox(height: 12),
-      if (nodes.isEmpty)
-        V3Panel(padding: const EdgeInsets.all(28),
-          child: Text(controller.nodes.isEmpty
-              ? v3Copy(context, zh: '暂无可用节点，请刷新订阅后重试。',
-                  en: 'No nodes available. Refresh your subscription and retry.',
-                  tw: '暫無可用節點，請重新整理訂閱後再試。')
-              : v3Copy(context, zh: '没有匹配的节点，请调整搜索。',
-                  en: 'No matching nodes. Change the search.',
-                  tw: '沒有符合的節點，請調整搜尋。'),
-            style: Theme.of(context).textTheme.bodySmall))
-      else for (final node in nodes)
-        Padding(padding: const EdgeInsets.only(bottom: 8),
-          child: V3NodeRow(node: node, controller: controller,
-            busy: _pending == node.id,
-            onTap: _pending != null ||
-                (!controller.autoSelected && controller.currentNode.id == node.id)
-              ? null : () => _select(node.id,
-                  () => controller.setCurrentNode(node),
-                  v3Copy(context,
-                    zh: '已选择 ${node.name}，请在连接页确认连接状态。',
-                    en: '${node.name} selected. Confirm your connection on the connection page.',
-                    tw: '已選擇 ${node.name}，請至連線頁確認連線狀態。')))),
-    ]);
+        const SizedBox(height: 16),
+        V3AutoRouteRow(
+          controller: controller,
+          busy: _pending == 'auto',
+          onTap: _pending != null || controller.autoSelected
+              ? null
+              : () => _select(
+                  'auto',
+                  controller.selectAuto,
+                  v3Copy(
+                    context,
+                    zh: '已选择自动节点，请在连接页确认连接状态。',
+                    en: 'Automatic node selected. Confirm your connection on the connection page.',
+                    tw: '已選擇自動節點，請至連線頁確認連線狀態。',
+                  ),
+                ),
+        ),
+        const SizedBox(height: 12),
+        if (nodes.isEmpty)
+          V3Panel(
+            padding: const EdgeInsets.all(28),
+            child: Text(
+              controller.nodes.isEmpty
+                  ? v3Copy(
+                      context,
+                      zh: '暂无可用节点，请刷新订阅后重试。',
+                      en: 'No nodes available. Refresh your subscription and retry.',
+                      tw: '暫無可用節點，請重新整理訂閱後再試。',
+                    )
+                  : v3Copy(
+                      context,
+                      zh: '没有匹配的节点，请调整搜索。',
+                      en: 'No matching nodes. Change the search.',
+                      tw: '沒有符合的節點，請調整搜尋。',
+                    ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          )
+        else
+          for (final node in nodes)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: V3NodeRow(
+                node: node,
+                controller: controller,
+                busy: _pending == node.id,
+                onTap:
+                    _pending != null ||
+                        (!controller.autoSelected &&
+                            controller.currentNode.id == node.id)
+                    ? null
+                    : () => _select(
+                        node.id,
+                        () => controller.setCurrentNode(node),
+                        v3Copy(
+                          context,
+                          zh: '已选择 ${node.name}，请在连接页确认连接状态。',
+                          en: '${node.name} selected. Confirm your connection on the connection page.',
+                          tw: '已選擇 ${node.name}，請至連線頁確認連線狀態。',
+                        ),
+                      ),
+              ),
+            ),
+      ],
+    );
   }
 }
 
 /// The "let the app decide" row, above the list of nodes.
 class V3AutoRouteRow extends StatelessWidget {
-  const V3AutoRouteRow({super.key, required this.controller,
-    required this.onTap, required this.busy});
+  const V3AutoRouteRow({
+    super.key,
+    required this.controller,
+    required this.onTap,
+    required this.busy,
+  });
   final AppController controller;
   final VoidCallback? onTap;
   final bool busy;
@@ -129,43 +221,77 @@ class V3AutoRouteRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: active ? p.lycheeSoft : p.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: active ? p.lychee : p.line)),
-        child: Row(children: [
-          Container(width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: p.surfaceRaised,
-              borderRadius: BorderRadius.circular(11)),
-            child: Icon(Icons.auto_awesome_rounded,
-              color: active ? p.lycheeInk : p.ink, size: 19)),
-          const SizedBox(width: 12),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(v3Copy(context, zh: '自动选择',
-                en: 'Automatic selection', tw: '自動選擇'),
-                style: TextStyle(color: p.ink, fontSize: 14,
-                  fontWeight: FontWeight.w700)),
-              const SizedBox(height: 3),
-              Text(v3Copy(context, zh: '自动选择可用节点',
-                en: 'Automatically choose an available node',
-                tw: '自動選擇可用節點'),
-                style: TextStyle(color: p.inkMuted, fontSize: 11)),
-            ],
-          )),
-          if (busy)
-            const SizedBox(width: 18, height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2))
-          else if (active)
-            Icon(Icons.check_circle_rounded, color: p.lycheeInk, size: 20),
-        ]),
+          border: Border.all(color: active ? p.lychee : p.line),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: p.surfaceRaised,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: active ? p.lycheeInk : p.ink,
+                size: 19,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    v3Copy(
+                      context,
+                      zh: '自动选择',
+                      en: 'Automatic selection',
+                      tw: '自動選擇',
+                    ),
+                    style: TextStyle(
+                      color: p.ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    v3Copy(
+                      context,
+                      zh: '自动选择可用节点',
+                      en: 'Automatically choose an available node',
+                      tw: '自動選擇可用節點',
+                    ),
+                    style: TextStyle(color: p.inkMuted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            if (busy)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else if (active)
+              Icon(Icons.check_circle_rounded, color: p.lycheeInk, size: 20),
+          ],
+        ),
       ),
     );
   }
 }
 
 class V3NodeRow extends StatelessWidget {
-  const V3NodeRow({super.key, required this.node,
-    required this.controller, required this.onTap, required this.busy});
+  const V3NodeRow({
+    super.key,
+    required this.node,
+    required this.controller,
+    required this.onTap,
+    required this.busy,
+  });
   final NodeModel node;
   final AppController controller;
   final VoidCallback? onTap;
@@ -174,12 +300,13 @@ class V3NodeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final selected = !controller.autoSelected &&
-        controller.currentNode.id == node.id;
+    final selected =
+        !controller.autoSelected && controller.currentNode.id == node.id;
     final latencyColor = node.latency > 0 && node.latency <= 120
         ? p.successInk
         : node.latency > 120 && node.latency < 9999
-          ? p.warningInk : p.inkMuted;
+        ? p.warningInk
+        : p.inkMuted;
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
@@ -189,37 +316,70 @@ class V3NodeRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? p.lycheeSoft : p.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? p.lychee : p.line)),
-        child: Row(children: [
-          V3NodeFlag(code: node.code),
-          const SizedBox(width: 13),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(node.name, maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 3),
-              Text(node.englishName.isNotEmpty ? node.englishName : node.code,
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall),
-            ])),
-          Container(width: 7, height: 7,
-            decoration: BoxDecoration(color: latencyColor,
-              shape: BoxShape.circle)),
-          const SizedBox(width: 7),
-          Text(_localizedLatencyLabel(context, node.latency),
-            style: TextStyle(color: latencyColor, fontSize: 11,
-              fontWeight: FontWeight.w700)),
-          const SizedBox(width: 12),
-          if (busy)
-            const SizedBox(width: 18, height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2))
-          else
-            Icon(selected ? Icons.check_circle_rounded
-              : Icons.chevron_right_rounded,
-              color: selected ? p.lycheeInk : p.inkMuted, size: 19),
-        ]),
+          border: Border.all(color: selected ? p.lychee : p.line),
+        ),
+        child: Row(
+          children: [
+            V3NodeFlag(code: node.code),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    node.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    node.englishName.isNotEmpty ? node.englishName : node.code,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  if (node.tags.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    V3NodeTags(tags: node.tags, maxVisible: 2),
+                  ],
+                ],
+              ),
+            ),
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: latencyColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 7),
+            Text(
+              _localizedLatencyLabel(context, node.latency),
+              style: TextStyle(
+                color: latencyColor,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (busy)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.chevron_right_rounded,
+                color: selected ? p.lycheeInk : p.inkMuted,
+                size: 19,
+              ),
+          ],
+        ),
       ),
     );
   }

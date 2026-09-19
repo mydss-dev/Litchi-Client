@@ -60,7 +60,7 @@ class CoreController extends ChangeNotifier {
   Future<void>? _shutdownInFlight;
   bool _connectionToggleInFlight = false;
 
-  Future<Map<String, int>>? _groupTestInFlight;
+  // Full tests are serialized by AppController; singles use one probe.
 
   bool _killSwitchEnabled = false;
 
@@ -1075,24 +1075,25 @@ class CoreController extends ChangeNotifier {
     required void Function(int idx, NodeModel updated) onResult,
   }) async {
     if (nodes.isEmpty || !coreProcessRunning) return;
-
-    final history = await (_groupTestInFlight ??= _runGroupTest(nodes));
-
-    for (var i = 0; i < nodes.length; i++) {
-      final node = nodes[i];
-      final tag = SingBoxConfig.nodeTagFor(node);
-      final ms = history[tag] ?? 9999;
-      onResult(i, node.copyWith(latency: ms));
+    const batchSize = 5;
+    for (var start = 0; start < nodes.length; start += batchSize) {
+      final end = (start + batchSize < nodes.length)
+          ? start + batchSize
+          : nodes.length;
+      await Future.wait([
+        for (var i = start; i < end; i++)
+          _probeNode(nodes[i])
+              .then((latency) {
+                onResult(i, nodes[i].copyWith(latency: latency));
+              })
+              .catchError((Object _) {
+                onResult(i, nodes[i].copyWith(latency: 9999));
+              }),
+      ]);
     }
   }
 
-  Future<Map<String, int>> _runGroupTest(List<NodeModel> nodes) async {
-    try {
-      return await _measureWarmLatencies(nodes);
-    } finally {
-      _groupTestInFlight = null;
-    }
-  }
+  // Individual probes run in bounded batches in testLatencies.
 
   /// Reports a "warm" per-node latency: the TCP round-trip to the node server,
   /// which matches what Clash / V2RayN show for an in-use node and the browsing
@@ -1105,16 +1106,7 @@ class CoreController extends ChangeNotifier {
   /// TCP port still answers) is reported as timed out instead of a misleading
   /// fast RTT. Per-node tests avoid the group endpoint's shared timeout, which
   /// used to blank out healthy nodes queued behind a slow one.
-  Future<Map<String, int>> _measureWarmLatencies(List<NodeModel> nodes) async {
-    final probes = await Future.wait([
-      for (final node in nodes) _probeNode(node),
-    ]);
-    final result = <String, int>{};
-    for (var i = 0; i < nodes.length; i++) {
-      result[SingBoxConfig.nodeTagFor(nodes[i])] = probes[i];
-    }
-    return result;
-  }
+  // Keep the TCP/through-core pair in _probeNode; no bulk Future.wait.
 
   /// End-to-end delay (availability) plus a warm TCP RTT for a single node.
   /// Returns 9999 when the core can't proxy through it at all.

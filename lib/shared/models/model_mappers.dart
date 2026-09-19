@@ -40,7 +40,8 @@ abstract final class ModelMappers {
       englishName: _englishFor(flag),
       latency: 0,
       region: _regionFor(node.name),
-      tags: node.rate > 1.0 ? ['Premium'] : [],
+      // User-facing tags come only from actual server metadata.
+      tags: const [],
       server: node.server,
       port: node.port,
       rawOutbound: node.rawOutbound,
