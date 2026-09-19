@@ -1,0 +1,58 @@
+name: V3 Unified Foundations One Shot
+
+on:
+  push:
+    branches: [fix/v3-unified-foundations-20260920]
+    paths:
+      - '.github/workflows/v3-unify-foundations-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+      - name: Repair exact-match migration typo before running
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tool/v3_unify_foundations_once.py')
+          content = path.read_text(encoding='utf-8')
+          old = """replace(traffic, 'borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),',
+                  'borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),', 1)
+          replace(traffic, 'borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),',
+                  'borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),', 1)"""
+          # Normalize indentation to match the source file's four-space blocks.
+          old = old.replace('                  ', '        ')
+          new = """replace(traffic, 'borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),',
+                  'borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),', 2)""".replace('                  ', '        ')
+          if content.count(old) != 1:
+              raise RuntimeError('Expected the two adjacent traffic radius replacements')
+          path.write_text(content.replace(old, new), encoding='utf-8')
+          PY
+      - name: Apply guarded design migration
+        run: python3 tool/v3_unify_foundations_once.py
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Format new files only
+        run: dart format lib/v3/ui/v3_layout.dart test/v3_layout_foundations_test.dart
+      - name: Static analysis
+        run: flutter analyze
+      - name: Run complete Flutter tests
+        run: flutter test
+      - name: Commit only reviewed production and test changes
+        run: |
+          git rm -f .github/workflows/v3-unify-foundations-once.yml tool/v3_unify_foundations_once.py
+          git add lib/v3/pages lib/v3/ui/v3_components.dart lib/v3/ui/v3_layout.dart test/v3_layout_foundations_test.dart
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'refactor(v3): align page foundations with the new dashboard'
+          git push origin HEAD:fix/v3-unified-foundations-20260920
