@@ -18,6 +18,17 @@ void main() {
     );
   });
 
+  test('an explicit HTTP 401 response fallback expires the session', () {
+    expect(
+      SessionFailurePolicy.classify(const ApiException('服务器响应异常（401）')),
+      SessionFailureKind.authentication,
+    );
+    expect(
+      SessionFailurePolicy.classify(const ApiException('服务器响应异常（500）')),
+      SessionFailureKind.network,
+    );
+  });
+
   test('transport failures permit cached-mode handling', () {
     expect(
       SessionFailurePolicy.classify(const ApiException('连接超时，请检查网络后重试')),
