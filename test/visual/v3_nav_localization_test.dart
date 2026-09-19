@@ -46,7 +46,7 @@ void main() {
     });
   });
 
-  testWidgets('Simplified Chinese navigation labels are localized',
+  testWidgets('Simplified Chinese uses two-character navigation labels',
       (tester) async {
     await check(tester, const Locale('zh'), {
       AppPage.dashboard: '连接',
@@ -54,19 +54,29 @@ void main() {
       AppPage.shop: '套餐',
       AppPage.account: '我的',
       AppPage.more: '更多',
-      AppPage.orders: '订单记录',
-      AppPage.traffic: '流量用量',
-      AppPage.invite: '邀请好友',
-      AppPage.tickets: '工单支持',
-      AppPage.settings: '客户端设置',
-      AppPage.giftCard: '礼品卡兑换',
+      AppPage.orders: '订单',
+      AppPage.traffic: '流量',
+      AppPage.invite: '邀请',
+      AppPage.tickets: '工单',
+      AppPage.settings: '设置',
+      AppPage.giftCard: '兑换',
     });
   });
 
-  testWidgets('Traditional Chinese uses its localized account label',
+  testWidgets('Traditional Chinese uses localized short labels throughout',
       (tester) async {
     await check(tester, const Locale('zh', 'TW'), {
+      AppPage.dashboard: '連線',
+      AppPage.nodes: '節點',
+      AppPage.shop: '套餐',
       AppPage.account: '我的',
+      AppPage.more: '更多',
+      AppPage.orders: '訂單',
+      AppPage.traffic: '流量',
+      AppPage.invite: '邀請',
+      AppPage.tickets: '工單',
+      AppPage.settings: '設定',
+      AppPage.giftCard: '兌換',
     });
   });
 }

@@ -2,18 +2,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
+import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
+import 'package:litchi_client/v3/ui/v3_node_coverage_map.dart';
 
 import 'visual/v3_visual_fixture.dart';
 
 /// Touch-target invariants for the smallest interactive controls in v3.
 ///
-/// The narrowest control in the app is the settings segmented control, whose
-/// height comes from its label's line box plus its own padding — a value that
-/// silently drifts when either the font size or the padding changes. These
-/// tests measure the rendered hit area rather than trusting a comment that
-/// says "this is 44dp".
+/// These tests measure the rendered hit area rather than trusting a comment
+/// that says "this is 44dp". The nodes overview is intentionally read-only;
+/// interactive region chips are measured on the map's interactive variant.
 class _Controller extends VisualV3Controller {
   _Controller(super.page);
 }
@@ -75,21 +75,62 @@ void main() {
     }
   });
 
-  testWidgets('region chips clear the touch-target floor', (tester) async {
+  testWidgets('nodes overview does not expose interactive region chips', (
+    tester,
+  ) async {
     try {
       await _pump(tester, AppPage.nodes, const Size(390, 844));
+      expect(find.byType(ChoiceChip), findsNothing,
+          reason: 'the nodes overview is informational, not a region filter');
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('interactive map region chips clear the touch-target floor', (
+    tester,
+  ) async {
+    try {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        theme: V3Theme.light(),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: V3NodeCoverageMap(
+              nodes: const [
+                NodeModel(
+                  id: 'hk-01',
+                  name: 'Hong Kong',
+                  flag: '',
+                  code: 'HK',
+                  englishName: 'Hong Kong',
+                  latency: 32,
+                  region: NodeRegion.asia,
+                ),
+              ],
+              selectedCode: null,
+              onSelected: (_) {},
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
       final chips = find.byType(ChoiceChip);
-      expect(chips, findsWidgets);
+      expect(chips, findsWidgets,
+          reason: 'the interactive map must retain its region filters');
       for (final element in chips.evaluate()) {
         final rect = tester.getRect(find.byWidget(element.widget));
         expect(
           rect.height,
           greaterThanOrEqualTo(minimum),
           reason:
-              'a region chip is only '
+              'an interactive region chip is only '
               '${rect.height.toStringAsFixed(1)}dp tall',
         );
       }
+      expect(tester.takeException(), isNull);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

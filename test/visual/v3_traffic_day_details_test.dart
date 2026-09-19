@@ -42,19 +42,26 @@ Future<void> _pump(WidgetTester tester, _TrafficController controller) async {
   await tester.pumpAndSettle();
 }
 
+Finder _dayTooltip(String day) => find.byWidgetPredicate(
+  (widget) => widget is Tooltip && widget.message?.startsWith('$day\n') == true,
+  description: 'traffic tooltip for $day',
+);
+
 void main() {
-  testWidgets('daily bar opens actual total and directional metrics', (tester) async {
+  testWidgets('daily bar tooltip contains actual total and directional metrics',
+      (tester) async {
     await _pump(tester, _TrafficController(true));
     final yesterday = _day(DateTime.now().subtract(const Duration(days: 1)));
-    final bar = find.byKey(ValueKey('v3-traffic-day-$yesterday'));
-    expect(bar, findsOneWidget);
-    await tester.ensureVisible(bar);
-    await tester.tap(bar);
-    await tester.pumpAndSettle();
-    expect(find.text('流量详情 · $yesterday'), findsOneWidget);
-    expect(find.text('该日总流量 2.00 GB'), findsOneWidget);
-    expect(find.text('上传 0.50 GB'), findsOneWidget);
-    expect(find.text('下载 1.50 GB'), findsOneWidget);
+    final tooltip = _dayTooltip(yesterday);
+    expect(tooltip, findsOneWidget);
+    expect(tester.widget<Tooltip>(tooltip).message,
+      '$yesterday\n2.00 GB\n上传 0.50 GB · 下载 1.50 GB');
+
+    await tester.ensureVisible(tooltip);
+    await tester.tap(tooltip);
+    await tester.pump();
+    expect(find.byType(Dialog), findsNothing,
+      reason: 'day details are tooltips, not tap-triggered dialogs');
     expect(tester.takeException(), isNull);
   });
 
@@ -62,26 +69,23 @@ void main() {
       (tester) async {
     await _pump(tester, _TrafficController(false));
     final yesterday = _day(DateTime.now().subtract(const Duration(days: 1)));
-    final bar = find.byKey(ValueKey('v3-traffic-day-$yesterday'));
-    await tester.ensureVisible(bar);
-    await tester.tap(bar);
-    await tester.pumpAndSettle();
-    expect(find.text('该日总流量 2.00 GB'), findsOneWidget);
-    expect(find.text('后台未提供上传、下载明细'), findsOneWidget);
-    expect(find.text('上传 0.00 GB'), findsNothing);
+    final tooltip = _dayTooltip(yesterday);
+    expect(tooltip, findsOneWidget);
+    final message = tester.widget<Tooltip>(tooltip).message;
+    expect(message, '$yesterday\n2.00 GB');
+    expect(message, isNot(contains('上传 0.00 GB')));
+    expect(message, isNot(contains('下载 0.00 GB')));
     expect(tester.takeException(), isNull);
   });
 
   testWidgets('missing calendar day is not shown as zero usage', (tester) async {
     await _pump(tester, _TrafficController(true));
     final missing = _day(DateTime.now().subtract(const Duration(days: 2)));
-    final bar = find.byKey(ValueKey('v3-traffic-day-$missing'));
-    expect(bar, findsOneWidget);
-    await tester.ensureVisible(bar);
-    await tester.tap(bar);
-    await tester.pumpAndSettle();
-    expect(find.text('该日暂无记录'), findsOneWidget);
-    expect(find.text('该日总流量 0.00 GB'), findsNothing);
+    final tooltip = _dayTooltip(missing);
+    expect(tooltip, findsOneWidget);
+    final message = tester.widget<Tooltip>(tooltip).message;
+    expect(message, '$missing\n暂无记录');
+    expect(message, isNot(contains('0.00 GB')));
     expect(tester.takeException(), isNull);
   });
 }

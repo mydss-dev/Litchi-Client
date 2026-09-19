@@ -77,7 +77,8 @@ class PanelApi {
 
   // ── Password reset ────────────────────────────────────────────────────────
 
-  /// Sends a verification code to [email] for password reset.
+  /// Sends an email code for registration or password reset.
+  /// The registration/reset field alias is selected by PanelBackendAdapter.
   Future<void> sendEmailVerify(
     String email, {
     bool isForgetPassword = false,
@@ -90,6 +91,12 @@ class PanelApi {
       },
     );
     _check(res);
+    // EZ's supported backend reports data=true on success. A response with
+    // code=0 but data=false/null is not proof that an email was sent.
+    final sent = res['data'];
+    if (sent != true && sent != 1) {
+      throw ApiException(extractApiErrorMessage(res) ?? '验证码发送失败，请稍后重试');
+    }
   }
 
   /// Resets the password using the emailed verification code.
@@ -130,29 +137,39 @@ class PanelApi {
   // ── Guest config ─────────────────────────────────────────────────────────
 
   /// Returns registration config from the panel (email suffixes + verify flag).
-  /// Throws when the request fails, so cache callers can keep stale data.
+  /// Throws on a failed or malformed response so callers retain cached flags.
   Future<RegisterConfig> fetchRegisterConfig() async {
     final res = await _client.get('/guest/comm/config');
+    _check(res);
     final data = res['data'];
-    if (data is Map) {
-      final map = Map<String, dynamic>.from(data);
-      return RegisterConfig(
-        emailSuffixes: _stringList(
-          map['email_whitelist_suffix'] ??
-              map['emailWhitelistSuffix'] ??
-              map['email_suffixes'] ??
-              map['emailSuffixes'],
-        ),
-        emailVerifyRequired: _truthy(
-          map['is_email_verify'] ??
-              map['isEmailVerify'] ??
-              map['email_verify'] ??
-              map['emailVerifyRequired'],
-        ),
-        registerOpen: _registerOpenFrom(map),
-      );
+    if (data is! Map) throw const ApiException('注册配置格式异常');
+    final map = Map<String, dynamic>.from(data);
+    // Never turn an error page or unrelated object into the default
+    // verification-disabled configuration and overwrite known-good cache.
+    if (!const [
+      'is_email_verify', 'isEmailVerify', 'email_verify',
+      'emailVerifyRequired', 'email_whitelist_suffix',
+      'emailWhitelistSuffix', 'email_suffixes', 'emailSuffixes',
+      'stop_register', 'stopRegister', 'is_register', 'isRegister',
+      'register_enabled', 'registerEnabled',
+    ].any(map.containsKey)) {
+      throw const ApiException('注册配置缺少必要字段');
     }
-    return const RegisterConfig();
+    return RegisterConfig(
+      emailSuffixes: _stringList(
+        map['email_whitelist_suffix'] ??
+            map['emailWhitelistSuffix'] ??
+            map['email_suffixes'] ??
+            map['emailSuffixes'],
+      ),
+      emailVerifyRequired: _truthy(
+        map['is_email_verify'] ??
+            map['isEmailVerify'] ??
+            map['email_verify'] ??
+            map['emailVerifyRequired'],
+      ),
+      registerOpen: _registerOpenFrom(map),
+    );
   }
 
   Future<RegisterConfig> getRegisterConfig() async {
