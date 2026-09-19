@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
@@ -43,6 +44,24 @@ class _NodeFixture extends VisualV3Controller {
 }
 
 void main() {
+  test('world asset includes geographically traced coastlines', () async {
+    final svg = await rootBundle.loadString('assets/images/world_coastline.svg');
+    expect(svg, contains('viewBox="0 0 960 480"'));
+    expect(svg, contains('<path d="M'));
+  });
+
+  test('probe colors never infer live health or offline from missing values', () {
+    expect(v3NodeProbeState([_hk, _de]), V3NodeProbeState.responsive);
+    expect(v3NodeProbeState([_hk.copyWith(latency: 9999),
+      _de.copyWith(latency: 9999)]), V3NodeProbeState.timedOut);
+    expect(v3NodeProbeState([_hk.copyWith(latency: 9999), _unknown]),
+      V3NodeProbeState.unknown);
+    expect(v3NodeProbeState([_hk.copyWith(latency: -1)]),
+      V3NodeProbeState.unknown);
+    expect(v3NodeProbeState([_auto]), V3NodeProbeState.unknown);
+    expect(v3NodeProbeState([]), V3NodeProbeState.unknown);
+  });
+
   testWidgets('coverage only counts real nodes; unknown codes keep a chip',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
@@ -55,10 +74,13 @@ void main() {
         ),
       ),
     ));
+    await tester.pumpAndSettle();
     expect(find.text('2 个地区 · 3 个节点'), findsOneWidget);
+    expect(find.text('全球节点地图'), findsOneWidget);
     expect(find.byKey(const ValueKey('v3-map-marker-HK')), findsOneWidget);
     expect(find.byKey(const ValueKey('v3-map-marker-ZZ')), findsNothing);
     expect(find.byKey(const ValueKey('v3-map-country-ZZ')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('interactive coverage map still supports filters for other callers',
