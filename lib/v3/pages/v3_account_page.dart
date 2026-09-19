@@ -5,7 +5,6 @@ import '../../app/plan_presentation.dart';
 import '../../config/app_config.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
-import '../ui/v3_layout.dart';
 import '../ui/v3_account_labels.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
@@ -56,7 +55,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
     return SingleChildScrollView(
-      padding: V3Layout.pageInsets,
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(
           kicker: v3Copy(context, zh: '账户中心',
@@ -68,22 +67,22 @@ class _V3AccountPageState extends State<V3AccountPage> {
             onPressed: controller.refreshData,
             icon: const Icon(Icons.refresh_rounded)),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 26),
         _AccountSummaryPanel(controller: controller),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _HubPanel(controller: controller),
         if (AppConfig.panelFeatures.wallet || controller.user.balance > 0 ||
             controller.withdrawable > 0) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           const _WalletPanel(),
         ],
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _PreferencesPanel(controller: controller,
           busy: _updatingPreferences,
           onExpireChanged: (v) => _updatePreferences(remindExpire: v),
           onTrafficChanged: (v) => _updatePreferences(remindTraffic: v),
           onAutoRenewalChanged: (v) => _updatePreferences(autoRenewal: v)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _AccountActions(
           onPassword: () => showDialog<void>(context: context,
             barrierColor: Colors.black.withValues(alpha: .48),
@@ -116,9 +115,9 @@ class _AccountSummaryPanel extends StatelessWidget {
     final letter = user.avatarLetter.trim().isEmpty
         ? 'L' : user.avatarLetter.trim().substring(0, 1).toUpperCase();
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(width: 48, height: 48,
@@ -144,9 +143,9 @@ class _AccountSummaryPanel extends StatelessWidget {
           V3StatusBadge(label: plan.status,
             color: plan.usable ? p.success : p.inkMuted, compact: true),
         ]),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Divider(color: p.line, height: 1),
-        const SizedBox(height: 14),
+        const SizedBox(height: 18),
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -188,10 +187,9 @@ class _WalletPanel extends StatelessWidget {
     final p = V3Palette.of(context);
     final symbol = controller.currencySymbol;
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
-        border: Border.all(color: p.line)),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: p.surfaceRaised,
+        borderRadius: BorderRadius.circular(24)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(v3Copy(context, zh: '钱包', en: 'WALLET', tw: '錢包'),
           style: TextStyle(color: p.inkMuted, fontSize: 10,
@@ -318,9 +316,9 @@ class _PreferencesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Container(padding: const EdgeInsets.all(18),
+    return Container(padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(v3Copy(context, zh: '账户偏好',
@@ -393,8 +391,7 @@ class _AccountActions extends StatelessWidget {
     final p = V3Palette.of(context);
     return Container(padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
-        border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(20)),
       child: Row(children: [
         Expanded(child: _AccountAction(icon: Icons.password_rounded,
           label: v3Copy(context, zh: '修改密码',

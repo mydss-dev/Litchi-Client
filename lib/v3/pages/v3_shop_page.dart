@@ -9,8 +9,6 @@ import '../../shared/models/app_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
-import '../ui/v3_layout.dart';
-import '../ui/v3_dialog_frame.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 
@@ -40,22 +38,22 @@ class _V3ShopPageState extends State<V3ShopPage> {
     final plans = controller.plans.where((plan) =>
         _category == null || plan.category == _category).toList(growable: false);
     return LayoutBuilder(builder: (context, constraints) {
-      const padding = V3Layout.pageGutter;
+      const padding = 24.0;
       const spacing = 12.0;
       final contentWidth = constraints.maxWidth - padding * 2;
       final twoColumns = contentWidth >= 600;
       final cardWidth = twoColumns ? (contentWidth - spacing) / 2 : contentWidth;
       return SingleChildScrollView(
-        padding: V3Layout.pageInsets,
+        padding: const EdgeInsets.fromLTRB(padding, 24, padding, 36),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(kicker: _tr(context, '套餐商城', 'PLAN STORE', '方案商店'),
             title: _tr(context, '选择套餐', 'Choose a plan', '選擇方案')),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           _CurrentPlanBadge(controller: controller),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _CategoryDeck(selected: _category,
             onChanged: (value) => setState(() => _category = value)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           if (plans.isEmpty)
             V3Panel(child: Column(children: [
               Text(_tr(context, '当前分类没有可购买套餐',
@@ -110,21 +108,17 @@ class _CategoryDeck extends StatelessWidget {
       padding: const EdgeInsets.all(5),
       child: Row(children: [
         for (final item in items) Expanded(child: InkWell(
-          key: ValueKey('v3-plan-category-${item.$1?.name ?? 'all'}'),
           borderRadius: BorderRadius.circular(9),
           onTap: () => onChanged(item.$1),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
-            constraints: const BoxConstraints(minHeight: 44),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 9),
+            padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
-              color: selected == item.$1 ? p.lycheeSoft : Colors.transparent,
+              color: selected == item.$1 ? p.surface : Colors.transparent,
               borderRadius: BorderRadius.circular(9),
               border: Border.all(color: selected == item.$1
                   ? p.lychee : Colors.transparent)),
             child: Text(item.$2, textAlign: TextAlign.center,
-              maxLines: 1, overflow: TextOverflow.ellipsis,
               style: TextStyle(color: selected == item.$1 ? p.lycheeInk : p.ink,
                 fontSize: 12, fontWeight: FontWeight.w700)),
           ),
@@ -392,7 +386,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
     return Dialog(
       backgroundColor: p.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      shape: v3DialogShape(p),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: SizedBox(
         key: kV3PurchaseDialogBodyKey,
         width: availableWidth,

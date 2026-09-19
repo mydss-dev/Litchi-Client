@@ -7,7 +7,6 @@ import '../pages/v3_gift_card_page.dart';
 import '../pages/v3_orders_page.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
-import 'v3_layout.dart';
 import 'v3_locale_copy.dart';
 
 /// The width at which the workspace and its sheets switch layouts.
@@ -28,8 +27,8 @@ Future<T?> showV3Sheet<T>(
     return Column(mainAxisSize: MainAxisSize.min, children: [
       V3SheetHeader(title: title, trailing: trailing),
       Flexible(child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(18, 4, 18,
-          18 + MediaQuery.paddingOf(ctx).bottom),
+        padding: EdgeInsets.fromLTRB(22, 2, 22 + 0.0,
+          22 + MediaQuery.paddingOf(ctx).bottom),
         child: Builder(builder: builder))),
     ]);
   }
@@ -41,11 +40,9 @@ Future<T?> showV3Sheet<T>(
       backgroundColor: V3Palette.of(context).surface,
       barrierColor: Colors.black.withValues(alpha: .48),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(V3Layout.cardRadius))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
       constraints: BoxConstraints(maxHeight: size.height * .9),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-        child: content(ctx)));
+      builder: content);
   }
 
   return showDialog<T>(context: context,
@@ -53,12 +50,12 @@ Future<T?> showV3Sheet<T>(
     builder: (ctx) {
       final p = V3Palette.of(ctx);
       return Dialog(backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(16),
-        child: Container(width: 520,
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(width: 560,
           constraints: const BoxConstraints(maxHeight: 720),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(color: p.surface,
-            borderRadius: BorderRadius.circular(V3Layout.cardRadius),
+            borderRadius: BorderRadius.circular(30),
             border: Border.all(color: p.line)),
           child: content(ctx)));
     });
@@ -72,11 +69,11 @@ class V3SheetHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Padding(padding: const EdgeInsets.fromLTRB(18, 14, 8, 8),
+    return Padding(padding: const EdgeInsets.fromLTRB(22, 16, 10, 4),
       child: Row(children: [
         Expanded(child: Text(title, maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: p.ink, fontSize: 18,
+          style: TextStyle(color: p.ink, fontSize: 19,
             fontWeight: FontWeight.w800, letterSpacing: -.2))),
         ?trailing,
         IconButton(
@@ -110,7 +107,7 @@ class V3SheetPageFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: V3Layout.pageInsets,
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(kicker: kicker, title: title),
         const SizedBox(height: 24),

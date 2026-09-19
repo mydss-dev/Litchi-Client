@@ -147,10 +147,10 @@ class V3PageHeader extends StatelessWidget {
                   letterSpacing: 1.8,
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(title, style: Theme.of(context).textTheme.headlineLarge),
+              const SizedBox(height: 8),
+              Text(title, style: Theme.of(context).textTheme.displayMedium),
               if (description != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 7),
                 Text(
                   description!,
                   style: Theme.of(context).textTheme.bodySmall,
