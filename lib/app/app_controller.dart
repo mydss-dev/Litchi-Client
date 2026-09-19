@@ -439,7 +439,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
       // API confirmed the account is still valid — safe to auto-reconnect.
       if (_settings.wasConnected) {
-        unawaited(_tryAutoReconnectSafely());
+        unawaited(_tryAutoReconnectSafely(sessionEpoch));
       }
     } catch (e) {
       if (!_isSessionCurrent(sessionEpoch)) return;
@@ -468,12 +468,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   /// on an expired / banned / out-of-traffic account.  Only a genuine network
   /// error permits cached-mode connection; any other failure expires the
   /// session and stops the core (if running).
-  Future<void> _tryAutoReconnectSafely() async {
+  Future<void> _tryAutoReconnectSafely(int sessionEpoch) async {
+    if (!_isSessionCurrent(sessionEpoch)) return;
     try {
       await _api.getSubscribeInfo();
+      if (!_isSessionCurrent(sessionEpoch)) return;
       // Backend confirmed account status is valid.
       await toggleConnection();
     } catch (e) {
+      if (!_isSessionCurrent(sessionEpoch)) return;
       if (NetworkErrorClassifier.isNetworkError(e)) {
         // Only a confirmed network blip allows cached-mode connection.
         await toggleConnection();
@@ -592,12 +595,14 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (_disposed || !_isAuthenticated) return;
     if (_statusRefreshInFlight) return;
     if (connectionActionLocked) return;
+    final sessionEpoch = _sessionEpoch;
+    final authData = _authData;
     _statusRefreshInFlight = true;
     try {
       // Tagged silent so a transient 401 on the timer can never log the user
       // out — the session-expired interceptor skips these requests.
       final snap = await _dataLoader.loadAccountStatus(silent: true);
-      if (_disposed || !_isAuthenticated) return;
+      if (!_isSessionCurrent(sessionEpoch) || authData != _authData) return;
       _applyAccountStatus(snap);
     } catch (_) {
       // intentional: silent on a background poll.
@@ -959,6 +964,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       if (!_isSessionCurrent(sessionEpoch)) return;
       _dataLoadError = null;
     } catch (e) {
+      if (!_isSessionCurrent(sessionEpoch)) return;
       if (NetworkErrorClassifier.isNetworkError(e)) {
         _dataLoadError = _nodes.isNotEmpty
             ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
@@ -979,21 +985,27 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   /// flashing a skeleton on every visit.
   Future<void> refreshTickets() async {
     if (_ticketsLoading || !_isAuthenticated) return;
+    final sessionEpoch = _sessionEpoch;
     _ticketsLoading = true;
     _ticketsError = null;
     if (!_disposed) notifyListeners();
     try {
       final tickets = await api.getTickets();
+      if (!_isSessionCurrent(sessionEpoch)) return;
       _tickets = tickets;
       _ticketsLoaded = true;
     } catch (error) {
+      if (!_isSessionCurrent(sessionEpoch)) return;
       _ticketsError = error
           .toString()
           .replaceFirst('ApiException: ', '')
           .replaceFirst('Exception: ', '');
     } finally {
-      _ticketsLoading = false;
-      if (!_disposed) notifyListeners();
+      // A stale A-account request must not change B's loading or ticket state.
+      if (_isSessionCurrent(sessionEpoch)) {
+        _ticketsLoading = false;
+        notifyListeners();
+      }
     }
   }
 
