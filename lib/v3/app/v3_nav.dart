@@ -43,6 +43,21 @@ class V3NavItem {
     final l = Localizations.of<AppLocalizations>(
       context, AppLocalizations,
     ) ?? AppLocalizationsZh();
+    if (l.localeName.toLowerCase().contains('tw')) {
+      return switch (page) {
+        AppPage.dashboard => '連線',
+        AppPage.nodes => '節點',
+        AppPage.shop => '套餐',
+        AppPage.account => '我的',
+        AppPage.more => '更多',
+        AppPage.traffic => '流量',
+        AppPage.invite => '邀請',
+        AppPage.tickets => '工單',
+        AppPage.settings => '設定',
+        AppPage.orders => '訂單',
+        AppPage.giftCard => '兌換',
+      };
+    }
     if (l.localeName.startsWith('zh')) {
       return switch (page) {
         AppPage.dashboard => '连接',
