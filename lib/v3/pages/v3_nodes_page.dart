@@ -64,16 +64,21 @@ class V3NodesPage extends StatelessWidget {
               ),
             )
           else
-            for (final node in nodes)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _OverviewNodeRow(
-                  node: node,
-                  current:
-                      !controller.autoSelected &&
-                      controller.currentNode.id == node.id,
-                ),
-              ),
+            V3Panel(
+              padding: EdgeInsets.zero,
+              child: Column(children: [
+                for (var index = 0; index < nodes.length; index++) ...[
+                  if (index > 0)
+                    Divider(color: p.line, height: 1,
+                      indent: 16, endIndent: 16),
+                  _OverviewNodeRow(
+                    node: nodes[index],
+                    current: !controller.autoSelected &&
+                        controller.currentNode.id == nodes[index].id,
+                  ),
+                ],
+              ]),
+            ),
         ],
       ),
     );
@@ -101,8 +106,9 @@ class _OverviewNodeRow extends StatelessWidget {
         : node.latency > 0
         ? '${node.latency}ms'
         : v3Copy(context, zh: '未检测', en: 'Not tested', tw: '未檢測');
-    return V3Panel(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+    return Padding(
+      key: ValueKey('v3-node-overview-${node.id}'),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           V3NodeFlag(code: node.code),

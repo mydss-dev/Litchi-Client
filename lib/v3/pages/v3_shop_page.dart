@@ -49,12 +49,12 @@ class _V3ShopPageState extends State<V3ShopPage> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(kicker: _tr(context, '套餐商城', 'PLAN STORE', '方案商店'),
             title: _tr(context, '选择套餐', 'Choose a plan', '選擇方案')),
-          const SizedBox(height: 18),
-          _CurrentPlanBadge(controller: controller),
           const SizedBox(height: 14),
+          _CurrentPlanBadge(controller: controller),
+          const SizedBox(height: 12),
           _CategoryDeck(selected: _category,
             onChanged: (value) => setState(() => _category = value)),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           if (plans.isEmpty)
             V3Panel(child: Column(children: [
               Text(_tr(context, '当前分类没有可购买套餐',
@@ -109,17 +109,21 @@ class _CategoryDeck extends StatelessWidget {
       padding: const EdgeInsets.all(5),
       child: Row(children: [
         for (final item in items) Expanded(child: InkWell(
+          key: ValueKey('v3-plan-category-${item.$1?.name ?? 'all'}'),
           borderRadius: BorderRadius.circular(9),
           onTap: () => onChanged(item.$1),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            constraints: const BoxConstraints(minHeight: 44),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 9),
             decoration: BoxDecoration(
-              color: selected == item.$1 ? p.surface : Colors.transparent,
+              color: selected == item.$1 ? p.lycheeSoft : Colors.transparent,
               borderRadius: BorderRadius.circular(9),
               border: Border.all(color: selected == item.$1
                   ? p.lychee : Colors.transparent)),
             child: Text(item.$2, textAlign: TextAlign.center,
+              maxLines: 1, overflow: TextOverflow.ellipsis,
               style: TextStyle(color: selected == item.$1 ? p.lycheeInk : p.ink,
                 fontSize: 12, fontWeight: FontWeight.w700)),
           ),
