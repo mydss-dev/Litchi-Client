@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import '../../l10n/generated/app_localizations.dart';
+
 /// One set of payment labels for every money-taking entry point. Backend
 /// payment method names and error messages remain server-provided content.
 class V3PaymentCopy {
@@ -18,8 +20,14 @@ class V3PaymentCopy {
     return V3PaymentCopy._(traditional ? 'tw' : 'zh');
   }
 
-  static V3PaymentCopy of(BuildContext context) =>
-      V3PaymentCopy.forLocale(Localizations.localeOf(context));
+  static V3PaymentCopy of(BuildContext context) {
+    // Existing standalone payment widget tests intentionally omit the app's
+    // localization delegates. Match the rest of V3's Chinese fallback there.
+    if (Localizations.of<AppLocalizations>(context, AppLocalizations) == null) {
+      return const V3PaymentCopy._('zh');
+    }
+    return V3PaymentCopy.forLocale(Localizations.localeOf(context));
+  }
 
   String _tr(String zh, String en, String tw) => switch (_language) {
     'en' => en,
