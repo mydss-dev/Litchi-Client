@@ -7,8 +7,12 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 
+/// Supported chart periods are the same on desktop and mobile.
+const List<int> kV3TrafficPeriods = [7, 15, 30];
+
 class V3TrafficPage extends StatefulWidget {
   const V3TrafficPage({super.key});
+
   @override
   State<V3TrafficPage> createState() => _V3TrafficPageState();
 }
@@ -24,23 +28,16 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
       return Center(child: Container(
         constraints: const BoxConstraints(maxWidth: 520),
         margin: const EdgeInsets.all(24),
-        padding: const EdgeInsets.all(30),
+        padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(30), border: Border.all(color: p.line)),
+          borderRadius: BorderRadius.circular(24), border: Border.all(color: p.line)),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.data_usage_rounded, color: p.lychee, size: 34),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(v3Copy(context, zh: '还没有可统计的套餐',
             en: 'No plan with usage data', tw: '尚無可統計的方案'),
             style: Theme.of(context).textTheme.headlineLarge),
-          const SizedBox(height: 8),
-          Text(v3Copy(context,
-            zh: '激活套餐后，这里会显示每天的流量趋势、重置时间与剩余额度。',
-            en: 'Activate a plan to view daily usage, reset dates and remaining data.',
-            tw: '啟用方案後，這裡會顯示每日流量、重置時間與剩餘額度。'),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           FilledButton.icon(onPressed: () => controller.goToPage(AppPage.shop),
             icon: const Icon(Icons.storefront_rounded),
             label: Text(v3Copy(context, zh: '去选择套餐',
@@ -57,33 +54,29 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     return LayoutBuilder(builder: (context, constraints) {
       final compact = constraints.maxWidth < 760;
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 30),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
             kicker: v3Copy(context, zh: '使用概览', en: 'USAGE OVERVIEW',
               tw: '使用概覽'),
             title: v3Copy(context, zh: '流量', en: 'Traffic', tw: '流量'),
-            description: v3Copy(context,
-              zh: '看清今天用了多少、套餐还剩多少，以及最近的使用节奏。',
-              en: 'See today’s usage, your remaining allowance, and recent trends.',
-              tw: '查看今日用量、方案剩餘流量及近期使用趨勢。'),
             trailing: IconButton(
               tooltip: v3Copy(context, zh: '刷新流量',
                 en: 'Refresh traffic', tw: '重新整理流量'),
               onPressed: controller.refreshData,
               icon: const Icon(Icons.refresh_rounded))),
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
           if (compact) ...[
             _QuotaPanel(controller: controller, usedRatio: usedRatio),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _TimingPanel(controller: controller),
           ] else Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(flex: 11,
               child: _QuotaPanel(controller: controller, usedRatio: usedRatio)),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(flex: 9, child: _TimingPanel(controller: controller)),
           ]),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _TrendPanel(series: series, periodDays: _days,
             usagePoints: controller.trafficUsage,
             onPeriodChanged: (days) => setState(() => _days = days)),
@@ -97,39 +90,40 @@ class _QuotaPanel extends StatelessWidget {
   const _QuotaPanel({required this.controller, required this.usedRatio});
   final AppController controller;
   final double usedRatio;
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final traffic = controller.traffic;
-    return Container(padding: const EdgeInsets.all(26),
+    return Container(padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: p.hero,
-        borderRadius: BorderRadius.circular(30), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Text(v3Copy(context, zh: '套餐流量', en: 'PLAN DATA', tw: '方案流量'),
-            style: TextStyle(color: p.inkMuted, fontSize: 10,
-              fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-          const Spacer(),
+          Expanded(child: Text(v3Copy(context,
+            zh: '套餐流量', en: 'PLAN DATA', tw: '方案流量'),
+            style: TextStyle(color: p.inkMuted, fontSize: 11,
+              fontWeight: FontWeight.w800))),
           Text(v3Copy(context,
             zh: '已用 ${(usedRatio * 100).toStringAsFixed(0)}%',
             en: '${(usedRatio * 100).toStringAsFixed(0)}% used',
             tw: '已用 ${(usedRatio * 100).toStringAsFixed(0)}%'),
-            style: TextStyle(color: p.lycheeInk, fontSize: 12,
-              fontWeight: FontWeight.w900)),
+            style: TextStyle(color: p.lycheeInk, fontSize: 11,
+              fontWeight: FontWeight.w800)),
         ]),
-        const SizedBox(height: 18),
+        const SizedBox(height: 12),
         Text('${traffic.remainGb.toStringAsFixed(1)} GB',
-          style: TextStyle(color: p.ink, fontSize: 38, height: 1,
-            fontWeight: FontWeight.w900, letterSpacing: -1.2)),
-        const SizedBox(height: 8),
+          style: TextStyle(color: p.ink, fontSize: 33, height: 1,
+            fontWeight: FontWeight.w900, letterSpacing: -1)),
+        const SizedBox(height: 5),
         Text(v3Copy(context, zh: '剩余流量', en: 'Remaining data',
           tw: '剩餘流量'), style: TextStyle(color: p.inkMuted, fontSize: 11)),
-        const SizedBox(height: 18),
-        ClipRRect(borderRadius: BorderRadius.circular(10),
-          child: LinearProgressIndicator(value: usedRatio, minHeight: 8,
+        const SizedBox(height: 14),
+        ClipRRect(borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(value: usedRatio, minHeight: 7,
             backgroundColor: p.ink.withValues(alpha: .1),
             valueColor: AlwaysStoppedAnimation<Color>(p.lycheeInk))),
-        const SizedBox(height: 15),
+        const SizedBox(height: 12),
         Row(children: [
           Expanded(child: _QuotaValue(label: v3Copy(context,
               zh: '已使用', en: 'Used', tw: '已使用'),
@@ -148,6 +142,7 @@ class _QuotaValue extends StatelessWidget {
   final String label;
   final String value;
   final bool alignEnd;
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
@@ -164,19 +159,20 @@ class _QuotaValue extends StatelessWidget {
 class _TimingPanel extends StatelessWidget {
   const _TimingPanel({required this.controller});
   final AppController controller;
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final resetDays = _daysUntilReset(controller.resetDay);
-    return Container(padding: const EdgeInsets.all(24),
+    return Container(padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(30), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(v3Copy(context, zh: '使用与有效期',
           en: 'USAGE & EXPIRY', tw: '使用與有效期'),
-          style: TextStyle(color: p.inkMuted, fontSize: 10,
-            fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-        const SizedBox(height: 20),
+          style: TextStyle(color: p.inkMuted, fontSize: 11,
+            fontWeight: FontWeight.w800)),
+        const SizedBox(height: 14),
         _TimingRow(icon: Icons.today_rounded,
           label: v3Copy(context, zh: '今日已用', en: 'Used today', tw: '今日已用'),
           value: '${controller.todayTrafficGb.toStringAsFixed(2)} GB',
@@ -215,20 +211,23 @@ class _TimingRow extends StatelessWidget {
   final String value;
   final Color accent;
   final bool last;
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Padding(padding: EdgeInsets.only(bottom: last ? 0 : 15),
+    return Padding(padding: EdgeInsets.only(bottom: last ? 0 : 11),
       child: Row(children: [
-        Container(width: 36, height: 36,
+        Container(width: 30, height: 30,
           decoration: BoxDecoration(color: accent.withValues(alpha: .11),
-            borderRadius: BorderRadius.circular(12)),
-          child: Icon(icon, color: accent, size: 18)),
-        const SizedBox(width: 12),
+            borderRadius: BorderRadius.circular(9)),
+          child: Icon(icon, color: accent, size: 16)),
+        const SizedBox(width: 9),
         Expanded(child: Text(label,
           style: TextStyle(color: p.inkMuted, fontSize: 10))),
-        Text(value, style: TextStyle(color: p.ink, fontSize: 11,
-          fontWeight: FontWeight.w800)),
+        Flexible(child: Text(value, maxLines: 1,
+          overflow: TextOverflow.ellipsis, textAlign: TextAlign.end,
+          style: TextStyle(color: p.ink, fontSize: 11,
+            fontWeight: FontWeight.w800))),
       ]),
     );
   }
@@ -237,11 +236,9 @@ class _TimingRow extends StatelessWidget {
 String _dayLabel(DateTime date) =>
   '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-/// Real per-day details, never a fabricated upload/download split.
+/// Details are shown only when the server supplied directional records.
 class _DayDetails {
-  const _DayDetails({required this.point, required this.upload,
-    required this.download});
-  final TrafficHistoryDay point;
+  const _DayDetails({required this.upload, required this.download});
   final double? upload;
   final double? download;
 
@@ -250,7 +247,7 @@ class _DayDetails {
       p.date.month == point.date.month && p.date.day == point.date.day).toList();
     final hasDirectionalData = matches.any(
       (p) => p.uploadGb > 0 || p.downloadGb > 0);
-    return _DayDetails(point: point,
+    return _DayDetails(
       upload: hasDirectionalData
         ? matches.fold<double>(0, (sum, p) => sum + p.uploadGb) : null,
       download: hasDirectionalData
@@ -266,133 +263,52 @@ class _TrendPanel extends StatelessWidget {
   final List<TrafficUsagePoint> usagePoints;
   final ValueChanged<int> onPeriodChanged;
 
-  Future<void> _showDay(BuildContext context, TrafficHistoryDay point) async {
-    final details = _DayDetails.forDate(point, usagePoints);
-    await showDialog<void>(context: context,
-      builder: (ctx) => Dialog(
-        insetPadding: const EdgeInsets.all(24),
-        backgroundColor: V3Palette.of(ctx).surface,
-        child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 360),
-          child: Padding(padding: const EdgeInsets.all(22),
-            child: Column(mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(child: Text(v3Copy(ctx,
-                    zh: '流量详情 · ${_dayLabel(point.date)}',
-                    en: 'Traffic details · ${_dayLabel(point.date)}',
-                    tw: '流量詳情 · ${_dayLabel(point.date)}'),
-                    style: Theme.of(ctx).textTheme.titleLarge)),
-                  IconButton(tooltip: v3Copy(ctx, zh: '关闭',
-                    en: 'Close', tw: '關閉'),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    icon: const Icon(Icons.close_rounded)),
-                ]),
-                const SizedBox(height: 18),
-                Text(point.gb == null
-                  ? v3Copy(ctx, zh: '该日暂无记录',
-                      en: 'No record for this day', tw: '當日暫無紀錄')
-                  : v3Copy(ctx,
-                      zh: '该日总流量 ${point.gb!.toStringAsFixed(2)} GB',
-                      en: 'Total data ${point.gb!.toStringAsFixed(2)} GB',
-                      tw: '當日總流量 ${point.gb!.toStringAsFixed(2)} GB'),
-                  style: TextStyle(color: V3Palette.of(ctx).ink,
-                    fontSize: 15, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 12),
-                if (details.upload != null && details.download != null) ...[
-                  Text(v3Copy(ctx,
-                    zh: '上传 ${details.upload!.toStringAsFixed(2)} GB',
-                    en: 'Upload ${details.upload!.toStringAsFixed(2)} GB',
-                    tw: '上傳 ${details.upload!.toStringAsFixed(2)} GB')),
-                  const SizedBox(height: 6),
-                  Text(v3Copy(ctx,
-                    zh: '下载 ${details.download!.toStringAsFixed(2)} GB',
-                    en: 'Download ${details.download!.toStringAsFixed(2)} GB',
-                    tw: '下載 ${details.download!.toStringAsFixed(2)} GB')),
-                ] else Text(v3Copy(ctx, zh: '后台未提供上传、下载明细',
-                    en: 'Upload and download details unavailable',
-                    tw: '後台未提供上傳、下載明細'),
-                  style: TextStyle(color: V3Palette.of(ctx).inkMuted)),
-              ]),
-          ),
-        ),
-      ));
-  }
-
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final first = series.days.first.date;
-    final last = series.days.last.date;
-    return Container(width: double.infinity, padding: const EdgeInsets.all(22),
+    return Container(width: double.infinity, padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(28), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(v3Copy(context, zh: 'USAGE TREND',
-                en: 'USAGE TREND', tw: '流量趨勢'),
-                style: TextStyle(color: p.inkMuted,
-                  fontSize: 10, fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5)),
+        Wrap(spacing: 12, runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          alignment: WrapAlignment.spaceBetween, children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(v3Copy(context, zh: '流量趋势', en: 'Usage trend', tw: '流量趨勢'),
+                style: TextStyle(color: p.inkMuted, fontSize: 11,
+                  fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
               Text(v3Copy(context,
-                zh: '$periodDays 天共使用 ${series.totalGb.toStringAsFixed(2)} GB',
-                en: '${series.totalGb.toStringAsFixed(2)} GB used in $periodDays days',
-                tw: '$periodDays 天共使用 ${series.totalGb.toStringAsFixed(2)} GB'),
-                style: TextStyle(color: p.ink, fontSize: 13,
+                zh: '近 $periodDays 天 · ${series.totalGb.toStringAsFixed(2)} GB',
+                en: '$periodDays days · ${series.totalGb.toStringAsFixed(2)} GB',
+                tw: '近 $periodDays 天 · ${series.totalGb.toStringAsFixed(2)} GB'),
+                style: TextStyle(color: p.ink, fontSize: 14,
                   fontWeight: FontWeight.w800)),
-            ])),
-          SegmentedButton<int>(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.resolveWith((states) =>
-                states.contains(WidgetState.selected) ? p.lycheeSoft : p.surfaceRaised),
-              foregroundColor: WidgetStateProperty.resolveWith((states) =>
-                states.contains(WidgetState.selected) ? p.lycheeInk : p.ink),
-              side: WidgetStateProperty.resolveWith((states) => BorderSide(
-                color: states.contains(WidgetState.selected) ? p.lycheeInk : p.line,
-                width: states.contains(WidgetState.selected) ? 1.5 : 1)),
-              textStyle: const WidgetStatePropertyAll(TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w800))),
-            segments: [
-              ButtonSegment(value: 7, label: Text(v3Copy(context,
-                zh: '7天', en: '7 days', tw: '7天'))),
-              ButtonSegment(value: 30, label: Text(v3Copy(context,
-                zh: '30天', en: '30 days', tw: '30天'))),
-            ],
-            selected: {periodDays}, showSelectedIcon: true,
-            onSelectionChanged: (values) => onPeriodChanged(values.first)),
-        ]),
-        const SizedBox(height: 8),
-        Text(v3Copy(context,
-          zh: '${_dayLabel(first)} 至 ${_dayLabel(last)} · ${series.recordedDays}/$periodDays 天有记录',
-          en: '${_dayLabel(first)} to ${_dayLabel(last)} · ${series.recordedDays}/$periodDays recorded days',
-          tw: '${_dayLabel(first)} 至 ${_dayLabel(last)} · ${series.recordedDays}/$periodDays 天有紀錄'),
-          style: TextStyle(color: p.inkMuted, fontSize: 11)),
-        if (series.hasGaps) ...[
-          const SizedBox(height: 5),
-          Text(v3Copy(context,
-            zh: '灰色空位表示该日暂无记录，不代表流量为 0。',
-            en: 'Gray gaps mean no record for that day, not zero usage.',
-            tw: '灰色空位表示當日暫無紀錄，不代表流量為 0。'),
-            style: TextStyle(color: p.warningInk, fontSize: 10)),
-        ],
-        const SizedBox(height: 10),
-        Text(v3Copy(context,
-          zh: '悬停查看用量，点击柱形或日期查看真实明细',
-          en: 'Hover for usage; tap a bar or date for actual details',
-          tw: '懸停查看用量，點擊柱形或日期查看實際明細'),
-          style: TextStyle(color: p.inkMuted, fontSize: 11)),
-        const SizedBox(height: 8),
-        SizedBox(height: 180,
+            ]),
+            SegmentedButton<int>(
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.resolveWith((states) =>
+                  states.contains(WidgetState.selected) ? p.lycheeSoft : p.surfaceRaised),
+                foregroundColor: WidgetStateProperty.resolveWith((states) =>
+                  states.contains(WidgetState.selected) ? p.lycheeInk : p.ink),
+                textStyle: const WidgetStatePropertyAll(TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w800))),
+              segments: [for (final days in kV3TrafficPeriods)
+                ButtonSegment(value: days, label: Text(v3Copy(context,
+                  zh: '$days天', en: '$days days', tw: '$days天')))],
+              selected: {periodDays}, showSelectedIcon: false,
+              onSelectionChanged: (values) => onPeriodChanged(values.first)),
+          ]),
+        const SizedBox(height: 16),
+        SizedBox(height: 146,
           child: series.recordedDays == 0
             ? Center(child: Text(v3Copy(context,
                 zh: '暂时没有每日流量记录', en: 'No daily usage records yet',
                 tw: '暫時沒有每日流量紀錄'),
                 style: TextStyle(color: p.inkMuted, fontSize: 11)))
             : LayoutBuilder(builder: (context, constraints) {
-                final spacing = periodDays == 7 ? 12.0 : 3.0;
-                final minChartWidth = periodDays * 44.0 +
+                final spacing = periodDays == 7 ? 10.0 : 4.0;
+                final minChartWidth = periodDays * (periodDays == 7 ? 42.0 : 28.0) +
                   (periodDays - 1) * spacing;
                 final width = constraints.maxWidth > minChartWidth
                   ? constraints.maxWidth : minChartWidth;
@@ -403,10 +319,11 @@ class _TrendPanel extends StatelessWidget {
                         for (var i = 0; i < series.days.length; i++) ...[
                           Expanded(child: _UsageBar(
                             point: series.days[i], maxGb: series.maxGb,
+                            details: _DayDetails.forDate(series.days[i], usagePoints),
                             compact: periodDays != 7,
-                            showLabel: periodDays == 7 || i % 5 == 0 ||
-                              i == series.days.length - 1,
-                            onTap: () => _showDay(context, series.days[i]))),
+                            showLabel: periodDays == 7 ||
+                              i % (periodDays == 15 ? 3 : 5) == 0 ||
+                              i == series.days.length - 1)),
                           if (i != series.days.length - 1)
                             SizedBox(width: spacing),
                         ],
@@ -415,21 +332,18 @@ class _TrendPanel extends StatelessWidget {
                 );
               }),
         ),
-        const SizedBox(height: 18),
-        Row(children: [
-          Expanded(child: _TrendMetric(label: v3Copy(context, zh: '日均',
-              en: 'Daily avg.', tw: '日均'),
-            value: series.recordedDays == 0 ? '--' :
-              '${series.averageGb.toStringAsFixed(2)} GB')),
-          Expanded(child: _TrendMetric(label: v3Copy(context, zh: '今日',
-              en: 'Today', tw: '今日'),
-            value: series.days.last.gb == null ? '--' :
-              '${series.days.last.gb!.toStringAsFixed(2)} GB')),
-          Expanded(child: _TrendMetric(label: v3Copy(context, zh: '峰值',
-              en: 'Peak', tw: '峰值'), alignEnd: true,
-            value: series.recordedDays == 0 ? '--' :
-              '${series.maxGb.toStringAsFixed(2)} GB')),
-        ]),
+        if (series.hasGaps && series.recordedDays != 0) ...[
+          const SizedBox(height: 10),
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 8, height: 8,
+              decoration: BoxDecoration(color: p.line,
+                borderRadius: BorderRadius.circular(2))),
+            const SizedBox(width: 6),
+            Text(v3Copy(context, zh: '灰色表示暂无记录',
+              en: 'Gray: no record', tw: '灰色表示暫無紀錄'),
+              style: TextStyle(color: p.inkMuted, fontSize: 10)),
+          ]),
+        ],
       ]),
     );
   }
@@ -437,12 +351,12 @@ class _TrendPanel extends StatelessWidget {
 
 class _UsageBar extends StatelessWidget {
   const _UsageBar({required this.point, required this.maxGb,
-    required this.showLabel, required this.compact, required this.onTap});
+    required this.showLabel, required this.compact, required this.details});
   final TrafficHistoryDay point;
   final double maxGb;
   final bool showLabel;
   final bool compact;
-  final VoidCallback onTap;
+  final _DayDetails details;
 
   @override
   Widget build(BuildContext context) {
@@ -455,55 +369,32 @@ class _UsageBar extends StatelessWidget {
     final value = gb == null
       ? v3Copy(context, zh: '暂无记录', en: 'No record', tw: '暫無紀錄')
       : '${gb.toStringAsFixed(2)} GB';
+    final detailsText = details.upload == null || details.download == null
+      ? '' : v3Copy(context,
+          zh: '\n上传 ${details.upload!.toStringAsFixed(2)} GB · 下载 ${details.download!.toStringAsFixed(2)} GB',
+          en: '\nUpload ${details.upload!.toStringAsFixed(2)} GB · Download ${details.download!.toStringAsFixed(2)} GB',
+          tw: '\n上傳 ${details.upload!.toStringAsFixed(2)} GB · 下載 ${details.download!.toStringAsFixed(2)} GB');
     return Tooltip(
-      message: '${_dayLabel(point.date)} · $value',
-      child: Semantics(button: true,
-        label: v3Copy(context,
-          zh: '${_dayLabel(point.date)}，$value，点击查看详情',
-          en: '${_dayLabel(point.date)}, $value, tap for details',
-          tw: '${_dayLabel(point.date)}，$value，點擊查看詳情'),
-        child: InkWell(
-          key: ValueKey('v3-traffic-day-${_dayLabel(point.date)}'),
-          borderRadius: BorderRadius.circular(8),
-          onTap: onTap,
-          child: SizedBox(height: 168, width: double.infinity,
-            child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-              Container(width: double.infinity,
-                height: gb == null ? 4 : 18 + 110 * ratio,
-                constraints: const BoxConstraints(maxWidth: 34),
-                decoration: BoxDecoration(
-                  color: gb == null ? p.line : ratio >= .75
-                    ? p.lychee : p.aqua.withValues(alpha: .78),
-                  borderRadius: BorderRadius.circular(gb == null ? 2 : 8))),
-              const SizedBox(height: 8),
-              SizedBox(height: 16,
-                child: showLabel ? Text(label, maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted,
-                    fontSize: compact ? 9 : 10)) : null),
-            ])),
-        ),
+      message: '${_dayLabel(point.date)}\n$value$detailsText',
+      child: Semantics(label: '${_dayLabel(point.date)}，$value',
+        child: SizedBox(height: 140, width: double.infinity,
+          child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+            Container(width: double.infinity,
+              height: gb == null ? 4 : 8 + 92 * ratio,
+              constraints: BoxConstraints(maxWidth: compact ? 22 : 34),
+              decoration: BoxDecoration(
+                color: gb == null ? p.line : ratio >= .75
+                  ? p.lychee : p.aqua.withValues(alpha: .78),
+                borderRadius: BorderRadius.circular(gb == null ? 2 : 6))),
+            const SizedBox(height: 8),
+            SizedBox(height: 16,
+              child: showLabel ? Text(label, maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: p.inkMuted,
+                  fontSize: compact ? 9 : 10)) : null),
+          ])),
       ),
     );
-  }
-}
-
-class _TrendMetric extends StatelessWidget {
-  const _TrendMetric({required this.label, required this.value,
-    this.alignEnd = false});
-  final String label;
-  final String value;
-  final bool alignEnd;
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Column(crossAxisAlignment: alignEnd ? CrossAxisAlignment.end :
-      CrossAxisAlignment.start, children: [
-        Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
-        const SizedBox(height: 3),
-        Text(value, style: TextStyle(color: p.ink, fontSize: 12,
-          fontWeight: FontWeight.w800)),
-      ]);
   }
 }
 
