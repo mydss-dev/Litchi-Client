@@ -33,15 +33,18 @@ void main() {
       id: 1, title: '重要通知', content: '<p>新增节点和其他正文</p>',
       createdAt: 0,
     );
-    expect(v3NoticeHeadline(notice), '重要通知');
+    expect(v3NoticeHeadline(notice, fallback: 'Notice'), '重要通知');
     expect(v3NoticeText(notice.content), '新增节点和其他正文');
   });
 
-  test('empty notice title has a neutral heading, never body preview', () {
+  test('empty notice title uses supplied locale fallback, never body', () {
     const notice = NoticeModel(
       id: 2, title: ' ', content: '这是正文，不应出现在公告栏',
       createdAt: 0,
     );
-    expect(v3NoticeHeadline(notice), '公告');
+    expect(v3NoticeHeadline(notice, fallback: '公告'), '公告');
+    expect(v3NoticeHeadline(notice, fallback: 'Notice'), 'Notice');
+    expect(v3NoticeHeadline(notice, fallback: '公告'),
+      isNot(contains('这是正文')));
   });
 }
