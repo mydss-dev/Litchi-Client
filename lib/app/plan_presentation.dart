@@ -17,19 +17,21 @@ class PlanPresentation {
 
   String get shortLabel => name == '暂无套餐' ? name : '$name · $status';
 
-  /// An explicit date takes precedence over a conflicting permanent sentinel;
-  /// a cached '永久' label with no timestamp evidence is unverified.
+  /// A currently loaded account with plan evidence may use the panel's null
+  /// expiry convention (permanent). A cached label alone cannot prove that.
   static String expiryLabelWithEvidence({
     required String label,
     required int? accountExpiry,
     required int? subscriptionExpiry,
+    bool confirmedAccountPlan = false,
   }) {
     if ((accountExpiry != null && accountExpiry > 0) ||
         (subscriptionExpiry != null && subscriptionExpiry > 0)) {
       return label.trim() == '永久' ? '未提供' : label;
     }
     if (accountExpiry == 0 || subscriptionExpiry == 0) return '永久';
-    return label.trim() == '永久' ? '未提供' : label;
+    if (label.trim() == '永久' && !confirmedAccountPlan) return '未提供';
+    return label;
   }
 
   static int? expiryTimestampWithEvidence({
@@ -82,6 +84,7 @@ class PlanPresentation {
         label: controller.planExpiryLabel,
         accountExpiry: accountExpiry,
         subscriptionExpiry: subscriptionExpiry,
+        confirmedAccountPlan: controller.accountDetails?.hasPlanEvidence ?? false,
       ),
       quotaGb: controller.traffic.totalGb,
       remainingGb: controller.traffic.remainGb,
