@@ -61,7 +61,8 @@ void main() {
     expect(find.byKey(const ValueKey('v3-map-country-ZZ')), findsOneWidget);
   });
 
-  testWidgets('map chips select a code and all clears it', (tester) async {
+  testWidgets('interactive coverage map still supports filters for other callers',
+      (tester) async {
     String? selected;
     await tester.pumpWidget(MaterialApp(
       theme: V3Theme.light(),
@@ -83,7 +84,7 @@ void main() {
     expect(selected, isNull);
   });
 
-  testWidgets('nodes page filters by map and clears stale selection on refresh',
+  testWidgets('nodes overview has no map filters, selection or testing controls',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -100,18 +101,20 @@ void main() {
     expect(find.text('HK node'), findsOneWidget);
     expect(find.text('JP node'), findsOneWidget);
     expect(find.text('DE node'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('v3-map-country-HK')));
-    await tester.pumpAndSettle();
-    expect(find.text('HK node'), findsOneWidget);
-    expect(find.text('JP node'), findsNothing);
-    expect(find.text('DE node'), findsNothing);
-
+    expect(find.byType(ChoiceChip), findsNothing);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('全部测速'), findsNothing);
+    expect(find.text('自动选择'), findsNothing);
+    expect(find.ancestor(of: find.text('HK node'), matching: find.byType(InkWell)),
+      findsNothing);
+    expect(find.byKey(const ValueKey('v3-map-marker-HK')), findsOneWidget);
     fixture.replace([_jp, _de]);
     await tester.pumpAndSettle();
+    expect(find.text('HK node'), findsNothing);
     expect(find.text('JP node'), findsOneWidget);
     expect(find.text('DE node'), findsOneWidget);
-    expect(find.byKey(const ValueKey('v3-map-country-HK')), findsNothing);
+    expect(find.byKey(const ValueKey('v3-map-marker-HK')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   for (final theme in [ThemeMode.light, ThemeMode.dark]) {
