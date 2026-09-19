@@ -4,7 +4,6 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/traffic_history_series.dart';
 import '../theme/v3_palette.dart';
-import '../ui/v3_layout.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 
@@ -28,10 +27,10 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     if (!controller.hasPlan && controller.hasAccountSummary) {
       return Center(child: Container(
         constraints: const BoxConstraints(maxWidth: 520),
-        margin: const EdgeInsets.all(V3Layout.pageGutter),
+        margin: const EdgeInsets.all(24),
         padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),
+          borderRadius: BorderRadius.circular(24), border: Border.all(color: p.line)),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.data_usage_rounded, color: p.lychee, size: 34),
           const SizedBox(height: 12),
@@ -53,10 +52,9 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     final usedRatio = traffic.totalGb <= 0 ? 0.0 :
       (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0).toDouble();
     return LayoutBuilder(builder: (context, constraints) {
-      final compact = !V3Layout.canSplit(
-        paneWidth: constraints.maxWidth, primaryMin: 340, secondaryMin: 270);
+      final compact = constraints.maxWidth < 760;
       return SingleChildScrollView(
-        padding: V3Layout.pageInsets,
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 30),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
             kicker: v3Copy(context, zh: '使用概览', en: 'USAGE OVERVIEW',
@@ -97,7 +95,9 @@ class _QuotaPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final traffic = controller.traffic;
-    return V3WorkspaceCard(padding: const EdgeInsets.all(18),
+    return Container(padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: p.hero,
+        borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text(v3Copy(context,
@@ -166,7 +166,7 @@ class _TimingPanel extends StatelessWidget {
     final resetDays = _daysUntilReset(controller.resetDay);
     return Container(padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(v3Copy(context, zh: '使用与有效期',
           en: 'USAGE & EXPIRY', tw: '使用與有效期'),
@@ -224,7 +224,7 @@ class _TimingRow extends StatelessWidget {
         const SizedBox(width: 9),
         Expanded(child: Text(label,
           style: TextStyle(color: p.inkMuted, fontSize: 10))),
-        Flexible(child: Text(value, maxLines: 2,
+        Flexible(child: Text(value, maxLines: 1,
           overflow: TextOverflow.ellipsis, textAlign: TextAlign.end,
           style: TextStyle(color: p.ink, fontSize: 11,
             fontWeight: FontWeight.w800))),
@@ -268,7 +268,7 @@ class _TrendPanel extends StatelessWidget {
     final p = V3Palette.of(context);
     return Container(width: double.infinity, padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 12, runSpacing: 10,
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -292,10 +292,7 @@ class _TrendPanel extends StatelessWidget {
                 foregroundColor: WidgetStateProperty.resolveWith((states) =>
                   states.contains(WidgetState.selected) ? p.lycheeInk : p.ink),
                 textStyle: const WidgetStatePropertyAll(TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w800)),
-                side: WidgetStateProperty.resolveWith((states) => BorderSide(
-                  color: states.contains(WidgetState.selected)
-                    ? p.lychee : p.line))),
+                  fontSize: 11, fontWeight: FontWeight.w800))),
               segments: [for (final days in kV3TrafficPeriods)
                 ButtonSegment(value: days, label: Text(v3Copy(context,
                   zh: '$days天', en: '$days days', tw: '$days天')))],
@@ -303,7 +300,7 @@ class _TrendPanel extends StatelessWidget {
               onSelectionChanged: (values) => onPeriodChanged(values.first)),
           ]),
         const SizedBox(height: 16),
-        SizedBox(height: 156,
+        SizedBox(height: 146,
           child: series.recordedDays == 0
             ? Center(child: Text(v3Copy(context,
                 zh: '暂时没有每日流量记录', en: 'No daily usage records yet',

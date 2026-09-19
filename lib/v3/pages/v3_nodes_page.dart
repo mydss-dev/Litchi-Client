@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
-import '../ui/v3_layout.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_coverage_map.dart';
@@ -19,7 +18,7 @@ class V3NodesPage extends StatelessWidget {
     final p = V3Palette.of(context);
     final nodes = controller.nodes.where((node) => !node.isAuto).toList();
     return SingleChildScrollView(
-      padding: V3Layout.pageInsets,
+      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -64,21 +63,16 @@ class V3NodesPage extends StatelessWidget {
               ),
             )
           else
-            V3Panel(
-              padding: EdgeInsets.zero,
-              child: Column(children: [
-                for (var index = 0; index < nodes.length; index++) ...[
-                  if (index > 0)
-                    Divider(color: p.line, height: 1,
-                      indent: 16, endIndent: 16),
-                  _OverviewNodeRow(
-                    node: nodes[index],
-                    current: !controller.autoSelected &&
-                        controller.currentNode.id == nodes[index].id,
-                  ),
-                ],
-              ]),
-            ),
+            for (final node in nodes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _OverviewNodeRow(
+                  node: node,
+                  current:
+                      !controller.autoSelected &&
+                      controller.currentNode.id == node.id,
+                ),
+              ),
         ],
       ),
     );
@@ -106,9 +100,8 @@ class _OverviewNodeRow extends StatelessWidget {
         : node.latency > 0
         ? '${node.latency}ms'
         : v3Copy(context, zh: '未检测', en: 'Not tested', tw: '未檢測');
-    return Padding(
-      key: ValueKey('v3-node-overview-${node.id}'),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    return V3Panel(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Row(
         children: [
           V3NodeFlag(code: node.code),
