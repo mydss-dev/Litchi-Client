@@ -4,6 +4,7 @@ import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
+import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 
 import 'v3_visual_fixture.dart';
 
@@ -12,6 +13,13 @@ class _SystemModeController extends VisualV3Controller {
 
   @override
   NetworkMode get networkMode => NetworkMode.system;
+}
+
+class _AutoSelectedController extends VisualV3Controller {
+  _AutoSelectedController() : super(AppPage.dashboard);
+
+  @override
+  bool get autoSelected => true;
 }
 
 void main() {
@@ -49,6 +57,21 @@ void main() {
         palette.lycheeInk);
       expect(tester.widget<Text>(find.text('TUN 模式')).style!.color,
         palette.inkMuted);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('$mode automatic node selection has no green selected icon',
+        (tester) async {
+      final controller = _AutoSelectedController();
+      addTearDown(controller.disposeVisual);
+      await tester.pumpWidget(MaterialApp(
+        theme: V3Theme.light(), darkTheme: V3Theme.dark(), themeMode: mode,
+        home: Scaffold(body: V3AutoRouteRow(
+          controller: controller, busy: false, onTap: null)),
+      ));
+      final icon = tester.widget<Icon>(find.byIcon(Icons.auto_awesome_rounded));
+      expect(icon.color, palette.lycheeInk);
+      expect(icon.color, isNot(palette.successInk));
       expect(tester.takeException(), isNull);
     });
   }
