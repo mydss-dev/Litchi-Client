@@ -49,4 +49,48 @@ void main() {
     final user = ModelMappers.toUser(_user(hasPlan: false));
     expect(user.expiry, isEmpty);
   });
+
+  test('stale permanent label without timestamp proof becomes unknown', () {
+    final label = PlanPresentation.expiryLabelWithEvidence(
+      label: '永久',
+      accountExpiry: null,
+      subscriptionExpiry: null,
+    );
+    expect(label, '未提供');
+  });
+
+  test('subscription zero is proof of a permanent plan', () {
+    final label = PlanPresentation.expiryLabelWithEvidence(
+      label: '未提供',
+      accountExpiry: null,
+      subscriptionExpiry: 0,
+    );
+    expect(label, '永久');
+    expect(
+      PlanPresentation.expiryTimestampWithEvidence(
+        accountExpiry: null,
+        subscriptionExpiry: 0,
+      ),
+      0,
+    );
+  });
+
+  test('dated expiry wins over a contradictory zero sentinel', () {
+    const timestamp = 1798675200;
+    expect(
+      PlanPresentation.expiryTimestampWithEvidence(
+        accountExpiry: timestamp,
+        subscriptionExpiry: 0,
+      ),
+      timestamp,
+    );
+    expect(
+      PlanPresentation.expiryLabelWithEvidence(
+        label: '永久',
+        accountExpiry: timestamp,
+        subscriptionExpiry: 0,
+      ),
+      '未提供',
+    );
+  });
 }
