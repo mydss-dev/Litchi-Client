@@ -5,6 +5,7 @@ import '../../app/plan_presentation.dart';
 import '../../config/app_config.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_account_labels.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
@@ -129,12 +130,12 @@ class _AccountSummaryPanel extends StatelessWidget {
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min, children: [
-              Text(user.name.trim().isEmpty ? 'Litchi User' : user.name.trim(),
+              Text(v3AccountDisplayName(context, user.name),
                 maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: p.ink, fontSize: 16,
                   fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              Text(controller.accountDetails?.email ?? 'Secure Litchi account',
+              Text(v3AccountEmailLabel(context, controller.accountDetails?.email),
                 maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: p.inkMuted, fontSize: 11)),
             ])),
