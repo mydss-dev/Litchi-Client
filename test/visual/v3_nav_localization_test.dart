@@ -63,10 +63,20 @@ void main() {
     });
   });
 
-  testWidgets('Traditional Chinese preserves its two-character account label',
+  testWidgets('Traditional Chinese uses localized short labels throughout',
       (tester) async {
     await check(tester, const Locale('zh', 'TW'), {
+      AppPage.dashboard: '連線',
+      AppPage.nodes: '節點',
+      AppPage.shop: '套餐',
       AppPage.account: '我的',
+      AppPage.more: '更多',
+      AppPage.orders: '訂單',
+      AppPage.traffic: '流量',
+      AppPage.invite: '邀請',
+      AppPage.tickets: '工單',
+      AppPage.settings: '設定',
+      AppPage.giftCard: '兌換',
     });
   });
 }
