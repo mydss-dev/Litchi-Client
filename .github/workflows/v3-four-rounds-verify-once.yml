@@ -1,0 +1,42 @@
+name: V3 Four Rounds Integration Once
+
+on:
+  push:
+    branches: [review/v3-four-rounds-20260920]
+    paths:
+      - '.github/workflows/v3-four-rounds-verify-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+      - name: Fetch exact source of independently based PR 118
+        run: git fetch --depth=1 origin 53ae82905cedfcf2bf7dae740963947b67be223e
+      - name: Apply guarded PR 118 changes to PR 120 stack
+        run: python3 tool/v3_four_rounds_integration_once.py
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Format integrated files
+        run: dart format lib/v3/pages/v3_account_page.dart lib/v3/pages/v3_nodes_page.dart lib/v3/pages/v3_shop_page.dart test/visual/v3_detail_pages_unification_test.dart
+      - name: Static analysis
+        run: flutter analyze
+      - name: All Flutter tests across four rounds
+        run: flutter test
+      - name: Commit integration source and tests only
+        run: |
+          git rm -f .github/workflows/v3-four-rounds-verify-once.yml tool/v3_four_rounds_integration_once.py
+          git add lib/v3/pages/v3_account_page.dart lib/v3/pages/v3_nodes_page.dart lib/v3/pages/v3_shop_page.dart test/visual/v3_detail_pages_unification_test.dart
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'test(v3): stage all four rounds for visual review'
+          git push origin HEAD:review/v3-four-rounds-20260920
