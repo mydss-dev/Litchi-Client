@@ -42,9 +42,9 @@ void main() {
       final selectedDecoration = selected.decoration! as BoxDecoration;
       final otherDecoration = other.decoration! as BoxDecoration;
       expect(selectedDecoration.color, palette.lycheeSoft);
-      expect(selectedDecoration.border!.top.color, palette.lychee);
+      expect((selectedDecoration.border! as Border).top.color, palette.lychee);
       expect(otherDecoration.color, palette.surfaceRaised);
-      expect(otherDecoration.border!.top.color, palette.line);
+      expect((otherDecoration.border! as Border).top.color, palette.line);
       expect(tester.widget<Text>(find.text('系统代理')).style!.color,
         palette.lycheeInk);
       expect(tester.widget<Text>(find.text('TUN 模式')).style!.color,
