@@ -88,14 +88,14 @@ class NodeModel {
 
   bool get hasConfig => rawOutbound?['_litchi_format'] == 'sing-box';
 
-  NodeModel copyWith({int? latency}) => NodeModel(
+  NodeModel copyWith({int? latency, List<String>? tags}) => NodeModel(
     id: id,
     name: name,
     flag: flag,
     code: code,
     englishName: englishName,
     latency: latency ?? this.latency,
-    tags: tags,
+    tags: tags ?? this.tags,
     favorite: favorite,
     region: region,
     server: server,

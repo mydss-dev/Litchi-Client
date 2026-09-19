@@ -48,7 +48,28 @@ class NodeController extends ChangeNotifier {
   }
 
   void setNodes(List<NodeModel> nodes) {
-    _nodes = nodes;
+    // Preserve completed results for unchanged endpoints across metadata and
+    // subscription refreshes, but never transfer latency to another server.
+    final previous = <String, int>{
+      for (final node in _nodes)
+        if (!node.isAuto && node.latency > 0 && node.latency != -1)
+          '${node.name}\u0000${node.server}\u0000${node.port}': node.latency,
+    };
+    _nodes = nodes
+        .map((node) {
+          if (node.isAuto || node.latency != 0) return node;
+          final key = '${node.name}\u0000${node.server}\u0000${node.port}';
+          final latency = previous[key];
+          return latency == null ? node : node.copyWith(latency: latency);
+        })
+        .toList(growable: false);
+    notifyListeners();
+  }
+
+  void markNodeLatency(String id, int latency) {
+    _nodes = _nodes
+        .map((node) => node.id == id ? node.copyWith(latency: latency) : node)
+        .toList(growable: false);
     notifyListeners();
   }
 

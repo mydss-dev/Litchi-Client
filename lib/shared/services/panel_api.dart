@@ -147,11 +147,20 @@ class PanelApi {
     // Never turn an error page or unrelated object into the default
     // verification-disabled configuration and overwrite known-good cache.
     if (!const [
-      'is_email_verify', 'isEmailVerify', 'email_verify',
-      'emailVerifyRequired', 'email_whitelist_suffix',
-      'emailWhitelistSuffix', 'email_suffixes', 'emailSuffixes',
-      'stop_register', 'stopRegister', 'is_register', 'isRegister',
-      'register_enabled', 'registerEnabled',
+      'is_email_verify',
+      'isEmailVerify',
+      'email_verify',
+      'emailVerifyRequired',
+      'email_whitelist_suffix',
+      'emailWhitelistSuffix',
+      'email_suffixes',
+      'emailSuffixes',
+      'stop_register',
+      'stopRegister',
+      'is_register',
+      'isRegister',
+      'register_enabled',
+      'registerEnabled',
     ].any(map.containsKey)) {
       throw const ApiException('注册配置缺少必要字段');
     }
@@ -289,6 +298,14 @@ class PanelApi {
       return RemoteSubscribe.fromJson(Map<String, dynamic>.from(data));
     }
     throw const ApiException('无法获取订阅信息');
+  }
+
+  /// Optional user-visible server metadata. This is NOT a connection profile:
+  /// use it only to decorate nodes already present in the user's subscription.
+  Future<List<Map<String, dynamic>>> getNodeMetadata() async {
+    final res = await _client.get('/user/server/fetch');
+    _check(res);
+    return _requiredDataList(res);
   }
 
   /// Fetches [subscribeUrl] and parses the returned node list.
@@ -659,7 +676,9 @@ class PanelApi {
 
   /// Catalog and history must distinguish a valid empty list from a malformed
   /// response, otherwise malformed API data can erase the user's cached view.
-  static List<Map<String, dynamic>> _requiredDataList(Map<String, dynamic> res) {
+  static List<Map<String, dynamic>> _requiredDataList(
+    Map<String, dynamic> res,
+  ) {
     final data = res['data'];
     if (data is! List || data.any((item) => item is! Map)) {
       throw const ApiException('服务器返回数据格式异常');
