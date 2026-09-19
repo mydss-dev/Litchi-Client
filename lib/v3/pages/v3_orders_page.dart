@@ -9,6 +9,8 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
+import '../ui/v3_dialog_frame.dart';
+import '../ui/v3_layout.dart';
 
 class V3OrdersPage extends StatefulWidget {
   const V3OrdersPage({super.key});
@@ -159,19 +161,32 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
           ])
         else
           Column(children: [
-            for (var i = 0; i < metrics.length; i++) ...[
-              if (i > 0) const SizedBox(height: 10),
-              metrics[i],
-            ],
+            Row(children: [
+              Expanded(child: metrics[0]), const SizedBox(width: 8),
+              Expanded(child: metrics[1]),
+            ]),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: metrics[2]), const SizedBox(width: 8),
+              Expanded(child: metrics[3]),
+            ]),
           ]),
         const SizedBox(height: 16),
         Container(width: double.infinity, padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(color: p.surface,
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(V3Layout.cardRadius),
             border: Border.all(color: p.line)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SingleChildScrollView(scrollDirection: Axis.horizontal,
               child: SegmentedButton<int>(
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected) ? p.lycheeSoft : p.surfaceRaised),
+                  foregroundColor: WidgetStateProperty.resolveWith((states) =>
+                    states.contains(WidgetState.selected) ? p.lycheeInk : p.ink),
+                  side: WidgetStateProperty.resolveWith((states) => BorderSide(
+                    color: states.contains(WidgetState.selected) ? p.lychee : p.line)),
+                ),
                 segments: [
                   ButtonSegment(value: 0, label: Text(v3Copy(context,
                     zh: '全部', en: 'All', tw: '全部'))),
@@ -237,14 +252,15 @@ class _OrderMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Container(height: 100, padding: const EdgeInsets.all(18),
+    return Container(height: 72, padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(22)),
+        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
+        border: Border.all(color: p.line)),
       child: Row(children: [
-        Container(width: 4, height: 48,
+        Container(width: 4, height: 34,
           decoration: BoxDecoration(color: accent,
             borderRadius: BorderRadius.circular(8))),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
         Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
@@ -252,7 +268,7 @@ class _OrderMetric extends StatelessWidget {
             if (loading)
               const V3SkeletonBlock(width: 30, height: 16)
             else Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: p.ink, fontSize: 18,
+              style: TextStyle(color: p.ink, fontSize: 16,
                 fontWeight: FontWeight.w900)),
           ])),
       ]),
@@ -423,6 +439,8 @@ class _CancelOrderDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return AlertDialog(backgroundColor: p.surface,
+      insetPadding: const EdgeInsets.all(16),
+      shape: v3DialogShape(p),
       title: Text(v3Copy(context, zh: '取消这个订单？',
         en: 'Cancel this order?', tw: '取消這筆訂單？')),
       content: Text(v3Copy(context,

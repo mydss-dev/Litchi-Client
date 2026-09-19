@@ -135,7 +135,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
         const SizedBox(height: 18),
         V3Panel(
           tone: V3PanelTone.hero,
-          padding: const EdgeInsets.all(22),
+          padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -191,6 +191,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
         ),
         const SizedBox(height: 16),
         V3Panel(
+          padding: const EdgeInsets.all(14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

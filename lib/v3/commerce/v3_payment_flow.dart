@@ -6,6 +6,8 @@ import '../../shared/services/panel_api.dart';
 import '../../shared/services/url_opener.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_dialog_frame.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 
 /// The one payment dialog. Every entry point that can take money — a plan
@@ -183,20 +185,11 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(24),
-      child: Container(
-        width: 520,
-        constraints: const BoxConstraints(maxHeight: 680),
-        padding: const EdgeInsets.all(26),
-        decoration: BoxDecoration(
-          color: p.surface,
-          borderRadius: BorderRadius.circular(30),
-        ),
-        child: _paid ? _paidView(context) : _paymentView(context),
-      ),
+    return V3DialogFrame(
+      width: 520,
+      padding: const EdgeInsets.all(22),
+      scrollable: false,
+      child: _paid ? _paidView(context) : _paymentView(context),
     );
   }
 
@@ -311,7 +304,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: p.hero,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(V3Layout.cardRadius),
                 border: Border.all(color: p.line),
               ),
               child: Row(
@@ -378,7 +371,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: QrImageView(data: _paymentUrl!, size: 190),
                 ),
