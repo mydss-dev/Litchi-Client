@@ -17,6 +17,22 @@ class PlanPresentation {
 
   String get shortLabel => name == '暂无套餐' ? name : '$name · $status';
 
+  /// A cached label of '永久' is not proof on its own. An explicit zero expiry
+  /// from either live endpoint is required; absent timestamps mean unknown.
+  static String expiryLabelWithEvidence({
+    required String label,
+    required int? accountExpiry,
+    required int? subscriptionExpiry,
+  }) {
+    if (accountExpiry == 0 || subscriptionExpiry == 0) return '永久';
+    if (label.trim() == '永久' &&
+        accountExpiry == null &&
+        subscriptionExpiry == null) {
+      return '未提供';
+    }
+    return label;
+  }
+
   factory PlanPresentation.fromController(
     AppController controller, {
     DateTime? now,
@@ -47,7 +63,11 @@ class PlanPresentation {
       name: name,
       subscribeStatus: controller.accountDetails?.subscribeStatus,
       expiredAt: controller.expiredAt ?? controller.accountDetails?.expiredAt,
-      expiryLabel: controller.planExpiryLabel,
+      expiryLabel: expiryLabelWithEvidence(
+        label: controller.planExpiryLabel,
+        accountExpiry: controller.accountDetails?.expiredAt,
+        subscriptionExpiry: controller.expiredAt,
+      ),
       quotaGb: controller.traffic.totalGb,
       remainingGb: controller.traffic.remainGb,
       now: now,
