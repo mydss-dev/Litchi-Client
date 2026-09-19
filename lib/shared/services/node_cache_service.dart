@@ -1,20 +1,35 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../models/app_models.dart';
 import 'app_paths.dart';
 import 'credentials_storage.dart';
+import 'protected_cache_cleanup.dart';
 
 /// Stores node caches in two tiers:
 ///
 /// 1. UI cache: non-sensitive fields only, safe to keep as plain JSON.
-/// 2. Secure cache: complete native outbound payload, DPAPI-encrypted.
+/// 2. Secure cache: complete native outbound payload, platform-protected.
 ///
 /// The UI cache keeps the app responsive for display-only fallback. The secure
 /// cache lets the client still connect when the panel/API is temporarily
 /// unreachable without leaving proxy credentials in plain text on disk.
 abstract final class NodeCacheService {
-  static String get _baseDirPath => AppPaths.dataDirectory;
+  static String? _testDirectory;
+
+  /// Isolates cache tests from real user data. Assertions are absent in release
+  /// builds, so production callers cannot change the cache directory.
+  @visibleForTesting
+  static void overrideCacheDirectoryForTesting(String? directory) {
+    assert(() {
+      _testDirectory = directory;
+      return true;
+    }());
+  }
+
+  static String get _baseDirPath => _testDirectory ?? AppPaths.dataDirectory;
 
   static String get _uiCachePath =>
       '$_baseDirPath${Platform.pathSeparator}nodes_cache.json';
@@ -22,30 +37,45 @@ abstract final class NodeCacheService {
       '$_baseDirPath${Platform.pathSeparator}secure_nodes_cache.dpapi';
   static String get _legacyCachePath =>
       '$_baseDirPath${Platform.pathSeparator}nodes_cache.json';
+  static const String _secureSlot = 'secure_nodes_cache';
 
-  static Future<void> save(List<NodeModel> nodes) async {
+  // Data loading deliberately does not await every cache save. Queue writes and
+  // deletion so a pending save cannot recreate credentials after logout.
+  static Future<void> _pendingMutation = Future<void>.value();
+
+  static Future<void> save(List<NodeModel> nodes) {
     final realNodes = nodes.where((n) => !n.isAuto).toList();
-    await Future.wait([_saveUiCache(realNodes), _saveSecureCache(realNodes)]);
+    return _pendingMutation = _pendingMutation.then((_) async {
+      await Future.wait([_saveUiCache(realNodes), _saveSecureCache(realNodes)]);
+    });
   }
 
   /// Loads secure cache first because it preserves native outbounds for
-  /// actual core startup. Falls back to display-only UI cache when DPAPI cannot
-  /// decrypt or the secure cache does not exist.
+  /// actual core startup. Falls back to display-only UI cache when the secure
+  /// cache cannot be decrypted or does not exist.
   static Future<List<NodeModel>> load() async {
+    await _pendingMutation;
     final secure = await _loadSecureCache();
     if (secure.isNotEmpty) return secure;
     return _loadUiCache();
   }
 
-  static Future<void> clear() async {
-    for (final path in [_uiCachePath, _secureCachePath]) {
-      try {
-        final file = File(path);
-        if (file.existsSync()) await file.delete();
-      } catch (_) {
-        // intentional: best-effort cache, failure is safe to ignore
+  static Future<void> clear() {
+    return _pendingMutation = _pendingMutation.then((_) async {
+      for (final path in [_uiCachePath, _secureCachePath]) {
+        try {
+          final file = File(path);
+          if (file.existsSync()) await file.delete();
+        } catch (_) {
+          // Best effort: continue to revoke the separate secure-storage slot.
+        }
       }
-    }
+      try {
+        await ProtectedCacheCleanup.deleteSlot(_secureSlot);
+      } catch (_) {
+        // Logout must still complete if the OS key store is unavailable.
+      }
+    });
   }
 
   static Future<void> _saveUiCache(List<NodeModel> nodes) async {
@@ -64,7 +94,10 @@ abstract final class NodeCacheService {
   static Future<void> _saveSecureCache(List<NodeModel> nodes) async {
     try {
       final payload = jsonEncode(nodes.map((n) => n.toJson()).toList());
-      final encrypted = await CredentialsStorage.protectString(payload);
+      final encrypted = await CredentialsStorage.protectString(
+        payload,
+        slot: _secureSlot,
+      );
       if (encrypted == null || encrypted.isEmpty) return;
       final file = File(_secureCachePath);
       await file.parent.create(recursive: true);
