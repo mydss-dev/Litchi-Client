@@ -1,5 +1,5 @@
-// Plain UI models for the mock data layer (§22). No serialization yet — these
-// are immutable view models consumed directly by widgets.
+// Immutable UI view models used by the live API, cache and Flutter widgets.
+// NodeModel also serializes its display and protected connection cache data.
 
 class UserModel {
   const UserModel({
