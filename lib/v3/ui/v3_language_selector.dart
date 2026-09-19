@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../l10n/app_locale_preference.dart';
-import '../../l10n/generated/app_localizations.dart';
-import '../../l10n/generated/app_localizations_zh.dart';
 import '../theme/v3_palette.dart';
+import 'v3_locale_copy.dart';
 
 /// Uses the same AppController language preference as the MaterialApp locale.
 /// The system option deliberately passes null through to MaterialApp, rather
@@ -15,11 +14,8 @@ class V3LanguageSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    // Some legacy widget fixtures omit the app localization delegates. The
-    // actual LitchiApp installs them, but retaining a Chinese fallback keeps
-    // standalone settings previews usable as well.
-    final l = Localizations.of<AppLocalizations>(context, AppLocalizations) ??
-        AppLocalizationsZh();
+    // Standalone previews share the same localization fallback as V3 copy.
+    final l = v3Localizations(context);
     final p = V3Palette.of(context);
     return Semantics(
       label: l.language,
