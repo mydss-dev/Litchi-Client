@@ -10,6 +10,8 @@ abstract final class RegisterConfigCache {
       AppIdentity.preferenceKey('register_config_email_suffixes');
   static String get _keyEmailVerifyRequired =>
       AppIdentity.preferenceKey('register_config_email_verify_required');
+  static String get _keyRegisterOpen =>
+      AppIdentity.preferenceKey('register_config_register_open');
 
   static Future<RegisterConfig?> load(String apiBase) async {
     final prefs = await SharedPreferences.getInstance();
@@ -18,6 +20,8 @@ abstract final class RegisterConfigCache {
     return RegisterConfig(
       emailSuffixes: prefs.getStringList(_keyEmailSuffixes) ?? const [],
       emailVerifyRequired: prefs.getBool(_keyEmailVerifyRequired) ?? false,
+      // Old cache entries predate this key and retain the historical default.
+      registerOpen: prefs.getBool(_keyRegisterOpen) ?? true,
     );
   }
 
@@ -26,5 +30,6 @@ abstract final class RegisterConfigCache {
     await prefs.setString(_keyApiBase, apiBase);
     await prefs.setStringList(_keyEmailSuffixes, config.emailSuffixes);
     await prefs.setBool(_keyEmailVerifyRequired, config.emailVerifyRequired);
+    await prefs.setBool(_keyRegisterOpen, config.registerOpen);
   }
 }
