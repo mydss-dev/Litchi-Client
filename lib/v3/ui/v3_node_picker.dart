@@ -133,10 +133,10 @@ class V3AutoRouteRow extends StatelessWidget {
         child: Row(children: [
           Container(width: 38, height: 38,
             decoration: BoxDecoration(
-              color: active ? p.citrus : p.surfaceRaised,
+              color: p.surfaceRaised,
               borderRadius: BorderRadius.circular(11)),
             child: Icon(Icons.auto_awesome_rounded,
-              color: active ? p.night : p.ink, size: 19)),
+              color: active ? p.lycheeInk : p.ink, size: 19)),
           const SizedBox(width: 12),
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
