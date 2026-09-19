@@ -32,6 +32,9 @@ class _ChangingPlanController extends VisualV3Controller {
 }
 
 void main() {
+  // AppController reads WidgetsBinding.instance during construction.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('matching catalog ID wins over old cached and remote titles', () {
     final controller = _ChangingPlanController();
     addTearDown(controller.disposeVisual);
