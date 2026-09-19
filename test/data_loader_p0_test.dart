@@ -19,23 +19,28 @@ class _StubPanelApi extends PanelApi {
       subscribeInfo();
 }
 
-RemoteUser _user({int? planId, double transferEnable = 0}) =>
-    RemoteUser.fromJson({
-      'id': 1,
-      'email': 'test@example.com',
-      if (planId != null) 'plan_id': planId,
-      'transfer_enable': transferEnable,
-    });
+RemoteUser _user({int? planId, double transferEnable = 0}) {
+  final data = <String, dynamic>{
+    'id': 1,
+    'email': 'test@example.com',
+    'transfer_enable': transferEnable,
+  };
+  if (planId != null) data['plan_id'] = planId;
+  return RemoteUser.fromJson(data);
+}
 
 RemoteSubscribe _subscribe({
   int? planId,
   String url = '',
   double transferEnable = 0,
-}) => RemoteSubscribe.fromJson({
-  if (planId != null) 'plan_id': planId,
-  'subscribe_url': url,
-  'transfer_enable': transferEnable,
-});
+}) {
+  final data = <String, dynamic>{
+    'subscribe_url': url,
+    'transfer_enable': transferEnable,
+  };
+  if (planId != null) data['plan_id'] = planId;
+  return RemoteSubscribe.fromJson(data);
+}
 
 void main() {
   group('P0: account plan evidence', () {
