@@ -25,8 +25,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Format integrated files
-        run: dart format lib/v3/pages/v3_account_page.dart lib/v3/pages/v3_nodes_page.dart lib/v3/pages/v3_shop_page.dart test/visual/v3_detail_pages_unification_test.dart
+      - name: Format imported regression test only
+        run: dart format test/visual/v3_detail_pages_unification_test.dart
       - name: Static analysis
         run: flutter analyze
       - name: All Flutter tests across four rounds
