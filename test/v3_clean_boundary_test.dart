@@ -51,11 +51,8 @@ void main() {
   });
 
   test('the payment dialog is implemented exactly once', () {
-    // This dialog was duplicated: the shop carried its own copy that showed the
-    // raw error object and called the synced data 套餐数据, while the shared one
-    // unwrapped the error and said 账户数据. Nothing structural stopped a second
-    // copy existing, so removing it is only durable if this fails when one
-    // comes back.
+    // The checkout and payment dialog must each have one owner. A translated
+    // label belongs in localization data and must not count as a second dialog.
     final v3 = Directory('lib/v3');
     final checkoutOwners = <String>[];
     final dialogOwners = <String>[];
@@ -65,7 +62,10 @@ void main() {
       final source = entity.readAsStringSync();
       final name = entity.uri.pathSegments.last;
       if (source.contains('checkoutOrder(')) checkoutOwners.add(name);
-      if (source.contains('完成支付')) dialogOwners.add(name);
+      if (source.contains('extends StatefulWidget') &&
+          source.contains('class _V3PaymentDialog ')) {
+        dialogOwners.add(name);
+      }
     }
 
     expect(checkoutOwners, [
