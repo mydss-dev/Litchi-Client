@@ -56,15 +56,10 @@ class _LitchiAppState extends State<LitchiApp> {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             builder: (context, child) {
+              // Do not override MediaQuery.textScaler here: desktop users must
+              // retain their OS accessibility text-size preference.
               Widget content = child ?? const SizedBox.shrink();
               if (Platform.isLinux) content = LinuxWindowClip(child: content);
-              if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-                content = MediaQuery.withClampedTextScaling(
-                  minScaleFactor: 1.0,
-                  maxScaleFactor: 1.0,
-                  child: content,
-                );
-              }
               return content;
             },
             home: Scaffold(
