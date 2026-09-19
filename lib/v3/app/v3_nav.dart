@@ -48,7 +48,7 @@ class V3NavItem {
         AppPage.dashboard => '连接',
         AppPage.nodes => '节点',
         AppPage.shop => '套餐',
-        AppPage.account => '账户',
+        AppPage.account => '我的',
         AppPage.more => '更多',
         AppPage.traffic => '流量',
         AppPage.invite => '邀请',
