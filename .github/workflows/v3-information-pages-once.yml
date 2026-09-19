@@ -1,0 +1,40 @@
+name: V3 Information Pages One Shot
+
+on:
+  push:
+    branches: [fix/v3-information-pages-20260920]
+    paths:
+      - '.github/workflows/v3-information-pages-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+      - name: Apply exact-match page edits
+        run: python3 tool/v3_information_pages_once.py
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Format new regression tests
+        run: dart format test/visual/v3_information_pages_unification_test.dart
+      - name: Static analysis
+        run: flutter analyze
+      - name: All Flutter tests
+        run: flutter test
+      - name: Commit only reviewed source and tests
+        run: |
+          git rm -f .github/workflows/v3-information-pages-once.yml tool/v3_information_pages_once.py
+          git add lib/v3/pages/v3_traffic_page.dart lib/v3/pages/v3_invite_page.dart lib/v3/pages/v3_tickets_page.dart lib/v3/pages/v3_settings_page.dart test/visual/v3_information_pages_unification_test.dart
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'refactor(v3): compact traffic invite tickets and settings views'
+          git push origin HEAD:fix/v3-information-pages-20260920
