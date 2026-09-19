@@ -132,7 +132,10 @@ class DataLoader {
       try {
         final subscribe = await _api.getSubscribeInfo(silent: silent);
         subscribeLoaded = true;
-        snap.subscribeUrl = subscribe.subscribeUrl;
+        // A partial response cannot invalidate the cached subscription URL.
+        if (subscribe.subscribeUrl.trim().isNotEmpty) {
+          snap.subscribeUrl = subscribe.subscribeUrl;
+        }
         if (subscribe.subscribeUrl.trim().isEmpty) {
           SecureLogger.warn(
             'DataLoader getSubscribeInfo: subscribe_url empty '
@@ -171,22 +174,26 @@ class DataLoader {
 
     await Future.wait([loadUser(), loadSubscribe()]);
 
-    if (userLoaded || subscribeLoaded) {
-      snap.hasPlan =
-          (snap.currentPlanId != null && snap.currentPlanId! > 0) ||
-          (snap.remoteUser?.hasPlanEvidence ?? false) ||
-          subscribeHasPlanEvidence;
-      if (snap.hasPlan == false) {
-        // An explicit no-plan response must clear any cached subscription
-        // values instead of leaving the previous plan visible indefinitely.
-        snap.currentPlanId = null;
-        snap.subscribeUrl = '';
-        snap.traffic = const TrafficModel(totalGb: 0, usedGb: 0, remainGb: 0);
-        snap.aliveIp = null;
-        snap.deviceLimit = null;
-        snap.resetDay = null;
-        snap.expiredAt = null;
-      }
+    final hasPlanEvidence =
+        (snap.currentPlanId != null && snap.currentPlanId! > 0) ||
+        (snap.remoteUser?.hasPlanEvidence ?? false) ||
+        subscribeHasPlanEvidence;
+    if (hasPlanEvidence) {
+      snap.hasPlan = true;
+    } else if (userLoaded && subscribeLoaded) {
+      // Only two successful, independent negative responses confirm no plan.
+      // A failed request leaves hasPlan null and preserves cached state.
+      snap.hasPlan = false;
+    }
+    if (snap.hasPlan == false) {
+      // Two independent responses agree: it is safe to clear the old plan.
+      snap.currentPlanId = null;
+      snap.subscribeUrl = '';
+      snap.traffic = const TrafficModel(totalGb: 0, usedGb: 0, remainGb: 0);
+      snap.aliveIp = null;
+      snap.deviceLimit = null;
+      snap.resetDay = null;
+      snap.expiredAt = null;
     }
   }
 
