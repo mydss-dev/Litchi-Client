@@ -5,6 +5,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_language_selector.dart';
 
@@ -77,7 +78,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
     final currentNetwork = controller.networkMode == NetworkMode.system
         ? l.systemProxy : l.tunMode;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+      padding: V3Layout.pageInsets,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -331,8 +332,9 @@ class _Segment<T> extends StatelessWidget {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
             decoration: BoxDecoration(
-              color: selected ? p.surface : Colors.transparent,
+              color: selected ? p.lycheeSoft : Colors.transparent,
               borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: selected ? p.lychee : Colors.transparent),
             ),
             child: Text(label(item), textAlign: TextAlign.center, maxLines: 1,
               overflow: TextOverflow.ellipsis,

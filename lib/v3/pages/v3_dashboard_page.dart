@@ -10,6 +10,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_picker.dart';
 import '../ui/v3_node_tags.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_notice_bar.dart';
 import '../ui/v3_update_banner.dart';
 
@@ -58,18 +59,8 @@ class _DashboardCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: dark ? p.hero : p.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: p.line),
-      ),
-      child: Padding(padding: padding, child: child),
-    );
-  }
+  Widget build(BuildContext context) =>
+      V3WorkspaceCard(padding: padding, child: child);
 }
 
 const kConnectActionCardKey = Key('v3-connect-action-card');
