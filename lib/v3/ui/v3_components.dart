@@ -446,13 +446,18 @@ class V3BrandMark extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Text(
-          'LITCHI',
-          style: TextStyle(
-            color: labelColor ?? p.ink,
-            fontSize: labelSize,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.8,
+        Flexible(
+          child: Text(
+            'LITCHI',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            style: TextStyle(
+              color: labelColor ?? p.ink,
+              fontSize: labelSize,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.8,
+            ),
           ),
         ),
       ],
