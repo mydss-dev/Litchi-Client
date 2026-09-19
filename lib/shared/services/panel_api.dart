@@ -331,7 +331,7 @@ class PanelApi {
   Future<List<RemotePlan>> getPlans() async {
     final res = await _client.get('/user/plan/fetch');
     _check(res);
-    return _dataList(res).map(RemotePlan.fromJson).toList();
+    return _requiredDataList(res).map(RemotePlan.fromJson).toList();
   }
 
   // ── Invite ────────────────────────────────────────────────────────────────
@@ -402,7 +402,7 @@ class PanelApi {
   Future<List<RemoteTrafficLog>> getTrafficLog() async {
     final res = await _client.get('/user/stat/getTrafficLog');
     _check(res);
-    return _dataList(res).map(RemoteTrafficLog.fromJson).toList();
+    return _requiredDataList(res).map(RemoteTrafficLog.fromJson).toList();
   }
 
   // ── Idempotency helper ────────────────────────────────────────────────────
@@ -597,7 +597,7 @@ class PanelApi {
   Future<void> closeTicket(int ticketId) async {
     final res = await _client.post(
       '/user/ticket/close',
-      data: {'id': ticketId},
+      data: {'trade_no': tradeNo},
     );
     _check(res);
   }
@@ -638,5 +638,15 @@ class PanelApi {
         )
         .whereType<Map<String, dynamic>>()
         .toList();
+  }
+
+  /// Catalog and history must distinguish a valid empty list from a malformed
+  /// response, otherwise malformed API data can erase the user's cached view.
+  static List<Map<String, dynamic>> _requiredDataList(Map<String, dynamic> res) {
+    final data = res['data'];
+    if (data is! List || data.any((item) => item is! Map)) {
+      throw const ApiException('服务器返回数据格式异常');
+    }
+    return data.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 }
