@@ -210,6 +210,10 @@ class DataLoader {
       final result = await _api.fetchSubscription(url);
       if (result.nodes.isNotEmpty) {
         snap.nodes = result.nodes.map(ModelMappers.toNode).toList();
+      } else {
+        // The parser cannot yet distinguish an intentionally empty profile
+        // from a truncated/unsupported response. Keep cached/live nodes.
+        snap.nodesError = '订阅未返回可用节点，已保留原有节点，请检查订阅后重试';
       }
       final st = result.traffic;
       if (st != null && st.total > 0) {
@@ -237,9 +241,11 @@ class DataLoader {
     final sw = Stopwatch()..start();
     try {
       final plans = await _api.getPlans();
-      if (plans.isNotEmpty) {
-        final mapped = plans.map(ModelMappers.toPlan).toList();
-        snap.plans = mapped;
+      final mapped = plans.map(ModelMappers.toPlan).toList();
+      // A successful empty catalog is authoritative. Failed/malformed data
+      // leaves the snapshot field null so the last good catalog survives.
+      snap.plans = mapped;
+      if (mapped.isNotEmpty) {
         final syncedUser = PlanDataService.syncCurrentPlanTitle(
           user: snap.user,
           plans: mapped,
@@ -259,22 +265,20 @@ class DataLoader {
     final sw = Stopwatch()..start();
     try {
       final info = await _api.getInviteInfo();
-      if (info.codes.isNotEmpty) {
-        snap.inviteCodes = info.codes
-            .map((item) => InviteCodeModel(code: item.code, link: item.link))
-            .toList();
-      }
-      if (info.inviteCode.isNotEmpty) snap.inviteCode = info.inviteCode;
-      if (info.inviteUrl.isNotEmpty) snap.inviteLink = info.inviteUrl;
+      // A successful empty invite response must not retain another/stale code.
+      // Null fields are reserved for failures that should keep cached data.
+      snap.inviteCodes = info.codes
+          .map((item) => InviteCodeModel(code: item.code, link: item.link))
+          .toList();
+      snap.inviteCode = info.inviteCode;
+      snap.inviteLink = info.inviteUrl;
       snap.commissionRate = info.commissionRate;
       snap.invitedCount = info.effectCount;
       snap.earnedCommission = info.validCommission / 100;
       snap.pendingCommission = info.pendingCommission / 100;
       snap.withdrawable = info.balance / 100; // balance stored in cents
       final commConfig = await _api.getCommConfig();
-      if (commConfig.inviteUrlBase.isNotEmpty) {
-        snap.inviteUrlBase = commConfig.inviteUrlBase;
-      }
+      snap.inviteUrlBase = commConfig.inviteUrlBase;
       snap.currencySymbol = commConfig.currencySymbol;
       snap.withdrawClose = commConfig.withdrawClose;
       snap.withdrawMethods = commConfig.withdrawMethods;
@@ -292,6 +296,9 @@ class DataLoader {
     final sw = Stopwatch()..start();
     try {
       final logs = await _api.getTrafficLog();
+      // Only a validated success may clear cached history.
+      snap.dailyUsage = const [];
+      snap.trafficUsage = const [];
       if (logs.isNotEmpty) {
         final totalDaily = <DateTime, double>{};
         final uploadDaily = <DateTime, double>{};
