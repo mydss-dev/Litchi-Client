@@ -106,6 +106,7 @@ void main() {
                   flag: '',
                   code: 'HK',
                   englishName: 'Hong Kong',
+                  latency: 32,
                   region: NodeRegion.asia,
                 ),
               ],
