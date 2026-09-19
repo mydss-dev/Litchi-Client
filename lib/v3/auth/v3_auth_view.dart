@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/services/credentials_storage.dart';
+import '../../shared/services/registration_email_policy.dart';
 import '../../shared/services/secure_logger.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
@@ -256,13 +259,35 @@ class _RegisterFormState extends State<_RegisterForm> {
   bool _busy = false;
   bool _sendingCode = false;
   bool _obscure = true;
+  bool _configRefreshStarted = false;
   String? _error;
   String? _notice;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_configRefreshStarted) return;
+    _configRefreshStarted = true;
+    // Re-read panel flags upon entering registration, not just at app startup.
+    unawaited(AppScope.read(context).refreshRegisterConfigCache());
+  }
 
   @override
   void dispose() {
     _email.dispose(); _password.dispose(); _confirm.dispose();
     _inviteCode.dispose(); _emailCode.dispose(); super.dispose();
+  }
+
+  bool _checkAllowedSuffix(String email) {
+    if (RegistrationEmailPolicy.allows(
+        email, AppScope.read(context).registerConfig.emailSuffixes)) {
+      return true;
+    }
+    setState(() => _error = v3Copy(context,
+      zh: '该邮箱后缀不在后台允许注册的名单中',
+      en: 'This email domain is not allowed for registration',
+      tw: '此電子郵件網域不在後台允許註冊的名單中'));
+    return false;
   }
 
   Future<void> _sendCode() async {
@@ -272,6 +297,7 @@ class _RegisterFormState extends State<_RegisterForm> {
         en: 'Enter your email first', tw: '請先填寫電子郵件'));
       return;
     }
+    if (!_checkAllowedSuffix(email)) return;
     if (_sendingCode) return;
     setState(() { _sendingCode = true; _error = null; _notice = null; });
     try {
@@ -299,11 +325,18 @@ class _RegisterFormState extends State<_RegisterForm> {
     final inviteCode = _inviteCode.text.trim();
     final emailCode = _emailCode.text.trim();
     final config = AppScope.read(context).registerConfig;
+    if (!config.registerOpen) {
+      setState(() => _error = v3Copy(context,
+        zh: '后台暂未开放注册', en: 'Registration is currently closed',
+        tw: '後台暫未開放註冊'));
+      return;
+    }
     if (email.isEmpty || password.isEmpty || confirm.isEmpty) {
       setState(() => _error = v3Copy(context, zh: '请填写邮箱和密码',
         en: 'Enter your email and password', tw: '請填寫電子郵件與密碼'));
       return;
     }
+    if (!_checkAllowedSuffix(email)) return;
     if (password != confirm) {
       setState(() => _error = v3Copy(context,
         zh: '两次输入的密码不一致', en: 'Passwords do not match',
@@ -322,7 +355,8 @@ class _RegisterFormState extends State<_RegisterForm> {
         email: email, password: password,
         passwordConfirmation: confirm,
         inviteCode: inviteCode.isEmpty ? null : inviteCode,
-        emailCode: emailCode.isEmpty ? null : emailCode);
+        emailCode: config.emailVerifyRequired && emailCode.isNotEmpty
+            ? emailCode : null);
     } catch (error) {
       if (mounted) setState(() => _error = _authError(error));
     } finally {
@@ -334,7 +368,8 @@ class _RegisterFormState extends State<_RegisterForm> {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final controller = AppScope.of(context);
-    final emailVerifyRequired = controller.registerConfig.emailVerifyRequired;
+    final config = controller.registerConfig;
+    final emailVerifyRequired = config.emailVerifyRequired;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(v3Copy(context, zh: '创建账户', en: 'Create account', tw: '建立帳戶'),
         style: Theme.of(context).textTheme.headlineLarge),
@@ -345,6 +380,13 @@ class _RegisterFormState extends State<_RegisterForm> {
       const SizedBox(height: 32),
       _V3Field(controller: _email, label: 'EMAIL', hint: 'name@example.com',
         keyboardType: TextInputType.emailAddress),
+      if (config.emailSuffixes.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Text('${v3Copy(context,
+          zh: '允许注册的邮箱后缀：', en: 'Allowed email suffixes: ',
+          tw: '允許註冊的電子郵件後綴：')}${config.emailSuffixes.join('、')}',
+          style: TextStyle(color: p.inkMuted, fontSize: 11)),
+      ],
       const SizedBox(height: 16),
       _V3Field(controller: _password, label: 'PASSWORD', hint: '••••••••',
         obscureText: _obscure,
@@ -375,7 +417,13 @@ class _RegisterFormState extends State<_RegisterForm> {
             ? v3Copy(context, zh: '发送中…', en: 'Sending…', tw: '傳送中…')
             : v3Copy(context, zh: '发送验证码',
                 en: 'Send code', tw: '傳送驗證碼'),
-            onPressed: _sendingCode ? null : _sendCode)),
+            onPressed: _sendingCode || !config.registerOpen ? null : _sendCode)),
+      ],
+      if (!config.registerOpen) ...[
+        const SizedBox(height: 14),
+        Text(v3Copy(context, zh: '后台暂未开放注册',
+          en: 'Registration is currently closed', tw: '後台暫未開放註冊'),
+          style: TextStyle(color: p.dangerInk, fontSize: 12)),
       ],
       if (_error != null) ...[
         const SizedBox(height: 14),
@@ -387,7 +435,7 @@ class _RegisterFormState extends State<_RegisterForm> {
       ],
       const SizedBox(height: 24),
       SizedBox(width: double.infinity, height: 52,
-        child: FilledButton(onPressed: _busy ? null : _register,
+        child: FilledButton(onPressed: _busy || !config.registerOpen ? null : _register,
           style: FilledButton.styleFrom(backgroundColor: p.lychee,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
