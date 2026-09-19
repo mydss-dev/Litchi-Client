@@ -4,12 +4,13 @@ import 'package:litchi_client/shared/models/api_models.dart';
 import 'package:litchi_client/shared/models/model_mappers.dart';
 
 RemoteUser _user({int? expiredAt, bool hasPlan = true}) {
-  return RemoteUser.fromJson({
+  final data = <String, dynamic>{
     'id': 1,
     'email': 'test@example.com',
-    if (hasPlan) 'plan_id': 7,
-    if (expiredAt != null) 'expired_at': expiredAt,
-  });
+  };
+  if (hasPlan) data['plan_id'] = 7;
+  if (expiredAt != null) data['expired_at'] = expiredAt;
+  return RemoteUser.fromJson(data);
 }
 
 void main() {
