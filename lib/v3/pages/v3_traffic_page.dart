@@ -28,10 +28,10 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     if (!controller.hasPlan && controller.hasAccountSummary) {
       return Center(child: Container(
         constraints: const BoxConstraints(maxWidth: 520),
-        margin: const EdgeInsets.all(24),
+        margin: const EdgeInsets.all(V3Layout.pageGutter),
         padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(24), border: Border.all(color: p.line)),
+          borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.data_usage_rounded, color: p.lychee, size: 34),
           const SizedBox(height: 12),
@@ -224,7 +224,7 @@ class _TimingRow extends StatelessWidget {
         const SizedBox(width: 9),
         Expanded(child: Text(label,
           style: TextStyle(color: p.inkMuted, fontSize: 10))),
-        Flexible(child: Text(value, maxLines: 1,
+        Flexible(child: Text(value, maxLines: 2,
           overflow: TextOverflow.ellipsis, textAlign: TextAlign.end,
           style: TextStyle(color: p.ink, fontSize: 11,
             fontWeight: FontWeight.w800))),
@@ -292,7 +292,10 @@ class _TrendPanel extends StatelessWidget {
                 foregroundColor: WidgetStateProperty.resolveWith((states) =>
                   states.contains(WidgetState.selected) ? p.lycheeInk : p.ink),
                 textStyle: const WidgetStatePropertyAll(TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w800))),
+                  fontSize: 11, fontWeight: FontWeight.w800)),
+                side: WidgetStateProperty.resolveWith((states) => BorderSide(
+                  color: states.contains(WidgetState.selected)
+                    ? p.lychee : p.line))),
               segments: [for (final days in kV3TrafficPeriods)
                 ButtonSegment(value: days, label: Text(v3Copy(context,
                   zh: '$days天', en: '$days days', tw: '$days天')))],
@@ -300,7 +303,7 @@ class _TrendPanel extends StatelessWidget {
               onSelectionChanged: (values) => onPeriodChanged(values.first)),
           ]),
         const SizedBox(height: 16),
-        SizedBox(height: 146,
+        SizedBox(height: 156,
           child: series.recordedDays == 0
             ? Center(child: Text(v3Copy(context,
                 zh: '暂时没有每日流量记录', en: 'No daily usage records yet',

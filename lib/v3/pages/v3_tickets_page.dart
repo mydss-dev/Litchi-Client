@@ -68,7 +68,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
         padding: V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 110),
+            constraints: const BoxConstraints(minHeight: 80),
             child: V3PageHeader(
               kicker: v3Copy(context, zh: '帮助与支持',
                 en: 'HELP & SUPPORT', tw: '協助與支援'),
@@ -95,8 +95,10 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
               child: FilledButton.icon(onPressed: _newTicket,
                 icon: const Icon(Icons.add_rounded), label: Text(createLabel))),
           ],
-          const SizedBox(height: 22),
-          Row(children: [
+          const SizedBox(height: 12),
+          V3Panel(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(children: [
             Expanded(child: _TicketMetric(label: v3Copy(context,
                 zh: '全部工单', en: 'All tickets', tw: '全部工單'),
               value: '${tickets.length}', accent: p.lychee, loading: skeleton)),
@@ -108,8 +110,8 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
             Expanded(child: _TicketMetric(label: v3Copy(context,
                 zh: '已关闭', en: 'Closed', tw: '已關閉'),
               value: '$closedCount', accent: p.success, loading: skeleton)),
-          ]),
-          const SizedBox(height: 16),
+          ])),
+          const SizedBox(height: 12),
           Container(width: double.infinity, padding: const EdgeInsets.all(18),
             constraints: const BoxConstraints(minHeight: kV3TicketListMinHeight + 36),
             decoration: BoxDecoration(color: p.surface,
@@ -156,27 +158,32 @@ class _TicketMetric extends StatelessWidget {
   final String value;
   final Color accent;
   final bool loading;
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Container(height: 96, padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(22)),
-      child: Row(children: [
-        Container(width: 4, height: 44,
-          decoration: BoxDecoration(color: accent,
-            borderRadius: BorderRadius.circular(8))),
-        const SizedBox(width: 12),
-        Column(mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
-            const SizedBox(height: 4),
-            if (loading)
-              const V3SkeletonBlock(width: 30, height: 16)
-            else Text(value, style: TextStyle(color: p.ink,
-              fontSize: 19, fontWeight: FontWeight.w900)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      child: SizedBox(height: 64, child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(width: 6, height: 6,
+              decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
+            const SizedBox(width: 5),
+            Expanded(child: Text(label, maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.inkMuted, fontSize: 10))),
           ]),
-      ]));
+          const SizedBox(height: 6),
+          if (loading)
+            const V3SkeletonBlock(width: 30, height: 16)
+          else Text(value, style: TextStyle(color: p.ink,
+            fontSize: 19, fontWeight: FontWeight.w900)),
+        ],
+      )),
+    );
   }
 }
 
