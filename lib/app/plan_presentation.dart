@@ -17,6 +17,40 @@ class PlanPresentation {
 
   String get shortLabel => name == '暂无套餐' ? name : '$name · $status';
 
+  /// Never let a cached label or a synthetic account status hide the actual
+  /// title associated with the current plan ID. A mismatched user plan ID is
+  /// not evidence for the current subscription's name.
+  static String nameFromEvidence({
+    required String userName,
+    required String remoteName,
+    required String catalogName,
+    int? currentPlanId,
+    int? remotePlanId,
+  }) {
+    final catalog = catalogName.trim();
+    if (catalog.isNotEmpty) return catalog;
+
+    // Subscription and account endpoints can return different plan IDs while
+    // an upgrade is settling. Never attach the old account's name to a new ID.
+    final samePlan = currentPlanId == null || remotePlanId == null ||
+        currentPlanId == remotePlanId;
+    if (samePlan) {
+      final remote = remoteName.trim();
+      if (remote.isNotEmpty) return remote;
+      final user = userName.trim();
+      if (user.isNotEmpty && user != '已到期' &&
+          user != '套餐名称待同步' && user != '暂无套餐') {
+        return user;
+      }
+    }
+
+    // The ID is factual, but it is not a title. Do not manufacture a product
+    // name when the panel omits it and the catalog has no matching entry.
+    return currentPlanId != null && currentPlanId > 0
+        ? '当前套餐（ID $currentPlanId）'
+        : '套餐名称待同步';
+  }
+
   /// A currently loaded account with plan evidence may use the panel's null
   /// expiry convention (permanent). A cached label alone cannot prove that.
   static String expiryLabelWithEvidence({
@@ -49,27 +83,21 @@ class PlanPresentation {
     AppController controller, {
     DateTime? now,
   }) {
-    final userName = controller.user.plan.trim();
-    final remoteName = controller.accountDetails?.planName.trim() ?? '';
     final planId = controller.currentPlanId;
     final catalogName = planId == null
         ? ''
         : controller.plans
-            .where((plan) => plan.id == planId.toString())
+            .where((plan) => int.tryParse(plan.id) == planId)
             .map((plan) => plan.title.trim())
             .where((title) => title.isNotEmpty)
             .firstOrNull ?? '';
-    // RemoteUser.planLabel can be a synthetic "已到期" instead of a name.
-    final realUserName = userName == '已到期' && remoteName.isEmpty
-        ? ''
-        : userName;
-    final name = realUserName.isNotEmpty
-        ? realUserName
-        : remoteName.isNotEmpty
-            ? remoteName
-            : catalogName.isNotEmpty
-                ? catalogName
-                : '套餐名称待同步';
+    final name = nameFromEvidence(
+      userName: controller.user.plan,
+      remoteName: controller.accountDetails?.planName ?? '',
+      catalogName: catalogName,
+      currentPlanId: planId,
+      remotePlanId: controller.accountDetails?.planId,
+    );
     final accountExpiry = controller.accountDetails?.expiredAt;
     final subscriptionExpiry = controller.expiredAt;
     return PlanPresentation.resolve(
