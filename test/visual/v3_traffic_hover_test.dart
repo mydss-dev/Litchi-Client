@@ -1,15 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
+import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/v3/pages/v3_traffic_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
 
+class _TrafficController extends VisualV3Controller {
+  _TrafficController() : super(AppPage.traffic);
+
+  @override
+  List<TrafficUsagePoint> get trafficUsage => [
+    TrafficUsagePoint(date: DateTime.now(), totalGb: 2.5,
+      uploadGb: 0.5, downloadGb: 2),
+  ];
+
+  @override
+  List<double> get dailyUsage => const [];
+}
+
 void main() {
   testWidgets('usage chart switches 7/15/30 days without opening dialogs',
       (tester) async {
-    final controller = VisualV3Controller(AppPage.traffic);
+    final controller = _TrafficController();
     addTearDown(controller.disposeVisual);
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -35,6 +49,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<SegmentedButton<int>>(selector).selected, {30});
 
+    await tester.tap(find.text('7天'));
+    await tester.pumpAndSettle();
     final usageTips = find.byWidgetPredicate((widget) =>
       widget is Tooltip && widget.message?.contains('GB') == true);
     expect(usageTips, findsWidgets);
