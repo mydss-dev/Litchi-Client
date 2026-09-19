@@ -470,7 +470,7 @@ class _RegisterFormState extends State<_RegisterForm> {
                     if (value != null) setState(() => _selectedDomain = value);
                   },
                 ))),
-            ]))),
+            ])),
         ])
       else
         _V3Field(controller: _email, label: 'EMAIL', hint: 'name@example.com',
