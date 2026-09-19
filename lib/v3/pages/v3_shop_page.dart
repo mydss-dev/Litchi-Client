@@ -278,6 +278,10 @@ Future<void> _showPlanDetails(BuildContext context, PlanModel plan) =>
   ]);
 });
 
+/// Checkout has one fixed desktop footprint for all plans. On small screens or
+/// with the keyboard open, only the viewport caps its size; the body scrolls.
+const Key kV3PurchaseDialogBodyKey = ValueKey('v3-purchase-dialog-body');
+
 class _V3OrderDialog extends StatefulWidget {
   const _V3OrderDialog({required this.hostContext, required this.plan,
     required this.initialCycle, required this.api,
@@ -373,26 +377,27 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
     final p = V3Palette.of(context);
     final cycles = _availableCycles(widget.plan);
     final media = MediaQuery.of(context);
-    // Dialog also respects its route's viewInsets. Bound our own child to the
-    // remaining viewport so the keyboard cannot cover or clip the footer.
+    // Fixed-size checkout on desktop, with only viewport/keyboard safety caps.
     final availableHeight = (media.size.height - media.viewInsets.bottom -
         media.padding.top - media.padding.bottom - 24)
-        .clamp(160.0, 640.0).toDouble();
-    final availableWidth = (media.size.width - 24).clamp(280.0, 520.0).toDouble();
+        .clamp(0.0, 520.0).toDouble();
+    final availableWidth = (media.size.width - 24)
+        .clamp(0.0, 440.0).toDouble();
     return Dialog(
       backgroundColor: p.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: SizedBox(
+        key: kV3PurchaseDialogBodyKey,
         width: availableWidth,
         height: availableHeight,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               Expanded(child: Text(widget.plan.title, maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.headlineLarge)),
+                style: Theme.of(context).textTheme.headlineMedium)),
               IconButton(tooltip: _tr(context, '关闭', 'Close', '關閉'),
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close_rounded)),
@@ -402,27 +407,17 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 8),
-                  Text('${_categoryLabel(context, widget.plan.category)} · ${widget.plan.capacity}',
-                    style: TextStyle(color: p.inkMuted, fontSize: 12)),
-                  if (widget.plan.features.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    for (final feature in widget.plan.features)
-                      Padding(padding: const EdgeInsets.only(bottom: 7),
-                        child: Text('• $feature',
-                          style: TextStyle(color: p.ink, fontSize: 12, height: 1.4))),
-                  ],
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 6),
                   Text(widget.plan.category == PlanCategory.recurring
                       ? _tr(context, '选择付款周期', 'Choose billing period', '選擇付款週期')
                       : _tr(context, '购买方式', 'Purchase type', '購買方式'),
                     style: TextStyle(color: p.ink, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   if (widget.plan.category != PlanCategory.recurring)
                     V3Panel(tone: V3PanelTone.raised,
                       padding: const EdgeInsets.all(12),
                       child: Text(_tr(context, '一次性购买', 'One-time purchase', '一次性購買')))
-                  else Wrap(spacing: 9, runSpacing: 9, children: [
+                  else Wrap(spacing: 8, runSpacing: 8, children: [
                     for (final cycle in cycles)
                       _CycleOption(label: _cycleLabel(context, cycle),
                         price: '${widget.currencySymbol}${_price(widget.plan, cycle)!.toStringAsFixed(2)}',
@@ -433,10 +428,10 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                           _appliedCode = null;
                         })),
                   ]),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 16),
                   Text(_tr(context, '优惠码', 'Coupon code', '優惠碼'),
                     style: TextStyle(color: p.ink, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 9),
+                  const SizedBox(height: 7),
                   Row(children: [
                     Expanded(child: TextField(controller: _couponController,
                       onChanged: (_) => setState(() => _error = null),
@@ -457,36 +452,36 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                     const SizedBox(height: 10),
                     Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 12)),
                   ],
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 16),
                   V3Panel(tone: V3PanelTone.raised,
-                    padding: const EdgeInsets.all(16), child: Column(children: [
+                    padding: const EdgeInsets.all(12), child: Column(children: [
                       _AmountRow(label: _tr(context, '套餐', 'Plan', '方案'),
                         value: widget.plan.title),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       _AmountRow(label: _tr(context, '付款周期', 'Billing period', '付款週期'),
                         value: widget.plan.category == PlanCategory.recurring
                           ? _cycleLabel(context, _cycle)
                           : _tr(context, '一次性', 'One-time', '一次性')),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       _AmountRow(label: _tr(context, '原价', 'Original price', '原價'),
                         value: '${widget.currencySymbol}${_originalPrice.toStringAsFixed(2)}'),
                       if (_discountCents > 0) ...[
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         _AmountRow(label: _tr(context, '优惠', 'Discount', '優惠'),
                           value: '-${widget.currencySymbol}${(_discountCents / 100).toStringAsFixed(2)}'),
                       ],
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 9),
                       Divider(color: p.line),
                       _AmountRow(label: _tr(context, '实付金额', 'Total due', '實付金額'),
                         value: '${widget.currencySymbol}${_finalPrice.toStringAsFixed(2)}',
                         strong: true),
                     ])),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                 ],
               ),
             )),
-            Divider(color: p.line, height: 16),
-            SizedBox(height: 48,
+            Divider(color: p.line, height: 12),
+            SizedBox(height: 44,
               child: FilledButton(
                 onPressed: _submitting || _price(widget.plan, _cycle) == null
                   ? null : _submit,
