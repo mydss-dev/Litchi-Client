@@ -67,22 +67,22 @@ class _V3AccountPageState extends State<V3AccountPage> {
             onPressed: controller.refreshData,
             icon: const Icon(Icons.refresh_rounded)),
         ),
-        const SizedBox(height: 26),
-        _AccountSummaryPanel(controller: controller),
         const SizedBox(height: 16),
+        _AccountSummaryPanel(controller: controller),
+        const SizedBox(height: 12),
         _HubPanel(controller: controller),
         if (AppConfig.panelFeatures.wallet || controller.user.balance > 0 ||
             controller.withdrawable > 0) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           const _WalletPanel(),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _PreferencesPanel(controller: controller,
           busy: _updatingPreferences,
           onExpireChanged: (v) => _updatePreferences(remindExpire: v),
           onTrafficChanged: (v) => _updatePreferences(remindTraffic: v),
           onAutoRenewalChanged: (v) => _updatePreferences(autoRenewal: v)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _AccountActions(
           onPassword: () => showDialog<void>(context: context,
             barrierColor: Colors.black.withValues(alpha: .48),
@@ -115,7 +115,7 @@ class _AccountSummaryPanel extends StatelessWidget {
     final letter = user.avatarLetter.trim().isEmpty
         ? 'L' : user.avatarLetter.trim().substring(0, 1).toUpperCase();
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(color: p.surface,
         borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -143,9 +143,9 @@ class _AccountSummaryPanel extends StatelessWidget {
           V3StatusBadge(label: plan.status,
             color: plan.usable ? p.success : p.inkMuted, compact: true),
         ]),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         Divider(color: p.line, height: 1),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -187,7 +187,7 @@ class _WalletPanel extends StatelessWidget {
     final p = V3Palette.of(context);
     final symbol = controller.currencySymbol;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(24)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -316,7 +316,7 @@ class _PreferencesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Container(padding: const EdgeInsets.all(22),
+    return Container(padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(color: p.surface,
         borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
