@@ -80,8 +80,9 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
     final controller = AppScope.of(context);
     final info = controller.updateInfo;
     if (info == null) return const SizedBox.shrink();
-    // Changelog comes from the server; it is not UI copy and is left intact.
-    final changelog = info.changelog.replaceAll(RegExp(r'\s+'), ' ').trim();
+    // Only show the actionable version and download/update control here.
+    // The changelog is server-authored and may contain markup or developer
+    // notes; it does not belong in a one-line customer-facing banner.
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
@@ -94,21 +95,13 @@ class _V3UpdateBannerState extends State<V3UpdateBanner> {
           Row(children: [
             Icon(Icons.arrow_circle_up_rounded, size: 17, color: p.successInk),
             const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(v3Copy(context, zh: '发现新版本 ${info.version}',
-                  en: 'New version ${info.version} available',
-                  tw: '發現新版本 ${info.version}'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.ink, fontSize: 13,
-                    fontWeight: FontWeight.w700)),
-                if (changelog.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(changelog, maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.inkMuted, fontSize: 11)),
-                ],
-              ])),
+            Expanded(child: Text(v3Copy(context,
+                zh: '发现新版本 ${info.version}',
+                en: 'New version ${info.version} available',
+                tw: '發現新版本 ${info.version}'),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.ink, fontSize: 13,
+                fontWeight: FontWeight.w700))),
             const SizedBox(width: 8),
             if (_downloading)
               Text('${(_progress * 100).toStringAsFixed(0)}%',

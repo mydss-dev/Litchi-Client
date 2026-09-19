@@ -8,7 +8,7 @@ import 'package:litchi_client/v3/ui/v3_components.dart';
 import 'v3_visual_fixture.dart';
 
 void main() {
-  testWidgets('dashboard has no redundant heading and keeps original notices', (
+  testWidgets('dashboard has no redundant heading and shows notice title only', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -31,8 +31,8 @@ void main() {
     expect(find.text('连接中心'), findsNothing);
     expect(find.text('当前节点'), findsOneWidget);
     expect(find.text('已连接'), findsOneWidget);
-    expect(find.textContaining('服务公告  ·  香港、日本线路已完成优化'),
-        findsOneWidget);
+    expect(find.text('服务公告'), findsOneWidget);
+    expect(find.textContaining('香港、日本线路已完成优化'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

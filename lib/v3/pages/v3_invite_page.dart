@@ -291,11 +291,6 @@ class _InviteStats extends StatelessWidget {
         _StatLine(label: v3Copy(context, zh: '可提现佣金',
             en: 'Withdrawable', tw: '可提領佣金'),
           value: '$symbol${controller.withdrawable.toStringAsFixed(2)}'),
-        const SizedBox(height: 10),
-        Text(v3Copy(context, zh: '统计与返佣金额以服务端数据为准',
-          en: 'Server data determines totals and commission amounts.',
-          tw: '統計與返佣金額以服務端資料為準'),
-          style: TextStyle(color: p.inkMuted, fontSize: 10)),
       ]),
     );
   }
