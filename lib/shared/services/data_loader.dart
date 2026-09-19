@@ -117,7 +117,12 @@ class DataLoader {
         userLoaded = true;
         snap.remoteUser = info;
         snap.user = ModelMappers.toUser(info);
-        snap.currentPlanId = info.planId;
+        // Only use a positive account ID when the subscription has not
+        // already supplied its authoritative current plan ID.
+        if (info.planId != null && info.planId! > 0 &&
+            snap.currentPlanId == null) {
+          snap.currentPlanId = info.planId;
+        }
         snap.traffic = ModelMappers.toTraffic(info);
       } catch (e) {
         SecureLogger.warn(
@@ -142,7 +147,11 @@ class DataLoader {
             '(planId=${subscribe.planId}, transferEnable=${subscribe.transferEnable})',
           );
         }
-        snap.currentPlanId ??= subscribe.planId;
+        // getSubscribe identifies the current subscription. Never let a
+        // stale account ID or zero override a positive subscription ID.
+        if (subscribe.planId != null && subscribe.planId! > 0) {
+          snap.currentPlanId = subscribe.planId;
+        }
         subscribeHasPlanEvidence =
             (subscribe.planId != null && subscribe.planId! > 0) ||
             subscribe.subscribeUrl.trim().isNotEmpty ||
@@ -328,10 +337,7 @@ class DataLoader {
         snap.dailyUsage = points.map((p) => p.totalGb).toList();
       }
     } catch (e) {
-      SecureLogger.warn(
-        'DataLoader getTrafficLog failed after ${sw.elapsedMilliseconds}ms',
-        e,
-      );
+      SecureLogger.warn('DataLoader getTrafficLog failed after ${sw.elapsedMilliseconds}ms', e);
     }
   }
 }
