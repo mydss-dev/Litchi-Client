@@ -111,7 +111,6 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                   padding: EdgeInsets.zero,
                   child: Column(children: [
                     _SettingRow(
-                      index: '01',
                       title: l.connectionMethod,
                       description: '${l.systemProxyDescription}; ${l.tunDescription}.',
                       fullWidthControl: true,
@@ -127,7 +126,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     _SettingRow(
-                      index: '02', title: l.dns,
+                      title: l.dns,
                       description: _hint(l,
                         zh: '使用系统 DNS，或选择其他解析服务。',
                         en: 'Use system DNS or choose another resolver.',
@@ -148,7 +147,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     _SettingRow(
-                      index: '03', title: l.connectionProtection,
+                      title: l.connectionProtection,
                       description: controller.networkMode == NetworkMode.tun
                           ? l.tunProtectionDescription : l.systemProtectionDescription,
                       last: true,
@@ -160,14 +159,14 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                     ),
                   ]),
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: 16),
                 V3SectionLabel(l.systemSettings),
                 const SizedBox(height: 10),
                 V3Panel(
                   padding: EdgeInsets.zero,
                   child: Column(children: [
                     _SettingRow(
-                      index: '04', title: l.launchAtStartup,
+                      title: l.launchAtStartup,
                       description: _hint(l,
                         zh: '登录系统时自动启动 Litchi。',
                         en: 'Start Litchi automatically when you sign in.',
@@ -176,7 +175,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         onChanged: controller.setAutoStart),
                     ),
                     _SettingRow(
-                      index: '05', title: l.silentStartup,
+                      title: l.silentStartup,
                       description: _hint(l,
                         zh: '启动时隐藏主窗口。',
                         en: 'Hide the main window at startup.',
@@ -185,7 +184,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         onChanged: controller.setSilentStart),
                     ),
                     _SettingRow(
-                      index: '06', title: l.automaticUpdates,
+                      title: l.automaticUpdates,
                       description: _hint(l,
                         zh: '在后台检查是否有新版本。',
                         en: 'Check for new versions in the background.',
@@ -196,14 +195,14 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                     ),
                   ]),
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: 16),
                 V3SectionLabel(l.appearance),
                 const SizedBox(height: 10),
                 V3Panel(
                   padding: EdgeInsets.zero,
                   child: Column(children: [
                     _SettingRow(
-                      index: '07', title: l.appearance,
+                      title: l.appearance,
                       description: _hint(l,
                         zh: '选择浅色或深色界面。',
                         en: 'Choose a light or dark interface.',
@@ -218,7 +217,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     _SettingRow(
-                      index: '08', title: l.language,
+                      title: l.language,
                       description: _hint(l,
                         zh: '选择界面语言；跟随系统将使用设备的语言。',
                         en: 'Choose an interface language or follow your device.',
@@ -229,7 +228,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                     ),
                   ]),
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: 16),
                 V3SectionLabel(l.repairNetworkSettings),
                 const SizedBox(height: 10),
                 _RecoveryPanel(
@@ -252,11 +251,9 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow({required this.index, required this.title,
-    required this.description, required this.control, this.last = false,
-    this.fullWidthControl = false});
+  const _SettingRow({required this.title, required this.description,
+    required this.control, this.last = false, this.fullWidthControl = false});
 
-  final String index;
   final String title;
   final String description;
   final Widget control;
@@ -267,36 +264,26 @@ class _SettingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 17, 20, 17),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
         border: last ? null : Border(bottom: BorderSide(color: p.line)),
       ),
       child: LayoutBuilder(builder: (context, constraints) {
-        final stacked = constraints.maxWidth < 600;
-        final copy = Row(
+        final stacked = constraints.maxWidth < 600 && fullWidthControl;
+        final copy = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 38, child: Text(index, style: TextStyle(
-              color: p.lycheeInk, fontSize: 10, fontWeight: FontWeight.w900,
-              letterSpacing: 1.4))),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 5),
-                Text(description, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            )),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(description, style: Theme.of(context).textTheme.bodySmall),
           ],
         );
         return stacked
             ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                copy, const SizedBox(height: 14),
-                if (fullWidthControl) control
-                else Align(alignment: Alignment.centerRight, child: control),
+                copy, const SizedBox(height: 10), control,
               ])
             : Row(children: [
-                Expanded(child: copy), const SizedBox(width: 20),
+                Expanded(child: copy), const SizedBox(width: 12),
                 if (fullWidthControl) SizedBox(width: 240, child: control)
                 else control,
               ]);
@@ -361,21 +348,24 @@ class _V3Switch extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(99),
         onTap: () => onChanged(!value),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          width: 52, height: 30,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: value ? p.lychee : p.surfaceRaised,
-            borderRadius: BorderRadius.circular(99),
-          ),
-          child: AnimatedAlign(
+        child: SizedBox(width: 52, height: 44,
+          child: Center(child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(width: 22, height: 22, decoration: BoxDecoration(
-              color: value ? Colors.white : p.inkMuted,
-              shape: BoxShape.circle)),
-          ),
+            width: 52, height: 30,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: value ? p.lychee : p.surfaceRaised,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: AnimatedAlign(
+              duration: const Duration(milliseconds: 160),
+              alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+              child: Container(width: 22, height: 22,
+                decoration: BoxDecoration(
+                  color: value ? Colors.white : p.inkMuted,
+                  shape: BoxShape.circle)),
+            ),
+          )),
         ),
       ),
     );

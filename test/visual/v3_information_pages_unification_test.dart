@@ -25,20 +25,27 @@ class _ReadyTickets extends VisualV3Controller {
   Future<void> refreshTickets() async {}
 }
 
-Future<void> _show(WidgetTester tester, Widget page,
-    VisualV3Controller controller, Size size, ThemeMode mode) async {
+Future<void> _show(
+  WidgetTester tester,
+  Widget page,
+  VisualV3Controller controller,
+  Size size,
+  ThemeMode mode,
+) async {
   await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
   addTearDown(controller.disposeVisual);
-  await tester.pumpWidget(AppScope(
-    controller: controller,
-    child: MaterialApp(
-      theme: V3Theme.light(),
-      darkTheme: V3Theme.dark(),
-      themeMode: mode,
-      home: Scaffold(body: page),
+  await tester.pumpWidget(
+    AppScope(
+      controller: controller,
+      child: MaterialApp(
+        theme: V3Theme.light(),
+        darkTheme: V3Theme.dark(),
+        themeMode: mode,
+        home: Scaffold(body: page),
+      ),
     ),
-  ));
+  );
   await tester.pumpAndSettle();
   expect(tester.takeException(), isNull);
 }
@@ -50,27 +57,40 @@ void main() {
   ];
 
   for (final (size, mode) in layouts) {
-    testWidgets('traffic keeps real values and 7/15/30 selector at $size $mode',
-        (tester) async {
-      await _show(tester, const V3TrafficPage(),
-          VisualV3Controller(AppPage.traffic), size, mode);
-      expect(find.text('剩余流量'), findsOneWidget);
-      final periods = find.byType(SegmentedButton<int>);
-      expect(periods, findsOneWidget);
-      expect(tester.widget<SegmentedButton<int>>(periods).selected, {7});
-      final fifteen = find.text('15天');
-      await tester.ensureVisible(fifteen);
-      await tester.pumpAndSettle();
-      await tester.tap(fifteen);
-      await tester.pumpAndSettle();
-      expect(tester.widget<SegmentedButton<int>>(periods).selected, {15});
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'traffic keeps real values and 7/15/30 selector at $size $mode',
+      (tester) async {
+        await _show(
+          tester,
+          const V3TrafficPage(),
+          VisualV3Controller(AppPage.traffic),
+          size,
+          mode,
+        );
+        expect(find.text('剩余流量'), findsOneWidget);
+        final periods = find.byType(SegmentedButton<int>);
+        expect(periods, findsOneWidget);
+        expect(tester.widget<SegmentedButton<int>>(periods).selected, {7});
+        final fifteen = find.text('15天');
+        await tester.ensureVisible(fifteen);
+        await tester.pumpAndSettle();
+        await tester.tap(fifteen);
+        await tester.pumpAndSettle();
+        expect(tester.widget<SegmentedButton<int>>(periods).selected, {15});
+        expect(tester.takeException(), isNull);
+      },
+    );
 
-    testWidgets('invite preserves code and share actions at $size $mode',
-        (tester) async {
-      await _show(tester, const V3InvitePage(),
-          VisualV3Controller(AppPage.invite), size, mode);
+    testWidgets('invite preserves code and share actions at $size $mode', (
+      tester,
+    ) async {
+      await _show(
+        tester,
+        const V3InvitePage(),
+        VisualV3Controller(AppPage.invite),
+        size,
+        mode,
+      );
       expect(find.text('LITCHI88'), findsOneWidget);
       expect(find.byKey(const ValueKey('v3-invite-copy-code')), findsOneWidget);
       expect(find.byKey(const ValueKey('v3-invite-copy-link')), findsOneWidget);
@@ -78,8 +98,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('tickets retain new ticket and statuses at $size $mode',
-        (tester) async {
+    testWidgets('tickets retain new ticket and statuses at $size $mode', (
+      tester,
+    ) async {
       await _show(tester, const V3TicketsPage(), _ReadyTickets(), size, mode);
       expect(find.text('支持工单'), findsOneWidget);
       expect(find.text('新建工单'), findsOneWidget);
@@ -89,16 +110,26 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('settings keep controls without decorative indices at $size $mode',
-        (tester) async {
-      await _show(tester, const V3SettingsPage(),
-          VisualV3Controller(AppPage.settings), size, mode);
-      expect(find.text('01'), findsNothing);
-      expect(find.text('02'), findsNothing);
-      expect(find.text('03'), findsNothing);
-      expect(find.text('网络设置'), findsNothing); // No invented navigation section.
-      expect(find.byType(AnimatedAlign), findsWidgets);
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'settings keep controls without decorative indices at $size $mode',
+      (tester) async {
+        await _show(
+          tester,
+          const V3SettingsPage(),
+          VisualV3Controller(AppPage.settings),
+          size,
+          mode,
+        );
+        expect(find.text('01'), findsNothing);
+        expect(find.text('02'), findsNothing);
+        expect(find.text('03'), findsNothing);
+        expect(
+          find.text('网络设置'),
+          findsNothing,
+        ); // No invented navigation section.
+        expect(find.byType(AnimatedAlign), findsWidgets);
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 }

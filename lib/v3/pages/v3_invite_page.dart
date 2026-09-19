@@ -186,7 +186,7 @@ class _InviteHero extends StatelessWidget {
             Text('${currentIndex + 1} / $total',
               style: TextStyle(color: p.inkMuted, fontSize: 11)),
         ]),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         Text(v3Copy(context, zh: '邀请码', en: 'Invite code', tw: '邀請碼'),
           style: TextStyle(color: p.inkMuted, fontSize: 11)),
         const SizedBox(height: 7),
@@ -212,7 +212,7 @@ class _InviteHero extends StatelessWidget {
                 tw: '建立邀請碼後即可分享'),
           maxLines: 2, overflow: TextOverflow.ellipsis,
           style: TextStyle(color: p.inkMuted, fontSize: 12, height: 1.5)),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
         Row(children: [
           Expanded(child: OutlinedButton.icon(
             key: const ValueKey('v3-invite-copy-code'),
@@ -274,7 +274,7 @@ class _InviteStats extends StatelessWidget {
           en: 'REFERRAL STATS', tw: '邀請統計'),
           style: TextStyle(color: p.inkMuted, fontSize: 11,
             fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-        const SizedBox(height: 15),
+        const SizedBox(height: 12),
         _StatLine(label: v3Copy(context, zh: '邀请人数',
             en: 'Friends invited', tw: '邀請人數'),
           value: '${controller.invitedCount}',
@@ -282,7 +282,7 @@ class _InviteStats extends StatelessWidget {
         _StatLine(label: v3Copy(context, zh: '返佣比例',
             en: 'Commission rate', tw: '返佣比例'),
           value: controller.commissionRate.toStringAsFixed(0), suffix: '%'),
-        Divider(color: p.line, height: 18),
+        Divider(color: p.line, height: 12),
         _StatLine(label: v3Copy(context, zh: '累计佣金',
             en: 'Total commission', tw: '累計佣金'),
           value: '$symbol${controller.earnedCommission.toStringAsFixed(2)}'),
@@ -305,11 +305,11 @@ class _StatLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 8),
+    return Padding(padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(children: [
         Expanded(child: Text(label,
           style: TextStyle(color: p.inkMuted, fontSize: 11))),
-        Text(value, style: TextStyle(color: p.ink, fontSize: 16,
+        Text(value, style: TextStyle(color: p.ink, fontSize: 15,
           fontWeight: FontWeight.w900)),
         if (suffix.isNotEmpty) ...[
           const SizedBox(width: 3),
@@ -345,7 +345,8 @@ class _ReferralLedger extends StatelessWidget {
               en: 'No commission records', tw: '暫無返佣紀錄'),
               style: TextStyle(color: p.inkMuted, fontSize: 12))))
         else for (final record in records.take(8))
-          Padding(padding: const EdgeInsets.symmetric(vertical: 10),
+          Column(children: [
+            Padding(padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(children: [
               Container(width: 36, height: 36,
                 alignment: Alignment.center,
@@ -376,6 +377,9 @@ class _ReferralLedger extends StatelessWidget {
                   style: TextStyle(color: p.inkMuted, fontSize: 10)),
               ]),
             ])),
+            if (!identical(record, records.take(8).last))
+              Divider(color: p.line, height: 1),
+          ]),
       ]),
     );
   }
