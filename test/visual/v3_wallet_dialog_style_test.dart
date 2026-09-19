@@ -9,19 +9,29 @@ import 'v3_visual_fixture.dart';
 
 void main() {
   for (final size in [const Size(900, 700), const Size(360, 480)]) {
-    testWidgets('recharge uses common frame and keeps preset choice at $size',
-        (tester) async {
+    testWidgets('recharge uses common frame and keeps preset choice at $size', (
+      tester,
+    ) async {
       await tester.binding.setSurfaceSize(size);
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final controller = VisualV3Controller(AppPage.account);
       addTearDown(controller.disposeVisual);
-      await tester.pumpWidget(AppScope(
-        controller: controller,
-        child: MaterialApp(theme: V3Theme.light(),
-          home: Scaffold(body: Builder(builder: (context) => FilledButton(
-            onPressed: () => showV3RechargeDialog(context),
-            child: const Text('打开充值'))))),
-      ));
+      await tester.pumpWidget(
+        AppScope(
+          controller: controller,
+          child: MaterialApp(
+            theme: V3Theme.light(),
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => FilledButton(
+                  onPressed: () => showV3RechargeDialog(context),
+                  child: const Text('打开充值'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
       await tester.tap(find.text('打开充值'));
       await tester.pumpAndSettle();
       expect(find.byType(V3DialogFrame), findsOneWidget);

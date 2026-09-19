@@ -33,8 +33,12 @@ class V3DialogFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = V3Palette.of(context);
     final media = MediaQuery.of(context);
-    final availableHeight = media.size.height - media.viewInsets.bottom -
-        media.padding.top - media.padding.bottom - 32;
+    final availableHeight =
+        media.size.height -
+        media.viewInsets.bottom -
+        media.padding.top -
+        media.padding.bottom -
+        32;
     final maxHeight = availableHeight.clamp(0.0, 720.0).toDouble();
     final contents = scrollable
         ? SingleChildScrollView(

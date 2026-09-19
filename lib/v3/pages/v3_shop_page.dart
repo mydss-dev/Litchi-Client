@@ -10,6 +10,7 @@ import '../../shared/services/panel_api.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_layout.dart';
+import '../ui/v3_dialog_frame.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 
@@ -387,7 +388,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
     return Dialog(
       backgroundColor: p.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: v3DialogShape(p),
       child: SizedBox(
         key: kV3PurchaseDialogBodyKey,
         width: availableWidth,

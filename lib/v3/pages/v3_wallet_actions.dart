@@ -4,6 +4,8 @@ import '../../app/app_controller.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_components.dart';
+import '../ui/v3_dialog_frame.dart';
 import '../ui/v3_sheet.dart';
 
 /// Wallet actions retain independent dialogs, rather than a nested funds hub.
@@ -126,11 +128,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final symbol = AppScope.of(context).currencySymbol;
-    return Dialog(backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(24),
-      child: Container(width: 420, padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(26)),
+    return V3DialogFrame(width: 420,
         child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -144,6 +142,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
             ]),
             const SizedBox(height: 6),
             TextField(controller: _amountController, autofocus: true,
+              onChanged: (_) => setState(() {}),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onSubmitted: (_) => _submit(),
               decoration: InputDecoration(prefixText: '$symbol ', hintText: '100',
@@ -153,8 +152,11 @@ class _RechargeDialogState extends State<_RechargeDialog> {
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final amount in _presets)
-                ActionChip(label: Text('$symbol${amount.toStringAsFixed(0)}'),
-                  onPressed: _busy ? null : () => setState(() =>
+                ChoiceChip(label: Text('$symbol${amount.toStringAsFixed(0)}'),
+                  selected: double.tryParse(_amountController.text.trim()) == amount,
+                  side: v3ChipSide(p, selected:
+                    double.tryParse(_amountController.text.trim()) == amount),
+                  onSelected: _busy ? null : (_) => setState(() =>
                     _amountController.text = amount.toStringAsFixed(0))),
             ]),
             if (_error != null) ...[
@@ -173,7 +175,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
                     en: 'Creating order…', tw: '正在建立訂單…')
                   : v3Copy(context, zh: '去支付',
                     en: 'Continue to payment', tw: '前往付款')))),
-          ])));
+          ]));
   }
 }
 
@@ -209,10 +211,7 @@ class _AmountDialogState extends State<_AmountDialog> {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Dialog(backgroundColor: Colors.transparent,
-      child: Container(width: 400, padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(26)),
+    return V3DialogFrame(width: 400,
         child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -245,7 +244,7 @@ class _AmountDialogState extends State<_AmountDialog> {
               child: FilledButton(onPressed: _submit,
                 child: Text(v3Copy(context, zh: '确认转入',
                   en: 'Confirm transfer', tw: '確認轉入')))),
-          ])));
+          ]));
   }
 }
 
@@ -303,10 +302,7 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Dialog(backgroundColor: Colors.transparent,
-      child: Container(width: 430, padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(26)),
+    return V3DialogFrame(width: 430,
         child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -347,7 +343,7 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
               child: FilledButton(onPressed: _submit,
                 child: Text(v3Copy(context, zh: '提交提现申请',
                   en: 'Submit withdrawal', tw: '提交提領申請')))),
-          ])));
+          ]));
   }
 }
 
@@ -360,7 +356,7 @@ class _AllAmountButton extends StatelessWidget {
     return TextButton(onPressed: onTap,
       style: TextButton.styleFrom(foregroundColor: p.lycheeInk,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        minimumSize: const Size(0, 40),
+        minimumSize: const Size(0, 44),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
       child: Text(v3Copy(context, zh: '全部', en: 'All', tw: '全部')));
