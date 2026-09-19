@@ -597,7 +597,7 @@ class PanelApi {
   Future<void> closeTicket(int ticketId) async {
     final res = await _client.post(
       '/user/ticket/close',
-      data: {'trade_no': tradeNo},
+      data: {'id': ticketId},
     );
     _check(res);
   }
