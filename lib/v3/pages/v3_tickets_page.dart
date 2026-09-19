@@ -10,6 +10,13 @@ import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import 'v3_ticket_detail_dialog.dart';
 
+// Loading and loaded rows reserve the same space. Avoid the list shifting
+// the page header or its neighboring content when asynchronous data arrives.
+const double kV3TicketRowHeight = 76;
+const int kV3TicketSkeletonCount = 3;
+const double kV3TicketListMinHeight =
+    kV3TicketRowHeight * kV3TicketSkeletonCount + kV3TicketSkeletonCount - 1;
+
 class V3TicketsPage extends StatefulWidget {
   const V3TicketsPage({super.key});
   @override
@@ -59,26 +66,28 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          V3PageHeader(
-            kicker: v3Copy(context, zh: '帮助与支持',
-              en: 'HELP & SUPPORT', tw: '協助與支援'),
-            title: v3Copy(context, zh: '支持工单',
-              en: 'Support tickets', tw: '支援工單'),
-            description: v3Copy(context,
-              zh: '问题、回复和处理状态都集中在同一个支持收件箱。',
-              en: 'Keep questions, replies and ticket statuses in one inbox.',
-              tw: '問題、回覆及處理狀態都集中在同一個支援收件匣。'),
-            trailing: Row(mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end, children: [
-                if (!compact)
-                  FilledButton.icon(onPressed: _newTicket,
-                    icon: const Icon(Icons.add_rounded), label: Text(createLabel)),
-                IconButton(tooltip: v3Copy(context, zh: '刷新工单',
-                    en: 'Refresh tickets', tw: '重新整理工單'),
-                  onPressed: controller.ticketsLoading
-                    ? null : controller.refreshTickets,
-                  icon: const Icon(Icons.refresh_rounded)),
-              ])),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 110),
+            child: V3PageHeader(
+              kicker: v3Copy(context, zh: '帮助与支持',
+                en: 'HELP & SUPPORT', tw: '協助與支援'),
+              title: v3Copy(context, zh: '支持工单',
+                en: 'Support tickets', tw: '支援工單'),
+              description: v3Copy(context,
+                zh: '问题、回复和处理状态都集中在同一个支持收件箱。',
+                en: 'Keep questions, replies and ticket statuses in one inbox.',
+                tw: '問題、回覆及處理狀態都集中在同一個支援收件匣。'),
+              trailing: Row(mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  if (!compact)
+                    FilledButton.icon(onPressed: _newTicket,
+                      icon: const Icon(Icons.add_rounded), label: Text(createLabel)),
+                  IconButton(tooltip: v3Copy(context, zh: '刷新工单',
+                      en: 'Refresh tickets', tw: '重新整理工單'),
+                    onPressed: controller.ticketsLoading
+                      ? null : controller.refreshTickets,
+                    icon: const Icon(Icons.refresh_rounded)),
+                ]))),
           if (compact) ...[
             const SizedBox(height: 16),
             SizedBox(width: double.infinity,
@@ -101,6 +110,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
           ]),
           const SizedBox(height: 16),
           Container(width: double.infinity, padding: const EdgeInsets.all(18),
+            constraints: const BoxConstraints(minHeight: kV3TicketListMinHeight + 36),
             decoration: BoxDecoration(color: p.surface,
               borderRadius: BorderRadius.circular(26),
               border: Border.all(color: p.line)),
@@ -175,9 +185,10 @@ class _TicketsSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Column(children: [
-      for (var i = 0; i < 3; i++) ...[
+      for (var i = 0; i < kV3TicketSkeletonCount; i++) ...[
         const _TicketSkeletonRow(),
-        if (i != 2) Divider(color: p.line, height: 1),
+        if (i != kV3TicketSkeletonCount - 1)
+          Divider(color: p.line, height: 1),
       ],
     ]);
   }
@@ -187,23 +198,24 @@ class _TicketSkeletonRow extends StatelessWidget {
   const _TicketSkeletonRow();
   @override
   Widget build(BuildContext context) {
-    return const Padding(padding: EdgeInsets.symmetric(horizontal: 4, vertical: 15),
-      child: Row(children: [
-        V3SkeletonBlock(width: 44, height: 44, radius: 15),
-        SizedBox(width: 13),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            FractionallySizedBox(widthFactor: .72,
-              alignment: Alignment.centerLeft,
-              child: V3SkeletonBlock(height: 12)),
-            SizedBox(height: 7),
-            FractionallySizedBox(widthFactor: .45,
-              alignment: Alignment.centerLeft,
-              child: V3SkeletonBlock(height: 9)),
-          ])),
-        SizedBox(width: 12),
-        V3SkeletonBlock(width: 44, height: 20, radius: 10),
-      ]));
+    return const SizedBox(height: kV3TicketRowHeight,
+      child: Padding(padding: EdgeInsets.symmetric(horizontal: 4),
+        child: Row(children: [
+          V3SkeletonBlock(width: 44, height: 44, radius: 15),
+          SizedBox(width: 13),
+          Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+              FractionallySizedBox(widthFactor: .72,
+                alignment: Alignment.centerLeft,
+                child: V3SkeletonBlock(height: 12)),
+              SizedBox(height: 7),
+              FractionallySizedBox(widthFactor: .45,
+                alignment: Alignment.centerLeft,
+                child: V3SkeletonBlock(height: 9)),
+            ])),
+          SizedBox(width: 12),
+          V3SkeletonBlock(width: 44, height: 20, radius: 10),
+        ])));
   }
 }
 
@@ -227,41 +239,43 @@ class _TicketRow extends StatelessWidget {
         en: 'Low', tw: '低'),
     };
     return InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap,
-      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 15),
-        child: Row(children: [
-          Container(width: 44, height: 44,
-            decoration: BoxDecoration(color: statusColor.withValues(alpha: .1),
-              borderRadius: BorderRadius.circular(15)),
-            child: Icon(Icons.forum_rounded, color: statusColor, size: 20)),
-          const SizedBox(width: 13),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(ticket.subject.trim().isEmpty
-                  ? v3Copy(context, zh: '未命名工单',
-                      en: 'Untitled ticket', tw: '未命名工單')
-                  : ticket.subject, maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: p.ink, fontSize: 12,
-                  fontWeight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              Text('#${ticket.id} · ${ticket.dateDisplay}',
-                style: TextStyle(color: p.inkMuted, fontSize: 10)),
-            ])),
-          const SizedBox(width: 12),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-            decoration: BoxDecoration(color: levelColor.withValues(alpha: .1),
-              borderRadius: BorderRadius.circular(10)),
-            child: Text(levelLabel, style: TextStyle(color: levelColor,
-              fontSize: 10, fontWeight: FontWeight.w800))),
-          const SizedBox(width: 9),
-          Text(v3Copy(context, zh: ticket.statusLabel,
-              en: ticket.isOpen ? 'Open' : 'Closed',
-              tw: ticket.isOpen ? '處理中' : '已關閉'),
-            style: TextStyle(color: statusColor, fontSize: 10,
-              fontWeight: FontWeight.w800)),
-          const SizedBox(width: 5),
-          Icon(Icons.chevron_right_rounded, color: p.inkMuted, size: 18),
-        ])));
+      child: SizedBox(height: kV3TicketRowHeight,
+        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(children: [
+            Container(width: 44, height: 44,
+              decoration: BoxDecoration(color: statusColor.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(15)),
+              child: Icon(Icons.forum_rounded, color: statusColor, size: 20)),
+            const SizedBox(width: 13),
+            Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(ticket.subject.trim().isEmpty
+                    ? v3Copy(context, zh: '未命名工单',
+                        en: 'Untitled ticket', tw: '未命名工單')
+                    : ticket.subject, maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.ink, fontSize: 12,
+                    fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text('#${ticket.id} · ${ticket.dateDisplay}', maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.inkMuted, fontSize: 10)),
+              ])),
+            const SizedBox(width: 12),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+              decoration: BoxDecoration(color: levelColor.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(10)),
+              child: Text(levelLabel, style: TextStyle(color: levelColor,
+                fontSize: 10, fontWeight: FontWeight.w800))),
+            const SizedBox(width: 9),
+            Text(v3Copy(context, zh: ticket.statusLabel,
+                en: ticket.isOpen ? 'Open' : 'Closed',
+                tw: ticket.isOpen ? '處理中' : '已關閉'),
+              style: TextStyle(color: statusColor, fontSize: 10,
+                fontWeight: FontWeight.w800)),
+            const SizedBox(width: 5),
+            Icon(Icons.chevron_right_rounded, color: p.inkMuted, size: 18),
+          ]))));
   }
 }
 
