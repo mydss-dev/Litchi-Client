@@ -252,6 +252,7 @@ class _RegisterForm extends StatefulWidget {
 
 class _RegisterFormState extends State<_RegisterForm> {
   final _email = TextEditingController();
+  final _emailPrefix = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   final _inviteCode = TextEditingController();
@@ -260,6 +261,11 @@ class _RegisterFormState extends State<_RegisterForm> {
   bool _sendingCode = false;
   bool _obscure = true;
   bool _configRefreshStarted = false;
+  bool _codeSent = false;
+  int _cooldownSeconds = 0;
+  Timer? _cooldownTimer;
+  String? _selectedDomain;
+  String? _sentToEmail;
   String? _error;
   String? _notice;
 
@@ -268,21 +274,41 @@ class _RegisterFormState extends State<_RegisterForm> {
     super.didChangeDependencies();
     if (_configRefreshStarted) return;
     _configRefreshStarted = true;
-    // Re-read panel flags upon entering registration, not just at app startup.
     unawaited(AppScope.read(context).refreshRegisterConfigCache());
   }
 
   @override
   void dispose() {
-    _email.dispose(); _password.dispose(); _confirm.dispose();
-    _inviteCode.dispose(); _emailCode.dispose(); super.dispose();
+    _cooldownTimer?.cancel();
+    _email.dispose(); _emailPrefix.dispose(); _password.dispose();
+    _confirm.dispose(); _inviteCode.dispose(); _emailCode.dispose();
+    super.dispose();
   }
 
-  bool _checkAllowedSuffix(String email) {
-    if (RegistrationEmailPolicy.allows(
-        email, AppScope.read(context).registerConfig.emailSuffixes)) {
-      return true;
+  bool _hasFixedDomains(List<String> suffixes) => suffixes.isNotEmpty &&
+      suffixes.every((rule) {
+        final value = rule.trim();
+        return value.isNotEmpty && !value.startsWith('.') &&
+            !value.startsWith('*.');
+      });
+
+  String _emailFor(List<String> suffixes) {
+    if (!_hasFixedDomains(suffixes)) return _email.text.trim();
+    final domains = RegistrationEmailPolicy.getSelectableDomains(suffixes);
+    if (domains.isEmpty) return _email.text.trim();
+    final selected = domains.contains(_selectedDomain)
+        ? _selectedDomain! : domains.first;
+    return '${_emailPrefix.text.trim()}@$selected';
+  }
+
+  bool _checkEmail(String email, List<String> suffixes) {
+    if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+      setState(() => _error = v3Copy(context,
+        zh: '请输入有效的邮箱地址', en: 'Enter a valid email address',
+        tw: '請輸入有效的電子郵件地址'));
+      return false;
     }
+    if (RegistrationEmailPolicy.allows(email, suffixes)) return true;
     setState(() => _error = v3Copy(context,
       zh: '该邮箱后缀不在后台允许注册的名单中',
       en: 'This email domain is not allowed for registration',
@@ -290,41 +316,64 @@ class _RegisterFormState extends State<_RegisterForm> {
     return false;
   }
 
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      setState(() {
+        if (_cooldownSeconds > 0) _cooldownSeconds--;
+        if (_cooldownSeconds == 0) timer.cancel();
+      });
+    });
+  }
+
   Future<void> _sendCode() async {
-    final email = _email.text.trim();
-    if (email.isEmpty) {
-      setState(() => _error = v3Copy(context, zh: '请先填写邮箱',
-        en: 'Enter your email first', tw: '請先填寫電子郵件'));
-      return;
-    }
-    if (!_checkAllowedSuffix(email)) return;
-    if (_sendingCode) return;
+    if (_sendingCode || _busy || _cooldownSeconds > 0 || _codeSent) return;
+    final config = AppScope.read(context).registerConfig;
+    if (!config.registerOpen || !config.emailVerifyRequired) return;
+    final email = _emailFor(config.emailSuffixes);
+    if (!_checkEmail(email, config.emailSuffixes)) return;
     setState(() { _sendingCode = true; _error = null; _notice = null; });
     try {
       await AppScope.read(context).api.sendEmailVerify(email);
       if (mounted) {
-        setState(() => _notice = v3Copy(context,
-          zh: '验证码已发送，请查收邮箱',
-          en: 'Verification code sent. Check your inbox.',
-          tw: '驗證碼已寄出，請查收信箱'));
+        setState(() {
+          _codeSent = true;
+          _sentToEmail = email;
+          _cooldownSeconds = 60;
+          _notice = v3Copy(context,
+            zh: '验证码已发送，请查收邮箱',
+            en: 'Verification code sent. Check your inbox.',
+            tw: '驗證碼已寄出，請查收信箱');
+        });
+        _startCooldown();
       }
     } catch (error) {
-      if (mounted) {
-        setState(() => _error = _authError(error));
-      }
+      if (mounted) setState(() => _error = _authError(error));
     } finally {
       if (mounted) setState(() => _sendingCode = false);
     }
   }
 
+  void _changeEmail() {
+    if (!_codeSent || _busy) return;
+    setState(() {
+      _codeSent = false;
+      _sentToEmail = null;
+      _emailCode.clear();
+      _notice = null;
+      _error = null;
+    });
+  }
+
   Future<void> _register() async {
-    if (_busy) return;
-    final email = _email.text.trim();
+    if (_busy || _sendingCode) return;
+    final config = AppScope.read(context).registerConfig;
+    final email = _emailFor(config.emailSuffixes);
     final password = _password.text;
     final confirm = _confirm.text;
     final inviteCode = _inviteCode.text.trim();
     final emailCode = _emailCode.text.trim();
-    final config = AppScope.read(context).registerConfig;
     if (!config.registerOpen) {
       setState(() => _error = v3Copy(context,
         zh: '后台暂未开放注册', en: 'Registration is currently closed',
@@ -336,7 +385,7 @@ class _RegisterFormState extends State<_RegisterForm> {
         en: 'Enter your email and password', tw: '請填寫電子郵件與密碼'));
       return;
     }
-    if (!_checkAllowedSuffix(email)) return;
+    if (!_checkEmail(email, config.emailSuffixes)) return;
     if (password != confirm) {
       setState(() => _error = v3Copy(context,
         zh: '两次输入的密码不一致', en: 'Passwords do not match',
@@ -347,6 +396,14 @@ class _RegisterFormState extends State<_RegisterForm> {
       setState(() => _error = v3Copy(context,
         zh: '请输入邮箱验证码', en: 'Enter email verification code',
         tw: '請輸入電子郵件驗證碼'));
+      return;
+    }
+    if (config.emailVerifyRequired && _sentToEmail != null &&
+        _sentToEmail!.toLowerCase() != email.toLowerCase()) {
+      setState(() => _error = v3Copy(context,
+        zh: '邮箱已变化，请重新发送验证码',
+        en: 'Email changed. Send a new verification code.',
+        tw: '電子郵件已變更，請重新寄送驗證碼'));
       return;
     }
     setState(() { _busy = true; _error = null; _notice = null; });
@@ -370,6 +427,11 @@ class _RegisterFormState extends State<_RegisterForm> {
     final controller = AppScope.of(context);
     final config = controller.registerConfig;
     final emailVerifyRequired = config.emailVerifyRequired;
+    final fixedDomains = _hasFixedDomains(config.emailSuffixes);
+    final domains = RegistrationEmailPolicy.getSelectableDomains(
+        config.emailSuffixes);
+    final selectedDomain = domains.contains(_selectedDomain)
+        ? _selectedDomain : (domains.isEmpty ? null : domains.first);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(v3Copy(context, zh: '创建账户', en: 'Create account', tw: '建立帳戶'),
         style: Theme.of(context).textTheme.headlineLarge),
@@ -378,14 +440,52 @@ class _RegisterFormState extends State<_RegisterForm> {
         en: 'Register a new Litchi account.', tw: '註冊新的 Litchi 帳戶。'),
         style: Theme.of(context).textTheme.bodySmall),
       const SizedBox(height: 32),
-      _V3Field(controller: _email, label: 'EMAIL', hint: 'name@example.com',
-        keyboardType: TextInputType.emailAddress),
+      if (fixedDomains && selectedDomain != null)
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(flex: 3, child: _V3Field(
+            controller: _emailPrefix,
+            label: v3Copy(context, zh: '邮箱前缀',
+              en: 'EMAIL NAME', tw: '電子郵件前綴'),
+            hint: 'name', enabled: !_codeSent)),
+          Padding(padding: const EdgeInsets.fromLTRB(6, 0, 6, 17),
+            child: Text('@', style: TextStyle(color: p.inkMuted))),
+          Expanded(flex: 4, child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(v3Copy(context, zh: '邮箱后缀',
+                en: 'DOMAIN', tw: '電子郵件後綴'),
+                style: TextStyle(color: p.inkMuted, fontSize: 10,
+                  fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+              const SizedBox(height: 8),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(color: p.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: p.line)),
+                child: DropdownButtonHideUnderline(child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: selectedDomain,
+                  items: domains.map((domain) => DropdownMenuItem<String>(
+                    value: domain, child: Text(domain,
+                      maxLines: 1, overflow: TextOverflow.ellipsis))).toList(),
+                  onChanged: _codeSent ? null : (value) {
+                    if (value != null) setState(() => _selectedDomain = value);
+                  },
+                ))),
+            ]))),
+        ])
+      else
+        _V3Field(controller: _email, label: 'EMAIL', hint: 'name@example.com',
+          keyboardType: TextInputType.emailAddress, enabled: !_codeSent),
       if (config.emailSuffixes.isNotEmpty) ...[
         const SizedBox(height: 8),
         Text('${v3Copy(context,
           zh: '允许注册的邮箱后缀：', en: 'Allowed email suffixes: ',
           tw: '允許註冊的電子郵件後綴：')}${config.emailSuffixes.join('、')}',
           style: TextStyle(color: p.inkMuted, fontSize: 11)),
+      ],
+      if (_codeSent) ...[
+        const SizedBox(height: 4),
+        _InlineTextButton(label: v3Copy(context, zh: '更换邮箱',
+          en: 'Change email', tw: '更換電子郵件'), onPressed: _changeEmail),
       ],
       const SizedBox(height: 16),
       _V3Field(controller: _password, label: 'PASSWORD', hint: '••••••••',
@@ -415,9 +515,13 @@ class _RegisterFormState extends State<_RegisterForm> {
           keyboardType: TextInputType.number,
           trailing: _InlineTextButton(label: _sendingCode
             ? v3Copy(context, zh: '发送中…', en: 'Sending…', tw: '傳送中…')
-            : v3Copy(context, zh: '发送验证码',
-                en: 'Send code', tw: '傳送驗證碼'),
-            onPressed: _sendingCode || !config.registerOpen ? null : _sendCode)),
+            : _cooldownSeconds > 0
+              ? '${_cooldownSeconds}s'
+              : v3Copy(context, zh: '发送验证码',
+                  en: 'Send code', tw: '傳送驗證碼'),
+            onPressed: _sendingCode || _busy || _codeSent ||
+                _cooldownSeconds > 0 || !config.registerOpen
+                ? null : _sendCode)),
       ],
       if (!config.registerOpen) ...[
         const SizedBox(height: 14),
@@ -435,7 +539,8 @@ class _RegisterFormState extends State<_RegisterForm> {
       ],
       const SizedBox(height: 24),
       SizedBox(width: double.infinity, height: 52,
-        child: FilledButton(onPressed: _busy || !config.registerOpen ? null : _register,
+        child: FilledButton(onPressed: _busy || _sendingCode ||
+            !config.registerOpen ? null : _register,
           style: FilledButton.styleFrom(backgroundColor: p.lychee,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
@@ -654,7 +759,7 @@ class _InlineTextButton extends StatelessWidget {
 class _V3Field extends StatelessWidget {
   const _V3Field({required this.controller, required this.label,
     required this.hint, this.keyboardType, this.obscureText = false,
-    this.trailing, this.onSubmitted});
+    this.trailing, this.onSubmitted, this.enabled = true});
   final TextEditingController controller;
   final String label;
   final String hint;
@@ -662,6 +767,7 @@ class _V3Field extends StatelessWidget {
   final bool obscureText;
   final Widget? trailing;
   final ValueChanged<String>? onSubmitted;
+  final bool enabled;
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
@@ -670,7 +776,7 @@ class _V3Field extends StatelessWidget {
         fontWeight: FontWeight.w800, letterSpacing: 1.5)),
       const SizedBox(height: 8),
       TextField(controller: controller, keyboardType: keyboardType,
-        obscureText: obscureText, onSubmitted: onSubmitted,
+        obscureText: obscureText, onSubmitted: onSubmitted, enabled: enabled,
         decoration: InputDecoration(hintText: hint, suffixIcon: trailing,
           filled: true, fillColor: p.surface,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
