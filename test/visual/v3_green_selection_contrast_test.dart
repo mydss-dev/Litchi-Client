@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
-// WCAG relative luminance, using the exact rendered palette tokens.
+// WCAG relative luminance using the exact palette tokens.
 double _luminance(Color color) {
   double channel(double v) => v <= 0.04045
       ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
@@ -30,31 +30,44 @@ void main() {
     ('light', V3Palette.light),
     ('dark', V3Palette.dark),
   ]) {
-    test('$mode: lime selection declares a dark, readable foreground', () {
-      final theme = mode == 'light' ? V3Theme.light() : V3Theme.dark();
-      expect(theme.colorScheme.secondary, p.citrus);
+    final theme = mode == 'light' ? V3Theme.light() : V3Theme.dark();
+
+    test('$mode: Material secondary selection uses lychee, not lime', () {
+      expect(theme.colorScheme.secondary, p.lychee);
+      expect(theme.colorScheme.secondary, isNot(p.citrus));
       expect(theme.colorScheme.onSecondary, p.night);
-      expect(_contrast(theme.colorScheme.onSecondary, p.citrus),
+      expect(_contrast(theme.colorScheme.onSecondary, p.lychee),
         greaterThanOrEqualTo(4.5));
-      // White text is not a safe default on this green selection fill.
-      expect(_contrast(Colors.white, p.citrus), lessThan(4.5));
     });
 
-    test('$mode: selected green labels remain readable on all tinted panels', () {
-      for (final background in [p.surface, p.hero, p.surfaceRaised]) {
-        final selectedFill = _over(p.success, .12, background);
-        expect(_contrast(p.successInk, selectedFill),
-          greaterThanOrEqualTo(4.5));
-      }
+    test('$mode: segmented control matches plan-cycle selected skin', () {
+      final style = theme.segmentedButtonTheme.style!;
+      final selected = {WidgetState.selected};
+      final unselected = <WidgetState>{};
+      expect(style.backgroundColor!.resolve(selected), p.lycheeSoft);
+      expect(style.foregroundColor!.resolve(selected), p.lycheeInk);
+      expect(style.side!.resolve(selected)!.color, p.lychee);
+      expect(style.backgroundColor!.resolve(unselected), p.surfaceRaised);
+      expect(style.foregroundColor!.resolve(unselected), p.ink);
+      expect(_contrast(p.lycheeInk, p.lycheeSoft),
+        greaterThanOrEqualTo(4.5));
     });
 
-    test('$mode: selected chips declare safe foregrounds and backgrounds', () {
-      final chip = (mode == 'light' ? V3Theme.light() : V3Theme.dark())
-          .chipTheme;
-      expect(chip.selectedColor, isNotNull);
-      expect(chip.secondaryLabelStyle?.color, isNotNull);
+    test('$mode: chip selection uses accessible lychee foreground and fill', () {
+      final chip = theme.chipTheme;
+      expect(chip.selectedColor, p.lycheeSoft);
+      expect(chip.secondaryLabelStyle?.color, p.lycheeInk);
+      expect(chip.checkmarkColor, p.lycheeInk);
       expect(_contrast(chip.secondaryLabelStyle!.color!, chip.selectedColor!),
         greaterThanOrEqualTo(4.5));
+    });
+
+    test('$mode: genuine success labels remain readable on tinted panels', () {
+      for (final background in [p.surface, p.hero, p.surfaceRaised]) {
+        final statusFill = _over(p.success, .12, background);
+        expect(_contrast(p.successInk, statusFill),
+          greaterThanOrEqualTo(4.5));
+      }
     });
   }
 }
