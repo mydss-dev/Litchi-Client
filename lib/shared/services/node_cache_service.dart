@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../models/app_models.dart';
 import 'app_paths.dart';
 import 'credentials_storage.dart';
@@ -15,7 +17,19 @@ import 'protected_cache_cleanup.dart';
 /// cache lets the client still connect when the panel/API is temporarily
 /// unreachable without leaving proxy credentials in plain text on disk.
 abstract final class NodeCacheService {
-  static String get _baseDirPath => AppPaths.dataDirectory;
+  static String? _testDirectory;
+
+  /// Isolates cache tests from real user data. Assertions are absent in release
+  /// builds, so production callers cannot change the cache directory.
+  @visibleForTesting
+  static void overrideCacheDirectoryForTesting(String? directory) {
+    assert(() {
+      _testDirectory = directory;
+      return true;
+    }());
+  }
+
+  static String get _baseDirPath => _testDirectory ?? AppPaths.dataDirectory;
 
   static String get _uiCachePath =>
       '$_baseDirPath${Platform.pathSeparator}nodes_cache.json';
