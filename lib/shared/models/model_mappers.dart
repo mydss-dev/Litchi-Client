@@ -12,7 +12,11 @@ abstract final class ModelMappers {
       name: name,
       plan: info.planLabel,
       avatarLetter: name.isNotEmpty ? name[0].toUpperCase() : 'U',
-      expiry: info.expiryDisplay,
+      // A missing timestamp is not proof of a permanent subscription.
+      // Explicit zero remains the panel's permanent-expiry sentinel.
+      expiry: info.expiredAt == null && info.hasPlanEvidence
+          ? '未提供'
+          : info.expiryDisplay,
       balance: info.balance,
       remindExpire: info.remindExpire,
       remindTraffic: info.remindTraffic,
