@@ -16,6 +16,18 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: true
+      - name: Repair chart style bracket in guarded migration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tool/v3_information_pages_once.py')
+          source = path.read_text(encoding='utf-8')
+          old = "? p.lychee : p.line)),')"
+          new = "? p.lychee : p.line))),')"
+          if source.count(old) != 1:
+              raise RuntimeError('Expected exactly one chart style bracket')
+          path.write_text(source.replace(old, new), encoding='utf-8')
+          PY
       - name: Apply exact-match page edits
         run: python3 tool/v3_information_pages_once.py
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
