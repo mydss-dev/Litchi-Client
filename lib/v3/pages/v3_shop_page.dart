@@ -9,6 +9,7 @@ import '../../shared/models/app_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_sheet.dart';
 
@@ -38,13 +39,13 @@ class _V3ShopPageState extends State<V3ShopPage> {
     final plans = controller.plans.where((plan) =>
         _category == null || plan.category == _category).toList(growable: false);
     return LayoutBuilder(builder: (context, constraints) {
-      const padding = 24.0;
+      const padding = V3Layout.pageGutter;
       const spacing = 12.0;
       final contentWidth = constraints.maxWidth - padding * 2;
       final twoColumns = contentWidth >= 600;
       final cardWidth = twoColumns ? (contentWidth - spacing) / 2 : contentWidth;
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(padding, 24, padding, 36),
+        padding: V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(kicker: _tr(context, '套餐商城', 'PLAN STORE', '方案商店'),
             title: _tr(context, '选择套餐', 'Choose a plan', '選擇方案')),

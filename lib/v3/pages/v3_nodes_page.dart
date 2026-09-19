@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_coverage_map.dart';
@@ -18,7 +19,7 @@ class V3NodesPage extends StatelessWidget {
     final p = V3Palette.of(context);
     final nodes = controller.nodes.where((node) => !node.isAuto).toList();
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+      padding: V3Layout.pageInsets,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
