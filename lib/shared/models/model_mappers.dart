@@ -12,6 +12,8 @@ abstract final class ModelMappers {
       name: name,
       plan: info.planLabel,
       avatarLetter: name.isNotEmpty ? name[0].toUpperCase() : 'U',
+      // Some compatible panels explicitly use null for a permanent plan.
+      // Do not overwrite the remote model's established expiry semantics.
       expiry: info.expiryDisplay,
       balance: info.balance,
       remindExpire: info.remindExpire,

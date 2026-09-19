@@ -11,12 +11,12 @@ import '../shared/services/account_summary_cache.dart';
 import '../shared/services/api_client.dart';
 import '../shared/services/data_loader.dart';
 import '../shared/services/desktop_network_monitor.dart';
-import '../shared/services/network_error_classifier.dart';
 import '../shared/services/node_cache_service.dart';
 import '../shared/services/notice_cache_service.dart';
 import '../shared/services/panel_api.dart';
 import '../shared/services/register_config_cache.dart';
 import '../shared/services/secure_logger.dart';
+import '../shared/services/session_failure_policy.dart';
 import '../shared/services/windows_shell.dart';
 import '../shared/services/token_storage.dart';
 import '../shared/services/update_service.dart';
@@ -42,18 +42,9 @@ enum AppPage {
   orders,
   tickets,
   giftCard,
-
-  /// The compact layout's "更多" tab: a list of the secondary destinations
-  /// that have no tab of their own. It is a container, not a feature, so no
-  /// capability switch applies to it.
   more,
 }
 
-/// Whether [page] is available under the active panel's capability switches.
-///
-/// Single source of truth: every navigation surface, `goToPage` and the
-/// account hub consult this, so a page a panel does not expose can neither be
-/// listed nor navigated to.
 bool isPageEnabled(AppPage page) => switch (page) {
   AppPage.shop => AppConfig.panelFeatures.shop,
   AppPage.invite => AppConfig.panelFeatures.invite,
@@ -182,9 +173,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Future<String?> setProxyMode(ProxyMode v) async {
     final old = _settings.proxyMode;
     if (old == v) return null;
-
     _settings.setProxyMode(v);
-
     if (_core.coreProcessRunning) {
       final ok = await _core.setMode(v);
       if (!ok) {
@@ -192,7 +181,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         return '模式切换失败，请重试';
       }
     }
-
     return null;
   }
 
@@ -258,20 +246,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _account.user.plan.trim().isNotEmpty ||
       _subscription.subscribeUrl.trim().isNotEmpty;
 
-  /// User-facing plan-expiry text — the single source of truth for every page
-  /// that reports one, so they cannot disagree with each other again.
-  ///
-  /// The panel reports three distinct states and only one of them is
-  /// "permanent":
-  ///   * no plan at all                  -> '暂无套餐'
-  ///   * a plan whose expiry it did not  -> '未提供'
-  ///     report (a stale or partial sync)
-  ///   * a plan with an expiry           -> the value, e.g. '2026-07-08'
-  ///
-  /// Only [SubscriptionInfo.expiryDisplay] may produce '永久', and only when
-  /// the panel said so. Reading an empty expiry as "permanent" is what made the
-  /// account and traffic pages tell users with no plan that they had a
-  /// permanent one.
   String get planExpiryLabel {
     final value = user.expiry.trim();
     if (value.isNotEmpty) return value;
@@ -327,8 +301,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   List<NoticeModel> get notices => _notices.notices;
   bool get noticesLoading => _notices.isLoading;
   bool get hasUnreadNotice => _notices.hasUnreadNotice;
-
-  /// Unseen must-read notices (tagged `弹窗`) to surface as popups.
   List<NoticeModel> get pendingNoticePopups => _notices.pendingPopups;
 
   void dismissUpdate() {
@@ -337,7 +309,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void markNoticeRead() => _notices.markRead();
-
   void markNoticePopupSeen(int id) => _notices.markPopupSeen(id);
 
   Future<void> init() async {
@@ -354,7 +325,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
     await _core.setKillSwitchEnabled(_settings.killSwitch);
     await _desktopNetworkMonitor.start(_recoverDesktopConnection);
-
     _apiClient.configure(AppConfig.effectiveApiBases);
     _apiClient.onSessionExpired = logout;
     await _loadCachedRegisterConfig();
@@ -374,17 +344,12 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _restoreCachedNodes(),
       _restoreCachedAccountSummary(authData),
     ]);
-
     _isAuthenticated = true;
     final sessionEpoch = ++_sessionEpoch;
     _startStatusRefresh();
     _isInitialLoading = true;
     _isInitializing = false;
     notifyListeners();
-
-    // Deferred: _refreshAfterAutoLogin() will verify the account with the
-    // API before auto-reconnecting — never connect before we know the
-    // session is still valid.
     unawaited(_refreshAfterAutoLogin(sessionEpoch));
     unawaited(_checkForUpdate());
   }
@@ -424,20 +389,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _registerConfig = config;
       if (!_disposed) notifyListeners();
     } catch (_) {
-      // Best-effort cache; a not-yet-configured server is expected in dev.
+      // Best-effort; expected when the server is not yet reachable.
     }
   }
 
   Future<void> _refreshAfterAutoLogin(int sessionEpoch) async {
     final sw = Stopwatch()..start();
     try {
+      _dataLoadError = null;
       await _loadAllData(sessionEpoch);
       if (!_isSessionCurrent(sessionEpoch)) return;
-      _dataLoadError = null;
+      // Keep any partial-load errors recorded by the snapshot.
       _isInitialLoading = false;
-      if (!_disposed) notifyListeners();
-
-      // API confirmed the account is still valid — safe to auto-reconnect.
+      notifyListeners();
       if (_settings.wasConnected) {
         unawaited(_tryAutoReconnectSafely(sessionEpoch));
       }
@@ -447,43 +411,67 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         'Auth background refresh failed after ${sw.elapsedMilliseconds}ms',
         e,
       );
-      if (NetworkErrorClassifier.isNetworkError(e)) {
+      final kind = SessionFailurePolicy.classify(e);
+      if (kind == SessionFailureKind.authentication) {
+        await _expireSessionAndStopCore('登录已过期，请重新登录');
+        return;
+      }
+      _isInitialLoading = false;
+      if (kind == SessionFailureKind.network) {
         _dataLoadError = _nodes.isNotEmpty
             ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
             : '当前无法连接服务器，且暂无本地节点缓存，请检查网络或联系客服。';
-        if (!_disposed) notifyListeners();
-
-        // Network error with cached nodes — cached-mode connection is safe.
+        notifyListeners();
         if (_settings.wasConnected && _nodes.isNotEmpty) {
           unawaited(toggleConnection().then((_) {}));
         }
-        return;
+      } else {
+        _dataLoadError = SessionFailurePolicy.syncError(e);
+        notifyListeners();
       }
-
-      await _expireSessionAndStopCore('登录已过期，请重新登录');
     }
   }
 
-  /// Quick API check before auto-reconnecting so we never bring up the core
-  /// on an expired / banned / out-of-traffic account.  Only a genuine network
-  /// error permits cached-mode connection; any other failure expires the
-  /// session and stops the core (if running).
+  /// Never reconnect a known expired, suspended or traffic-exhausted account.
+  /// Unrelated API failures do not expire the session or permit reconnection.
   Future<void> _tryAutoReconnectSafely(int sessionEpoch) async {
-    if (!_isSessionCurrent(sessionEpoch)) return;
+    if (!_isSessionCurrent(sessionEpoch) || _nodes.isEmpty) return;
     try {
-      await _api.getSubscribeInfo();
+      final info = await _api.getUserInfo(silent: true);
       if (!_isSessionCurrent(sessionEpoch)) return;
-      // Backend confirmed account status is valid.
+      final subscribe = await _api.getSubscribeInfo(silent: true);
+      if (!_isSessionCurrent(sessionEpoch)) return;
+      final planConfirmed = info.hasPlanEvidence ||
+          (subscribe.planId != null && subscribe.planId! > 0) ||
+          subscribe.subscribeUrl.trim().isNotEmpty ||
+          subscribe.transferEnable > 0;
+      final expiredAt = subscribe.expiredAt ?? info.expiredAt;
+      final expired = expiredAt != null && expiredAt > 0 &&
+          expiredAt <= DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final quotaExhausted = subscribe.transferEnable > 0
+          ? subscribe.upload + subscribe.download >= subscribe.transferEnable
+          : info.transferEnable > 0 && info.used >= info.transferEnable;
+      if (!planConfirmed || info.subscribeStatus != 0 || expired || quotaExhausted) {
+        _settings.setWasConnected(false);
+        _dataLoadError = '套餐不可用或状态未确认，已停止自动连接，请检查账户状态';
+        notifyListeners();
+        return;
+      }
       await toggleConnection();
     } catch (e) {
       if (!_isSessionCurrent(sessionEpoch)) return;
-      if (NetworkErrorClassifier.isNetworkError(e)) {
-        // Only a confirmed network blip allows cached-mode connection.
+      final kind = SessionFailurePolicy.classify(e);
+      if (kind == SessionFailureKind.authentication) {
+        await _expireSessionAndStopCore('登录已过期，请重新登录');
+        return;
+      }
+      if (kind == SessionFailureKind.network && _nodes.isNotEmpty) {
+        // Preserve the established offline-cache behavior for genuine outages.
         await toggleConnection();
         return;
       }
-      // Token expired, account banned, plan exhausted, etc.
-      await _expireSessionAndStopCore('登录已过期，请重新登录');
+      _dataLoadError = SessionFailurePolicy.syncError(e);
+      notifyListeners();
     }
   }
 
@@ -496,10 +484,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  // ── Account status refresh (lightweight timer for traffic / expiry / devices)
-
-  /// Applies only the account & subscription counter fields, without touching
-  /// nodes or latency state.
   void _applyAccountStatus(DataSnapshot snap) {
     if (snap.user != null || snap.subscribeUrl != null) {
       _hasAccountSummary = true;
@@ -588,9 +572,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _statusRefreshTimer = null;
   }
 
-  /// Background poll: NEVER surfaces an error, NEVER logs the user out.
-  /// A transient 401 on a timer must not kick the user — real auth expiry is
-  /// handled the next time the user performs an action through refreshData().
   Future<void> _refreshAccountStatusSilently() async {
     if (_disposed || !_isAuthenticated) return;
     if (_statusRefreshInFlight) return;
@@ -599,13 +580,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     final authData = _authData;
     _statusRefreshInFlight = true;
     try {
-      // Tagged silent so a transient 401 on the timer can never log the user
-      // out — the session-expired interceptor skips these requests.
       final snap = await _dataLoader.loadAccountStatus(silent: true);
       if (!_isSessionCurrent(sessionEpoch) || authData != _authData) return;
       _applyAccountStatus(snap);
     } catch (_) {
-      // intentional: silent on a background poll.
+      // Background polling never logs out or interrupts a connection.
     } finally {
       _statusRefreshInFlight = false;
     }
@@ -670,8 +649,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
     _desktopRecoveryInFlight = true;
     try {
-      // Let the OS finish replacing routes and adapters after wake/network
-      // changes before touching the proxy or restarting the tunnel.
       await Future<void>.delayed(const Duration(milliseconds: 800));
       if (_disposed ||
           !_isAuthenticated ||
@@ -679,20 +656,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           connectionActionLocked) {
         return;
       }
-
       if (coreRunning) {
         if (_settings.networkMode == NetworkMode.system) {
           await fixProxy();
         } else if (Platform.isWindows &&
             _settings.networkMode == NetworkMode.tun) {
-          // TUN keeps the main core pinned to a pre-TUN DNS snapshot; a
-          // Wi-Fi / hotspot switch invalidates it. Re-read the physical
-          // adapter's DNS and re-pin without disturbing the tunnel.
           await _core.refreshWindowsTunDns(_buildConnectionRequest());
         }
         return;
       }
-
       await toggleConnection();
     } catch (error) {
       SecureLogger.warn('desktop connection recovery failed', error);
@@ -703,15 +675,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   void _onRemoteConfigChanged() {
     if (_disposed) return;
-    // Rebuild even when only api_prefix changed and the host list stayed the
-    // same; Dio stores the combined base URL when it is constructed.
     _apiClient.updateServerUrls(
       AppConfig.effectiveApiBases,
       forceRebuild: true,
     );
-    if (!isPageEnabled(_page)) {
-      _page = AppPage.dashboard;
-    }
+    if (!isPageEnabled(_page)) _page = AppPage.dashboard;
     unawaited(refreshRegisterConfigCache());
     unawaited(_checkForUpdate());
     notifyListeners();
@@ -729,8 +697,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void goToPage(AppPage page) {
-    if (!isPageEnabled(page)) return;
-    if (_page == page) return;
+    if (!isPageEnabled(page) || _page == page) return;
     _page = page;
     notifyListeners();
   }
@@ -901,9 +868,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     return _core.toggleConnection(_buildConnectionRequest());
   }
 
-  static Future<bool> checkAdminPrivileges() async {
-    return checkWindowsAdminPrivilege();
-  }
+  static Future<bool> checkAdminPrivileges() async => checkWindowsAdminPrivilege();
 
   bool _isSessionCurrent(int sessionEpoch) =>
       !_disposed && _isAuthenticated && sessionEpoch == _sessionEpoch;
@@ -913,8 +878,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (!_isSessionCurrent(sessionEpoch)) return;
     _applyAccountStatus(snap);
 
-    // Start detail-page requests at the same time, but do not let them hold
-    // back nodes and plan data needed by the first dashboard frame.
     final secondaryLoad = _dataLoader.loadSecondary(snap);
     await _dataLoader.loadPrimary(snap);
     if (!_isSessionCurrent(sessionEpoch)) return;
@@ -962,27 +925,25 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await _loadAllData(sessionEpoch);
       if (!_isSessionCurrent(sessionEpoch)) return;
-      _dataLoadError = null;
+      // Do not erase a genuine partial-load warning from _applySnapshot.
     } catch (e) {
       if (!_isSessionCurrent(sessionEpoch)) return;
-      if (NetworkErrorClassifier.isNetworkError(e)) {
+      final kind = SessionFailurePolicy.classify(e);
+      if (kind == SessionFailureKind.authentication) {
+        await _expireSessionAndStopCore('登录已过期，请重新登录');
+        return;
+      }
+      if (kind == SessionFailureKind.network) {
         _dataLoadError = _nodes.isNotEmpty
             ? '服务器连接失败，已启用本地缓存模式，不影响已缓存节点使用。'
             : '当前无法连接服务器，且暂无本地节点缓存，请检查网络或联系客服。';
       } else {
-        await _expireSessionAndStopCore('登录已过期，请重新登录');
-        return;
+        _dataLoadError = SessionFailurePolicy.syncError(e);
       }
     }
     notifyListeners();
   }
 
-  /// Fetches the ticket list and caches it for the tickets page.
-  ///
-  /// The page is rebuilt from scratch on every navigation, so the list lives
-  /// here — like nodes and notices — so reopening the page shows the cached
-  /// tickets immediately and refreshes them in the background instead of
-  /// flashing a skeleton on every visit.
   Future<void> refreshTickets() async {
     if (_ticketsLoading || !_isAuthenticated) return;
     final sessionEpoch = _sessionEpoch;
@@ -1001,7 +962,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
           .replaceFirst('ApiException: ', '')
           .replaceFirst('Exception: ', '');
     } finally {
-      // A stale A-account request must not change B's loading or ticket state.
       if (_isSessionCurrent(sessionEpoch)) {
         _ticketsLoading = false;
         notifyListeners();
@@ -1013,7 +973,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   Future<String?> transferAllCommission() => _wallet.transferAllCommission();
   Future<String?> transferCommissionToBalance(double amount) =>
       _wallet.transferCommissionToBalance(amount);
-
   Future<String?> withdrawCommission({
     required double amount,
     required String account,
@@ -1031,7 +990,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final snap = await _dataLoader.loadNodes(_subscription.subscribeUrl);
       if (!_isSessionCurrent(sessionEpoch)) return;
-      if (snap.nodes != null && snap.nodes!.isNotEmpty) {
+      if (snap.nodesError != null) {
+        // Keep cached nodes and the live core, but make failure visible.
+        _dataLoadError = snap.nodesError;
+      } else if (snap.nodes != null && snap.nodes!.isNotEmpty) {
+        _dataLoadError = null;
         _invalidateLatencyRuns();
         _nodes.setNodes(snap.nodes!);
         _restoreLastNode();
@@ -1043,6 +1006,12 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         }
       }
       notifyListeners();
+    } catch (e) {
+      if (_isSessionCurrent(sessionEpoch)) {
+        _dataLoadError = '节点刷新失败，已保留现有节点，请稍后重试';
+        notifyListeners();
+      }
+      SecureLogger.warn('AppController refreshNodes failed', e);
     } finally {
       _nodesRefreshInFlight = false;
     }
@@ -1106,7 +1075,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     );
     if (snap.criticalError != null) {
       _dataLoadError = snap.criticalError;
-    } else if (snap.nodesError != null && _nodes.isEmpty) {
+    } else if (snap.nodesError != null) {
       _dataLoadError = snap.nodesError;
     }
   }
@@ -1144,14 +1113,12 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (!supportsCoreConnection) return null;
     if (_nodes.isEmpty) return null;
     if (!startIfStopped && !coreProcessRunning) return null;
-
     final error = await _core.reloadCore(_buildConnectionRequest());
     if (error != null && error.isNotEmpty) {
       _startupMessage = error;
       notifyListeners();
       return error;
     }
-
     if (coreProcessRunning) {
       await Future.delayed(const Duration(milliseconds: 1000));
       unawaited(_testLatenciesInBackground());
@@ -1161,11 +1128,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<bool> testLatencies() async {
     if (!supportsCoreConnection || _nodes.isEmpty) return false;
-
     final runId = _nextLatencyRunId();
     _nodes.markAllLatency(-1);
     final snapshot = List<NodeModel>.from(_nodes.nodes);
-
     if (!coreProcessRunning) {
       final ready = await _preloadCoreOnly();
       if (!ready) {
@@ -1173,7 +1138,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         return false;
       }
     }
-
     await _core.testLatencies(
       snapshot,
       onResult: (idx, updated) {
@@ -1188,10 +1152,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (!supportsCoreConnection || _nodes.isEmpty || !coreProcessRunning) {
       return;
     }
-
     final runId = _nextLatencyRunId();
     final snapshot = List<NodeModel>.from(_nodes.nodes);
-
     await _core.testLatencies(
       snapshot,
       onResult: (idx, updated) {
@@ -1212,7 +1174,6 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   int _nextLatencyRunId() => ++_latencyRunId;
-
   void _invalidateLatencyRuns() {
     _latencyRunId++;
     _nodes.markAllLatency(0);
