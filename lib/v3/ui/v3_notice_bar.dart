@@ -26,9 +26,10 @@ String v3NoticeText(String source) => source
 
 /// The ticker never previews or concatenates the body. Readers access full
 /// content (including images) only after opening the notice dialog.
-String v3NoticeHeadline(NoticeModel notice) {
+/// The caller provides its locale-aware fallback for an empty server title.
+String v3NoticeHeadline(NoticeModel notice, {required String fallback}) {
   final title = notice.title.trim();
-  return title.isEmpty ? '公告' : title;
+  return title.isEmpty ? fallback : title;
 }
 
 class V3NoticeBar extends StatefulWidget {
@@ -165,7 +166,9 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                   layoutBuilder: (current, previous) => Stack(
                     alignment: Alignment.centerLeft,
                     children: [...previous, ?current]),
-                  child: Text(v3NoticeHeadline(notice), key: ValueKey(notice.id),
+                  child: Text(v3NoticeHeadline(notice,
+                    fallback: v3Copy(context, zh: '公告', en: 'Notice', tw: '公告')),
+                    key: ValueKey(notice.id),
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: p.ink, fontSize: 12.5)))),
                 if (multiple && MediaQuery.sizeOf(context).width >= 520) ...[
