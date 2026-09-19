@@ -25,9 +25,7 @@ jobs:
           old = """replace(traffic, 'borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),',
                   'borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),', 1)
           replace(traffic, 'borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),',
-                  'borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),', 1)"""
-          # Normalize indentation to match the source file's four-space blocks.
-          old = old.replace('                  ', '        ')
+                  'borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),', 1)""".replace('                  ', '        ')
           new = """replace(traffic, 'borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),',
                   'borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),', 2)""".replace('                  ', '        ')
           if content.count(old) != 1:
@@ -36,6 +34,19 @@ jobs:
           PY
       - name: Apply guarded design migration
         run: python3 tool/v3_unify_foundations_once.py
+      - name: Preserve accessible settings control height
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lib/v3/pages/v3_settings_page.dart')
+          text = path.read_text(encoding='utf-8')
+          old = 'padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),'
+          if text.count(old) != 1:
+              raise RuntimeError('Expected exactly one settings segmented control')
+          path.write_text(text.replace(old,
+              'padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),'),
+              encoding='utf-8')
+          PY
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
@@ -47,7 +58,7 @@ jobs:
         run: flutter analyze
       - name: Run complete Flutter tests
         run: flutter test
-      - name: Commit only reviewed production and test changes
+      - name: Commit only production and test changes
         run: |
           git rm -f .github/workflows/v3-unify-foundations-once.yml tool/v3_unify_foundations_once.py
           git add lib/v3/pages lib/v3/ui/v3_components.dart lib/v3/ui/v3_layout.dart test/v3_layout_foundations_test.dart
