@@ -37,13 +37,27 @@ class V3NavItem {
 
   bool get isEnabled => isPageEnabled(page);
 
-  /// Localized label for this nav item.
+  /// Short labels belong in navigation, not in page headings. Keep the
+  /// surrounding localized copy and full page titles unchanged.
   String localizedLabel(BuildContext context) {
-    // Standalone widget previews and tests may omit the generated delegates.
-    // Match v3Copy's Chinese fallback instead of crashing the entire shell.
     final l = Localizations.of<AppLocalizations>(
       context, AppLocalizations,
     ) ?? AppLocalizationsZh();
+    if (l.localeName.startsWith('zh')) {
+      return switch (page) {
+        AppPage.dashboard => '连接',
+        AppPage.nodes => '节点',
+        AppPage.shop => '套餐',
+        AppPage.account => '账户',
+        AppPage.more => '更多',
+        AppPage.traffic => '流量',
+        AppPage.invite => '邀请',
+        AppPage.tickets => '工单',
+        AppPage.settings => '设置',
+        AppPage.orders => '订单',
+        AppPage.giftCard => '兑换',
+      };
+    }
     return switch (page) {
       AppPage.dashboard => l.connection,
       AppPage.nodes => l.nodes,
