@@ -17,20 +17,30 @@ class PlanPresentation {
 
   String get shortLabel => name == '暂无套餐' ? name : '$name · $status';
 
-  /// A cached label of '永久' is not proof on its own. An explicit zero expiry
-  /// from either live endpoint is required; absent timestamps mean unknown.
+  /// An explicit date takes precedence over a conflicting permanent sentinel;
+  /// a cached '永久' label with no timestamp evidence is unverified.
   static String expiryLabelWithEvidence({
     required String label,
     required int? accountExpiry,
     required int? subscriptionExpiry,
   }) {
-    if (accountExpiry == 0 || subscriptionExpiry == 0) return '永久';
-    if (label.trim() == '永久' &&
-        accountExpiry == null &&
-        subscriptionExpiry == null) {
-      return '未提供';
+    if ((accountExpiry != null && accountExpiry > 0) ||
+        (subscriptionExpiry != null && subscriptionExpiry > 0)) {
+      return label.trim() == '永久' ? '未提供' : label;
     }
-    return label;
+    if (accountExpiry == 0 || subscriptionExpiry == 0) return '永久';
+    return label.trim() == '永久' ? '未提供' : label;
+  }
+
+  static int? expiryTimestampWithEvidence({
+    required int? accountExpiry,
+    required int? subscriptionExpiry,
+  }) {
+    if (subscriptionExpiry != null && subscriptionExpiry > 0) {
+      return subscriptionExpiry;
+    }
+    if (accountExpiry != null && accountExpiry > 0) return accountExpiry;
+    return subscriptionExpiry ?? accountExpiry;
   }
 
   factory PlanPresentation.fromController(
@@ -58,15 +68,20 @@ class PlanPresentation {
             : catalogName.isNotEmpty
                 ? catalogName
                 : '套餐名称待同步';
+    final accountExpiry = controller.accountDetails?.expiredAt;
+    final subscriptionExpiry = controller.expiredAt;
     return PlanPresentation.resolve(
       hasPlan: controller.hasPlan,
       name: name,
       subscribeStatus: controller.accountDetails?.subscribeStatus,
-      expiredAt: controller.expiredAt ?? controller.accountDetails?.expiredAt,
+      expiredAt: expiryTimestampWithEvidence(
+        accountExpiry: accountExpiry,
+        subscriptionExpiry: subscriptionExpiry,
+      ),
       expiryLabel: expiryLabelWithEvidence(
         label: controller.planExpiryLabel,
-        accountExpiry: controller.accountDetails?.expiredAt,
-        subscriptionExpiry: controller.expiredAt,
+        accountExpiry: accountExpiry,
+        subscriptionExpiry: subscriptionExpiry,
       ),
       quotaGb: controller.traffic.totalGb,
       remainingGb: controller.traffic.remainGb,
