@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import 'v3_ticket_detail_dialog.dart';
@@ -60,11 +61,11 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
     final error = controller.ticketsError;
     final skeleton = !controller.ticketsLoaded && error == null;
     return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 760;
+      final compact = constraints.maxWidth < 600;
       final createLabel = v3Copy(context, zh: '新建工单',
         en: 'New ticket', tw: '新增工單');
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+        padding: V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 110),
@@ -112,7 +113,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
           Container(width: double.infinity, padding: const EdgeInsets.all(18),
             constraints: const BoxConstraints(minHeight: kV3TicketListMinHeight + 36),
             decoration: BoxDecoration(color: p.surface,
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: BorderRadius.circular(V3Layout.cardRadius),
               border: Border.all(color: p.line)),
             child: skeleton
               ? const _TicketsSkeleton()

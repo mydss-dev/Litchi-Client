@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 
@@ -114,9 +115,11 @@ class _V3InvitePageState extends State<V3InvitePage> {
         zh: '邀请链接已复制', en: 'Invite link copied', tw: '邀請連結已複製')),
     );
     return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 760;
+      final compact = !V3Layout.canSplit(
+        paneWidth: constraints.maxWidth, primaryMin: 345,
+        secondaryMin: 275, gap: 16);
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+        padding: V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
             kicker: v3Copy(context, zh: '邀请奖励',
@@ -133,7 +136,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
           const SizedBox(height: 20),
           if (compact)
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              hero, const SizedBox(height: 16),
+              hero, const SizedBox(height: V3Layout.cardGap),
               _InviteStats(controller: controller),
             ])
           else Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -141,7 +144,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
             const SizedBox(width: 16),
             Expanded(flex: 9, child: _InviteStats(controller: controller)),
           ]),
-          const SizedBox(height: 16),
+          const SizedBox(height: V3Layout.cardGap),
           _ReferralLedger(controller: controller),
         ]),
       );
@@ -170,10 +173,8 @@ class _InviteHero extends StatelessWidget {
     final p = V3Palette.of(context);
     final hasCode = code.trim().isNotEmpty;
     final hasLink = link.trim().isNotEmpty;
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(color: p.hero,
-        borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
+    return V3WorkspaceCard(
+      padding: const EdgeInsets.all(18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(v3Copy(context, zh: '分享邀请',
@@ -267,7 +268,7 @@ class _InviteStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final symbol = controller.currencySymbol;
-    return V3Panel(padding: const EdgeInsets.all(20), radius: 26,
+    return V3Panel(padding: const EdgeInsets.all(20), radius: V3Layout.cardRadius,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(v3Copy(context, zh: '邀请统计',
           en: 'REFERRAL STATS', tw: '邀請統計'),
@@ -326,7 +327,7 @@ class _ReferralLedger extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final records = controller.inviteRecords;
-    return V3Panel(padding: const EdgeInsets.all(20), radius: 26,
+    return V3Panel(padding: const EdgeInsets.all(20), radius: V3Layout.cardRadius,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text(v3Copy(context,

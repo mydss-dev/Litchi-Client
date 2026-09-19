@@ -5,6 +5,7 @@ import '../../app/plan_presentation.dart';
 import '../../config/app_config.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_account_labels.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
@@ -55,7 +56,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+      padding: V3Layout.pageInsets,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(
           kicker: v3Copy(context, zh: '账户中心',
@@ -117,7 +118,7 @@ class _AccountSummaryPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(width: 48, height: 48,
@@ -188,8 +189,9 @@ class _WalletPanel extends StatelessWidget {
     final symbol = controller.currencySymbol;
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(24)),
+      decoration: BoxDecoration(color: p.surface,
+        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
+        border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(v3Copy(context, zh: '钱包', en: 'WALLET', tw: '錢包'),
           style: TextStyle(color: p.inkMuted, fontSize: 10,
@@ -318,7 +320,7 @@ class _PreferencesPanel extends StatelessWidget {
     final p = V3Palette.of(context);
     return Container(padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(V3Layout.cardRadius), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(v3Copy(context, zh: '账户偏好',
@@ -391,7 +393,8 @@ class _AccountActions extends StatelessWidget {
     final p = V3Palette.of(context);
     return Container(padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(20)),
+        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
+        border: Border.all(color: p.line)),
       child: Row(children: [
         Expanded(child: _AccountAction(icon: Icons.password_rounded,
           label: v3Copy(context, zh: '修改密码',
