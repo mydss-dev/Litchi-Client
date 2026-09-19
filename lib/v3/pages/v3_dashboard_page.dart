@@ -348,14 +348,16 @@ class _NetworkModeIndicator extends StatelessWidget {
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
       decoration: BoxDecoration(
-        color: selected ? p.success.withValues(alpha: .12) : p.surfaceRaised,
-        border: Border.all(color: selected ? p.success : p.line),
+        // Configured modes are a selection, not a connectivity health signal.
+        // Follow the plan-cycle style rather than tinting the white label green.
+        color: selected ? p.lycheeSoft : p.surfaceRaised,
+        border: Border.all(color: selected ? p.lychee : p.line),
         borderRadius: BorderRadius.circular(11),
       ),
       child: Text(_networkModeLabel(context, mode),
         maxLines: 1, overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
-        style: TextStyle(color: selected ? p.successInk : p.inkMuted,
+        style: TextStyle(color: selected ? p.lycheeInk : p.inkMuted,
           fontSize: 10, fontWeight: selected ? FontWeight.w800
             : FontWeight.w500)),
     );
