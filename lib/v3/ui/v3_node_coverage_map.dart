@@ -6,12 +6,15 @@ import 'v3_components.dart';
 import 'v3_locale_copy.dart';
 
 /// An offline schematic of locations present in the actual node list.
+/// In read-only mode, markers are informational and filters are omitted.
 class V3NodeCoverageMap extends StatelessWidget {
   const V3NodeCoverageMap({super.key, required this.nodes,
-    required this.selectedCode, required this.onSelected});
+    required this.selectedCode, required this.onSelected,
+    this.readOnly = false});
   final List<NodeModel> nodes;
   final String? selectedCode;
   final ValueChanged<String?> onSelected;
+  final bool readOnly;
 
   static const Map<String, Offset> _positions = {
     'US': Offset(.18, .42), 'CA': Offset(.19, .25),
@@ -80,7 +83,8 @@ class V3NodeCoverageMap extends StatelessWidget {
     }
     final codes = counts.keys.toList()..sort();
     final mapped = codes.where(_positions.containsKey).toList();
-    final active = counts.containsKey(selectedCode) ? selectedCode : null;
+    final active = readOnly ? null :
+      (counts.containsKey(selectedCode) ? selectedCode : null);
     return V3Panel(
       padding: const EdgeInsets.all(16),
       tone: V3PanelTone.raised,
@@ -111,36 +115,30 @@ class V3NodeCoverageMap extends StatelessWidget {
                     left: (constraints.maxWidth - 32) * _positions[code]!.dx,
                     top: 146 * _positions[code]!.dy,
                     child: Semantics(
-                      button: true,
-                      selected: active == code,
-                      label: v3Copy(context,
-                        zh: '${_country(context, code)}，${counts[code]} 个节点，筛选地区',
-                        en: '${_country(context, code)}, ${counts[code]} nodes, filter region',
-                        tw: '${_country(context, code)}，${counts[code]} 個節點，篩選地區'),
+                      button: !readOnly,
+                      selected: !readOnly && active == code,
+                      label: readOnly
+                        ? v3Copy(context,
+                            zh: '${_country(context, code)}，${counts[code]} 个节点',
+                            en: '${_country(context, code)}, ${counts[code]} nodes',
+                            tw: '${_country(context, code)}，${counts[code]} 個節點')
+                        : v3Copy(context,
+                            zh: '${_country(context, code)}，${counts[code]} 个节点，筛选地区',
+                            en: '${_country(context, code)}, ${counts[code]} nodes, filter region',
+                            tw: '${_country(context, code)}，${counts[code]} 個節點，篩選地區'),
                       child: Tooltip(
                         message: v3Copy(context,
                           zh: '${_country(context, code)} · ${counts[code]} 个节点',
                           en: '${_country(context, code)} · ${counts[code]} nodes',
                           tw: '${_country(context, code)} · ${counts[code]} 個節點'),
-                        child: InkWell(
-                          onTap: () => onSelected(active == code ? null : code),
-                          customBorder: const CircleBorder(),
-                          child: SizedBox(width: 32, height: 32,
-                            child: Center(child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              width: active == code ? 18 : 13,
-                              height: active == code ? 18 : 13,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: active == code ? p.citrus : p.lychee,
-                                border: Border.all(color: p.ink, width: 1.2),
-                                boxShadow: [BoxShadow(
-                                  color: p.lychee.withValues(alpha: .22),
-                                  blurRadius: 7, spreadRadius: 2)],
-                              ),
-                            )),
-                          ),
-                        ),
+                        child: readOnly
+                          ? _CoverageDot(palette: p, selected: false)
+                          : InkWell(
+                              onTap: () => onSelected(active == code ? null : code),
+                              customBorder: const CircleBorder(),
+                              child: _CoverageDot(palette: p,
+                                selected: active == code),
+                            ),
                       ),
                     ),
                   ),
@@ -159,38 +157,63 @@ class V3NodeCoverageMap extends StatelessWidget {
             )),
           ),
         ),
-        const SizedBox(height: 8),
-        Text(v3Copy(context,
-          zh: '离线示意图，光点表示有节点的地区；不代表实时在线状态或精确位置。',
-          en: 'Offline schematic: dots indicate regions with nodes, not live status or exact locations.',
-          tw: '離線示意圖：光點表示有節點的地區，不代表即時連線狀態或精確位置。'),
-          style: TextStyle(color: p.inkMuted, fontSize: 10)),
-        if (codes.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(spacing: 7, runSpacing: 7, children: [
-            ChoiceChip(
-              key: const ValueKey('v3-map-country-all'),
-              label: Text(v3Copy(context,
-                zh: '全部地区', en: 'All regions', tw: '全部地區')),
-              selected: active == null,
-              showCheckmark: false,
-              side: v3ChipSide(p, selected: active == null),
-              onSelected: (_) => onSelected(null),
-            ),
-            for (final code in codes)
+        if (!readOnly) ...[
+          const SizedBox(height: 8),
+          Text(v3Copy(context,
+            zh: '离线示意图，光点表示有节点的地区；不代表实时在线状态或精确位置。',
+            en: 'Offline schematic: dots indicate regions with nodes, not live status or exact locations.',
+            tw: '離線示意圖：光點表示有節點的地區，不代表即時連線狀態或精確位置。'),
+            style: TextStyle(color: p.inkMuted, fontSize: 10)),
+          if (codes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(spacing: 7, runSpacing: 7, children: [
               ChoiceChip(
-                key: ValueKey('v3-map-country-$code'),
-                label: Text('${_country(context, code)} ${counts[code]}'),
-                selected: active == code,
+                key: const ValueKey('v3-map-country-all'),
+                label: Text(v3Copy(context,
+                  zh: '全部地区', en: 'All regions', tw: '全部地區')),
+                selected: active == null,
                 showCheckmark: false,
-                side: v3ChipSide(p, selected: active == code),
-                onSelected: (_) => onSelected(active == code ? null : code),
+                side: v3ChipSide(p, selected: active == null),
+                onSelected: (_) => onSelected(null),
               ),
-          ]),
+              for (final code in codes)
+                ChoiceChip(
+                  key: ValueKey('v3-map-country-$code'),
+                  label: Text('${_country(context, code)} ${counts[code]}'),
+                  selected: active == code,
+                  showCheckmark: false,
+                  side: v3ChipSide(p, selected: active == code),
+                  onSelected: (_) => onSelected(active == code ? null : code),
+                ),
+            ]),
+          ],
         ],
       ]),
     );
   }
+}
+
+class _CoverageDot extends StatelessWidget {
+  const _CoverageDot({required this.palette, required this.selected});
+  final V3Palette palette;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(width: 32, height: 32,
+    child: Center(child: AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      width: selected ? 18 : 13,
+      height: selected ? 18 : 13,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected ? palette.citrus : palette.lychee,
+        border: Border.all(color: palette.ink, width: 1.2),
+        boxShadow: [BoxShadow(
+          color: palette.lychee.withValues(alpha: .22),
+          blurRadius: 7, spreadRadius: 2)],
+      ),
+    )),
+  );
 }
 
 class _WorldSketchPainter extends CustomPainter {
