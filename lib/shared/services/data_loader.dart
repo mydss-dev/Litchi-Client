@@ -230,9 +230,11 @@ class DataLoader {
     final sw = Stopwatch()..start();
     try {
       final plans = await _api.getPlans();
-      if (plans.isNotEmpty) {
-        final mapped = plans.map(ModelMappers.toPlan).toList();
-        snap.plans = mapped;
+      final mapped = plans.map(ModelMappers.toPlan).toList();
+      // A successful empty catalog is authoritative. A failed request leaves
+      // this field null, so the controller keeps its previous catalog.
+      snap.plans = mapped;
+      if (mapped.isNotEmpty) {
         final syncedUser = PlanDataService.syncCurrentPlanTitle(
           user: snap.user,
           plans: mapped,
@@ -285,6 +287,10 @@ class DataLoader {
     final sw = Stopwatch()..start();
     try {
       final logs = await _api.getTrafficLog();
+      // Success with zero entries means there is no history; only failures
+      // should leave these nullable fields untouched for cached display.
+      snap.dailyUsage = const [];
+      snap.trafficUsage = const [];
       if (logs.isNotEmpty) {
         final totalDaily = <DateTime, double>{};
         final uploadDaily = <DateTime, double>{};
