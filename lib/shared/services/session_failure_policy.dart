@@ -8,8 +8,15 @@ enum SessionFailureKind { authentication, network, other }
 abstract final class SessionFailurePolicy {
   static SessionFailureKind classify(Object error) {
     final message = error.toString().toLowerCase();
-    // Prefer auth evidence to generic text such as "server response error".
-    if (message.contains('登录已过期') ||
+    // The API client emits a status fallback when HTTP 401 has no JSON body;
+    // keep that explicit unauthorized signal instead of silently retaining a
+    // definitively invalid token. Do not classify arbitrary 401 text.
+    final unauthenticatedHttp =
+        message.contains('服务器响应异常（401）') ||
+        message.contains('服务器响应异常(401)') ||
+        message.contains('server response error (401)');
+    if (unauthenticatedHttp ||
+        message.contains('登录已过期') ||
         message.contains('未登录') ||
         message.contains('登录失效') ||
         message.contains('认证已过期') ||
