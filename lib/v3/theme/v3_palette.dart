@@ -145,9 +145,9 @@ class V3Theme {
       brightness: brightness,
       primary: p.lychee,
       onPrimary: Colors.white,
-      secondary: p.citrus,
-      // Ink becomes near-white in dark mode. A bright lime selection must
-      // retain the intentionally dark foreground in *both* appearances.
+      // Green is reserved for measured/confirmed status, never selection.
+      // Material controls that fall back to secondary must still select pink.
+      secondary: p.lychee,
       onSecondary: p.night,
       error: p.danger,
       onError: Colors.white,
@@ -215,21 +215,11 @@ class V3Theme {
         ),
       ),
       dividerColor: p.line,
-      // Material's expanding splash reads as too loud against this much
-      // whitespace, so it stays off — but a press still has to be visible.
-      // The palette spends colour on state (selected, connected) and not on the
-      // moment of the tap, and with the highlight transparent as well every
-      // IconButton, chip and hub row was silent. A flat tint is the quiet
-      // version of the same feedback.
+      // Keep a quiet but visible press state without a spreading ripple.
       splashFactory: NoSplash.splashFactory,
       highlightColor: p.ink.withValues(alpha: 0.06),
-      // Every ChoiceChip in the app was falling through to Material's defaults,
-      // which paint the chosen chip in `secondaryContainer` — a lilac that
-      // appears nowhere else in this palette — under `onSecondaryContainer`
-      // text at about 2.4:1. The subscription-cycle and payment-method pickers
-      // were, literally, unreadable. Selection speaks the app's own colour
-      // instead: a soft lychee fill, lychee ink for the label (4.9:1 on that
-      // fill), and the checkmark that says which one is on.
+      // Selection follows the cycle chooser: a soft pink ground, dark/light
+      // palette-safe lychee ink, and a matching border. Never white on lime.
       chipTheme: ChipThemeData(
         backgroundColor: p.surface,
         selectedColor: p.lycheeSoft,
@@ -246,6 +236,23 @@ class V3Theme {
           color: p.lycheeInk,
         ),
         checkmarkColor: p.lycheeInk,
+      ),
+      // The order filter used Material's implicit SegmentedButton skin while
+      // the traffic period picker and shop cycle picker supplied their own.
+      // One global fallback prevents new segmented controls regressing to green.
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? p.lycheeSoft : p.surfaceRaised),
+          foregroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected) ? p.lycheeInk : p.ink),
+          side: WidgetStateProperty.resolveWith((states) => BorderSide(
+            color: states.contains(WidgetState.selected) ? p.lychee : p.line,
+            width: states.contains(WidgetState.selected) ? 1.5 : 1)),
+          iconColor: WidgetStatePropertyAll(p.lycheeInk),
+          textStyle: const WidgetStatePropertyAll(TextStyle(
+            fontWeight: FontWeight.w700, fontSize: 12)),
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
