@@ -24,6 +24,13 @@ String v3NoticeText(String source) => source
     .replaceAll(RegExp(r'\n{3,}'), '\n\n')
     .trim();
 
+/// The ticker never previews or concatenates the body. Readers access full
+/// content (including images) only after opening the notice dialog.
+String v3NoticeHeadline(NoticeModel notice) {
+  final title = notice.title.trim();
+  return title.isEmpty ? '公告' : title;
+}
+
 class V3NoticeBar extends StatefulWidget {
   const V3NoticeBar({super.key, required this.controller});
   final AppController controller;
@@ -124,15 +131,6 @@ class _V3NoticeBarState extends State<V3NoticeBar>
     _syncPlayback();
   }
 
-  String _summary(NoticeModel notice) {
-    final title = notice.title.trim();
-    final body = v3NoticeText(notice.content)
-        .replaceAll(RegExp(r'\s+'), ' ').trim();
-    if (title.isEmpty) return body;
-    if (body.isEmpty || body == title) return title;
-    return '$title  ·  $body';
-  }
-
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
@@ -167,7 +165,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                   layoutBuilder: (current, previous) => Stack(
                     alignment: Alignment.centerLeft,
                     children: [...previous, ?current]),
-                  child: Text(_summary(notice), key: ValueKey(notice.id),
+                  child: Text(v3NoticeHeadline(notice), key: ValueKey(notice.id),
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: p.ink, fontSize: 12.5)))),
                 if (multiple && MediaQuery.sizeOf(context).width >= 520) ...[
