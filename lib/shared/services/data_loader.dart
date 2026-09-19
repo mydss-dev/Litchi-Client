@@ -117,7 +117,11 @@ class DataLoader {
         userLoaded = true;
         snap.remoteUser = info;
         snap.user = ModelMappers.toUser(info);
-        snap.currentPlanId = info.planId;
+        // Zero is a panel sentinel for no plan, not a usable catalog ID.
+        // Do not let it mask a positive ID returned by getSubscribe.
+        if (info.planId != null && info.planId! > 0) {
+          snap.currentPlanId = info.planId;
+        }
         snap.traffic = ModelMappers.toTraffic(info);
       } catch (e) {
         SecureLogger.warn(
@@ -142,7 +146,12 @@ class DataLoader {
             '(planId=${subscribe.planId}, transferEnable=${subscribe.transferEnable})',
           );
         }
-        snap.currentPlanId ??= subscribe.planId;
+        // The subscription's current positive plan ID is authoritative when
+        // user/info is stale during a plan change. Missing/zero never erases a
+        // known positive account ID. Future.wait completion order is irrelevant.
+        if (subscribe.planId != null && subscribe.planId! > 0) {
+          snap.currentPlanId = subscribe.planId;
+        }
         subscribeHasPlanEvidence =
             (subscribe.planId != null && subscribe.planId! > 0) ||
             subscribe.subscribeUrl.trim().isNotEmpty ||
@@ -265,11 +274,10 @@ class DataLoader {
     final sw = Stopwatch()..start();
     try {
       final info = await _api.getInviteInfo();
-      // A successful empty invite response must not retain another/stale code.
-      // Null fields are reserved for failures that should keep cached data.
-      snap.inviteCodes = info.codes
+      final codes = info.codes
           .map((item) => InviteCodeModel(code: item.code, link: item.link))
           .toList();
+      snap.inviteCodes = codes;
       snap.inviteCode = info.inviteCode;
       snap.inviteLink = info.inviteUrl;
       snap.commissionRate = info.commissionRate;
