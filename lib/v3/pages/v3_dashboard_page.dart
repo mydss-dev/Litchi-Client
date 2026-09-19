@@ -39,6 +39,9 @@ class V3DashboardPage extends StatelessWidget {
   }
 }
 
+const kConnectActionCardKey = Key('v3-connect-action-card');
+const kCurrentNodeCardKey = Key('v3-current-node-card');
+
 class _ConnectionWorkspace extends StatelessWidget {
   const _ConnectionWorkspace({required this.controller,
     required this.connected, required this.connecting});
@@ -69,38 +72,50 @@ class _ConnectionWorkspace extends StatelessWidget {
               tw: '請重試連線或切換其他節點。')
           : controller.coreError
         : null;
+    final cardDecoration = BoxDecoration(
+      color: p.surface,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: p.line),
+    );
     return V3Panel(
       tone: V3PanelTone.hero,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(18),
       radius: 24,
       child: LayoutBuilder(builder: (context, constraints) {
         final stacked = constraints.maxWidth < 500;
-        final intro = Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _ConnectionOrb(controller: controller,
-              connected: connected, connecting: connecting),
-            const SizedBox(height: 14),
-            Text(actionLabel, style: TextStyle(color: p.ink, fontSize: 11,
-              fontWeight: FontWeight.w900, letterSpacing: 1.3)),
-            const SizedBox(height: 4),
-            Text(_duration(controller.connectedDuration),
-              style: TextStyle(color: p.inkMuted, fontSize: 12)),
-            if (error != null) ...[
-              const SizedBox(height: 10),
-              ConstrainedBox(constraints: const BoxConstraints(maxWidth: 320),
-                child: Text(error, textAlign: TextAlign.center,
-                  style: TextStyle(color: p.dangerInk, fontSize: 11,
-                    height: 1.35))),
+        final intro = Container(
+          key: kConnectActionCardKey,
+          constraints: const BoxConstraints(minHeight: 210),
+          padding: const EdgeInsets.all(18),
+          decoration: cardDecoration,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _ConnectionOrb(controller: controller,
+                connected: connected, connecting: connecting),
+              const SizedBox(height: 14),
+              Text(actionLabel, style: TextStyle(color: p.ink, fontSize: 11,
+                fontWeight: FontWeight.w900, letterSpacing: 1.3)),
+              const SizedBox(height: 4),
+              Text(_duration(controller.connectedDuration),
+                style: TextStyle(color: p.inkMuted, fontSize: 12)),
+              if (error != null) ...[
+                const SizedBox(height: 10),
+                ConstrainedBox(constraints: const BoxConstraints(maxWidth: 320),
+                  child: Text(error, textAlign: TextAlign.center,
+                    style: TextStyle(color: p.dangerInk, fontSize: 11,
+                      height: 1.35))),
+              ],
             ],
-          ],
+          ),
         );
         final route = Container(
+          key: kCurrentNodeCardKey,
+          constraints: const BoxConstraints(minHeight: 210),
           padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: p.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: p.line)),
+          decoration: cardDecoration,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
@@ -129,14 +144,10 @@ class _ConnectionWorkspace extends StatelessWidget {
                     fontWeight: FontWeight.w700))),
               ]),
               const SizedBox(height: 14),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                _NodeMeta(label: node.latency > 0 && node.latency < 9999
-                  ? '${node.latency} ms'
-                  : v3Copy(context, zh: '未测速',
-                      en: 'Not tested', tw: '未測速')),
-                _NodeMeta(label: _networkModeLabel(context,
-                  controller.networkMode)),
-              ]),
+              _NodeMeta(label: node.latency > 0 && node.latency < 9999
+                ? '${node.latency} ms'
+                : v3Copy(context, zh: '未测速',
+                    en: 'Not tested', tw: '未測速')),
               const SizedBox(height: 8),
               TextButton.icon(
                 onPressed: () => V3NodePicker.show(context),
@@ -150,12 +161,15 @@ class _ConnectionWorkspace extends StatelessWidget {
         );
         return stacked
           ? Column(crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [intro, const SizedBox(height: 16), route])
-          : Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Expanded(child: intro),
-              const SizedBox(width: 22),
-              Expanded(child: route),
-            ]);
+              children: [intro, const SizedBox(height: 12), route])
+          : IntrinsicHeight(child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: intro),
+                const SizedBox(width: 12),
+                Expanded(child: route),
+              ],
+            ));
       }),
     );
   }
@@ -221,39 +235,77 @@ class _ModeRail extends StatelessWidget {
     final p = V3Palette.of(context);
     return V3Panel(
       tone: V3PanelTone.raised,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(children: ProxyMode.values.map((mode) {
-        final selected = controller.proxyMode == mode;
-        return Expanded(child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () async {
-            final error = await controller.setProxyMode(mode);
-            if (error != null && context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(error)));
-            }
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(vertical: 11),
-            decoration: BoxDecoration(
-              color: selected ? p.surface : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: selected
-                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8)]
-                : null),
-            child: Column(children: [
-              Text(_modeTitle(context, mode),
-                style: TextStyle(color: selected ? p.lycheeInk : p.inkMuted,
-                  fontSize: 12, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 3),
-              Text(_modeHint(context, mode),
-                style: TextStyle(color: p.inkMuted, fontSize: 10)),
-            ]),
-          ),
-        ));
-      }).toList()),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+      child: Column(children: [
+        Row(children: [
+          Text(v3Copy(context, zh: '接管方式', en: 'Network mode',
+            tw: '接管方式'),
+            style: TextStyle(color: p.inkMuted, fontSize: 11,
+              fontWeight: FontWeight.w700)),
+          const Spacer(),
+          for (final mode in NetworkMode.values)
+            Padding(padding: const EdgeInsets.only(left: 6),
+              child: _NetworkModeIndicator(mode: mode,
+                selected: controller.networkMode == mode)),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: ProxyMode.values.map((mode) {
+          final selected = controller.proxyMode == mode;
+          return Expanded(child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () async {
+              final error = await controller.setProxyMode(mode);
+              if (error != null && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(error)));
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              decoration: BoxDecoration(
+                color: selected ? p.surface : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: selected
+                  ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 8)]
+                  : null),
+              child: Column(children: [
+                Text(_modeTitle(context, mode),
+                  style: TextStyle(color: selected ? p.lycheeInk : p.inkMuted,
+                    fontSize: 12, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 3),
+                Text(_modeHint(context, mode),
+                  style: TextStyle(color: p.inkMuted, fontSize: 10)),
+              ]),
+            ),
+          ));
+        }).toList()),
+      ]),
+    );
+  }
+}
+
+class _NetworkModeIndicator extends StatelessWidget {
+  const _NetworkModeIndicator({required this.mode, required this.selected});
+  final NetworkMode mode;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      key: ValueKey('v3-network-mode-${mode.storageKey}'),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: selected ? p.lycheeSoft : p.surface,
+        border: Border.all(color: selected ? p.lychee : p.line),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(_networkModeLabel(context, mode),
+        style: TextStyle(color: selected ? p.lycheeInk : p.inkMuted,
+          fontSize: 10, fontWeight: selected ? FontWeight.w800
+            : FontWeight.w500)),
     );
   }
 }
@@ -427,9 +479,10 @@ String _modeHint(BuildContext context, ProxyMode mode) => switch (mode) {
     en: 'Connect directly', tw: '全部直接連線'),
 };
 String _networkModeLabel(BuildContext context, NetworkMode mode) =>
-    v3Copy(context, zh: mode.label,
-      en: mode.name == 'tun' ? 'TUN' : 'System proxy',
-      tw: mode.name == 'tun' ? 'TUN' : '系統代理');
+    v3Copy(context,
+      zh: mode == NetworkMode.tun ? 'TUN 模式' : '系统代理',
+      en: mode == NetworkMode.tun ? 'TUN mode' : 'System proxy',
+      tw: mode == NetworkMode.tun ? 'TUN 模式' : '系統代理');
 
 String _speed(int value) {
   if (value >= 1024 * 1024) {
