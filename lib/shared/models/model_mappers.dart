@@ -1,6 +1,7 @@
 import '../../config/app_config.dart';
 import 'api_models.dart';
 import 'app_models.dart';
+import 'plan_description_parser.dart';
 
 /// Pure static converters from remote API models to UI view models.
 abstract final class ModelMappers {
@@ -61,27 +62,9 @@ abstract final class ModelMappers {
       category = PlanCategory.recurring;
     }
 
-    // Preserve the whole backend description. Cards decide how many items to
-    // preview; the details sheet must never lose the rest during conversion.
-    // Recognise block HTML as separators before removing markup, otherwise
-    // <p>first</p><p>second</p> collapses into "firstsecond".
-    final rawDesc = plan.description ?? '';
-    final stripped = rawDesc
-        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
-        .replaceAll(RegExp(r'</(?:p|div|li|ul|ol|h[1-6])\s*>', caseSensitive: false), '\n')
-        .replaceAll(RegExp(r'<li(?:\s[^>]*)?>', caseSensitive: false), '• ')
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&nbsp;', ' ')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&#39;', "'");
-    final features = stripped
-        .split('\n')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
+    // The card may preview a few rows, but the details sheet must receive the
+    // full, safely decoded description, including list and block boundaries.
+    final features = PlanDescriptionParser.parse(plan.description ?? '');
 
     return PlanModel(
       id: plan.id.toString(),
