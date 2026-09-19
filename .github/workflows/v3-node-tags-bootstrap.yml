@@ -33,6 +33,27 @@ jobs:
           Path('/tmp/litchi_node_fix.py').write_bytes(payload)
           PY
           python3 /tmp/litchi_node_fix.py
+          python3 - <<'PY'
+          from pathlib import Path
+          def fix(path, before, after):
+              p = Path(path)
+              text = p.read_text()
+              if text.count(before) != 1:
+                  raise SystemExit(f'expected exactly one analyzer fix anchor in {path}: {before!r}')
+              p.write_text(text.replace(before, after, 1))
+          fix('lib/app/app_controller.dart',
+              'if (supportsCoreConnection) unawaited(_preloadCoreAndTestLatencies());',
+              'if (supportsCoreConnection) unawaited(_preloadCoreOnly());')
+          fix('test/visual/v3_node_labels_live_speed_test.dart',
+              '_TaggedFixture(AppPage page) : super(page);',
+              '_TaggedFixture(super.visualPage);')
+          fix('lib/v3/ui/v3_node_picker.dart',
+              '            final ok = await controller.testLatencies();',
+              "            final failureText = v3Copy(context, zh: '测速失败或所有节点超时', en: 'Test failed or all nodes timed out', tw: '測速失敗或所有節點逾時');\n            final ok = await controller.testLatencies();")
+          fix('lib/v3/ui/v3_node_picker.dart',
+              "messenger.showSnackBar(SnackBar(content: Text(v3Copy(context,\n                zh: '测速失败或所有节点超时',\n                en: 'Test failed or all nodes timed out',\n                tw: '測速失敗或所有節點逾時'))));",
+              'messenger.showSnackBar(SnackBar(content: Text(failureText)));')
+          PY
           dart format lib/shared/models/app_models.dart lib/shared/models/model_mappers.dart lib/shared/services/panel_api.dart lib/shared/services/data_loader.dart lib/shared/services/node_tag_matcher.dart lib/app/node_controller.dart lib/app/app_controller.dart lib/app/core_controller.dart lib/v3/ui/v3_node_tags.dart lib/v3/ui/v3_node_picker.dart lib/v3/pages/v3_nodes_page.dart lib/v3/pages/v3_dashboard_page.dart test/node_tag_matcher_test.dart test/visual/v3_node_labels_live_speed_test.dart test/visual/v3_node_test_button_test.dart
           git diff --check
       - run: flutter pub get
