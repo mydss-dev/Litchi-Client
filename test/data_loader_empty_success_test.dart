@@ -64,7 +64,12 @@ void main() {
     final loader = DataLoader(
       _StubPanelApi(
         plans: () async => [
-          RemotePlan(id: 7, name: 'New plan', transferEnable: 100, show: 1),
+          const RemotePlan(
+            id: 7,
+            name: 'New plan',
+            transferEnable: 100,
+            show: 1,
+          ),
         ],
         logs: () async => [],
       ),
