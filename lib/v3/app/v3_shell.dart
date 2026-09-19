@@ -80,12 +80,14 @@ class _V3Workspace extends StatelessWidget {
           bottomNavigationBar: _MobileNavigation(controller: controller),
         );
       }
+      // 12 + 176 + 12 = 200dp for the entire desktop rail, not 200dp
+      // plus margins. Keep the content's canvas black in dark mode.
       return ColoredBox(
         color: p.canvas,
         child: Row(children: [
           _DesktopRail(controller: controller),
           Expanded(child: Padding(
-            padding: const EdgeInsets.fromLTRB(0, 0, 18, 18),
+            padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
             child: page,
           )),
         ]),
@@ -126,26 +128,22 @@ class _DesktopRail extends StatelessWidget {
     final p = V3Palette.of(context);
     final user = controller.user;
     final plan = PlanPresentation.fromController(controller);
-    final l = Localizations.of<AppLocalizations>(context, AppLocalizations) ??
-        AppLocalizationsZh();
     return Container(
-      width: 184,
-      margin: const EdgeInsets.fromLTRB(18, 18, 14, 18),
-      padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
-      decoration: BoxDecoration(color: p.hero,
-        borderRadius: BorderRadius.circular(24)),
+      width: 176,
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+      decoration: BoxDecoration(
+        color: p.hero,
+        border: Border.all(color: p.line),
+        borderRadius: BorderRadius.circular(20)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(2, 0, 2, 26),
-          child: V3BrandMark(),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(left: 10, bottom: 10),
-          child: Text(l.localeName.startsWith('en') ? 'WORKSPACE' : '工作空间',
-            style: TextStyle(color: p.inkMuted, fontSize: 10,
-              fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+          child: V3BrandMark(boxSize: 34),
         ),
         ...[
+          // Dashboard and connection are the same AppPage.dashboard route.
+          // Never introduce a second Home item alongside Connect.
           ...enabledNavItems(kDesktopRail),
           if (kRailSettings.isEnabled) kRailSettings,
         ].map((item) => _RailItem(
@@ -161,38 +159,37 @@ class _DesktopRail extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           onTap: () => controller.goToPage(AppPage.account),
           child: Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(color: p.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: p.line)),
             child: Row(children: [
               CircleAvatar(
-                radius: 18,
+                radius: 17,
                 backgroundColor: p.lychee,
                 child: Text(user.avatarLetter.isEmpty ? '?' : user.avatarLetter,
                   style: const TextStyle(color: Colors.white,
                     fontWeight: FontWeight.w800)),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 7),
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(user.name.isEmpty ? 'Guest' : user.name,
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: p.ink, fontWeight: FontWeight.w700,
-                      fontSize: 12)),
+                      fontSize: 11)),
                   const SizedBox(height: 2),
-                  Tooltip(
-                    message: '${plan.shortLabel} · ${plan.expiry}',
-                    child: Text(plan.shortLabel,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                  Tooltip(message: '${plan.shortLabel} · ${plan.expiry}',
+                    child: Text(plan.shortLabel, maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: plan.usable
-                        ? p.successInk : p.inkMuted, fontSize: 10)),
+                        ? p.successInk : p.inkMuted, fontSize: 9)),
                   ),
                 ],
               )),
               Icon(Icons.chevron_right_rounded,
-                color: p.ink.withValues(alpha: 0.45), size: 18),
+                color: p.ink.withValues(alpha: 0.45), size: 16),
             ]),
           ),
         ),
@@ -224,7 +221,8 @@ class _RailItem extends StatelessWidget {
             final iconColor = Color.lerp(p.inkMuted, p.lycheeInk, t)!;
             final textColor = Color.lerp(p.inkMuted, p.ink, t)!;
             return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: p.lycheeSoft.withValues(alpha: t),
                 borderRadius: BorderRadius.circular(14),
@@ -232,14 +230,10 @@ class _RailItem extends StatelessWidget {
               child: Row(children: [
                 Icon(item.icon, color: iconColor, size: 19),
                 const SizedBox(width: 12),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item.localizedLabel(context),
-                      style: TextStyle(color: textColor,
-                        fontSize: 13, fontWeight: FontWeight.w700)),
-                  ],
-                )),
+                Expanded(child: Text(item.localizedLabel(context),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: textColor,
+                    fontSize: 13, fontWeight: FontWeight.w700))),
               ]),
             );
           },
