@@ -58,13 +58,8 @@ class _LitchiAppState extends State<LitchiApp> {
             builder: (context, child) {
               Widget content = child ?? const SizedBox.shrink();
               if (Platform.isLinux) content = LinuxWindowClip(child: content);
-              if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-                content = MediaQuery.withClampedTextScaling(
-                  minScaleFactor: 1.0,
-                  maxScaleFactor: 1.0,
-                  child: content,
-                );
-              }
+              // Keep the platform-provided text scaler. Desktop previously
+              // forced it to 1.0, which ignored OS accessibility preferences.
               return content;
             },
             home: Scaffold(
