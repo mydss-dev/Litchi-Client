@@ -1,5 +1,5 @@
 name: Restore V3 Practical UX Once
-# Re-run after correcting Flutter test platform override cleanup.
+# Re-run after updating the legacy network-settings test for desktop-only UI.
 on:
   push:
     branches: [fix/v3-restore-practical-ux-20260920]
@@ -22,8 +22,52 @@ jobs:
           cache: true
       - name: Apply only guarded UX edits
         run: python3 tool/v3_restore_practical_ux_once.py
-      - name: Format newly added widget and tests
-        run: dart format lib/v3/ui/v3_logout_confirmation.dart test/visual/v3_practical_ux_restore_test.dart
+      - name: Align existing network UI regression with desktop platform
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          file = Path('test/visual/v3_interaction_test.dart')
+          original = file.read_text(encoding='utf-8')
+          anchor = "import 'package:flutter/material.dart';\n"
+          assert original.count(anchor) == 1
+          modified = original.replace(anchor, "import 'package:flutter/foundation.dart';\n" + anchor, 1)
+          previous = """  testWidgets('Network settings await result and display errors', (
+              tester,
+            ) async {
+              final controller = _InteractiveController(AppPage.settings);
+              await _pump(tester, controller, const V3SettingsPage());
+              await tester.tap(find.text('系统代理'));
+              await tester.pump();
+              expect(find.text('正在应用设置，请稍候…'), findsOneWidget);
+              controller.result.complete('核心未响应');
+              await tester.pump();
+              expect(find.textContaining('核心未响应'), findsOneWidget);
+              expect(controller.networkChanges, 1);
+            });"""
+          replacement = """  testWidgets('Network settings await result and display errors', (
+              tester,
+            ) async {
+              // The system-proxy option is desktop-only. Test it as Windows.
+              debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+              try {
+                final controller = _InteractiveController(AppPage.settings);
+                await _pump(tester, controller, const V3SettingsPage());
+                await tester.tap(find.text('系统代理'));
+                await tester.pump();
+                expect(find.text('正在应用设置，请稍候…'), findsOneWidget);
+                controller.result.complete('核心未响应');
+                await tester.pump();
+                expect(find.textContaining('核心未响应'), findsOneWidget);
+                expect(controller.networkChanges, 1);
+              } finally {
+                debugDefaultTargetPlatformOverride = null;
+              }
+            });"""
+          assert modified.count(previous) == 1, 'Expected exact legacy test block'
+          file.write_text(modified.replace(previous, replacement, 1), encoding='utf-8')
+          PY
+      - name: Format modified tests and new dialog
+        run: dart format lib/v3/ui/v3_logout_confirmation.dart test/visual/v3_practical_ux_restore_test.dart test/visual/v3_interaction_test.dart
       - name: Check scope and unchanged node files
         run: |
           git diff --name-only
@@ -35,7 +79,7 @@ jobs:
       - name: Resolve Flutter dependencies
         run: flutter pub get
       - name: Run targeted regression tests
-        run: flutter test test/visual/v3_practical_ux_restore_test.dart
+        run: flutter test test/visual/v3_practical_ux_restore_test.dart test/visual/v3_interaction_test.dart
       - name: Analyze all Dart sources
         run: flutter analyze
       - name: Run complete Flutter test suite
@@ -45,7 +89,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/v3-practical-ux-restore-once.yml tool/v3_restore_practical_ux_once.py
-          git add lib/v3/pages/v3_account_page.dart lib/v3/pages/v3_dashboard_page.dart lib/v3/pages/v3_invite_page.dart lib/v3/pages/v3_traffic_page.dart lib/v3/pages/v3_settings_page.dart lib/v3/app/v3_shell.dart lib/v3/ui/v3_logout_confirmation.dart test/visual/v3_practical_ux_restore_test.dart
+          git add lib/v3/pages/v3_account_page.dart lib/v3/pages/v3_dashboard_page.dart lib/v3/pages/v3_invite_page.dart lib/v3/pages/v3_traffic_page.dart lib/v3/pages/v3_settings_page.dart lib/v3/app/v3_shell.dart lib/v3/ui/v3_logout_confirmation.dart test/visual/v3_practical_ux_restore_test.dart test/visual/v3_interaction_test.dart
           git diff --cached --check
           git commit -m 'fix(v3): restore practical legacy UX without node rollback'
           git push origin HEAD:refs/heads/fix/v3-restore-practical-ux-20260920
