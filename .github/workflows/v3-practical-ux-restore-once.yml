@@ -1,0 +1,50 @@
+name: Restore V3 Practical UX Once
+on:
+  push:
+    branches: [fix/v3-restore-practical-ux-20260920]
+    paths: ['.github/workflows/v3-practical-ux-restore-once.yml']
+permissions:
+  contents: write
+jobs:
+  restore:
+    if: github.event.head_commit.message == 'chore: run v3 practical UX restoration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          lfs: true
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+          cache: true
+      - name: Apply only guarded UX edits
+        run: python3 tool/v3_restore_practical_ux_once.py
+      - name: Format newly added widget and tests
+        run: dart format lib/v3/ui/v3_logout_confirmation.dart test/visual/v3_practical_ux_restore_test.dart
+      - name: Check scope and unchanged node files
+        run: |
+          git diff --name-only
+          if git diff --name-only | grep -E '^lib/v3/(pages/v3_nodes_page|ui/v3_node_picker)\.dart$'; then
+            echo 'Node pages are explicitly excluded from this restoration.' >&2
+            exit 1
+          fi
+          git diff --check
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Run targeted regression tests
+        run: flutter test test/visual/v3_practical_ux_restore_test.dart
+      - name: Analyze all Dart sources
+        run: flutter analyze
+      - name: Run complete Flutter test suite
+        run: flutter test
+      - name: Commit verified changes and remove temporary automation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/v3-practical-ux-restore-once.yml tool/v3_restore_practical_ux_once.py
+          git add lib/v3/pages/v3_account_page.dart lib/v3/pages/v3_dashboard_page.dart lib/v3/pages/v3_invite_page.dart lib/v3/pages/v3_traffic_page.dart lib/v3/pages/v3_settings_page.dart lib/v3/app/v3_shell.dart lib/v3/ui/v3_logout_confirmation.dart test/visual/v3_practical_ux_restore_test.dart
+          git diff --cached --check
+          git commit -m 'fix(v3): restore practical legacy UX without node rollback'
+          git push origin HEAD:refs/heads/fix/v3-restore-practical-ux-20260920
