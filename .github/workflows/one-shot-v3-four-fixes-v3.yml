@@ -1,0 +1,46 @@
+name: One-shot V3 four fixes v3
+on:
+  push:
+    branches: [fix/v3-four-followup-regressions-20260920]
+    paths: ['.github/workflows/one-shot-v3-four-fixes-v3.yml']
+permissions:
+  contents: write
+jobs:
+  apply-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          lfs: true
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+          cache: true
+      - name: Apply scoped changes and timer import
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_v3_four_fixes.py
+          sed -i '1i import "dart:async";' lib/v3/pages/v3_dashboard_page.dart
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Format changes
+        run: dart format lib/app/app_controller.dart lib/v3/pages/v3_dashboard_page.dart lib/v3/pages/v3_account_page.dart lib/v3/pages/v3_traffic_page.dart test/v3_four_followup_fixes_test.dart
+      - name: Targeted test
+        run: flutter test test/v3_four_followup_fixes_test.dart
+      - name: Full Flutter suite
+        run: flutter test
+      - name: Static analysis
+        run: flutter analyze
+      - name: Commit verified fixes and discard one-shot tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/one-shot-v3-four-fixes.yml .github/workflows/one-shot-v3-four-fixes-v2.yml .github/workflows/one-shot-v3-four-fixes-v3.yml .github/scripts/apply_v3_four_fixes.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(v3): address elapsed time, plan evidence and supported UI'
+          git push origin HEAD:fix/v3-four-followup-regressions-20260920
