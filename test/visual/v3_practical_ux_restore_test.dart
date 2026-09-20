@@ -27,17 +27,25 @@ class _RefreshFixture extends VisualV3Controller {
 }
 
 void main() {
-  testWidgets('log out needs an explicit destructive confirmation', (tester) async {
+  testWidgets('log out needs an explicit destructive confirmation', (
+    tester,
+  ) async {
     bool? confirmed;
-    await tester.pumpWidget(MaterialApp(
-      theme: V3Theme.light(),
-      home: Scaffold(body: Builder(builder: (context) => TextButton(
-        onPressed: () async {
-          confirmed = await showV3LogoutConfirmation(context);
-        },
-        child: const Text('Open confirmation'),
-      ))),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: V3Theme.light(),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                confirmed = await showV3LogoutConfirmation(context);
+              },
+              child: const Text('Open confirmation'),
+            ),
+          ),
+        ),
+      ),
+    );
 
     await tester.tap(find.text('Open confirmation'));
     await tester.pumpAndSettle();
@@ -55,23 +63,29 @@ void main() {
   });
 
   for (final size in [const Size(900, 700), const Size(390, 844)]) {
-    testWidgets('confirmed no-plan state replaces only connection cards at $size',
-        (tester) async {
-      await tester.binding.setSurfaceSize(size);
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final fixture = _NoPlanFixture();
-      addTearDown(fixture.disposeVisual);
-      await tester.pumpWidget(AppScope(
-        controller: fixture,
-        child: MaterialApp(theme: V3Theme.light(),
-          home: const Scaffold(body: V3DashboardPage())),
-      ));
-      await tester.pump();
-      expect(find.text('当前没有可用套餐'), findsOneWidget);
-      expect(find.byKey(kConnectActionCardKey), findsNothing);
-      expect(find.byKey(kCurrentNodeCardKey), findsNothing);
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'confirmed no-plan state replaces only connection cards at $size',
+      (tester) async {
+        await tester.binding.setSurfaceSize(size);
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final fixture = _NoPlanFixture();
+        addTearDown(fixture.disposeVisual);
+        await tester.pumpWidget(
+          AppScope(
+            controller: fixture,
+            child: MaterialApp(
+              theme: V3Theme.light(),
+              home: const Scaffold(body: V3DashboardPage()),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.text('当前没有可用套餐'), findsOneWidget);
+        expect(find.byKey(kConnectActionCardKey), findsNothing);
+        expect(find.byKey(kCurrentNodeCardKey), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   test('desktop-only settings are hidden on mobile and Linux', () {
@@ -83,8 +97,12 @@ void main() {
   });
 
   test('mobile refresh excludes the informational nodes page', () {
-    for (final page in [AppPage.dashboard, AppPage.account,
-      AppPage.invite, AppPage.traffic]) {
+    for (final page in [
+      AppPage.dashboard,
+      AppPage.account,
+      AppPage.invite,
+      AppPage.traffic,
+    ]) {
       expect(v3SupportsMobileRefresh(page), true);
     }
     for (final page in [AppPage.nodes, AppPage.shop, AppPage.settings]) {
@@ -92,18 +110,21 @@ void main() {
     }
   });
 
-  testWidgets('Android home exposes pull-to-refresh and calls refreshData',
-      (tester) async {
+  testWidgets('Android home exposes pull-to-refresh and calls refreshData', (
+    tester,
+  ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
       await tester.binding.setSurfaceSize(const Size(390, 844));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final controller = _RefreshFixture(AppPage.dashboard);
       addTearDown(controller.disposeVisual);
-      await tester.pumpWidget(AppScope(
-        controller: controller,
-        child: MaterialApp(theme: V3Theme.light(), home: const V3Shell()),
-      ));
+      await tester.pumpWidget(
+        AppScope(
+          controller: controller,
+          child: MaterialApp(theme: V3Theme.light(), home: const V3Shell()),
+        ),
+      );
       await tester.pump();
       final indicator = find.byKey(const Key('v3-mobile-refresh'));
       expect(indicator, findsOneWidget);

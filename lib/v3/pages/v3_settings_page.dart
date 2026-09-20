@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../config/app_config.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
 import '../../shared/models/app_models.dart';
@@ -22,6 +24,10 @@ AppLocalizations _copy(BuildContext context) =>
     Localizations.of<AppLocalizations>(context, AppLocalizations) ??
     AppLocalizationsZh();
 
+/// Startup and system-proxy tools are meaningful on Windows/macOS only.
+bool v3HasDesktopSystemTools(TargetPlatform platform) =>
+    platform == TargetPlatform.windows || platform == TargetPlatform.macOS;
+
 class V3SettingsPage extends StatefulWidget {
   const V3SettingsPage({super.key});
 
@@ -33,6 +39,15 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
   bool _busy = false;
   bool _failed = false;
   String? _message;
+  late final Future<String> _coreVersionFuture = _loadCoreVersion();
+
+  Future<String> _loadCoreVersion() async {
+    try {
+      return await AppController.getCoreVersion();
+    } catch (_) {
+      return '';
+    }
+  }
 
   Future<void> _apply(Future<String?> Function() action, String success) async {
     if (_busy) return;
@@ -74,6 +89,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
     final l = _copy(context);
+    final desktopTools = v3HasDesktopSystemTools(defaultTargetPlatform);
     final currentNetwork = controller.networkMode == NetworkMode.system
         ? l.systemProxy : l.tunMode;
     return SingleChildScrollView(
@@ -109,7 +125,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                 V3Panel(
                   padding: EdgeInsets.zero,
                   child: Column(children: [
-                    _SettingRow(
+                    if (desktopTools) _SettingRow(
                       index: '01',
                       title: l.connectionMethod,
                       description: '${l.systemProxyDescription}; ${l.tunDescription}.',
@@ -126,11 +142,12 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     _SettingRow(
-                      index: '02', title: l.dns,
+                      index: desktopTools ? '02' : '01', title: l.dns,
                       description: _hint(l,
                         zh: '使用系统 DNS，或选择其他解析服务。',
                         en: 'Use system DNS or choose another resolver.',
                         tw: '使用系統 DNS，或選擇其他解析服務。'),
+                      last: !desktopTools,
                       fullWidthControl: true,
                       control: _Segment<DnsMode>(
                         value: controller.dnsMode,
@@ -146,7 +163,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         ),
                       ),
                     ),
-                    _SettingRow(
+                    if (desktopTools) _SettingRow(
                       index: '03', title: l.connectionProtection,
                       description: controller.networkMode == NetworkMode.tun
                           ? l.tunProtectionDescription : l.systemProtectionDescription,
@@ -165,7 +182,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                 V3Panel(
                   padding: EdgeInsets.zero,
                   child: Column(children: [
-                    _SettingRow(
+                    if (desktopTools) _SettingRow(
                       index: '04', title: l.launchAtStartup,
                       description: _hint(l,
                         zh: '登录系统时自动启动 Litchi。',
@@ -174,7 +191,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       control: _V3Switch(value: controller.autoStart,
                         onChanged: controller.setAutoStart),
                     ),
-                    _SettingRow(
+                    if (desktopTools) _SettingRow(
                       index: '05', title: l.silentStartup,
                       description: _hint(l,
                         zh: '启动时隐藏主窗口。',
@@ -184,7 +201,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         onChanged: controller.setSilentStart),
                     ),
                     _SettingRow(
-                      index: '06', title: l.automaticUpdates,
+                      index: desktopTools ? '06' : '02', title: l.automaticUpdates,
                       description: _hint(l,
                         zh: '在后台检查是否有新版本。',
                         en: 'Check for new versions in the background.',
@@ -202,22 +219,25 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                   padding: EdgeInsets.zero,
                   child: Column(children: [
                     _SettingRow(
-                      index: '07', title: l.appearance,
+                      index: desktopTools ? '07' : '03', title: l.appearance,
                       description: _hint(l,
-                        zh: '选择浅色或深色界面。',
-                        en: 'Choose a light or dark interface.',
-                        tw: '選擇淺色或深色介面。'),
+                        zh: '跟随系统外观，或手动选择浅色和深色界面。',
+                        en: 'Follow your system appearance or choose light/dark.',
+                        tw: '跟隨系統外觀，或手動選擇淺色與深色介面。'),
                       fullWidthControl: true,
                       control: _Segment<ThemeMode>(
-                        value: controller.themeMode == ThemeMode.dark
-                            ? ThemeMode.dark : ThemeMode.light,
-                        items: const [ThemeMode.light, ThemeMode.dark],
-                        label: (v) => v == ThemeMode.dark ? l.darkMode : l.lightMode,
+                        value: controller.themeMode,
+                        items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
+                        label: (v) => switch (v) {
+                          ThemeMode.system => l.followSystem,
+                          ThemeMode.light => l.lightMode,
+                          ThemeMode.dark => l.darkMode,
+                        },
                         onChanged: controller.setThemeMode,
                       ),
                     ),
                     _SettingRow(
-                      index: '08', title: l.language,
+                      index: desktopTools ? '08' : '04', title: l.language,
                       description: _hint(l,
                         zh: '选择界面语言；跟随系统将使用设备的语言。',
                         en: 'Choose an interface language or follow your device.',
@@ -229,9 +249,9 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                   ]),
                 ),
                 const SizedBox(height: 22),
-                V3SectionLabel(l.repairNetworkSettings),
+                if (desktopTools) V3SectionLabel(l.repairNetworkSettings),
                 const SizedBox(height: 10),
-                _RecoveryPanel(
+                if (desktopTools) _RecoveryPanel(
                   controller: controller,
                   label: currentNetwork,
                   title: l.repairSystemProxy,
@@ -240,6 +260,46 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                     await controller.fixProxy();
                     return null;
                   }, l.networkSettingsRepaired),
+                ),
+                const SizedBox(height: 22),
+                V3SectionLabel(l.about),
+                const SizedBox(height: 10),
+                V3Panel(
+                  child: Row(children: [
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.appVersion,
+                          style: TextStyle(color: p.inkMuted, fontSize: 11)),
+                        const SizedBox(height: 6),
+                        Text(AppConfig.currentVersion.trim().isEmpty
+                            ? '—' : AppConfig.currentVersion,
+                          style: TextStyle(color: p.ink,
+                            fontSize: 14, fontWeight: FontWeight.w800)),
+                      ],
+                    )),
+                    Container(width: 1, height: 38, color: p.line),
+                    const SizedBox(width: 18),
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.coreVersion,
+                          style: TextStyle(color: p.inkMuted, fontSize: 11)),
+                        const SizedBox(height: 6),
+                        FutureBuilder<String>(
+                          future: _coreVersionFuture,
+                          builder: (context, snapshot) {
+                            final version = snapshot.data?.trim() ?? '';
+                            return Text(snapshot.connectionState !=
+                                    ConnectionState.done ? l.loading
+                                  : version.isEmpty ? '—' : version,
+                              style: TextStyle(color: p.ink,
+                                fontSize: 14, fontWeight: FontWeight.w800));
+                          },
+                        ),
+                      ],
+                    )),
+                  ]),
                 ),
               ],
             ),

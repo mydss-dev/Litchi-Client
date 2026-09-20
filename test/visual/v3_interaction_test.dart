@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
@@ -161,34 +162,47 @@ void main() {
     await tester.pump(const Duration(milliseconds: 2600));
   });
 
-  testWidgets('Nodes overview has no selection or speed test; picker remains on dashboard',
-      (tester) async {
-    final controller = _InteractiveController(AppPage.nodes);
-    await _pump(tester, controller, const V3NodesPage());
-    await tester.ensureVisible(find.text('香港 · Premium'));
-    await tester.pump();
-    expect(find.text('全部测速'), findsNothing);
-    expect(find.text('选择节点'), findsNothing);
-    expect(find.byType(ChoiceChip), findsNothing);
-    expect(find.byType(TextField), findsNothing);
-    expect(find.ancestor(of: find.text('香港 · Premium'),
-      matching: find.byType(InkWell)), findsNothing);
-    expect(controller.selections, 0);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'Nodes overview has no selection or speed test; picker remains on dashboard',
+    (tester) async {
+      final controller = _InteractiveController(AppPage.nodes);
+      await _pump(tester, controller, const V3NodesPage());
+      await tester.ensureVisible(find.text('香港 · Premium'));
+      await tester.pump();
+      expect(find.text('全部测速'), findsNothing);
+      expect(find.text('选择节点'), findsNothing);
+      expect(find.byType(ChoiceChip), findsNothing);
+      expect(find.byType(TextField), findsNothing);
+      expect(
+        find.ancestor(
+          of: find.text('香港 · Premium'),
+          matching: find.byType(InkWell),
+        ),
+        findsNothing,
+      );
+      expect(controller.selections, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('Network settings await result and display errors', (
     tester,
   ) async {
-    final controller = _InteractiveController(AppPage.settings);
-    await _pump(tester, controller, const V3SettingsPage());
-    await tester.tap(find.text('系统代理'));
-    await tester.pump();
-    expect(find.text('正在应用设置，请稍候…'), findsOneWidget);
-    controller.result.complete('核心未响应');
-    await tester.pump();
-    expect(find.textContaining('核心未响应'), findsOneWidget);
-    expect(controller.networkChanges, 1);
+    // The system-proxy option is desktop-only. Test it as Windows.
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      final controller = _InteractiveController(AppPage.settings);
+      await _pump(tester, controller, const V3SettingsPage());
+      await tester.tap(find.text('系统代理'));
+      await tester.pump();
+      expect(find.text('正在应用设置，请稍候…'), findsOneWidget);
+      controller.result.complete('核心未响应');
+      await tester.pump();
+      expect(find.textContaining('核心未响应'), findsOneWidget);
+      expect(controller.networkChanges, 1);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   // Compact IA: account business sits under 账户, everything else under 更多.
@@ -210,9 +224,8 @@ void main() {
         const V3Shell(),
         size: const Size(390, 844),
       );
-      final expected = enabledNavItems(
-        kMobilePrimary,
-      ).indexWhere((item) => item.page == tab);
+      final expected = enabledNavItems(kMobilePrimary)
+          .indexWhere((item) => item.page == tab);
       expect(expected, isNonNegative, reason: '${tab.name} must be a tab');
       expect(
         tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,

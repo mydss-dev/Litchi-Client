@@ -8,6 +8,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_account_labels.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_logout_confirmation.dart';
 import '../ui/v3_sheet.dart';
 import 'v3_telegram_page.dart';
 import 'v3_wallet_actions.dart';
@@ -50,11 +51,18 @@ class _V3AccountPageState extends State<V3AccountPage> {
     }
   }
 
+  Future<void> _confirmLogout() async {
+    final confirmed = await showV3LogoutConfirmation(context);
+    if (!confirmed || !mounted) return;
+    await AppScope.read(context).logout();
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(
@@ -87,7 +95,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
           onPassword: () => showDialog<void>(context: context,
             barrierColor: Colors.black.withValues(alpha: .48),
             builder: (_) => const _PasswordDialog()),
-          onLogout: controller.logout),
+          onLogout: _confirmLogout),
         if (controller.dataLoadError != null) ...[
           const SizedBox(height: 16),
           Container(width: double.infinity,

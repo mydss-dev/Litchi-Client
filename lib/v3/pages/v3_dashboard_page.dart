@@ -23,7 +23,11 @@ class V3DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final status = controller.connectionStatus;
+    // Only a confirmed account without a plan sees the purchase guidance.
+    final confirmedNoPlan = controller.hasAccountSummary &&
+        !controller.isInitialLoading && !controller.hasPlan;
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -31,20 +35,73 @@ class V3DashboardPage extends StatelessWidget {
           const V3UpdateBanner(),
           V3NoticeBar(controller: controller),
           V3DashboardAlerts(controller: controller),
-          _ConnectionWorkspace(
-            controller: controller,
-            connected: status == ConnectionStatus.connected,
-            connecting:
-                status == ConnectionStatus.connecting ||
-                status == ConnectionStatus.disconnecting,
-          ),
-          const SizedBox(height: 12),
-          _ModeRail(controller: controller),
-          const SizedBox(height: 12),
-          _SessionMetrics(controller: controller),
-          const SizedBox(height: 12),
-          _PlanSummary(controller: controller),
+          if (confirmedNoPlan)
+            _NoPlanDashboardPanel(controller: controller)
+          else ...[
+            _ConnectionWorkspace(
+              controller: controller,
+              connected: status == ConnectionStatus.connected,
+              connecting:
+                  status == ConnectionStatus.connecting ||
+                  status == ConnectionStatus.disconnecting,
+            ),
+            const SizedBox(height: 12),
+            _ModeRail(controller: controller),
+            const SizedBox(height: 12),
+            _SessionMetrics(controller: controller),
+            const SizedBox(height: 12),
+            _PlanSummary(controller: controller),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// Purpose-built empty state without changing the connected dashboard layout.
+class _NoPlanDashboardPanel extends StatelessWidget {
+  const _NoPlanDashboardPanel({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final canBuy = isPageEnabled(AppPage.shop);
+    return _DashboardCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.inventory_2_outlined, size: 34, color: p.lychee),
+            const SizedBox(height: 12),
+            Text(v3Copy(context, zh: '当前没有可用套餐',
+              en: 'No active plan', tw: '目前沒有可用方案'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(v3Copy(context,
+              zh: canBuy ? '选择套餐后即可开始连接。' : '请联系服务商开通套餐。',
+              en: canBuy ? 'Choose a plan to start connecting.'
+                  : 'Contact your provider to activate a plan.',
+              tw: canBuy ? '選擇方案後即可開始連線。' : '請聯絡服務商開通方案。'),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: p.inkMuted, fontSize: 12)),
+            if (canBuy) ...[
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                key: const Key('v3-dashboard-no-plan-buy'),
+                onPressed: () => controller.goToPage(AppPage.shop),
+                style: FilledButton.styleFrom(
+                  backgroundColor: p.lychee, foregroundColor: Colors.white,
+                  minimumSize: const Size(156, 44)),
+                icon: const Icon(Icons.storefront_rounded, size: 18),
+                label: Text(v3Copy(context, zh: '选择套餐',
+                  en: 'Choose a plan', tw: '選擇方案')),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
