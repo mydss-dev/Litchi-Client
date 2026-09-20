@@ -1,4 +1,5 @@
 name: Restore V3 Practical UX Once
+# Re-run after correcting Flutter test platform override cleanup.
 on:
   push:
     branches: [fix/v3-restore-practical-ux-20260920]
