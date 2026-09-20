@@ -24,7 +24,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
-    if (!controller.hasPlan && controller.hasAccountSummary) {
+    if (controller.hasConfirmedNoPlan && !controller.isInitialLoading) {
       return LayoutBuilder(builder: (context, viewport) =>
         SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),

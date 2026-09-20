@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../app/app_controller.dart';
@@ -24,8 +26,8 @@ class V3DashboardPage extends StatelessWidget {
     final controller = AppScope.of(context);
     final status = controller.connectionStatus;
     // Only a confirmed account without a plan sees the purchase guidance.
-    final confirmedNoPlan = controller.hasAccountSummary &&
-        !controller.isInitialLoading && !controller.hasPlan;
+    final confirmedNoPlan = !controller.isInitialLoading &&
+        controller.hasConfirmedNoPlan;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
@@ -242,13 +244,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 3),
-                                  Text(
-                                    _duration(controller.connectedDuration),
-                                    style: TextStyle(
-                                      color: p.inkMuted,
-                                      fontSize: 11,
-                                    ),
-                                  ),
+                                  _ConnectionDuration(controller: controller),
                                 ],
                               ),
                             ),
@@ -478,6 +474,60 @@ class _ConnectionOrb extends StatelessWidget {
   }
 }
 
+// Tick only the elapsed-time label, not the whole dashboard.
+class _ConnectionDuration extends StatefulWidget {
+  const _ConnectionDuration({required this.controller});
+  final AppController controller;
+
+  @override
+  State<_ConnectionDuration> createState() => _ConnectionDurationState();
+}
+
+class _ConnectionDurationState extends State<_ConnectionDuration> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncTicker();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ConnectionDuration oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncTicker();
+  }
+
+  void _syncTicker() {
+    if (widget.controller.connectionStatus == ConnectionStatus.connected) {
+      _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      _ticker?.cancel();
+      _ticker = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Text(
+    _duration(widget.controller.connectedDuration),
+    key: const Key('v3-connection-duration'),
+    style: TextStyle(color: V3Palette.of(context).inkMuted, fontSize: 11),
+  );
+}
+
+/// Hide unsupported system-proxy status from Android and Linux Home.
+bool v3ShowsNetworkMode(TargetPlatform platform, NetworkMode mode) =>
+    mode == NetworkMode.tun ||
+    platform == TargetPlatform.windows || platform == TargetPlatform.macOS;
+
 class _ModeRail extends StatelessWidget {
   const _ModeRail({required this.controller});
   final AppController controller;
@@ -500,7 +550,7 @@ class _ModeRail extends StatelessWidget {
         Row(
           children: [
             for (final mode in NetworkMode.values)
-              Expanded(
+              if (v3ShowsNetworkMode(defaultTargetPlatform, mode)) Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(
                     right: mode == NetworkMode.values.last ? 0 : 7,
