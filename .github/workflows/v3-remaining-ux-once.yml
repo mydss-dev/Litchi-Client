@@ -1,0 +1,52 @@
+name: Fix Remaining V3 UX Once
+on:
+  push:
+    branches: [fix/v3-remaining-ux-20260920]
+    paths: ['.github/workflows/v3-remaining-ux-once.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.event.head_commit.message == 'chore: run remaining V3 UX fixes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          lfs: true
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+          cache: true
+      - name: Apply verified, anchor-guarded patch
+        run: python3 tool/v3_remaining_ux_once.py
+      - name: Format the new regression tests
+        run: dart format test/visual/v3_remaining_ux_fix_test.dart
+      - name: Validate scope and unchanged node flows
+        run: |
+          git add -N test/visual/v3_remaining_ux_fix_test.dart
+          git diff --name-only
+          if git diff --name-only | grep -E '^lib/v3/(pages/v3_nodes_page|ui/v3_node_picker)\.dart$'; then
+            echo 'Node overview and picker must stay untouched.' >&2
+            exit 1
+          fi
+          git diff --check
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Run focused regression tests
+        run: flutter test test/visual/v3_remaining_ux_fix_test.dart test/visual/v3_practical_ux_restore_test.dart
+      - name: Analyze Dart code
+        run: flutter analyze
+      - name: Run full Flutter suite
+        run: flutter test
+      - name: Commit fixes and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/v3-remaining-ux-once.yml tool/v3_remaining_ux_once.py
+          git add lib/app/app_controller.dart lib/v3/pages/v3_dashboard_page.dart lib/v3/pages/v3_traffic_page.dart lib/v3/pages/v3_account_page.dart test/visual/v3_practical_ux_restore_test.dart test/visual/v3_remaining_ux_fix_test.dart
+          git diff --cached --check
+          git diff --cached --name-only
+          git commit -m 'fix(v3): correct timer, no-plan proof and platform UI'
+          git push origin HEAD:refs/heads/fix/v3-remaining-ux-20260920
