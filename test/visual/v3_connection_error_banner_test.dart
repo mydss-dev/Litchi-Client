@@ -86,43 +86,63 @@ void main() {
 
       final alert = find.byKey(kV3ConnectionErrorBannerKey);
       expect(alert, findsOneWidget);
-      expect(find.text(CoreErrorMessageService.proxyPortUnavailable), findsOneWidget);
-      expect(find.descendant(of: alert, matching: find.text('重试')), findsOneWidget);
-      expect(find.descendant(of: alert,
-          matching: find.byIcon(Icons.error_outline_rounded)), findsOneWidget);
+      expect(
+        find.text(CoreErrorMessageService.proxyPortUnavailable),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: alert, matching: find.text('重试')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: alert,
+          matching: find.byIcon(Icons.error_outline_rounded),
+        ),
+        findsOneWidget,
+      );
       expect(find.byType(SnackBar), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
 
-  testWidgets('failed retry stays actionable until a connection succeeds',
-      (tester) async {
+  testWidgets('failed retry stays actionable until a connection succeeds', (
+    tester,
+  ) async {
     final controller = _AlertFixture()..retrySucceeds = false;
     await _pump(tester, controller, size: const Size(900, 700));
 
-    await tester.tap(find.descendant(
-      of: find.byKey(kV3ConnectionErrorBannerKey),
-      matching: find.text('重试'),
-    ));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(kV3ConnectionErrorBannerKey),
+        matching: find.text('重试'),
+      ),
+    );
     await tester.pump();
     expect(controller.connectionRetries, 1);
     expect(find.byKey(kV3ConnectionErrorBannerKey), findsOneWidget);
     expect(find.byType(SnackBar), findsNothing);
 
     controller.retrySucceeds = true;
-    await tester.tap(find.descendant(
-      of: find.byKey(kV3ConnectionErrorBannerKey),
-      matching: find.text('重试'),
-    ));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(kV3ConnectionErrorBannerKey),
+        matching: find.text('重试'),
+      ),
+    );
     await tester.pump();
     expect(controller.connectionRetries, 2);
     expect(find.byKey(kV3ConnectionErrorBannerKey), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('core logs are replaced with a user-facing error', (tester) async {
+  testWidgets('core logs are replaced with a user-facing error', (
+    tester,
+  ) async {
     final controller = _AlertFixture()
-      ..failure = 'time=2026-09-20 level=error msg=core failed '\n          'internal service details that should not be displayed verbatim';
+      ..failure =
+          'time=2026-09-20 level=error msg=core failed '
+          'internal service details that should not be displayed verbatim';
     await _pump(tester, controller, size: const Size(900, 700));
 
     expect(find.byKey(kV3ConnectionErrorBannerKey), findsOneWidget);
@@ -131,35 +151,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('data outage remains a separate yellow alert with its own retry',
-      (tester) async {
-    final controller = _AlertFixture()
-      ..warning = '服务器连接失败，已启用本地缓存模式';
-    await _pump(
-      tester,
-      controller,
-      size: const Size(360, 800),
-      themeMode: ThemeMode.dark,
-    );
+  testWidgets(
+    'data outage remains a separate yellow alert with its own retry',
+    (tester) async {
+      final controller = _AlertFixture()..warning = '服务器连接失败，已启用本地缓存模式';
+      await _pump(
+        tester,
+        controller,
+        size: const Size(360, 800),
+        themeMode: ThemeMode.dark,
+      );
 
-    final connection = find.byKey(kV3ConnectionErrorBannerKey);
-    final data = find.byKey(kV3DataWarningBannerKey);
-    expect(connection, findsOneWidget);
-    expect(data, findsOneWidget);
-    expect(find.descendant(of: data,
-        matching: find.byIcon(Icons.warning_amber_rounded)), findsOneWidget);
-    final warningText = tester.widget<Text>(find.descendant(
-      of: data,
-      matching: find.byType(Text),
-    ).first);
-    expect(warningText.style?.color, V3Palette.dark.warningInk);
-    expect(tester.takeException(), isNull);
+      final connection = find.byKey(kV3ConnectionErrorBannerKey);
+      final data = find.byKey(kV3DataWarningBannerKey);
+      expect(connection, findsOneWidget);
+      expect(data, findsOneWidget);
+      expect(
+        find.descendant(
+          of: data,
+          matching: find.byIcon(Icons.warning_amber_rounded),
+        ),
+        findsOneWidget,
+      );
+      final warningText = tester.widget<Text>(
+        find.descendant(of: data, matching: find.byType(Text)).first,
+      );
+      expect(warningText.style?.color, V3Palette.dark.warningInk);
+      expect(tester.takeException(), isNull);
 
-    await tester.tap(find.descendant(of: data, matching: find.text('重试')));
-    await tester.pump();
-    expect(controller.dataRetries, 1);
-    expect(find.byKey(kV3DataWarningBannerKey), findsNothing);
-    expect(find.byKey(kV3ConnectionErrorBannerKey), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      await tester.tap(find.descendant(of: data, matching: find.text('重试')));
+      await tester.pump();
+      expect(controller.dataRetries, 1);
+      expect(find.byKey(kV3DataWarningBannerKey), findsNothing);
+      expect(find.byKey(kV3ConnectionErrorBannerKey), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
