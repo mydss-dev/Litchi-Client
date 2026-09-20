@@ -1,0 +1,43 @@
+name: V3 Legacy UX Restoration
+
+on:
+  push:
+    branches: [fix/v3-legacy-ux-followups]
+    paths:
+      - '.github/workflows/v3-legacy-ux-restore.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  restore-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          lfs: true
+          fetch-depth: 0
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+      - name: Apply guarded old-to-new UX changes
+        run: python3 tool/restore_legacy_v3_ux.py
+      - name: Check patch whitespace
+        run: git diff --check
+      - run: flutter pub get
+      - name: Full Flutter tests
+        run: flutter test
+      - name: Flutter static analysis
+        run: flutter analyze
+      - name: Commit tested fixes, remove temporary automation
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm tool/restore_legacy_v3_ux.py .github/workflows/v3-legacy-ux-restore.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(v3): restore high-value legacy interaction details'
+          git push origin HEAD:fix/v3-legacy-ux-followups
