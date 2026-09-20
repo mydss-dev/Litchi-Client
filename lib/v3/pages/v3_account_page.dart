@@ -449,6 +449,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
   final _next = TextEditingController();
   final _confirmation = TextEditingController();
   bool _busy = false;
+  bool _obscure = true;
   String? _error;
 
   @override
@@ -489,10 +490,13 @@ class _PasswordDialogState extends State<_PasswordDialog> {
     final p = V3Palette.of(context);
     return Dialog(backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(24),
-      child: Container(width: 430, padding: const EdgeInsets.all(26),
+      child: Container(width: 430,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+        padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(color: p.surface,
           borderRadius: BorderRadius.circular(28)),
-        child: Column(mainAxisSize: MainAxisSize.min,
+        child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text(v3Copy(context, zh: '修改账户密码',
@@ -508,10 +512,21 @@ class _PasswordDialogState extends State<_PasswordDialog> {
               zh: '当前密码', en: 'Current password', tw: '目前密碼')),
             const SizedBox(height: 12),
             _PasswordField(controller: _next, label: v3Copy(context,
-              zh: '新密码', en: 'New password', tw: '新密碼')),
+              zh: '新密码', en: 'New password', tw: '新密碼'),
+              obscureText: _obscure,
+              trailing: IconButton(tooltip: _obscure
+                  ? v3Copy(context, zh: '显示密码',
+                      en: 'Show password', tw: '顯示密碼')
+                  : v3Copy(context, zh: '隐藏密码',
+                      en: 'Hide password', tw: '隱藏密碼'),
+                onPressed: () => setState(() => _obscure = !_obscure),
+                icon: Icon(_obscure ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
+                  size: 18, color: p.inkMuted))),
             const SizedBox(height: 12),
             _PasswordField(controller: _confirmation, label: v3Copy(context,
-              zh: '确认新密码', en: 'Confirm new password', tw: '確認新密碼')),
+              zh: '确认新密码', en: 'Confirm new password', tw: '確認新密碼'),
+              obscureText: _obscure),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 11)),
@@ -528,24 +543,27 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                       en: 'Submitting…', tw: '正在提交…')
                   : v3Copy(context, zh: '保存新密码',
                       en: 'Save password', tw: '儲存新密碼')))),
-          ]),
-      ),
+          ]))),
     );
   }
 }
 
 class _PasswordField extends StatelessWidget {
-  const _PasswordField({required this.controller, required this.label});
+  const _PasswordField({required this.controller, required this.label,
+    this.trailing, this.obscureText = true});
   final TextEditingController controller;
   final String label;
+  final Widget? trailing;
+  final bool obscureText;
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return TextField(controller: controller, obscureText: true,
+    return TextField(controller: controller, obscureText: obscureText,
       decoration: InputDecoration(labelText: label, filled: true,
         fillColor: p.surfaceRaised,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none)),
+          borderSide: BorderSide.none),
+        suffixIcon: trailing),
     );
   }
 }

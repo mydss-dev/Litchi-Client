@@ -133,10 +133,13 @@ class _RechargeDialogState extends State<_RechargeDialog> {
     final symbol = AppScope.of(context).currencySymbol;
     return Dialog(backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(24),
-      child: Container(width: 420, padding: const EdgeInsets.all(24),
+      child: Container(width: 420,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(color: p.surface,
           borderRadius: BorderRadius.circular(26)),
-        child: Column(mainAxisSize: MainAxisSize.min,
+        child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text(v3Copy(context, zh: '充值余额',
@@ -178,7 +181,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
                     en: 'Creating order…', tw: '正在建立訂單…')
                   : v3Copy(context, zh: '去支付',
                     en: 'Continue to payment', tw: '前往付款')))),
-          ])));
+          ]))));
   }
 }
 
@@ -215,10 +218,13 @@ class _AmountDialogState extends State<_AmountDialog> {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Dialog(backgroundColor: Colors.transparent,
-      child: Container(width: 400, padding: const EdgeInsets.all(24),
+      child: Container(width: 400,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(color: p.surface,
           borderRadius: BorderRadius.circular(26)),
-        child: Column(mainAxisSize: MainAxisSize.min,
+        child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text(widget.title,
@@ -250,7 +256,7 @@ class _AmountDialogState extends State<_AmountDialog> {
               child: FilledButton(onPressed: _submit,
                 child: Text(v3Copy(context, zh: '确认转入',
                   en: 'Confirm transfer', tw: '確認轉入')))),
-          ])));
+          ]))));
   }
 }
 
@@ -309,10 +315,13 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Dialog(backgroundColor: Colors.transparent,
-      child: Container(width: 430, padding: const EdgeInsets.all(24),
+      child: Container(width: 430,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(color: p.surface,
           borderRadius: BorderRadius.circular(26)),
-        child: Column(mainAxisSize: MainAxisSize.min,
+        child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text(v3Copy(context, zh: '申请提现',
@@ -352,7 +361,7 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
               child: FilledButton(onPressed: _submit,
                 child: Text(v3Copy(context, zh: '提交提现申请',
                   en: 'Submit withdrawal', tw: '提交提領申請')))),
-          ])));
+          ]))));
   }
 }
 

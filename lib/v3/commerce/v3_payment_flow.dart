@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -80,6 +82,11 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
   String? _paymentUrl;
   String? _error;
 
+  // While a QR code or redirect page is up, the order status is polled every
+  // few seconds so a completed payment is confirmed without the user having
+  // to press "I have completed payment". That button stays as a fallback.
+  Timer? _pollTimer;
+
   bool get _balanceOnly => _detail?.balanceOnly ?? false;
 
   double get _amountDue {
@@ -94,6 +101,33 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Polls while the payment page (QR or redirect) is showing. Poll failures
+  /// stay silent — the next tick or the manual check button recovers, and
+  /// error text under the QR would just flicker.
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || _paid || _checkingStatus) return;
+      unawaited(_pollOnce());
+    });
+  }
+
+  Future<void> _pollOnce() async {
+    try {
+      final status = await widget.api.checkOrderStatus(widget.tradeNo);
+      if (!mounted || _paid) return;
+      if (status == 3 || status == 4) await _markPaid();
+    } catch (_) {
+      // Transient poll failure: silent, the next tick retries.
+    }
   }
 
   Future<void> _load() async {
@@ -143,6 +177,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
         _paymentType = result.type;
         _checkingOut = false;
       });
+      _startPolling();
       if (result.type == 1) await UrlOpener.open(result.url);
     } catch (error) {
       if (!mounted) return;
@@ -183,6 +218,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
   Future<void> _markPaid() async {
     if (_paid) return;
     _paid = true;
+    _pollTimer?.cancel();
     await widget.onPaid?.call();
     if (mounted) setState(() {});
   }
