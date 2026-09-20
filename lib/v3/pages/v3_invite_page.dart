@@ -116,6 +116,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
     return LayoutBuilder(builder: (context, constraints) {
       final compact = constraints.maxWidth < 760;
       return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(

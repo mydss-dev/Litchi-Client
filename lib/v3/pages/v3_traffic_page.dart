@@ -25,7 +25,13 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
     if (!controller.hasPlan && controller.hasAccountSummary) {
-      return Center(child: Container(
+      return LayoutBuilder(builder: (context, viewport) =>
+        SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight:
+              viewport.maxHeight.isFinite ? viewport.maxHeight : 0),
+            child: Center(child: Container(
         constraints: const BoxConstraints(maxWidth: 520),
         margin: const EdgeInsets.all(24),
         padding: const EdgeInsets.all(26),
@@ -43,7 +49,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
             label: Text(v3Copy(context, zh: '去选择套餐',
               en: 'Choose a plan', tw: '前往選擇方案'))),
         ]),
-      ));
+      )))));
     }
 
     final series = TrafficHistorySeries.build(windowDays: _days,
@@ -54,6 +60,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     return LayoutBuilder(builder: (context, constraints) {
       final compact = constraints.maxWidth < 760;
       return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 30),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(

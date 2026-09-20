@@ -35,6 +35,12 @@ bool get _isDesktopTarget =>
       _ => false,
     };
 
+/// Pull-to-refresh belongs to the four data-centric mobile pages, not nodes.
+bool v3SupportsMobileRefresh(AppPage page) => switch (page) {
+  AppPage.dashboard || AppPage.account || AppPage.invite || AppPage.traffic => true,
+  _ => false,
+};
+
 class V3Shell extends StatelessWidget {
   const V3Shell({super.key, this.launchSilently = false});
   final bool launchSilently;
@@ -74,9 +80,18 @@ class _V3Workspace extends StatelessWidget {
       final compact = constraints.maxWidth < 760;
       final page = _pageFor(controller.page, context);
       if (compact) {
+        final mobilePage = !_isDesktopTarget &&
+                v3SupportsMobileRefresh(controller.page)
+            ? RefreshIndicator(
+                key: const Key('v3-mobile-refresh'),
+                color: p.lychee,
+                onRefresh: controller.refreshData,
+                child: page,
+              )
+            : page;
         return Scaffold(
           backgroundColor: p.canvas,
-          body: page,
+          body: mobilePage,
           bottomNavigationBar: _MobileNavigation(controller: controller),
         );
       }
