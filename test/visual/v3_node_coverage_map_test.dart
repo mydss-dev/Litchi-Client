@@ -106,7 +106,7 @@ void main() {
     expect(selected, isNull);
   });
 
-  testWidgets('nodes overview has no map filters, selection or testing controls',
+  testWidgets('nodes overview wires the map filters to the node list',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -123,13 +123,23 @@ void main() {
     expect(find.text('HK node'), findsOneWidget);
     expect(find.text('JP node'), findsOneWidget);
     expect(find.text('DE node'), findsOneWidget);
-    expect(find.byType(ChoiceChip), findsNothing);
-    expect(find.byType(TextField), findsNothing);
-    expect(find.text('全部测速'), findsNothing);
-    expect(find.text('自动选择'), findsNothing);
-    expect(find.ancestor(of: find.text('HK node'), matching: find.byType(InkWell)),
-      findsNothing);
     expect(find.byKey(const ValueKey('v3-map-marker-HK')), findsOneWidget);
+
+    // The map's country chips filter the list below the map.
+    await tester.ensureVisible(find.byKey(const ValueKey('v3-map-country-HK')));
+    await tester.tap(find.byKey(const ValueKey('v3-map-country-HK')));
+    await tester.pumpAndSettle();
+    expect(find.text('HK node'), findsOneWidget);
+    expect(find.text('JP node'), findsNothing);
+    expect(find.text('DE node'), findsNothing);
+
+    // 全部地区 clears the region filter again.
+    await tester.ensureVisible(find.byKey(const ValueKey('v3-map-country-all')));
+    await tester.tap(find.byKey(const ValueKey('v3-map-country-all')));
+    await tester.pumpAndSettle();
+    expect(find.text('JP node'), findsOneWidget);
+    expect(find.text('DE node'), findsOneWidget);
+
     fixture.replace([_jp, _de]);
     await tester.pumpAndSettle();
     expect(find.text('HK node'), findsNothing);

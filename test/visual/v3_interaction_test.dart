@@ -163,25 +163,28 @@ void main() {
   });
 
   testWidgets(
-    'Nodes overview has no selection or speed test; picker remains on dashboard',
+    'Nodes overview searches, filters and switches nodes',
     (tester) async {
       final controller = _InteractiveController(AppPage.nodes);
       await _pump(tester, controller, const V3NodesPage());
+
+      // The search narrows the list before the switch.
+      await tester.enterText(find.byType(TextField), '香港');
+      await tester.pump();
+      expect(find.text('香港 · Premium'), findsOneWidget);
+      expect(find.text('美国 洛杉矶'), findsNothing);
+
+      // Selecting from the overview switches like the picker does.
       await tester.ensureVisible(find.text('香港 · Premium'));
       await tester.pump();
-      expect(find.text('全部测速'), findsNothing);
-      expect(find.text('选择节点'), findsNothing);
-      expect(find.byType(ChoiceChip), findsNothing);
-      expect(find.byType(TextField), findsNothing);
-      expect(
-        find.ancestor(
-          of: find.text('香港 · Premium'),
-          matching: find.byType(InkWell),
-        ),
-        findsNothing,
-      );
-      expect(controller.selections, 0);
+      await tester.tap(find.text('香港 · Premium'));
+      await tester.pump();
+      controller.result.complete(null);
+      await tester.pump();
+      expect(controller.selections, 1);
       expect(tester.takeException(), isNull);
+      // The floating toast outlives the assertion window.
+      await tester.pump(const Duration(milliseconds: 2600));
     },
   );
 

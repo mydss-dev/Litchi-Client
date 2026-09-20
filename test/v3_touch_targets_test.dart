@@ -12,8 +12,8 @@ import 'visual/v3_visual_fixture.dart';
 /// Touch-target invariants for the smallest interactive controls in v3.
 ///
 /// These tests measure the rendered hit area rather than trusting a comment
-/// that says "this is 44dp". The nodes overview is intentionally read-only;
-/// interactive region chips are measured on the map's interactive variant.
+/// that says "this is 44dp". The nodes overview and the map's interactive
+/// variant both expose region filters, so both must clear the floor.
 class _Controller extends VisualV3Controller {
   _Controller(super.page);
 }
@@ -75,13 +75,24 @@ void main() {
     }
   });
 
-  testWidgets('nodes overview does not expose interactive region chips', (
+  testWidgets('nodes overview region filters clear the touch-target floor', (
     tester,
   ) async {
     try {
       await _pump(tester, AppPage.nodes, const Size(390, 844));
-      expect(find.byType(ChoiceChip), findsNothing,
-          reason: 'the nodes overview is informational, not a region filter');
+      final chips = find.byType(ChoiceChip);
+      expect(chips, findsWidgets,
+          reason: 'the overview filters its list by region');
+      for (final element in chips.evaluate()) {
+        final rect = tester.getRect(find.byWidget(element.widget));
+        expect(
+          rect.height,
+          greaterThanOrEqualTo(minimum),
+          reason:
+              'an overview region chip is only '
+              '${rect.height.toStringAsFixed(1)}dp tall',
+        );
+      }
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
