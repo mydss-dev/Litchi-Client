@@ -23,7 +23,9 @@ jobs:
           channel: stable
           cache: true
       - name: Apply guarded old-to-new UX changes
-        run: python3 tool/restore_legacy_v3_ux.py
+        run: |
+          python3 tool/restore_legacy_v3_ux.py
+          python3 tool/fix_v3_traffic_locale.py
       - name: Check patch whitespace
         run: git diff --check
       - run: flutter pub get
@@ -35,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm tool/restore_legacy_v3_ux.py .github/workflows/v3-legacy-ux-restore.yml
+          rm tool/restore_legacy_v3_ux.py tool/fix_v3_traffic_locale.py .github/workflows/v3-legacy-ux-restore.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
