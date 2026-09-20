@@ -335,6 +335,47 @@ class _OrderRow extends StatelessWidget {
     };
     final title = order.planName?.trim().isNotEmpty == true
         ? order.planName!.trim() : order.periodLabel;
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return Padding(padding: const EdgeInsets.symmetric(vertical: 15),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Text(title, maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.ink, fontSize: 13,
+                fontWeight: FontWeight.w800))),
+            const SizedBox(width: 10),
+            Text(_statusLabel(context, order),
+              style: TextStyle(color: statusColor, fontSize: 10,
+                fontWeight: FontWeight.w800)),
+          ]),
+          const SizedBox(height: 7),
+          Text('${order.tradeNo} · ${order.dateDisplay}',
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: p.inkMuted, fontSize: 10)),
+          const SizedBox(height: 8),
+          Text(order.amountDisplay(currencySymbol),
+            style: TextStyle(color: p.ink, fontSize: 15,
+              fontWeight: FontWeight.w900)),
+          if (order.status == 0) ...[
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: OutlinedButton(onPressed: busy ? null : onCancel,
+                child: Text(v3Copy(context, zh: '取消订单',
+                  en: 'Cancel order', tw: '取消訂單')))),
+              const SizedBox(width: 10),
+              Expanded(flex: 2, child: FilledButton(
+                onPressed: busy ? null : onPay,
+                style: FilledButton.styleFrom(backgroundColor: p.lychee,
+                  foregroundColor: Colors.white),
+                child: busy ? const SizedBox(width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2,
+                    color: Colors.white))
+                  : Text(v3Copy(context, zh: '继续支付',
+                    en: 'Continue payment', tw: '繼續付款')))),
+            ]),
+          ],
+        ]));
+    }
     return Padding(padding: const EdgeInsets.symmetric(vertical: 15),
       child: Row(children: [
         Container(width: 44, height: 44,

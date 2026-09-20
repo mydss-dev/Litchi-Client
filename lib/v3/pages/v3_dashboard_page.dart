@@ -12,6 +12,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_dashboard_alerts.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_picker.dart';
+import '../ui/v3_toast.dart';
 import '../ui/v3_node_tags.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_notice_bar.dart';
@@ -445,8 +446,14 @@ class _ConnectionOrb extends StatelessWidget {
               onTap: locked
                   ? null
                   : () async {
-                      // Persistent alert and retry are driven by core state.
-                      await controller.toggleConnection();
+                      // Failure remains a persistent alert with a retry action.
+                      final error = await controller.toggleConnection();
+                      if (error == null && context.mounted &&
+                          controller.connectionStatus == ConnectionStatus.connected) {
+                        V3Toast.show(context, v3Copy(context,
+                          zh: '连接成功', en: 'Connected', tw: '連線成功'),
+                          type: V3ToastType.success);
+                      }
                     },
               child: Center(
                 child: connecting
@@ -669,10 +676,18 @@ class _RouteButton extends StatelessWidget {
       height: 44,
       child: OutlinedButton(
         onPressed: () async {
+          if (active) return;
           final error = await controller.setProxyMode(mode);
-          if (error != null && context.mounted) {
+          if (!context.mounted) return;
+          if (error != null) {
             ScaffoldMessenger.of(context)
                 .showSnackBar(SnackBar(content: Text(error)));
+          } else {
+            V3Toast.show(context, v3Copy(context,
+              zh: '已切换到${_modeTitle(context, mode)}',
+              en: 'Switched to ${_modeTitle(context, mode)}',
+              tw: '已切換至${_modeTitle(context, mode)}'),
+              type: V3ToastType.success);
           }
         },
         style: OutlinedButton.styleFrom(
