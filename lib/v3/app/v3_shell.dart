@@ -407,11 +407,32 @@ class _V3WindowButton extends StatelessWidget {
       child: IconButton(
         tooltip: tooltip,
         padding: EdgeInsets.zero,
-        style: IconButton.styleFrom(
-          shape: const RoundedRectangleBorder(),
-          foregroundColor: close ? p.lychee : p.inkMuted,
-          hoverColor: close ? p.lychee : p.surfaceRaised,
-          highlightColor: close ? p.lychee : p.line,
+        // The close button turns white-on-red while hovered, the standard
+        // Windows pattern; a red icon on the same red hover fill disappears.
+        style: ButtonStyle(
+          shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (close) {
+              return states.contains(WidgetState.hovered) ||
+                      states.contains(WidgetState.pressed)
+                  ? Colors.white
+                  : p.lychee;
+            }
+            return p.inkMuted;
+          }),
+          overlayColor: WidgetStateProperty.resolveWith((states) {
+            if (close) {
+              return states.contains(WidgetState.hovered) ||
+                      states.contains(WidgetState.pressed)
+                  ? p.lychee
+                  : null;
+            }
+            return states.contains(WidgetState.hovered)
+                ? p.surfaceRaised
+                : states.contains(WidgetState.pressed)
+                ? p.line
+                : null;
+          }),
         ),
         onPressed: () => unawaited(onPressed()),
         icon: Icon(icon, size: 17),

@@ -106,7 +106,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
     try {
       final tradeNo = await controller.api.submitRechargeOrder((amount * 100).round());
       if (!mounted) return;
-      await showV3PaymentFlow(context: context, tradeNo: tradeNo,
+      final paid = await showV3PaymentFlow(context: context, tradeNo: tradeNo,
         fallbackAmount: amount, currencySymbol: controller.currencySymbol,
         api: controller.api, onPaid: controller.refreshData,
         onViewOrders: () {
@@ -115,6 +115,11 @@ class _RechargeDialogState extends State<_RechargeDialog> {
         });
       if (!mounted) return;
       await controller.refreshData();
+      if (mounted && paid) {
+        // The order is settled; close the recharge dialog so a second
+        // submission cannot create a duplicate order.
+        Navigator.of(context).pop();
+      }
     } catch (error) {
       if (mounted) setState(() => _error = _message(error));
     } finally {

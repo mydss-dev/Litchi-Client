@@ -189,7 +189,10 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         en: 'Start Litchi automatically when you sign in.',
                         tw: '登入系統時自動啟動 Litchi。'),
                       control: _V3Switch(value: controller.autoStart,
-                        onChanged: controller.setAutoStart),
+                        onChanged: (v) => _apply(() async {
+                          controller.setAutoStart(v);
+                          return null;
+                        }, l.settingsUpdated)),
                     ),
                     if (desktopTools) _SettingRow(
                       index: '05', title: l.silentStartup,
@@ -198,7 +201,10 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         en: 'Hide the main window at startup.',
                         tw: '啟動時隱藏主視窗。'),
                       control: _V3Switch(value: controller.silentStart,
-                        onChanged: controller.setSilentStart),
+                        onChanged: (v) => _apply(() async {
+                          controller.setSilentStart(v);
+                          return null;
+                        }, l.settingsUpdated)),
                     ),
                     _SettingRow(
                       index: desktopTools ? '06' : '02', title: l.automaticUpdates,

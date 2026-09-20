@@ -583,32 +583,52 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
   bool _busy = false;
   bool _sendingCode = false;
   bool _obscure = true;
+  // Same 60s resend cooldown as the register form, so the endpoint cannot be
+  // hammered and both flows behave identically.
+  int _cooldownSeconds = 0;
+  Timer? _cooldownTimer;
   String? _error;
   String? _notice;
 
   @override
   void dispose() {
+    _cooldownTimer?.cancel();
     _email.dispose(); _code.dispose(); _password.dispose(); _confirm.dispose();
     super.dispose();
   }
 
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
+      setState(() {
+        if (_cooldownSeconds > 0) _cooldownSeconds--;
+        if (_cooldownSeconds == 0) timer.cancel();
+      });
+    });
+  }
+
   Future<void> _sendCode() async {
+    if (_sendingCode || _cooldownSeconds > 0) return;
     final email = _email.text.trim();
     if (email.isEmpty) {
       setState(() => _error = v3Copy(context, zh: '请先填写邮箱',
         en: 'Enter your email first', tw: '請先填寫電子郵件'));
       return;
     }
-    if (_sendingCode) return;
     setState(() { _sendingCode = true; _error = null; _notice = null; });
     try {
       await AppScope.read(context).api.sendEmailVerify(email,
         isForgetPassword: true);
       if (mounted) {
-        setState(() => _notice = v3Copy(context,
-          zh: '验证码已发送，请查收邮箱',
-          en: 'Verification code sent. Check your inbox.',
-          tw: '驗證碼已寄出，請查收信箱'));
+        setState(() {
+          _cooldownSeconds = 60;
+          _notice = v3Copy(context,
+            zh: '验证码已发送，请查收邮箱',
+            en: 'Verification code sent. Check your inbox.',
+            tw: '驗證碼已寄出，請查收信箱');
+        });
+        _startCooldown();
       }
     } catch (error) {
       if (mounted) {
@@ -679,9 +699,12 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
         keyboardType: TextInputType.number,
         trailing: _InlineTextButton(label: _sendingCode
           ? v3Copy(context, zh: '发送中…', en: 'Sending…', tw: '傳送中…')
-          : v3Copy(context, zh: '发送验证码',
-              en: 'Send code', tw: '傳送驗證碼'),
-          onPressed: _sendingCode ? null : _sendCode)),
+          : _cooldownSeconds > 0
+            ? '${_cooldownSeconds}s'
+            : v3Copy(context, zh: '发送验证码',
+                en: 'Send code', tw: '傳送驗證碼'),
+          onPressed: _sendingCode || _cooldownSeconds > 0
+              ? null : _sendCode)),
       const SizedBox(height: 16),
       _V3Field(controller: _password,
         label: v3Copy(context, zh: '新密码', en: 'New password', tw: '新密碼'),

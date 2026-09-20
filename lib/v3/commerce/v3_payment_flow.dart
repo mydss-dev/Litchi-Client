@@ -18,7 +18,12 @@ import '../ui/v3_locale_copy.dart';
 /// [onViewOrders] adds a way to go and check the order. Paying is rarely the
 /// user's last step, and the only alternative was to close the dialog and hunt
 /// for the order page in the account hub.
-Future<void> showV3PaymentFlow({
+///
+/// Resolves `true` when the payment was confirmed (the paid view was shown
+/// and dismissed), `false` when the dialog closed any other way. Callers that
+/// create an order right before opening the flow use this to close their own
+/// dialog, so a settled order cannot be submitted twice.
+Future<bool> showV3PaymentFlow({
   required BuildContext context,
   required String tradeNo,
   required double fallbackAmount,
@@ -26,8 +31,8 @@ Future<void> showV3PaymentFlow({
   required PanelApi api,
   Future<void> Function()? onPaid,
   VoidCallback? onViewOrders,
-}) {
-  return showDialog<void>(
+}) async {
+  final paid = await showDialog<bool>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.52),
     builder: (_) => _V3PaymentDialog(
@@ -39,6 +44,7 @@ Future<void> showV3PaymentFlow({
       onViewOrders: onViewOrders,
     ),
   );
+  return paid ?? false;
 }
 
 class _V3PaymentDialog extends StatefulWidget {
@@ -233,7 +239,9 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
           width: double.infinity,
           height: 48,
           child: FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
+            // Resolves the flow as paid, letting a caller close its own dialog
+            // so a settled order cannot be resubmitted.
+            onPressed: () => Navigator.of(context).pop(true),
             child: Text(_copy(zh: '完成', en: 'Done', tw: '完成')),
           ),
         ),
@@ -244,7 +252,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
             height: 44,
             child: OutlinedButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(true);
                 widget.onViewOrders!();
               },
               child: Text(
