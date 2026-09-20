@@ -7,6 +7,7 @@ import '../../shared/utils/traffic_metrics.dart';
 import '../../shared/services/traffic_history_series.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 
 /// Supported chart periods are the same on desktop and mobile.
@@ -82,7 +83,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     final usedRatio = traffic.totalGb <= 0 ? 0.0 :
       (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0).toDouble();
     return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 760;
+      final compact = constraints.maxWidth < V3Layout.paneCompact;
       return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 30),

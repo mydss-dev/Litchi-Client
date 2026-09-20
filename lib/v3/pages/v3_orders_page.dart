@@ -7,6 +7,7 @@ import '../../shared/models/api_models.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 
@@ -135,7 +136,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         accent: p.aqua, loading: _loading),
     ];
     return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 760;
+      final compact = constraints.maxWidth < V3Layout.paneCompact;
       final phone = constraints.maxWidth < 480;
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (!compact)
@@ -214,6 +215,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
               for (var i = 0; i < visible.length; i++) ...[
                 _OrderRow(order: visible[i],
                   currencySymbol: controller.currencySymbol,
+                  wide: constraints.maxWidth >= V3Layout.paneCompact,
                   busy: _busyTradeNo == visible[i].tradeNo,
                   onPay: () => _pay(visible[i]),
                   onCancel: () => _cancel(visible[i])),
@@ -315,10 +317,14 @@ String _statusLabel(BuildContext context, RemoteOrder order) => switch (order.st
 };
 
 class _OrderRow extends StatelessWidget {
+  // The row layout follows its container width (`wide`), not the window
+  // width: inside the 560dp order sheet the wide layout would not fit.
   const _OrderRow({required this.order, required this.currencySymbol,
-    required this.busy, required this.onPay, required this.onCancel});
+    required this.wide, required this.busy, required this.onPay,
+    required this.onCancel});
   final RemoteOrder order;
   final String currencySymbol;
+  final bool wide;
   final bool busy;
   final VoidCallback onPay;
   final VoidCallback onCancel;
@@ -335,7 +341,7 @@ class _OrderRow extends StatelessWidget {
     };
     final title = order.planName?.trim().isNotEmpty == true
         ? order.planName!.trim() : order.periodLabel;
-    if (MediaQuery.sizeOf(context).width < 600) {
+    if (!wide) {
       return Padding(padding: const EdgeInsets.symmetric(vertical: 15),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

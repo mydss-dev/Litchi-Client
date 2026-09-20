@@ -69,8 +69,16 @@ class V3Shell extends StatelessWidget {
   }
 }
 
-class _V3Workspace extends StatelessWidget {
+class _V3Workspace extends StatefulWidget {
   const _V3Workspace();
+  @override
+  State<_V3Workspace> createState() => _V3WorkspaceState();
+}
+
+class _V3WorkspaceState extends State<_V3Workspace> {
+  // Pages stay mounted once visited, so scroll positions, form drafts and
+  // per-tab state survive tab switches. Appending keeps element order stable.
+  final List<AppPage> _visited = [];
 
   @override
   Widget build(BuildContext context) {
@@ -78,17 +86,25 @@ class _V3Workspace extends StatelessWidget {
     final p = V3Palette.of(context);
     return LayoutBuilder(builder: (context, constraints) {
       final compact = constraints.maxWidth < 760;
-      final page = _pageFor(controller.page, context);
+      final current = controller.page;
+      if (!_visited.contains(current)) _visited.add(current);
+      final stack = Stack(children: [
+        for (final page in _visited)
+          Offstage(
+            offstage: page != current,
+            child: _pageFor(page, context),
+          ),
+      ]);
       if (compact) {
         final mobilePage = !_isDesktopTarget &&
-                v3SupportsMobileRefresh(controller.page)
+                v3SupportsMobileRefresh(current)
             ? RefreshIndicator(
                 key: const Key('v3-mobile-refresh'),
                 color: p.lychee,
                 onRefresh: controller.refreshData,
-                child: page,
+                child: stack,
               )
-            : page;
+            : stack;
         return Scaffold(
           backgroundColor: p.canvas,
           body: mobilePage,
@@ -103,7 +119,7 @@ class _V3Workspace extends StatelessWidget {
           _DesktopRail(controller: controller),
           Expanded(child: Padding(
             padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
-            child: page,
+            child: stack,
           )),
         ]),
       );

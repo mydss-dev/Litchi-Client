@@ -10,6 +10,12 @@ abstract final class V3Layout {
   static const double cardGap = 12;
   static const EdgeInsets pageInsets = EdgeInsets.fromLTRB(18, 18, 18, 28);
 
+  /// Breakpoint for page content measured against the page's own width —
+  /// the window minus the 200dp desktop rail, not the window. At the 900x700
+  /// acceptance window the content pane is ~688dp, so pane breakpoints must
+  /// stay well below that or pages render their phone layout on the desktop.
+  static const double paneCompact = 560;
+
   static bool canSplit({
     required double paneWidth,
     required double primaryMin,

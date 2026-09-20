@@ -33,7 +33,9 @@ class _V3WindowBootstrapState extends State<V3WindowBootstrap> {
 
   Future<void> _syncV3Window() async {
     try {
-      await windowManager.setMinimumSize(const Size(760, 600));
+      // The 900x700 acceptance floor is also the minimum: the desktop rail
+      // plus the page breakpoints are tuned to the pane this leaves.
+      await windowManager.setMinimumSize(const Size(900, 700));
       await windowManager.setSize(const Size(900, 700));
       await windowManager.center();
     } catch (_) {

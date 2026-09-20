@@ -7,6 +7,7 @@ import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import 'v3_ticket_detail_dialog.dart';
 
@@ -60,7 +61,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
     final error = controller.ticketsError;
     final skeleton = !controller.ticketsLoaded && error == null;
     return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 760;
+      final compact = constraints.maxWidth < V3Layout.paneCompact;
       final createLabel = v3Copy(context, zh: '新建工单',
         en: 'New ticket', tw: '新增工單');
       return SingleChildScrollView(
@@ -137,6 +138,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
                   : Column(children: [
                       for (var i = 0; i < tickets.length; i++) ...[
                         _TicketRow(ticket: tickets[i],
+                          wide: constraints.maxWidth >= V3Layout.paneCompact,
                           onTap: () => _openTicket(tickets[i])),
                         if (i != tickets.length - 1)
                           Divider(color: p.line, height: 1),
@@ -220,8 +222,10 @@ class _TicketSkeletonRow extends StatelessWidget {
 }
 
 class _TicketRow extends StatelessWidget {
-  const _TicketRow({required this.ticket, required this.onTap});
+  const _TicketRow({required this.ticket, required this.wide,
+    required this.onTap});
   final TicketModel ticket;
+  final bool wide;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -238,7 +242,7 @@ class _TicketRow extends StatelessWidget {
       _ => v3Copy(context, zh: ticket.levelLabel,
         en: 'Low', tw: '低'),
     };
-    if (MediaQuery.sizeOf(context).width < 600) {
+    if (!wide) {
       return InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap,
         child: SizedBox(height: 102,
           child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),

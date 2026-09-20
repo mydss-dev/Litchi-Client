@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 
 class V3InvitePage extends StatefulWidget {
@@ -114,7 +115,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
         zh: '邀请链接已复制', en: 'Invite link copied', tw: '邀請連結已複製')),
     );
     return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 760;
+      final compact = constraints.maxWidth < V3Layout.paneCompact;
       return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
