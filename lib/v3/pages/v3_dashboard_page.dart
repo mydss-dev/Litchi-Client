@@ -7,6 +7,7 @@ import '../../app/plan_presentation.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_dashboard_alerts.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_picker.dart';
 import '../ui/v3_node_tags.dart';
@@ -29,6 +30,7 @@ class V3DashboardPage extends StatelessWidget {
         children: [
           const V3UpdateBanner(),
           V3NoticeBar(controller: controller),
+          V3DashboardAlerts(controller: controller),
           _ConnectionWorkspace(
             controller: controller,
             connected: status == ConnectionStatus.connected,
@@ -88,16 +90,6 @@ class _ConnectionWorkspace extends StatelessWidget {
       ConnectionStatus.error => p.danger,
       ConnectionStatus.disconnected => p.inkMuted,
     };
-    final error = status == ConnectionStatus.error
-        ? controller.coreError.isEmpty
-              ? v3Copy(
-                  context,
-                  zh: '请重试连接，或切换其他节点。',
-                  en: 'Retry or change nodes.',
-                  tw: '請重試或切換節點。',
-                )
-              : controller.coreError
-        : null;
     final node = controller.currentNode;
     final displayName = controller.autoSelected
         ? v3Copy(context, zh: '自动选择', en: 'Automatic', tw: '自動選擇')
@@ -200,19 +192,6 @@ class _ConnectionWorkspace extends StatelessWidget {
                                       fontSize: 11,
                                     ),
                                   ),
-                                  if (error != null) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      error,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: p.dangerInk,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
                                 ],
                               ),
                             ),
@@ -413,11 +392,8 @@ class _ConnectionOrb extends StatelessWidget {
               onTap: locked
                   ? null
                   : () async {
-                      final error = await controller.toggleConnection();
-                      if (error != null && context.mounted) {
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(content: Text(error)));
-                      }
+                      // Persistent alert and retry are driven by core state.
+                      await controller.toggleConnection();
                     },
               child: Center(
                 child: connecting
