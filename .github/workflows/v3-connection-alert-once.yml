@@ -1,0 +1,51 @@
+name: V3 Connection Alert One Shot
+
+on:
+  push:
+    branches: [fix/v3-connection-error-banner-20260920]
+    paths: ['.github/workflows/v3-connection-alert-once.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: true
+          lfs: true
+      - name: Apply guarded source changes
+        run: python3 tool/restore_v3_connection_warning_once.py
+      - name: Normalize test source newline
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('test/visual/v3_connection_error_banner_test.dart')
+          source = p.read_text()
+          needle = "failed '" + chr(92) + "n          'internal"
+          assert source.count(needle) == 1, 'unexpected test source format'
+          p.write_text(source.replace(needle, "failed '\n          'internal", 1))
+          PY
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format lib/v3/ui/v3_dashboard_alerts.dart test/visual/v3_connection_error_banner_test.dart
+      - name: Verify targeted banner behavior
+        run: flutter test test/visual/v3_connection_error_banner_test.dart
+      - name: Analyze sources
+        run: flutter analyze
+      - name: Run all Flutter tests
+        run: flutter test
+      - name: Commit verified source and remove temporary machinery
+        run: |
+          git rm -f .github/workflows/v3-connection-alert-once.yml tool/restore_v3_connection_warning_once.py
+          git add lib/v3/pages/v3_dashboard_page.dart lib/v3/ui/v3_dashboard_alerts.dart test/visual/v3_connection_error_banner_test.dart
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(v3): restore actionable connection failure warning without duplicate notices'
+          git push origin HEAD:fix/v3-connection-error-banner-20260920
