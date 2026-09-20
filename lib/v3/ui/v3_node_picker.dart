@@ -7,6 +7,7 @@ import '../ui/v3_components.dart';
 import 'v3_locale_copy.dart';
 import 'v3_node_tags.dart';
 import 'v3_sheet.dart';
+import 'v3_toast.dart';
 
 /// Pick a node without leaving the current page.
 class V3NodePicker extends StatefulWidget {
@@ -33,7 +34,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
   ) async {
     if (_pending != null) return;
     final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
+    final overlay = Overlay.of(context, rootOverlay: true);
     // Resolve locale before awaiting. A failed request must not use a stale context.
     final failureMessage = v3Copy(
       context,
@@ -49,10 +50,12 @@ class _V3NodePickerState extends State<V3NodePicker> {
       error = failureMessage;
     }
     if (!mounted) return;
-    messenger.showSnackBar(SnackBar(content: Text(error ?? success)));
     if (error == null) {
       navigator.pop();
+      // Root overlay outlives the picker sheet, so feedback stays visible.
+      V3Toast.showInOverlay(overlay, success, type: V3ToastType.success);
     } else {
+      V3Toast.showInOverlay(overlay, error, type: V3ToastType.error);
       setState(() => _pending = null);
     }
   }
@@ -102,7 +105,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
                         controller.nodes.isEmpty
                     ? null
                     : () async {
-                        final messenger = ScaffoldMessenger.of(context);
+                        final overlay = Overlay.of(context, rootOverlay: true);
                         final failureText = v3Copy(
                           context,
                           zh: '测速失败或所有节点超时',
@@ -111,8 +114,10 @@ class _V3NodePickerState extends State<V3NodePicker> {
                         );
                         final ok = await controller.testLatencies();
                         if (!ok && mounted) {
-                          messenger.showSnackBar(
-                            SnackBar(content: Text(failureText)),
+                          V3Toast.showInOverlay(
+                            overlay,
+                            failureText,
+                            type: V3ToastType.warning,
                           );
                         }
                       },
