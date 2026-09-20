@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/utils/traffic_summary_text.dart';
+import '../../shared/utils/traffic_metrics.dart';
 import '../../shared/services/traffic_history_series.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
@@ -19,6 +21,27 @@ class V3TrafficPage extends StatefulWidget {
 
 class _V3TrafficPageState extends State<V3TrafficPage> {
   int _days = 7;
+  final ScrollController _trendScroll = ScrollController();
+  String? _lastTrendKey;
+
+  @override
+  void dispose() {
+    _trendScroll.dispose();
+    super.dispose();
+  }
+
+  void _scrollToLatest(TrafficHistorySeries series) {
+    if (series.days.isEmpty) return;
+    final day = series.days.last.date;
+    final key = '$_days:${series.days.length}:${day.year}-${day.month}-${day.day}';
+    if (_lastTrendKey == key) return;
+    _lastTrendKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _trendScroll.hasClients) {
+        _trendScroll.jumpTo(_trendScroll.position.maxScrollExtent);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +77,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
 
     final series = TrafficHistorySeries.build(windowDays: _days,
       trafficUsage: controller.trafficUsage, dailyUsage: controller.dailyUsage);
+    _scrollToLatest(series);
     final traffic = controller.traffic;
     final usedRatio = traffic.totalGb <= 0 ? 0.0 :
       (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0).toDouble();
@@ -86,6 +110,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
           const SizedBox(height: 12),
           _TrendPanel(series: series, periodDays: _days,
             usagePoints: controller.trafficUsage,
+            scrollController: _trendScroll,
             onPeriodChanged: (days) => setState(() => _days = days)),
         ]),
       );
@@ -171,6 +196,9 @@ class _TimingPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final resetDays = _daysUntilReset(controller.resetDay);
+    final expiry = subscriptionExpiryDisplay(
+      expiredAt: controller.expiredAt, expiryText: controller.user.expiry);
+    final days = expiry.days;
     return Container(padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: p.surface,
         borderRadius: BorderRadius.circular(22), border: Border.all(color: p.line)),
@@ -184,10 +212,24 @@ class _TimingPanel extends StatelessWidget {
           label: v3Copy(context, zh: '今日已用', en: 'Used today', tw: '今日已用'),
           value: '${controller.todayTrafficGb.toStringAsFixed(2)} GB',
           accent: p.lychee),
+        _TimingRow(icon: Icons.compare_arrows_rounded,
+          label: v3Copy(context, zh: '昨日对比', en: 'Vs. yesterday',
+            tw: '昨日對比'),
+          value: _v3YesterdayComparison(context, controller.trafficUsage,
+            controller.todayTrafficGb), accent: p.aqua),
         _TimingRow(icon: Icons.event_available_rounded,
           label: v3Copy(context, zh: '套餐有效期',
             en: 'Plan expires', tw: '方案有效期'),
           value: controller.planExpiryLabel, accent: p.aqua),
+        if (days != null) _TimingRow(icon: Icons.hourglass_bottom_rounded,
+          label: v3Copy(context, zh: '距离到期', en: 'Time remaining',
+            tw: '距離到期'),
+          value: days < 0 ? v3Copy(context, zh: '已过期', en: 'Expired',
+            tw: '已過期') : days == 0
+            ? v3Copy(context, zh: '今天到期', en: 'Expires today',
+              tw: '今天到期')
+            : v3Copy(context, zh: '$days 天', en: '$days days',
+              tw: '$days 天'), accent: days <= 0 ? p.warning : p.aqua),
         _TimingRow(icon: Icons.restart_alt_rounded,
           label: v3Copy(context, zh: '流量重置', en: 'Data resets', tw: '流量重置'),
           value: controller.resetDay == null
@@ -264,11 +306,13 @@ class _DayDetails {
 
 class _TrendPanel extends StatelessWidget {
   const _TrendPanel({required this.series, required this.periodDays,
-    required this.usagePoints, required this.onPeriodChanged});
+    required this.usagePoints, required this.onPeriodChanged,
+    required this.scrollController});
   final TrafficHistorySeries series;
   final int periodDays;
   final List<TrafficUsagePoint> usagePoints;
   final ValueChanged<int> onPeriodChanged;
+  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -320,6 +364,7 @@ class _TrendPanel extends StatelessWidget {
                 final width = constraints.maxWidth > minChartWidth
                   ? constraints.maxWidth : minChartWidth;
                 return SingleChildScrollView(scrollDirection: Axis.horizontal,
+                  controller: scrollController,
                   child: SizedBox(width: width,
                     child: Row(crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -421,4 +466,29 @@ int? _daysUntilReset(int? resetDay) {
     target = targetFor(next.year, next.month);
   }
   return target.difference(today).inDays;
+}
+
+
+/// V3 copy must also render in isolated widget previews without ARB delegates.
+String _v3YesterdayComparison(BuildContext context,
+    List<TrafficUsagePoint> usage, double today) {
+  final yesterday = DateTime.now().subtract(const Duration(days: 1));
+  final hasRecord = usage.any((point) =>
+    point.date.year == yesterday.year &&
+    point.date.month == yesterday.month && point.date.day == yesterday.day);
+  if (!hasRecord) {
+    return v3Copy(context, zh: '昨日暂无记录', en: 'No data for yesterday',
+      tw: '昨日暫無紀錄');
+  }
+  final previous = trafficForDay(usage, yesterday);
+  final change = relativeChangePercent(current: today, previous: previous);
+  if (change == null) {
+    final total = previous.toStringAsFixed(2);
+    return v3Copy(context, zh: '昨日 $total GB',
+      en: 'Yesterday $total GB', tw: '昨日 $total GB');
+  }
+  final rounded = change.abs() < 0.5 ? 0 : change.round();
+  final percent = rounded > 0 ? '+$rounded%' : '$rounded%';
+  return v3Copy(context, zh: '较昨日 $percent',
+    en: 'Vs yesterday $percent', tw: '較昨日 $percent');
 }

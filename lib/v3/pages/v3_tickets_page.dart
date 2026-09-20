@@ -238,6 +238,38 @@ class _TicketRow extends StatelessWidget {
       _ => v3Copy(context, zh: ticket.levelLabel,
         en: 'Low', tw: '低'),
     };
+    if (MediaQuery.sizeOf(context).width < 600) {
+      return InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap,
+        child: SizedBox(height: 102,
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: Text(ticket.subject.trim().isEmpty
+                      ? v3Copy(context, zh: '未命名工单', en: 'Untitled ticket',
+                        tw: '未命名工單') : ticket.subject,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: p.ink, fontSize: 13,
+                      fontWeight: FontWeight.w800))),
+                  const SizedBox(width: 9),
+                  Text(v3Copy(context, zh: ticket.statusLabel,
+                    en: ticket.isOpen ? 'Open' : 'Closed',
+                    tw: ticket.isOpen ? '處理中' : '已關閉'),
+                    style: TextStyle(color: statusColor, fontSize: 10,
+                      fontWeight: FontWeight.w800)),
+                ]),
+                const SizedBox(height: 9),
+                Row(children: [
+                  Text(levelLabel, style: TextStyle(color: levelColor,
+                    fontSize: 10, fontWeight: FontWeight.w800)),
+                  const SizedBox(width: 9),
+                  Expanded(child: Text('#${ticket.id} · ${ticket.dateDisplay}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                    style: TextStyle(color: p.inkMuted, fontSize: 10))),
+                ]),
+              ]))));
+    }
     return InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap,
       child: SizedBox(height: kV3TicketRowHeight,
         child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),

@@ -9,6 +9,7 @@ import '../../shared/services/secure_logger.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_toast.dart';
 
 class V3AuthView extends StatefulWidget {
   const V3AuthView({super.key});
@@ -123,7 +124,18 @@ class _LoginFormState extends State<_LoginForm> {
   String? _error;
 
   @override
-  void initState() { super.initState(); _loadSaved(); }
+  void initState() {
+    super.initState();
+    _loadSaved();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ctrl = AppScope.read(context);
+      final message = ctrl.startupMessage;
+      if (message == null || message.trim().isEmpty) return;
+      ctrl.clearStartupMessage();
+      V3Toast.show(context, message, type: V3ToastType.warning);
+    });
+  }
 
   Future<void> _loadSaved() async {
     try {
