@@ -7,7 +7,6 @@ import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_notice_bar.dart';
-import 'package:litchi_client/v3/ui/v3_update_banner.dart';
 
 import 'v3_visual_fixture.dart';
 
@@ -182,7 +181,7 @@ void main() {
     final controller = _NewsController(update: _update);
     await _pumpPage(tester, controller, const V3DashboardPage());
 
-    expect(find.byType(V3UpdateBanner), findsOneWidget);
+    expect(find.byType(V3NoticeBar), findsOneWidget);
     expect(find.text('发现新版本 9.9.9'), findsOneWidget);
     expect(find.text('修复了若干问题'), findsNothing,
       reason: 'raw changelog belongs outside the concise update banner');
@@ -274,5 +273,26 @@ void main() {
     expect(find.byType(V3NoticeHost), findsOneWidget);
     expect(find.byType(V3NoticeDialog), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('notices and the update share one rotating lane', (tester) async {
+    final controller = _NewsController(notices: const [_notice], update: _update);
+    await _pumpPage(tester, controller, const V3DashboardPage());
+
+    // One lane, not two stacked banners. The rotation starts on notices.
+    expect(find.byType(V3NoticeBar), findsOneWidget);
+    expect(find.textContaining('服务公告'), findsOneWidget);
+    expect(find.text('发现新版本 9.9.9'), findsNothing,
+      reason: 'the update is a page of the same lane, not a second banner');
+    final laneHeight = tester.getRect(find.byType(V3NoticeBar)).height;
+    expect(laneHeight, lessThan(80),
+      reason: 'the top lane must stay within the first-screen budget');
+    // The first screen still reaches the connect orb with the lane present.
+    expect(tester.getRect(find.byKey(kConnectOrbKey)).bottom, lessThan(700));
+
+    // The rotation reaches the update page.
+    await tester.pump(const Duration(seconds: 9));
+    expect(find.textContaining('发现新版本 9.9.9'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   });
 }

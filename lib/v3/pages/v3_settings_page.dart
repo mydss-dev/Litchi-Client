@@ -153,7 +153,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         value: controller.dnsMode,
                         items: const [DnsMode.system, DnsMode.cloudflare, DnsMode.google],
                         label: (v) => switch (v) {
-                          DnsMode.system => l.systemSettings,
+                          DnsMode.system => l.systemDns,
                           DnsMode.cloudflare => 'Cloudflare',
                           DnsMode.google => 'Google',
                         },

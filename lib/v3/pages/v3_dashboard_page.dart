@@ -16,7 +16,6 @@ import '../ui/v3_toast.dart';
 import '../ui/v3_node_tags.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_notice_bar.dart';
-import '../ui/v3_update_banner.dart';
 
 /// One connection page: the desktop rail must never add a second Home route.
 class V3DashboardPage extends StatelessWidget {
@@ -35,7 +34,6 @@ class V3DashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const V3UpdateBanner(),
           V3NoticeBar(controller: controller),
           V3DashboardAlerts(controller: controller),
           if (confirmedNoPlan)
