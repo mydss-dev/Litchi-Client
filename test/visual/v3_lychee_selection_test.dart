@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
@@ -29,6 +30,8 @@ void main() {
   ]) {
     testWidgets('$mode configured network mode matches pink plan-cycle selection',
         (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       await tester.binding.setSurfaceSize(const Size(900, 700));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final controller = _SystemModeController();
@@ -57,6 +60,7 @@ void main() {
         palette.lycheeInk);
       expect(tester.widget<Text>(find.text('TUN 模式')).style!.color,
         palette.inkMuted);
+      debugDefaultTargetPlatformOverride = null;
       expect(tester.takeException(), isNull);
     });
 

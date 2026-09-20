@@ -14,6 +14,17 @@ class _NoPlanFixture extends VisualV3Controller {
   _NoPlanFixture() : super(AppPage.dashboard);
   @override
   bool get hasPlan => false;
+  @override
+  bool get hasConfirmedNoPlan => true;
+}
+
+// Unknown plan state must not be treated as a confirmed negative.
+class _UnknownPlanFixture extends VisualV3Controller {
+  _UnknownPlanFixture() : super(AppPage.dashboard);
+  @override
+  bool get hasPlan => false;
+  @override
+  bool get hasConfirmedNoPlan => false;
 }
 
 class _RefreshFixture extends VisualV3Controller {
@@ -87,6 +98,20 @@ void main() {
       },
     );
   }
+
+  testWidgets('unknown plan status keeps normal cards without purchase warning',
+      (tester) async {
+    final fixture = _UnknownPlanFixture();
+    addTearDown(fixture.disposeVisual);
+    await tester.pumpWidget(AppScope(
+      controller: fixture,
+      child: MaterialApp(theme: V3Theme.light(),
+        home: const Scaffold(body: V3DashboardPage())),
+    ));
+    expect(find.text('当前没有可用套餐'), findsNothing);
+    expect(find.byKey(kConnectActionCardKey), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   test('desktop-only settings are hidden on mobile and Linux', () {
     expect(v3HasDesktopSystemTools(TargetPlatform.windows), true);

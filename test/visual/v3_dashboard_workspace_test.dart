@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
@@ -18,6 +19,8 @@ void main() {
   for (final size in [const Size(900, 700), const Size(390, 700)]) {
     testWidgets('dashboard cards stay balanced at ${size.width}x${size.height}',
         (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       await tester.binding.setSurfaceSize(size);
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final controller = VisualV3Controller(AppPage.dashboard);
@@ -51,12 +54,15 @@ void main() {
       } else {
         expect(left.bottom, lessThan(right.top));
       }
+      debugDefaultTargetPlatformOverride = null;
       expect(tester.takeException(), isNull);
     });
   }
 
   testWidgets('configured system proxy is highlighted instead of TUN',
       (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final controller = _SystemProxyFixture();
@@ -72,6 +78,7 @@ void main() {
     final inactive = tester.widget<Text>(find.text('TUN 模式'));
     expect(active.style?.fontWeight, FontWeight.w800);
     expect(inactive.style?.fontWeight, FontWeight.w500);
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 }

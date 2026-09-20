@@ -110,6 +110,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   String? _authData;
   Future<void>? _accountSummarySave;
   bool _hasAccountSummary = false;
+  // Only two successful negative API responses can confirm no plan.
+  bool _confirmedNoPlan = false;
   int _sessionEpoch = 0;
 
   Timer? _statusRefreshTimer;
@@ -290,6 +292,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   String? get dataLoadError => _dataLoadError;
   bool get isInitialLoading => _isInitialLoading;
   bool get hasAccountSummary => _hasAccountSummary;
+  bool get hasConfirmedNoPlan => _confirmedNoPlan && !hasPlan;
   String get currencySymbol => _wallet.currencySymbol;
   String? get startupMessage => _startupMessage;
   void clearStartupMessage() => _startupMessage = null;
@@ -342,6 +345,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
     _apiClient.updateAuthData(authData);
     _authData = authData;
+    _confirmedNoPlan = false;
     await Future.wait([
       _restoreCachedNodes(),
       _restoreCachedAccountSummary(authData),
@@ -496,7 +500,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     if (snap.user != null || snap.subscribeUrl != null) {
       _hasAccountSummary = true;
     }
-    final confirmedNoPlan = snap.hasPlan == false;
+    // Failure or incomplete data is unknown, never a confirmed no-plan.
+    _confirmedNoPlan = snap.hasPlan == false;
+    final confirmedNoPlan = _confirmedNoPlan;
     if (confirmedNoPlan) {
       final hadSubscriptionState =
           hasPlan || _nodes.isNotEmpty || _core.coreProcessRunning;
@@ -780,6 +786,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     await TokenStorage.saveAuthData(authData);
     _apiClient.updateAuthData(authData);
     _authData = authData;
+    _confirmedNoPlan = false;
     await Future.wait([
       _restoreCachedNodes(),
       _restoreCachedAccountSummary(authData),
@@ -802,6 +809,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _apiClient.updateAuthData(null);
     _authData = null;
     _hasAccountSummary = false;
+    _confirmedNoPlan = false;
     _isAuthenticated = false;
     _authScreen = AuthScreen.login;
     _startupMessage = message;
@@ -839,6 +847,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _apiClient.updateAuthData(null);
       _authData = null;
       _hasAccountSummary = false;
+    _confirmedNoPlan = false;
       _account.reset();
       _nodes.reset();
       _plans = const [];
