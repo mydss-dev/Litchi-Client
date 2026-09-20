@@ -95,20 +95,23 @@ void main() {
   testWidgets('Android home exposes pull-to-refresh and calls refreshData',
       (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final controller = _RefreshFixture(AppPage.dashboard);
-    addTearDown(controller.disposeVisual);
-    await tester.pumpWidget(AppScope(
-      controller: controller,
-      child: MaterialApp(theme: V3Theme.light(), home: const V3Shell()),
-    ));
-    await tester.pump();
-    final indicator = find.byKey(const Key('v3-mobile-refresh'));
-    expect(indicator, findsOneWidget);
-    await tester.widget<RefreshIndicator>(indicator).onRefresh();
-    expect(controller.refreshCount, 1);
-    expect(tester.takeException(), isNull);
+    try {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final controller = _RefreshFixture(AppPage.dashboard);
+      addTearDown(controller.disposeVisual);
+      await tester.pumpWidget(AppScope(
+        controller: controller,
+        child: MaterialApp(theme: V3Theme.light(), home: const V3Shell()),
+      ));
+      await tester.pump();
+      final indicator = find.byKey(const Key('v3-mobile-refresh'));
+      expect(indicator, findsOneWidget);
+      await tester.widget<RefreshIndicator>(indicator).onRefresh();
+      expect(controller.refreshCount, 1);
+      expect(tester.takeException(), isNull);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }
