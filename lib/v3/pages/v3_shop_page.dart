@@ -248,9 +248,13 @@ class _PlanCard extends StatelessWidget {
       ]);
     return V3Panel(padding: const EdgeInsets.all(16),
       child: desktop
+        // Long localized feature text scrolls inside the fixed-height card
+        // instead of painting overflow stripes; heights stay uniform.
         ? SizedBox(height: 380,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [Expanded(child: info), purchase]))
+              children: [
+                Expanded(child: SingleChildScrollView(child: info)),
+                purchase]))
         : Column(crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [info, const SizedBox(height: 14), purchase]));
   }

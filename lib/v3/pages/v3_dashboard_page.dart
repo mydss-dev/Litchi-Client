@@ -562,9 +562,9 @@ class _ModeRail extends StatelessWidget {
                   padding: EdgeInsets.only(
                     right: mode == NetworkMode.values.last ? 0 : 7,
                   ),
-                  child: _NetworkModeIndicator(
+              child: _NetworkModeIndicator(
+                    controller: controller,
                     mode: mode,
-                    selected: controller.networkMode == mode,
                   ),
                 ),
               ),
@@ -629,34 +629,61 @@ class _ModeRail extends StatelessWidget {
 }
 
 class _NetworkModeIndicator extends StatelessWidget {
-  const _NetworkModeIndicator({required this.mode, required this.selected});
+  const _NetworkModeIndicator({required this.controller, required this.mode});
+  final AppController controller;
   final NetworkMode mode;
-  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Container(
-      key: ValueKey('v3-network-mode-${mode.storageKey}'),
-      constraints: const BoxConstraints(minHeight: 44),
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
-      decoration: BoxDecoration(
-        // Configured modes are a selection, not a connectivity health signal.
-        // Follow the plan-cycle style rather than tinting the white label green.
-        color: selected ? p.lycheeSoft : p.surfaceRaised,
-        border: Border.all(color: selected ? p.lychee : p.line),
-        borderRadius: BorderRadius.circular(11),
-      ),
-      child: Text(
-        _networkModeLabel(context, mode),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: selected ? p.lycheeInk : p.inkMuted,
-          fontSize: 10,
-          fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+    final selected = controller.networkMode == mode;
+    return InkWell(
+      borderRadius: BorderRadius.circular(11),
+      // The mode pill now behaves like the routing pills beside it: tap the
+      // mode you want. Switching reloads the core config, so failures surface
+      // as a SnackBar and success as a toast — same contract as _RouteButton.
+      onTap: selected ? null : () async {
+        final error = await controller.setNetworkMode(mode);
+        if (!context.mounted) return;
+        if (error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(error)));
+        } else {
+          final label = _networkModeLabel(context, mode);
+          final applied = controller.coreProcessRunning
+              ? v3Copy(context,
+                  zh: '已切换到$label，重连后生效',
+                  en: 'Switched mode; reconnect to apply it',
+                  tw: '已切換至$label，重新連線後生效')
+              : v3Copy(context,
+                  zh: '连接模式已切换，将在下次连接时生效',
+                  en: 'Mode switched. It applies on your next connection.',
+                  tw: '連線模式已切換，將於下次連線時生效');
+          V3Toast.show(context, applied, type: V3ToastType.success);
+        }
+      },
+      child: Container(
+        key: ValueKey('v3-network-mode-${mode.storageKey}'),
+        constraints: const BoxConstraints(minHeight: 44),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
+        decoration: BoxDecoration(
+          // Configured modes are a selection, not a connectivity health signal.
+          // Follow the plan-cycle style rather than tinting the white label green.
+          color: selected ? p.lycheeSoft : p.surfaceRaised,
+          border: Border.all(color: selected ? p.lychee : p.line),
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Text(
+          _networkModeLabel(context, mode),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: selected ? p.lycheeInk : p.inkMuted,
+            fontSize: 10,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+          ),
         ),
       ),
     );
