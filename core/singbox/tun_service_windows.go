@@ -17,7 +17,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
@@ -54,6 +56,7 @@ type tunRuntime struct {
 	state         string
 	lastErr       string
 	mainProxyPort int
+	mainCoreExePath string
 	generation    uint64
 }
 
@@ -77,7 +80,24 @@ func (r *tunRuntime) start(req tunServiceStartRequest) error {
 	if !tcpPortReady(req.MainProxyPort) {
 		return fmt.Errorf("main core SOCKS port %d is not ready", req.MainProxyPort)
 	}
-	config, err := buildTunBridgeConfig(req.MainProxyPort, req.MTU, req.StrictRoute, req.Stack)
+	executable, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("resolve main core executable path: %w", err)
+	}
+	executable, _ = filepath.Abs(executable)
+
+	// Verify the process listening on the main-core port is actually our own
+	// binary. A local process that binds the (usually predictable) mixed/SOCKS
+	// port would otherwise become the SOCKS destination for ALL TUN-captured
+	// traffic — an on-device MITM / proxy-bypass via port squatting.
+	if err := verifyPortListenerIsSelf(req.MainProxyPort, executable); err != nil {
+		return fmt.Errorf("port %d listener identity check failed: %w", req.MainProxyPort, err)
+	}
+	// Remember the expected path so the monitor can re-check if the port
+	// disappears and reappears.
+	r.mainCoreExePath = executable
+
+	config, err := buildTunBridgeConfig(req.MainProxyPort, req.MTU, req.StrictRoute, req.Stack, executable)
 	if err != nil {
 		return err
 	}
@@ -133,12 +153,25 @@ func (r *tunRuntime) monitorMainCore(generation uint64, port int) {
 	for range ticker.C {
 		r.mu.Lock()
 		active := r.generation == generation && r.state == "running" && r.mainProxyPort == port
+		exePath := r.mainCoreExePath
 		r.mu.Unlock()
 		if !active {
 			return
 		}
 		if tcpPortReady(port) {
 			missed = 0
+			// After the port was missing and reappears, verify the listener
+			// is still our own binary. A port squatter that binds between
+			// probes would otherwise keep the TUN alive and MITM all traffic.
+			if err := verifyPortListenerIsSelf(port, exePath); err != nil {
+				fmt.Fprintf(os.Stderr, "tun-service: main-core port %d listener identity changed: %v — stopping TUN for fail-safe\n", port, err)
+				r.mu.Lock()
+				if r.generation == generation && r.state == "running" {
+					_ = r.stopLocked("main core listener replaced by unknown process")
+				}
+				r.mu.Unlock()
+				return
+			}
 			continue
 		}
 		missed++
@@ -363,6 +396,14 @@ func installTunWindowsService(args []string) int {
 	}
 	executable, _ = filepath.Abs(executable)
 
+	// Refuse to install a LocalSystem service from a user-writable directory.
+	// A standard user who can replace the service binary gets SYSTEM on next boot (LPE).
+	// Official Inno installs always land under Program Files which passes both checks.
+	if err := verifyInstallPathSafety(executable); err != nil {
+		fmt.Fprintf(os.Stderr, "install path unsafe: %v\n", err)
+		return 1
+	}
+
 	var service *mgr.Service
 	for attempt := 0; attempt < 20; attempt++ {
 		service, err = manager.CreateService(
@@ -502,4 +543,225 @@ func decodeAuthHash(value string) ([sha256.Size]byte, error) {
 	}
 	copy(result[:], decoded)
 	return result, nil
+}
+
+// verifyInstallPathSafety rejects installing a LocalSystem service from a
+// user-writable location. A standard user who can replace the service binary
+// gains SYSTEM code execution on the next boot (local privilege escalation).
+//
+// The check: the executable must live under %ProgramFiles% or
+// %ProgramFiles(x86)%, which default to Administrators-only write access.
+// Portable installs from user-writable directories are explicitly refused.
+// This mirrors the Inno Setup default of PrivilegesRequired=admin +
+// DefaultDirName={autopf}\... .
+func verifyInstallPathSafety(executable string) error {
+	executable = filepath.Clean(executable)
+	programFiles := os.Getenv("ProgramFiles")
+	programFilesX86 := os.Getenv("ProgramFiles(x86)")
+	for _, base := range []string{programFiles, programFilesX86} {
+		if base == "" {
+			continue
+		}
+		base = filepath.Clean(base)
+		if strings.EqualFold(executable, base) {
+			continue
+		}
+		if strings.HasPrefix(strings.ToLower(executable+"\\"), strings.ToLower(base+"\\")) {
+			return nil
+		}
+	}
+	return fmt.Errorf(
+		"refusing to install privileged service from %s — "+
+			"the TUN service runs as LocalSystem and the binary must live "+
+			"under %%ProgramFiles%% to prevent replacement by a standard user",
+		executable,
+	)
+}
+
+// verifyPortListenerIsSelf checks that the process listening on 127.0.0.1:port
+// is the same binary as expectedPath. This prevents a local port squatting
+// attack where another process binds the main-core mixed/SOCKS port and
+// becomes the SOCKS destination for all TUN traffic (on-device MITM).
+//
+// It uses GetExtendedTcpTable to find the LISTENING socket's owning PID,
+// then QueryFullProcessImageNameW to compare the image path. The check is
+// best-effort: if the API is unavailable or the PID disappears between
+// lookups, we fail closed (return an error) rather than assume it's safe.
+func verifyPortListenerIsSelf(port int, expectedPath string) error {
+	pid, err := getTcpListenerPID(uint16(port))
+	if err != nil {
+		return fmt.Errorf("cannot resolve listener PID: %w", err)
+	}
+	imagePath, err := getProcessImagePath(pid)
+	if err != nil {
+		return fmt.Errorf("cannot resolve listener image path (pid=%d): %w", pid, err)
+	}
+	if !strings.EqualFold(filepath.Clean(imagePath), filepath.Clean(expectedPath)) {
+		return fmt.Errorf("port %d is owned by %q, not by %q", port, imagePath, expectedPath)
+	}
+	return nil
+}
+
+// getTcpListenerPID returns the PID of the process listening on 127.0.0.1:port.
+// It calls GetExtendedTcpTable (TCP_TABLE_OWNER_PID_LISTENER) and scans for
+// the matching port. Returns an error if no listener is found.
+func getTcpListenerPID(port uint16) (uint32, error) {
+	// Use the iphlpapi API directly.
+	// TCP_TABLE_OWNER_PID_LISTENER = 3
+	const tableClass = 3 // TCP_TABLE_OWNER_PID_LISTENER
+	const iphlpapi = "iphlpapi.dll"
+	const procName = "GetExtendedTcpTable"
+
+	// Start with a 4 KB buffer and grow up to ~1 MB.
+	var buf []byte
+	for size := uint32(4096); size < 1024*1024; {
+		buf = make([]byte, size)
+		ret := getExtendedTcpTableSyscall(
+			unsafe.Pointer(&buf[0]),
+			&size,
+			false, // sorted
+			2,     // AF_INET (IPv4 only — main core listens on 127.0.0.1)
+			tableClass,
+			0, // reserved
+		)
+		const errorInsufficientBuffer = 122
+		if ret == errorInsufficientBuffer {
+			// size was updated with the required size; retry.
+			continue
+		}
+		if ret != 0 {
+			return 0, fmt.Errorf("GetExtendedTcpTable failed: %d", ret)
+		}
+		break
+	}
+	if len(buf) == 0 {
+		return 0, fmt.Errorf("GetExtendedTcpTable buffer allocation failed")
+	}
+
+	// MIB_TCPTABLE_OWNER_PID layout:
+	//   dwNumEntries: uint32
+	//   table: [dwNumEntries]MIB_TCPROW_OWNER_PID
+	// Each MIB_TCPROW_OWNER_PID is 4 uint32s (state, localAddr, localPort, remoteAddr, remotePort, owningPid) — actually 6.
+	// Actually: state, localAddr, localPort, remoteAddr, remotePort, owningPid = 6*4=24 bytes.
+	numEntries := *(*uint32)(unsafe.Pointer(&buf[0]))
+	rowOffset := 4 // after dwNumEntries
+	rowSize := 6 * 4
+	for i := uint32(0); i < numEntries; i++ {
+		rowStart := rowOffset + int(i)*rowSize
+		if rowStart+rowSize > len(buf) {
+			break
+		}
+		localPortNet := *(*uint32)(unsafe.Pointer(&buf[rowStart+2*4]))
+		// Port is stored in network byte order (big-endian) as a uint32.
+		localPort := uint16((localPortNet >> 8) | (localPortNet << 8))
+		// Also check localAddr is 127.0.0.1 (loopback).
+		localAddr := *(*uint32)(unsafe.Pointer(&buf[rowStart+1*4]))
+		if localPort == port && localAddr == 0x0100007F { // 127.0.0.1 little-endian
+			pid := *(*uint32)(unsafe.Pointer(&buf[rowStart+5*4]))
+			return pid, nil
+		}
+	}
+	return 0, fmt.Errorf("no listener found on port %d", port)
+}
+
+// getProcessImagePath returns the full image path of the process with pid
+// using QueryFullProcessImageNameW. Fails closed if the process has exited.
+func getProcessImagePath(pid uint32) (string, error) {
+	if pid == 0 {
+		return "", fmt.Errorf("invalid pid 0")
+	}
+	const processQueryLimitedInformation = 0x1000
+	h, err := openProcess(processQueryLimitedInformation, false, pid)
+	if err != nil || h == 0 {
+		return "", fmt.Errorf("OpenProcess failed: %w", err)
+	}
+	defer closeHandle(h)
+
+	var size uint32 = 1024
+	buf := make([]uint16, size)
+	err = queryFullProcessImageNameW(h, 0, &buf[0], &size)
+	if err != nil {
+		return "", fmt.Errorf("QueryFullProcessImageNameW failed: %w", err)
+	}
+	return syscall.UTF16ToString(buf[:size]), nil
+}
+
+// ── Win32 syscall shims ──────────────────────────────────────────────────
+//
+// These use the standard Windows API so we don't have to depend on the full
+// golang.org/x/sys/windows mksysc output for these specific APIs.
+// They are thin wrappers; all error handling lives in the callers above.
+
+var (
+	iphlpapi        = syscall.NewLazyDLL("iphlpapi.dll")
+	procGetExtTcp   = iphlpapi.NewProc("GetExtendedTcpTable")
+	kernel32        = syscall.NewLazyDLL("kernel32.dll")
+	procOpenProcess = kernel32.NewProc("OpenProcess")
+	procCloseHandle = kernel32.NewProc("CloseHandle")
+	procQueryImg    = kernel32.NewProc("QueryFullProcessImageNameW")
+)
+
+func getExtendedTcpTableSyscall(
+	table unsafe.Pointer,
+	size *uint32,
+	sorted bool,
+	ipVersion uint32,
+	tableClass uint32,
+	reserved uint32,
+) uint32 {
+	var sortParam uint32
+	if sorted {
+		sortParam = 1
+	}
+	ret, _, _ := procGetExtTcp.Call(
+		uintptr(table),
+		uintptr(unsafe.Pointer(size)),
+		uintptr(sortParam),
+		uintptr(ipVersion),
+		uintptr(tableClass),
+		uintptr(reserved),
+	)
+	return uint32(ret)
+}
+
+func openProcess(access uint32, inheritHandle bool, pid uint32) (syscall.Handle, error) {
+	var inherit uint32
+	if inheritHandle {
+		inherit = 1
+	}
+	r1, _, e1 := procOpenProcess.Call(
+		uintptr(access),
+		uintptr(inherit),
+		uintptr(pid),
+	)
+	if r1 == 0 {
+		return 0, e1
+	}
+	return syscall.Handle(r1), nil
+}
+
+func closeHandle(h syscall.Handle) error {
+	r1, _, e1 := procCloseHandle.Call(uintptr(h))
+	if r1 == 0 {
+		return e1
+	}
+	return nil
+}
+
+func queryFullProcessImageNameW(
+	h syscall.Handle,
+	flags uint32,
+	name *uint16,
+	size *uint32,
+) error {
+	r1, _, e1 := procQueryImg.Call(
+		uintptr(h),
+		uintptr(flags),
+		uintptr(unsafe.Pointer(name)),
+		uintptr(unsafe.Pointer(size)),
+	)
+	if r1 == 0 {
+		return e1
+	}
+	return nil
 }

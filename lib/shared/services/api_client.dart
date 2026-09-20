@@ -95,6 +95,13 @@ String? _firstValidationMessage(Object? value) {
 class ApiClient {
   static const int maxGetRetries = 2;
 
+  /// Hard cap on the raw body bytes accepted from a subscription download.
+  ///
+  /// Matches the parser's 4 MB upper bound (see SubscriptionParser) so a
+  /// hostile endpoint cannot stream an unbounded response into memory before
+  /// the parser gets a chance to reject it.
+  static const int _maxSubscriptionBodyBytes = 4 * 1024 * 1024;
+
   /// Request-extra key marking a background/silent poll.
   ///
   /// The session-expired interceptor ignores requests tagged with this key so
@@ -279,6 +286,11 @@ class ApiClient {
   /// third-party subscription domains or CDNs.  Only `https://` URLs are
   /// accepted; the request does NOT participate in API-base failover because the
   /// URL is already absolute.
+  ///
+  /// Redirects are explicitly disabled: a subscription URL must not silently
+  /// follow cross-host or https→http redirects (TLS downgrade / SSRF risk).
+  /// The response body is capped at [_maxSubscriptionBodyBytes] so a hostile
+  /// endpoint cannot exhaust memory.
   Future<Response<String>> getPlainUrl(
     String url, {
     Map<String, dynamic>? headers,
@@ -293,6 +305,7 @@ class ApiClient {
         connectTimeout: const Duration(seconds: 8),
         receiveTimeout: const Duration(seconds: 15),
         responseType: ResponseType.plain,
+        followRedirects: false,
         headers: {
           'Accept': '*/*',
           // ignore: use_null_aware_elements
@@ -309,13 +322,24 @@ class ApiClient {
     );
 
     try {
-      return await dio.get<String>(url);
+      final response = await dio.get<String>(url);
+      // Enforce a hard byte cap on the response body. Dio's receiveTimeout
+      // bounds time but not size; this bounds memory for the plain-text
+      // response before it is passed to the subscription parser.
+      final body = response.data ?? '';
+      if (body.length > _maxSubscriptionBodyBytes) {
+        SecureLogger.warn(
+          'getPlainUrl body exceeded $_maxSubscriptionBodyBytes bytes, rejecting',
+        );
+        throw const ApiException('订阅数据过大');
+      }
+      return response;
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       final uri = Uri.tryParse(url);
       final redacted = uri == null
           ? '<invalid-url>'
-          : '${uri.scheme}://${uri.host}${uri.path}';
+          : '${uri.scheme}://${uri.host}/<redacted>';
       SecureLogger.warn('getPlainUrl failed status=$status url=$redacted', e);
       throw ApiException(_friendlyMessage(e));
     }

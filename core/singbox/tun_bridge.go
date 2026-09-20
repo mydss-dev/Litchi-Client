@@ -15,7 +15,12 @@ const (
 // instance used by the Windows TUN service. The normal user-owned main core
 // keeps all node, DNS, selector and rule state; this privileged box only turns
 // packets from the TUN interface into SOCKS traffic for that main core.
-func buildTunBridgeConfig(mainProxyPort, mtu int, strictRoute bool, stack string) (string, error) {
+//
+// mainCoreExePath is the absolute path of the user-owned litchi-core.exe so the
+// process-bypass rule keys on the exact binary, not the bare file name. Any
+// other executable named litchi-core.exe (e.g. dropped in %TEMP%) must NOT
+// match — that would be a VPN bypass.
+func buildTunBridgeConfig(mainProxyPort, mtu int, strictRoute bool, stack string, mainCoreExePath string) (string, error) {
 	if mainProxyPort <= 0 || mainProxyPort > 65535 {
 		return "", fmt.Errorf("invalid main proxy port %d", mainProxyPort)
 	}
@@ -70,7 +75,7 @@ func buildTunBridgeConfig(mainProxyPort, mtu int, strictRoute bool, stack string
 				// The main core creates the real node sockets. Those sockets must
 				// bypass the TUN bridge or they recursively return to main-core.
 				map[string]any{
-					"process_name": []string{"litchi-core.exe"},
+					"process_path": []string{mainCoreExePath},
 					"outbound":     "direct",
 				},
 				// Protocol rules only match metadata populated by sniffing. Keep the

@@ -352,12 +352,15 @@ class PanelApi {
     return 'unrecognized';
   }
 
-  /// Strips the query string (which carries the subscription token) from a URL
-  /// so it is safe to include in logs.
+  /// Returns the subscription URL with only the scheme and host, safe to log.
+  ///
+  /// The entire subscription URL is treated as a secret: tokens commonly live
+  /// in the path (e.g. `/link/<token>`) as well as the query string, and the
+  /// URL itself is sufficient to download all node credentials.
   static String _redactUrl(String url) {
     final uri = Uri.tryParse(url);
     if (uri == null) return '<invalid-url>';
-    return '${uri.scheme}://${uri.host}${uri.path}';
+    return '${uri.scheme}://${uri.host}/<redacted>';
   }
 
   // ── Plans ─────────────────────────────────────────────────────────────────

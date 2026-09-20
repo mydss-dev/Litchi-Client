@@ -347,7 +347,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _authData = authData;
     _confirmedNoPlan = false;
     await Future.wait([
-      _restoreCachedNodes(),
+      _restoreCachedNodes(authData),
       _restoreCachedAccountSummary(authData),
     ]);
     _isAuthenticated = true;
@@ -366,8 +366,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _registerConfig = cached;
   }
 
-  Future<void> _restoreCachedNodes() async {
-    final cached = await NodeCacheService.load();
+  Future<void> _restoreCachedNodes(String authData) async {
+    final cached = await NodeCacheService.load(authData);
     if (cached.isEmpty) return;
     _invalidateLatencyRuns();
     _nodes.setNodes(cached);
@@ -788,7 +788,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _authData = authData;
     _confirmedNoPlan = false;
     await Future.wait([
-      _restoreCachedNodes(),
+      _restoreCachedNodes(authData),
       _restoreCachedAccountSummary(authData),
     ]);
     _isAuthenticated = true;
@@ -905,7 +905,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _saveAccountSummary();
     if (_nodes.isNotEmpty) {
       _lastNodesRefreshAt = DateTime.now();
-      unawaited(NodeCacheService.save(_nodes.nodes));
+      unawaited(NodeCacheService.save(_nodes.nodes, _authData!));
       _restoreLastNode();
       if (supportsCoreConnection) unawaited(_preloadCoreOnly());
     }
@@ -1020,7 +1020,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         _restoreLastNode();
         _account.setTraffic(snap.traffic);
         _lastNodesRefreshAt = DateTime.now();
-        unawaited(NodeCacheService.save(_nodes.nodes));
+        unawaited(NodeCacheService.save(_nodes.nodes, _authData!));
         if (supportsCoreConnection) {
           await _reloadCoreConfig(startIfStopped: true);
         }

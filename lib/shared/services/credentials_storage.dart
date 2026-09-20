@@ -92,6 +92,10 @@ abstract final class CredentialsStorage {
       if (email == null || email.isEmpty || encPass == null) return null;
       final password = await unprotectString(encPass);
       if (password == null) return null;
+      // Self-heal legacy P: blobs on Windows — same reasoning as loadAuthToken.
+      if (Platform.isWindows && _isLegacyPlainPrefix(encPass)) {
+        await save(email: email, password: password);
+      }
       return (email: email, password: password);
     } catch (e) {
       SecureLogger.warn('CredentialsStorage.load failed', e);
@@ -180,7 +184,16 @@ abstract final class CredentialsStorage {
       final prefs = await SharedPreferences.getInstance();
       final enc = prefs.getString(_keyAuthToken);
       if (enc == null || enc.isEmpty) return null;
-      return await unprotectString(enc);
+      final token = await unprotectString(enc);
+      if (token == null || token.isEmpty) return null;
+      // Self-heal: if the stored value was a legacy P: (base64) blob on
+      // Windows, re-save it through the current DPAPI backend so the weak
+      // representation does not persist indefinitely. Previously only macOS
+      // had this migration; Windows silently accepted P: blobs forever.
+      if (Platform.isWindows && _isLegacyPlainPrefix(enc)) {
+        await saveAuthToken(token);
+      }
+      return token;
     } catch (e) {
       SecureLogger.warn('CredentialsStorage.loadAuthToken failed', e);
       return null;
@@ -234,6 +247,13 @@ abstract final class CredentialsStorage {
     // Linux — no secure backend.
     return null;
   }
+
+  /// Returns true when [encrypted] is a legacy plain-base64 (`P:`) payload
+  /// rather than a DPAPI blob or a secure-storage sentinel. Used by load()
+  /// and loadAuthToken() to decide whether to self-heal by re-saving the
+  /// decrypted value through the current platform backend.
+  static bool _isLegacyPlainPrefix(String encrypted) =>
+      encrypted.startsWith(_plainPrefix);
 
   /// Unprotects text returned by [protectString].
   ///
