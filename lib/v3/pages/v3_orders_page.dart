@@ -33,12 +33,16 @@ class V3OrdersPage extends StatefulWidget {
 }
 
 class _V3OrdersPageState extends State<V3OrdersPage> {
+  // The panel API returns the full ledger in one call, so pagination is
+  // client-side: render the first page and grow on demand.
+  static const _pageSize = 10;
   bool _initialized = false;
   bool _loading = true;
   String? _error;
   String? _busyTradeNo;
   List<RemoteOrder> _orders = const [];
   int _filter = 0;
+  int _limit = _pageSize;
 
   @override
   void didChangeDependencies() {
@@ -112,6 +116,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
     final visible = _visibleOrders;
+    final shown = visible.take(_limit).toList(growable: false);
     final pending = _orders.where(
       (order) => order.status == 0 || order.status == 1).length;
     final completed = _orders.where(
@@ -184,7 +189,10 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                     zh: '已取消', en: 'Cancelled', tw: '已取消'))),
                 ],
                 selected: {_filter}, showSelectedIcon: false,
-                onSelectionChanged: (value) => setState(() => _filter = value.first))),
+                onSelectionChanged: (value) => setState(() {
+                  _filter = value.first;
+                  _limit = _pageSize;
+                }))),
             const SizedBox(height: 16),
             if (_loading)
               const _OrdersSkeleton()
@@ -211,16 +219,26 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                   closeV3Sheet(context);
                   controller.goToPage(AppPage.shop);
                 } : null)
-            else
-              for (var i = 0; i < visible.length; i++) ...[
-                _OrderRow(order: visible[i],
+            else ...[
+              for (var i = 0; i < shown.length; i++) ...[
+                _OrderRow(order: shown[i],
                   currencySymbol: controller.currencySymbol,
                   wide: constraints.maxWidth >= V3Layout.paneCompact,
-                  busy: _busyTradeNo == visible[i].tradeNo,
-                  onPay: () => _pay(visible[i]),
-                  onCancel: () => _cancel(visible[i])),
-                if (i != visible.length - 1) Divider(color: p.line, height: 1),
+                  busy: _busyTradeNo == shown[i].tradeNo,
+                  onPay: () => _pay(shown[i]),
+                  onCancel: () => _cancel(shown[i])),
+                if (i != shown.length - 1) Divider(color: p.line, height: 1),
               ],
+              if (visible.length > shown.length) ...[
+                const SizedBox(height: 4),
+                Center(child: TextButton(
+                  onPressed: () => setState(() => _limit += _pageSize),
+                  child: Text(v3Copy(context,
+                    zh: '显示更多订单（剩余 ${visible.length - shown.length} 条）',
+                    en: 'Show more (${visible.length - shown.length} remaining)',
+                    tw: '顯示更多訂單（剩餘 ${visible.length - shown.length} 筆）')))),
+              ],
+            ],
           ]),
         ),
       ]);
@@ -382,6 +400,10 @@ class _OrderRow extends StatelessWidget {
           ],
         ]));
     }
+    // Ledger row for wide containers: plan | trade no & date | amount |
+    // status | inline actions. Pending-order actions are visible buttons
+    // instead of the compact row's overflow menu, so desktop users see what
+    // an unpaid order can do without an extra click.
     return Padding(padding: const EdgeInsets.symmetric(vertical: 15),
       child: Row(children: [
         Container(width: 44, height: 44,
@@ -402,34 +424,49 @@ class _OrderRow extends StatelessWidget {
               style: TextStyle(color: p.inkMuted, fontSize: 10)),
           ])),
         const SizedBox(width: 12),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(order.amountDisplay(currencySymbol),
-            style: TextStyle(color: p.ink, fontSize: 12,
-              fontWeight: FontWeight.w900)),
-          const SizedBox(height: 4),
-          Text(_statusLabel(context, order),
-            style: TextStyle(color: statusColor, fontSize: 10,
-              fontWeight: FontWeight.w800)),
-        ]),
+        Text(order.amountDisplay(currencySymbol),
+          style: TextStyle(color: p.ink, fontSize: 13,
+            fontWeight: FontWeight.w900)),
+        const SizedBox(width: 12),
+        Text(_statusLabel(context, order),
+          style: TextStyle(color: statusColor, fontSize: 10,
+            fontWeight: FontWeight.w800)),
         if (order.status == 0) ...[
           const SizedBox(width: 12),
           if (busy)
             const SizedBox(width: 22, height: 22,
               child: CircularProgressIndicator(strokeWidth: 2))
-          else PopupMenuButton<String>(
-            tooltip: v3Copy(context, zh: '订单操作',
-              en: 'Order actions', tw: '訂單操作'),
-            onSelected: (value) {
-              if (value == 'pay') onPay();
-              if (value == 'cancel') onCancel();
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(value: 'pay', child: Text(v3Copy(context,
-                zh: '继续支付', en: 'Continue payment', tw: '繼續付款'))),
-              PopupMenuItem(value: 'cancel', child: Text(v3Copy(context,
-                zh: '取消订单', en: 'Cancel order', tw: '取消訂單'))),
-            ],
-            icon: const Icon(Icons.more_horiz_rounded)),
+          else ...[
+            SizedBox(height: 34, child: OutlinedButton(
+              onPressed: onCancel,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(0, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                foregroundColor: p.inkMuted,
+                side: BorderSide(color: p.line),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+                textStyle: const TextStyle(fontSize: 11,
+                  fontWeight: FontWeight.w700)),
+              child: Text(v3Copy(context, zh: '取消订单',
+                en: 'Cancel order', tw: '取消訂單')))),
+            const SizedBox(width: 8),
+            SizedBox(height: 34, child: FilledButton(
+              onPressed: onPay,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(0, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                backgroundColor: p.lychee,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+                textStyle: const TextStyle(fontSize: 11,
+                  fontWeight: FontWeight.w700)),
+              child: Text(v3Copy(context, zh: '继续支付',
+                en: 'Continue payment', tw: '繼續付款')))),
+          ],
         ],
       ]));
   }

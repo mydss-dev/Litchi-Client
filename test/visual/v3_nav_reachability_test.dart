@@ -101,6 +101,7 @@ void main() {
           case AppPage.dashboard:
           case AppPage.nodes:
           case AppPage.shop:
+          case AppPage.orders:
           case AppPage.traffic:
           case AppPage.invite:
           case AppPage.tickets:
@@ -108,7 +109,6 @@ void main() {
             await _tap(tester, _rail(target), target.name);
           case AppPage.account:
             await _tap(tester, find.byKey(kAccountCardKey), 'account card');
-          case AppPage.orders:
           case AppPage.giftCard:
             await _tap(tester, find.byKey(kAccountCardKey), 'account card');
             await _tap(tester, _hubRow(target), target.name);

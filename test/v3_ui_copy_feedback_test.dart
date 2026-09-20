@@ -17,6 +17,7 @@ void main() {
       AppPage.dashboard: '连接',
       AppPage.nodes: '节点',
       AppPage.shop: '套餐',
+      AppPage.orders: '订单',
       AppPage.traffic: '流量',
       AppPage.invite: '邀请',
       AppPage.tickets: '工单',

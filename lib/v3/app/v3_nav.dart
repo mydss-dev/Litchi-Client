@@ -187,6 +187,13 @@ const List<V3NavItem> kDesktopRail = [
     icon: Icons.shopping_bag_outlined,
     placement: V3NavPlacement.desktopRail,
   ),
+  // Adjacent to shop: buy a plan, then verify the order without moving to
+  // another IA region. The rail entry is feature-gated like every other item.
+  V3NavItem(
+    page: AppPage.orders,
+    icon: Icons.receipt_long_outlined,
+    placement: V3NavPlacement.desktopRail,
+  ),
   V3NavItem(
     page: AppPage.traffic,
     icon: Icons.insights_rounded,

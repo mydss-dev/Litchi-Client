@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
@@ -85,9 +86,26 @@ class V3SheetHeader extends StatelessWidget {
   }
 }
 
+/// Whether this build targets desktop, matching the shell's own target check.
+/// The hub-open decision is a navigation-model question — desktop gets a
+/// first-class workspace page — not a window-width question, so platform is
+/// the honest signal here.
+bool _v3DesktopTarget(BuildContext context) => !kIsWeb &&
+    switch (Theme.of(context).platform) {
+      TargetPlatform.windows ||
+      TargetPlatform.macOS ||
+      TargetPlatform.linux => true,
+      _ => false,
+    };
+
+/// Hub destinations. On desktop, orders is a first-class workspace page — the
+/// shell owns its [V3SheetPageFallback] — because a 560dp modal is a
+/// phone-shaped place to manage a ledger. Compact targets keep the sheet
+/// above the account page. The gift card stays a modal everywhere: it is a
+/// single form.
 void openV3Page(BuildContext context, AppPage page) {
   final Future<void> Function(BuildContext)? sheet = switch (page) {
-    AppPage.orders => V3OrdersPage.show,
+    AppPage.orders => _v3DesktopTarget(context) ? null : V3OrdersPage.show,
     AppPage.giftCard => V3GiftCardPage.show,
     _ => null,
   };
