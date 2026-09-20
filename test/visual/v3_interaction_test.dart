@@ -149,11 +149,16 @@ void main() {
     await tester.tap(find.text('香港 · Premium'));
     await tester.pump();
     controller.result.complete('节点切换失败');
-    await tester.pumpAndSettle();
+    // A floating toast deliberately disappears after 2.5s. pumpAndSettle
+    // would consume its entire lifetime before we could assert its content.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.byType(V3NodePicker), findsOneWidget);
     expect(find.text('节点切换失败'), findsOneWidget);
+    expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.pump(const Duration(milliseconds: 2600));
   });
 
   testWidgets('Nodes overview has no selection or speed test; picker remains on dashboard',
