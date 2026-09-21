@@ -10,7 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   setUpAll(TestWidgetsFlutterBinding.ensureInitialized);
 
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    // The visual-review login bypass (debug builds only) also mutes logout;
+    // these tests exercise the real logout path, so switch it off.
+    AppController.debugBypassLogin = false;
+  });
 
   test('AppController navigates between pages', () {
     final c = AppController();

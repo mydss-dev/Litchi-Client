@@ -88,7 +88,11 @@ class _V3WorkspaceState extends State<_V3Workspace> {
       final compact = constraints.maxWidth < 760;
       final current = controller.page;
       if (!_visited.contains(current)) _visited.add(current);
-      final stack = Stack(children: [
+      // StackFit.expand keeps every page's scroll view filling the pane: a
+      // loose stack shrinks short pages (empty states, error states) to their
+      // content height and the Offstage stack then centers them vertically —
+      // tall pages top-align while short ones float mid-pane.
+      final stack = Stack(fit: StackFit.expand, children: [
         for (final page in _visited)
           Offstage(
             offstage: page != current,

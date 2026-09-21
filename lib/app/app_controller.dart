@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
@@ -88,6 +89,14 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   bool _isAuthenticated = false;
   bool _isInitializing = true;
+
+  /// TODO(v3-review): temporary visual-review bypass — remove before release.
+  /// Debug builds skip the auth screen entirely so the workspace can be
+  /// reviewed without signing in; session expiry and logout are also muted
+  /// because the getter below stays true. Release builds are untouched.
+  /// Logout-semantics tests flip this off to exercise the real path.
+  static bool debugBypassLogin = kDebugMode && !kIsWeb;
+
   AppPage _page = AppPage.dashboard;
   AuthScreen _authScreen = AuthScreen.login;
 
@@ -232,7 +241,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _core.fixProxy(activeProxyPort, networkMode: _settings.networkMode);
   static Future<String> getCoreVersion() => CoreController.getCoreVersion();
 
-  bool get isAuthenticated => _isAuthenticated;
+  // The debug bypass short-circuits the auth screen; every other consumer
+  // (status refresh, session checks) keeps working off the real flag, so the
+  // only visible difference is that a session-less run stays in the app.
+  bool get isAuthenticated => _isAuthenticated || debugBypassLogin;
   bool get isInitializing => _isInitializing;
   AppPage get page => _page;
   AuthScreen get authScreen => _authScreen;
@@ -835,6 +847,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> logout() async {
+    // The visual-review bypass keeps the workspace mounted no matter what;
+    // clearing session state here would just wipe the data under review.
+    if (debugBypassLogin) return;
     if (_logoutInFlight) return;
     _logoutInFlight = true;
     ++_sessionEpoch;

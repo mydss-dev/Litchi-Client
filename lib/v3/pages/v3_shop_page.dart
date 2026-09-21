@@ -58,13 +58,16 @@ class _V3ShopPageState extends State<V3ShopPage> {
             onChanged: (value) => setState(() => _category = value)),
           const SizedBox(height: 14),
           if (plans.isEmpty)
-            V3Panel(child: Column(children: [
-              Text(_tr(context, '当前分类没有可购买套餐',
-                  'No plans available in this category', '目前類別沒有可購買的方案')),
-              const SizedBox(height: 12),
-              OutlinedButton(onPressed: controller.refreshData,
-                child: Text(_tr(context, '刷新套餐', 'Refresh plans', '重新整理方案'))),
-            ]))
+            // Full-bleed like every other page-level empty state; an
+            // intrinsic-width panel reads as a misplaced chip.
+            V3Panel(child: SizedBox(width: double.infinity,
+              child: Column(children: [
+                Text(_tr(context, '当前分类没有可购买套餐',
+                    'No plans available in this category', '目前類別沒有可購買的方案')),
+                const SizedBox(height: 12),
+                OutlinedButton(onPressed: controller.refreshData,
+                  child: Text(_tr(context, '刷新套餐', 'Refresh plans', '重新整理方案'))),
+              ])))
           else Wrap(spacing: spacing, runSpacing: spacing, children: [
             for (final plan in plans) SizedBox(width: cardWidth,
               child: _PlanCard(plan: plan,
