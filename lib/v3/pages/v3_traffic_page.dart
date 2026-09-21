@@ -91,7 +91,8 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
           V3PageHeader(
             kicker: v3Copy(context, zh: '使用概览', en: 'USAGE OVERVIEW',
               tw: '使用概覽'),
-            title: v3Copy(context, zh: '流量', en: 'Traffic', tw: '流量'),
+            title: v3Copy(context,
+              zh: '流量用量', en: 'Traffic usage', tw: '流量用量'),
             trailing: IconButton(
               tooltip: v3Copy(context, zh: '刷新流量',
                 en: 'Refresh traffic', tw: '重新整理流量'),
