@@ -357,11 +357,12 @@ class _OrderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    // Status text renders at 10px, so this map yields the *Ink variants —
+    // the base fills (aqua worst of all) miss 4.5:1 against light surfaces.
     final statusColor = switch (order.status) {
-      0 => p.warning,
-      1 => p.aqua,
+      0 || 1 => p.warningInk,
       2 => p.inkMuted,
-      3 || 4 => p.success,
+      3 || 4 => p.successInk,
       _ => p.inkMuted,
     };
     final title = order.planName?.trim().isNotEmpty == true
@@ -397,10 +398,10 @@ class _OrderRow extends StatelessWidget {
               Expanded(flex: 2, child: FilledButton(
                 onPressed: busy ? null : onPay,
                 style: FilledButton.styleFrom(backgroundColor: p.lychee,
-                  foregroundColor: Colors.white),
-                child: busy ? const SizedBox(width: 16, height: 16,
+                  foregroundColor: p.onLychee),
+                child: busy ? SizedBox(width: 16, height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2,
-                    color: Colors.white))
+                    color: p.onLychee))
                   : Text(v3Copy(context, zh: '继续支付',
                     en: 'Continue payment', tw: '繼續付款')))),
             ]),
@@ -466,7 +467,7 @@ class _OrderRow extends StatelessWidget {
                 minimumSize: const Size(0, 34),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 backgroundColor: p.lychee,
-                foregroundColor: Colors.white,
+                foregroundColor: p.onLychee,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(V3Radius.control)),
                 textStyle: const TextStyle(fontSize: 11,
@@ -525,7 +526,7 @@ class _CancelOrderDialog extends StatelessWidget {
           child: Text(v3Copy(context, zh: '保留订单',
             en: 'Keep order', tw: '保留訂單'))),
         FilledButton(style: FilledButton.styleFrom(backgroundColor: p.danger,
-            foregroundColor: Colors.white),
+            foregroundColor: p.onDanger),
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(v3Copy(context, zh: '确认取消',
             en: 'Confirm cancellation', tw: '確認取消'))),

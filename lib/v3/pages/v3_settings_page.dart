@@ -161,7 +161,10 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         tw: '在背景檢查是否有新版本。'),
                       last: true,
                       control: V3Switch(value: controller.autoUpdate,
-                        onChanged: controller.setAutoUpdate),
+                        onChanged: (v) => _apply(() async {
+                          controller.setAutoUpdate(v);
+                          return null;
+                        }, l.settingsUpdated)),
                     ),
                   ]),
                 ),

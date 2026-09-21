@@ -36,7 +36,7 @@ Future<bool> showV3LogoutConfirmation(BuildContext context) async {
             key: const Key('v3-logout-confirm'),
             style: FilledButton.styleFrom(
               backgroundColor: p.danger,
-              foregroundColor: Colors.white,
+              foregroundColor: p.onDanger,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(

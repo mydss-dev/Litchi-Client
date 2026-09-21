@@ -233,8 +233,11 @@ class _TicketRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final statusColor = ticket.isOpen ? p.warningInk : p.successInk;
+    // The level tag renders at 10px, so it needs text-safe inks; low priority
+    // is deliberately de-emphasised rather than given an accent color — aqua
+    // is a decorative fill tone and drops to ~1.6:1 as text on light surfaces.
     final levelColor = switch (ticket.level) {
-      2 => p.dangerInk, 1 => p.warningInk, _ => p.aqua,
+      2 => p.dangerInk, 1 => p.warningInk, _ => p.inkMuted,
     };
     final levelLabel = switch (ticket.level) {
       2 => v3Copy(context, zh: ticket.levelLabel,

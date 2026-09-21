@@ -482,7 +482,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                 onPressed: () => Navigator.of(context).pop(_index),
                 style: FilledButton.styleFrom(
                   backgroundColor: p.lychee,
-                  foregroundColor: Colors.white,
+                  foregroundColor: p.onLychee,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 22, vertical: 12),
                   shape: RoundedRectangleBorder(

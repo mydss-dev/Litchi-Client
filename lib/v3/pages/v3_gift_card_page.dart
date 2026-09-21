@@ -178,7 +178,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
                   onPressed: _busy ? null : _redeem,
                   style: FilledButton.styleFrom(
                     backgroundColor: p.lychee,
-                    foregroundColor: Colors.white,
+                    foregroundColor: p.onLychee,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(V3Radius.field),
                     ),

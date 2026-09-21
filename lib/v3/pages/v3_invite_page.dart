@@ -205,7 +205,7 @@ class _InviteHero extends StatelessWidget {
             Container(width: 44, height: 44, alignment: Alignment.center,
               decoration: BoxDecoration(color: p.lychee,
                 borderRadius: BorderRadius.circular(V3Radius.field)),
-              child: const Icon(Icons.redeem_rounded, color: Colors.white,
+              child: Icon(Icons.redeem_rounded, color: p.onLychee,
                 size: 22)),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,9 +365,9 @@ class _CreateButton extends StatelessWidget {
     return FilledButton.icon(
       onPressed: creating ? null : onCreate,
       style: FilledButton.styleFrom(backgroundColor: p.lychee,
-        foregroundColor: Colors.white),
-      icon: creating ? const SizedBox(width: 16, height: 16,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+        foregroundColor: p.onLychee),
+      icon: creating ? SizedBox(width: 16, height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2, color: p.onLychee))
         : const Icon(Icons.add_rounded, size: 18),
       label: Text(creating ? v3Copy(context, zh: '创建中', en: 'Creating',
         tw: '建立中')

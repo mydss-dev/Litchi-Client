@@ -24,6 +24,13 @@ String _tr(BuildContext context, String zh, String en, String tw) {
   return zh;
 }
 
+/// Backend exceptions arrive as `Exception: ...` strings; strip the prefixes
+/// the other pages strip, so shop error surfaces show the backend message
+/// alone.
+String _errorText(Object error) => error.toString()
+    .replaceFirst('ApiException: ', '')
+    .replaceFirst('Exception: ', '');
+
 class V3ShopPage extends StatefulWidget {
   const V3ShopPage({super.key});
   @override
@@ -248,7 +255,7 @@ class _PlanCard extends StatelessWidget {
           child: FilledButton(
             onPressed: plan.soldOut || price == null ? null : onBuy,
             style: FilledButton.styleFrom(backgroundColor: p.lychee,
-              foregroundColor: Colors.white,
+              foregroundColor: p.onLychee,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(V3Radius.field))),
             child: Text(plan.soldOut
@@ -358,7 +365,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
         }
       });
     } catch (error) {
-      if (mounted) setState(() => _error = '$error');
+      if (mounted) setState(() => _error = _errorText(error));
     } finally {
       if (mounted) setState(() => _checkingCoupon = false);
     }
@@ -381,7 +388,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
         currencySymbol: widget.currencySymbol, api: widget.api,
         onPaid: widget.onPaid, onViewOrders: widget.onViewOrders);
     } catch (error) {
-      if (mounted) setState(() { _error = '$error'; _submitting = false; });
+      if (mounted) setState(() { _error = _errorText(error); _submitting = false; });
     }
   }
 
@@ -412,7 +419,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.headlineMedium)),
               IconButton(tooltip: _tr(context, '关闭', 'Close', '關閉'),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: _submitting ? null : () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close_rounded)),
             ]),
             Divider(color: p.line),
@@ -499,7 +506,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                 onPressed: _submitting || _price(widget.plan, _cycle) == null
                   ? null : _submit,
                 style: FilledButton.styleFrom(backgroundColor: p.lychee,
-                  foregroundColor: Colors.white),
+                  foregroundColor: p.onLychee),
                 child: Text(_submitting
                   ? _tr(context, '正在创建订单…', 'Creating order…', '正在建立訂單…')
                   : _tr(context, '确认并创建订单', 'Confirm and create order',

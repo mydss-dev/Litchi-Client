@@ -14,6 +14,44 @@ import 'v3_locale_copy.dart';
 /// The width at which the workspace and its sheets switch layouts.
 const double kV3CompactBreakpoint = 760;
 
+/// A destructive or hard-to-undo action confirms before it executes: wallet
+/// fund movements, ticket closing, unbinding. One dialog keeps the guard
+/// identical everywhere instead of each flow inventing its own.
+Future<bool> showV3ConfirmDialog(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String confirmLabel,
+  bool destructive = false,
+}) async {
+  final accepted = await showDialog<bool>(
+    context: context,
+    barrierColor: Colors.black.withValues(alpha: .48),
+    builder: (dialogContext) {
+      final p = V3Palette.of(dialogContext);
+      return AlertDialog(
+        backgroundColor: p.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(V3Radius.panel)),
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(v3Copy(dialogContext,
+              zh: '取消', en: 'Cancel', tw: '取消'))),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: destructive ? p.danger : p.lychee,
+              foregroundColor: destructive ? p.onDanger : p.onLychee),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(confirmLabel)),
+        ],
+      );
+    });
+  return accepted == true;
+}
+
 /// Wide windows show a centered modal; compact windows show a bottom drawer.
 /// Account subpages stay above their parent, preserving the selected tab.
 Future<T?> showV3Sheet<T>(

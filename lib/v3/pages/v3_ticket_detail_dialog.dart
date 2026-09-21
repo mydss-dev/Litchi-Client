@@ -6,6 +6,7 @@ import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_sheet.dart';
 
 /// Stable outer bounds and title position while detail requests complete.
 class V3TicketDetailDialog extends StatefulWidget {
@@ -63,6 +64,19 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
 
   Future<void> _closeTicket() async {
     if (_closing || _sending) return;
+    // Closing ends the conversation: the reply field disappears for the
+    // ticket and a follow-up needs a new one. Confirm before the call.
+    final confirmed = await showV3ConfirmDialog(context,
+      title: v3Copy(context, zh: '关闭这个工单？',
+        en: 'Close this ticket?', tw: '關閉這個工單？'),
+      body: v3Copy(context,
+        zh: '关闭后将无法继续回复；如仍有问题，需要重新创建工单。',
+        en: 'A closed ticket cannot be replied to. Open a new one if the issue comes back.',
+        tw: '關閉後將無法繼續回覆；如仍有問題，需要重新建立工單。'),
+      confirmLabel: v3Copy(context, zh: '关闭工单',
+        en: 'Close ticket', tw: '關閉工單'),
+      destructive: true);
+    if (!confirmed || !mounted) return;
     setState(() { _closing = true; _error = null; });
     try {
       await widget.api.closeTicket(widget.summary.id);

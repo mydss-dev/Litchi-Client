@@ -94,7 +94,7 @@ class _NoPlanDashboardPanel extends StatelessWidget {
                 key: const Key('v3-dashboard-no-plan-buy'),
                 onPressed: () => controller.goToPage(AppPage.shop),
                 style: FilledButton.styleFrom(
-                  backgroundColor: p.lychee, foregroundColor: Colors.white,
+                  backgroundColor: p.lychee, foregroundColor: p.onLychee,
                   minimumSize: const Size(156, 44)),
                 icon: const Icon(Icons.storefront_rounded, size: 18),
                 label: Text(v3Copy(context, zh: '选择套餐',
@@ -455,19 +455,19 @@ class _ConnectionOrb extends StatelessWidget {
                     },
               child: Center(
                 child: connecting
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: p.onLychee,
                         ),
                       )
                     : Icon(
                         connected
                             ? Icons.stop_rounded
                             : Icons.power_settings_new_rounded,
-                        color: connected ? p.night : Colors.white,
+                        color: connected ? p.night : p.onLychee,
                         size: 30,
                       ),
               ),
@@ -533,13 +533,69 @@ bool v3ShowsNetworkMode(TargetPlatform platform, NetworkMode mode) =>
     mode == NetworkMode.tun ||
     platform == TargetPlatform.windows || platform == TargetPlatform.macOS;
 
-class _ModeRail extends StatelessWidget {
+class _ModeRail extends StatefulWidget {
   const _ModeRail({required this.controller});
   final AppController controller;
 
   @override
+  State<_ModeRail> createState() => _ModeRailState();
+}
+
+class _ModeRailState extends State<_ModeRail> {
+  // Both rails ask the core to reload its config on switch; a second tap
+  // while the first is still applying would race it. One lock covers both,
+  // the same guard the connect orb gets from connectionActionLocked.
+  bool _busy = false;
+
+  Future<void> _run(Future<void> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await action();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _setNetworkMode(NetworkMode mode) async {
+    final controller = widget.controller;
+    final error = await controller.setNetworkMode(mode);
+    if (!mounted) return;
+    if (error != null) {
+      V3Toast.show(context, error, type: V3ToastType.error);
+      return;
+    }
+    final label = _networkModeLabel(context, mode);
+    final applied = controller.coreProcessRunning
+        ? v3Copy(context,
+            zh: '已切换到$label，重连后生效',
+            en: 'Switched mode; reconnect to apply it',
+            tw: '已切換至$label，重新連線後生效')
+        : v3Copy(context,
+            zh: '连接模式已切换，将在下次连接时生效',
+            en: 'Mode switched. It applies on your next connection.',
+            tw: '連線模式已切換，將於下次連線時生效');
+    V3Toast.show(context, applied, type: V3ToastType.success);
+  }
+
+  Future<void> _setProxyMode(ProxyMode mode) async {
+    final error = await widget.controller.setProxyMode(mode);
+    if (!mounted) return;
+    if (error != null) {
+      V3Toast.show(context, error, type: V3ToastType.error);
+      return;
+    }
+    V3Toast.show(context, v3Copy(context,
+      zh: '已切换到${_modeTitle(context, mode)}',
+      en: 'Switched to ${_modeTitle(context, mode)}',
+      tw: '已切換至${_modeTitle(context, mode)}'),
+      type: V3ToastType.success);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    final controller = widget.controller;
     final network = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -563,6 +619,8 @@ class _ModeRail extends StatelessWidget {
                   child: _NetworkModeIndicator(
                     controller: controller,
                     mode: mode,
+                    busy: _busy,
+                    onTap: () => _run(() => _setNetworkMode(mode)),
                   ),
                 ),
               ),
@@ -590,7 +648,8 @@ class _ModeRail extends StatelessWidget {
                   padding: EdgeInsets.only(
                     right: mode == ProxyMode.values.last ? 0 : 7,
                   ),
-                  child: _RouteButton(controller: controller, mode: mode),
+                  child: _RouteButton(controller: controller, mode: mode,
+                    busy: _busy, onTap: () => _run(() => _setProxyMode(mode))),
                 ),
               ),
           ],
@@ -627,9 +686,15 @@ class _ModeRail extends StatelessWidget {
 }
 
 class _NetworkModeIndicator extends StatelessWidget {
-  const _NetworkModeIndicator({required this.controller, required this.mode});
+  // The mode pill behaves like the routing pills beside it: tap the mode you
+  // want. _ModeRail owns the switch and holds the busy lock while a switch
+  // reloads the core config — same contract as _RouteButton.
+  const _NetworkModeIndicator({required this.controller, required this.mode,
+    required this.busy, required this.onTap});
   final AppController controller;
   final NetworkMode mode;
+  final bool busy;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -637,28 +702,7 @@ class _NetworkModeIndicator extends StatelessWidget {
     final selected = controller.networkMode == mode;
     return InkWell(
       borderRadius: BorderRadius.circular(V3Radius.control),
-      // The mode pill now behaves like the routing pills beside it: tap the
-      // mode you want. Switching reloads the core config, so failures surface
-      // as a SnackBar and success as a toast — same contract as _RouteButton.
-      onTap: selected ? null : () async {
-        final error = await controller.setNetworkMode(mode);
-        if (!context.mounted) return;
-        if (error != null) {
-          V3Toast.show(context, error, type: V3ToastType.error);
-        } else {
-          final label = _networkModeLabel(context, mode);
-          final applied = controller.coreProcessRunning
-              ? v3Copy(context,
-                  zh: '已切换到$label，重连后生效',
-                  en: 'Switched mode; reconnect to apply it',
-                  tw: '已切換至$label，重新連線後生效')
-              : v3Copy(context,
-                  zh: '连接模式已切换，将在下次连接时生效',
-                  en: 'Mode switched. It applies on your next connection.',
-                  tw: '連線模式已切換，將於下次連線時生效');
-          V3Toast.show(context, applied, type: V3ToastType.success);
-        }
-      },
+      onTap: selected || busy ? null : onTap,
       child: Container(
         key: ValueKey('v3-network-mode-${mode.storageKey}'),
         constraints: const BoxConstraints(minHeight: 44),
@@ -688,9 +732,12 @@ class _NetworkModeIndicator extends StatelessWidget {
 }
 
 class _RouteButton extends StatelessWidget {
-  const _RouteButton({required this.controller, required this.mode});
+  const _RouteButton({required this.controller, required this.mode,
+    required this.busy, required this.onTap});
   final AppController controller;
   final ProxyMode mode;
+  final bool busy;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -699,20 +746,7 @@ class _RouteButton extends StatelessWidget {
     return SizedBox(
       height: 44,
       child: OutlinedButton(
-        onPressed: () async {
-          if (active) return;
-          final error = await controller.setProxyMode(mode);
-          if (!context.mounted) return;
-          if (error != null) {
-            V3Toast.show(context, error, type: V3ToastType.error);
-          } else {
-            V3Toast.show(context, v3Copy(context,
-              zh: '已切换到${_modeTitle(context, mode)}',
-              en: 'Switched to ${_modeTitle(context, mode)}',
-              tw: '已切換至${_modeTitle(context, mode)}'),
-              type: V3ToastType.success);
-          }
-        },
+        onPressed: active || busy ? null : onTap,
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 3),
           foregroundColor: active ? p.lycheeInk : p.ink,

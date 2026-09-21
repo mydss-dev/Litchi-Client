@@ -235,7 +235,7 @@ class _LoginFormState extends State<_LoginForm> {
       SizedBox(width: double.infinity, height: 52,
         child: FilledButton(onPressed: _busy ? null : _login,
           style: FilledButton.styleFrom(backgroundColor: p.lychee,
-            foregroundColor: Colors.white,
+            foregroundColor: p.onLychee,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field))),
           child: Text(_busy ? v3Copy(context, zh: '正在登录…',
             en: 'Signing in…', tw: '正在登入…')
@@ -472,7 +472,7 @@ class _RegisterFormState extends State<_RegisterForm> {
               const SizedBox(height: 8),
               Container(padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(color: p.surface,
-                  borderRadius: BorderRadius.circular(V3Radius.card),
+                  borderRadius: BorderRadius.circular(V3Radius.field),
                   border: Border.all(color: p.line)),
                 child: DropdownButtonHideUnderline(child: DropdownButton<String>(
                   isExpanded: true,
@@ -559,7 +559,7 @@ class _RegisterFormState extends State<_RegisterForm> {
         child: FilledButton(onPressed: _busy || _sendingCode ||
             !config.registerOpen ? null : _register,
           style: FilledButton.styleFrom(backgroundColor: p.lychee,
-            foregroundColor: Colors.white,
+            foregroundColor: p.onLychee,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field))),
           child: Text(_busy ? v3Copy(context,
             zh: '正在注册…', en: 'Registering…', tw: '正在註冊…')
@@ -739,7 +739,7 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
       SizedBox(width: double.infinity, height: 52,
         child: FilledButton(onPressed: _busy ? null : _reset,
           style: FilledButton.styleFrom(backgroundColor: p.lychee,
-            foregroundColor: Colors.white,
+            foregroundColor: p.onLychee,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field))),
           child: Text(_busy ? v3Copy(context,
             zh: '正在重置…', en: 'Resetting…', tw: '正在重置…')
@@ -822,11 +822,11 @@ class _V3Field extends StatelessWidget {
         decoration: InputDecoration(hintText: hint, suffixIcon: trailing,
           filled: true, fillColor: p.surface,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.card),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.field),
             borderSide: BorderSide(color: p.line)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.card),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.field),
             borderSide: BorderSide(color: p.line)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.card),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.field),
             borderSide: BorderSide(color: p.lychee, width: 1.5)))),
     ]);
   }

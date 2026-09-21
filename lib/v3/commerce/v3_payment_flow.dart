@@ -475,7 +475,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                     : (_checkingStatus ? null : _checkStatus),
                 style: FilledButton.styleFrom(
                   backgroundColor: p.lychee,
-                  foregroundColor: Colors.white,
+                  foregroundColor: p.onLychee,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(V3Radius.field),
                   ),

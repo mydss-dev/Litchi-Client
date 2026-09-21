@@ -24,6 +24,8 @@ class V3Palette {
     required this.successInk,
     required this.warningInk,
     required this.dangerInk,
+    required this.onLychee,
+    required this.onDanger,
   });
 
   final Color canvas;
@@ -62,6 +64,18 @@ class V3Palette {
   final Color successInk;
   final Color warningInk;
   final Color dangerInk;
+
+  /// Foregrounds drawn on top of solid [lychee] fills (primary buttons, the
+  /// connect orb, the brand avatar). White fails here: light mode sits at
+  /// 3.3:1 and dark mode at 2.8:1 — below even the 3:1 graphical ask — while
+  /// [night] clears 4.5:1 in both modes (5.1:1 light, 6.7:1 dark). This is the
+  /// same pairing the brand mark already uses on its citrus tile.
+  final Color onLychee;
+
+  /// Foreground on solid [danger] fills. White passes on the darker light-mode
+  /// red (4.8:1) but sinks to 2.6:1 on the lighter dark-mode red, where [night]
+  /// reads at 6.5:1.
+  final Color onDanger;
 
   static const light = V3Palette(
     // Four tiers, darkest to lightest: canvas → hero → surfaceRaised → surface.
@@ -104,6 +118,11 @@ class V3Palette {
     successInk: Color(0xFF11613A),
     warningInk: Color(0xFF8A5000),
     dangerInk: Color(0xFFB02E45),
+    onLychee: Color(0xFF121515),
+    // The one deliberate pure white in light mode besides the QR pad: the
+    // danger red is dark enough that white clears AA, while night does not
+    // (3.6:1). See the QR note under `canvas` above.
+    onDanger: Color(0xFFFFFFFF),
   );
 
   static const dark = V3Palette(
@@ -127,6 +146,8 @@ class V3Palette {
     successInk: Color(0xFF57D39A),
     warningInk: Color(0xFFF1BD59),
     dangerInk: Color(0xFFFF7188),
+    onLychee: Color(0xFF080B0A),
+    onDanger: Color(0xFF080B0A),
   );
 
   static V3Palette of(BuildContext context) =>
@@ -163,13 +184,13 @@ class V3Theme {
     final scheme = ColorScheme(
       brightness: brightness,
       primary: p.lychee,
-      onPrimary: Colors.white,
+      onPrimary: p.onLychee,
       // Green is reserved for measured/confirmed status, never selection.
       // Material controls that fall back to secondary must still select pink.
       secondary: p.lychee,
       onSecondary: p.night,
       error: p.danger,
-      onError: Colors.white,
+      onError: p.onDanger,
       surface: p.surface,
       onSurface: p.ink,
       outline: p.line,

@@ -190,10 +190,16 @@ class V3ActionButton extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (busy)
-          const SizedBox(
+          SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            // An uncolored spinner resolves to ColorScheme.primary, which is
+            // the same lychee as the primary button's own fill — invisible.
+            // The secondary button sits on the canvas, where lychee reads.
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: secondary ? p.lychee : p.onLychee,
+            ),
           )
         else if (icon != null) ...[
           Icon(icon, size: 16),
@@ -220,7 +226,7 @@ class V3ActionButton extends StatelessWidget {
               onPressed: busy ? null : onPressed,
               style: FilledButton.styleFrom(
                 backgroundColor: p.lychee,
-                foregroundColor: Colors.white,
+                foregroundColor: p.onLychee,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(V3Radius.field),
                 ),
@@ -319,7 +325,7 @@ class V3Switch extends StatelessWidget {
             duration: const Duration(milliseconds: 160),
             alignment: value ? Alignment.centerRight : Alignment.centerLeft,
             child: Container(width: 22, height: 22, decoration: BoxDecoration(
-              color: value ? Colors.white : p.inkMuted,
+              color: value ? p.onLychee : p.inkMuted,
               shape: BoxShape.circle)),
           ),
         ),

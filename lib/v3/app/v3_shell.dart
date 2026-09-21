@@ -218,7 +218,7 @@ class _DesktopRail extends StatelessWidget {
                 radius: 17,
                 backgroundColor: p.lychee,
                 child: Text(user.avatarLetter.isEmpty ? '?' : user.avatarLetter,
-                  style: const TextStyle(color: Colors.white,
+                  style: TextStyle(color: p.onLychee,
                     fontWeight: FontWeight.w800)),
               ),
               const SizedBox(width: 7),
@@ -468,15 +468,16 @@ class _V3WindowButton extends StatelessWidget {
       child: IconButton(
         tooltip: tooltip,
         padding: EdgeInsets.zero,
-        // The close button turns white-on-red while hovered, the standard
-        // Windows pattern; a red icon on the same red hover fill disappears.
+        // Hover swaps the glyph to night-on-lychee: the hovered state must
+        // stay visible against its own fill, and white fails on the dark-mode
+        // lychee (2.8:1) where night clears 4.5:1 in both themes.
         style: ButtonStyle(
           shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
             if (close) {
               return states.contains(WidgetState.hovered) ||
                       states.contains(WidgetState.pressed)
-                  ? Colors.white
+                  ? p.onLychee
                   : p.lychee;
             }
             return p.inkMuted;

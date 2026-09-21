@@ -99,6 +99,16 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
   Future<void> _unbind() async {
     if (_working) return;
     final controller = AppScope.read(context);
+    final confirmed = await showV3ConfirmDialog(context,
+      title: v3Copy(context, zh: '解除 Telegram 绑定？',
+        en: 'Unlink Telegram?', tw: '解除 Telegram 綁定？'),
+      body: v3Copy(context,
+        zh: '解绑后将不再接收账户通知，重新绑定后恢复。',
+        en: 'You will stop receiving account alerts until you link again.',
+        tw: '解綁後將不再接收帳戶通知，重新綁定後恢復。'),
+      confirmLabel: v3Copy(context, zh: '解除绑定',
+        en: 'Unlink', tw: '解除綁定'));
+    if (!confirmed || !mounted) return;
     final success = v3Copy(context, zh: 'Telegram 已解绑',
       en: 'Telegram unlinked', tw: 'Telegram 已解除綁定');
     setState(() { _working = true; _error = null; });

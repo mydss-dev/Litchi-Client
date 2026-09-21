@@ -139,8 +139,8 @@ class _AccountSummaryPanel extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(color: p.lychee,
               borderRadius: BorderRadius.circular(V3Radius.card)),
-            child: Text(letter, style: const TextStyle(
-              color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900))),
+            child: Text(letter, style: TextStyle(
+              color: p.onLychee, fontSize: 19, fontWeight: FontWeight.w900))),
           const SizedBox(width: 14),
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,7 +181,7 @@ class _AccountSummaryPanel extends StatelessWidget {
           FilledButton.icon(
             onPressed: () => controller.goToPage(AppPage.shop),
             style: FilledButton.styleFrom(backgroundColor: p.lychee,
-              foregroundColor: Colors.white,
+              foregroundColor: p.onLychee,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(V3Radius.field))),
             icon: const Icon(Icons.storefront_rounded, size: 17),
@@ -277,7 +277,7 @@ class _WalletActionButton extends StatelessWidget {
       child: primary
         ? FilledButton.icon(onPressed: onTap,
             style: FilledButton.styleFrom(backgroundColor: p.lychee,
-              foregroundColor: Colors.white, padding: EdgeInsets.zero, shape: shape),
+              foregroundColor: p.onLychee, padding: EdgeInsets.zero, shape: shape),
             icon: Icon(icon, size: 17), label: Text(label))
         : OutlinedButton.icon(onPressed: onTap,
             style: OutlinedButton.styleFrom(foregroundColor: p.ink,
@@ -521,7 +521,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
             SizedBox(width: double.infinity, height: 48,
               child: FilledButton(onPressed: _busy ? null : _submit,
                 style: FilledButton.styleFrom(backgroundColor: p.lychee,
-                  foregroundColor: Colors.white,
+                  foregroundColor: p.onLychee,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(V3Radius.field))),
                 child: Text(_busy

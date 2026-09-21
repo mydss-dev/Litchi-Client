@@ -37,6 +37,18 @@ Future<void> showV3TransferDialog(BuildContext context) async {
       maximum: controller.withdrawable,
       currencySymbol: controller.currencySymbol));
   if (amount == null || !context.mounted) return;
+  // Money moves the moment the API call lands, so re-confirm the exact
+  // amount after the form closes — same guard as cancelling an order.
+  final confirmed = await showV3ConfirmDialog(context,
+    title: v3Copy(context, zh: '确认转入余额',
+      en: 'Transfer to balance?', tw: '確認轉入餘額'),
+    body: v3Copy(context,
+      zh: '将把 ${controller.currencySymbol}${amount.toStringAsFixed(2)} 佣金转入账户余额。',
+      en: '${controller.currencySymbol}${amount.toStringAsFixed(2)} of commission will be moved to your account balance.',
+      tw: '將把 ${controller.currencySymbol}${amount.toStringAsFixed(2)} 佣金轉入帳戶餘額。'),
+    confirmLabel: v3Copy(context, zh: '确认转入',
+      en: 'Transfer', tw: '確認轉入'));
+  if (!confirmed || !context.mounted) return;
   final error = await controller.transferCommissionToBalance(amount);
   if (!context.mounted) return;
   _toast(context, error ?? success,
@@ -67,6 +79,18 @@ Future<void> showV3WithdrawDialog(BuildContext context) async {
       methods: controller.withdrawMethods,
       currencySymbol: controller.currencySymbol));
   if (result == null || !context.mounted) return;
+  // A withdrawal request names a payout destination, so the confirmation
+  // restates amount, method and account for one final check.
+  final confirmed = await showV3ConfirmDialog(context,
+    title: v3Copy(context, zh: '确认提现申请',
+      en: 'Confirm withdrawal?', tw: '確認提領申請'),
+    body: v3Copy(context,
+      zh: '将申请提现 ${controller.currencySymbol}${result.amount.toStringAsFixed(2)} 至${result.method}账号 ${result.account}。',
+      en: 'This will submit a withdrawal of ${controller.currencySymbol}${result.amount.toStringAsFixed(2)} to your ${result.method} account ${result.account}.',
+      tw: '將申請提領 ${controller.currencySymbol}${result.amount.toStringAsFixed(2)} 至${result.method}帳號 ${result.account}。'),
+    confirmLabel: v3Copy(context, zh: '提交提现',
+      en: 'Submit withdrawal', tw: '提交提領'));
+  if (!confirmed || !context.mounted) return;
   final error = await controller.withdrawCommission(
     amount: result.amount, account: result.account, method: result.method);
   if (!context.mounted) return;
@@ -175,7 +199,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
             SizedBox(width: double.infinity, height: 48,
               child: FilledButton.icon(onPressed: _busy ? null : _submit,
                 style: FilledButton.styleFrom(backgroundColor: p.lychee,
-                  foregroundColor: Colors.white,
+                  foregroundColor: p.onLychee,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(V3Radius.field))),
                 icon: const Icon(Icons.add_card_rounded, size: 18),
