@@ -202,10 +202,12 @@ class _LoginFormState extends State<_LoginForm> {
         tw: '登入後繼續連線至你的 Litchi 網路。'),
         style: Theme.of(context).textTheme.bodySmall),
       const SizedBox(height: 32),
-      _V3Field(controller: _email, label: 'EMAIL', hint: 'name@example.com',
+      _V3Field(controller: _email, label: v3Copy(context,
+            zh: '邮箱', en: 'EMAIL', tw: '電子郵件'), hint: 'name@example.com',
         keyboardType: TextInputType.emailAddress),
       const SizedBox(height: 16),
-      _V3Field(controller: _password, label: 'PASSWORD', hint: '••••••••',
+      _V3Field(controller: _password, label: v3Copy(context,
+            zh: '密码', en: 'PASSWORD', tw: '密碼'), hint: '••••••••',
         obscureText: _obscure,
         trailing: IconButton(
           tooltip: _obscure ? v3Copy(context, zh: '显示密码',
@@ -485,7 +487,8 @@ class _RegisterFormState extends State<_RegisterForm> {
             ])),
         ])
       else
-        _V3Field(controller: _email, label: 'EMAIL', hint: 'name@example.com',
+        _V3Field(controller: _email, label: v3Copy(context,
+            zh: '邮箱', en: 'EMAIL', tw: '電子郵件'), hint: 'name@example.com',
           keyboardType: TextInputType.emailAddress, enabled: !_codeSent),
       if (config.emailSuffixes.isNotEmpty) ...[
         const SizedBox(height: 8),
@@ -500,7 +503,8 @@ class _RegisterFormState extends State<_RegisterForm> {
           en: 'Change email', tw: '更換電子郵件'), onPressed: _changeEmail),
       ],
       const SizedBox(height: 16),
-      _V3Field(controller: _password, label: 'PASSWORD', hint: '••••••••',
+      _V3Field(controller: _password, label: v3Copy(context,
+            zh: '密码', en: 'PASSWORD', tw: '密碼'), hint: '••••••••',
         obscureText: _obscure,
         trailing: IconButton(tooltip: _obscure
             ? v3Copy(context, zh: '显示密码', en: 'Show password', tw: '顯示密碼')
@@ -509,7 +513,8 @@ class _RegisterFormState extends State<_RegisterForm> {
           icon: Icon(_obscure ? Icons.visibility_off_rounded
             : Icons.visibility_rounded, size: 18, color: p.inkMuted))),
       const SizedBox(height: 16),
-      _V3Field(controller: _confirm, label: 'CONFIRM PASSWORD', hint: '••••••••',
+      _V3Field(controller: _confirm, label: v3Copy(context,
+            zh: '确认密码', en: 'CONFIRM PASSWORD', tw: '確認密碼'), hint: '••••••••',
         obscureText: _obscure),
       const SizedBox(height: 16),
       _V3Field(controller: _inviteCode,
@@ -689,7 +694,8 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
         tw: '透過電子郵件驗證碼重置密碼。'),
         style: Theme.of(context).textTheme.bodySmall),
       const SizedBox(height: 32),
-      _V3Field(controller: _email, label: 'EMAIL', hint: 'name@example.com',
+      _V3Field(controller: _email, label: v3Copy(context,
+            zh: '邮箱', en: 'EMAIL', tw: '電子郵件'), hint: 'name@example.com',
         keyboardType: TextInputType.emailAddress),
       const SizedBox(height: 16),
       _V3Field(controller: _code,

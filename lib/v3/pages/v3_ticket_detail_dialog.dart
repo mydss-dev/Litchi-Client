@@ -95,7 +95,10 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text('TICKET #${widget.summary.id}',
+                  Text(v3Copy(context,
+                    zh: '工单 #${widget.summary.id}',
+                    en: 'TICKET #${widget.summary.id}',
+                    tw: '工單 #${widget.summary.id}'),
                     style: TextStyle(color: p.lycheeInk, fontSize: 10,
                       fontWeight: FontWeight.w900, letterSpacing: 1.5)),
                   const SizedBox(height: 5),

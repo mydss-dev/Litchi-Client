@@ -23,6 +23,7 @@ import '../pages/v3_traffic_page.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_notice_bar.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 import 'v3_nav.dart';
 
@@ -141,7 +142,9 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.invite => const V3InvitePage(),
     AppPage.traffic => const V3TrafficPage(),
     AppPage.orders => V3SheetPageFallback(
-      kicker: 'ORDER LEDGER', title: l.orders, child: const V3OrdersPage(),
+      kicker: v3Copy(context, zh: '订单总览',
+        en: 'ORDER LEDGER', tw: '訂單總覽'),
+      title: l.orders, child: const V3OrdersPage(),
     ),
     AppPage.tickets => const V3TicketsPage(),
     AppPage.settings => const V3SettingsPage(),

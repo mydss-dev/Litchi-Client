@@ -314,7 +314,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'PAYMENT',
+                      _copy(zh: '支付', en: 'PAYMENT', tw: '支付'),
                       style: TextStyle(
                         color: p.lycheeInk,
                         fontSize: 10,
