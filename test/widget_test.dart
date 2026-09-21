@@ -12,9 +12,6 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-    // The visual-review login bypass (debug builds only) also mutes logout;
-    // these tests exercise the real logout path, so switch it off.
-    AppController.debugBypassLogin = false;
   });
 
   test('AppController navigates between pages', () {
