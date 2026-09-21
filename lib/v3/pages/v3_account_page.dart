@@ -15,8 +15,9 @@ import '../ui/v3_toast.dart';
 import 'v3_telegram_page.dart';
 import 'v3_wallet_actions.dart';
 
-/// Previous account layout: services, money, preferences and security are
-/// directly visible. Do not turn the account back into a collapsed menu.
+/// Account layout: identity/plan hero, wallet, services, then preferences and
+/// security — all directly visible. Do not turn the account into a collapsed
+/// menu.
 class V3AccountPage extends StatefulWidget {
   const V3AccountPage({super.key});
   @override
@@ -83,13 +84,13 @@ class _V3AccountPageState extends State<V3AccountPage> {
         ),
         const SizedBox(height: 26),
         _AccountSummaryPanel(controller: controller),
-        const SizedBox(height: 16),
-        _HubPanel(controller: controller),
         if (AppConfig.panelFeatures.wallet || controller.user.balance > 0 ||
             controller.withdrawable > 0) ...[
           const SizedBox(height: 16),
           const _WalletPanel(),
         ],
+        const SizedBox(height: 16),
+        _HubPanel(controller: controller),
         if (controller.hasPlan) ...[
           const SizedBox(height: 16),
           _PreferencesPanel(controller: controller,
