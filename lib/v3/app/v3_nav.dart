@@ -55,7 +55,7 @@ class V3NavItem {
         AppPage.tickets => '工單',
         AppPage.settings => '設定',
         AppPage.orders => '訂單',
-        AppPage.giftCard => '兌換',
+        AppPage.giftCard => '兌換中心',
       };
     }
     if (l.localeName.startsWith('zh')) {
@@ -70,7 +70,7 @@ class V3NavItem {
         AppPage.tickets => '工单',
         AppPage.settings => '设置',
         AppPage.orders => '订单',
-        AppPage.giftCard => '兑换',
+        AppPage.giftCard => '兑换中心',
       };
     }
     return switch (page) {

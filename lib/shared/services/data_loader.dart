@@ -2,6 +2,7 @@ import '../../config/app_config.dart';
 import '../models/api_models.dart';
 import '../models/app_models.dart';
 import '../models/model_mappers.dart';
+import 'api_client.dart';
 import 'network_error_classifier.dart';
 import 'node_tag_matcher.dart';
 import 'panel_api.dart';
@@ -126,6 +127,7 @@ class DataLoader {
         }
         snap.traffic = ModelMappers.toTraffic(info);
       } catch (e) {
+        if (e is ApiNotConfiguredException) return;
         SecureLogger.warn(
           'DataLoader getUserInfo failed after ${sw.elapsedMilliseconds}ms',
           e,
@@ -141,12 +143,6 @@ class DataLoader {
         // A partial response cannot invalidate the cached subscription URL.
         if (subscribe.subscribeUrl.trim().isNotEmpty) {
           snap.subscribeUrl = subscribe.subscribeUrl;
-        }
-        if (subscribe.subscribeUrl.trim().isEmpty) {
-          SecureLogger.warn(
-            'DataLoader getSubscribeInfo: subscribe_url empty '
-            '(planId=${subscribe.planId}, transferEnable=${subscribe.transferEnable})',
-          );
         }
         // getSubscribe identifies the current subscription. Never let a
         // stale account ID or zero override a positive subscription ID.
@@ -175,6 +171,7 @@ class DataLoader {
           );
         }
       } catch (e) {
+        if (e is ApiNotConfiguredException) return;
         SecureLogger.warn(
           'DataLoader getSubscribeInfo failed after ${sw.elapsedMilliseconds}ms',
           e,
@@ -210,12 +207,9 @@ class DataLoader {
   Future<void> _fillNodes(DataSnapshot snap) async {
     final sw = Stopwatch()..start();
     final url = snap.subscribeUrl;
-    if (url == null || url.isEmpty) {
-      SecureLogger.warn(
-        'DataLoader _fillNodes: subscribe_url empty, skipping node fetch',
-      );
-      return;
-    }
+    // No subscription URL yet (no plan, or the review bypass) is a normal
+    // state, not a warning: skip the fetch quietly.
+    if (url == null || url.isEmpty) return;
     try {
       final result = await _api.fetchSubscription(url);
       if (result.nodes.isNotEmpty) {
@@ -246,6 +240,7 @@ class DataLoader {
         );
       }
     } catch (e) {
+      if (e is ApiNotConfiguredException) return;
       SecureLogger.warn(
         'DataLoader fetchSubscription failed after ${sw.elapsedMilliseconds}ms',
         e,
@@ -273,6 +268,7 @@ class DataLoader {
         if (syncedUser != null) snap.user = syncedUser;
       }
     } catch (e) {
+      if (e is ApiNotConfiguredException) return;
       SecureLogger.warn(
         'DataLoader getPlans failed after ${sw.elapsedMilliseconds}ms',
         e,
@@ -304,6 +300,7 @@ class DataLoader {
       snap.minWithdrawAmount = commConfig.minWithdrawAmount / 100;
       snap.inviteRecords = await _api.getInviteDetails(pageSize: 10);
     } catch (e) {
+      if (e is ApiNotConfiguredException) return;
       SecureLogger.warn(
         'DataLoader getInvite failed after ${sw.elapsedMilliseconds}ms',
         e,
@@ -347,6 +344,7 @@ class DataLoader {
         snap.dailyUsage = points.map((p) => p.totalGb).toList();
       }
     } catch (e) {
+      if (e is ApiNotConfiguredException) return;
       SecureLogger.warn('DataLoader getTrafficLog failed after ${sw.elapsedMilliseconds}ms', e);
     }
   }

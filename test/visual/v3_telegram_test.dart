@@ -58,13 +58,15 @@ Future<void> _tap(WidgetTester tester, Finder finder, String what) async {
 }
 
 void main() {
-  testWidgets('account shows Telegram directly with its binding status',
+  testWidgets('account shows Telegram directly and quiet when unbound',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       await _pumpAccount(tester);
       expect(find.byKey(_telegramRow), findsOneWidget);
       expect(find.text('Telegram 通知'), findsOneWidget);
-      expect(find.text('未绑定'), findsOneWidget);
+      // An unbound row stays quiet: no warning subtitle, the sheet explains
+      // how to link. A bound row shows the positive confirmation instead.
+      expect(find.text('未绑定'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

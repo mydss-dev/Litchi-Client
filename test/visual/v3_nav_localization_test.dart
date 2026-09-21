@@ -59,7 +59,7 @@ void main() {
       AppPage.invite: '邀请',
       AppPage.tickets: '工单',
       AppPage.settings: '设置',
-      AppPage.giftCard: '兑换',
+      AppPage.giftCard: '兑换中心',
     });
   });
 
@@ -76,7 +76,7 @@ void main() {
       AppPage.invite: '邀請',
       AppPage.tickets: '工單',
       AppPage.settings: '設定',
-      AppPage.giftCard: '兌換',
+      AppPage.giftCard: '兌換中心',
     });
   });
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
+import '../../shared/services/api_client.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
@@ -352,9 +353,14 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
         level: _level, message: message);
       if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
-      if (mounted) {
-        setState(() { _submitting = false; _error = _message(error); });
+      if (!mounted) return;
+      // An unconfigured API base is a dev-review state, not user-facing
+      // feedback: close quietly instead of showing the raw config string.
+      if (error is ApiNotConfiguredException) {
+        Navigator.of(context).pop(false);
+        return;
       }
+      setState(() { _submitting = false; _error = _message(error); });
     }
   }
 

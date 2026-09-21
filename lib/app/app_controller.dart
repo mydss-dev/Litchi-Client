@@ -936,7 +936,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         if (!_isSessionCurrent(sessionEpoch)) return;
         _wallet.setCurrencySymbol(symbol);
       } catch (e) {
-        SecureLogger.warn('AppController currency load failed', e);
+        if (e is! ApiNotConfiguredException) {
+          SecureLogger.warn('AppController currency load failed', e);
+        }
       }
     }
     try {
@@ -946,7 +948,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _notices.setNotices(notices);
       unawaited(_notices.saveCache());
     } catch (e) {
-      SecureLogger.warn('AppController notices load failed', e);
+      if (e is! ApiNotConfiguredException) {
+        SecureLogger.warn('AppController notices load failed', e);
+      }
       _notices.setLoading(false);
     }
   }
@@ -963,6 +967,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       // Do not erase a genuine partial-load warning from _applySnapshot.
     } catch (e) {
       if (!_isSessionCurrent(sessionEpoch)) return;
+      // No API base configured is a setup stage, not a failure: pages keep
+      // their neutral empty states instead of an endless retry banner.
+      if (e is ApiNotConfiguredException) return;
       final kind = SessionFailurePolicy.classify(e);
       if (kind == SessionFailureKind.authentication) {
         await _expireSessionAndStopCore('登录已过期，请重新登录');
@@ -992,10 +999,15 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _ticketsLoaded = true;
     } catch (error) {
       if (!_isSessionCurrent(sessionEpoch)) return;
-      _ticketsError = error
-          .toString()
-          .replaceFirst('ApiException: ', '')
-          .replaceFirst('Exception: ', '');
+      if (error is ApiNotConfiguredException) {
+        _tickets = const [];
+        _ticketsLoaded = true;
+      } else {
+        _ticketsError = error
+            .toString()
+            .replaceFirst('ApiException: ', '')
+            .replaceFirst('Exception: ', '');
+      }
     } finally {
       if (_isSessionCurrent(sessionEpoch)) {
         _ticketsLoading = false;
@@ -1043,6 +1055,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       notifyListeners();
     } catch (e) {
       if (_isSessionCurrent(sessionEpoch)) {
+        if (e is ApiNotConfiguredException) {
+          // Setup stage: keep cached nodes without an error banner or log.
+          notifyListeners();
+          return;
+        }
         _dataLoadError = '节点刷新失败，已保留现有节点，请稍后重试';
         notifyListeners();
       }

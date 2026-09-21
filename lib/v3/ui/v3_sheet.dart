@@ -119,16 +119,17 @@ void openV3Page(BuildContext context, AppPage page) {
 
 class V3SheetPageFallback extends StatelessWidget {
   const V3SheetPageFallback({super.key, required this.kicker,
-    required this.title, required this.child});
+    required this.title, this.description, required this.child});
   final String kicker;
   final String title;
+  final String? description;
   final Widget child;
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: V3Layout.pageInsets,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        V3PageHeader(kicker: kicker, title: title),
+        V3PageHeader(kicker: kicker, title: title, description: description),
         const SizedBox(height: 24),
         child,
       ]));

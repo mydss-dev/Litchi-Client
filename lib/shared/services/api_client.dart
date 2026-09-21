@@ -19,6 +19,13 @@ class ApiException implements Exception {
   String toString() => formatApiErrorMessage(message);
 }
 
+/// Thrown before any HTTP request when no API base is configured. That is a
+/// setup stage rather than a failure — retries cannot fix it — so callers
+/// skip it silently: no warn logs, no error states, no retry buttons.
+class ApiNotConfiguredException extends ApiException {
+  const ApiNotConfiguredException() : super('请先配置服务器地址');
+}
+
 String formatApiErrorMessage(String message) {
   final text = message.trim();
   if (text.isEmpty) return '请求失败，请稍后重试';
@@ -476,7 +483,7 @@ class ApiClient {
 
   void _assertReady() {
     if (!isConfigured) {
-      throw const ApiException('请先配置服务器地址');
+      throw const ApiNotConfiguredException();
     }
   }
 

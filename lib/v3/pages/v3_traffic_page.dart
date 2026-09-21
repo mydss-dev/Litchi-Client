@@ -93,6 +93,10 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
               tw: '使用概覽'),
             title: v3Copy(context,
               zh: '流量用量', en: 'Traffic usage', tw: '流量用量'),
+            description: v3Copy(context,
+              zh: '流量余额、使用趋势和有效期一目了然。',
+              en: 'Balance, usage trend and validity at a glance.',
+              tw: '流量餘額、使用趨勢與有效期一目了然。'),
             trailing: IconButton(
               tooltip: v3Copy(context, zh: '刷新流量',
                 en: 'Refresh traffic', tw: '重新整理流量'),

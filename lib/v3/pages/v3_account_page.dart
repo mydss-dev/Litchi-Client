@@ -72,6 +72,10 @@ class _V3AccountPageState extends State<V3AccountPage> {
             en: 'ACCOUNT CENTER', tw: '帳戶中心'),
           title: v3Copy(context, zh: '我的账户',
             en: 'My account', tw: '我的帳戶'),
+          description: v3Copy(context,
+            zh: '余额、偏好与安全设置集中管理。',
+            en: 'Balance, preferences and security in one place.',
+            tw: '餘額、偏好與安全設定集中管理。'),
           trailing: IconButton(tooltip: v3Copy(context,
               zh: '刷新账户数据', en: 'Refresh account', tw: '重新整理帳戶資料'),
             onPressed: controller.refreshData,
@@ -290,7 +294,16 @@ class _HubPanel extends StatelessWidget {
   final AppController controller;
   @override
   Widget build(BuildContext context) {
-    final items = enabledNavItems(kMobileHub);
+    // The desktop rail carries 订单 as a first-class entry; repeating it in
+    // the services hub would list the same page twice on one screen.
+    final desktop = switch (Theme.of(context).platform) {
+      TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.linux =>
+        true,
+      _ => false,
+    };
+    final items = enabledNavItems(kMobileHub)
+        .where((item) => !(desktop && item.page == AppPage.orders))
+        .toList();
     final telegramEnabled = AppConfig.panelFeatures.telegram;
     if (items.isEmpty && !telegramEnabled) return const SizedBox.shrink();
     final bound = controller.accountDetails?.telegramId != null;
@@ -305,11 +318,13 @@ class _HubPanel extends StatelessWidget {
           icon: Icons.send_rounded,
           label: v3Copy(context, zh: 'Telegram 通知',
             en: 'Telegram notifications', tw: 'Telegram 通知'),
+          // Only a positive binding is worth a subtitle; an unbound row stays
+          // quiet — the sheet below explains how to link.
           subtitle: bound
             ? v3Copy(context, zh: '已绑定，可接收账户通知',
                 en: 'Linked; account notifications enabled',
                 tw: '已綁定，可接收帳戶通知')
-            : v3Copy(context, zh: '未绑定', en: 'Not linked', tw: '未綁定'),
+            : null,
           selected: false, onTap: () => V3TelegramPage.show(context)),
     ]);
   }

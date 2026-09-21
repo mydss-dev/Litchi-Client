@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
+import '../../shared/services/api_client.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
@@ -65,7 +66,12 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
       setState(() { _orders = orders; _loading = false; });
     } catch (error) {
       if (!mounted) return;
-      setState(() { _loading = false; _error = _message(error); });
+      if (error is ApiNotConfiguredException) {
+        // Setup stage: a neutral empty ledger, not a failure to retry.
+        setState(() { _orders = const []; _loading = false; });
+      } else {
+        setState(() { _loading = false; _error = _message(error); });
+      }
     }
   }
 
