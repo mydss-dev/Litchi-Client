@@ -67,28 +67,29 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
       return SingleChildScrollView(
         padding: V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 110),
-            child: V3PageHeader(
-              kicker: v3Copy(context, zh: '帮助与支持',
-                en: 'HELP & SUPPORT', tw: '協助與支援'),
-              title: v3Copy(context, zh: '支持工单',
-                en: 'Support tickets', tw: '支援工單'),
-              description: v3Copy(context,
-                zh: '问题、回复和处理状态都集中在同一个支持收件箱。',
-                en: 'Keep questions, replies and ticket statuses in one inbox.',
-                tw: '問題、回覆及處理狀態都集中在同一個支援收件匣。'),
-              trailing: Row(mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  if (!compact)
-                    FilledButton.icon(onPressed: _newTicket,
-                      icon: const Icon(Icons.add_rounded), label: Text(createLabel)),
-                  IconButton(tooltip: v3Copy(context, zh: '刷新工单',
-                      en: 'Refresh tickets', tw: '重新整理工單'),
-                    onPressed: controller.ticketsLoading
-                      ? null : controller.refreshTickets,
-                    icon: const Icon(Icons.refresh_rounded)),
-                ]))),
+          // No header height reserve: V3PageHeader bottoms-align its row, so
+          // a minHeight box here pushed the heading 35dp below every other
+          // page's first line.
+          V3PageHeader(
+            kicker: v3Copy(context, zh: '帮助与支持',
+              en: 'HELP & SUPPORT', tw: '協助與支援'),
+            title: v3Copy(context, zh: '支持工单',
+              en: 'Support tickets', tw: '支援工單'),
+            description: v3Copy(context,
+              zh: '问题、回复和处理状态都集中在同一个支持收件箱。',
+              en: 'Keep questions, replies and ticket statuses in one inbox.',
+              tw: '問題、回覆及處理狀態都集中在同一個支援收件匣。'),
+            trailing: Row(mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end, children: [
+                if (!compact)
+                  FilledButton.icon(onPressed: _newTicket,
+                    icon: const Icon(Icons.add_rounded), label: Text(createLabel)),
+                IconButton(tooltip: v3Copy(context, zh: '刷新工单',
+                    en: 'Refresh tickets', tw: '重新整理工單'),
+                  onPressed: controller.ticketsLoading
+                    ? null : controller.refreshTickets,
+                  icon: const Icon(Icons.refresh_rounded)),
+              ])),
           if (compact) ...[
             const SizedBox(height: 16),
             SizedBox(width: double.infinity,
