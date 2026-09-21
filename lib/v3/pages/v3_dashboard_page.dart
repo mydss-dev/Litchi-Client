@@ -644,8 +644,7 @@ class _NetworkModeIndicator extends StatelessWidget {
         final error = await controller.setNetworkMode(mode);
         if (!context.mounted) return;
         if (error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(error)));
+          V3Toast.show(context, error, type: V3ToastType.error);
         } else {
           final label = _networkModeLabel(context, mode);
           final applied = controller.coreProcessRunning
@@ -705,8 +704,7 @@ class _RouteButton extends StatelessWidget {
           final error = await controller.setProxyMode(mode);
           if (!context.mounted) return;
           if (error != null) {
-            ScaffoldMessenger.of(context)
-                .showSnackBar(SnackBar(content: Text(error)));
+            V3Toast.show(context, error, type: V3ToastType.error);
           } else {
             V3Toast.show(context, v3Copy(context,
               zh: '已切换到${_modeTitle(context, mode)}',

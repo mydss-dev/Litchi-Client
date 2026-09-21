@@ -11,6 +11,7 @@ import '../../shared/services/update_service.dart';
 import '../../shared/services/url_opener.dart';
 import '../theme/v3_palette.dart';
 import 'v3_locale_copy.dart';
+import 'v3_toast.dart';
 
 /// Backend notice titles and bodies are supplied by the server. Only the
 /// surrounding application controls are translated here.
@@ -156,7 +157,10 @@ class _V3NoticeBarState extends State<V3NoticeBar>
 
   Future<void> _download(UpdateInfo info) async {
     if (_downloading) return;
-    final messenger = ScaffoldMessenger.of(context);
+    // Resolve against the current context before awaiting; the lane may be
+    // disposed mid-download (tab switch, logout) and the toast must not die
+    // with it.
+    final overlay = Overlay.of(context, rootOverlay: true);
     final installedMessage = v3Copy(context,
       zh: '安装包已下载，正在启动安装程序…',
       en: 'Installer downloaded. Starting installation…',
@@ -182,26 +186,29 @@ class _V3NoticeBarState extends State<V3NoticeBar>
           });
         if (!mounted) return;
         setState(() => _downloading = false);
-        _notify(messenger, installedMessage);
+        _notify(overlay, installedMessage, type: V3ToastType.success);
       } else {
         final opened = await UrlOpener.open(info.downloadUrl);
         if (!mounted) return;
         setState(() => _downloading = false);
         if (!opened) throw StateError(openFailedMessage);
-        _notify(messenger, openedMessage);
+        _notify(overlay, openedMessage, type: V3ToastType.success);
       }
     } catch (error) {
       if (!mounted) return;
       setState(() { _downloading = false; _received = 0; _total = -1; });
-      _notify(messenger, error.toString()
-        .replaceFirst('Exception: ', '').replaceFirst('StateError: ', ''));
+      _notify(overlay, error.toString()
+        .replaceFirst('Exception: ', '').replaceFirst('StateError: ', ''),
+        type: V3ToastType.error);
     }
   }
 
-  void _notify(ScaffoldMessengerState messenger, String message) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+  void _notify(
+    OverlayState overlay,
+    String message, {
+    V3ToastType type = V3ToastType.info,
+  }) {
+    V3Toast.showInOverlay(overlay, message, type: type);
   }
 
   @override

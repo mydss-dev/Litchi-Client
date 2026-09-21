@@ -168,7 +168,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       description: controller.networkMode == NetworkMode.tun
                           ? l.tunProtectionDescription : l.systemProtectionDescription,
                       last: true,
-                      control: _V3Switch(
+                      control: V3Switch(
                         value: controller.killSwitch,
                         onChanged: (v) => _apply(
                           () => controller.setKillSwitch(v), l.settingsUpdated),
@@ -188,7 +188,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         zh: '登录系统时自动启动 Litchi。',
                         en: 'Start Litchi automatically when you sign in.',
                         tw: '登入系統時自動啟動 Litchi。'),
-                      control: _V3Switch(value: controller.autoStart,
+                      control: V3Switch(value: controller.autoStart,
                         onChanged: (v) => _apply(() async {
                           controller.setAutoStart(v);
                           return null;
@@ -200,7 +200,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         zh: '启动时隐藏主窗口。',
                         en: 'Hide the main window at startup.',
                         tw: '啟動時隱藏主視窗。'),
-                      control: _V3Switch(value: controller.silentStart,
+                      control: V3Switch(value: controller.silentStart,
                         onChanged: (v) => _apply(() async {
                           controller.setSilentStart(v);
                           return null;
@@ -213,7 +213,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         en: 'Check for new versions in the background.',
                         tw: '在背景檢查是否有新版本。'),
                       last: true,
-                      control: _V3Switch(value: controller.autoUpdate,
+                      control: V3Switch(value: controller.autoUpdate,
                         onChanged: controller.setAutoUpdate),
                     ),
                   ]),
@@ -407,41 +407,6 @@ class _Segment<T> extends StatelessWidget {
           ),
         ));
       }).toList()),
-    );
-  }
-}
-
-class _V3Switch extends StatelessWidget {
-  const _V3Switch({required this.value, required this.onChanged});
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Semantics(
-      button: true,
-      toggled: value,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(99),
-        onTap: () => onChanged(!value),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          width: 52, height: 30,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: value ? p.lychee : p.surfaceRaised,
-            borderRadius: BorderRadius.circular(99),
-          ),
-          child: AnimatedAlign(
-            duration: const Duration(milliseconds: 160),
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(width: 22, height: 22, decoration: BoxDecoration(
-              color: value ? Colors.white : p.inkMuted,
-              shape: BoxShape.circle)),
-          ),
-        ),
-      ),
     );
   }
 }

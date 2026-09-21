@@ -184,25 +184,29 @@ class V3ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final child = busy
-        ? const SizedBox(
+    // Busy keeps the label and swaps it into the icon slot, so the button
+    // width does not jump when the spinner replaces the leading glyph.
+    final child = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (busy)
+          const SizedBox(
             width: 16,
             height: 16,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) Icon(icon, size: 16),
-              if (icon != null) const SizedBox(width: 8),
-              Text(label),
-            ],
-          );
+        else if (icon != null) ...[
+          Icon(icon, size: 16),
+          const SizedBox(width: 8),
+        ],
+        Text(label),
+      ],
+    );
     return SizedBox(
       height: 44,
       child: secondary
           ? OutlinedButton(
-              onPressed: onPressed,
+              onPressed: busy ? null : onPressed,
               style: OutlinedButton.styleFrom(
                 foregroundColor: p.ink,
                 side: BorderSide(color: p.line),
@@ -213,7 +217,7 @@ class V3ActionButton extends StatelessWidget {
               child: child,
             )
           : FilledButton(
-              onPressed: onPressed,
+              onPressed: busy ? null : onPressed,
               style: FilledButton.styleFrom(
                 backgroundColor: p.lychee,
                 foregroundColor: Colors.white,
@@ -242,6 +246,15 @@ class V3StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    // The label carries the status, so it gets the text-safe ink for the
+    // fill colour instead of the ambient ink that hides the semantics.
+    final ink = switch (color) {
+      _ when color == p.lychee => p.lycheeInk,
+      _ when color == p.success => p.successInk,
+      _ when color == p.warning => p.warningInk,
+      _ when color == p.danger => p.dangerInk,
+      _ => p.ink,
+    };
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 8 : 10,
@@ -263,13 +276,53 @@ class V3StatusBadge extends StatelessWidget {
           Text(
             label.toUpperCase(),
             style: TextStyle(
-              color: p.ink,
+              color: ink,
               fontSize: 10,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.8,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The one V3 toggle switch: lychee track when on, a raised grey track and
+/// knob when off. Settings and the account preferences previously drew two
+/// different switches; both now draw this one. A null [onChanged] disables
+/// the toggle while work is in flight.
+class V3Switch extends StatelessWidget {
+  const V3Switch({super.key, required this.value, this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Semantics(
+      button: true,
+      toggled: value,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(99),
+        onTap: onChanged == null ? null : () => onChanged!(!value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: 52, height: 30,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: value ? p.lychee : p.surfaceRaised,
+            borderRadius: BorderRadius.circular(99),
+          ),
+          child: AnimatedAlign(
+            duration: const Duration(milliseconds: 160),
+            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(width: 22, height: 22, decoration: BoxDecoration(
+              color: value ? Colors.white : p.inkMuted,
+              shape: BoxShape.circle)),
+          ),
+        ),
       ),
     );
   }
@@ -328,9 +381,10 @@ class V3NavPanel extends StatelessWidget {
   }
 }
 
-/// One row of a [V3NavPanel]: icon, label, and a chevron in brand colour when
-/// it is the page you are on. An optional [subtitle] sits under the label for
-/// rows that carry state worth surfacing at a glance (a binding status).
+/// One row of a [V3NavPanel]: icon, label, and a chevron. The selected row
+/// gets the same lychee tint as a selected rail item — a chevron colour alone
+/// did not read as "you are here". An optional [subtitle] sits under the label
+/// for rows that carry state worth surfacing at a glance (a binding status).
 class V3NavRow extends StatelessWidget {
   const V3NavRow({
     super.key,
@@ -353,7 +407,11 @@ class V3NavRow extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
-      child: Padding(
+      child: Container(
+        decoration: BoxDecoration(
+          color: selected ? p.lycheeSoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         child: Row(
           children: [
@@ -361,10 +419,11 @@ class V3NavRow extends StatelessWidget {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: p.surfaceRaised,
+                color: selected ? p.surface : p.surfaceRaised,
                 borderRadius: BorderRadius.circular(11),
               ),
-              child: Icon(icon, size: 18, color: p.inkMuted),
+              child: Icon(icon, size: 18,
+                color: selected ? p.lycheeInk : p.inkMuted),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -374,7 +433,7 @@ class V3NavRow extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(
-                      color: p.ink,
+                      color: selected ? p.lycheeInk : p.ink,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),

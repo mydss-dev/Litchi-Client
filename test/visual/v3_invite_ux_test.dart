@@ -114,6 +114,8 @@ void main() {
     await tester.pump();
     expect(copied, url);
     expect(find.text('邀请链接已复制'), findsOneWidget);
+    // The floating toast dismisses itself after 2.5s; flush its timer.
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('refresh reorder keeps the selected invitation identity', (tester) async {
@@ -132,23 +134,30 @@ void main() {
     final fixture = _InviteFixture([_a])..afterCreate = [_a, _b];
     await _pump(tester, fixture);
     await tester.tap(find.byKey(const ValueKey('v3-invite-create')));
-    await tester.pumpAndSettle();
+    // Bounded pumps: pumpAndSettle would consume the floating toast entire
+    // lifetime and remove it before its content could be asserted.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('CODE-B'), findsOneWidget);
     expect(find.text('2 / 2'), findsOneWidget);
     expect(find.text('邀请码已创建'), findsOneWidget);
+    // Flush the floating toast timer before the tree is disposed.
+    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('creation error is shown instead of a success message', (tester) async {
-    // Start with a fresh messenger: Flutter deliberately queues consecutive
-    // snackbars, so asserting a second snackbar immediately after a success
-    // would be testing the queue rather than the error-handling path.
     final fixture = _InviteFixture([_a])..createError = '创建权限不足';
     await _pump(tester, fixture);
     await tester.tap(find.byKey(const ValueKey('v3-invite-create')));
-    await tester.pumpAndSettle();
+    // Bounded pumps: pumpAndSettle would consume the floating toast entire
+    // lifetime and remove it before its content could be asserted.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('创建权限不足'), findsOneWidget);
     expect(find.text('邀请码已创建'), findsNothing);
     expect(find.text('CODE-A'), findsOneWidget);
+    // Flush the floating toast timer before the tree is disposed.
+    await tester.pump(const Duration(seconds: 3));
   });
 
   for (final mode in [ThemeMode.light, ThemeMode.dark]) {

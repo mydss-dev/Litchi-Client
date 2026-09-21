@@ -10,6 +10,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_logout_confirmation.dart';
 import '../ui/v3_sheet.dart';
+import '../ui/v3_toast.dart';
 import 'v3_telegram_page.dart';
 import 'v3_wallet_actions.dart';
 
@@ -36,15 +37,15 @@ class _V3AccountPageState extends State<V3AccountPage> {
         autoRenewal: autoRenewal ?? controller.user.autoRenewal,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
-        error ?? v3Copy(context, zh: '账户设置已更新',
-          en: 'Account preferences updated', tw: '帳戶設定已更新'))));
+      V3Toast.show(context, error ?? v3Copy(context, zh: '账户设置已更新',
+        en: 'Account preferences updated', tw: '帳戶設定已更新'),
+        type: error == null ? V3ToastType.success : V3ToastType.error);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
-          v3Copy(context, zh: '更新账户偏好失败：$error',
-            en: 'Could not update account preferences: $error',
-            tw: '更新帳戶偏好失敗：$error'))));
+        V3Toast.show(context, v3Copy(context,
+          zh: '更新账户偏好失败：$error',
+          en: 'Could not update account preferences: $error',
+          tw: '更新帳戶偏好失敗：$error'), type: V3ToastType.error);
       }
     } finally {
       if (mounted) setState(() => _updatingPreferences = false);
@@ -386,7 +387,7 @@ class _PreferenceRow extends StatelessWidget {
             const SizedBox(height: 3),
             Text(subtitle, style: TextStyle(color: p.inkMuted, fontSize: 10)),
           ])),
-        Switch(value: value, onChanged: onChanged),
+        V3Switch(value: value, onChanged: onChanged),
       ]),
     );
   }
@@ -476,10 +477,13 @@ class _PasswordDialogState extends State<_PasswordDialog> {
         oldPassword: _old.text, newPassword: _next.text,
         passwordConfirmation: _confirmation.text);
       if (!mounted) return;
+      // Capture the root overlay before popping so the feedback outlives
+      // the dialog route.
+      final overlay = Overlay.of(context, rootOverlay: true);
+      final message = v3Copy(context, zh: '密码修改成功',
+        en: 'Password changed', tw: '密碼修改成功');
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
-        v3Copy(context, zh: '密码修改成功',
-          en: 'Password changed', tw: '密碼修改成功'))));
+      V3Toast.showInOverlay(overlay, message, type: V3ToastType.success);
     } catch (error) {
       if (mounted) setState(() { _busy = false; _error = '$error'; });
     }

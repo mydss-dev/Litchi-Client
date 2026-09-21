@@ -662,11 +662,12 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
         email: email, emailCode: code, password: password,
         passwordConfirmation: confirm);
       if (!mounted) return;
+      final overlay = Overlay.of(context, rootOverlay: true);
+      final message = v3Copy(context, zh: '密码已重置，请使用新密码登录',
+        en: 'Password reset. Sign in with your new password.',
+        tw: '密碼已重置，請使用新密碼登入');
       AppScope.read(context).goToAuthScreen(AuthScreen.login);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
-        v3Copy(context, zh: '密码已重置，请使用新密码登录',
-          en: 'Password reset. Sign in with your new password.',
-          tw: '密碼已重置，請使用新密碼登入'))));
+      V3Toast.showInOverlay(overlay, message, type: V3ToastType.success);
     } catch (error) {
       if (mounted) setState(() => _error = _authError(error));
     } finally {

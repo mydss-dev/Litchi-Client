@@ -10,6 +10,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
+import '../ui/v3_toast.dart';
 
 class V3OrdersPage extends StatefulWidget {
   const V3OrdersPage({super.key});
@@ -101,7 +102,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
   }
 
   void _toast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    V3Toast.show(context, message, type: V3ToastType.error);
   }
 
   List<RemoteOrder> get _visibleOrders => switch (_filter) {

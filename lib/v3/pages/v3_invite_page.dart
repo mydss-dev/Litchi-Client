@@ -7,6 +7,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_toast.dart';
 
 class V3InvitePage extends StatefulWidget {
   const V3InvitePage({super.key});
@@ -43,9 +44,9 @@ class _V3InvitePageState extends State<V3InvitePage> {
     setState(() { _selected = index; _selectedIdentity = _identity(codes[index]); });
   }
 
-  void _toast(String message) {
+  void _toast(String message, {V3ToastType type = V3ToastType.info}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    V3Toast.show(context, message, type: type);
   }
 
   Future<void> _copy(String value, String message) async {
@@ -54,9 +55,9 @@ class _V3InvitePageState extends State<V3InvitePage> {
       en: 'Copy failed. Please retry.', tw: '複製失敗，請重試');
     try {
       await Clipboard.setData(ClipboardData(text: value.trim()));
-      _toast(message);
+      _toast(message, type: V3ToastType.success);
     } catch (_) {
-      _toast(copyFailure);
+      _toast(copyFailure, type: V3ToastType.error);
     }
   }
 
@@ -87,9 +88,9 @@ class _V3InvitePageState extends State<V3InvitePage> {
       }
     });
     if (error != null) {
-      _toast(error);
+      _toast(error, type: V3ToastType.error);
     } else if (added.isNotEmpty) {
-      _toast(created);
+      _toast(created, type: V3ToastType.success);
     } else {
       _toast(pending);
     }

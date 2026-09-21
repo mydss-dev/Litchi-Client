@@ -5,6 +5,7 @@ import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
+import '../ui/v3_toast.dart';
 
 /// Wallet actions retain independent dialogs, rather than a nested funds hub.
 Future<void> showV3RechargeDialog(BuildContext context) {
@@ -38,7 +39,8 @@ Future<void> showV3TransferDialog(BuildContext context) async {
   if (amount == null || !context.mounted) return;
   final error = await controller.transferCommissionToBalance(amount);
   if (!context.mounted) return;
-  _toast(context, error ?? success);
+  _toast(context, error ?? success,
+    type: error == null ? V3ToastType.success : V3ToastType.error);
 }
 
 Future<void> showV3WithdrawDialog(BuildContext context) async {
@@ -68,13 +70,13 @@ Future<void> showV3WithdrawDialog(BuildContext context) async {
   final error = await controller.withdrawCommission(
     amount: result.amount, account: result.account, method: result.method);
   if (!context.mounted) return;
-  _toast(context, error ?? success);
+  _toast(context, error ?? success,
+    type: error == null ? V3ToastType.success : V3ToastType.error);
 }
 
-void _toast(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message)));
+void _toast(BuildContext context, String message,
+    {V3ToastType type = V3ToastType.info}) {
+  V3Toast.show(context, message, type: type);
 }
 
 class _RechargeDialog extends StatefulWidget {
