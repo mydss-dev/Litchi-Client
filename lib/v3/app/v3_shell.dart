@@ -142,8 +142,8 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.invite => const V3InvitePage(),
     AppPage.traffic => const V3TrafficPage(),
     AppPage.orders => V3SheetPageFallback(
-      kicker: v3Copy(context, zh: '订单总览',
-        en: 'ORDER LEDGER', tw: '訂單總覽'),
+      kicker: v3Copy(context, zh: '订单中心',
+        en: 'ORDER CENTER', tw: '訂單中心'),
       title: l.orders, child: const V3OrdersPage(),
     ),
     AppPage.tickets => const V3TicketsPage(),
@@ -151,7 +151,9 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.dashboard => const V3DashboardPage(),
     AppPage.more => const V3MorePage(),
     AppPage.giftCard => V3SheetPageFallback(
-      kicker: l.giftCardTitle, title: l.giftCardTitle,
+      kicker: v3Copy(context, zh: '兑换中心',
+        en: 'REDEMPTION', tw: '兌換中心'),
+      title: l.giftCardTitle,
       child: const V3GiftCardPage(),
     ),
   };

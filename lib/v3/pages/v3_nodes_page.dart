@@ -96,7 +96,8 @@ class _V3NodesPageState extends State<V3NodesPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: v3Copy(context, zh: '节点列表', en: 'NODE LIST', tw: '節點列表'),
+            kicker: v3Copy(context, zh: '全球网络',
+              en: 'GLOBAL NETWORK', tw: '全球網路'),
             title: v3Copy(context, zh: '节点概览', en: 'Node overview', tw: '節點概覽'),
             description: v3Copy(context,
               zh: '查看全球节点分布与延迟，点击节点即可切换。',

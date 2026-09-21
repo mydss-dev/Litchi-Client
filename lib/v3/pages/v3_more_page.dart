@@ -28,7 +28,7 @@ class V3MorePage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: english ? 'More' : '更多',
+            kicker: english ? 'Tools & services' : traditional ? '服務與工具' : '服务与工具',
             title: english ? 'More services' : traditional ? '更多服務' : '更多服务',
             description: english
                 ? 'Features outside the account and primary tabs live here.'

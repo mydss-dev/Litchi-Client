@@ -10,6 +10,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_language_selector.dart';
 import '../ui/v3_layout.dart';
+import '../ui/v3_locale_copy.dart';
 
 // Reuse the existing ARB translations for established UI copy. These short
 // hints have no ARB entries yet; keeping them together avoids mixing Chinese
@@ -99,7 +100,8 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: l.systemSettings,
+            kicker: v3Copy(context, zh: '应用设置',
+              en: 'APP SETTINGS', tw: '應用設定'),
             title: l.settings,
             description: l.settingsSubtitle,
           ),
