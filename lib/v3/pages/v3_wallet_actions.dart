@@ -140,7 +140,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
           maxHeight: MediaQuery.sizeOf(context).height * 0.85),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(26)),
+          borderRadius: BorderRadius.circular(V3Radius.panel)),
         child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -158,7 +158,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
               onSubmitted: (_) => _submit(),
               decoration: InputDecoration(prefixText: '$symbol ', hintText: '100',
                 filled: true, fillColor: p.surfaceRaised,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.field),
                   borderSide: BorderSide.none))),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: [
@@ -177,7 +177,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
                 style: FilledButton.styleFrom(backgroundColor: p.lychee,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14))),
+                    borderRadius: BorderRadius.circular(V3Radius.field))),
                 icon: const Icon(Icons.add_card_rounded, size: 18),
                 label: Text(_busy ? v3Copy(context, zh: '正在创建订单…',
                     en: 'Creating order…', tw: '正在建立訂單…')
@@ -225,7 +225,7 @@ class _AmountDialogState extends State<_AmountDialog> {
           maxHeight: MediaQuery.sizeOf(context).height * 0.85),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(26)),
+          borderRadius: BorderRadius.circular(V3Radius.panel)),
         child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -247,7 +247,7 @@ class _AmountDialogState extends State<_AmountDialog> {
                 suffixIcon: _AllAmountButton(onTap: () =>
                   _controller.text = widget.maximum.toStringAsFixed(2)),
                 filled: true, fillColor: p.surfaceRaised,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.field),
                   borderSide: BorderSide.none))),
             if (_error != null) ...[
               const SizedBox(height: 10),
@@ -322,7 +322,7 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
           maxHeight: MediaQuery.sizeOf(context).height * 0.85),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(26)),
+          borderRadius: BorderRadius.circular(V3Radius.panel)),
         child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [

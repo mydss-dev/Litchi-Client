@@ -128,7 +128,7 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
         child: Row(children: [
           Container(width: 42, height: 42,
             decoration: BoxDecoration(color: p.lycheeSoft,
-              borderRadius: BorderRadius.circular(13)),
+              borderRadius: BorderRadius.circular(V3Radius.field)),
             child: Icon(Icons.send_rounded, size: 20, color: p.lycheeInk)),
           const SizedBox(width: 13),
           Expanded(child: Column(

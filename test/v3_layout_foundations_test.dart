@@ -55,7 +55,7 @@ void main() {
           decoration.color,
           dark ? V3Palette.dark.hero : V3Palette.light.surface,
         );
-        expect(decoration.borderRadius, BorderRadius.circular(18));
+        expect(decoration.borderRadius, BorderRadius.circular(V3Radius.card));
       },
     );
   }

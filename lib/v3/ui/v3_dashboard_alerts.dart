@@ -101,7 +101,7 @@ class _DashboardAlertTileState extends State<_DashboardAlertTile> {
         padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
         decoration: BoxDecoration(
           color: color.withValues(alpha: .08),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(V3Radius.field),
           border: Border.all(color: color.withValues(alpha: .28)),
         ),
         child: Row(
@@ -134,7 +134,7 @@ class _DashboardAlertTileState extends State<_DashboardAlertTile> {
                 foregroundColor: ink,
                 side: BorderSide(color: color.withValues(alpha: .4)),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(V3Radius.control),
                 ),
               ),
               child: Text(

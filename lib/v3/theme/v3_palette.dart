@@ -133,6 +133,25 @@ class V3Palette {
       Theme.of(context).brightness == Brightness.dark ? dark : light;
 }
 
+/// Corner radius tiers. Every box draws one of these four curves instead of
+/// inventing its own — the sweep that collapsed nineteen ad-hoc values into
+/// them deliberately keeps the app a little squarer so the tiers hold:
+///
+/// * [control] — chips, tags, tooltips, mini icon tiles.
+/// * [field] — text inputs, every button, segmented tracks, small tiles.
+/// * [card] — list rows, standard cards, inner panels. This is the curve a
+///   [V3Panel] draws unless told otherwise.
+/// * [panel] — page-level panels, dialogs and sheets.
+///
+/// Two non-tier values remain literal on purpose: the 2dp progress hairline
+/// and the 99 pill.
+abstract final class V3Radius {
+  static const double control = 10;
+  static const double field = 12;
+  static const double card = 16;
+  static const double panel = 24;
+}
+
 class V3Theme {
   const V3Theme._();
 
@@ -224,7 +243,7 @@ class V3Theme {
         backgroundColor: p.surface,
         selectedColor: p.lycheeSoft,
         side: BorderSide(color: p.line),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.control)),
         labelStyle: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
@@ -257,14 +276,14 @@ class V3Theme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(V3Radius.field),
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(V3Radius.field),
           ),
         ),
       ),
@@ -274,15 +293,15 @@ class V3Theme {
         hintStyle: TextStyle(color: p.inkMuted, fontSize: 13),
         prefixIconColor: p.inkMuted,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(V3Radius.field),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(V3Radius.field),
           borderSide: BorderSide(color: p.line),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(V3Radius.field),
           borderSide: BorderSide(color: p.lychee, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -293,7 +312,7 @@ class V3Theme {
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
           color: p.ink,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(V3Radius.control),
         ),
         textStyle: TextStyle(color: p.surface, fontSize: 11),
       ),

@@ -140,7 +140,7 @@ class _V3ToastViewState extends State<_V3ToastView>
             child: Container(
               decoration: BoxDecoration(
                 color: p.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(V3Radius.field),
                 border: Border.all(color: p.line),
                 boxShadow: [
                   BoxShadow(
@@ -169,7 +169,7 @@ class _V3ToastViewState extends State<_V3ToastView>
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: accent.withValues(alpha: .12),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(V3Radius.control),
                           ),
                           child: Icon(icon, size: 16, color: accent),
                         ),

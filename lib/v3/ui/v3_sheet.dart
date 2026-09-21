@@ -8,6 +8,7 @@ import '../pages/v3_gift_card_page.dart';
 import '../pages/v3_orders_page.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
+import 'v3_layout.dart';
 import 'v3_locale_copy.dart';
 
 /// The width at which the workspace and its sheets switch layouts.
@@ -41,7 +42,7 @@ Future<T?> showV3Sheet<T>(
       backgroundColor: V3Palette.of(context).surface,
       barrierColor: Colors.black.withValues(alpha: .48),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(V3Radius.panel))),
       constraints: BoxConstraints(maxHeight: size.height * .9),
       builder: content);
   }
@@ -56,7 +57,7 @@ Future<T?> showV3Sheet<T>(
           constraints: const BoxConstraints(maxHeight: 720),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(color: p.surface,
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(V3Radius.panel),
             border: Border.all(color: p.line)),
           child: content(ctx)));
     });
@@ -125,7 +126,7 @@ class V3SheetPageFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+      padding: V3Layout.pageInsets,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(kicker: kicker, title: title),
         const SizedBox(height: 24),

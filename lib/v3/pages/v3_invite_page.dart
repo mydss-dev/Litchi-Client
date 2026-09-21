@@ -119,7 +119,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
       final compact = constraints.maxWidth < V3Layout.paneCompact;
       return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+        padding: V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
             kicker: v3Copy(context, zh: '邀请奖励',
@@ -176,7 +176,7 @@ class _InviteHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(color: p.hero,
-        borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(V3Radius.panel), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(v3Copy(context, zh: '分享邀请',
@@ -270,7 +270,7 @@ class _InviteStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final symbol = controller.currencySymbol;
-    return V3Panel(padding: const EdgeInsets.all(20), radius: 26,
+    return V3Panel(padding: const EdgeInsets.all(20), radius: V3Radius.panel,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(v3Copy(context, zh: '邀请统计',
           en: 'REFERRAL STATS', tw: '邀請統計'),
@@ -329,7 +329,7 @@ class _ReferralLedger extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final records = controller.inviteRecords;
-    return V3Panel(padding: const EdgeInsets.all(20), radius: 26,
+    return V3Panel(padding: const EdgeInsets.all(20), radius: V3Radius.panel,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text(v3Copy(context,
@@ -352,7 +352,7 @@ class _ReferralLedger extends StatelessWidget {
               Container(width: 36, height: 36,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(color: p.surfaceRaised,
-                  borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(V3Radius.field)),
                 child: Icon(Icons.person_add_alt_1_rounded,
                   color: p.lycheeInk, size: 17)),
               const SizedBox(width: 12),

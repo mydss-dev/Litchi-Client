@@ -174,7 +174,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         const SizedBox(height: 16),
         Container(width: double.infinity, padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(color: p.surface,
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(V3Radius.panel),
             border: Border.all(color: p.line)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SingleChildScrollView(scrollDirection: Axis.horizontal,
@@ -260,11 +260,11 @@ class _OrderMetric extends StatelessWidget {
     final p = V3Palette.of(context);
     return Container(height: 100, padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(22)),
+        borderRadius: BorderRadius.circular(V3Radius.panel)),
       child: Row(children: [
         Container(width: 4, height: 48,
           decoration: BoxDecoration(color: accent,
-            borderRadius: BorderRadius.circular(8))),
+            borderRadius: BorderRadius.circular(V3Radius.control))),
         const SizedBox(width: 12),
         Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -301,7 +301,7 @@ class _OrderSkeletonRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(padding: EdgeInsets.symmetric(vertical: 15),
       child: Row(children: [
-        V3SkeletonBlock(width: 44, height: 44, radius: 15),
+        V3SkeletonBlock(width: 44, height: 44, radius: V3Radius.field),
         SizedBox(width: 13),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -410,7 +410,7 @@ class _OrderRow extends StatelessWidget {
         Container(width: 44, height: 44,
           decoration: BoxDecoration(
             color: statusColor.withValues(alpha: .1),
-            borderRadius: BorderRadius.circular(15)),
+            borderRadius: BorderRadius.circular(V3Radius.field)),
           child: Icon(Icons.receipt_long_rounded,
             color: statusColor, size: 20)),
         const SizedBox(width: 13),
@@ -447,7 +447,7 @@ class _OrderRow extends StatelessWidget {
                 foregroundColor: p.inkMuted,
                 side: BorderSide(color: p.line),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(V3Radius.control)),
                 textStyle: const TextStyle(fontSize: 11,
                   fontWeight: FontWeight.w700)),
               child: Text(v3Copy(context, zh: '取消订单',
@@ -462,7 +462,7 @@ class _OrderRow extends StatelessWidget {
                 backgroundColor: p.lychee,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(V3Radius.control)),
                 textStyle: const TextStyle(fontSize: 11,
                   fontWeight: FontWeight.w700)),
               child: Text(v3Copy(context, zh: '继续支付',

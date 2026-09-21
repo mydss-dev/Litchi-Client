@@ -65,7 +65,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
       final createLabel = v3Copy(context, zh: '新建工单',
         en: 'New ticket', tw: '新增工單');
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+        padding: V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 110),
@@ -113,7 +113,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
           Container(width: double.infinity, padding: const EdgeInsets.all(18),
             constraints: const BoxConstraints(minHeight: kV3TicketListMinHeight + 36),
             decoration: BoxDecoration(color: p.surface,
-              borderRadius: BorderRadius.circular(26),
+              borderRadius: BorderRadius.circular(V3Radius.panel),
               border: Border.all(color: p.line)),
             child: skeleton
               ? const _TicketsSkeleton()
@@ -162,11 +162,11 @@ class _TicketMetric extends StatelessWidget {
     final p = V3Palette.of(context);
     return Container(height: 96, padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(22)),
+        borderRadius: BorderRadius.circular(V3Radius.panel)),
       child: Row(children: [
         Container(width: 4, height: 44,
           decoration: BoxDecoration(color: accent,
-            borderRadius: BorderRadius.circular(8))),
+            borderRadius: BorderRadius.circular(V3Radius.control))),
         const SizedBox(width: 12),
         Column(mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -203,7 +203,7 @@ class _TicketSkeletonRow extends StatelessWidget {
     return const SizedBox(height: kV3TicketRowHeight,
       child: Padding(padding: EdgeInsets.symmetric(horizontal: 4),
         child: Row(children: [
-          V3SkeletonBlock(width: 44, height: 44, radius: 15),
+          V3SkeletonBlock(width: 44, height: 44, radius: V3Radius.field),
           SizedBox(width: 13),
           Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -216,7 +216,7 @@ class _TicketSkeletonRow extends StatelessWidget {
                 child: V3SkeletonBlock(height: 9)),
             ])),
           SizedBox(width: 12),
-          V3SkeletonBlock(width: 44, height: 20, radius: 10),
+          V3SkeletonBlock(width: 44, height: 20, radius: V3Radius.control),
         ])));
   }
 }
@@ -243,7 +243,7 @@ class _TicketRow extends StatelessWidget {
         en: 'Low', tw: '低'),
     };
     if (!wide) {
-      return InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap,
+      return InkWell(borderRadius: BorderRadius.circular(V3Radius.card), onTap: onTap,
         child: SizedBox(height: 102,
           child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Column(mainAxisAlignment: MainAxisAlignment.center,
@@ -274,13 +274,13 @@ class _TicketRow extends StatelessWidget {
                 ]),
               ]))));
     }
-    return InkWell(borderRadius: BorderRadius.circular(16), onTap: onTap,
+    return InkWell(borderRadius: BorderRadius.circular(V3Radius.card), onTap: onTap,
       child: SizedBox(height: kV3TicketRowHeight,
         child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(children: [
             Container(width: 44, height: 44,
               decoration: BoxDecoration(color: statusColor.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(15)),
+                borderRadius: BorderRadius.circular(V3Radius.field)),
               child: Icon(Icons.forum_rounded, color: statusColor, size: 20)),
             const SizedBox(width: 13),
             Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
@@ -300,7 +300,7 @@ class _TicketRow extends StatelessWidget {
             const SizedBox(width: 12),
             Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
               decoration: BoxDecoration(color: levelColor.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(V3Radius.control)),
               child: Text(levelLabel, style: TextStyle(color: levelColor,
                 fontSize: 10, fontWeight: FontWeight.w800))),
             const SizedBox(width: 9),

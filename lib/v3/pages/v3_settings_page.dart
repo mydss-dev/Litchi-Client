@@ -9,6 +9,7 @@ import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_language_selector.dart';
+import '../ui/v3_layout.dart';
 
 // Reuse the existing ARB translations for established UI copy. These short
 // hints have no ARB entries yet; keeping them together avoids mixing Chinese
@@ -93,7 +94,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
     final currentNetwork = controller.networkMode == NetworkMode.system
         ? l.systemProxy : l.tunMode;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+      padding: V3Layout.pageInsets,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -386,19 +387,19 @@ class _Segment<T> extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: p.surfaceRaised, borderRadius: BorderRadius.circular(12)),
+        color: p.surfaceRaised, borderRadius: BorderRadius.circular(V3Radius.field)),
       child: Row(children: items.map((item) {
         final selected = item == value;
         return Expanded(child: InkWell(
           key: ValueKey('v3-settings-segment-${label(item)}'),
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(V3Radius.control),
           onTap: () => onChanged(item),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
             decoration: BoxDecoration(
               color: selected ? p.surface : Colors.transparent,
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(V3Radius.control),
             ),
             child: Text(label(item), textAlign: TextAlign.center, maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -430,7 +431,7 @@ class _RecoveryPanel extends StatelessWidget {
         Container(
           width: 42, height: 42,
           decoration: BoxDecoration(color: p.citrus,
-            borderRadius: BorderRadius.circular(13)),
+            borderRadius: BorderRadius.circular(V3Radius.field)),
           child: Icon(Icons.build_circle_outlined, color: p.night, size: 21),
         ),
         const SizedBox(width: 14),
@@ -446,7 +447,7 @@ class _RecoveryPanel extends StatelessWidget {
           onPressed: onRepair,
           style: OutlinedButton.styleFrom(foregroundColor: p.ink,
             side: BorderSide(color: p.line),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field))),
           child: Text(action),
         ),
       ]),

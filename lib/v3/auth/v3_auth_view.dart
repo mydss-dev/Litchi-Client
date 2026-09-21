@@ -69,7 +69,7 @@ class _AuthBrandPanel extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: p.hero,
-        borderRadius: BorderRadius.circular(28), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(V3Radius.panel), border: Border.all(color: p.line)),
       padding: const EdgeInsets.all(34),
       child: Stack(children: [
         const Align(alignment: Alignment.topLeft,
@@ -103,7 +103,7 @@ class _AuthBrandPanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
                 ? p.aqua : p.lycheeInk,
-              borderRadius: BorderRadius.circular(12)))),
+              borderRadius: BorderRadius.circular(V3Radius.field)))),
       ]),
     );
   }
@@ -234,7 +234,7 @@ class _LoginFormState extends State<_LoginForm> {
         child: FilledButton(onPressed: _busy ? null : _login,
           style: FilledButton.styleFrom(backgroundColor: p.lychee,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field))),
           child: Text(_busy ? v3Copy(context, zh: '正在登录…',
             en: 'Signing in…', tw: '正在登入…')
             : v3Copy(context, zh: '进入 Litchi',
@@ -470,7 +470,7 @@ class _RegisterFormState extends State<_RegisterForm> {
               const SizedBox(height: 8),
               Container(padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(color: p.surface,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(V3Radius.card),
                   border: Border.all(color: p.line)),
                 child: DropdownButtonHideUnderline(child: DropdownButton<String>(
                   isExpanded: true,
@@ -555,7 +555,7 @@ class _RegisterFormState extends State<_RegisterForm> {
             !config.registerOpen ? null : _register,
           style: FilledButton.styleFrom(backgroundColor: p.lychee,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field))),
           child: Text(_busy ? v3Copy(context,
             zh: '正在注册…', en: 'Registering…', tw: '正在註冊…')
             : v3Copy(context, zh: '创建账户',
@@ -734,7 +734,7 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
         child: FilledButton(onPressed: _busy ? null : _reset,
           style: FilledButton.styleFrom(backgroundColor: p.lychee,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field))),
           child: Text(_busy ? v3Copy(context,
             zh: '正在重置…', en: 'Resetting…', tw: '正在重置…')
             : v3Copy(context, zh: '重置密码',
@@ -755,7 +755,7 @@ class _RememberToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return InkWell(onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(V3Radius.control),
       child: Padding(padding: const EdgeInsets.symmetric(
           vertical: 4, horizontal: 2),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -816,11 +816,11 @@ class _V3Field extends StatelessWidget {
         decoration: InputDecoration(hintText: hint, suffixIcon: trailing,
           filled: true, fillColor: p.surface,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.card),
             borderSide: BorderSide(color: p.line)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.card),
             borderSide: BorderSide(color: p.line)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.card),
             borderSide: BorderSide(color: p.lychee, width: 1.5)))),
     ]);
   }

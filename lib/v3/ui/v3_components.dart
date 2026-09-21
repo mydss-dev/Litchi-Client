@@ -211,7 +211,7 @@ class V3ActionButton extends StatelessWidget {
                 foregroundColor: p.ink,
                 side: BorderSide(color: p.line),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(V3Radius.field),
                 ),
               ),
               child: child,
@@ -222,7 +222,7 @@ class V3ActionButton extends StatelessWidget {
                 backgroundColor: p.lychee,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(V3Radius.field),
                 ),
               ),
               child: child,
@@ -356,7 +356,7 @@ class V3NavPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
       decoration: BoxDecoration(
         color: p.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(V3Radius.panel),
         border: Border.all(color: p.line),
       ),
       child: Column(
@@ -405,12 +405,12 @@ class V3NavRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(V3Radius.card),
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: selected ? p.lycheeSoft : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(V3Radius.card),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         child: Row(
@@ -420,7 +420,7 @@ class V3NavRow extends StatelessWidget {
               height: 34,
               decoration: BoxDecoration(
                 color: selected ? p.surface : p.surfaceRaised,
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(V3Radius.control),
               ),
               child: Icon(icon, size: 18,
                 color: selected ? p.lycheeInk : p.inkMuted),

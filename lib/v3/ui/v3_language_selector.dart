@@ -25,7 +25,7 @@ class V3LanguageSelector extends StatelessWidget {
         decoration: BoxDecoration(
           color: p.surfaceRaised,
           border: Border.all(color: p.line),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(V3Radius.field),
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<AppLocalePreference>(

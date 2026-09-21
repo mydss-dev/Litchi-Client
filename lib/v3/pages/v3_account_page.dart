@@ -7,6 +7,7 @@ import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_account_labels.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_logout_confirmation.dart';
 import '../ui/v3_sheet.dart';
@@ -64,7 +65,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
     final p = V3Palette.of(context);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+      padding: V3Layout.pageInsets,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(
           kicker: v3Copy(context, zh: '账户中心',
@@ -105,7 +106,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: p.warning.withValues(alpha: .1),
-              borderRadius: BorderRadius.circular(16)),
+              borderRadius: BorderRadius.circular(V3Radius.card)),
             child: Text(controller.dataLoadError!,
               style: TextStyle(color: p.warningInk, fontSize: 11))),
         ],
@@ -128,13 +129,13 @@ class _AccountSummaryPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(V3Radius.panel), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(width: 48, height: 48,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: p.lychee,
-              borderRadius: BorderRadius.circular(16)),
+              borderRadius: BorderRadius.circular(V3Radius.card)),
             child: Text(letter, style: const TextStyle(
               color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900))),
           const SizedBox(width: 14),
@@ -179,7 +180,7 @@ class _AccountSummaryPanel extends StatelessWidget {
             style: FilledButton.styleFrom(backgroundColor: p.lychee,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14))),
+                borderRadius: BorderRadius.circular(V3Radius.field))),
             icon: const Icon(Icons.storefront_rounded, size: 17),
             label: Text(controller.hasPlan
               ? v3Copy(context, zh: '管理套餐', en: 'Manage plan', tw: '管理方案')
@@ -200,7 +201,7 @@ class _WalletPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(24)),
+        borderRadius: BorderRadius.circular(V3Radius.panel)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(v3Copy(context, zh: '钱包', en: 'WALLET', tw: '錢包'),
           style: TextStyle(color: p.inkMuted, fontSize: 10,
@@ -268,7 +269,7 @@ class _WalletActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
+    final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field));
     return SizedBox(height: 46,
       child: primary
         ? FilledButton.icon(onPressed: onTap,
@@ -329,7 +330,7 @@ class _PreferencesPanel extends StatelessWidget {
     final p = V3Palette.of(context);
     return Container(padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(color: p.surface,
-        borderRadius: BorderRadius.circular(26), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(V3Radius.panel), border: Border.all(color: p.line)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Text(v3Copy(context, zh: '账户偏好',
@@ -402,7 +403,7 @@ class _AccountActions extends StatelessWidget {
     final p = V3Palette.of(context);
     return Container(padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(20)),
+        borderRadius: BorderRadius.circular(V3Radius.card)),
       child: Row(children: [
         Expanded(child: _AccountAction(icon: Icons.password_rounded,
           label: v3Copy(context, zh: '修改密码',
@@ -426,7 +427,7 @@ class _AccountAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return InkWell(borderRadius: BorderRadius.circular(15), onTap: onTap,
+    return InkWell(borderRadius: BorderRadius.circular(V3Radius.field), onTap: onTap,
       child: Padding(padding: const EdgeInsets.symmetric(vertical: 13,
         horizontal: 6),
         child: Column(children: [
@@ -499,7 +500,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
           maxHeight: MediaQuery.sizeOf(context).height * 0.85),
         padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(28)),
+          borderRadius: BorderRadius.circular(V3Radius.panel)),
         child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
@@ -541,7 +542,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                 style: FilledButton.styleFrom(backgroundColor: p.lychee,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14))),
+                    borderRadius: BorderRadius.circular(V3Radius.field))),
                 child: Text(_busy
                   ? v3Copy(context, zh: '正在提交…',
                       en: 'Submitting…', tw: '正在提交…')
@@ -565,7 +566,7 @@ class _PasswordField extends StatelessWidget {
     return TextField(controller: controller, obscureText: obscureText,
       decoration: InputDecoration(labelText: label, filled: true,
         fillColor: p.surfaceRaised,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.field),
           borderSide: BorderSide.none),
         suffixIcon: trailing),
     );

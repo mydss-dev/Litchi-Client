@@ -6,7 +6,7 @@ import '../theme/v3_palette.dart';
 /// LayoutBuilder widths are local pane widths, not the overall window width.
 abstract final class V3Layout {
   static const double pageGutter = 18;
-  static const double cardRadius = 18;
+  static const double cardRadius = V3Radius.card;
   static const double cardGap = 12;
   static const EdgeInsets pageInsets = EdgeInsets.fromLTRB(18, 18, 18, 28);
 

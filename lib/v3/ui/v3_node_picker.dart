@@ -218,14 +218,14 @@ class V3AutoRouteRow extends StatelessWidget {
     final p = V3Palette.of(context);
     final active = controller.autoSelected;
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(V3Radius.card),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         decoration: BoxDecoration(
           color: active ? p.lycheeSoft : p.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(V3Radius.card),
           border: Border.all(color: active ? p.lychee : p.line),
         ),
         child: Row(
@@ -235,7 +235,7 @@ class V3AutoRouteRow extends StatelessWidget {
               height: 38,
               decoration: BoxDecoration(
                 color: p.surfaceRaised,
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(V3Radius.control),
               ),
               child: Icon(
                 Icons.auto_awesome_rounded,
@@ -313,14 +313,14 @@ class V3NodeRow extends StatelessWidget {
         ? p.warningInk
         : p.inkMuted;
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(V3Radius.card),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: selected ? p.lycheeSoft : p.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(V3Radius.card),
           border: Border.all(color: selected ? p.lychee : p.line),
         ),
         child: Row(

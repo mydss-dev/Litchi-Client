@@ -180,7 +180,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
                     backgroundColor: p.lychee,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(V3Radius.field),
                     ),
                   ),
                   child: Text(_busy ? l.giftCardRedeeming : l.giftCardRedeemNow),

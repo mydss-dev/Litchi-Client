@@ -235,7 +235,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
         padding: const EdgeInsets.all(26),
         decoration: BoxDecoration(
           color: p.surface,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(V3Radius.panel),
         ),
         child: _paid ? _paidView(context) : _paymentView(context),
       ),
@@ -355,7 +355,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: p.hero,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(V3Radius.panel),
                 border: Border.all(color: p.line),
               ),
               child: Row(
@@ -422,7 +422,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(V3Radius.card),
                   ),
                   child: QrImageView(data: _paymentUrl!, size: 190),
                 ),
@@ -477,7 +477,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                   backgroundColor: p.lychee,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(V3Radius.field),
                   ),
                 ),
                 child: Text(

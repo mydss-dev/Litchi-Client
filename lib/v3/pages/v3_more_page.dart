@@ -6,6 +6,7 @@ import '../../l10n/generated/app_localizations_zh.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_sheet.dart';
 
 /// The compact overflow tab. Its labels use the same app locale as settings;
@@ -22,7 +23,7 @@ class V3MorePage extends StatelessWidget {
     final traditional = l.localeName.toLowerCase().contains('tw');
     final items = enabledNavItems(kMobileMore);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 26, 24, 36),
+      padding: V3Layout.pageInsets,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

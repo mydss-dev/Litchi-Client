@@ -10,6 +10,7 @@ import '../../shared/services/panel_api.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_sheet.dart';
 
 // Preserve the existing simplified-Chinese V3 copy; use the app's saved locale
@@ -38,13 +39,15 @@ class _V3ShopPageState extends State<V3ShopPage> {
     final plans = controller.plans.where((plan) =>
         _category == null || plan.category == _category).toList(growable: false);
     return LayoutBuilder(builder: (context, constraints) {
-      const padding = 24.0;
+      // Horizontal gutters follow the shared page insets so the card-width
+      // math matches what the scroll view actually applies.
+      const padding = V3Layout.pageGutter;
       const spacing = 12.0;
       final contentWidth = constraints.maxWidth - padding * 2;
       final twoColumns = contentWidth >= 600;
       final cardWidth = twoColumns ? (contentWidth - spacing) / 2 : contentWidth;
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(padding, 24, padding, 36),
+        padding: V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(kicker: _tr(context, '套餐商城', 'PLAN STORE', '方案商店'),
             title: _tr(context, '选择套餐', 'Choose a plan', '選擇方案')),
@@ -108,14 +111,14 @@ class _CategoryDeck extends StatelessWidget {
       padding: const EdgeInsets.all(5),
       child: Row(children: [
         for (final item in items) Expanded(child: InkWell(
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(V3Radius.control),
           onTap: () => onChanged(item.$1),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: selected == item.$1 ? p.surface : Colors.transparent,
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(V3Radius.control),
               border: Border.all(color: selected == item.$1
                   ? p.lychee : Colors.transparent)),
             child: Text(item.$2, textAlign: TextAlign.center,
@@ -241,7 +244,7 @@ class _PlanCard extends StatelessWidget {
             style: FilledButton.styleFrom(backgroundColor: p.lychee,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(13))),
+                borderRadius: BorderRadius.circular(V3Radius.field))),
             child: Text(plan.soldOut
                 ? _tr(context, '已售罄', 'Sold out', '已售罄')
                 : _tr(context, '选择套餐', 'Choose plan', '選擇方案')))),
@@ -390,7 +393,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
     return Dialog(
       backgroundColor: p.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.card)),
       child: SizedBox(
         key: kV3PurchaseDialogBodyKey,
         width: availableWidth,
@@ -512,14 +515,14 @@ class _CycleOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return InkWell(borderRadius: BorderRadius.circular(12), onTap: onTap,
+    return InkWell(borderRadius: BorderRadius.circular(V3Radius.field), onTap: onTap,
       child: AnimatedContainer(duration: const Duration(milliseconds: 160),
         width: 132, padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: selected ? p.lycheeSoft : p.surfaceRaised,
           border: Border.all(color: selected ? p.lychee : p.line,
             width: selected ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(12)),
+          borderRadius: BorderRadius.circular(V3Radius.field)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text(label, style: TextStyle(

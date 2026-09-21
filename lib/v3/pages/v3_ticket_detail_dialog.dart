@@ -88,7 +88,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
       child: Container(key: const ValueKey('v3-ticket-dialog-frame'),
         width: 680, height: height, padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(30)),
+          borderRadius: BorderRadius.circular(V3Radius.panel)),
         child: Column(children: [
           SizedBox(key: const ValueKey('v3-ticket-dialog-header'), height: 72,
             child: Row(children: [
@@ -125,7 +125,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
             key: const ValueKey('v3-ticket-dialog-messages'),
             width: double.infinity, padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: p.surfaceRaised,
-              borderRadius: BorderRadius.circular(20)),
+              borderRadius: BorderRadius.circular(V3Radius.card)),
             child: _ticket == null && _loading
               ? const Center(child: CircularProgressIndicator())
               : _ticket == null
@@ -147,7 +147,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: message.isAdmin ? p.surface : p.lycheeSoft,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(V3Radius.card),
                               border: message.isAdmin
                                 ? Border.all(color: p.line) : null),
                             child: Column(

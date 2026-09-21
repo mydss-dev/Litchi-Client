@@ -30,7 +30,7 @@ class V3DashboardPage extends StatelessWidget {
         controller.hasConfirmedNoPlan;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+      padding: V3Layout.pageInsets,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -164,7 +164,7 @@ class _ConnectionWorkspace extends StatelessWidget {
           child: _DashboardCard(
             padding: EdgeInsets.zero,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(17),
+              borderRadius: BorderRadius.circular(V3Radius.card),
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -297,7 +297,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: p.surfaceRaised,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(V3Radius.field),
                       ),
                       child: V3NodeFlag(code: node.code),
                     ),
@@ -371,7 +371,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                       foregroundColor: p.lycheeInk,
                       side: BorderSide(color: p.lychee),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(13),
+                        borderRadius: BorderRadius.circular(V3Radius.field),
                       ),
                     ),
                     icon: const Icon(Icons.swap_horiz_rounded, size: 18),
@@ -636,7 +636,7 @@ class _NetworkModeIndicator extends StatelessWidget {
     final p = V3Palette.of(context);
     final selected = controller.networkMode == mode;
     return InkWell(
-      borderRadius: BorderRadius.circular(11),
+      borderRadius: BorderRadius.circular(V3Radius.control),
       // The mode pill now behaves like the routing pills beside it: tap the
       // mode you want. Switching reloads the core config, so failures surface
       // as a SnackBar and success as a toast — same contract as _RouteButton.
@@ -669,7 +669,7 @@ class _NetworkModeIndicator extends StatelessWidget {
           // Follow the plan-cycle style rather than tinting the white label green.
           color: selected ? p.lycheeSoft : p.surfaceRaised,
           border: Border.all(color: selected ? p.lychee : p.line),
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(V3Radius.control),
         ),
         child: Text(
           _networkModeLabel(context, mode),
@@ -719,7 +719,7 @@ class _RouteButton extends StatelessWidget {
           backgroundColor: active ? p.lycheeSoft : Colors.transparent,
           side: BorderSide(color: active ? p.lychee : p.line),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(11),
+            borderRadius: BorderRadius.circular(V3Radius.control),
           ),
         ),
         child: Text(
@@ -943,7 +943,7 @@ class _PlanSummary extends StatelessWidget {
           const SizedBox(height: 13),
           if (total > 0) ...[
             ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(V3Radius.card),
               child: LinearProgressIndicator(
                 value: ratio,
                 minHeight: 9,

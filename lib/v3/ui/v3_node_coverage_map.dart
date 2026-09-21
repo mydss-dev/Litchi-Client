@@ -144,7 +144,7 @@ class V3NodeCoverageMap extends StatelessWidget {
             style: TextStyle(color: p.inkMuted, fontSize: 11)),
         ]),
         const SizedBox(height: 12),
-        ClipRRect(borderRadius: BorderRadius.circular(12),
+        ClipRRect(borderRadius: BorderRadius.circular(V3Radius.field),
           child: Container(color: p.surface,
             child: AspectRatio(aspectRatio: 2,
               child: LayoutBuilder(builder: (context, constraints) => Stack(
@@ -197,7 +197,7 @@ class V3NodeCoverageMap extends StatelessWidget {
                   if (nodeCount == 0)
                     Center(child: DecoratedBox(
                       decoration: BoxDecoration(color: p.surface,
-                        borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(V3Radius.control)),
                       child: Padding(padding: const EdgeInsets.all(8),
                         child: Text(v3Copy(context,
                           zh: '暂无节点', en: 'No nodes yet', tw: '暫無節點'),

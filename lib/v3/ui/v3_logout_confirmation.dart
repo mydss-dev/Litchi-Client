@@ -12,7 +12,7 @@ Future<bool> showV3LogoutConfirmation(BuildContext context) async {
       final p = V3Palette.of(dialogContext);
       return AlertDialog(
         backgroundColor: p.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.panel)),
         title: Text(
           v3Copy(dialogContext, zh: '确认退出登录', en: 'Log out?', tw: '確認登出'),
         ),

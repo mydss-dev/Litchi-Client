@@ -227,7 +227,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
         onExit: (_) => _setHovering(false),
         child: Material(color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(V3Radius.card),
             // Notice pages open the reader; the update page acts inline.
             onTap: isUpdatePage ? null : () => unawaited(_open(safeIndex)),
             child: Ink(
@@ -236,7 +236,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                 color: isUpdatePage
                     ? p.success.withValues(alpha: .10)
                     : p.surface,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(V3Radius.card),
                 border: Border.all(color: p.line)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -246,7 +246,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                       color: isUpdatePage
                           ? p.success.withValues(alpha: .12)
                           : p.lycheeSoft,
-                      borderRadius: BorderRadius.circular(9)),
+                      borderRadius: BorderRadius.circular(V3Radius.control)),
                     child: Icon(
                       isUpdatePage
                           ? Icons.arrow_circle_up_rounded
@@ -266,13 +266,13 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                           tw: '發現新版本 ${update.version}'),
                         key: ValueKey('v3-lane-update-${update.version}'),
                         maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: p.ink, fontSize: 12.5))
+                        style: TextStyle(color: p.ink, fontSize: 12))
                       : Text(v3NoticeHeadline(notices[safeIndex],
                           fallback: v3Copy(context,
                             zh: '公告', en: 'Notice', tw: '公告')),
                         key: ValueKey(notices[safeIndex].id),
                         maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: p.ink, fontSize: 12.5)))),
+                        style: TextStyle(color: p.ink, fontSize: 12)))),
                   if (multiple && MediaQuery.sizeOf(context).width >= 520) ...[
                     const SizedBox(width: 10),
                     _NavButton(icon: Icons.chevron_left_rounded,
@@ -281,7 +281,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                     SizedBox(width: 42, child: Text(
                       '${safeIndex + 1} / $_entryCount',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: p.inkMuted, fontSize: 10.5,
+                      style: TextStyle(color: p.inkMuted, fontSize: 10,
                         fontWeight: FontWeight.w600))),
                     _NavButton(icon: Icons.chevron_right_rounded,
                       tooltip: v3Copy(context, zh: '下一条', en: 'Next', tw: '下一則'),
@@ -319,7 +319,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                     const SizedBox(width: 8),
                     Padding(padding: const EdgeInsets.symmetric(horizontal: 2),
                       child: Text(v3Copy(context, zh: '查看', en: 'View', tw: '查看'),
-                        style: TextStyle(color: p.lycheeInk, fontSize: 11.5,
+                        style: TextStyle(color: p.lycheeInk, fontSize: 11,
                           fontWeight: FontWeight.w700))),
                   ],
                 ]),
@@ -355,7 +355,7 @@ class _NavButton extends StatelessWidget {
       constraints: const BoxConstraints.tightFor(width: 24, height: 24),
       style: IconButton.styleFrom(foregroundColor: p.ink,
         backgroundColor: p.surfaceRaised, side: BorderSide(color: p.line),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))));
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.control))));
   }
 }
 
@@ -409,7 +409,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
         width: 520, constraints: const BoxConstraints(maxHeight: 640),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(color: p.surface,
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: BorderRadius.circular(V3Radius.panel),
           border: Border.all(color: p.line)),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Padding(padding: const EdgeInsets.fromLTRB(22, 18, 12, 10),
@@ -418,7 +418,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                 if (widget.mustRead) ...[
                   Container(width: 30, height: 30, alignment: Alignment.center,
                     decoration: BoxDecoration(color: p.lycheeSoft,
-                      borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(V3Radius.control)),
                     child: Icon(Icons.campaign_rounded, size: 16,
                       color: p.lycheeInk)),
                   const SizedBox(width: 12),
@@ -446,7 +446,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                   fontSize: 11, fontWeight: FontWeight.w600)),
                 if (image.isNotEmpty) ...[
                   const SizedBox(height: 14),
-                  ClipRRect(borderRadius: BorderRadius.circular(14),
+                  ClipRRect(borderRadius: BorderRadius.circular(V3Radius.field),
                     child: Image.network(image, width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => const SizedBox.shrink())),
@@ -486,7 +486,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: 22, vertical: 12),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14))),
+                    borderRadius: BorderRadius.circular(V3Radius.field))),
                 child: Text(widget.mustRead
                   ? v3Copy(context, zh: '我知道了',
                       en: 'Understood', tw: '我知道了')

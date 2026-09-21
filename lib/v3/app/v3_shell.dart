@@ -166,7 +166,7 @@ class _DesktopRail extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.hero,
         border: Border.all(color: p.line),
-        borderRadius: BorderRadius.circular(20)),
+        borderRadius: BorderRadius.circular(V3Radius.card)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(2, 0, 2, 26),
@@ -187,12 +187,12 @@ class _DesktopRail extends StatelessWidget {
         const SizedBox(height: 12),
         InkWell(
           key: kAccountCardKey,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(V3Radius.card),
           onTap: () => controller.goToPage(AppPage.account),
           child: Container(
             padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(color: p.surface,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(V3Radius.card),
               border: Border.all(color: p.line)),
             child: Row(children: [
               CircleAvatar(
@@ -215,7 +215,7 @@ class _DesktopRail extends StatelessWidget {
                     child: Text(plan.shortLabel, maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: plan.usable
-                        ? p.successInk : p.inkMuted, fontSize: 9)),
+                        ? p.successInk : p.inkMuted, fontSize: 10)),
                   ),
                 ],
               )),
@@ -242,7 +242,7 @@ class _RailItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(V3Radius.field),
         onTap: onTap,
         child: TweenAnimationBuilder<double>(
           tween: Tween<double>(end: selected ? 1 : 0),
@@ -256,7 +256,7 @@ class _RailItem extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: p.lycheeSoft.withValues(alpha: t),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(V3Radius.field),
               ),
               child: Row(children: [
                 Icon(item.icon, color: iconColor, size: 19),
@@ -470,7 +470,7 @@ class _V3BootView extends StatelessWidget {
           width: 54,
           height: 54,
           decoration: BoxDecoration(color: p.citrus,
-            borderRadius: BorderRadius.circular(18)),
+            borderRadius: BorderRadius.circular(V3Radius.card)),
           child: Icon(Icons.blur_on_rounded, color: p.night, size: 34),
         ),
         const SizedBox(height: 18),
