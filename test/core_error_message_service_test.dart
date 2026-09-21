@@ -10,9 +10,11 @@ void main() {
     expect(CoreErrorMessageService.missingCore, contains('sing-box'));
     expect(CoreErrorMessageService.permissionDenied, contains('管理员'));
     expect(CoreErrorMessageService.tunInterfaceUnavailable, contains('TUN'));
-    expect(CoreErrorMessageService.tunKillSwitchUnavailable, contains('中断保护'));
+    expect(CoreErrorMessageService.tunKillSwitchUnavailable, contains('防泄漏'));
     expect(CoreErrorMessageService.androidStartFailed, contains('Android'));
     expect(CoreErrorMessageService.unexpectedCoreExit, contains('异常退出'));
+    expect(CoreErrorMessageService.killSwitchHolding, contains('防泄漏'));
+    expect(CoreErrorMessageService.killSwitchHolding, contains('重新连接'));
   });
 
   test('maps Windows permission failures to admin hint', () {
@@ -83,6 +85,20 @@ void main() {
         l10n: l10n,
       ),
       l10n.tunInterfaceUnavailableError,
+    );
+    expect(
+      CoreErrorMessageService.userFacing(
+        CoreErrorMessageService.tunKillSwitchUnavailable,
+        l10n: l10n,
+      ),
+      l10n.tunKillSwitchUnavailableError,
+    );
+    expect(
+      CoreErrorMessageService.userFacing(
+        CoreErrorMessageService.killSwitchHolding,
+        l10n: l10n,
+      ),
+      l10n.killSwitchHoldingError,
     );
     expect(
       CoreErrorMessageService.userFacing(

@@ -185,7 +185,9 @@ class PanelApi {
     try {
       return await fetchRegisterConfig();
     } catch (e) {
-      SecureLogger.debug('get register config failed', e);
+      if (e is! ApiNotConfiguredException) {
+        SecureLogger.debug('get register config failed', e);
+      }
       return const RegisterConfig();
     }
   }
@@ -245,7 +247,9 @@ class PanelApi {
       _check(res);
       return _dataList(res).map(RemoteLoginLog.fromJson).toList();
     } catch (e) {
-      SecureLogger.debug('get login logs failed', e);
+      if (e is! ApiNotConfiguredException) {
+        SecureLogger.debug('get login logs failed', e);
+      }
       return [];
     }
   }
@@ -464,7 +468,11 @@ class PanelApi {
       _check(res);
       return (res['data'] as Map?)?['currency_symbol']?.toString() ?? '¥';
     } catch (e) {
-      SecureLogger.debug('get currency symbol failed', e);
+      // No server configured yet (setup state or the review bypass) is normal,
+      // not a failure worth a log line.
+      if (e is! ApiNotConfiguredException) {
+        SecureLogger.debug('get currency symbol failed', e);
+      }
       return '¥';
     }
   }
@@ -580,7 +588,9 @@ class PanelApi {
           .map(NoticeModel.fromJson)
           .toList();
     } catch (e) {
-      SecureLogger.debug('get notices failed', e);
+      if (e is! ApiNotConfiguredException) {
+        SecureLogger.debug('get notices failed', e);
+      }
       return [];
     }
   }

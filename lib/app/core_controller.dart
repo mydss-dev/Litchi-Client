@@ -1238,8 +1238,13 @@ class CoreController extends ChangeNotifier {
         // Core death can race with the final connecting -> connected UI state.
         // Once TUN protection may be active, keep WFP/PF regardless of that UI
         // transition until an explicit teardown confirms the tunnel is gone.
+        // The holding state replaces the root-cause text: the actionable fact
+        // for the user is "protection is pausing traffic", and the raw core
+        // error stays in the logs.
+        _coreError = CoreErrorMessageService.killSwitchHolding;
       } else if (_killSwitchEnabled && wasConnected) {
         unawaited(ProxySetter.engageKillSwitch());
+        _coreError = CoreErrorMessageService.killSwitchHolding;
       } else {
         unawaited(_releaseTunKillSwitch());
         unawaited(ProxySetter.disable());
@@ -1256,9 +1261,13 @@ class CoreController extends ChangeNotifier {
     }
     _stopTrafficMonitor();
     _connectedAt = null;
-    _coreError = error.isEmpty ? 'Windows TUN 服务意外停止' : error;
     _status = ConnectionStatus.error;
-    if (!_killSwitchEnabled) {
+    if (_killSwitchEnabled) {
+      // WFP stays engaged while the switch is on; tell the user traffic is
+      // being held instead of showing the raw service-stop string.
+      _coreError = CoreErrorMessageService.killSwitchHolding;
+    } else {
+      _coreError = error.isEmpty ? 'Windows TUN 服务意外停止' : error;
       unawaited(_releaseTunKillSwitch());
     }
     unawaited(ProxySetter.disable());

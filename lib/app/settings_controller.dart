@@ -23,7 +23,7 @@ class SettingsController extends ChangeNotifier {
   NetworkMode _networkMode = NetworkMode.system;
   DnsMode _dnsMode = DnsMode.system;
   int _proxyPort = 7890;
-  bool _killSwitch = false;
+  bool _killSwitch = true;
   ThemeMode _themeMode = ThemeMode.light;
 
   bool get wasConnected => _wasConnected;

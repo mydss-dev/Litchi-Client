@@ -3,21 +3,20 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
 import '../../config/app_config.dart';
-import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_account_labels.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_logout_confirmation.dart';
-import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
 import 'v3_telegram_page.dart';
 import 'v3_wallet_actions.dart';
 
-/// Account layout: identity/plan hero, wallet, services, then preferences and
-/// security — all directly visible. Do not turn the account into a collapsed
-/// menu.
+/// Account layout: identity/plan hero, wallet, then preferences and security
+/// — all directly visible. Do not turn the account into a collapsed menu.
+/// Telegram binding is a bottom action; redemption lives in the window bar
+/// (desktop) or the compact 更多 list (mobile).
 class V3AccountPage extends StatefulWidget {
   const V3AccountPage({super.key});
   @override
@@ -82,15 +81,13 @@ class _V3AccountPageState extends State<V3AccountPage> {
             onPressed: controller.refreshData,
             icon: const Icon(Icons.refresh_rounded)),
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 18),
         _AccountSummaryPanel(controller: controller),
         if (AppConfig.panelFeatures.wallet || controller.user.balance > 0 ||
             controller.withdrawable > 0) ...[
           const SizedBox(height: 16),
           const _WalletPanel(),
         ],
-        const SizedBox(height: 16),
-        _HubPanel(controller: controller),
         if (controller.hasPlan) ...[
           const SizedBox(height: 16),
           _PreferencesPanel(controller: controller,
@@ -104,6 +101,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
           onPassword: () => showDialog<void>(context: context,
             barrierColor: Colors.black.withValues(alpha: .48),
             builder: (_) => const _PasswordDialog()),
+          onTelegram: () => V3TelegramPage.show(context),
           onLogout: _confirmLogout),
         if (controller.dataLoadError != null) ...[
           const SizedBox(height: 16),
@@ -290,47 +288,6 @@ class _WalletActionButton extends StatelessWidget {
   }
 }
 
-class _HubPanel extends StatelessWidget {
-  const _HubPanel({required this.controller});
-  final AppController controller;
-  @override
-  Widget build(BuildContext context) {
-    // The desktop rail carries 订单 as a first-class entry; repeating it in
-    // the services hub would list the same page twice on one screen.
-    final desktop = switch (Theme.of(context).platform) {
-      TargetPlatform.windows || TargetPlatform.macOS || TargetPlatform.linux =>
-        true,
-      _ => false,
-    };
-    final items = enabledNavItems(kMobileHub)
-        .where((item) => !(desktop && item.page == AppPage.orders))
-        .toList();
-    final telegramEnabled = AppConfig.panelFeatures.telegram;
-    if (items.isEmpty && !telegramEnabled) return const SizedBox.shrink();
-    final bound = controller.accountDetails?.telegramId != null;
-    return V3NavPanel(title: v3Copy(context, zh: '我的服务',
-      en: 'My services', tw: '我的服務'), children: [
-      for (final item in items)
-        V3NavRow(key: hubRowKey(item.page), icon: item.icon,
-          label: item.localizedLabel(context), selected: controller.page == item.page,
-          onTap: () => openV3Page(context, item.page)),
-      if (telegramEnabled)
-        V3NavRow(key: const ValueKey('v3-hub-telegram'),
-          icon: Icons.send_rounded,
-          label: v3Copy(context, zh: 'Telegram 通知',
-            en: 'Telegram notifications', tw: 'Telegram 通知'),
-          // Only a positive binding is worth a subtitle; an unbound row stays
-          // quiet — the sheet below explains how to link.
-          subtitle: bound
-            ? v3Copy(context, zh: '已绑定，可接收账户通知',
-                en: 'Linked; account notifications enabled',
-                tw: '已綁定，可接收帳戶通知')
-            : null,
-          selected: false, onTap: () => V3TelegramPage.show(context)),
-    ]);
-  }
-}
-
 class _PreferencesPanel extends StatelessWidget {
   const _PreferencesPanel({required this.controller, required this.busy,
     required this.onExpireChanged, required this.onTrafficChanged,
@@ -411,8 +368,10 @@ class _PreferenceRow extends StatelessWidget {
 }
 
 class _AccountActions extends StatelessWidget {
-  const _AccountActions({required this.onPassword, required this.onLogout});
+  const _AccountActions({required this.onPassword, required this.onTelegram,
+    required this.onLogout});
   final VoidCallback onPassword;
+  final VoidCallback onTelegram;
   final VoidCallback onLogout;
   @override
   Widget build(BuildContext context) {
@@ -424,6 +383,12 @@ class _AccountActions extends StatelessWidget {
         Expanded(child: _AccountAction(icon: Icons.password_rounded,
           label: v3Copy(context, zh: '修改密码',
             en: 'Change password', tw: '修改密碼'), onTap: onPassword)),
+        Expanded(child: _AccountAction(
+          key: const ValueKey('v3-account-telegram'),
+          icon: Icons.send_rounded,
+          label: v3Copy(context, zh: 'TG 通知',
+            en: 'Telegram', tw: 'TG 通知'),
+          onTap: onTelegram)),
         Expanded(child: _AccountAction(icon: Icons.logout_rounded,
           label: v3Copy(context, zh: '退出登录',
             en: 'Log out', tw: '登出'),
@@ -434,7 +399,7 @@ class _AccountActions extends StatelessWidget {
 }
 
 class _AccountAction extends StatelessWidget {
-  const _AccountAction({required this.icon, required this.label,
+  const _AccountAction({super.key, required this.icon, required this.label,
     required this.onTap, this.danger = false});
   final IconData icon;
   final String label;

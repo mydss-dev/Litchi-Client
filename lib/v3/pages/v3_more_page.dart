@@ -36,7 +36,7 @@ class V3MorePage extends StatelessWidget {
                     ? '帳戶及主要分頁以外的功能都在這裡。'
                     : '不属于账户，也不常驻底栏的功能都在这里。',
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
           if (items.isEmpty)
             V3Panel(
               child: Text(

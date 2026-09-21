@@ -260,7 +260,11 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get hasPlan =>
       _currentPlanId != null ||
       _account.user.plan.trim().isNotEmpty ||
-      _subscription.subscribeUrl.trim().isNotEmpty;
+      _subscription.subscribeUrl.trim().isNotEmpty ||
+      // Live quota is plan evidence too — the same signal DataLoader counts
+      // via `transferEnable > 0`. Without it the rail can say 暂无套餐 while
+      // the traffic page above it shows a full quota.
+      _account.traffic.totalGb > 0;
 
   String get planExpiryLabel {
     final value = user.expiry.trim();

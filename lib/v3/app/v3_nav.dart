@@ -12,11 +12,8 @@ enum V3NavPlacement {
   /// Compact bottom-navigation tab.
   mobilePrimary,
 
-  /// Reached from the account page's "我的服务" hub on compact layouts.
-  mobileHub,
-
-  /// Reached from the compact "更多" tab, for the pages that are neither an
-  /// account concern nor common enough to hold a tab.
+  /// Reached from the compact "更多" tab, for the pages that are neither a
+  /// tab nor owned by the desktop window bar.
   mobileMore,
 
   /// Compact rail entry on wide layouts.
@@ -122,28 +119,23 @@ const List<V3NavItem> kMobilePrimary = [
   ),
 ];
 
-/// Account business, listed in the account page's hub.
-///
-/// This list is the answer to "what belongs to my account": money spent and
-/// money redeemed. Money *held* is not a destination any more — the account
-/// page shows the balance in its own wallet panel, so a 我的钱包 row would only
-/// lead to a second place that says the same number.
-const List<V3NavItem> kMobileHub = [
+/// The 更多 tab's list: everything compact has no tab for, in the order the
+/// desktop rail presents its equivalents.
+const List<V3NavItem> kMobileMore = [
+  // The rail keeps orders adjacent to the shop; this list mirrors the rail's
+  // order, so orders leads here too.
   V3NavItem(
     page: AppPage.orders,
     icon: Icons.receipt_long_outlined,
-    placement: V3NavPlacement.mobileHub,
+    placement: V3NavPlacement.mobileMore,
   ),
+  // Compact has no window bar, so the redemption form lives here instead of
+  // the desktop title-bar gift button.
   V3NavItem(
     page: AppPage.giftCard,
     icon: Icons.card_giftcard_rounded,
-    placement: V3NavPlacement.mobileHub,
+    placement: V3NavPlacement.mobileMore,
   ),
-];
-
-/// The 更多 tab's list: everything compact has no tab or hub row for, in the
-/// order the desktop rail presents its equivalents.
-const List<V3NavItem> kMobileMore = [
   V3NavItem(
     page: AppPage.traffic,
     icon: Icons.insights_rounded,
@@ -228,11 +220,13 @@ const V3NavItem kAccountDestination = V3NavItem(
 /// can share a word with the nav item that opens it).
 Key railItemKey(AppPage page) => ValueKey('v3-rail-${page.name}');
 
-Key hubRowKey(AppPage page) => ValueKey('v3-hub-${page.name}');
-
 Key moreRowKey(AppPage page) => ValueKey('v3-more-${page.name}');
 
 const Key kAccountCardKey = ValueKey('v3-rail-account-card');
+
+/// The window bar's redemption button, present only when the panel enables
+/// gift cards; otherwise the bar keeps its plain V3 mark.
+const Key kWindowGiftCardKey = ValueKey('v3-window-gift-card');
 
 /// The enabled subset of [items], in declaration order.
 List<V3NavItem> enabledNavItems(List<V3NavItem> items) =>
@@ -241,9 +235,9 @@ List<V3NavItem> enabledNavItems(List<V3NavItem> items) =>
 /// Bottom-navigation index for [current], or null when the bottom bar should
 /// not be rendered at all.
 ///
-/// A page with no tab of its own highlights the tab that leads to it — 账户 for
-/// the hub rows, 更多 for the overflow — which is what tells the user which
-/// corner of the app they are standing in.
+/// A page with no tab of its own highlights the tab that leads to it — 更多
+/// for the overflow — which is what tells the user which corner of the app
+/// they are standing in.
 int? selectedPrimaryIndex(AppPage current) {
   final primary = enabledNavItems(kMobilePrimary);
   if (primary.isEmpty) return null;
@@ -254,10 +248,8 @@ int? selectedPrimaryIndex(AppPage current) {
 
   final own = indexOf(current);
   if (own != null) return own;
-  final viaHub = kMobileHub.any((item) => item.page == current);
   final viaMore = kMobileMore.any((item) => item.page == current);
   return (viaMore ? indexOf(AppPage.more) : null) ??
-      (viaHub ? indexOf(AppPage.account) : null) ??
       indexOf(AppPage.account) ??
       0;
 }

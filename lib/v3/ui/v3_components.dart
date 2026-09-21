@@ -33,7 +33,7 @@ class V3Panel extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.tone = V3PanelTone.surface,
-    this.radius = 18,
+    this.radius = V3Radius.card,
   });
 
   final Widget child;
@@ -340,9 +340,7 @@ class V3SectionLabel extends StatelessWidget {
 
 /// A titled panel of navigation rows.
 ///
-/// The account hub ("我的服务") and the compact "更多" tab are the same control
-/// with different contents, so they are the same widget. Presentational: the
-/// caller supplies the rows and the callback.
+/// The compact "更多" tab renders its destinations this way — a list to scan.
 class V3NavPanel extends StatelessWidget {
   const V3NavPanel({super.key, required this.title, required this.children});
 

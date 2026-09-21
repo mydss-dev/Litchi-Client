@@ -97,7 +97,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
               child: FilledButton.icon(onPressed: _newTicket,
                 icon: const Icon(Icons.add_rounded), label: Text(createLabel))),
           ],
-          const SizedBox(height: 22),
+          const SizedBox(height: 18),
           Row(children: [
             Expanded(child: _TicketMetric(label: v3Copy(context,
                 zh: '全部工单', en: 'All tickets', tw: '全部工單'),

@@ -46,7 +46,7 @@ Future<_NavController> _pumpShell(WidgetTester tester, Size size) async {
 Type _sheetType(AppPage page) => switch (page) {
   AppPage.orders => V3OrdersPage,
   AppPage.giftCard => V3GiftCardPage,
-  _ => throw ArgumentError('${page.name} is not an account sheet'),
+  _ => throw ArgumentError('${page.name} is not a compact sheet'),
 };
 
 Future<void> _onPlatform(TargetPlatform platform,
@@ -56,7 +56,6 @@ Future<void> _onPlatform(TargetPlatform platform,
 }
 
 Finder _rail(AppPage page) => find.byKey(railItemKey(page));
-Finder _hubRow(AppPage page) => find.byKey(hubRowKey(page));
 Finder _moreRow(AppPage page) => find.byKey(moreRowKey(page));
 Finder _tab(String label) => find.descendant(
     of: find.byType(NavigationBar), matching: find.text(label));
@@ -110,12 +109,11 @@ void main() {
           case AppPage.account:
             await _tap(tester, find.byKey(kAccountCardKey), 'account card');
           case AppPage.giftCard:
-            await _tap(tester, find.byKey(kAccountCardKey), 'account card');
-            await _tap(tester, _hubRow(target), target.name);
+            await _tap(tester, find.byKey(kWindowGiftCardKey), target.name);
             expect(find.byType(_sheetType(target)), findsOneWidget,
-              reason: '${target.name} must open from account');
-            expect(controller.page, AppPage.account,
-              reason: '${target.name} should not replace the account page');
+              reason: '${target.name} must open from the window bar');
+            expect(controller.page, AppPage.dashboard,
+              reason: '${target.name} is a window-bar sheet, not a page');
             return;
           case AppPage.more:
             return;
@@ -140,11 +138,12 @@ void main() {
             await _tap(tester, _tab(_primaryLabel(target)), target.name);
           case AppPage.orders:
           case AppPage.giftCard:
-            await _tap(tester, _tab(_primaryLabel(AppPage.account)), 'account tab');
-            await _tap(tester, _hubRow(target), target.name);
-            expect(find.byType(_sheetType(target)), findsOneWidget);
-            expect(controller.page, AppPage.account,
-              reason: '${target.name} is an account modal');
+            await _tap(tester, _tab(_primaryLabel(AppPage.more)), 'more tab');
+            await _tap(tester, _moreRow(target), target.name);
+            expect(find.byType(_sheetType(target)), findsOneWidget,
+              reason: '${target.name} opens as a compact sheet over 更多');
+            expect(controller.page, AppPage.more,
+              reason: '${target.name} is a compact sheet, not a page replacement');
             return;
           case AppPage.traffic:
           case AppPage.invite:
@@ -162,7 +161,6 @@ void main() {
   test('every enabled page is declared in the nav model', () {
     for (final surface in <(String, List<V3NavItem>)>[
       ('kMobilePrimary', kMobilePrimary),
-      ('kMobileHub', kMobileHub),
       ('kMobileMore', kMobileMore),
       ('kDesktopRail', [...kDesktopRail, kRailSettings]),
     ]) {
@@ -175,7 +173,7 @@ void main() {
     }
     final declared = {
       ...kMobilePrimary.map((item) => item.page),
-      ...kMobileHub.map((item) => item.page),
+      ...kMobileMore.map((item) => item.page),
       ...kDesktopRail.map((item) => item.page),
       kRailSettings.page,
     };
@@ -183,23 +181,6 @@ void main() {
       expect(declared.contains(page), isTrue,
         reason: '${page.name} is missing from the nav model entirely');
     }
-  });
-
-  testWidgets('hub pages highlight the account tab rather than nothing',
-      (tester) async {
-    await _onPlatform(TargetPlatform.android, () async {
-      final controller = await _pumpShell(tester, _mobile);
-      final accountIndex = enabledNavItems(kMobilePrimary)
-          .indexWhere((item) => item.page == AppPage.account);
-      expect(accountIndex, isNonNegative);
-      for (final page in enabledNavItems(kMobileHub).map((item) => item.page)) {
-        controller.goToPage(page);
-        await tester.pumpAndSettle();
-        expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-          accountIndex, reason: '${page.name} should highlight account');
-      }
-      expect(tester.takeException(), isNull);
-    });
   });
 
   testWidgets('overflow pages highlight the 更多 tab', (tester) async {
@@ -253,24 +234,23 @@ void main() {
           reason: 'closing dialog returns to visible wallet area');
         expect(controller.page, AppPage.account);
       }
-      expect(find.text('我的服务'), findsOneWidget);
       expect(controller.page, AppPage.account);
       expect(tester.takeException(), isNull);
     });
   });
 
-  testWidgets('a hub sheet closes back onto the account page', (tester) async {
+  testWidgets('a more sheet closes back onto the more tab', (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, _mobile);
-      controller.goToPage(AppPage.account);
+      controller.goToPage(AppPage.more);
       await tester.pumpAndSettle();
-      for (final page in enabledNavItems(kMobileHub).map((item) => item.page)) {
-        await _tap(tester, _hubRow(page), page.name);
+      for (final page in [AppPage.orders, AppPage.giftCard]) {
+        await _tap(tester, _moreRow(page), page.name);
         expect(find.byType(_sheetType(page)), findsOneWidget);
-        await _tap(tester, find.byTooltip('关闭'), 'account sheet close');
+        await _tap(tester, find.byTooltip('关闭'), 'more sheet close');
         expect(find.byType(_sheetType(page)), findsNothing,
           reason: '${page.name} did not close');
-        expect(controller.page, AppPage.account);
+        expect(controller.page, AppPage.more);
       }
       expect(tester.takeException(), isNull);
     });
@@ -281,7 +261,6 @@ void main() {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, _mobile);
       for (final (tab, items) in <(AppPage, List<V3NavItem>)>[
-        (AppPage.account, kMobileHub),
         (AppPage.more, kMobileMore),
       ]) {
         for (final page in enabledNavItems(items).map((item) => item.page)) {

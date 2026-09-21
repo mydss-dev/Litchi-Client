@@ -158,7 +158,8 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.giftCard => V3SheetPageFallback(
       kicker: v3Copy(context, zh: '兑换中心',
         en: 'REDEMPTION', tw: '兌換中心'),
-      title: l.giftCardTitle,
+      title: v3Copy(context,
+        zh: '礼品卡兑换', en: 'Gift card', tw: '禮品卡兌換'),
       description: v3Copy(context,
         zh: '输入兑换码，权益到账后自动同步到账户。',
         en: 'Enter a code; benefits sync to your account automatically.',
@@ -224,7 +225,9 @@ class _DesktopRail extends StatelessWidget {
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(user.name.isEmpty ? 'Guest' : user.name,
+                  Text(user.name.isEmpty
+                      ? v3Copy(context, zh: '访客', en: 'Guest', tw: '訪客')
+                      : user.name,
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: p.ink, fontWeight: FontWeight.w700,
                       fontSize: 11)),
@@ -387,7 +390,14 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final draggableBrand = GestureDetector(
+    final controller = AppScope.of(context);
+    // Redemption moves to the title bar: the gift button replaces the V3 mark
+    // when the panel offers it, and the mark stays when it does not.
+    final giftEntry = isPageEnabled(AppPage.giftCard) && controller.isAuthenticated;
+    // The gift button sits OUTSIDE the drag surface: a double-tap recognizer
+    // on its ancestor enters the gesture arena and delays or swallows the
+    // button's single tap.
+    final dragSurface = GestureDetector(
       behavior: HitTestBehavior.translucent,
       onPanStart: (_) => windowManager.startDragging(),
       onDoubleTap: _toggleMaximize,
@@ -396,9 +406,6 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
           style: TextStyle(color: p.inkMuted, fontSize: 10,
             fontWeight: FontWeight.w800, letterSpacing: 1.4)),
         const Spacer(),
-        Text('V3', style: TextStyle(color: p.lycheeInk, fontSize: 10,
-          fontWeight: FontWeight.w900, letterSpacing: 1.4)),
-        const SizedBox(width: 14),
       ]),
     );
     return Container(
@@ -408,15 +415,35 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
         if (_usesNativeControls) const SizedBox(width: 76),
         Expanded(child: Padding(
           padding: const EdgeInsets.only(left: 22),
-          child: draggableBrand,
+          child: dragSurface,
         )),
+        if (giftEntry) ...[
+          IconButton(
+            key: kWindowGiftCardKey,
+            tooltip: v3Copy(context, zh: '兑换中心',
+              en: 'Redemption', tw: '兌換中心'),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+            onPressed: () => openV3Page(context, AppPage.giftCard),
+            icon: Icon(Icons.redeem_rounded, size: 18, color: p.lycheeInk)),
+          const SizedBox(width: 4),
+        ] else
+          Padding(padding: const EdgeInsets.only(right: 14),
+            child: Text('V3', style: TextStyle(color: p.lycheeInk, fontSize: 10,
+              fontWeight: FontWeight.w900, letterSpacing: 1.4))),
         if (!_usesNativeControls) ...[
-          _V3WindowButton(tooltip: 'Minimize', icon: Icons.remove_rounded,
-            onPressed: windowManager.minimize),
-          _V3WindowButton(tooltip: _maximized ? 'Restore' : 'Maximize',
+          _V3WindowButton(
+            tooltip: v3Copy(context, zh: '最小化', en: 'Minimize', tw: '最小化'),
+            icon: Icons.remove_rounded, onPressed: windowManager.minimize),
+          _V3WindowButton(
+            tooltip: _maximized
+                ? v3Copy(context, zh: '还原', en: 'Restore', tw: '還原')
+                : v3Copy(context, zh: '最大化', en: 'Maximize', tw: '最大化'),
             icon: _maximized ? Icons.filter_none_rounded
                 : Icons.crop_square_rounded, onPressed: _toggleMaximize),
-          _V3WindowButton(tooltip: 'Close', icon: Icons.close_rounded,
+          _V3WindowButton(
+            tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
+            icon: Icons.close_rounded,
             close: true, onPressed: _closeWindow),
         ],
       ]),

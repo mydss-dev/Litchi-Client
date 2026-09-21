@@ -402,11 +402,3 @@ String _localizedLatencyLabel(BuildContext context, int value) {
   }
   return '${value}ms';
 }
-
-// Public legacy formatting contract remains stable for existing callers.
-String v3LatencyLabel(int value) {
-  if (value == -1) return '测速中';
-  if (value <= 0) return '未测速';
-  if (value >= 9999) return '超时';
-  return '${value}ms';
-}

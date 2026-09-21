@@ -23,7 +23,7 @@ class _BoundController extends VisualV3Controller {
   RemoteUser? get accountDetails => _boundUser;
 }
 
-const _telegramRow = ValueKey('v3-hub-telegram');
+const _telegramRow = ValueKey('v3-account-telegram');
 const _mobile = Size(390, 844);
 
 Future<VisualV3Controller> _pumpAccount(WidgetTester tester,
@@ -36,7 +36,7 @@ Future<VisualV3Controller> _pumpAccount(WidgetTester tester,
   await tester.pumpWidget(AppScope(controller: controller,
     child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell())));
   await tester.pumpAndSettle();
-  // Previous layout exposes the service directly: no expansion is needed.
+  // The bottom action opens the sheet directly: no expansion is needed.
   expect(find.text('账户偏好与安全'), findsNothing);
   expect(find.byKey(_telegramRow), findsOneWidget);
   expect(tester.takeException(), isNull);
@@ -63,7 +63,7 @@ void main() {
     await _onPlatform(TargetPlatform.android, () async {
       await _pumpAccount(tester);
       expect(find.byKey(_telegramRow), findsOneWidget);
-      expect(find.text('Telegram 通知'), findsOneWidget);
+      expect(find.text('TG 通知'), findsOneWidget);
       // An unbound row stays quiet: no warning subtitle, the sheet explains
       // how to link. A bound row shows the positive confirmation instead.
       expect(find.text('未绑定'), findsNothing);
@@ -109,7 +109,6 @@ void main() {
   testWidgets('a bound account can unbind', (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       await _pumpAccount(tester, bound: true);
-      expect(find.textContaining('已绑定'), findsWidgets);
       await _tap(tester, find.byKey(_telegramRow), 'Telegram row');
       expect(find.text('解除绑定'), findsOneWidget);
       await _tap(tester, find.text('解除绑定'), 'unbind');

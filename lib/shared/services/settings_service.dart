@@ -69,7 +69,10 @@ abstract final class SettingsService {
       },
       wasConnected: p.getBool(_key('was_connected')) ?? false,
       lastNodeId: p.getString(_key('last_node_id')) ?? '',
-      killSwitch: p.getBool(_key('kill_switch')) ?? false,
+      // Fail closed by default: an unexpected core drop must never leak
+      // traffic for users who never touched this setting. Explicit "off"
+      // choices are stored and respected.
+      killSwitch: p.getBool(_key('kill_switch')) ?? true,
     );
   }
 

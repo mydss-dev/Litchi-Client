@@ -151,6 +151,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('leak-protection holding state shows its dedicated message', (
+    tester,
+  ) async {
+    final controller = _AlertFixture()
+      ..failure = CoreErrorMessageService.killSwitchHolding;
+    await _pump(tester, controller, size: const Size(900, 700));
+
+    final alert = find.byKey(kV3ConnectionErrorBannerKey);
+    expect(alert, findsOneWidget);
+    expect(find.textContaining('断线防泄漏'), findsOneWidget);
+    expect(
+      find.descendant(of: alert, matching: find.text('重试')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'data outage remains a separate yellow alert with its own retry',
     (tester) async {

@@ -78,13 +78,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get advancedSettings => '高级设置';
 
   @override
-  String get connectionProtection => '连接保护';
-
-  @override
-  String get systemProtectionDescription => '系统代理核心异常退出时阻止网络直连';
-
-  @override
-  String get tunProtectionDescription => 'TUN 核心异常退出时阻止非隧道流量';
+  String get connectionProtection => '断线防泄漏';
 
   @override
   String get macTunProtectionUnavailable => 'macOS TUN 暂不支持连接中断保护';
@@ -1071,13 +1065,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunInterfaceUnavailableError => 'TUN 虚拟网卡启动失败，请检查系统权限后重试';
 
   @override
-  String get tunKillSwitchUnavailableError => 'TUN 中断保护启动失败，已停止连接以避免流量泄漏';
+  String get tunKillSwitchUnavailableError =>
+      '断线防泄漏启动失败，已停止连接以避免流量泄漏，可在设置中关闭后重试';
 
   @override
   String get androidStartFailedError => 'Android 核心启动失败';
 
   @override
   String get unexpectedCoreExitError => '核心异常退出，连接已断开，请重新连接';
+
+  @override
+  String get killSwitchHoldingError => '断线防泄漏已生效：节点断开后暂停联网以防流量直连，请重新连接恢复上网。';
 
   @override
   String get invalidNodeConfigError => '当前节点配置无效，请切换节点后重试';
@@ -1850,13 +1848,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get advancedSettings => '進階設定';
 
   @override
-  String get connectionProtection => '連線保護';
-
-  @override
-  String get systemProtectionDescription => '系統代理核心異常退出時阻止網路直連';
-
-  @override
-  String get tunProtectionDescription => 'TUN 核心異常退出時阻止非隧道流量';
+  String get connectionProtection => '斷線防洩漏';
 
   @override
   String get macTunProtectionUnavailable => 'macOS TUN 暫不支援連線中斷保護';
@@ -2843,13 +2835,17 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get tunInterfaceUnavailableError => 'TUN 虛擬網卡啟動失敗，請檢查系統權限後再試';
 
   @override
-  String get tunKillSwitchUnavailableError => 'TUN 中斷保護啟動失敗，已停止連線以避免流量外洩';
+  String get tunKillSwitchUnavailableError =>
+      '斷線防洩漏啟動失敗，已停止連線以避免流量外洩，可在設定中關閉後重試';
 
   @override
   String get androidStartFailedError => 'Android 核心啟動失敗';
 
   @override
   String get unexpectedCoreExitError => '核心異常退出，連線已中斷，請重新連線';
+
+  @override
+  String get killSwitchHoldingError => '斷線防洩漏已生效：節點斷開後暫停連網以防流量直連，請重新連線恢復上網。';
 
   @override
   String get invalidNodeConfigError => '目前節點設定無效，請切換節點後再試';

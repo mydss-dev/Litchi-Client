@@ -8,9 +8,12 @@ abstract final class CoreErrorMessageService {
   static const missingCore = '连接失败，请检查 sing-box 核心是否存在';
   static const permissionDenied = '权限不足，请以管理员身份运行客户端';
   static const tunInterfaceUnavailable = 'TUN 虚拟网卡启动失败，请以管理员身份运行或重试';
-  static const tunKillSwitchUnavailable = 'TUN 中断保护启动失败，已停止连接以避免流量泄漏';
+  static const tunKillSwitchUnavailable =
+      '断线防泄漏启动失败，已停止连接以避免流量泄漏，可在设置中关闭后重试';
   static const androidStartFailed = 'Android 核心启动失败';
   static const unexpectedCoreExit = '核心异常退出，连接已断开，请重新连接';
+  static const killSwitchHolding =
+      '断线防泄漏已生效：节点断开后暂停联网以防流量直连，请重新连接恢复上网。';
   static const invalidNodeConfig = '当前节点配置无效，请切换节点后重试';
   static const genericConnectionFailure = '连接失败，请切换节点或稍后重试';
 
@@ -49,6 +52,7 @@ abstract final class CoreErrorMessageService {
         tunKillSwitchUnavailable => l10n.tunKillSwitchUnavailableError,
         androidStartFailed => l10n.androidStartFailedError,
         unexpectedCoreExit => l10n.unexpectedCoreExitError,
+        killSwitchHolding => l10n.killSwitchHoldingError,
         invalidNodeConfig => l10n.invalidNodeConfigError,
         genericConnectionFailure => l10n.genericConnectionFailureError,
         _ => null,

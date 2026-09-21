@@ -51,4 +51,14 @@ void main() {
       expect((await SettingsService.load()).silentStart, isTrue);
     },
   );
+
+  test(
+    'kill switch defaults on and loads an explicit preference',
+    () async {
+      expect((await SettingsService.load()).killSwitch, isTrue);
+
+      SharedPreferences.setMockInitialValues({'kill_switch': false});
+      expect((await SettingsService.load()).killSwitch, isFalse);
+    },
+  );
 }

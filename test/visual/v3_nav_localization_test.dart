@@ -6,7 +6,7 @@ import 'package:litchi_client/v3/app/v3_nav.dart';
 
 void main() {
   final items = [
-    ...kMobilePrimary, ...kMobileHub, ...kMobileMore,
+    ...kMobilePrimary, ...kMobileMore,
     ...kDesktopRail, kRailSettings,
   ];
 

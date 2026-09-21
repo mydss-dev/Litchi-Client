@@ -208,11 +208,12 @@ void main() {
     }
   });
 
-  // Compact IA: account business sits under 账户, everything else under 更多.
+  // Compact IA: orders, traffic, invite and settings lead through 更多 —
+  // the account tab holds no overflow rows of its own.
   // Expected indexes are read off the nav model rather than hardcoded, so a tab
   // added or removed later cannot leave a stale number behind.
   for (final (page, tab) in [
-    (AppPage.orders, AppPage.account),
+    (AppPage.orders, AppPage.more),
     (AppPage.traffic, AppPage.more),
     (AppPage.invite, AppPage.more),
     (AppPage.settings, AppPage.more),

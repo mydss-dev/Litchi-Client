@@ -240,20 +240,8 @@ abstract class AppLocalizations {
   /// No description provided for @connectionProtection.
   ///
   /// In en, this message translates to:
-  /// **'Connection protection'**
+  /// **'Leak protection'**
   String get connectionProtection;
-
-  /// No description provided for @systemProtectionDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Block direct access if the system proxy core exits'**
-  String get systemProtectionDescription;
-
-  /// No description provided for @tunProtectionDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Block non-tunnel traffic if the TUN core exits'**
-  String get tunProtectionDescription;
 
   /// No description provided for @macTunProtectionUnavailable.
   ///
@@ -2118,7 +2106,7 @@ abstract class AppLocalizations {
   /// No description provided for @tunKillSwitchUnavailableError.
   ///
   /// In en, this message translates to:
-  /// **'TUN interruption protection failed. Connection was stopped to prevent leaks.'**
+  /// **'Leak protection failed to start. Connection was stopped to prevent leaks; you can turn it off in Settings and retry.'**
   String get tunKillSwitchUnavailableError;
 
   /// No description provided for @androidStartFailedError.
@@ -2132,6 +2120,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The core exited unexpectedly. Reconnect to continue.'**
   String get unexpectedCoreExitError;
+
+  /// No description provided for @killSwitchHoldingError.
+  ///
+  /// In en, this message translates to:
+  /// **'Leak protection is active: internet is paused after the node dropped so traffic cannot bypass the proxy. Reconnect to restore access.'**
+  String get killSwitchHoldingError;
 
   /// No description provided for @invalidNodeConfigError.
   ///

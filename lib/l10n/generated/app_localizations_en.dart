@@ -81,15 +81,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get advancedSettings => 'Advanced';
 
   @override
-  String get connectionProtection => 'Connection protection';
-
-  @override
-  String get systemProtectionDescription =>
-      'Block direct access if the system proxy core exits';
-
-  @override
-  String get tunProtectionDescription =>
-      'Block non-tunnel traffic if the TUN core exits';
+  String get connectionProtection => 'Leak protection';
 
   @override
   String get macTunProtectionUnavailable =>
@@ -1108,7 +1100,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tunKillSwitchUnavailableError =>
-      'TUN interruption protection failed. Connection was stopped to prevent leaks.';
+      'Leak protection failed to start. Connection was stopped to prevent leaks; you can turn it off in Settings and retry.';
 
   @override
   String get androidStartFailedError => 'Android core failed to start';
@@ -1116,6 +1108,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get unexpectedCoreExitError =>
       'The core exited unexpectedly. Reconnect to continue.';
+
+  @override
+  String get killSwitchHoldingError =>
+      'Leak protection is active: internet is paused after the node dropped so traffic cannot bypass the proxy. Reconnect to restore access.';
 
   @override
   String get invalidNodeConfigError =>

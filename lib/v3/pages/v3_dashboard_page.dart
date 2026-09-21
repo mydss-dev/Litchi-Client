@@ -560,7 +560,7 @@ class _ModeRail extends StatelessWidget {
                   padding: EdgeInsets.only(
                     right: mode == NetworkMode.values.last ? 0 : 7,
                   ),
-              child: _NetworkModeIndicator(
+                  child: _NetworkModeIndicator(
                     controller: controller,
                     mode: mode,
                   ),
@@ -588,7 +588,7 @@ class _ModeRail extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.only(
-                    right: mode == ProxyMode.values.last ? 0 : 6,
+                    right: mode == ProxyMode.values.last ? 0 : 7,
                   ),
                   child: _RouteButton(controller: controller, mode: mode),
                 ),

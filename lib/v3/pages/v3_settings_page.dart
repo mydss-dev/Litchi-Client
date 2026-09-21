@@ -106,7 +106,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
               zh: '设置中心', en: 'Settings', tw: '設定中心'),
             description: l.settingsSubtitle,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           if (_message != null) ...[
             Semantics(
               liveRegion: true,
@@ -124,13 +124,91 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                V3SectionLabel(l.systemSettings),
+                const SizedBox(height: 10),
+                V3Panel(
+                  padding: EdgeInsets.zero,
+                  child: Column(children: [
+                    if (desktopTools) _SettingRow(
+                      index: '01', title: l.launchAtStartup,
+                      description: _hint(l,
+                        zh: '登录系统时自动启动 Litchi。',
+                        en: 'Start Litchi automatically when you sign in.',
+                        tw: '登入系統時自動啟動 Litchi。'),
+                      control: V3Switch(value: controller.autoStart,
+                        onChanged: (v) => _apply(() async {
+                          controller.setAutoStart(v);
+                          return null;
+                        }, l.settingsUpdated)),
+                    ),
+                    if (desktopTools) _SettingRow(
+                      index: '02', title: l.silentStartup,
+                      description: _hint(l,
+                        zh: '启动时隐藏主窗口。',
+                        en: 'Hide the main window at startup.',
+                        tw: '啟動時隱藏主視窗。'),
+                      control: V3Switch(value: controller.silentStart,
+                        onChanged: (v) => _apply(() async {
+                          controller.setSilentStart(v);
+                          return null;
+                        }, l.settingsUpdated)),
+                    ),
+                    _SettingRow(
+                      index: desktopTools ? '03' : '01', title: l.automaticUpdates,
+                      description: _hint(l,
+                        zh: '在后台检查是否有新版本。',
+                        en: 'Check for new versions in the background.',
+                        tw: '在背景檢查是否有新版本。'),
+                      last: true,
+                      control: V3Switch(value: controller.autoUpdate,
+                        onChanged: controller.setAutoUpdate),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 22),
+                V3SectionLabel(l.appearance),
+                const SizedBox(height: 10),
+                V3Panel(
+                  padding: EdgeInsets.zero,
+                  child: Column(children: [
+                    _SettingRow(
+                      index: desktopTools ? '04' : '02', title: l.appearance,
+                      description: _hint(l,
+                        zh: '跟随系统外观，或手动选择浅色和深色界面。',
+                        en: 'Follow your system appearance or choose light/dark.',
+                        tw: '跟隨系統外觀，或手動選擇淺色與深色介面。'),
+                      fullWidthControl: true,
+                      control: _Segment<ThemeMode>(
+                        value: controller.themeMode,
+                        items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
+                        label: (v) => switch (v) {
+                          ThemeMode.system => l.followSystem,
+                          ThemeMode.light => l.lightMode,
+                          ThemeMode.dark => l.darkMode,
+                        },
+                        onChanged: controller.setThemeMode,
+                      ),
+                    ),
+                    _SettingRow(
+                      index: desktopTools ? '05' : '03', title: l.language,
+                      description: _hint(l,
+                        zh: '选择界面语言；跟随系统将使用设备的语言。',
+                        en: 'Choose an interface language or follow your device.',
+                        tw: '選擇介面語言；跟隨系統將使用裝置語言。'),
+                      fullWidthControl: true,
+                      last: true,
+                      control: const V3LanguageSelector(),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 22),
                 V3SectionLabel(l.connectionSettings),
                 const SizedBox(height: 10),
                 V3Panel(
                   padding: EdgeInsets.zero,
                   child: Column(children: [
                     if (desktopTools) _SettingRow(
-                      index: '01',
+                      index: '06',
                       title: l.connectionMethod,
                       description: '${l.systemProxyDescription}; ${l.tunDescription}.',
                       fullWidthControl: true,
@@ -146,7 +224,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     _SettingRow(
-                      index: desktopTools ? '02' : '01', title: l.dns,
+                      index: desktopTools ? '07' : '04', title: l.dns,
                       description: _hint(l,
                         zh: '使用系统 DNS，或选择其他解析服务。',
                         en: 'Use system DNS or choose another resolver.',
@@ -168,9 +246,13 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     if (desktopTools) _SettingRow(
-                      index: '03', title: l.connectionProtection,
-                      description: controller.networkMode == NetworkMode.tun
-                          ? l.tunProtectionDescription : l.systemProtectionDescription,
+                      index: '08', title: l.connectionProtection,
+                      description: _hint(l,
+                        zh: '节点意外断开时暂停联网，防止流量绕过代理直接暴露；重新连接后自动恢复。',
+                        en: 'Pauses internet if the node drops unexpectedly '
+                            'so traffic cannot bypass the proxy; resumes '
+                            'automatically on reconnect.',
+                        tw: '節點意外斷開時暫停連網，防止流量繞過代理直接暴露；重新連線後自動恢復。'),
                       last: true,
                       control: V3Switch(
                         value: controller.killSwitch,
@@ -180,97 +262,21 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                     ),
                   ]),
                 ),
-                const SizedBox(height: 22),
-                V3SectionLabel(l.systemSettings),
-                const SizedBox(height: 10),
-                V3Panel(
-                  padding: EdgeInsets.zero,
-                  child: Column(children: [
-                    if (desktopTools) _SettingRow(
-                      index: '04', title: l.launchAtStartup,
-                      description: _hint(l,
-                        zh: '登录系统时自动启动 Litchi。',
-                        en: 'Start Litchi automatically when you sign in.',
-                        tw: '登入系統時自動啟動 Litchi。'),
-                      control: V3Switch(value: controller.autoStart,
-                        onChanged: (v) => _apply(() async {
-                          controller.setAutoStart(v);
-                          return null;
-                        }, l.settingsUpdated)),
-                    ),
-                    if (desktopTools) _SettingRow(
-                      index: '05', title: l.silentStartup,
-                      description: _hint(l,
-                        zh: '启动时隐藏主窗口。',
-                        en: 'Hide the main window at startup.',
-                        tw: '啟動時隱藏主視窗。'),
-                      control: V3Switch(value: controller.silentStart,
-                        onChanged: (v) => _apply(() async {
-                          controller.setSilentStart(v);
-                          return null;
-                        }, l.settingsUpdated)),
-                    ),
-                    _SettingRow(
-                      index: desktopTools ? '06' : '02', title: l.automaticUpdates,
-                      description: _hint(l,
-                        zh: '在后台检查是否有新版本。',
-                        en: 'Check for new versions in the background.',
-                        tw: '在背景檢查是否有新版本。'),
-                      last: true,
-                      control: V3Switch(value: controller.autoUpdate,
-                        onChanged: controller.setAutoUpdate),
-                    ),
-                  ]),
-                ),
-                const SizedBox(height: 22),
-                V3SectionLabel(l.appearance),
-                const SizedBox(height: 10),
-                V3Panel(
-                  padding: EdgeInsets.zero,
-                  child: Column(children: [
-                    _SettingRow(
-                      index: desktopTools ? '07' : '03', title: l.appearance,
-                      description: _hint(l,
-                        zh: '跟随系统外观，或手动选择浅色和深色界面。',
-                        en: 'Follow your system appearance or choose light/dark.',
-                        tw: '跟隨系統外觀，或手動選擇淺色與深色介面。'),
-                      fullWidthControl: true,
-                      control: _Segment<ThemeMode>(
-                        value: controller.themeMode,
-                        items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
-                        label: (v) => switch (v) {
-                          ThemeMode.system => l.followSystem,
-                          ThemeMode.light => l.lightMode,
-                          ThemeMode.dark => l.darkMode,
-                        },
-                        onChanged: controller.setThemeMode,
-                      ),
-                    ),
-                    _SettingRow(
-                      index: desktopTools ? '08' : '04', title: l.language,
-                      description: _hint(l,
-                        zh: '选择界面语言；跟随系统将使用设备的语言。',
-                        en: 'Choose an interface language or follow your device.',
-                        tw: '選擇介面語言；跟隨系統將使用裝置語言。'),
-                      fullWidthControl: true,
-                      last: true,
-                      control: const V3LanguageSelector(),
-                    ),
-                  ]),
-                ),
-                const SizedBox(height: 22),
-                if (desktopTools) V3SectionLabel(l.repairNetworkSettings),
-                const SizedBox(height: 10),
-                if (desktopTools) _RecoveryPanel(
-                  controller: controller,
-                  label: currentNetwork,
-                  title: l.repairSystemProxy,
-                  action: l.repair,
-                  onRepair: () => _apply(() async {
-                    await controller.fixProxy();
-                    return null;
-                  }, l.networkSettingsRepaired),
-                ),
+                if (desktopTools) ...[
+                  const SizedBox(height: 22),
+                  V3SectionLabel(l.repairNetworkSettings),
+                  const SizedBox(height: 10),
+                  _RecoveryPanel(
+                    controller: controller,
+                    label: currentNetwork,
+                    title: l.repairSystemProxy,
+                    action: l.repair,
+                    onRepair: () => _apply(() async {
+                      await controller.fixProxy();
+                      return null;
+                    }, l.networkSettingsRepaired),
+                  ),
+                ],
                 const SizedBox(height: 22),
                 V3SectionLabel(l.about),
                 const SizedBox(height: 10),

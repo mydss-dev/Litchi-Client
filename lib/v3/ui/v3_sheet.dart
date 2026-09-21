@@ -29,7 +29,7 @@ Future<T?> showV3Sheet<T>(
     return Column(mainAxisSize: MainAxisSize.min, children: [
       V3SheetHeader(title: title, trailing: trailing),
       Flexible(child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(22, 2, 22 + 0.0,
+        padding: EdgeInsets.fromLTRB(22, 2, 22,
           22 + MediaQuery.paddingOf(ctx).bottom),
         child: Builder(builder: builder))),
     ]);
@@ -130,7 +130,7 @@ class V3SheetPageFallback extends StatelessWidget {
       padding: V3Layout.pageInsets,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(kicker: kicker, title: title, description: description),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         child,
       ]));
   }

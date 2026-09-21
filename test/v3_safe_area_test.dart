@@ -56,7 +56,7 @@ Future<void> _pump(
 
 void main() {
   final pages = <AppPage>[
-    for (final item in <V3NavItem>[...kMobilePrimary, ...kMobileHub]) item.page,
+    for (final item in <V3NavItem>[...kMobilePrimary, ...kMobileMore]) item.page,
   ];
 
   for (final page in pages) {
