@@ -1248,11 +1248,16 @@ class _PlanSummary extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${plan.expiry} · ${plan.status}',
+                      // An active plan needs no status word - the green
+                      // countdown already says it. Only abnormal states
+                      // (expired, suspended) earn the suffix.
+                      plan.usable
+                          ? plan.expiry
+                          : '${plan.expiry} · ${plan.status}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: plan.usable ? p.successInk : p.inkMuted,
+                        color: plan.usable ? p.inkMuted : p.dangerInk,
                         fontSize: 11,
                       ),
                     ),
