@@ -795,29 +795,6 @@ class _SessionMetrics extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 450;
-          final heading = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                v3Copy(context, zh: '实时状态', en: 'Live status', tw: '即時狀態'),
-                style: TextStyle(
-                  color: p.ink,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                v3Copy(
-                  context,
-                  zh: '速率 · 本次流量 · 活动连接',
-                  en: 'Rates, usage and connections',
-                  tw: '速率 · 本次流量 · 活動連線',
-                ),
-                style: TextStyle(color: p.inkMuted, fontSize: 10),
-              ),
-            ],
-          );
           // Traffic arrives through ValueNotifiers, not AppController.notifyListeners.
           // Subscribe here so the displayed B/s changes without a page rebuild.
           final download = ValueListenableBuilder<int>(
@@ -880,13 +857,11 @@ class _SessionMetrics extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                heading,
-                const SizedBox(height: 12),
                 Row(children: [
                   Expanded(child: download),
                   Expanded(child: upload),
                 ]),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Row(children: [
                   Expanded(child: session),
                   Expanded(child: connections),
@@ -896,28 +871,13 @@ class _SessionMetrics extends StatelessWidget {
           }
           return Row(
             children: [
-              Expanded(child: heading),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    download,
-                    const SizedBox(height: 10),
-                    session,
-                  ],
-                ),
-              ),
-              Container(width: 1, height: 56, color: p.line),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    upload,
-                    const SizedBox(height: 10),
-                    connections,
-                  ],
-                ),
-              ),
+              Expanded(child: download),
+              Container(width: 1, height: 38, color: p.line),
+              Expanded(child: upload),
+              Container(width: 1, height: 38, color: p.line),
+              Expanded(child: session),
+              Container(width: 1, height: 38, color: p.line),
+              Expanded(child: connections),
             ],
           );
         },
