@@ -639,31 +639,37 @@ class _ModeRailState extends State<_ModeRail> {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final controller = widget.controller;
-    final network = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          v3Copy(context, zh: '代理模式', en: 'Network mode', tw: '代理模式'),
-          style: TextStyle(
-            color: p.ink,
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 8),
-        _ModeSegment<NetworkMode>(
-          values: NetworkMode.values
-              .where((mode) => v3ShowsNetworkMode(defaultTargetPlatform, mode))
-              .toList(),
-          label: _networkModeLabel,
-          selected: controller.networkMode,
-          busy: _busy,
-          onSelect: (mode) => _run(() => _setNetworkMode(mode)),
-          trackKey: 'v3-network-mode-track',
-          optionKey: (mode) => 'v3-network-mode-${mode.storageKey}',
-        ),
-      ],
-    );
+    final networkModes = NetworkMode.values
+        .where((mode) => v3ShowsNetworkMode(defaultTargetPlatform, mode))
+        .toList();
+    // Android's VPN stack is always tunnelled and Linux has no system-proxy
+    // setter: a selector with a single option would read as a broken choice,
+    // so the whole network-mode group disappears there and only routing shows.
+    final Widget? network = networkModes.length > 1
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                v3Copy(context, zh: '代理模式', en: 'Network mode', tw: '代理模式'),
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _ModeSegment<NetworkMode>(
+                values: networkModes,
+                label: _networkModeLabel,
+                selected: controller.networkMode,
+                busy: _busy,
+                onSelect: (mode) => _run(() => _setNetworkMode(mode)),
+                trackKey: 'v3-network-mode-track',
+                optionKey: (mode) => 'v3-network-mode-${mode.storageKey}',
+              ),
+            ],
+          )
+        : null;
     final routing = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -690,6 +696,7 @@ class _ModeRailState extends State<_ModeRail> {
       padding: const EdgeInsets.all(14),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          if (network == null) return routing;
           if (constraints.maxWidth < 555) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
