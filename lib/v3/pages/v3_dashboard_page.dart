@@ -853,31 +853,34 @@ class _SessionMetrics extends StatelessWidget {
               color: p.ink,
             ),
           );
+          // One shared cell inset keeps the four columns on the same grid:
+          // every label starts at the same offset from its divider.
+          Widget cell(Widget metric) => Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: metric,
+            ),
+          );
+          Widget divider() => Container(width: 1, height: 38, color: p.line);
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(children: [
-                  Expanded(child: session),
-                  Expanded(child: connections),
-                ]),
+                Row(children: [cell(session), cell(connections)]),
                 const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(child: download),
-                  Expanded(child: upload),
-                ]),
+                Row(children: [cell(download), cell(upload)]),
               ],
             );
           }
           return Row(
             children: [
-              Expanded(child: session),
-              Container(width: 1, height: 38, color: p.line),
-              Expanded(child: connections),
-              Container(width: 1, height: 38, color: p.line),
-              Expanded(child: download),
-              Container(width: 1, height: 38, color: p.line),
-              Expanded(child: upload),
+              cell(session),
+              divider(),
+              cell(connections),
+              divider(),
+              cell(download),
+              divider(),
+              cell(upload),
             ],
           );
         },
@@ -901,33 +904,39 @@ class _Metric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    // Stat-tile layout: icon + label on one quiet line, the value carrying
+    // the row below. Every cell left-aligns on the same grid so the four
+    // gauges read as one tidy strip instead of four drifting groups.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: color, size: 22),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+        Row(
+          children: [
+            Icon(icon, color: color, size: 15),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: p.inkMuted, fontSize: 10),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: p.ink,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
+                  color: p.inkMuted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: p.ink,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ],
