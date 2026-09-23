@@ -7,6 +7,7 @@ import '../../app/app_controller.dart';
 import '../../app/core_controller.dart';
 import '../../app/plan_presentation.dart';
 import '../../shared/models/app_models.dart';
+import '../../shared/services/connectivity_check_service.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_dashboard_alerts.dart';
@@ -50,6 +51,8 @@ class V3DashboardPage extends StatelessWidget {
             _ModeRail(controller: controller),
             const SizedBox(height: 12),
             _SessionMetrics(controller: controller),
+            const SizedBox(height: 12),
+            _ConnectivityCard(controller: controller),
             const SizedBox(height: 12),
             _PlanSummary(controller: controller),
           ],
@@ -940,6 +943,228 @@ class _Metric extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w800,
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Connectivity check strip: probes well-known sites through the live
+/// network path so a connected user can confirm the tunnel actually reaches
+/// the services they care about. Auto-runs once when the connection comes up;
+/// results clear when it drops so stale greens never linger.
+class _ConnectivityCard extends StatefulWidget {
+  const _ConnectivityCard({required this.controller});
+  final AppController controller;
+
+  @override
+  State<_ConnectivityCard> createState() => _ConnectivityCardState();
+}
+
+class _ConnectivityCardState extends State<_ConnectivityCard> {
+  static const _targets = ConnectivityCheckService.defaultTargets;
+  // index → result; absent = not probed yet, explicit null = probing now.
+  final Map<int, ConnectivityResult?> _results = {};
+  bool _running = false;
+  ConnectionStatus? _lastStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onControllerChanged);
+    _lastStatus = widget.controller.connectionStatus;
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    final status = widget.controller.connectionStatus;
+    if (status == _lastStatus) return;
+    final becameConnected =
+        status == ConnectionStatus.connected &&
+        _lastStatus != ConnectionStatus.connected;
+    _lastStatus = status;
+    if (!mounted) return;
+    if (status != ConnectionStatus.connected && _results.isNotEmpty) {
+      setState(_results.clear);
+    }
+    if (becameConnected && !_running) {
+      setState(() {}); // refresh the disconnected hint
+      unawaited(_runCheck());
+    }
+  }
+
+  Future<void> _runCheck() async {
+    if (_running) return;
+    setState(() => _running = true);
+    for (var i = 0; i < _targets.length; i++) {
+      setState(() => _results[i] = null);
+    }
+    await Future.wait([
+      for (var i = 0; i < _targets.length; i++)
+        ConnectivityCheckService.probe(_targets[i]).then((result) {
+          if (mounted) setState(() => _results[i] = result);
+        }),
+    ]);
+    if (mounted) setState(() => _running = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final connected =
+        widget.controller.connectionStatus == ConnectionStatus.connected;
+    return _DashboardCard(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.radar_rounded, color: p.lychee, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                v3Copy(context, zh: '连通性检测', en: 'Connectivity', tw: '連線檢測'),
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              OutlinedButton(
+                onPressed: _running || !connected ? null : _runCheck,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: p.ink,
+                  side: BorderSide(color: p.line),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(V3Radius.field),
+                  ),
+                ),
+                child: _running
+                    ? SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: p.inkMuted,
+                        ),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.refresh_rounded, size: 15, color: p.lychee),
+                          const SizedBox(width: 5),
+                          Text(
+                            v3Copy(context,
+                                zh: '重新检测', en: 'Re-check', tw: '重新檢測'),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!connected && _results.isEmpty && !_running)
+            Text(
+              v3Copy(context,
+                zh: '连接后可检测各站点连通性',
+                en: 'Connect to check site reachability',
+                tw: '連線後可檢測各站點連通性'),
+              style: TextStyle(color: p.inkMuted, fontSize: 11),
+            )
+          else
+            Row(
+              children: [
+                for (var i = 0; i < _targets.length; i++) ...[
+                  if (i > 0)
+                    Container(width: 1, height: 34, color: p.line),
+                  Expanded(
+                    child: _ConnectivitySite(
+                      target: _targets[i],
+                      result: _results[i],
+                      probing: _running,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConnectivitySite extends StatelessWidget {
+  const _ConnectivitySite({
+    required this.target,
+    required this.result,
+    required this.probing,
+  });
+  final ConnectivityTarget target;
+  final ConnectivityResult? result;
+  final bool probing;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final r = result;
+    final dotColor = probing && r == null
+        ? p.warning
+        : r == null
+        ? p.line
+        : r.ok
+        ? p.success
+        : p.danger;
+    final statusLine = probing && r == null
+        ? v3Copy(context, zh: '检测中', en: 'Probing', tw: '檢測中')
+        : r == null
+        ? v3Copy(context, zh: '未检测', en: 'Not probed', tw: '未檢測')
+        : r.ok
+        ? '${r.latencyMs} ms'
+        : v3Copy(context, zh: '不通', en: 'Blocked', tw: '不通');
+    final statusColor = probing && r == null
+        ? p.warningInk
+        : r == null
+        ? p.inkMuted
+        : r.ok
+        ? p.successInk
+        : p.dangerInk;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                target.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: p.ink, fontSize: 11,
+                  fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          statusLine,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: statusColor, fontSize: 10),
         ),
       ],
     );

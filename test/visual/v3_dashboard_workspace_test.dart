@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
+import 'package:litchi_client/shared/services/connectivity_check_service.dart';
+import 'package:litchi_client/app/core_controller.dart' show ConnectionStatus;
 import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
@@ -32,6 +34,13 @@ class _AutoNamedFixture extends VisualV3Controller {
     region: NodeRegion.asia,
     tags: ['IPLC', '高级'],
   );
+}
+
+class _DisconnectedFixture extends VisualV3Controller {
+  _DisconnectedFixture() : super(AppPage.dashboard);
+
+  @override
+  ConnectionStatus get connectionStatus => ConnectionStatus.disconnected;
 }
 
 void main() {
@@ -145,6 +154,65 @@ void main() {
     // The fixture carries subscription expiry evidence, so the plan card
     // pairs the date with a days-remaining countdown.
     expect(find.textContaining(RegExp(r'剩余 \d+ 天')), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('connectivity strip probes and renders results when connected',
+      (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    ConnectivityCheckService.override = (target) async {
+      if (target.name == 'Google') {
+        return const ConnectivityResult(ok: true, latencyMs: 12);
+      }
+      if (target.name == '百度') {
+        return const ConnectivityResult(ok: false, latencyMs: -1);
+      }
+      return const ConnectivityResult(ok: true, latencyMs: 40);
+    };
+    addTearDown(() => ConnectivityCheckService.override = null);
+    final controller = VisualV3Controller(AppPage.dashboard);
+    addTearDown(controller.disposeVisual);
+    await tester.pumpWidget(AppScope(
+      controller: controller,
+      child: MaterialApp(theme: V3Theme.light(),
+        home: const Scaffold(body: V3DashboardPage())),
+    ));
+    await tester.pump();
+
+    await tester.tap(find.text('重新检测'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('12 ms'), findsOneWidget);
+    expect(find.text('40 ms'), findsNWidgets(2));
+    expect(find.text('不通'), findsOneWidget);
+    // The run finished: the spinner gave the button its label back.
+    expect(find.text('重新检测'), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('connectivity strip shows the idle hint when disconnected',
+      (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final controller = _DisconnectedFixture();
+    addTearDown(controller.disposeVisual);
+    await tester.pumpWidget(AppScope(
+      controller: controller,
+      child: MaterialApp(theme: V3Theme.light(),
+        home: const Scaffold(body: V3DashboardPage())),
+    ));
+    await tester.pump();
+
+    expect(find.text('连接后可检测各站点连通性'), findsOneWidget);
+    expect(find.text('检测中'), findsNothing);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
