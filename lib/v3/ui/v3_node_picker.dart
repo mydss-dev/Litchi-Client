@@ -137,8 +137,12 @@ class _V3NodePickerState extends State<V3NodePicker> {
         V3AutoRouteRow(
           controller: controller,
           busy: _pending == 'auto',
-          onTap: _pending != null || controller.autoSelected
+          // Tapping the already-active option confirms it and closes the
+          // sheet; only switching TO auto needs the API round-trip.
+          onTap: _pending != null
               ? null
+              : controller.autoSelected
+              ? () => Navigator.of(context).pop()
               : () => _select(
                   'auto',
                   controller.selectAuto,
@@ -180,10 +184,12 @@ class _V3NodePickerState extends State<V3NodePicker> {
                 controller: controller,
                 busy: _pending == node.id,
                 onTap:
-                    _pending != null ||
-                        (!controller.autoSelected &&
-                            controller.currentNode.id == node.id)
+                    _pending != null
                     ? null
+                    : !controller.autoSelected &&
+                              controller.currentNode.id == node.id
+                    // Already the current node: tapping confirms and closes.
+                    ? () => Navigator.of(context).pop()
                     : () => _select(
                         node.id,
                         () => controller.setCurrentNode(node),
