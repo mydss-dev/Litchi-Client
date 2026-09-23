@@ -15,6 +15,25 @@ class _SystemProxyFixture extends VisualV3Controller {
   NetworkMode get networkMode => NetworkMode.system;
 }
 
+class _AutoNamedFixture extends VisualV3Controller {
+  _AutoNamedFixture() : super(AppPage.dashboard);
+
+  @override
+  bool get autoSelected => true;
+
+  @override
+  NodeModel get currentNode => const NodeModel(
+    id: 'hk-01',
+    name: '香港 · Premium',
+    flag: '🇭🇰',
+    code: 'HK',
+    englishName: 'Hong Kong',
+    latency: 31,
+    region: NodeRegion.asia,
+    tags: ['IPLC', '高级'],
+  );
+}
+
 void main() {
   for (final size in [const Size(900, 700), const Size(390, 700)]) {
     testWidgets('dashboard cards stay balanced at ${size.width}x${size.height}',
@@ -79,6 +98,31 @@ void main() {
     // The segmented capsule marks the selection with ink color, not weight.
     expect(active.style?.color, V3Palette.light.lycheeInk);
     expect(inactive.style?.color, V3Palette.light.inkMuted);
+    debugDefaultTargetPlatformOverride = null;
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('auto selection names the resolved node and shows its tags',
+      (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final controller = _AutoNamedFixture();
+    addTearDown(controller.disposeVisual);
+    await tester.pumpWidget(AppScope(
+      controller: controller,
+      child: MaterialApp(theme: V3Theme.light(),
+        home: const Scaffold(body: V3DashboardPage())),
+    ));
+    await tester.pump();
+
+    // The resolved node name replaces the generic 自动选择 label.
+    expect(find.text('香港 · Premium'), findsOneWidget);
+    // The auto pill marks the mode next to the resolved name.
+    expect(find.text('自动'), findsOneWidget);
+    // The resolved node's tags are visible in automatic mode too.
+    expect(find.text('IPLC'), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });

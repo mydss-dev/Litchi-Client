@@ -77,6 +77,8 @@ abstract final class ClashApiClient {
       'GET',
       '/proxies/${Uri.encodeComponent(tag)}/delay?$query',
       apiPort: apiPort,
+      // The core answers after its own server-side probe window.
+      timeout: Duration(milliseconds: timeout + 2500),
     );
     if (response?.statusCode != 200) return null;
     final data = jsonDecode(response!.body) as Map<String, dynamic>;
@@ -100,6 +102,7 @@ abstract final class ClashApiClient {
       'GET',
       '/group/${Uri.encodeComponent(group)}/delay?$query',
       apiPort: apiPort,
+      timeout: Duration(milliseconds: timeout + 2500),
     ).timeout(Duration(milliseconds: timeout + 1500), onTimeout: () => null);
     if (response?.statusCode != 200) return {};
     final data = jsonDecode(response!.body);
@@ -201,6 +204,10 @@ abstract final class ClashApiClient {
     String path, {
     required int apiPort,
     Map<String, dynamic>? body,
+    // Bounds the response phase. The shared client's 3s connectionTimeout only
+    // covers connect; a core that accepts but never answers would otherwise
+    // hang callers (the node picker's auto-select spinner) forever.
+    Duration timeout = const Duration(seconds: 5),
   }) async {
     try {
       final client = _sharedClient;
@@ -219,8 +226,10 @@ abstract final class ClashApiClient {
         request.headers.contentType = ContentType.json;
         request.write(jsonEncode(body));
       }
-      final response = await request.close();
-      final text = await response.transform(utf8.decoder).join();
+      final response = await request.close().timeout(timeout);
+      final text = await response.transform(utf8.decoder).join().timeout(
+        timeout,
+      );
       return _ApiResponse(response.statusCode, text);
     } catch (e) {
       SecureLogger.debug('Clash API request failed', e);

@@ -149,8 +149,12 @@ class _ConnectionWorkspace extends StatelessWidget {
       ConnectionStatus.disconnected => p.inkMuted,
     };
     final node = controller.currentNode;
+    // In automatic mode the card still names the node the resolver picked —
+    // only the flag changing told users which node they were on before.
     final displayName = controller.autoSelected
-        ? v3Copy(context, zh: '自动选择', en: 'Automatic', tw: '自動選擇')
+        ? node.name.isEmpty
+              ? v3Copy(context, zh: '自动选择', en: 'Automatic', tw: '自動選擇')
+              : node.name
         : node.name.isEmpty
         ? v3Copy(context, zh: '尚未选择节点', en: 'No node selected', tw: '尚未選擇節點')
         : node.name;
@@ -306,15 +310,49 @@ class _ConnectionWorkspace extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: p.ink,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: p.ink,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              if (controller.autoSelected &&
+                                  node.name.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: p.lycheeSoft,
+                                    borderRadius:
+                                        BorderRadius.circular(99), // pill
+                                  ),
+                                  child: Text(
+                                    v3Copy(
+                                      context,
+                                      zh: '自动',
+                                      en: 'Auto',
+                                      tw: '自動',
+                                    ),
+                                    style: TextStyle(
+                                      color: p.lycheeInk,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -357,7 +395,8 @@ class _ConnectionWorkspace extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (!controller.autoSelected && node.tags.isNotEmpty) ...[
+                // Tags describe the resolved node, automatic or not.
+                if (node.tags.isNotEmpty) ...[
                   const SizedBox(height: 9),
                   V3NodeTags(tags: node.tags, maxVisible: 2),
                 ],
