@@ -85,6 +85,10 @@ void main() {
     expect(recovered.single.port, 0);
   });
 
+  // Needs the Windows DPAPI backend: on Linux CredentialsStorage.protectString
+  // returns null and the secure cache is never written, so the save/load
+  // roundtrip below cannot pass there. CI runs flutter test on ubuntu, so this
+  // test is skipped in that job; Windows covers it locally and in release runs.
   test('secure cache is bound to session fingerprint (P2-5)', () async {
     // User A saves nodes with their token.
     await NodeCacheService.save([_node], _authDataA);
@@ -100,7 +104,7 @@ void main() {
     expect(forB.single.hasConfig, isFalse);
     // The stale secure cache file should have been deleted.
     expect(await protectedCache.exists(), isFalse);
-  });
+  }, skip: !Platform.isWindows ? 'needs the Windows DPAPI secure backend' : false);
 
   test('legacy plaintext node cache is replaced with public-only data', () async {
     await publicCache.writeAsString(jsonEncode([_node.toJson()]));

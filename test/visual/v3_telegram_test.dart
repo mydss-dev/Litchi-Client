@@ -112,6 +112,11 @@ void main() {
       await _tap(tester, find.byKey(_telegramRow), 'Telegram row');
       expect(find.text('解除绑定'), findsOneWidget);
       await _tap(tester, find.text('解除绑定'), 'unbind');
+      // Unbind asks for confirmation first; the page button is an
+      // OutlinedButton, so the FilledButton finder only matches the dialog.
+      expect(find.text('解除 Telegram 绑定？'), findsOneWidget);
+      await _tap(tester, find.widgetWithText(FilledButton, '解除绑定'),
+          'confirm unbind');
       expect(find.text('Telegram 已解绑'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
