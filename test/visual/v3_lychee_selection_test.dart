@@ -57,8 +57,12 @@ void main() {
         find.byKey(const ValueKey('v3-network-mode-tun')));
       final selectedDecoration = selected.decoration! as BoxDecoration;
       final otherDecoration = other.decoration! as BoxDecoration;
-      expect(selectedDecoration.color, palette.lycheeSoft);
+      // The selection is a lychee ring on the track, not a solid pink chip.
+      expect(selectedDecoration.color, Colors.transparent);
+      expect((selectedDecoration.border! as Border).top.color, palette.lychee);
       expect(otherDecoration.color, Colors.transparent);
+      expect((otherDecoration.border! as Border).top.color,
+        Colors.transparent);
       expect(tester.widget<Text>(find.text('系统代理')).style!.color,
         palette.lycheeInk);
       expect(tester.widget<Text>(find.text('TUN 模式')).style!.color,

@@ -368,13 +368,16 @@ class _ConnectionWorkspace extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => V3NodePicker.show(context),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: p.lycheeInk,
-                      side: BorderSide(color: p.lychee),
+                      // Quiet secondary: the connect orb owns the page's pink.
+                      // A full lychee outline here competed with it.
+                      foregroundColor: p.ink,
+                      side: BorderSide(color: p.line),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(V3Radius.field),
                       ),
                     ),
-                    icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                    icon: Icon(Icons.swap_horiz_rounded,
+                        size: 18, color: p.lychee),
                     label: Text(
                       v3Copy(
                         context,
@@ -673,10 +676,10 @@ class _ModeRailState extends State<_ModeRail> {
 }
 
 /// A continuous segmented capsule: one raised track holding every option,
-/// the current selection highlighted in place (pick TUN and the right chip
-/// lights up, pick system proxy and the left one does). Both dashboard mode
-/// groups render through this widget so the 2-option and 3-option groups
-/// read as one control family instead of loose separate buttons.
+/// the current selection ringed in lychee — the same pink-outline language
+/// as the switch-node button beside it. Both dashboard mode groups render
+/// through this widget so the 2-option and 3-option groups read as one
+/// control family.
 class _ModeSegment<T> extends StatelessWidget {
   const _ModeSegment({required this.values, required this.label,
     required this.selected, required this.busy, required this.onSelect,
@@ -711,10 +714,15 @@ class _ModeSegment<T> extends StatelessWidget {
               duration: const Duration(milliseconds: 150),
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(vertical: 13),
+              // The selection keeps the track fill and gains a lychee ring —
+              // an outline chip, not a solid slab of pink. The 1dp border is
+              // always present (transparent when unselected) so no option
+              // ever shifts by a pixel when the ring moves.
               decoration: BoxDecoration(
-                // Choosing a mode is a configuration selection, not a
-                // connectivity health signal: the lychee chip, never green.
-                color: value == selected ? p.lycheeSoft : Colors.transparent,
+                color: Colors.transparent,
+                border: Border.all(
+                  color: value == selected ? p.lychee : Colors.transparent,
+                ),
                 borderRadius: BorderRadius.circular(V3Radius.control),
               ),
               child: Text(
@@ -725,7 +733,8 @@ class _ModeSegment<T> extends StatelessWidget {
                 style: TextStyle(
                   color: value == selected ? p.lycheeInk : p.inkMuted,
                   fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: selected == value
+                      ? FontWeight.w800 : FontWeight.w700,
                 ),
               ),
             ),
