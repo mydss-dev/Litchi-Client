@@ -957,6 +957,37 @@ class _PlanSummary extends StatelessWidget {
     final total = controller.traffic.totalGb;
     final used = controller.traffic.usedGb;
     final ratio = total > 0 ? (used / total).clamp(0.0, 1.0) : 0.0;
+    // Countdown only from real expiry evidence, resolved exactly like the
+    // card's own date label (subscription first, then account); a permanent
+    // plan (null/0 expiry) and an unevidenced plan never get one.
+    final expiryEpoch = PlanPresentation.expiryTimestampWithEvidence(
+      accountExpiry: controller.accountDetails?.expiredAt,
+      subscriptionExpiry: controller.expiredAt,
+    );
+    String? countdown;
+    var expiryUrgent = false;
+    if (plan.usable && expiryEpoch != null && expiryEpoch > 0) {
+      final remaining = DateTime.fromMillisecondsSinceEpoch(
+        expiryEpoch * 1000,
+      ).difference(DateTime.now());
+      if (remaining.inSeconds > 0) {
+        final days = remaining.inDays;
+        countdown = days >= 1
+            ? v3Copy(
+                context,
+                zh: '剩余 $days 天',
+                en: '$days days left',
+                tw: '剩餘 $days 天',
+              )
+            : v3Copy(
+                context,
+                zh: '今日到期',
+                en: 'Expires today',
+                tw: '今日到期',
+              );
+        expiryUrgent = remaining.inDays < 3;
+      }
+    }
     return _DashboardCard(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -1003,12 +1034,27 @@ class _PlanSummary extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Flexible(
-                child: Text(
-                  plan.expiry,
-                  textAlign: TextAlign.end,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 11),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      plan.expiry,
+                      textAlign: TextAlign.end,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: p.inkMuted, fontSize: 11),
+                    ),
+                    if (countdown != null)
+                      Text(
+                        countdown,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          color: expiryUrgent ? p.dangerInk : p.successInk,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],

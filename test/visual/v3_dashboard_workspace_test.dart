@@ -126,4 +126,26 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('plan card shows an evidence-based expiry countdown',
+      (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final controller = VisualV3Controller(AppPage.dashboard);
+    addTearDown(controller.disposeVisual);
+    await tester.pumpWidget(AppScope(
+      controller: controller,
+      child: MaterialApp(theme: V3Theme.light(),
+        home: const Scaffold(body: V3DashboardPage())),
+    ));
+    await tester.pump();
+
+    // The fixture carries subscription expiry evidence, so the plan card
+    // pairs the date with a days-remaining countdown.
+    expect(find.textContaining(RegExp(r'剩余 \d+ 天')), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
+    expect(tester.takeException(), isNull);
+  });
 }
