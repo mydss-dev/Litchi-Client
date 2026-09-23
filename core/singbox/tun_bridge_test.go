@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -95,8 +96,15 @@ func TestBuildTunBridgeConfigRejectsUnsafeInputs(t *testing.T) {
 
 func TestBuildTunBridgeConfigProcessPathIsAbsolute(t *testing.T) {
 	// The process_path value must be an absolute path so a bare filename
-	// cannot match from an arbitrary directory.
-	mainExe := `C:\Program Files\Litchi\litchi-core.exe`
+	// cannot match from an arbitrary directory. The sample must be absolute
+	// on the host running the test: the Windows installer layout only exists
+	// on Windows, other hosts exercise the same rule with a POSIX prefix.
+	mainExe := `/opt/litchi/bin/litchi-core`
+	wantExeSuffix := false
+	if runtime.GOOS == "windows" {
+		mainExe = `C:\Program Files\Litchi\litchi-core.exe`
+		wantExeSuffix = true
+	}
 	content, err := buildTunBridgeConfig(7890, 1500, true, "gvisor", mainExe)
 	if err != nil {
 		t.Fatalf("buildTunBridgeConfig: %v", err)
@@ -112,7 +120,7 @@ func TestBuildTunBridgeConfigProcessPathIsAbsolute(t *testing.T) {
 	if !filepath.IsAbs(p) {
 		t.Fatalf("process_path must be absolute: %q", p)
 	}
-	if !strings.HasSuffix(strings.ToLower(p), ".exe") {
+	if wantExeSuffix && !strings.HasSuffix(strings.ToLower(p), ".exe") {
 		t.Fatalf("process_path must point to an .exe: %q", p)
 	}
 }
