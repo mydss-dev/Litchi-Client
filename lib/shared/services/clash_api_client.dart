@@ -145,6 +145,25 @@ abstract final class ClashApiClient {
     return response?.statusCode == 204;
   }
 
+  /// Snapshot of the core's connection table: the live connection count and
+  /// the cumulative bytes since the core process started (up + down).
+  /// Returns null when the core does not answer within the request timeout.
+  static Future<({int connections, int bytes})?> connectionsSummary({
+    int apiPort = 9090,
+  }) async {
+    final response = await _request('GET', '/connections', apiPort: apiPort);
+    if (response?.statusCode != 200) return null;
+    final data = jsonDecode(response!.body);
+    if (data is! Map) return null;
+    final connections = data['connections'];
+    final down = (data['downloadTotal'] as num?)?.toInt() ?? 0;
+    final up = (data['uploadTotal'] as num?)?.toInt() ?? 0;
+    return (
+      connections: connections is List ? connections.length : 0,
+      bytes: down + up,
+    );
+  }
+
   static Stream<({int upBps, int downBps})> trafficStream({
     int apiPort = 9090,
   }) {

@@ -213,6 +213,9 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   int get downBps => _core.downBps;
   ValueNotifier<int> get upBpsNotifier => _core.upBpsNotifier;
   ValueNotifier<int> get downBpsNotifier => _core.downBpsNotifier;
+  ValueNotifier<int> get connectionsCountNotifier =>
+      _core.connectionsCountNotifier;
+  ValueNotifier<int> get sessionBytesNotifier => _core.sessionBytesNotifier;
   Stream<String> get coreLogStream => _core.logStream;
   List<String> get coreLogs => _core.recentLogs;
   Duration get connectedDuration => _core.connectedDuration;

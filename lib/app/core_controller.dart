@@ -67,6 +67,9 @@ class CoreController extends ChangeNotifier {
   final ValueNotifier<int> upBpsNotifier = ValueNotifier(0);
   final ValueNotifier<int> downBpsNotifier = ValueNotifier(0);
   StreamSubscription<({int upBps, int downBps})>? _trafficSub;
+  final ValueNotifier<int> connectionsCountNotifier = ValueNotifier(0);
+  final ValueNotifier<int> sessionBytesNotifier = ValueNotifier(0);
+  Timer? _connectionsTimer;
 
   final _logs = <String>[];
   static const _maxLogs = 500;
@@ -174,6 +177,8 @@ class CoreController extends ChangeNotifier {
     }
     upBpsNotifier.dispose();
     downBpsNotifier.dispose();
+    connectionsCountNotifier.dispose();
+    sessionBytesNotifier.dispose();
     super.dispose();
   }
 
@@ -1055,6 +1060,16 @@ class CoreController extends ChangeNotifier {
       downBpsNotifier.value = t.downBps;
       upBpsNotifier.value = t.upBps;
     });
+    // /connections is a snapshot, not a stream: poll it while the core runs.
+    // Feeds the dashboard's session-usage and active-connection metrics.
+    _connectionsTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
+      final summary = await ClashApiClient.connectionsSummary(
+        apiPort: _apiPort,
+      );
+      if (summary == null) return;
+      connectionsCountNotifier.value = summary.connections;
+      sessionBytesNotifier.value = summary.bytes;
+    });
   }
 
   void _stopTrafficMonitor() {
@@ -1062,8 +1077,12 @@ class CoreController extends ChangeNotifier {
       unawaited(_trafficSub!.cancel());
       _trafficSub = null;
     }
+    _connectionsTimer?.cancel();
+    _connectionsTimer = null;
     downBpsNotifier.value = 0;
     upBpsNotifier.value = 0;
+    connectionsCountNotifier.value = 0;
+    sessionBytesNotifier.value = 0;
   }
 
   /// Coalesces concurrent callers onto a single latency pass so a double tap

@@ -799,7 +799,7 @@ class _SessionMetrics extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                v3Copy(context, zh: '实时速度', en: 'Live speed', tw: '即時速度'),
+                v3Copy(context, zh: '实时状态', en: 'Live status', tw: '即時狀態'),
                 style: TextStyle(
                   color: p.ink,
                   fontSize: 12,
@@ -810,9 +810,9 @@ class _SessionMetrics extends StatelessWidget {
               Text(
                 v3Copy(
                   context,
-                  zh: '当前网络传输速率',
-                  en: 'Current transfer rate',
-                  tw: '目前網路傳輸速率',
+                  zh: '速率 · 本次流量 · 活动连接',
+                  en: 'Rates, usage and connections',
+                  tw: '速率 · 本次流量 · 活動連線',
                 ),
                 style: TextStyle(color: p.inkMuted, fontSize: 10),
               ),
@@ -848,24 +848,76 @@ class _SessionMetrics extends StatelessWidget {
               color: p.lycheeInk,
             ),
           );
+          final session = ValueListenableBuilder<int>(
+            valueListenable: controller.sessionBytesNotifier,
+            builder: (context, bytes, _) => _Metric(
+              label: v3Copy(
+                context,
+                zh: '本次流量',
+                en: 'This session',
+                tw: '本次流量',
+              ),
+              value: _bytes(bytes),
+              icon: Icons.data_usage_rounded,
+              color: p.warningInk,
+            ),
+          );
+          final connections = ValueListenableBuilder<int>(
+            valueListenable: controller.connectionsCountNotifier,
+            builder: (context, count, _) => _Metric(
+              label: v3Copy(
+                context,
+                zh: '活动连接',
+                en: 'Connections',
+                tw: '活動連線',
+              ),
+              value: '$count',
+              icon: Icons.lan_rounded,
+              color: p.ink,
+            ),
+          );
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 heading,
                 const SizedBox(height: 12),
-                download,
+                Row(children: [
+                  Expanded(child: download),
+                  Expanded(child: upload),
+                ]),
                 const SizedBox(height: 10),
-                upload,
+                Row(children: [
+                  Expanded(child: session),
+                  Expanded(child: connections),
+                ]),
               ],
             );
           }
           return Row(
             children: [
               Expanded(child: heading),
-              Expanded(child: download),
-              Container(width: 1, height: 38, color: p.line),
-              Expanded(child: upload),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    download,
+                    const SizedBox(height: 10),
+                    session,
+                  ],
+                ),
+              ),
+              Container(width: 1, height: 56, color: p.line),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    upload,
+                    const SizedBox(height: 10),
+                    connections,
+                  ],
+                ),
+              ),
             ],
           );
         },
@@ -1088,6 +1140,18 @@ String _speed(int value) {
   }
   if (value >= 1024) return '${(value / 1024).toStringAsFixed(0)} KB/s';
   return '$value B/s';
+}
+
+/// Human-readable session usage: bytes → KB → MB → GB.
+String _bytes(int value) {
+  if (value >= 1024 * 1024 * 1024) {
+    return '${(value / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
+  }
+  if (value >= 1024 * 1024) {
+    return '${(value / 1024 / 1024).toStringAsFixed(1)} MB';
+  }
+  if (value >= 1024) return '${(value / 1024).toStringAsFixed(0)} KB';
+  return '$value B';
 }
 
 String _duration(Duration d) =>
