@@ -854,7 +854,7 @@ class _SessionMetrics extends StatelessWidget {
               ),
               value: '$count',
               icon: Icons.link_rounded,
-              color: p.ink,
+              color: p.aquaInk,
             ),
           );
           // One shared cell inset keeps the four columns on the same grid:
@@ -1192,24 +1192,50 @@ class _PlanSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Header mirrors the current-node card: title left, the status
+          // token (days countdown) right where that card shows its badge.
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.diamond_outlined, color: p.citrus, size: 23),
+              Expanded(
+                child: Text(
+                  v3Copy(context, zh: '我的套餐', en: 'My plan', tw: '我的方案'),
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (countdown != null)
+                Text(
+                  countdown,
+                  style: TextStyle(
+                    color: expiryUrgent ? p.dangerInk : p.successInk,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: p.surfaceRaised,
+                  borderRadius: BorderRadius.circular(V3Radius.field),
+                ),
+                child: Icon(Icons.diamond_outlined, color: p.citrus, size: 21),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      v3Copy(context, zh: '我的套餐', en: 'My plan', tw: '我的方案'),
-                      style: TextStyle(
-                        color: p.ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
                     Text(
                       plan.name,
                       maxLines: 1,
@@ -1220,46 +1246,23 @@ class _PlanSummary extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
-                      plan.status,
+                      '${plan.expiry} · ${plan.status}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: plan.usable ? p.successInk : p.inkMuted,
-                        fontSize: 10,
+                        fontSize: 11,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      plan.expiry,
-                      textAlign: TextAlign.end,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: p.inkMuted, fontSize: 11),
-                    ),
-                    if (countdown != null)
-                      Text(
-                        countdown,
-                        textAlign: TextAlign.end,
-                        style: TextStyle(
-                          color: expiryUrgent ? p.dangerInk : p.successInk,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 13),
           if (total > 0) ...[
+            const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(V3Radius.card),
               child: LinearProgressIndicator(

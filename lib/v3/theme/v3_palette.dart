@@ -24,6 +24,7 @@ class V3Palette {
     required this.successInk,
     required this.warningInk,
     required this.dangerInk,
+    required this.aquaInk,
     required this.onLychee,
     required this.onDanger,
   });
@@ -64,6 +65,11 @@ class V3Palette {
   final Color successInk;
   final Color warningInk;
   final Color dangerInk;
+
+  /// The one ink for [aqua], which the gauge strip needed to complete its
+  /// four-accent spread. Light mode darkens the decorative aqua to a deep
+  /// teal (~5:1 on [surface]); dark mode is the base aqua itself (10:1).
+  final Color aquaInk;
 
   /// Foregrounds drawn on top of solid [lychee] fills (primary buttons, the
   /// connect orb, the brand avatar). White fails here: light mode sits at
@@ -118,6 +124,7 @@ class V3Palette {
     successInk: Color(0xFF11613A),
     warningInk: Color(0xFF8A5000),
     dangerInk: Color(0xFFB02E45),
+    aquaInk: Color(0xFF0B6F6C),
     onLychee: Color(0xFF121515),
     // The one deliberate pure white in light mode besides the QR pad: the
     // danger red is dark enough that white clears AA, while night does not
@@ -146,6 +153,7 @@ class V3Palette {
     successInk: Color(0xFF57D39A),
     warningInk: Color(0xFFF1BD59),
     dangerInk: Color(0xFFFF7188),
+    aquaInk: Color(0xFF79E0DC),
     onLychee: Color(0xFF080B0A),
     onDanger: Color(0xFF080B0A),
   );
