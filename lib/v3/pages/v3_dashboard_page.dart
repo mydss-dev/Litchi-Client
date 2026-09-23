@@ -904,13 +904,15 @@ class _Metric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    // Stat-tile layout: icon + label on one quiet line, the value carrying
-    // the row below. Every cell left-aligns on the same grid so the four
-    // gauges read as one tidy strip instead of four drifting groups.
+    // Stat tile: icon + label on a quiet line, value below, both centered.
+    // The four equal zones make the centered tiles read symmetric.
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: color, size: 15),
             const SizedBox(width: 5),
