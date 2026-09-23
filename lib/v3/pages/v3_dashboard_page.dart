@@ -1113,7 +1113,9 @@ String _speed(int value) {
   return '$value B/s';
 }
 
-/// Human-readable session usage: bytes → KB → MB → GB.
+/// Human-readable session usage: bytes → KB → MB → GB. Zero reads as
+/// "0 MB" — the byte tier only ever shows before the core has moved anything,
+/// and MB is the unit people actually expect on a usage gauge.
 String _bytes(int value) {
   if (value >= 1024 * 1024 * 1024) {
     return '${(value / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
@@ -1121,8 +1123,8 @@ String _bytes(int value) {
   if (value >= 1024 * 1024) {
     return '${(value / 1024 / 1024).toStringAsFixed(1)} MB';
   }
-  if (value >= 1024) return '${(value / 1024).toStringAsFixed(0)} KB';
-  return '$value B';
+  if (value > 0) return '${(value / 1024).toStringAsFixed(value < 10240 ? 1 : 0)} KB';
+  return '0 MB';
 }
 
 String _duration(Duration d) =>
