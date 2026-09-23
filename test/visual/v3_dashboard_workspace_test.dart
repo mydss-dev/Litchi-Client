@@ -183,15 +183,15 @@ void main() {
     ));
     await tester.pump();
 
-    await tester.tap(find.text('重新检测'));
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
     await tester.pump();
     await tester.pump();
 
     expect(find.text('12 ms'), findsOneWidget);
     expect(find.text('40 ms'), findsNWidgets(2));
     expect(find.text('不通'), findsOneWidget);
-    // The run finished: the spinner gave the button its label back.
-    expect(find.text('重新检测'), findsOneWidget);
+    // The run finished: the spinner gave the refresh control back.
+    expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });

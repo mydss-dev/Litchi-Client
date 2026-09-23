@@ -52,8 +52,6 @@ class V3DashboardPage extends StatelessWidget {
             const SizedBox(height: 12),
             _SessionMetrics(controller: controller),
             const SizedBox(height: 12),
-            _ConnectivityCard(controller: controller),
-            const SizedBox(height: 12),
             _PlanSummary(controller: controller),
           ],
         ],
@@ -795,8 +793,11 @@ class _SessionMetrics extends StatelessWidget {
     final p = V3Palette.of(context);
     return _DashboardCard(
       padding: const EdgeInsets.all(14),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
           final compact = constraints.maxWidth < 450;
           // Traffic arrives through ValueNotifiers, not AppController.notifyListeners.
           // Subscribe here so the displayed B/s changes without a page rebuild.
@@ -887,6 +888,12 @@ class _SessionMetrics extends StatelessWidget {
             ],
           );
         },
+          ),
+          const SizedBox(height: 12),
+          Container(height: 1, color: p.line),
+          const SizedBox(height: 10),
+          _ConnectivityRow(controller: controller),
+        ],
       ),
     );
   }
@@ -949,19 +956,20 @@ class _Metric extends StatelessWidget {
   }
 }
 
-/// Connectivity check strip: probes well-known sites through the live
-/// network path so a connected user can confirm the tunnel actually reaches
-/// the services they care about. Auto-runs once when the connection comes up;
-/// results clear when it drops so stale greens never linger.
-class _ConnectivityCard extends StatefulWidget {
-  const _ConnectivityCard({required this.controller});
+/// Connectivity line inside the live-status card: probes well-known sites
+/// through the live network path so a connected user can confirm the tunnel
+/// actually reaches the services they care about. Auto-runs once when the
+/// connection comes up; results clear when it drops so stale greens never
+/// linger.
+class _ConnectivityRow extends StatefulWidget {
+  const _ConnectivityRow({required this.controller});
   final AppController controller;
 
   @override
-  State<_ConnectivityCard> createState() => _ConnectivityCardState();
+  State<_ConnectivityRow> createState() => _ConnectivityRowState();
 }
 
-class _ConnectivityCardState extends State<_ConnectivityCard> {
+class _ConnectivityRowState extends State<_ConnectivityRow> {
   static const _targets = ConnectivityCheckService.defaultTargets;
   // index → result; absent = not probed yet, explicit null = probing now.
   final Map<int, ConnectivityResult?> _results = {};
@@ -1018,84 +1026,54 @@ class _ConnectivityCardState extends State<_ConnectivityCard> {
     final p = V3Palette.of(context);
     final connected =
         widget.controller.connectionStatus == ConnectionStatus.connected;
-    return _DashboardCard(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.radar_rounded, color: p.lychee, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                v3Copy(context, zh: '连通性检测', en: 'Connectivity', tw: '連線檢測'),
-                style: TextStyle(
-                  color: p.ink,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: _running || !connected ? null : _runCheck,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: p.ink,
-                  side: BorderSide(color: p.line),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(V3Radius.field),
-                  ),
-                ),
-                child: _running
-                    ? SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: p.inkMuted,
-                        ),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.refresh_rounded, size: 15, color: p.lychee),
-                          const SizedBox(width: 5),
-                          Text(
-                            v3Copy(context,
-                                zh: '重新检测', en: 'Re-check', tw: '重新檢測'),
-                            style: const TextStyle(fontSize: 11),
+    // The refresh control rides at the end of the line so the strip stays
+    // one row tall inside the live-status card.
+    final refresh = _running
+        ? const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : IconButton(
+            onPressed: connected ? _runCheck : null,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            color: connected ? p.lychee : p.inkMuted,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+            tooltip: v3Copy(context, zh: '重新检测', en: 'Re-check', tw: '重新檢測'),
+          );
+    return Row(
+      children: [
+        Expanded(
+          child: !connected && _results.isEmpty && !_running
+              ? Text(
+                  v3Copy(context,
+                    zh: '连接后可检测各站点连通性',
+                    en: 'Connect to check site reachability',
+                    tw: '連線後可檢測各站點連通性'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.inkMuted, fontSize: 11),
+                )
+              : Row(
+                  children: [
+                    for (var i = 0; i < _targets.length; i++)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: _ConnectivitySite(
+                            target: _targets[i],
+                            result: _results[i],
+                            probing: _running,
                           ),
-                        ],
+                        ),
                       ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (!connected && _results.isEmpty && !_running)
-            Text(
-              v3Copy(context,
-                zh: '连接后可检测各站点连通性',
-                en: 'Connect to check site reachability',
-                tw: '連線後可檢測各站點連通性'),
-              style: TextStyle(color: p.inkMuted, fontSize: 11),
-            )
-          else
-            Row(
-              children: [
-                for (var i = 0; i < _targets.length; i++) ...[
-                  if (i > 0)
-                    Container(width: 1, height: 34, color: p.line),
-                  Expanded(
-                    child: _ConnectivitySite(
-                      target: _targets[i],
-                      result: _results[i],
-                      probing: _running,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-        ],
-      ),
+                  ],
+                ),
+        ),
+        const SizedBox(width: 6),
+        refresh,
+      ],
     );
   }
 }
@@ -1135,31 +1113,27 @@ class _ConnectivitySite extends StatelessWidget {
         : r.ok
         ? p.successInk
         : p.dangerInk;
-    return Column(
+    // Inline tile: dot, site name and status share one line so four sites
+    // fit beside the refresh control without crowding.
+    return Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                target.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: p.ink, fontSize: 11,
-                  fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            target.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: p.ink, fontSize: 10,
+              fontWeight: FontWeight.w700),
+          ),
+        ),
+        const SizedBox(width: 4),
         Text(
           statusLine,
           maxLines: 1,
