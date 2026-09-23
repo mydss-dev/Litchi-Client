@@ -849,7 +849,7 @@ class _SessionMetrics extends StatelessWidget {
                 tw: '活動連線',
               ),
               value: '$count',
-              icon: Icons.lan_rounded,
+              icon: Icons.link_rounded,
               color: p.ink,
             ),
           );
@@ -858,26 +858,26 @@ class _SessionMetrics extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(children: [
-                  Expanded(child: download),
-                  Expanded(child: upload),
+                  Expanded(child: session),
+                  Expanded(child: connections),
                 ]),
                 const SizedBox(height: 12),
                 Row(children: [
-                  Expanded(child: session),
-                  Expanded(child: connections),
+                  Expanded(child: download),
+                  Expanded(child: upload),
                 ]),
               ],
             );
           }
           return Row(
             children: [
-              Expanded(child: download),
-              Container(width: 1, height: 38, color: p.line),
-              Expanded(child: upload),
-              Container(width: 1, height: 38, color: p.line),
               Expanded(child: session),
               Container(width: 1, height: 38, color: p.line),
               Expanded(child: connections),
+              Container(width: 1, height: 38, color: p.line),
+              Expanded(child: download),
+              Container(width: 1, height: 38, color: p.line),
+              Expanded(child: upload),
             ],
           );
         },
