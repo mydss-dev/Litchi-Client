@@ -76,8 +76,9 @@ void main() {
 
     final active = tester.widget<Text>(find.text('系统代理'));
     final inactive = tester.widget<Text>(find.text('TUN 模式'));
-    expect(active.style?.fontWeight, FontWeight.w800);
-    expect(inactive.style?.fontWeight, FontWeight.w500);
+    // The segmented capsule marks the selection with ink color, not weight.
+    expect(active.style?.color, V3Palette.light.lycheeInk);
+    expect(inactive.style?.color, V3Palette.light.inkMuted);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });

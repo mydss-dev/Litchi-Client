@@ -608,23 +608,16 @@ class _ModeRailState extends State<_ModeRail> {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            for (final mode in NetworkMode.values)
-              if (v3ShowsNetworkMode(defaultTargetPlatform, mode)) Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right: mode == NetworkMode.values.last ? 0 : 7,
-                  ),
-                  child: _NetworkModeIndicator(
-                    controller: controller,
-                    mode: mode,
-                    busy: _busy,
-                    onTap: () => _run(() => _setNetworkMode(mode)),
-                  ),
-                ),
-              ),
-          ],
+        _ModeSegment<NetworkMode>(
+          values: NetworkMode.values
+              .where((mode) => v3ShowsNetworkMode(defaultTargetPlatform, mode))
+              .toList(),
+          label: _networkModeLabel,
+          selected: controller.networkMode,
+          busy: _busy,
+          onSelect: (mode) => _run(() => _setNetworkMode(mode)),
+          trackKey: 'v3-network-mode-track',
+          optionKey: (mode) => 'v3-network-mode-${mode.storageKey}',
         ),
       ],
     );
@@ -640,19 +633,13 @@ class _ModeRailState extends State<_ModeRail> {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            for (final mode in ProxyMode.values)
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    right: mode == ProxyMode.values.last ? 0 : 7,
-                  ),
-                  child: _RouteButton(controller: controller, mode: mode,
-                    busy: _busy, onTap: () => _run(() => _setProxyMode(mode))),
-                ),
-              ),
-          ],
+        _ModeSegment<ProxyMode>(
+          values: ProxyMode.values,
+          label: _modeTitle,
+          selected: controller.proxyMode,
+          busy: _busy,
+          onSelect: (mode) => _run(() => _setProxyMode(mode)),
+          trackKey: 'v3-route-mode-track',
         ),
       ],
     );
@@ -685,84 +672,65 @@ class _ModeRailState extends State<_ModeRail> {
   }
 }
 
-class _NetworkModeIndicator extends StatelessWidget {
-  // The mode pill behaves like the routing pills beside it: tap the mode you
-  // want. _ModeRail owns the switch and holds the busy lock while a switch
-  // reloads the core config — same contract as _RouteButton.
-  const _NetworkModeIndicator({required this.controller, required this.mode,
-    required this.busy, required this.onTap});
-  final AppController controller;
-  final NetworkMode mode;
+/// A continuous segmented capsule: one raised track holding every option,
+/// the current selection highlighted in place (pick TUN and the right chip
+/// lights up, pick system proxy and the left one does). Both dashboard mode
+/// groups render through this widget so the 2-option and 3-option groups
+/// read as one control family instead of loose separate buttons.
+class _ModeSegment<T> extends StatelessWidget {
+  const _ModeSegment({required this.values, required this.label,
+    required this.selected, required this.busy, required this.onSelect,
+    this.trackKey, this.optionKey});
+  final List<T> values;
+  final String Function(BuildContext, T) label;
+  final T selected;
   final bool busy;
-  final VoidCallback onTap;
+  final ValueChanged<T> onSelect;
+  final String? trackKey;
+  final String Function(T)? optionKey;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final selected = controller.networkMode == mode;
-    return InkWell(
-      borderRadius: BorderRadius.circular(V3Radius.control),
-      onTap: selected || busy ? null : onTap,
-      child: Container(
-        key: ValueKey('v3-network-mode-${mode.storageKey}'),
-        constraints: const BoxConstraints(minHeight: 44),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 7),
-        decoration: BoxDecoration(
-          // Configured modes are a selection, not a connectivity health signal.
-          // Follow the plan-cycle style rather than tinting the white label green.
-          color: selected ? p.lycheeSoft : p.surfaceRaised,
-          border: Border.all(color: selected ? p.lychee : p.line),
-          borderRadius: BorderRadius.circular(V3Radius.control),
-        ),
-        child: Text(
-          _networkModeLabel(context, mode),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: selected ? p.lycheeInk : p.inkMuted,
-            fontSize: 10,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-          ),
-        ),
+    return Container(
+      key: trackKey == null ? null : ValueKey<String>(trackKey!),
+      width: double.infinity,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: p.surfaceRaised,
+        borderRadius: BorderRadius.circular(V3Radius.field),
       ),
-    );
-  }
-}
-
-class _RouteButton extends StatelessWidget {
-  const _RouteButton({required this.controller, required this.mode,
-    required this.busy, required this.onTap});
-  final AppController controller;
-  final ProxyMode mode;
-  final bool busy;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final active = controller.proxyMode == mode;
-    return SizedBox(
-      height: 44,
-      child: OutlinedButton(
-        onPressed: active || busy ? null : onTap,
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 3),
-          foregroundColor: active ? p.lycheeInk : p.ink,
-          backgroundColor: active ? p.lycheeSoft : Colors.transparent,
-          side: BorderSide(color: active ? p.lychee : p.line),
-          shape: RoundedRectangleBorder(
+      child: Row(children: [
+        for (final value in values)
+          Expanded(child: InkWell(
             borderRadius: BorderRadius.circular(V3Radius.control),
-          ),
-        ),
-        child: Text(
-          _modeTitle(context, mode),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-        ),
-      ),
+            onTap: busy || value == selected ? null : () => onSelect(value),
+            child: AnimatedContainer(
+              key: optionKey == null
+                  ? null : ValueKey<String>(optionKey!(value)),
+              duration: const Duration(milliseconds: 150),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              decoration: BoxDecoration(
+                // Choosing a mode is a configuration selection, not a
+                // connectivity health signal: the lychee chip, never green.
+                color: value == selected ? p.lycheeSoft : Colors.transparent,
+                borderRadius: BorderRadius.circular(V3Radius.control),
+              ),
+              child: Text(
+                label(context, value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: value == selected ? p.lycheeInk : p.inkMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          )),
+      ]),
     );
   }
 }

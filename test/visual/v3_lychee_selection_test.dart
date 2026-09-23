@@ -46,16 +46,19 @@ void main() {
       ));
       await tester.pump();
 
-      final selected = tester.widget<Container>(
+      // The mode groups are continuous segmented capsules: one raised track
+      // per group, the selection lit as a lychee chip in place.
+      final track = tester.widget<Container>(
+        find.byKey(const ValueKey('v3-network-mode-track')));
+      expect((track.decoration! as BoxDecoration).color, palette.surfaceRaised);
+      final selected = tester.widget<AnimatedContainer>(
         find.byKey(const ValueKey('v3-network-mode-system')));
-      final other = tester.widget<Container>(
+      final other = tester.widget<AnimatedContainer>(
         find.byKey(const ValueKey('v3-network-mode-tun')));
       final selectedDecoration = selected.decoration! as BoxDecoration;
       final otherDecoration = other.decoration! as BoxDecoration;
       expect(selectedDecoration.color, palette.lycheeSoft);
-      expect((selectedDecoration.border! as Border).top.color, palette.lychee);
-      expect(otherDecoration.color, palette.surfaceRaised);
-      expect((otherDecoration.border! as Border).top.color, palette.line);
+      expect(otherDecoration.color, Colors.transparent);
       expect(tester.widget<Text>(find.text('系统代理')).style!.color,
         palette.lycheeInk);
       expect(tester.widget<Text>(find.text('TUN 模式')).style!.color,
