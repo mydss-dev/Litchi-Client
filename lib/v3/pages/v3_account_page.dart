@@ -191,9 +191,13 @@ class _AccountSummaryPanel extends StatelessWidget {
               foregroundColor: p.onLychee,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(V3Radius.field))),
-            icon: const Icon(Icons.storefront_rounded, size: 17),
+            // Say what the tap actually does: the shop is where you renew
+            // or pick a plan — no separate "management" screen exists.
+            icon: Icon(controller.hasPlan
+                ? Icons.autorenew_rounded
+                : Icons.storefront_rounded, size: 17),
             label: Text(controller.hasPlan
-              ? v3Copy(context, zh: '管理套餐', en: 'Manage plan', tw: '管理方案')
+              ? v3Copy(context, zh: '续费套餐', en: 'Renew plan', tw: '續費方案')
               : v3Copy(context, zh: '选择套餐', en: 'Choose plan', tw: '選擇方案'))),
         ]),
       ]),
