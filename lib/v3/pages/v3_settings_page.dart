@@ -402,7 +402,9 @@ class _Segment<T> extends StatelessWidget {
         color: p.surfaceRaised, borderRadius: BorderRadius.circular(V3Radius.field)),
       child: Row(children: items.map((item) {
         final selected = item == value;
-        return Expanded(child: InkWell(
+        // V3Pressable paints the ink above the raised track fill instead of
+        // on the root Material beneath it.
+        return Expanded(child: V3Pressable(
           key: ValueKey('v3-settings-segment-${label(item)}'),
           borderRadius: BorderRadius.circular(V3Radius.control),
           onTap: () => onChanged(item),

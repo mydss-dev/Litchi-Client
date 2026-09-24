@@ -123,7 +123,9 @@ class _CategoryDeck extends StatelessWidget {
     return V3Panel(tone: V3PanelTone.raised,
       padding: const EdgeInsets.all(5),
       child: Row(children: [
-        for (final item in items) Expanded(child: InkWell(
+        // V3Pressable paints the ink above the panel's opaque fill instead of
+        // on the root Material beneath it.
+        for (final item in items) Expanded(child: V3Pressable(
           borderRadius: BorderRadius.circular(V3Radius.control),
           onTap: () => onChanged(item.$1),
           child: AnimatedContainer(
@@ -528,27 +530,30 @@ class _CycleOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return InkWell(borderRadius: BorderRadius.circular(V3Radius.field), onTap: onTap,
-      child: AnimatedContainer(duration: const Duration(milliseconds: 160),
-        width: 132, padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: selected ? p.lycheeSoft : p.surfaceRaised,
-          border: Border.all(color: selected ? p.lychee : p.line,
-            width: selected ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(V3Radius.field)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Text(label, style: TextStyle(
-              color: selected ? p.lycheeInk : p.ink,
-              fontSize: 13, fontWeight: FontWeight.w800))),
-            if (selected) Icon(Icons.check_circle_rounded,
-              size: 16, color: p.lycheeInk),
-          ]),
-          const SizedBox(height: 7),
-          Text(price, style: TextStyle(color: selected ? p.lycheeInk : p.ink,
-            fontSize: 15, fontWeight: FontWeight.w800)),
-        ]),
-      ),
+    // AnimatedContainer stays outside so the selection fill keeps animating;
+    // V3Pressable inside it puts the ink above the opaque fill. The padding
+    // rides inside the pressable so the whole card stays tappable.
+    return AnimatedContainer(duration: const Duration(milliseconds: 160),
+      width: 132,
+      decoration: BoxDecoration(
+        color: selected ? p.lycheeSoft : p.surfaceRaised,
+        border: Border.all(color: selected ? p.lychee : p.line,
+          width: selected ? 1.5 : 1),
+        borderRadius: BorderRadius.circular(V3Radius.field)),
+      child: V3Pressable(borderRadius: BorderRadius.circular(V3Radius.field), onTap: onTap,
+        child: Padding(padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(label, style: TextStyle(
+                color: selected ? p.lycheeInk : p.ink,
+                fontSize: 13, fontWeight: FontWeight.w800))),
+              if (selected) Icon(Icons.check_circle_rounded,
+                size: 16, color: p.lycheeInk),
+            ]),
+            const SizedBox(height: 7),
+            Text(price, style: TextStyle(color: selected ? p.lycheeInk : p.ink,
+              fontSize: 15, fontWeight: FontWeight.w800)),
+          ]))),
     );
   }
 }

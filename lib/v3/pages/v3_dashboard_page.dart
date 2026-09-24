@@ -12,6 +12,7 @@ import '../../shared/services/connectivity_check_service.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_dashboard_alerts.dart';
+import '../ui/v3_latency_tier.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_picker.dart';
 import '../ui/v3_toast.dart';
@@ -184,8 +185,6 @@ class _ConnectionWorkspace extends StatelessWidget {
               child: _ConnectIntroContent(
                 controller: controller,
                 status: status,
-                connected: connected,
-                connecting: connecting,
               ),
             ),
           ),
@@ -274,13 +273,22 @@ class _ConnectionWorkspace extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 4),
+                          // Same dialect as the picker's corner badge: one
+                          // 「延迟：42ms」family, timeout included.
                           Text(
                             node.latency > 0 && node.latency < 9999
                                 ? v3Copy(
                                     context,
-                                    zh: '延迟 ${node.latency} ms',
-                                    en: 'Latency ${node.latency} ms',
-                                    tw: '延遲 ${node.latency} ms',
+                                    zh: '延迟：${node.latency}ms',
+                                    en: 'Latency: ${node.latency}ms',
+                                    tw: '延遲：${node.latency}ms',
+                                  )
+                                : node.latency >= 9999
+                                ? v3Copy(
+                                    context,
+                                    zh: '延迟：超时',
+                                    en: 'Latency: timeout',
+                                    tw: '延遲：逾時',
                                   )
                                 : node.latency == -1
                                 ? v3Copy(
@@ -289,13 +297,6 @@ class _ConnectionWorkspace extends StatelessWidget {
                                     en: 'Testing',
                                     tw: '測速中',
                                   )
-                                : node.latency >= 9999
-                                ? v3Copy(
-                                    context,
-                                    zh: '测速超时',
-                                    en: 'Probe timed out',
-                                    tw: '測速逾時',
-                                  )
                                 : v3Copy(
                                     context,
                                     zh: '未测速',
@@ -303,22 +304,20 @@ class _ConnectionWorkspace extends StatelessWidget {
                                     tw: '未測速',
                                   ),
                             style: TextStyle(
-                              color: node.latency > 0 && node.latency < 9999
-                                  ? p.successInk
-                                  : p.inkMuted,
+                              color: v3LatencyInk(p, node.region, node.latency),
                               fontSize: 11,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
+                          if (node.tags.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            V3NodeTags(tags: node.tags, maxVisible: 2),
+                          ],
                         ],
                       ),
                     ),
                   ],
                 ),
-                // Tags describe the resolved node, automatic or not.
-                if (node.tags.isNotEmpty) ...[
-                  const SizedBox(height: 9),
-                  V3NodeTags(tags: node.tags, maxVisible: 2),
-                ],
                 const Spacer(),
                 SizedBox(
                   width: double.infinity,
@@ -372,21 +371,82 @@ class _ConnectionWorkspace extends StatelessWidget {
 /// The orb section of the connection workspace: status header, the connect
 /// orb and its caption over the faded world map. Shared by the desktop
 /// workspace card and the phone's merged connection card.
-class _ConnectIntroContent extends StatelessWidget {
+class _ConnectIntroContent extends StatefulWidget {
   const _ConnectIntroContent({
     required this.controller,
     required this.status,
-    required this.connected,
-    required this.connecting,
   });
   final AppController controller;
   final ConnectionStatus status;
-  final bool connected;
-  final bool connecting;
+
+  @override
+  State<_ConnectIntroContent> createState() => _ConnectIntroContentState();
+}
+
+class _ConnectIntroContentState extends State<_ConnectIntroContent> {
+  /// A local core can flip busy→terminal in tens of milliseconds, which
+  /// collapses the connect sequence into a snap. The amber state is the
+  /// presentation: hold it on screen for at least this long so the eye reads
+  /// tap → spinner → lime ripple as one motion. A handshake slower than the
+  /// floor simply displays for its real duration.
+  static const Duration _minBusyDisplay = Duration(milliseconds: 700);
+
+  late ConnectionStatus _shown = widget.status;
+  DateTime? _busySince;
+  Timer? _release;
+
+  static bool _isBusy(ConnectionStatus state) =>
+      state == ConnectionStatus.connecting ||
+      state == ConnectionStatus.disconnecting;
+
+  @override
+  void didUpdateWidget(covariant _ConnectIntroContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final target = widget.status;
+    if (target == _shown) return;
+    if (_isBusy(_shown) && !_isBusy(target)) {
+      // Busy just ended: keep the amber frame until the floor elapses.
+      final held = _busySince == null
+          ? _minBusyDisplay
+          : DateTime.now().difference(_busySince!);
+      if (held < _minBusyDisplay) {
+        final snapshot = target;
+        _release?.cancel();
+        _release = Timer(_minBusyDisplay - held, () {
+          if (!mounted) return;
+          setState(() {
+            _shown = snapshot;
+            _busySince = null;
+            _release = null;
+          });
+        });
+        return;
+      }
+      setState(() {
+        _shown = target;
+        _busySince = null;
+      });
+      return;
+    }
+    // Entering busy (or any idle hop, e.g. →error): show it immediately.
+    if (_isBusy(target)) _busySince ??= DateTime.now();
+    _release?.cancel();
+    _release = null;
+    setState(() => _shown = target);
+  }
+
+  @override
+  void dispose() {
+    _release?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    final status = _shown;
+    final connected = status == ConnectionStatus.connected;
+    final connecting = _isBusy(status);
     // The corner badge speaks protection, not connection: red while exposed,
     // lime once the tunnel is up. The orb button below carries the live state.
     final protectionColor = switch (status) {
@@ -463,7 +523,7 @@ class _ConnectIntroContent extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _ConnectionOrb(
-                          controller: controller,
+                          controller: widget.controller,
                           status: status,
                         ),
                         const SizedBox(height: 9),
@@ -493,7 +553,7 @@ class _ConnectIntroContent extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 3),
-                        _ConnectionDuration(controller: controller),
+                        _ConnectionDuration(controller: widget.controller),
                       ],
                     ),
                   ),
@@ -552,12 +612,12 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
               child: _ConnectIntroContent(
                 controller: controller,
                 status: status,
-                connected: widget.connected,
-                connecting: widget.connecting,
               ),
             ),
             Container(height: 1, color: p.line),
-            InkWell(
+            // V3Pressable keeps the press ink above the card's opaque fill —
+            // a bare InkWell paints it on the root Material below.
+            V3Pressable(
               key: kCurrentNodeCardKey,
               onTap: () => V3NodePicker.show(context),
               child: Padding(
@@ -623,18 +683,23 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
                           Text(
                             node.latency > 0 && node.latency < 9999
                                 ? v3Copy(context,
-                                    zh: '延迟 ${node.latency} ms',
-                                    en: 'Latency ${node.latency} ms',
-                                    tw: '延遲 ${node.latency} ms')
+                                    zh: '延迟：${node.latency}ms',
+                                    en: 'Latency: ${node.latency}ms',
+                                    tw: '延遲：${node.latency}ms')
+                                : node.latency >= 9999
+                                ? v3Copy(context,
+                                    zh: '延迟：超时',
+                                    en: 'Latency: timeout',
+                                    tw: '延遲：逾時')
+                                : node.latency == -1
+                                ? v3Copy(context,
+                                    zh: '测速中', en: 'Testing', tw: '測速中')
                                 : v3Copy(context,
-                                    zh: '未测速',
-                                    en: 'Not tested',
-                                    tw: '未測速'),
+                                    zh: '未测速', en: 'Not tested', tw: '未測速'),
                             style: TextStyle(
-                              color: node.latency > 0 && node.latency < 9999
-                                  ? p.successInk
-                                  : p.inkMuted,
+                              color: v3LatencyInk(p, node.region, node.latency),
                               fontSize: 11,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           if (node.tags.isNotEmpty) ...[
@@ -1184,36 +1249,45 @@ class _ModeSegment<T> extends StatelessWidget {
       ),
       child: Row(children: [
         for (final value in values)
-          Expanded(child: InkWell(
-            borderRadius: BorderRadius.circular(V3Radius.control),
-            onTap: busy || value == selected ? null : () => onSelect(value),
-            child: AnimatedContainer(
-              key: optionKey == null
-                  ? null : ValueKey<String>(optionKey!(value)),
-              duration: const Duration(milliseconds: 150),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(vertical: 13),
-              // The selection keeps the track fill and gains a lychee ring —
-              // an outline chip, not a solid slab of pink. The 1dp border is
-              // always present (transparent when unselected) so no option
-              // ever shifts by a pixel when the ring moves.
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                border: Border.all(
-                  color: value == selected ? p.lychee : Colors.transparent,
-                ),
-                borderRadius: BorderRadius.circular(V3Radius.control),
+          Expanded(child: AnimatedContainer(
+            key: optionKey == null
+                ? null : ValueKey<String>(optionKey!(value)),
+            duration: const Duration(milliseconds: 150),
+            alignment: Alignment.center,
+            // The selection keeps the track fill and gains a lychee ring —
+            // an outline chip, not a solid slab of pink. The 1dp border is
+            // always present (transparent when unselected) so no option
+            // ever shifts by a pixel when the ring moves.
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              border: Border.all(
+                color: value == selected ? p.lychee : Colors.transparent,
               ),
-              child: Text(
-                label(context, value),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: value == selected ? p.lycheeInk : p.inkMuted,
-                  fontSize: 11,
-                  fontWeight: selected == value
-                      ? FontWeight.w800 : FontWeight.w700,
+              borderRadius: BorderRadius.circular(V3Radius.control),
+            ),
+            // V3Pressable rides inside the option so the press ink lands on
+            // the option surface instead of on a Material beneath the card
+            // fill. The padding lives inside it so the ink still covers the
+            // full option rect, as the old wrapping InkWell did.
+            child: V3Pressable(
+              onTap: busy || value == selected ? null : () => onSelect(value),
+              borderRadius: BorderRadius.circular(V3Radius.control),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    label(context, value),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: value == selected ? p.lycheeInk : p.inkMuted,
+                      fontSize: 11,
+                      fontWeight: selected == value
+                          ? FontWeight.w800 : FontWeight.w700,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1505,18 +1579,22 @@ class _ConnectivityRowState extends State<_ConnectivityRow> {
 
   @override
   Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
     final status = widget.controller.connectionStatus;
     // Fixed height, always four slots: nothing in this row can change its
-    // height, so the plan card below never shifts when a probe starts.
+    // height, so the plan card below never shifts when a probe starts. The
+    // 12px cell insets and 1px dividers mirror the gauge row above, so both
+    // rows read as one grid.
     return SizedBox(
       key: const ValueKey('v3-connectivity-strip'),
       height: 16,
       child: Row(
         children: [
-          for (var i = 0; i < _targets.length; i++)
+          for (var i = 0; i < _targets.length; i++) ...[
+            if (i > 0) Container(width: 1, height: 16, color: p.line),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: _ConnectivitySite(
                   target: _targets[i],
                   phase: _phaseFor(status, i),
@@ -1524,6 +1602,7 @@ class _ConnectivityRowState extends State<_ConnectivityRow> {
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -1593,16 +1672,18 @@ class _ConnectivitySite extends StatelessWidget {
         p.dangerInk,
       ),
     };
-    // Inline tile: brand icon, site name, lamp dot and status share one
-    // line. The icon is a quiet always-visible mark; the dot is the lamp —
-    // its color and the status text transition, so a probe outcome change
-    // reads as a soft cross-fade instead of a hard swap.
+    // Inline tile on a fixed grid: icon and name anchor the left edge, the
+    // lamp dot and a fixed-width right-aligned status cell anchor the right.
+    // Name length no longer shifts the dot, so all four dots sit on one
+    // vertical rhythm and results landing never jiggle the row. The icon is
+    // a quiet always-visible mark; the dot is the lamp — its color and the
+    // status text transition, so a probe outcome change reads as a soft
+    // cross-fade instead of a hard swap.
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(_siteIcon(target.name), color: p.inkMuted, size: 14),
-        const SizedBox(width: 5),
-        Flexible(
+        const SizedBox(width: 4),
+        Expanded(
           child: Text(
             target.name,
             maxLines: 1,
@@ -1611,7 +1692,7 @@ class _ConnectivitySite extends StatelessWidget {
               fontWeight: FontWeight.w700),
           ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 3),
         TweenAnimationBuilder<Color?>(
           tween: ColorTween(end: dotColor),
           duration: const Duration(milliseconds: 160),
@@ -1622,19 +1703,25 @@ class _ConnectivitySite extends StatelessWidget {
             decoration: BoxDecoration(color: color!, shape: BoxShape.circle),
           ),
         ),
-        const SizedBox(width: 4),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 160),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          // Keyed by phase: a re-probe with the same outcome never fades,
-          // a real change (12 ms → 不通) cross-fades in place.
-          child: Text(
-            statusLine,
-            key: ValueKey(phase),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: statusColor, fontSize: 10),
+        const SizedBox(width: 3),
+        SizedBox(
+          width: 40,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 160),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              // Keyed by phase: a re-probe with the same outcome never fades,
+              // a real change (12 ms → 不通) cross-fades in place.
+              child: Text(
+                statusLine,
+                key: ValueKey(phase),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: statusColor, fontSize: 10),
+              ),
+            ),
           ),
         ),
       ],

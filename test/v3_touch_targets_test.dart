@@ -46,10 +46,10 @@ void main() {
       await _pump(tester, AppPage.settings, const Size(390, 844));
       // The segmented control is now a full-width row, not a FittedBox-scaled
       // one, so the segments are found by their own key rather than by the
-      // wrapper that used to scale them.
+      // wrapper that used to scale them. The key rides the V3Pressable since
+      // the ink rework; its rect IS the tap target being measured.
       final segments = find.byWidgetPredicate(
         (widget) =>
-            widget is InkWell &&
             widget.key is ValueKey<String> &&
             (widget.key! as ValueKey<String>).value.startsWith(
               'v3-settings-segment',

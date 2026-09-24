@@ -248,7 +248,7 @@ class _TicketRow extends StatelessWidget {
         en: 'Low', tw: '低'),
     };
     if (!wide) {
-      return InkWell(borderRadius: BorderRadius.circular(V3Radius.card), onTap: onTap,
+      return V3Pressable(borderRadius: BorderRadius.circular(V3Radius.card), onTap: onTap,
         child: SizedBox(height: 102,
           child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Column(mainAxisAlignment: MainAxisAlignment.center,
@@ -279,7 +279,7 @@ class _TicketRow extends StatelessWidget {
                 ]),
               ]))));
     }
-    return InkWell(borderRadius: BorderRadius.circular(V3Radius.card), onTap: onTap,
+    return V3Pressable(borderRadius: BorderRadius.circular(V3Radius.card), onTap: onTap,
       child: SizedBox(height: kV3TicketRowHeight,
         child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(children: [

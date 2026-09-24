@@ -265,7 +265,8 @@ class V3Theme {
       dividerColor: p.line,
       // Keep a quiet but visible press state without a spreading ripple.
       splashFactory: NoSplash.splashFactory,
-      highlightColor: p.ink.withValues(alpha: 0.06),
+      highlightColor: p.ink.withValues(alpha: 0.10),
+      hoverColor: p.ink.withValues(alpha: 0.04),
       // Selection follows the cycle chooser: a soft pink ground, dark/light
       // palette-safe lychee ink, and a matching border. Never white on lime.
       chipTheme: ChipThemeData(

@@ -419,7 +419,10 @@ class _AccountAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return InkWell(borderRadius: BorderRadius.circular(V3Radius.field), onTap: onTap,
+    // V3Pressable paints the ink above the panel's opaque fill, so the
+    // press/hover highlight is actually visible.
+    return V3Pressable(onTap: onTap,
+      borderRadius: BorderRadius.circular(V3Radius.field),
       child: Padding(padding: const EdgeInsets.symmetric(vertical: 13,
         horizontal: 6),
         child: Column(children: [

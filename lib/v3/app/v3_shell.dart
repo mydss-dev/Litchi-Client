@@ -204,45 +204,47 @@ class _DesktopRail extends StatelessWidget {
         )),
         const Spacer(),
         const SizedBox(height: 12),
-        InkWell(
+        Container(
           key: kAccountCardKey,
-          borderRadius: BorderRadius.circular(V3Radius.card),
-          onTap: () => controller.goToPage(AppPage.account),
-          child: Container(
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(color: p.surface,
-              borderRadius: BorderRadius.circular(V3Radius.card),
-              border: Border.all(color: p.line)),
-            child: Row(children: [
-              CircleAvatar(
-                radius: 17,
-                backgroundColor: p.lychee,
-                child: Text(user.avatarLetter.isEmpty ? '?' : user.avatarLetter,
-                  style: TextStyle(color: p.onLychee,
-                    fontWeight: FontWeight.w800)),
-              ),
-              const SizedBox(width: 7),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(user.name.isEmpty
-                      ? v3Copy(context, zh: '访客', en: 'Guest', tw: '訪客')
-                      : user.name,
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.ink, fontWeight: FontWeight.w700,
-                      fontSize: 11)),
-                  const SizedBox(height: 2),
-                  Tooltip(message: '${plan.shortLabel} · ${plan.expiry}',
-                    child: Text(plan.shortLabel, maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: plan.usable
-                        ? p.successInk : p.inkMuted, fontSize: 10)),
-                  ),
-                ],
-              )),
-              Icon(Icons.chevron_right_rounded,
-                color: p.ink.withValues(alpha: 0.45), size: 16),
-            ]),
+          decoration: BoxDecoration(color: p.surface,
+            borderRadius: BorderRadius.circular(V3Radius.card),
+            border: Border.all(color: p.line)),
+          child: V3Pressable(
+            borderRadius: BorderRadius.circular(V3Radius.card),
+            onTap: () => controller.goToPage(AppPage.account),
+            child: Padding(
+              padding: const EdgeInsets.all(9),
+              child: Row(children: [
+                CircleAvatar(
+                  radius: 17,
+                  backgroundColor: p.lychee,
+                  child: Text(user.avatarLetter.isEmpty ? '?' : user.avatarLetter,
+                    style: TextStyle(color: p.onLychee,
+                      fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(width: 7),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user.name.isEmpty
+                        ? v3Copy(context, zh: '访客', en: 'Guest', tw: '訪客')
+                        : user.name,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: p.ink, fontWeight: FontWeight.w700,
+                        fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Tooltip(message: '${plan.shortLabel} · ${plan.expiry}',
+                      child: Text(plan.shortLabel, maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: plan.usable
+                          ? p.successInk : p.inkMuted, fontSize: 10)),
+                    ),
+                  ],
+                )),
+                Icon(Icons.chevron_right_rounded,
+                  color: p.ink.withValues(alpha: 0.45), size: 16),
+              ]),
+            ),
           ),
         ),
       ]),
@@ -262,23 +264,25 @@ class _RailItem extends StatelessWidget {
     final p = V3Palette.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(V3Radius.field),
-        onTap: onTap,
-        child: TweenAnimationBuilder<double>(
-          tween: Tween<double>(end: selected ? 1 : 0),
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          builder: (context, t, _) {
-            final iconColor = Color.lerp(p.inkMuted, p.lycheeInk, t)!;
-            final textColor = Color.lerp(p.inkMuted, p.ink, t)!;
-            return Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: p.lycheeSoft.withValues(alpha: t),
-                borderRadius: BorderRadius.circular(V3Radius.field),
-              ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(end: selected ? 1 : 0),
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        builder: (context, t, _) {
+          final iconColor = Color.lerp(p.inkMuted, p.lycheeInk, t)!;
+          final textColor = Color.lerp(p.inkMuted, p.ink, t)!;
+          // V3Pressable keeps the press ink above the animated selection
+          // fill instead of losing it under the rail's opaque hero.
+          return Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: p.lycheeSoft.withValues(alpha: t),
+              borderRadius: BorderRadius.circular(V3Radius.field),
+            ),
+            child: V3Pressable(
+              borderRadius: BorderRadius.circular(V3Radius.field),
+              onTap: onTap,
               child: Row(children: [
                 Icon(item.icon, color: iconColor, size: 19),
                 const SizedBox(width: 12),
@@ -287,9 +291,9 @@ class _RailItem extends StatelessWidget {
                   style: TextStyle(color: textColor,
                     fontSize: 13, fontWeight: FontWeight.w700))),
               ]),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -336,6 +340,14 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    // Route every close path (title-bar button, Alt+F4, taskbar) through the
+    // same quit choreography — an unguarded native close destroys the
+    // process without restoring the system proxy.
+    try {
+      windowManager.setPreventClose(true).ignore();
+    } catch (_) {
+      // Native window APIs are unavailable in widget tests.
+    }
     _syncWindowState();
   }
 
@@ -368,13 +380,44 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
     }
   }
 
-  Future<void> _closeWindow() async {
+  bool _quitting = false;
+
+  /// The legacy quit order, re-adopted: remove the visible UI first so a
+  /// quit feels immediate, then run the cleanup behind the hidden window,
+  /// then destroy. A slow core teardown can no longer freeze the window on
+  /// screen, and the bounded timeout keeps the exit unconditional.
+  Future<void> _quitApp() async {
+    if (_quitting) return;
+    _quitting = true;
+    // Capture before the hide: no BuildContext reads across async gaps.
+    final controller = AppScope.of(context);
     try {
-      await AppScope.of(context).shutdown();
-      await windowManager.close();
+      await windowManager.hide();
     } catch (_) {
       // Native window APIs are unavailable in widget tests.
     }
+    try {
+      await controller.shutdown().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () {},
+      );
+    } catch (_) {
+      // Shutdown must never block the exit; the OS reaps the core process
+      // when this process dies.
+    }
+    try {
+      await windowManager.destroy();
+    } catch (_) {
+      // Native window APIs are unavailable in widget tests.
+    }
+  }
+
+  Future<void> _closeWindow() => _quitApp();
+
+  @override
+  void onWindowClose() {
+    // setPreventClose routes the native close paths here.
+    _quitApp();
   }
 
   @override

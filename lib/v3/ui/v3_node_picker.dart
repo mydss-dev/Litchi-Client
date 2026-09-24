@@ -4,6 +4,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import 'v3_latency_tier.dart';
 import 'v3_locale_copy.dart';
 import 'v3_node_tags.dart';
 import 'v3_sheet.dart';
@@ -182,6 +183,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
               child: V3NodeRow(
                 node: node,
                 controller: controller,
+                cornerLatency: true,
                 busy: _pending == node.id,
                 onTap:
                     _pending != null
@@ -223,17 +225,19 @@ class V3AutoRouteRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final active = controller.autoSelected;
-    return InkWell(
-      borderRadius: BorderRadius.circular(V3Radius.card),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        decoration: BoxDecoration(
-          color: active ? p.lycheeSoft : p.surface,
-          borderRadius: BorderRadius.circular(V3Radius.card),
-          border: Border.all(color: active ? p.lychee : p.line),
-        ),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: active ? p.lycheeSoft : p.surface,
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        border: Border.all(color: active ? p.lychee : p.line),
+      ),
+      // V3Pressable rides inside the opaque fill so the press/hover ink lands
+      // above it instead of vanishing on the sheet Material below.
+      child: V3Pressable(
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        onTap: onTap,
         child: Row(
           children: [
             Container(
@@ -302,46 +306,141 @@ class V3NodeRow extends StatelessWidget {
     required this.controller,
     required this.onTap,
     required this.busy,
+    this.cornerLatency = false,
   });
   final NodeModel node;
   final AppController controller;
   final VoidCallback? onTap;
   final bool busy;
 
+  /// Picker-only style: the latency readout rides the name line's right end —
+  /// the row's top-right — instead of the vertically centered tail. The nodes
+  /// overview shares this row and keeps its existing layout by leaving the
+  /// flag off.
+  final bool cornerLatency;
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final selected =
         !controller.autoSelected && controller.currentNode.id == node.id;
-    final latencyColor = node.latency > 0 && node.latency <= 120
-        ? p.successInk
-        : node.latency > 120 && node.latency < 9999
-        ? p.warningInk
-        : p.inkMuted;
-    return InkWell(
-      borderRadius: BorderRadius.circular(V3Radius.card),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? p.lycheeSoft : p.surface,
-          borderRadius: BorderRadius.circular(V3Radius.card),
-          border: Border.all(color: selected ? p.lychee : p.line),
-        ),
+    // Narrow screens (phones) drop the corner badge: the value rides left of
+    // the chevron as the centered dot+text tail — the nodes overview's exact
+    // grammar — keeping the name line clear. Same 500 breakpoint as the
+    // dashboard's stacked/row card split.
+    final corner = cornerLatency &&
+        MediaQuery.sizeOf(context).width >= 500;
+    // Both the corner badge and the centered tail read the one shared tier
+    // scale — see v3_latency_tier.dart. The tail's dot and label use the
+    // text-safe inks; the badge carries the fill behind a 12% wash.
+    final latencyColor = v3LatencyInk(p, node.region, node.latency);
+    final latencyBadgeColor = v3LatencyFill(p, node.region, node.latency);
+    final latencyDot = Container(
+      width: 7,
+      height: 7,
+      decoration: BoxDecoration(
+        color: latencyColor,
+        shape: BoxShape.circle,
+      ),
+    );
+    final latencyText = Text(
+      corner
+          ? _cornerLatencyLabel(context, node.latency)
+          : _localizedLatencyLabel(context, node.latency),
+      style: TextStyle(
+        color: latencyColor,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: selected ? p.lycheeSoft : p.surface,
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        border: Border.all(color: selected ? p.lychee : p.line),
+      ),
+      child: V3Pressable(
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        onTap: onTap,
         child: Row(
           children: [
-            V3NodeFlag(code: node.code),
-            const SizedBox(width: 13),
+            // Same raised tile as the auto row above: the sheet's identity
+            // column keeps one spec instead of mixing boxed and bare flags.
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: p.surfaceRaised,
+                borderRadius: BorderRadius.circular(V3Radius.control),
+              ),
+              child: V3NodeFlag(code: node.code),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    node.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          node.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          // Matches the auto row's name voice (14/w700);
+                          // titleMedium's w600 read lighter than the row
+                          // above it inside the same sheet.
+                          style: TextStyle(
+                            color: p.ink,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      // In automatic mode the card's 自动 pill marks the
+                      // resolved node; mirror it here so the node the card
+                      // is showing keeps a "you are here" anchor.
+                      if (controller.autoSelected &&
+                          controller.currentNode.id == node.id) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: p.lycheeSoft,
+                            borderRadius: BorderRadius.circular(99), // pill
+                          ),
+                          child: Text(
+                            v3Copy(
+                              context,
+                              zh: '当前',
+                              en: 'Current',
+                              tw: '當前',
+                            ),
+                            style: TextStyle(
+                              color: p.lycheeInk,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                      // Corner style: the connection card's status badge
+                      // carries the latency at the row's top-right.
+                      if (corner) ...[
+                        const SizedBox(width: 8),
+                        V3StatusBadge(
+                          label: _cornerLatencyLabel(context, node.latency),
+                          color: latencyBadgeColor,
+                          compact: true,
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 3),
                   Text(
@@ -357,24 +456,14 @@ class V3NodeRow extends StatelessWidget {
                 ],
               ),
             ),
-            Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: latencyColor,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 7),
-            Text(
-              _localizedLatencyLabel(context, node.latency),
-              style: TextStyle(
-                color: latencyColor,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 12),
+            if (corner)
+              const SizedBox(width: 12)
+            else ...[
+              latencyDot,
+              const SizedBox(width: 7),
+              latencyText,
+              const SizedBox(width: 12),
+            ],
             if (busy)
               const SizedBox(
                 width: 18,
@@ -405,6 +494,20 @@ String _localizedLatencyLabel(BuildContext context, int value) {
   }
   if (value >= 9999) {
     return v3Copy(context, zh: '超时', en: 'Timeout', tw: '逾時');
+  }
+  return '${value}ms';
+}
+
+/// The picker corner's bare value — 「42ms」 (the badge upper-cases to
+/// 42MS). The colored dot already says "latency", so no 延迟： prefix; a dash
+/// when no number exists yet (-1 mid-test, 0 untested), the timeout word
+/// when the probe failed. Same dialect as the nodes overview's tail.
+String _cornerLatencyLabel(BuildContext context, int value) {
+  if (value >= 9999) {
+    return v3Copy(context, zh: '超时', en: 'Timeout', tw: '逾時');
+  }
+  if (value <= 0) {
+    return '--';
   }
   return '${value}ms';
 }

@@ -7,6 +7,7 @@ import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/url_opener.dart';
 import '../theme/v3_palette.dart';
+import 'v3_components.dart';
 import 'v3_locale_copy.dart';
 import 'v3_notice_bar.dart';
 
@@ -160,61 +161,69 @@ class _NoticeImagePage extends StatelessWidget {
     final p = V3Palette.of(context);
     final title = v3NoticeHeadline(notice, fallback: '公告');
     final image = notice.imgUrl?.trim() ?? '';
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (image.isNotEmpty)
-            Image.network(
-              image,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(color: p.surfaceRaised),
-              loadingBuilder: (context, child, progress) =>
-                  progress == null ? child : Container(color: p.surfaceRaised),
-            )
-          else
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [p.lycheeSoft, p.surfaceRaised],
-                ),
-              ),
-            ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: .55),
-                  ],
-                ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (image.isNotEmpty)
+          Image.network(
+            image,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => Container(color: p.surfaceRaised),
+            loadingBuilder: (context, child, progress) =>
+                progress == null ? child : Container(color: p.surfaceRaised),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [p.lycheeSoft, p.surfaceRaised],
               ),
             ),
           ),
-          Positioned(
-            left: 14,
-            right: 14,
-            bottom: 10,
-            child: Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                height: 1.3,
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: .55),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+        Positioned(
+          left: 14,
+          right: 14,
+          bottom: 10,
+          child: Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              height: 1.3,
+            ),
+          ),
+        ),
+        // The pressable rides on top of the full-bleed image — ink paints
+        // below its own Material's child, so wrapping the page would hide it
+        // under the photo. The card's ClipRRect clips the ink to the rounded
+        // corners.
+        Positioned.fill(
+          child: V3Pressable(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(V3Radius.card),
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -227,59 +236,65 @@ class _NoticeUpdatePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return GestureDetector(
-      onTap: () => unawaited(UrlOpener.open(update.downloadUrl)),
-      child: Container(
-        color: p.surfaceRaised,
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: p.lychee,
-                borderRadius: BorderRadius.circular(V3Radius.field),
+    return Container(
+      color: p.surfaceRaised,
+      // Padding rides inside the pressable so the whole page stays tappable
+      // edge to edge and the ink covers it; the card's ClipRRect clips the
+      // ink to the rounded corners.
+      child: V3Pressable(
+        onTap: () => unawaited(UrlOpener.open(update.downloadUrl)),
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: p.lychee,
+                  borderRadius: BorderRadius.circular(V3Radius.field),
+                ),
+                child: Icon(
+                  Icons.system_update_rounded,
+                  color: p.onLychee,
+                  size: 20,
+                ),
               ),
-              child: Icon(
-                Icons.system_update_rounded,
-                color: p.onLychee,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    v3Copy(context,
-                      zh: '新版本 ${update.version} 可用',
-                      en: 'Version ${update.version} is available',
-                      tw: '新版本 ${update.version} 可用'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: p.ink,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      v3Copy(context,
+                        zh: '新版本 ${update.version} 可用',
+                        en: 'Version ${update.version} is available',
+                        tw: '新版本 ${update.version} 可用'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: p.ink,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    v3Copy(context,
-                      zh: '点按前往下载页面',
-                      en: 'Tap to open the download page',
-                      tw: '點按前往下載頁面'),
-                    style: TextStyle(color: p.inkMuted, fontSize: 11),
-                  ),
-                ],
+                    const SizedBox(height: 3),
+                    Text(
+                      v3Copy(context,
+                        zh: '点按前往下载页面',
+                        en: 'Tap to open the download page',
+                        tw: '點按前往下載頁面'),
+                      style: TextStyle(color: p.inkMuted, fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: p.lychee, size: 22),
-          ],
+              Icon(Icons.chevron_right_rounded, color: p.lychee, size: 22),
+            ],
+          ),
         ),
       ),
     );

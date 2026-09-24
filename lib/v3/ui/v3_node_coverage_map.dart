@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
+import 'v3_latency_tier.dart';
 import 'v3_locale_copy.dart';
 
 /// A result of a client-side latency probe, NOT an authoritative server status.
@@ -87,11 +88,27 @@ class V3NodeCoverageMap extends StatelessWidget {
     en: _englishNames[code] ?? code,
     tw: _traditionalNames[code] ?? code);
 
-  static Color _stateColor(V3Palette p, V3NodeProbeState state) => switch (state) {
-    V3NodeProbeState.responsive => p.successInk,
-    V3NodeProbeState.timedOut => p.dangerInk,
-    V3NodeProbeState.unknown => p.inkMuted,
-  };
+  /// A country paints the tier of its best measured node: green/amber/red by
+  /// the shared per-region latency scale, red when every node timed out, grey
+  /// when nothing has been measured. Reachability alone (the old colouring)
+  /// collapsed a 128ms Los Angeles and a 150ms Hong Kong into the same green.
+  static Color _countryColor(V3Palette p, List<NodeModel> nodes) {
+    final measured = nodes
+        .where((node) => !node.isAuto && node.latency > 0 && node.latency < 9999)
+        .toList();
+    if (measured.isNotEmpty) {
+      final best = measured.reduce(
+        (a, b) => a.latency <= b.latency ? a : b,
+      );
+      return v3LatencyInk(p, best.region, best.latency);
+    }
+    final list = nodes.where((node) => !node.isAuto).toList();
+    if (list.isNotEmpty &&
+        list.every((node) => node.latency >= 9999)) {
+      return p.dangerInk;
+    }
+    return p.inkMuted;
+  }
 
   static String _stateLabel(BuildContext context, V3NodeProbeState state) =>
       switch (state) {
@@ -179,16 +196,14 @@ class V3NodeCoverageMap extends StatelessWidget {
                               '${_stateLabel(context, v3NodeProbeState(groups[code]!))}',
                           child: readOnly
                               ? _MapMarker(
-                                  color: _stateColor(p,
-                                    v3NodeProbeState(groups[code]!)),
+                                  color: _countryColor(p, groups[code]!),
                                   selected: false)
                               : InkWell(
                                   onTap: () => onSelected(
                                     active == code ? null : code),
                                   customBorder: const CircleBorder(),
                                   child: _MapMarker(
-                                    color: _stateColor(p,
-                                      v3NodeProbeState(groups[code]!)),
+                                    color: _countryColor(p, groups[code]!),
                                     selected: active == code),
                                 ),
                         ),
@@ -210,14 +225,15 @@ class V3NodeCoverageMap extends StatelessWidget {
         const SizedBox(height: 10),
         Wrap(spacing: 13, runSpacing: 6, children: [
           _Legend(color: p.successInk,
-            label: v3Copy(context, zh: '测速成功',
-              en: 'Probe succeeded', tw: '測速成功')),
+            label: v3Copy(context, zh: '快', en: 'Fast', tw: '快')),
+          _Legend(color: p.warningInk,
+            label: v3Copy(context, zh: '一般', en: 'Okay', tw: '一般')),
+          _Legend(color: p.dangerInk,
+            label: v3Copy(context, zh: '慢 / 超时',
+              en: 'Slow / timeout', tw: '慢 / 逾時')),
           _Legend(color: p.inkMuted,
             label: v3Copy(context, zh: '未测速 / 无节点',
               en: 'Unknown / no nodes', tw: '未測速 / 無節點')),
-          _Legend(color: p.dangerInk,
-            label: v3Copy(context, zh: '测速超时',
-              en: 'Probe timeout', tw: '測速逾時')),
         ]),
         const SizedBox(height: 5),
         Text(v3Copy(context,

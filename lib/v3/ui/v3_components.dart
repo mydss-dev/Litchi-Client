@@ -237,6 +237,38 @@ class V3ActionButton extends StatelessWidget {
   }
 }
 
+/// A tappable surface whose ink paints on its own local Material instead of
+/// the root one, so the press/hover highlight stays visible inside V3's
+/// opaque panels and cards — a bare InkWell paints on the nearest ancestor
+/// Material, which sits below the card fill. Nest [V3Pressable] inside the
+/// existing decorated Container: decoration and animation stay where they
+/// are, the ink lands above them.
+class V3Pressable extends StatelessWidget {
+  const V3Pressable({
+    super.key,
+    required this.onTap,
+    required this.child,
+    this.borderRadius,
+  });
+
+  final VoidCallback? onTap;
+  final Widget child;
+  final BorderRadius? borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      borderRadius: borderRadius,
+      child: InkWell(
+        borderRadius: borderRadius,
+        onTap: onTap,
+        child: child,
+      ),
+    );
+  }
+}
+
 class V3StatusBadge extends StatelessWidget {
   const V3StatusBadge({
     super.key,
@@ -259,6 +291,9 @@ class V3StatusBadge extends StatelessWidget {
       _ when color == p.success => p.successInk,
       _ when color == p.warning => p.warningInk,
       _ when color == p.danger => p.dangerInk,
+      // Untested latency badges pass inkMuted; grey-on-grey keeps them as
+      // quiet as the card's grey 未测速 text instead of near-black.
+      _ when color == p.inkMuted => p.inkMuted,
       _ => p.ink,
     };
     return Container(
@@ -310,17 +345,19 @@ class V3Switch extends StatelessWidget {
     return Semantics(
       button: true,
       toggled: value,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(99),
-        onTap: onChanged == null ? null : () => onChanged!(!value),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          width: 52, height: 30,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: value ? p.lychee : p.surfaceRaised,
-            borderRadius: BorderRadius.circular(99),
-          ),
+      // V3Pressable rides inside the track so the press ink lands on the
+      // track itself instead of on a Material beneath its opaque fill.
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: 52, height: 30,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: value ? p.lychee : p.surfaceRaised,
+          borderRadius: BorderRadius.circular(99),
+        ),
+        child: V3Pressable(
+          onTap: onChanged == null ? null : () => onChanged!(!value),
+          borderRadius: BorderRadius.circular(99),
           child: AnimatedAlign(
             duration: const Duration(milliseconds: 160),
             alignment: value ? Alignment.centerRight : Alignment.centerLeft,
