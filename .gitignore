@@ -97,3 +97,5 @@ config.json
 
 # Generated desktop core binaries (never commit build products).
 /runtime/
+test/visual/goldens/v3_windows_dashboard_dark_900x700.png
+test/visual/goldens/v3_windows_dashboard_light_900x700.png

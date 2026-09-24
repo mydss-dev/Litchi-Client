@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -221,9 +222,17 @@ class _ConnectionWorkspace extends StatelessWidget {
                         ),
                       ),
                     ),
-                    V3StatusBadge(
-                      label: _statusLabel(context, status),
-                      color: statusColor,
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) =>
+                          FadeTransition(opacity: animation, child: child),
+                      child: V3StatusBadge(
+                        key: ValueKey(status),
+                        label: _statusLabel(context, status),
+                        color: statusColor,
+                      ),
                     ),
                   ],
                 ),
@@ -410,6 +419,13 @@ class _ConnectIntroContent extends StatelessWidget {
       ConnectionStatus.error => p.danger,
       ConnectionStatus.disconnected => p.inkMuted,
     };
+    // The caption below the orb cross-fades on state changes; compute it once
+    // so the AnimatedSwitcher key and the Text share one source.
+    final caption = connected
+        ? v3Copy(context, zh: '断开连接', en: 'Disconnect', tw: '中斷連線')
+        : connecting
+        ? v3Copy(context, zh: '处理中', en: 'Processing', tw: '處理中')
+        : v3Copy(context, zh: '点击开始连接', en: 'Tap to connect', tw: '點擊開始連線');
     return Stack(
       children: [
         Positioned.fill(
@@ -445,9 +461,25 @@ class _ConnectIntroContent extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  _statusLabel(context, status),
-                  style: TextStyle(color: statusColor, fontSize: 11),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  // Left-aligned stack keeps the label anchored while the
+                  // outgoing text fades out.
+                  layoutBuilder: (currentChild, previousChildren) => Stack(
+                    alignment: Alignment.centerLeft,
+                    children: [...previousChildren, ?currentChild],
+                  ),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  ),
+                  child: Text(
+                    _statusLabel(context, status),
+                    key: ValueKey(_statusLabel(context, status)),
+                    style: TextStyle(color: statusColor, fontSize: 11),
+                  ),
                 ),
                 Expanded(
                   child: Center(
@@ -456,35 +488,32 @@ class _ConnectIntroContent extends StatelessWidget {
                       children: [
                         _ConnectionOrb(
                           controller: controller,
-                          connected: connected,
-                          connecting: connecting,
+                          status: status,
                         ),
                         const SizedBox(height: 9),
-                        Text(
-                          connected
-                              ? v3Copy(
-                                  context,
-                                  zh: '断开连接',
-                                  en: 'Disconnect',
-                                  tw: '中斷連線',
-                                )
-                              : connecting
-                              ? v3Copy(
-                                  context,
-                                  zh: '处理中',
-                                  en: 'Processing',
-                                  tw: '處理中',
-                                )
-                              : v3Copy(
-                                  context,
-                                  zh: '点击开始连接',
-                                  en: 'Tap to connect',
-                                  tw: '點擊開始連線',
-                                ),
-                          style: TextStyle(
-                            color: p.ink,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          transitionBuilder: (child, animation) =>
+                              FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween(
+                                      begin: const Offset(0, 0.35),
+                                      end: Offset.zero)
+                                  .animate(animation),
+                              child: child,
+                            ),
+                          ),
+                          child: Text(
+                            caption,
+                            key: ValueKey(caption),
+                            style: TextStyle(
+                              color: p.ink,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -671,21 +700,100 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
   }
 }
 
-class _ConnectionOrb extends StatelessWidget {
+/// The connect action: fill, icon and halo transition with the connection
+/// state machine instead of snapping. One-shots (success ripple, error shake)
+/// fire only on live transitions — never on mount, so an error-banner mount
+/// stays still.
+class _ConnectionOrb extends StatefulWidget {
   const _ConnectionOrb({
     required this.controller,
-    required this.connected,
-    required this.connecting,
+    required this.status,
   });
   final AppController controller;
-  final bool connected;
-  final bool connecting;
+  final ConnectionStatus status;
+
+  @override
+  State<_ConnectionOrb> createState() => _ConnectionOrbState();
+}
+
+class _ConnectionOrbState extends State<_ConnectionOrb>
+    with TickerProviderStateMixin {
+  static bool _isBusy(ConnectionStatus state) =>
+      state == ConnectionStatus.connecting ||
+      state == ConnectionStatus.disconnecting;
+
+  // Breathe loop: only ticks while a connect/disconnect is in flight, so the
+  // resting orb carries zero active tickers.
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+  late final Animation<double> _breathe =
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut);
+  // One-shot success ripple (busy → connected).
+  late final AnimationController _ripple = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 450),
+  );
+  late final Animation<double> _rippleEase =
+      CurvedAnimation(parent: _ripple, curve: Curves.easeOutCubic);
+  // One-shot error shake.
+  late final AnimationController _shake = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    // Mounting mid-connect (silent start): join the breathe loop, but never
+    // fire one-shots on mount.
+    if (_isBusy(widget.status)) _pulse.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ConnectionOrb oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Every AppScope notifyListeners rebuilds this subtree; only a real
+    // status transition may touch the controllers.
+    if (oldWidget.status == widget.status) return;
+    final wasBusy = _isBusy(oldWidget.status);
+    final isBusy = _isBusy(widget.status);
+    if (isBusy && !wasBusy) {
+      _pulse.repeat(reverse: true);
+    } else if (!isBusy && wasBusy) {
+      _pulse
+        ..stop()
+        ..value = 0;
+    }
+    if (widget.status == ConnectionStatus.connected) _ripple.forward(from: 0);
+    if (widget.status == ConnectionStatus.error) _shake.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    _ripple.dispose();
+    _shake.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    final controller = widget.controller;
+    final status = widget.status;
     final locked = controller.connectionActionLocked;
-    final label = connecting
+    final busy = _isBusy(status);
+    final connected = status == ConnectionStatus.connected;
+    final orbColor = switch (status) {
+      ConnectionStatus.connected => p.citrus,
+      ConnectionStatus.connecting ||
+      ConnectionStatus.disconnecting => p.warning,
+      ConnectionStatus.error => p.danger,
+      ConnectionStatus.disconnected => p.lychee,
+    };
+    final label = busy
         ? v3Copy(context, zh: '正在切换连接', en: 'Changing connection', tw: '正在切換連線')
         : connected
         ? v3Copy(context, zh: '断开连接', en: 'Disconnect', tw: '中斷連線')
@@ -699,47 +807,165 @@ class _ConnectionOrb extends StatelessWidget {
         child: SizedBox(
           width: 86,
           height: 86,
-          child: Material(
-            color: connected ? p.citrus : p.lychee,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: locked
-                  ? null
-                  : () async {
-                      // Failure remains a persistent alert with a retry action.
-                      final error = await controller.toggleConnection();
-                      if (error == null && context.mounted &&
-                          controller.connectionStatus == ConnectionStatus.connected) {
-                        V3Toast.show(context, v3Copy(context,
-                          zh: '连接成功', en: 'Connected', tw: '連線成功'),
-                          type: V3ToastType.success);
-                      }
-                    },
-              child: Center(
-                child: connecting
-                    ? SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: p.onLychee,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              // FX layer rides outside the tap target's bounds without taking
+              // layout space: halo while busy, success ripple on connect.
+              Positioned(
+                left: -21,
+                top: -21,
+                width: 128,
+                height: 128,
+                child: IgnorePointer(
+                  child: RepaintBoundary(
+                    child: AnimatedBuilder(
+                      animation: Listenable.merge([_pulse, _ripple]),
+                      builder: (context, _) => CustomPaint(
+                        painter: _OrbFxPainter(
+                          breathe: _breathe.value,
+                          haloActive: _pulse.isAnimating,
+                          ripple: _rippleEase.value,
+                          rippleActive:
+                              _ripple.isAnimating || _ripple.value < 1.0,
+                          haloColor: p.warning,
+                          rippleColor: p.success,
                         ),
-                      )
-                    : Icon(
-                        connected
-                            ? Icons.stop_rounded
-                            : Icons.power_settings_new_rounded,
-                        color: connected ? p.night : p.onLychee,
-                        size: 30,
                       ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              AnimatedBuilder(
+                animation: _shake,
+                builder: (context, child) {
+                  final t = _shake.value;
+                  return Transform.translate(
+                    offset: Offset(math.sin(t * math.pi * 3) * 4 * (1 - t), 0),
+                    child: child,
+                  );
+                },
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: orbColor),
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  builder: (context, color, _) => SizedBox(
+                    width: 86,
+                    height: 86,
+                    child: Material(
+                      color: color!,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: locked
+                            ? null
+                            : () async {
+                                // Failure remains a persistent alert with a retry action.
+                                final error = await controller.toggleConnection();
+                                if (error == null &&
+                                    context.mounted &&
+                                    controller.connectionStatus ==
+                                        ConnectionStatus.connected) {
+                                  V3Toast.show(context, v3Copy(context,
+                                    zh: '连接成功', en: 'Connected', tw: '連線成功'),
+                                    type: V3ToastType.success);
+                                }
+                              },
+                        child: Center(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 160),
+                            switchInCurve: Curves.easeOut,
+                            switchOutCurve: Curves.easeIn,
+                            transitionBuilder: (child, animation) =>
+                                FadeTransition(
+                              opacity: animation,
+                              child: ScaleTransition(
+                                scale: Tween(begin: 0.85, end: 1.0)
+                                    .animate(animation),
+                                child: child,
+                              ),
+                            ),
+                            child: busy
+                                ? SizedBox(
+                                    key: const ValueKey('orb-spinner'),
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: p.onLychee,
+                                    ),
+                                  )
+                                : Icon(
+                                    connected
+                                        ? Icons.stop_rounded
+                                        : Icons.power_settings_new_rounded,
+                                    key: ValueKey(connected ? 'orb-stop' : 'orb-power'),
+                                    color: connected ? p.night : p.onLychee,
+                                    size: 30,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+/// Halo + ripple FX for the connect orb. Colors are resolved in build and
+/// passed in, so dark mode is just another fill tween. `breathe`/`ripple`
+/// are raw controller values; the painter stays silent when both are idle.
+class _OrbFxPainter extends CustomPainter {
+  const _OrbFxPainter({
+    required this.breathe,
+    required this.haloActive,
+    required this.ripple,
+    required this.rippleActive,
+    required this.haloColor,
+    required this.rippleColor,
+  });
+  final double breathe;
+  final bool haloActive;
+  final double ripple;
+  final bool rippleActive;
+  final Color haloColor;
+  final Color rippleColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    if (haloActive) {
+      // Radius grows while the ring fades: a slow exhale, not a bounce.
+      final halo = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..color = haloColor.withValues(alpha: 0.10 + 0.28 * (1 - breathe));
+      canvas.drawCircle(center, 45 + 8 * breathe, halo);
+    }
+    if (rippleActive && ripple > 0.0) {
+      final ring = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3 * (1 - ripple) + 0.5
+        ..color = rippleColor.withValues(alpha: 0.5 * (1 - ripple));
+      canvas.drawCircle(center, 43 + 18 * ripple, ring);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_OrbFxPainter oldDelegate) =>
+      oldDelegate.breathe != breathe ||
+      oldDelegate.ripple != ripple ||
+      oldDelegate.haloActive != haloActive ||
+      oldDelegate.rippleActive != rippleActive ||
+      oldDelegate.haloColor != haloColor ||
+      oldDelegate.rippleColor != rippleColor;
 }
 
 // Tick only the elapsed-time label, not the whole dashboard.
@@ -1022,9 +1248,9 @@ class _ModeSegment<T> extends StatelessWidget {
 }
 
 
-/// The desktop status card: the four gauges plus the reachability row. The
-/// phone folds reachability into its merged connection card and skips the
-/// gauges entirely - a handset session runs in the background.
+/// The session card: four gauges in one row on desktop, a 2x2 grid on
+/// phones. The reachability strip is appended on desktop only — a phone's
+/// slots are far too narrow for four sites.
 class _SessionMetrics extends StatelessWidget {
   const _SessionMetrics({required this.controller});
   final AppController controller;
@@ -1107,42 +1333,51 @@ class _SessionMetrics extends StatelessWidget {
             ),
           );
           Widget divider() => Container(width: 1, height: 38, color: p.line);
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(children: [cell(session), cell(connections)]),
-                const SizedBox(height: 12),
-                Row(children: [cell(download), cell(upload)]),
-              ],
-            );
-          }
-          return Row(
+          final gauge = compact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(children: [cell(session), cell(connections)]),
+                    const SizedBox(height: 12),
+                    Row(children: [cell(download), cell(upload)]),
+                  ],
+                )
+              : Row(
+                  children: [
+                    cell(session),
+                    divider(),
+                    cell(connections),
+                    divider(),
+                    cell(download),
+                    divider(),
+                    cell(upload),
+                  ],
+                );
+          // The reachability strip is a desktop presentation: phone slots
+          // are far too narrow for four sites, so the phone card ends at
+          // the gauges.
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              cell(session),
-              divider(),
-              cell(connections),
-              divider(),
-              cell(download),
-              divider(),
-              cell(upload),
+              gauge,
+              if (!compact) ...[
+                const SizedBox(height: 12),
+                Container(height: 1, color: p.line),
+                const SizedBox(height: 10),
+                _ConnectivityRow(controller: controller),
+              ],
             ],
           );
         },
           ),
-          const SizedBox(height: 12),
-          Container(height: 1, color: p.line),
-          const SizedBox(height: 10),
-          _ConnectivityRow(controller: controller),
         ],
       ),
     );
   }
 }
 
-/// The desktop reachability strip helper was folded back into
-/// [_SessionMetrics]; phones render [_ConnectivityRow] directly inside the
-/// merged connection card.
+/// The reachability strip lives inside [_SessionMetrics] on desktop only —
+/// the phone's merged connection card does not render it.
 class _Metric extends StatelessWidget {
   const _Metric({
     required this.label,
@@ -1214,16 +1449,48 @@ class _ConnectivityRowState extends State<_ConnectivityRow> {
   final Map<int, ConnectivityResult?> _results = {};
   bool _running = false;
   ConnectionStatus? _lastStatus;
+  // The 30s re-probe cadence replaces the old manual refresh button.
+  static const Duration _reprobeInterval = Duration(seconds: 30);
+  Timer? _reprobeTimer;
 
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_onControllerChanged);
     _lastStatus = widget.controller.connectionStatus;
+    // Restored/silent-start sessions mount already connected: probe once the
+    // first frame exists so the strip never sits empty while connected.
+    if (_lastStatus == ConnectionStatus.connected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            widget.controller.connectionStatus == ConnectionStatus.connected) {
+          unawaited(_runCheck());
+        }
+      });
+      _syncReprobe(true);
+    }
+  }
+
+  // The 30s re-probe only ticks while connected and is cancelled the moment
+  // the connection leaves — the automated replacement for the refresh button.
+  void _syncReprobe(bool connected) {
+    if (connected) {
+      _reprobeTimer ??= Timer.periodic(_reprobeInterval, (_) {
+        if (!mounted) return;
+        if (widget.controller.connectionStatus != ConnectionStatus.connected) {
+          return;
+        }
+        unawaited(_runCheck());
+      });
+    } else {
+      _reprobeTimer?.cancel();
+      _reprobeTimer = null;
+    }
   }
 
   @override
   void dispose() {
+    _reprobeTimer?.cancel();
     widget.controller.removeListener(_onControllerChanged);
     super.dispose();
   }
@@ -1236,11 +1503,11 @@ class _ConnectivityRowState extends State<_ConnectivityRow> {
         _lastStatus != ConnectionStatus.connected;
     _lastStatus = status;
     if (!mounted) return;
+    _syncReprobe(status == ConnectionStatus.connected);
     if (status != ConnectionStatus.connected && _results.isNotEmpty) {
       setState(_results.clear);
     }
     if (becameConnected && !_running) {
-      setState(() {}); // refresh the disconnected hint
       unawaited(_runCheck());
     }
   }
@@ -1262,106 +1529,102 @@ class _ConnectivityRowState extends State<_ConnectivityRow> {
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final connected =
-        widget.controller.connectionStatus == ConnectionStatus.connected;
-    // The refresh control rides at the end of the line so the strip stays
-    // one row tall inside the live-status card.
-    final refresh = _running
-        ? const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        : IconButton(
-            onPressed: connected ? _runCheck : null,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            color: connected ? p.lychee : p.inkMuted,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 30, height: 30),
-            tooltip: v3Copy(context, zh: '重新检测', en: 'Re-check', tw: '重新檢測'),
-          );
-    return Row(
-      children: [
-        Expanded(
-          child: !connected && _results.isEmpty && !_running
-              ? Text(
-                  v3Copy(context,
-                    zh: '连接后可检测各站点连通性',
-                    en: 'Connect to check site reachability',
-                    tw: '連線後可檢測各站點連通性'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 11),
-                )
-              : Row(
-                  children: [
-                    for (var i = 0; i < _targets.length; i++)
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: _ConnectivitySite(
-                            target: _targets[i],
-                            result: _results[i],
-                            probing: _running,
-                          ),
-                        ),
-                      ),
-                  ],
+    final status = widget.controller.connectionStatus;
+    // Fixed height, always four slots: nothing in this row can change its
+    // height, so the plan card below never shifts when a probe starts.
+    return SizedBox(
+      key: const ValueKey('v3-connectivity-strip'),
+      height: 16,
+      child: Row(
+        children: [
+          for (var i = 0; i < _targets.length; i++)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: _ConnectivitySite(
+                  target: _targets[i],
+                  phase: _phaseFor(status, i),
+                  result: _results[i],
                 ),
-        ),
-        const SizedBox(width: 6),
-        refresh,
-      ],
+              ),
+            ),
+        ],
+      ),
     );
   }
+
+  _SitePhase _phaseFor(ConnectionStatus status, int index) {
+    switch (status) {
+      case ConnectionStatus.connecting:
+      case ConnectionStatus.disconnecting:
+        return _SitePhase.checking;
+      case ConnectionStatus.connected:
+        final r = _results[index];
+        if (r == null) return _SitePhase.checking;
+        return r.ok ? _SitePhase.ok : _SitePhase.failed;
+      case ConnectionStatus.disconnected:
+      case ConnectionStatus.error:
+        return _SitePhase.disconnected;
+    }
+  }
 }
+
+/// Well-known glyphs for the probe targets. Material's icon set has no
+/// brand logos, so each site gets its closest recognizable stand-in.
+IconData _siteIcon(String name) => switch (name) {
+  'Google' => Icons.public_rounded,
+  'YouTube' => Icons.play_circle_fill_rounded,
+  'GitHub' => Icons.code_rounded,
+  'ChatGPT' => Icons.auto_awesome_rounded,
+  _ => Icons.language_rounded,
+};
+
+enum _SitePhase { disconnected, checking, ok, failed }
 
 class _ConnectivitySite extends StatelessWidget {
   const _ConnectivitySite({
     required this.target,
+    required this.phase,
     required this.result,
-    required this.probing,
   });
   final ConnectivityTarget target;
+  final _SitePhase phase;
   final ConnectivityResult? result;
-  final bool probing;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final r = result;
-    final dotColor = probing && r == null
-        ? p.warning
-        : r == null
-        ? p.line
-        : r.ok
-        ? p.success
-        : p.danger;
-    final statusLine = probing && r == null
-        ? v3Copy(context, zh: '检测中', en: 'Probing', tw: '檢測中')
-        : r == null
-        ? v3Copy(context, zh: '未检测', en: 'Not probed', tw: '未檢測')
-        : r.ok
-        ? '${r.latencyMs} ms'
-        : v3Copy(context, zh: '不通', en: 'Blocked', tw: '不通');
-    final statusColor = probing && r == null
-        ? p.warningInk
-        : r == null
-        ? p.inkMuted
-        : r.ok
-        ? p.successInk
-        : p.dangerInk;
-    // Inline tile: dot, site name and status share one line so four sites
-    // fit beside the refresh control without crowding.
+    final (dotColor, statusLine, statusColor) = switch (phase) {
+      _SitePhase.disconnected => (
+        p.danger,
+        v3Copy(context, zh: '未连接', en: 'Offline', tw: '未連線'),
+        p.dangerInk,
+      ),
+      _SitePhase.checking => (
+        p.warning,
+        v3Copy(context, zh: '检测中', en: 'Probing', tw: '檢測中'),
+        p.warningInk,
+      ),
+      _SitePhase.ok => (
+        p.success,
+        '${r!.latencyMs} ms',
+        p.successInk,
+      ),
+      _SitePhase.failed => (
+        p.danger,
+        v3Copy(context, zh: '不通', en: 'Blocked', tw: '不通'),
+        p.dangerInk,
+      ),
+    };
+    // Inline tile: brand icon, site name, lamp dot and status share one
+    // line. The icon is a quiet always-visible mark; the dot is the lamp —
+    // its color and the status text transition, so a probe outcome change
+    // reads as a soft cross-fade instead of a hard swap.
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-        ),
+        Icon(_siteIcon(target.name), color: p.inkMuted, size: 14),
         const SizedBox(width: 5),
         Flexible(
           child: Text(
@@ -1373,11 +1636,30 @@ class _ConnectivitySite extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        Text(
-          statusLine,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: statusColor, fontSize: 10),
+        TweenAnimationBuilder<Color?>(
+          tween: ColorTween(end: dotColor),
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          builder: (context, color, _) => Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color!, shape: BoxShape.circle),
+          ),
+        ),
+        const SizedBox(width: 4),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 160),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          // Keyed by phase: a re-probe with the same outcome never fades,
+          // a real change (12 ms → 不通) cross-fades in place.
+          child: Text(
+            statusLine,
+            key: ValueKey(phase),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: statusColor, fontSize: 10),
+          ),
         ),
       ],
     );

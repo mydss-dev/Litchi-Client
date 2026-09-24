@@ -4,10 +4,16 @@ import 'package:litchi_client/app/core_controller.dart' show ConnectionStatus;
 import 'package:litchi_client/shared/models/api_models.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/shared/services/api_client.dart';
+import 'package:litchi_client/shared/services/connectivity_check_service.dart';
 import 'package:litchi_client/shared/services/panel_api.dart';
 
 class VisualV3Controller extends AppController {
-  VisualV3Controller(this.visualPage);
+  VisualV3Controller(this.visualPage) {
+    // The dashboard strip auto-probes as soon as it mounts connected. Give
+    // every visual fixture a deterministic override so tests never touch the
+    // real network; a test can still install its own afterwards.
+    ConnectivityCheckService.override ??= _defaultProbe;
+  }
 
   final AppPage visualPage;
   final _VisualPanelApi _visualApi = _VisualPanelApi();
@@ -312,9 +318,20 @@ class VisualV3Controller extends AppController {
   double get minWithdrawAmount => 20;
 
   void disposeVisual() {
+    ConnectivityCheckService.override = null;
     _up.dispose();
     _down.dispose();
     dispose();
+  }
+
+  static Future<ConnectivityResult> _defaultProbe(ConnectivityTarget target) async {
+    final latencies = {
+      'Google': 12,
+      'YouTube': 24,
+      'GitHub': 36,
+      'ChatGPT': 8,
+    };
+    return ConnectivityResult(ok: true, latencyMs: latencies[target.name] ?? 20);
   }
 }
 

@@ -30,7 +30,7 @@ abstract final class ConnectivityCheckService {
     ConnectivityTarget(name: 'Google', url: 'https://www.gstatic.com/generate_204'),
     ConnectivityTarget(name: 'YouTube', url: 'https://www.youtube.com/generate_204'),
     ConnectivityTarget(name: 'GitHub', url: 'https://github.com'),
-    ConnectivityTarget(name: '百度', url: 'https://www.baidu.com'),
+    ConnectivityTarget(name: 'ChatGPT', url: 'https://chatgpt.com'),
   ];
 
   /// Test seam: when set, [probe] delegates here. Lets widget tests render
@@ -48,6 +48,12 @@ abstract final class ConnectivityCheckService {
     try {
       final request = await client.getUrl(Uri.parse(target.url)).timeout(
         timeout,
+      );
+      // Cloudflare-fronted sites (ChatGPT) reject the bare Dart UA with a
+      // 403 challenge; a browser-shaped UA keeps the probe honest.
+      request.headers.set(
+        HttpHeaders.userAgentHeader,
+        'Mozilla/5.0 (compatible; Litchi connectivity probe)',
       );
       final response = await request.close().timeout(timeout);
       await response.drain<void>().timeout(timeout);
