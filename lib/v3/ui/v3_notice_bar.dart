@@ -48,8 +48,9 @@ class V3NoticeBar extends StatefulWidget {
 /// The dashboard's single top lane. Server notices and the update prompt
 /// rotate through the same one-line ticker instead of stacking banners above
 /// the connect card, which used to push the primary action below the fold at
-/// the 700dp acceptance height. Error and data-warning alerts stay separate:
-/// they are connection state, not announcements.
+/// the 700dp acceptance height. The update prompt outranks announcements and
+/// opens the rotation; error and data-warning alerts stay separate: they are
+/// connection state, not announcements.
 class _V3NoticeBarState extends State<V3NoticeBar>
     with SingleTickerProviderStateMixin {
   static const _interval = Duration(seconds: 8);
@@ -72,7 +73,9 @@ class _V3NoticeBarState extends State<V3NoticeBar>
 
   List<NoticeModel> get _notices => widget.controller.notices;
   UpdateInfo? get _update => widget.controller.updateInfo;
-  int get _entryCount => _notices.length + (_update == null ? 0 : 1);
+  /// The update page owns index 0 of the lane; announcements shift behind it.
+  int get _updateOffset => _update == null ? 0 : 1;
+  int get _entryCount => _notices.length + _updateOffset;
 
   @override
   void initState() {
@@ -92,11 +95,17 @@ class _V3NoticeBarState extends State<V3NoticeBar>
     if (_notices.isEmpty) {
       _index = 0;
     } else if (!listEquals(oldIds, newIds)) {
-      final currentId = oldIds.isEmpty
+      // Track the shown announcement across refetches. The update page owns
+      // index 0 and belongs to neither id list, so entry indexes translate
+      // through each side's own offset.
+      final oldOffset = oldWidget.controller.updateInfo == null ? 0 : 1;
+      final currentId = oldIds.isEmpty || _index < oldOffset
           ? null
-          : oldIds[_index.clamp(0, oldIds.length - 1)];
+          : oldIds[(_index - oldOffset).clamp(0, oldIds.length - 1)];
       final found = currentId == null ? -1 : newIds.indexOf(currentId);
-      _index = found >= 0 ? found : _index.clamp(0, _notices.length - 1);
+      _index = found >= 0
+          ? found + _updateOffset
+          : _index.clamp(0, _entryCount - 1);
     }
     if (_entryCount > 0) _index = _index.clamp(0, _entryCount - 1);
     _syncPlayback();
@@ -144,11 +153,15 @@ class _V3NoticeBarState extends State<V3NoticeBar>
   Future<void> _open(int index) async {
     _reading = true;
     _syncPlayback();
-    final viewed = await V3NoticeDialog.showReader(
-      context, notices: _notices, initialIndex: index);
+    // Entry indexes are lane positions; the reader speaks notice indexes.
+    final noticeIndex = index - _updateOffset;
+    final viewed = noticeIndex < 0 || noticeIndex >= _notices.length
+        ? null
+        : await V3NoticeDialog.showReader(
+            context, notices: _notices, initialIndex: noticeIndex);
     if (!mounted) return;
     if (viewed != null && _notices.isNotEmpty) {
-      _index = viewed.clamp(0, _notices.length - 1);
+      _index = viewed.clamp(0, _notices.length - 1) + _updateOffset;
       _progress.value = 0;
     }
     _reading = false;
@@ -173,7 +186,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
       _downloading = true;
       _received = 0;
       _total = -1;
-      _index = _notices.length;
+      _index = 0; // the update page leads the lane
     });
     _syncPlayback();
     try {
@@ -218,7 +231,8 @@ class _V3NoticeBarState extends State<V3NoticeBar>
     final update = _update;
     if (notices.isEmpty && update == null) return const SizedBox.shrink();
     final safeIndex = _index.clamp(0, _entryCount - 1);
-    final isUpdatePage = update != null && safeIndex >= notices.length;
+    final isUpdatePage = update != null && safeIndex < _updateOffset;
+    final noticeIndex = safeIndex - _updateOffset;
     final multiple = _entryCount > 1 && !_downloading;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -267,10 +281,10 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                         key: ValueKey('v3-lane-update-${update.version}'),
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: p.ink, fontSize: 12))
-                      : Text(v3NoticeHeadline(notices[safeIndex],
+                      : Text(v3NoticeHeadline(notices[noticeIndex],
                           fallback: v3Copy(context,
                             zh: '公告', en: 'Notice', tw: '公告')),
-                        key: ValueKey(notices[safeIndex].id),
+                        key: ValueKey(notices[noticeIndex].id),
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: p.ink, fontSize: 12)))),
                   if (multiple && MediaQuery.sizeOf(context).width >= 520) ...[

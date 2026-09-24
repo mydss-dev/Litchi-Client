@@ -11,11 +11,11 @@ import 'v3_components.dart';
 import 'v3_locale_copy.dart';
 import 'v3_notice_bar.dart';
 
-/// Phone landing lane for announcements: backend notice images rotate as a
-/// carousel with the title overlaid, arrows on both sides and a page counter.
-/// Tap opens the same reader dialog as the desktop ticker. Desktop keeps the
-/// slim one-line ticker — a tall image card there would push the connect orb
-/// below the fold.
+/// Phone landing lane: backend notice images rotate as a carousel with the
+/// title overlaid, arrows on both sides and a page counter. The update
+/// prompt outranks announcements and owns page 0. Tap opens the same reader
+/// dialog as the desktop ticker. Desktop keeps the slim one-line ticker — a
+/// tall image card there would push the connect orb below the fold.
 class V3NoticeCarousel extends StatefulWidget {
   const V3NoticeCarousel({super.key, required this.controller});
   final AppController controller;
@@ -35,7 +35,9 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
   List<NoticeModel> _notices = const [];
 
   UpdateInfo? get _update => widget.controller.updateInfo;
-  int get _pageCount => _notices.length + (_update == null ? 0 : 1);
+  /// The update page owns page 0; announcements shift behind it.
+  int get _updateOffset => _update == null ? 0 : 1;
+  int get _pageCount => _notices.length + _updateOffset;
 
   @override
   void initState() {
@@ -119,12 +121,15 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
                   controller: _pages,
                   onPageChanged: (i) => setState(() => _index = i),
                   itemBuilder: (context, index) {
-                    if (index >= _notices.length) {
+                    // The update prompt outranks announcements: it owns
+                    // page 0; notices shift one page back.
+                    if (index < _updateOffset) {
                       return _NoticeUpdatePage(update: _update!);
                     }
+                    final noticeIndex = index - _updateOffset;
                     return _NoticeImagePage(
-                      notice: _notices[index],
-                      onTap: () => _open(index),
+                      notice: _notices[noticeIndex],
+                      onTap: () => _open(noticeIndex),
                     );
                   },
                 ),

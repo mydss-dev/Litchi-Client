@@ -292,10 +292,11 @@ void main() {
     final controller = _NewsController(notices: const [_notice], update: _update);
     await _pumpPage(tester, controller, const V3DashboardPage());
 
-    // One lane, not two stacked banners. The rotation starts on notices.
+    // One lane, not two stacked banners. The update outranks announcements
+    // and opens the rotation.
     expect(find.byType(V3NoticeBar), findsOneWidget);
-    expect(find.textContaining('服务公告'), findsOneWidget);
-    expect(find.text('发现新版本 9.9.9'), findsNothing,
+    expect(find.textContaining('发现新版本 9.9.9'), findsOneWidget);
+    expect(find.textContaining('服务公告'), findsNothing,
       reason: 'the update is a page of the same lane, not a second banner');
     final laneHeight = tester.getRect(find.byType(V3NoticeBar)).height;
     expect(laneHeight, lessThan(80),
@@ -303,9 +304,9 @@ void main() {
     // The first screen still reaches the connect orb with the lane present.
     expect(tester.getRect(find.byKey(kConnectOrbKey)).bottom, lessThan(700));
 
-    // The rotation reaches the update page.
+    // The rotation reaches the announcements behind the update.
     await tester.pump(const Duration(seconds: 9));
-    expect(find.textContaining('发现新版本 9.9.9'), findsOneWidget);
+    expect(find.textContaining('服务公告'), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
     await tester.pumpWidget(const SizedBox());
   });
