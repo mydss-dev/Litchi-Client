@@ -155,8 +155,15 @@ class _AccountSummaryPanel extends StatelessWidget {
                 style: TextStyle(color: p.inkMuted, fontSize: 11)),
             ])),
           const SizedBox(width: 12),
+          // The badge speaks account standing: green while normal, amber
+          // when the plan needs renewal or traffic, red on ban.
           V3StatusBadge(label: plan.status,
-            color: plan.usable ? p.success : p.inkMuted, compact: true),
+            color: switch (plan.status) {
+              '正常' => p.success,
+              '封禁' => p.danger,
+              '到期' || '流量已用尽' => p.warning,
+              _ => p.inkMuted,
+            }, compact: true),
         ]),
         const SizedBox(height: 20),
         Divider(color: p.line, height: 1),

@@ -34,12 +34,12 @@ void main() {
     expect(find.byType(V3PageHeader), findsNothing);
     expect(find.text('连接中心'), findsNothing);
     expect(find.text('当前节点'), findsOneWidget);
-    // Each independent card may show its own connection state; a global
-    // exactly-one assertion would mistake the new two-card layout for a bug.
+    // Connection state has one home: the orb button. The connection card's
+    // corner badge speaks protection instead of echoing 「已连接」, and the
+    // node card carries no status badge at all.
     expect(find.descendant(of: find.byKey(kConnectActionCardKey),
-      matching: find.text('已连接')), findsOneWidget);
-    expect(find.descendant(of: find.byKey(kCurrentNodeCardKey),
-      matching: find.text('已连接')), findsOneWidget);
+      matching: find.text('保护中')), findsOneWidget);
+    expect(find.text('已连接'), findsNothing);
     expect(find.text('服务公告'), findsOneWidget);
     expect(find.textContaining('香港、日本线路已完成优化'), findsNothing);
     debugDefaultTargetPlatformOverride = null;

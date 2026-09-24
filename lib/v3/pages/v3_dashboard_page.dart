@@ -160,13 +160,6 @@ class _ConnectionWorkspace extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final status = controller.connectionStatus;
-    final statusColor = switch (status) {
-      ConnectionStatus.connected => p.success,
-      ConnectionStatus.connecting ||
-      ConnectionStatus.disconnecting => p.warning,
-      ConnectionStatus.error => p.danger,
-      ConnectionStatus.disconnected => p.inkMuted,
-    };
     final node = controller.currentNode;
     // In automatic mode the card still names the node the resolver picked —
     // only the flag changing told users which node they were on before.
@@ -205,36 +198,18 @@ class _ConnectionWorkspace extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        v3Copy(
-                          context,
-                          zh: '当前节点',
-                          en: 'Current node',
-                          tw: '目前節點',
-                        ),
-                        style: TextStyle(
-                          color: p.ink,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) =>
-                          FadeTransition(opacity: animation, child: child),
-                      child: V3StatusBadge(
-                        key: ValueKey(status),
-                        label: _statusLabel(context, status),
-                        color: statusColor,
-                      ),
-                    ),
-                  ],
+                Text(
+                  v3Copy(
+                    context,
+                    zh: '当前节点',
+                    en: 'Current node',
+                    tw: '目前節點',
+                  ),
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 15),
                 Row(
@@ -412,12 +387,13 @@ class _ConnectIntroContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final statusColor = switch (status) {
+    // The corner badge speaks protection, not connection: red while exposed,
+    // lime once the tunnel is up. The orb button below carries the live state.
+    final protectionColor = switch (status) {
       ConnectionStatus.connected => p.success,
       ConnectionStatus.connecting ||
       ConnectionStatus.disconnecting => p.warning,
-      ConnectionStatus.error => p.danger,
-      ConnectionStatus.disconnected => p.inkMuted,
+      ConnectionStatus.error || ConnectionStatus.disconnected => p.danger,
     };
     // The caption below the orb cross-fades on state changes; compute it once
     // so the AnimatedSwitcher key and the Text share one source.
@@ -447,39 +423,39 @@ class _ConnectIntroContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  v3Copy(
-                    context,
-                    zh: '连接状态',
-                    en: 'Connection',
-                    tw: '連線狀態',
-                  ),
-                  style: TextStyle(
-                    color: p.ink,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  // Left-aligned stack keeps the label anchored while the
-                  // outgoing text fades out.
-                  layoutBuilder: (currentChild, previousChildren) => Stack(
-                    alignment: Alignment.centerLeft,
-                    children: [...previousChildren, ?currentChild],
-                  ),
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  ),
-                  child: Text(
-                    _statusLabel(context, status),
-                    key: ValueKey(_statusLabel(context, status)),
-                    style: TextStyle(color: statusColor, fontSize: 11),
-                  ),
+                // Node-card style: one badge in the top-right corner. The
+                // orb button already shows the live state, so the label
+                // speaks protection instead of echoing "connected" again.
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        v3Copy(
+                          context,
+                          zh: '连接状态',
+                          en: 'Connection',
+                          tw: '連線狀態',
+                        ),
+                        style: TextStyle(
+                          color: p.ink,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) =>
+                          FadeTransition(opacity: animation, child: child),
+                      child: V3StatusBadge(
+                        key: ValueKey(status),
+                        label: _protectionLabel(context, status),
+                        color: protectionColor,
+                      ),
+                    ),
+                  ],
                 ),
                 Expanded(
                   child: Center(
@@ -1770,9 +1746,10 @@ class _PlanSummary extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       // An active plan needs no status word - the green
-                      // countdown already says it. Only abnormal states
-                      // (expired, suspended) earn the suffix.
-                      plan.usable
+                      // countdown already says it. Abnormal states earn the
+                      // suffix, except 到期: the expiry label already opens
+                      // with that word.
+                      plan.usable || plan.status == '到期'
                           ? plan.expiry
                           : '${plan.expiry} · ${plan.status}',
                       maxLines: 1,
@@ -1839,13 +1816,15 @@ class _PlanSummary extends StatelessWidget {
   }
 }
 
-String _statusLabel(BuildContext context, ConnectionStatus status) =>
+/// Protection wording for the connection card's corner badge — not a
+/// connection echo (the orb button already shows the live state).
+String _protectionLabel(BuildContext context, ConnectionStatus status) =>
     switch (status) {
       ConnectionStatus.connected => v3Copy(
         context,
-        zh: '已连接',
-        en: 'Connected',
-        tw: '已連線',
+        zh: '保护中',
+        en: 'Protected',
+        tw: '保護中',
       ),
       ConnectionStatus.connecting || ConnectionStatus.disconnecting => v3Copy(
         context,
@@ -1853,17 +1832,11 @@ String _statusLabel(BuildContext context, ConnectionStatus status) =>
         en: 'Processing',
         tw: '處理中',
       ),
-      ConnectionStatus.error => v3Copy(
+      ConnectionStatus.disconnected || ConnectionStatus.error => v3Copy(
         context,
-        zh: '连接异常',
-        en: 'Connection error',
-        tw: '連線異常',
-      ),
-      ConnectionStatus.disconnected => v3Copy(
-        context,
-        zh: '未连接',
-        en: 'Disconnected',
-        tw: '未連線',
+        zh: '未保护',
+        en: 'Unprotected',
+        tw: '未保護',
       ),
     };
 

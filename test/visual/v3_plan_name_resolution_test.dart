@@ -40,7 +40,9 @@ void main() {
     addTearDown(controller.disposeVisual);
     final plan = PlanPresentation.fromController(controller);
     expect(plan.name, 'Real backend plan');
-    expect(plan.shortLabel, startsWith('Real backend plan ·'));
+    // The active plan's short label is the bare resolved name — the catalog
+    // title won over the cached and remote titles.
+    expect(plan.shortLabel, 'Real backend plan');
   });
 
   test('a synthetic expired label cannot replace a real API plan name', () {

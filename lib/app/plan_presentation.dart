@@ -15,7 +15,12 @@ class PlanPresentation {
   final String expiry;
   final bool usable;
 
-  String get shortLabel => name == '暂无套餐' ? name : '$name · $status';
+  // 「正常」 is the normal state — repeating it on the rail chip and its
+  // tooltip is noise. Degraded states (到期/封禁/流量已用尽…) still
+  // append so the chip keeps its warning.
+  String get shortLabel => name == '暂无套餐' || status == '正常'
+      ? name
+      : '$name · $status';
 
   /// Never let a cached label or a synthetic account status hide the actual
   /// title associated with the current plan ID. A mismatched user plan ID is
@@ -162,11 +167,11 @@ class PlanPresentation {
                 : '有效期待同步';
 
     if (subscribeStatus == 2) {
-      return PlanPresentation(name: name, status: '已停用', expiry: expiry, usable: false);
+      return PlanPresentation(name: name, status: '封禁', expiry: expiry, usable: false);
     }
     if (subscribeStatus == 1 ||
         (expiryInstant != null && !effectiveNow.isBefore(expiryInstant))) {
-      return PlanPresentation(name: name, status: '已到期', expiry: expiry, usable: false);
+      return PlanPresentation(name: name, status: '到期', expiry: expiry, usable: false);
     }
     if (quotaGb > 0 && remainingGb <= 0) {
       return PlanPresentation(name: name, status: '流量已用尽', expiry: expiry, usable: false);
@@ -174,7 +179,7 @@ class PlanPresentation {
     final validityKnown = expiryInstant != null || rawExpiry == '永久';
     return PlanPresentation(
       name: name,
-      status: validityKnown ? '使用中' : '状态待同步',
+      status: validityKnown ? '正常' : '状态待同步',
       expiry: expiry,
       usable: validityKnown,
     );

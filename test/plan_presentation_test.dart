@@ -41,20 +41,21 @@ void main() {
 
   test('future expiry with a real name is in use', () {
     final plan = _plan();
-    expect(plan.shortLabel, 'Litchi Ultra · 使用中');
+    // 「正常」 is the normal state: the short label stays clean.
+    expect(plan.shortLabel, 'Litchi Ultra');
     expect(plan.expiry, '到期 2026-12-31');
     expect(plan.usable, true);
   });
 
   test('explicit subscription expired state overrides future date', () {
     final plan = _plan(status: 1);
-    expect(plan.status, '已到期');
+    expect(plan.status, '到期');
     expect(plan.usable, false);
   });
 
   test('banned subscription never paints a verified active icon', () {
     final plan = _plan(status: 2);
-    expect(plan.status, '已停用');
+    expect(plan.status, '封禁');
     expect(plan.usable, false);
   });
 
@@ -62,16 +63,16 @@ void main() {
     final plan = _plan(
       expiredAt: DateTime(2026, 9, 1).millisecondsSinceEpoch ~/ 1000,
     );
-    expect(plan.status, '已到期');
+    expect(plan.status, '到期');
     expect(plan.expiry, '到期 2026-09-01');
     expect(plan.usable, false);
   });
 
   test('a date-only expiry remains valid through its calendar day', () {
     final plan = _plan(expiry: '2026-09-17');
-    expect(plan.status, '使用中');
+    expect(plan.status, '正常');
     expect(plan.usable, true);
-    expect(_plan(expiry: '2026-09-16').status, '已到期');
+    expect(_plan(expiry: '2026-09-16').status, '到期');
   });
 
   test('depleted quota is explicit, not accidentally marked active', () {
@@ -82,7 +83,7 @@ void main() {
 
   test('permanent is only displayed when API explicitly says so', () {
     final plan = _plan(expiry: '永久');
-    expect(plan.status, '使用中');
+    expect(plan.status, '正常');
     expect(plan.expiry, '永久有效');
     expect(_plan(expiry: '未提供').expiry, '有效期待同步');
   });
