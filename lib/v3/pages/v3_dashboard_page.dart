@@ -17,6 +17,7 @@ import '../ui/v3_toast.dart';
 import '../ui/v3_node_tags.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_notice_bar.dart';
+import '../ui/v3_notice_carousel.dart';
 
 /// One connection page: the desktop rail must never add a second Home route.
 class V3DashboardPage extends StatelessWidget {
@@ -35,23 +36,39 @@ class V3DashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          V3NoticeBar(controller: controller),
+          // Phones: announcement images from the backend rotate in a card;
+          // desktop keeps the slim ticker so the orb stays above the fold.
+          if (v3UsesMergedConnectionCard(defaultTargetPlatform))
+            V3NoticeCarousel(controller: controller)
+          else
+            V3NoticeBar(controller: controller),
           V3DashboardAlerts(controller: controller),
           if (confirmedNoPlan)
             _NoPlanDashboardPanel(controller: controller)
           else ...[
-            _ConnectionWorkspace(
-              controller: controller,
-              connected: status == ConnectionStatus.connected,
-              connecting:
-                  status == ConnectionStatus.connecting ||
-                  status == ConnectionStatus.disconnecting,
-            ),
-            const SizedBox(height: 12),
-            _ModeRail(controller: controller),
-            const SizedBox(height: 12),
-            _SessionMetrics(controller: controller),
-            const SizedBox(height: 12),
+            if (v3UsesMergedConnectionCard(defaultTargetPlatform)) ...[
+              _MobileConnectionCard(
+                controller: controller,
+                connected: status == ConnectionStatus.connected,
+                connecting:
+                    status == ConnectionStatus.connecting ||
+                    status == ConnectionStatus.disconnecting,
+              ),
+              const SizedBox(height: 12),
+            ] else ...[
+              _ConnectionWorkspace(
+                controller: controller,
+                connected: status == ConnectionStatus.connected,
+                connecting:
+                    status == ConnectionStatus.connecting ||
+                    status == ConnectionStatus.disconnecting,
+              ),
+              const SizedBox(height: 12),
+              _ModeRail(controller: controller),
+              const SizedBox(height: 12),
+              _SessionMetrics(controller: controller),
+              const SizedBox(height: 12),
+            ],
             _PlanSummary(controller: controller),
           ],
         ],
@@ -170,94 +187,11 @@ class _ConnectionWorkspace extends StatelessWidget {
             padding: EdgeInsets.zero,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(V3Radius.card),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: Theme.of(context).brightness == Brightness.dark
-                            ? .065
-                            : .035,
-                        child: SvgPicture.asset(
-                          'assets/images/world_coastline.svg',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            v3Copy(
-                              context,
-                              zh: '连接状态',
-                              en: 'Connection',
-                              tw: '連線狀態',
-                            ),
-                            style: TextStyle(
-                              color: p.ink,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            _statusLabel(context, status),
-                            style: TextStyle(color: statusColor, fontSize: 11),
-                          ),
-                          Expanded(
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _ConnectionOrb(
-                                    controller: controller,
-                                    connected: connected,
-                                    connecting: connecting,
-                                  ),
-                                  const SizedBox(height: 9),
-                                  Text(
-                                    connected
-                                        ? v3Copy(
-                                            context,
-                                            zh: '断开连接',
-                                            en: 'Disconnect',
-                                            tw: '中斷連線',
-                                          )
-                                        : connecting
-                                        ? v3Copy(
-                                            context,
-                                            zh: '处理中',
-                                            en: 'Processing',
-                                            tw: '處理中',
-                                          )
-                                        : v3Copy(
-                                            context,
-                                            zh: '点击开始连接',
-                                            en: 'Tap to connect',
-                                            tw: '點擊開始連線',
-                                          ),
-                                    style: TextStyle(
-                                      color: p.ink,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  _ConnectionDuration(controller: controller),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              child: _ConnectIntroContent(
+                controller: controller,
+                status: status,
+                connected: connected,
+                connecting: connecting,
               ),
             ),
           ),
@@ -451,6 +385,292 @@ class _ConnectionWorkspace extends StatelessWidget {
   }
 }
 
+/// The orb section of the connection workspace: status header, the connect
+/// orb and its caption over the faded world map. Shared by the desktop
+/// workspace card and the phone's merged connection card.
+class _ConnectIntroContent extends StatelessWidget {
+  const _ConnectIntroContent({
+    required this.controller,
+    required this.status,
+    required this.connected,
+    required this.connecting,
+  });
+  final AppController controller;
+  final ConnectionStatus status;
+  final bool connected;
+  final bool connecting;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final statusColor = switch (status) {
+      ConnectionStatus.connected => p.success,
+      ConnectionStatus.connecting ||
+      ConnectionStatus.disconnecting => p.warning,
+      ConnectionStatus.error => p.danger,
+      ConnectionStatus.disconnected => p.inkMuted,
+    };
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: Theme.of(context).brightness == Brightness.dark
+                  ? .065
+                  : .035,
+              child: SvgPicture.asset(
+                'assets/images/world_coastline.svg',
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  v3Copy(
+                    context,
+                    zh: '连接状态',
+                    en: 'Connection',
+                    tw: '連線狀態',
+                  ),
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _statusLabel(context, status),
+                  style: TextStyle(color: statusColor, fontSize: 11),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ConnectionOrb(
+                          controller: controller,
+                          connected: connected,
+                          connecting: connecting,
+                        ),
+                        const SizedBox(height: 9),
+                        Text(
+                          connected
+                              ? v3Copy(
+                                  context,
+                                  zh: '断开连接',
+                                  en: 'Disconnect',
+                                  tw: '中斷連線',
+                                )
+                              : connecting
+                              ? v3Copy(
+                                  context,
+                                  zh: '处理中',
+                                  en: 'Processing',
+                                  tw: '處理中',
+                                )
+                              : v3Copy(
+                                  context,
+                                  zh: '点击开始连接',
+                                  en: 'Tap to connect',
+                                  tw: '點擊開始連線',
+                                ),
+                          style: TextStyle(
+                            color: p.ink,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        _ConnectionDuration(controller: controller),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The phone's connection card: orb section on top, the whole node row
+/// tappable with a trailing chevron (no dedicated switch button), then the
+/// routing segment. Three desktop cards become one mobile surface.
+class _MobileConnectionCard extends StatefulWidget {
+  const _MobileConnectionCard({
+    required this.controller,
+    required this.connected,
+    required this.connecting,
+  });
+  final AppController controller;
+  final bool connected;
+  final bool connecting;
+
+  @override
+  State<_MobileConnectionCard> createState() => _MobileConnectionCardState();
+}
+
+class _MobileConnectionCardState extends State<_MobileConnectionCard>
+    with _ModeSwitching {
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final controller = widget.controller;
+    final status = controller.connectionStatus;
+    final node = controller.currentNode;
+    final displayName = controller.autoSelected
+        ? node.name.isEmpty
+              ? v3Copy(context, zh: '自动选择', en: 'Automatic', tw: '自動選擇')
+              : node.name
+        : node.name.isEmpty
+        ? v3Copy(context, zh: '尚未选择节点', en: 'No node selected', tw: '尚未選擇節點')
+        : node.name;
+    return _DashboardCard(
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              key: kConnectActionCardKey,
+              height: 216,
+              child: _ConnectIntroContent(
+                controller: controller,
+                status: status,
+                connected: widget.connected,
+                connecting: widget.connecting,
+              ),
+            ),
+            Container(height: 1, color: p.line),
+            InkWell(
+              key: kCurrentNodeCardKey,
+              onTap: () => V3NodePicker.show(context),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: p.surfaceRaised,
+                        borderRadius: BorderRadius.circular(V3Radius.field),
+                      ),
+                      child: V3NodeFlag(code: node.code),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  displayName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: p.ink,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              if (controller.autoSelected &&
+                                  node.name.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: p.lycheeSoft,
+                                    borderRadius:
+                                        BorderRadius.circular(99), // pill
+                                  ),
+                                  child: Text(
+                                    v3Copy(context,
+                                      zh: '自动', en: 'Auto', tw: '自動'),
+                                    style: TextStyle(
+                                      color: p.lycheeInk,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            node.latency > 0 && node.latency < 9999
+                                ? v3Copy(context,
+                                    zh: '延迟 ${node.latency} ms',
+                                    en: 'Latency ${node.latency} ms',
+                                    tw: '延遲 ${node.latency} ms')
+                                : v3Copy(context,
+                                    zh: '未测速',
+                                    en: 'Not tested',
+                                    tw: '未測速'),
+                            style: TextStyle(
+                              color: node.latency > 0 && node.latency < 9999
+                                  ? p.successInk
+                                  : p.inkMuted,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (node.tags.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            V3NodeTags(tags: node.tags, maxVisible: 2),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: p.inkMuted,
+                      size: 22,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(height: 1, color: p.line),
+            // The merged card makes its own context obvious; the routing
+            // label would repeat what the segment already says.
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: _ModeSegment<ProxyMode>(
+                values: ProxyMode.values,
+                label: _modeTitle,
+                selected: controller.proxyMode,
+                busy: _busy,
+                onSelect: (mode) =>
+                    _runModeSwitch(() => _setProxyMode(mode)),
+                trackKey: 'v3-route-mode-track',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ConnectionOrb extends StatelessWidget {
   const _ConnectionOrb({
     required this.controller,
@@ -576,6 +796,11 @@ bool v3ShowsNetworkMode(TargetPlatform platform, NetworkMode mode) =>
     mode == NetworkMode.tun ||
     platform == TargetPlatform.windows || platform == TargetPlatform.macOS;
 
+/// Phones merge connection, node and routing into one card; desktop keeps
+/// the three-surface workspace.
+bool v3UsesMergedConnectionCard(TargetPlatform platform) =>
+    platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+
 class _ModeRail extends StatefulWidget {
   const _ModeRail({required this.controller});
   final AppController controller;
@@ -584,13 +809,14 @@ class _ModeRail extends StatefulWidget {
   State<_ModeRail> createState() => _ModeRailState();
 }
 
-class _ModeRailState extends State<_ModeRail> {
-  // Both rails ask the core to reload its config on switch; a second tap
-  // while the first is still applying would race it. One lock covers both,
-  // the same guard the connect orb gets from connectionActionLocked.
+/// Both mode switchers reload the core config on switch; a second tap while
+/// the first is still applying would race it. The busy lock and the two
+/// switch actions live here so the desktop rail and the phone's merged card
+/// share one contract.
+mixin _ModeSwitching<T extends StatefulWidget> on State<T> {
   bool _busy = false;
 
-  Future<void> _run(Future<void> Function() action) async {
+  Future<void> _runModeSwitch(Future<void> Function() action) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
@@ -600,8 +826,10 @@ class _ModeRailState extends State<_ModeRail> {
     }
   }
 
+  AppController get _modeController => (widget as dynamic).controller;
+
   Future<void> _setNetworkMode(NetworkMode mode) async {
-    final controller = widget.controller;
+    final controller = _modeController;
     final error = await controller.setNetworkMode(mode);
     if (!mounted) return;
     if (error != null) {
@@ -622,7 +850,7 @@ class _ModeRailState extends State<_ModeRail> {
   }
 
   Future<void> _setProxyMode(ProxyMode mode) async {
-    final error = await widget.controller.setProxyMode(mode);
+    final error = await _modeController.setProxyMode(mode);
     if (!mounted) return;
     if (error != null) {
       V3Toast.show(context, error, type: V3ToastType.error);
@@ -634,7 +862,9 @@ class _ModeRailState extends State<_ModeRail> {
       tw: '已切換至${_modeTitle(context, mode)}'),
       type: V3ToastType.success);
   }
+}
 
+class _ModeRailState extends State<_ModeRail> with _ModeSwitching {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
@@ -663,7 +893,7 @@ class _ModeRailState extends State<_ModeRail> {
                 label: _networkModeLabel,
                 selected: controller.networkMode,
                 busy: _busy,
-                onSelect: (mode) => _run(() => _setNetworkMode(mode)),
+                onSelect: (mode) => _runModeSwitch(() => _setNetworkMode(mode)),
                 trackKey: 'v3-network-mode-track',
                 optionKey: (mode) => 'v3-network-mode-${mode.storageKey}',
               ),
@@ -687,7 +917,7 @@ class _ModeRailState extends State<_ModeRail> {
           label: _modeTitle,
           selected: controller.proxyMode,
           busy: _busy,
-          onSelect: (mode) => _run(() => _setProxyMode(mode)),
+          onSelect: (mode) => _runModeSwitch(() => _setProxyMode(mode)),
           trackKey: 'v3-route-mode-track',
         ),
       ],
@@ -791,6 +1021,10 @@ class _ModeSegment<T> extends StatelessWidget {
   }
 }
 
+
+/// The desktop status card: the four gauges plus the reachability row. The
+/// phone folds reachability into its merged connection card and skips the
+/// gauges entirely - a handset session runs in the background.
 class _SessionMetrics extends StatelessWidget {
   const _SessionMetrics({required this.controller});
   final AppController controller;
@@ -864,7 +1098,7 @@ class _SessionMetrics extends StatelessWidget {
               color: p.aquaInk,
             ),
           );
-          // One shared cell inset keeps the four columns on the same grid:
+          // One shared cell inset keeps the columns on the same grid:
           // every label starts at the same offset from its divider.
           Widget cell(Widget metric) => Expanded(
             child: Padding(
@@ -906,6 +1140,9 @@ class _SessionMetrics extends StatelessWidget {
   }
 }
 
+/// The desktop reachability strip helper was folded back into
+/// [_SessionMetrics]; phones render [_ConnectivityRow] directly inside the
+/// merged connection card.
 class _Metric extends StatelessWidget {
   const _Metric({
     required this.label,
@@ -963,11 +1200,6 @@ class _Metric extends StatelessWidget {
   }
 }
 
-/// Connectivity line inside the live-status card: probes well-known sites
-/// through the live network path so a connected user can confirm the tunnel
-/// actually reaches the services they care about. Auto-runs once when the
-/// connection comes up; results clear when it drops so stale greens never
-/// linger.
 class _ConnectivityRow extends StatefulWidget {
   const _ConnectivityRow({required this.controller});
   final AppController controller;
@@ -1383,7 +1615,9 @@ String _bytes(int value) {
   if (value >= 1024 * 1024) {
     return '${(value / 1024 / 1024).toStringAsFixed(1)} MB';
   }
-  if (value > 0) return '${(value / 1024).toStringAsFixed(value < 10240 ? 1 : 0)} KB';
+  if (value > 0) {
+    return '${(value / 1024).toStringAsFixed(value < 10240 ? 1 : 0)} KB';
+  }
   return '0 MB';
 }
 

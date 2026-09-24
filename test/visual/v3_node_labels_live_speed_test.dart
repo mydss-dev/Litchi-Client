@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
@@ -57,6 +58,8 @@ void main() {
   });
 
   testWidgets('live transfer rates follow the core notifiers', (tester) async {
+    // Rates live on the desktop status card; phones skip the card entirely.
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     final controller = VisualV3Controller(AppPage.dashboard);
     addTearDown(controller.disposeVisual);
     await tester.pumpWidget(
@@ -73,6 +76,7 @@ void main() {
     await tester.pump();
     expect(find.text('1.0 MB/s'), findsOneWidget);
     expect(find.text('2 KB/s'), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 }

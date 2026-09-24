@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/api_models.dart';
@@ -98,6 +99,10 @@ Future<void> _pumpPage(
   _NewsController controller,
   Widget page,
 ) async {
+  // Desktop lane: the one-line ticker. Phones render the image carousel
+  // instead, which has its own contract.
+  debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+  addTearDown(() => debugDefaultTargetPlatformOverride = null);
   await tester.binding.setSurfaceSize(const Size(900, 700));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   addTearDown(controller.disposeVisual);
@@ -127,6 +132,7 @@ void main() {
     expect(find.text('服务公告'), findsOneWidget);
     expect(find.textContaining('香港、日本线路'), findsNothing);
     expect(find.textContaining('<b>'), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 
@@ -138,6 +144,7 @@ void main() {
     expect(find.byType(V3NoticeBar), findsOneWidget);
     expect(find.text('查看'), findsNothing);
     expect(find.byIcon(Icons.campaign_rounded), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 
@@ -153,6 +160,7 @@ void main() {
     expect(find.textContaining('服务公告'), findsOneWidget);
     await tester.pump(const Duration(seconds: 9));
     expect(find.textContaining('维护通知'), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -172,6 +180,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, '关闭'));
     await tester.pumpAndSettle();
     expect(find.byType(V3NoticeDialog), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 
@@ -192,6 +201,7 @@ void main() {
 
     expect(controller.dismissals, 1);
     expect(find.text('发现新版本 9.9.9'), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 
@@ -219,6 +229,7 @@ void main() {
 
     expect(find.byType(V3NoticeDialog), findsNothing);
     expect(controller.seen, [9], reason: 'the popup must be marked seen');
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 
@@ -254,6 +265,7 @@ void main() {
     expect(find.byType(V3NoticeDialog), findsNothing);
 
     await tester.pumpWidget(const SizedBox());
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 
@@ -272,6 +284,7 @@ void main() {
 
     expect(find.byType(V3NoticeHost), findsOneWidget);
     expect(find.byType(V3NoticeDialog), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 
@@ -293,6 +306,7 @@ void main() {
     // The rotation reaches the update page.
     await tester.pump(const Duration(seconds: 9));
     expect(find.textContaining('发现新版本 9.9.9'), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
     await tester.pumpWidget(const SizedBox());
   });
 }

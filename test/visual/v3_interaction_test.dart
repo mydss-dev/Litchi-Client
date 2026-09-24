@@ -113,6 +113,8 @@ void main() {
   // the dashboard opens the picker over itself instead of sending the user to
   // the nodes page and back.
   testWidgets('Dashboard opens the node picker over the page', (tester) async {
+    // Desktop flow: the workspace card carries a dedicated switch button.
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     final controller = _InteractiveController(AppPage.dashboard);
     await _pump(tester, controller, const V3DashboardPage());
     await tester.tap(find.text('切换节点'));
@@ -136,12 +138,14 @@ void main() {
       findsNothing,
       reason: 'a chosen node closes the picker',
     );
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 
   // The picker stays up on failure: the request was refused, so there is
   // nothing to go back to and the list is where the retry happens.
   testWidgets('A refused node switch leaves the picker open', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     final controller = _InteractiveController(AppPage.dashboard);
     await _pump(tester, controller, const V3DashboardPage());
     await tester.tap(find.text('切换节点'));
@@ -158,6 +162,7 @@ void main() {
     expect(find.byType(V3NodePicker), findsOneWidget);
     expect(find.text('节点切换失败'), findsOneWidget);
     expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
     await tester.pump(const Duration(milliseconds: 2600));
   });

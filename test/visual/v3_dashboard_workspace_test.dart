@@ -217,13 +217,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('android drops the network-mode group and keeps routing',
+  testWidgets('android merges connection, node and routing into one card',
       (tester) async {
     // Android's VPN stack has no system-proxy alternative, so the single-
-    // option network selector disappears along with its group label.
+    // option network selector disappears along with its group label, and the
+    // node row becomes tappable with a chevron instead of a switch button.
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    await tester.binding.setSurfaceSize(const Size(390, 800));
+    await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final controller = VisualV3Controller(AppPage.dashboard);
     addTearDown(controller.disposeVisual);
@@ -237,8 +238,16 @@ void main() {
     expect(find.text('代理模式'), findsNothing);
     expect(find.text('系统代理'), findsNothing);
     expect(find.text('TUN 模式'), findsNothing);
-    expect(find.text('路由模式'), findsOneWidget);
+    expect(find.text('切换节点'), findsNothing);
+    // The merged card speaks for itself: no routing label either.
+    expect(find.text('路由模式'), findsNothing);
     expect(find.text('规则'), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+
+    // The whole node row opens the picker.
+    await tester.tap(find.text('日本 东京 · Premium'));
+    await tester.pumpAndSettle();
+    expect(find.text('搜索节点'), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });

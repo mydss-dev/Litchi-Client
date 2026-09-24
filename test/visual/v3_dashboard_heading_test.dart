@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
@@ -11,6 +12,9 @@ void main() {
   testWidgets('dashboard has no redundant heading and shows notice title only', (
     tester,
   ) async {
+    // Desktop heading structure; phones merge the node row into one card.
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final controller = VisualV3Controller(AppPage.dashboard);
@@ -38,6 +42,7 @@ void main() {
       matching: find.text('已连接')), findsOneWidget);
     expect(find.text('服务公告'), findsOneWidget);
     expect(find.textContaining('香港、日本线路已完成优化'), findsNothing);
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 }

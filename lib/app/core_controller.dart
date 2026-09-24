@@ -1061,7 +1061,7 @@ class CoreController extends ChangeNotifier {
       upBpsNotifier.value = t.upBps;
     });
     // /connections is a snapshot, not a stream: poll it while the core runs.
-    // Feeds the dashboard's session-usage and active-connection metrics.
+    // Feeds the desktop status card's usage and active-connection gauges.
     _connectionsTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
       final summary = await ClashApiClient.connectionsSummary(
         apiPort: _apiPort,
