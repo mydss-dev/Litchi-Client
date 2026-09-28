@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
 import '../../config/app_config.dart';
+import '../commerce/v3_order_dialog.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_account_labels.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_logout_confirmation.dart';
+import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
 import 'v3_telegram_page.dart';
 import 'v3_wallet_actions.dart';
@@ -122,6 +124,30 @@ class _AccountSummaryPanel extends StatelessWidget {
   const _AccountSummaryPanel({required this.controller});
   final AppController controller;
 
+  /// Renew the current plan in place, or route to the shop when the account
+  /// has no plan or the plan id is no longer in the catalogue.
+  void _handlePlanButton(BuildContext context) {
+    if (!controller.hasPlan) {
+      controller.goToPage(AppPage.shop);
+      return;
+    }
+    for (final plan in controller.plans) {
+      if (int.tryParse(plan.id) == controller.currentPlanId) {
+        showV3OrderDialog(
+          context: context,
+          plan: plan,
+          initialCycle: v3DefaultCycle(plan),
+          api: controller.api,
+          currencySymbol: controller.currencySymbol,
+          onPaid: controller.refreshData,
+          onViewOrders: () => openV3Page(context, AppPage.orders),
+        );
+        return;
+      }
+    }
+    controller.goToPage(AppPage.shop);
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
@@ -186,13 +212,13 @@ class _AccountSummaryPanel extends StatelessWidget {
             ])),
           const SizedBox(width: 16),
           FilledButton.icon(
-            onPressed: () => controller.goToPage(AppPage.shop),
+            onPressed: () => _handlePlanButton(context),
             style: FilledButton.styleFrom(backgroundColor: p.lychee,
               foregroundColor: p.onLychee,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(V3Radius.field))),
-            // Say what the tap actually does: the shop is where you renew
-            // or pick a plan — no separate "management" screen exists.
+            // Renew opens the order-confirm dialog for the current plan
+            // directly; without a plan it takes you to pick one in the shop.
             icon: Icon(controller.hasPlan
                 ? Icons.autorenew_rounded
                 : Icons.storefront_rounded, size: 17),
