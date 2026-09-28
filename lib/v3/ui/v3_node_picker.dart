@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
@@ -183,7 +184,6 @@ class _V3NodePickerState extends State<V3NodePicker> {
               child: V3NodeRow(
                 node: node,
                 controller: controller,
-                cornerLatency: true,
                 busy: _pending == node.id,
                 onTap:
                     _pending != null
@@ -306,35 +306,25 @@ class V3NodeRow extends StatelessWidget {
     required this.controller,
     required this.onTap,
     required this.busy,
-    this.cornerLatency = false,
   });
   final NodeModel node;
   final AppController controller;
   final VoidCallback? onTap;
   final bool busy;
 
-  /// Picker-only style: the latency readout rides the name line's right end —
-  /// the row's top-right — instead of the vertically centered tail. The nodes
-  /// overview shares this row and keeps its existing layout by leaving the
-  /// flag off.
-  final bool cornerLatency;
-
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final selected =
         !controller.autoSelected && controller.currentNode.id == node.id;
-    // Narrow screens (phones) drop the corner badge: the value rides left of
-    // the chevron as the centered dot+text tail — the nodes overview's exact
-    // grammar — keeping the name line clear. Same 500 breakpoint as the
-    // dashboard's stacked/row card split.
-    final corner = cornerLatency &&
-        MediaQuery.sizeOf(context).width >= 500;
-    // Both the corner badge and the centered tail read the one shared tier
-    // scale — see v3_latency_tier.dart. The tail's dot and label use the
-    // text-safe inks; the badge carries the fill behind a 12% wash.
+    // The trailing chevron is a touch-platform affordance; desktop rows show
+    // no right arrow (the selected node still shows its check circle).
+    final showTrailingChevron =
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    // The dot+text tail reads the one shared tier scale — see
+    // v3_latency_tier.dart. Both the dot and the label use the text-safe ink.
     final latencyColor = v3LatencyInk(p, node.region, node.latency);
-    final latencyBadgeColor = v3LatencyFill(p, node.region, node.latency);
     final latencyDot = Container(
       width: 7,
       height: 7,
@@ -344,9 +334,7 @@ class V3NodeRow extends StatelessWidget {
       ),
     );
     final latencyText = Text(
-      corner
-          ? _cornerLatencyLabel(context, node.latency)
-          : _localizedLatencyLabel(context, node.latency),
+      _localizedLatencyLabel(context, node.latency),
       style: TextStyle(
         color: latencyColor,
         fontSize: 11,
@@ -400,46 +388,6 @@ class V3NodeRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      // In automatic mode the card's 自动 pill marks the
-                      // resolved node; mirror it here so the node the card
-                      // is showing keeps a "you are here" anchor.
-                      if (controller.autoSelected &&
-                          controller.currentNode.id == node.id) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: p.lycheeSoft,
-                            borderRadius: BorderRadius.circular(99), // pill
-                          ),
-                          child: Text(
-                            v3Copy(
-                              context,
-                              zh: '当前',
-                              en: 'Current',
-                              tw: '當前',
-                            ),
-                            style: TextStyle(
-                              color: p.lycheeInk,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
-                      // Corner style: the connection card's status badge
-                      // carries the latency at the row's top-right.
-                      if (corner) ...[
-                        const SizedBox(width: 8),
-                        V3StatusBadge(
-                          label: _cornerLatencyLabel(context, node.latency),
-                          color: latencyBadgeColor,
-                          compact: true,
-                        ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 3),
@@ -456,28 +404,20 @@ class V3NodeRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (corner)
-              const SizedBox(width: 12)
-            else ...[
-              latencyDot,
-              const SizedBox(width: 7),
-              latencyText,
-              const SizedBox(width: 12),
-            ],
+            latencyDot,
+            const SizedBox(width: 7),
+            latencyText,
+            const SizedBox(width: 12),
             if (busy)
               const SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            else
-              Icon(
-                selected
-                    ? Icons.check_circle_rounded
-                    : Icons.chevron_right_rounded,
-                color: selected ? p.lycheeInk : p.inkMuted,
-                size: 19,
-              ),
+            else if (selected)
+              Icon(Icons.check_circle_rounded, color: p.lycheeInk, size: 19)
+            else if (showTrailingChevron)
+              Icon(Icons.chevron_right_rounded, color: p.inkMuted, size: 19),
           ],
         ),
       ),
@@ -498,16 +438,3 @@ String _localizedLatencyLabel(BuildContext context, int value) {
   return '${value}ms';
 }
 
-/// The picker corner's bare value — 「42ms」 (the badge upper-cases to
-/// 42MS). The colored dot already says "latency", so no 延迟： prefix; a dash
-/// when no number exists yet (-1 mid-test, 0 untested), the timeout word
-/// when the probe failed. Same dialect as the nodes overview's tail.
-String _cornerLatencyLabel(BuildContext context, int value) {
-  if (value >= 9999) {
-    return v3Copy(context, zh: '超时', en: 'Timeout', tw: '逾時');
-  }
-  if (value <= 0) {
-    return '--';
-  }
-  return '${value}ms';
-}

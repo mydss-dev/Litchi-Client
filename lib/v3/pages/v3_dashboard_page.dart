@@ -147,6 +147,55 @@ const kConnectActionCardKey = Key('v3-connect-action-card');
 const kCurrentNodeCardKey = Key('v3-current-node-card');
 const kConnectOrbKey = Key('v3-connect-orb');
 
+/// The current-node card's latency readout — a colored dot plus the value,
+/// the same grammar as the node-picker row's tail. The dot carries the tier
+/// color; the label drops the 「延迟：」 prefix so the dot can speak first.
+class _NodeLatencyLine extends StatelessWidget {
+  const _NodeLatencyLine({required this.node});
+
+  final NodeModel node;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final color = v3LatencyInk(p, node.region, node.latency);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          _nodeLatencyLabel(context, node.latency),
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Same grammar as the node picker's tail: testing / untested / timeout /
+/// `Nms`, with no 延迟： prefix.
+String _nodeLatencyLabel(BuildContext context, int value) {
+  if (value == -1) {
+    return v3Copy(context, zh: '测速中', en: 'Testing', tw: '測速中');
+  }
+  if (value <= 0) {
+    return v3Copy(context, zh: '未测速', en: 'Not tested', tw: '未測速');
+  }
+  if (value >= 9999) {
+    return v3Copy(context, zh: '超时', en: 'Timeout', tw: '逾時');
+  }
+  return '${value}ms';
+}
+
 class _ConnectionWorkspace extends StatelessWidget {
   const _ConnectionWorkspace({
     required this.controller,
@@ -210,8 +259,9 @@ class _ConnectionWorkspace extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 12),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
                       width: 42,
@@ -273,42 +323,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          // Same dialect as the picker's corner badge: one
-                          // 「延迟：42ms」family, timeout included.
-                          Text(
-                            node.latency > 0 && node.latency < 9999
-                                ? v3Copy(
-                                    context,
-                                    zh: '延迟：${node.latency}ms',
-                                    en: 'Latency: ${node.latency}ms',
-                                    tw: '延遲：${node.latency}ms',
-                                  )
-                                : node.latency >= 9999
-                                ? v3Copy(
-                                    context,
-                                    zh: '延迟：超时',
-                                    en: 'Latency: timeout',
-                                    tw: '延遲：逾時',
-                                  )
-                                : node.latency == -1
-                                ? v3Copy(
-                                    context,
-                                    zh: '测速中',
-                                    en: 'Testing',
-                                    tw: '測速中',
-                                  )
-                                : v3Copy(
-                                    context,
-                                    zh: '未测速',
-                                    en: 'Not tested',
-                                    tw: '未測速',
-                                  ),
-                            style: TextStyle(
-                              color: v3LatencyInk(p, node.region, node.latency),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          _NodeLatencyLine(node: node),
                           if (node.tags.isNotEmpty) ...[
                             const SizedBox(height: 6),
                             V3NodeTags(tags: node.tags, maxVisible: 2),
@@ -680,28 +695,7 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            node.latency > 0 && node.latency < 9999
-                                ? v3Copy(context,
-                                    zh: '延迟：${node.latency}ms',
-                                    en: 'Latency: ${node.latency}ms',
-                                    tw: '延遲：${node.latency}ms')
-                                : node.latency >= 9999
-                                ? v3Copy(context,
-                                    zh: '延迟：超时',
-                                    en: 'Latency: timeout',
-                                    tw: '延遲：逾時')
-                                : node.latency == -1
-                                ? v3Copy(context,
-                                    zh: '测速中', en: 'Testing', tw: '測速中')
-                                : v3Copy(context,
-                                    zh: '未测速', en: 'Not tested', tw: '未測速'),
-                            style: TextStyle(
-                              color: v3LatencyInk(p, node.region, node.latency),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          _NodeLatencyLine(node: node),
                           if (node.tags.isNotEmpty) ...[
                             const SizedBox(height: 6),
                             V3NodeTags(tags: node.tags, maxVisible: 2),
