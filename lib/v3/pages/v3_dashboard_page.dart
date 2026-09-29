@@ -30,8 +30,8 @@ class V3DashboardPage extends StatelessWidget {
     final controller = AppScope.of(context);
     final status = controller.connectionStatus;
     // Only a confirmed account without a plan sees the purchase guidance.
-    final confirmedNoPlan = !controller.isInitialLoading &&
-        controller.hasConfirmedNoPlan;
+    final confirmedNoPlan =
+        !controller.isInitialLoading && controller.hasConfirmedNoPlan;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
@@ -96,29 +96,43 @@ class _NoPlanDashboardPanel extends StatelessWidget {
           children: [
             Icon(Icons.inventory_2_outlined, size: 34, color: p.lychee),
             const SizedBox(height: 12),
-            Text(v3Copy(context, zh: '当前没有可用套餐',
-              en: 'No active plan', tw: '目前沒有可用方案'),
+            Text(
+              v3Copy(
+                context,
+                zh: '当前没有可用套餐',
+                en: 'No active plan',
+                tw: '目前沒有可用方案',
+              ),
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge),
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
-            Text(v3Copy(context,
-              zh: canBuy ? '选择套餐后即可开始连接。' : '请联系服务商开通套餐。',
-              en: canBuy ? 'Choose a plan to start connecting.'
-                  : 'Contact your provider to activate a plan.',
-              tw: canBuy ? '選擇方案後即可開始連線。' : '請聯絡服務商開通方案。'),
+            Text(
+              v3Copy(
+                context,
+                zh: canBuy ? '选择套餐后即可开始连接。' : '请联系服务商开通套餐。',
+                en: canBuy
+                    ? 'Choose a plan to start connecting.'
+                    : 'Contact your provider to activate a plan.',
+                tw: canBuy ? '選擇方案後即可開始連線。' : '請聯絡服務商開通方案。',
+              ),
               textAlign: TextAlign.center,
-              style: TextStyle(color: p.inkMuted, fontSize: 12)),
+              style: TextStyle(color: p.inkMuted, fontSize: 12),
+            ),
             if (canBuy) ...[
               const SizedBox(height: 18),
               FilledButton.icon(
                 key: const Key('v3-dashboard-no-plan-buy'),
                 onPressed: () => controller.goToPage(AppPage.shop),
                 style: FilledButton.styleFrom(
-                  backgroundColor: p.lychee, foregroundColor: p.onLychee,
-                  minimumSize: const Size(156, 44)),
+                  backgroundColor: p.lychee,
+                  foregroundColor: p.onLychee,
+                  minimumSize: const Size(156, 44),
+                ),
                 icon: const Icon(Icons.storefront_rounded, size: 18),
-                label: Text(v3Copy(context, zh: '选择套餐',
-                  en: 'Choose a plan', tw: '選擇方案')),
+                label: Text(
+                  v3Copy(context, zh: '选择套餐', en: 'Choose a plan', tw: '選擇方案'),
+                ),
               ),
             ],
           ],
@@ -146,55 +160,6 @@ class _DashboardCard extends StatelessWidget {
 const kConnectActionCardKey = Key('v3-connect-action-card');
 const kCurrentNodeCardKey = Key('v3-current-node-card');
 const kConnectOrbKey = Key('v3-connect-orb');
-
-/// The current-node card's latency readout — a colored dot plus the value,
-/// the same grammar as the node-picker row's tail. The dot carries the tier
-/// color; the label drops the 「延迟：」 prefix so the dot can speak first.
-class _NodeLatencyLine extends StatelessWidget {
-  const _NodeLatencyLine({required this.node});
-
-  final NodeModel node;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final color = v3LatencyInk(p, node.region, node.latency);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          _nodeLatencyLabel(context, node.latency),
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Same grammar as the node picker's tail: testing / untested / timeout /
-/// `Nms`, with no 延迟： prefix.
-String _nodeLatencyLabel(BuildContext context, int value) {
-  if (value == -1) {
-    return v3Copy(context, zh: '测速中', en: 'Testing', tw: '測速中');
-  }
-  if (value <= 0) {
-    return v3Copy(context, zh: '未测速', en: 'Not tested', tw: '未測速');
-  }
-  if (value >= 9999) {
-    return v3Copy(context, zh: '超时', en: 'Timeout', tw: '逾時');
-  }
-  return '${value}ms';
-}
 
 class _ConnectionWorkspace extends StatelessWidget {
   const _ConnectionWorkspace({
@@ -246,94 +211,134 @@ class _ConnectionWorkspace extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  v3Copy(
-                    context,
-                    zh: '当前节点',
-                    en: 'Current node',
-                    tw: '目前節點',
-                  ),
-                  style: TextStyle(
-                    color: p.ink,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: p.surfaceRaised,
-                        borderRadius: BorderRadius.circular(V3Radius.field),
+                    Text(
+                      v3Copy(
+                        context,
+                        zh: '当前节点',
+                        en: 'Current node',
+                        tw: '目前節點',
                       ),
-                      child: V3NodeFlag(code: node.code),
+                      style: TextStyle(
+                        color: p.ink,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  displayName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: p.ink,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                              if (controller.autoSelected &&
-                                  node.name.isNotEmpty) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: p.lycheeSoft,
-                                    borderRadius:
-                                        BorderRadius.circular(99), // pill
-                                  ),
-                                  child: Text(
-                                    v3Copy(
-                                      context,
-                                      zh: '自动',
-                                      en: 'Auto',
-                                      tw: '自動',
-                                    ),
-                                    style: TextStyle(
-                                      color: p.lycheeInk,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          _NodeLatencyLine(node: node),
-                          if (node.tags.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            V3NodeTags(tags: node.tags, maxVisible: 2),
-                          ],
-                        ],
-                      ),
+                    const Spacer(),
+                    // Latency is this card's status: the header-right signal
+                    // pill mirrors the connection card's status badge at the
+                    // same size, so the two headers read as a pair.
+                    V3LatencyBadge(
+                      region: node.region,
+                      latency: node.latency,
+                      signal: true,
+                      statusSized: true,
                     ),
                   ],
                 ),
-                const Spacer(),
+                // The identity block keeps the left rail — flag, name,
+                // english name, then tags on their own line — while the
+                // latency number lives in the header corner the eye already
+                // scans on the card beside it.
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: p.surfaceRaised,
+                                borderRadius: BorderRadius.circular(
+                                  V3Radius.field,
+                                ),
+                              ),
+                              child: V3NodeFlag(code: node.code, large: true),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          displayName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: p.ink,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                      if (controller.autoSelected &&
+                                          node.name.isNotEmpty) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: p.lycheeSoft,
+                                            borderRadius: BorderRadius.circular(
+                                              99,
+                                            ), // pill
+                                          ),
+                                          child: Text(
+                                            v3Copy(
+                                              context,
+                                              zh: '自动',
+                                              en: 'Auto',
+                                              tw: '自動',
+                                            ),
+                                            style: TextStyle(
+                                              color: p.lycheeInk,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    node.englishName.isNotEmpty
+                                        ? node.englishName
+                                        : node.code,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (node.tags.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          V3NodeTags(tags: node.tags, maxVisible: 2),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
                 SizedBox(
                   width: double.infinity,
                   height: 44,
@@ -348,8 +353,11 @@ class _ConnectionWorkspace extends StatelessWidget {
                         borderRadius: BorderRadius.circular(V3Radius.field),
                       ),
                     ),
-                    icon: Icon(Icons.swap_horiz_rounded,
-                        size: 18, color: p.lychee),
+                    icon: Icon(
+                      Icons.swap_horiz_rounded,
+                      size: 18,
+                      color: p.lychee,
+                    ),
                     label: Text(
                       v3Copy(
                         context,
@@ -387,10 +395,7 @@ class _ConnectionWorkspace extends StatelessWidget {
 /// orb and its caption over the faded world map. Shared by the desktop
 /// workspace card and the phone's merged connection card.
 class _ConnectIntroContent extends StatefulWidget {
-  const _ConnectIntroContent({
-    required this.controller,
-    required this.status,
-  });
+  const _ConnectIntroContent({required this.controller, required this.status});
   final AppController controller;
   final ConnectionStatus status;
 
@@ -528,6 +533,11 @@ class _ConnectIntroContentState extends State<_ConnectIntroContent> {
                         key: ValueKey(status),
                         label: _protectionLabel(context, status),
                         color: protectionColor,
+                        // A shield instead of a dot: filled while protected,
+                        // hollow the moment protection drops.
+                        icon: status == ConnectionStatus.connected
+                            ? Icons.shield_rounded
+                            : Icons.shield_outlined,
                       ),
                     ),
                   ],
@@ -548,15 +558,15 @@ class _ConnectIntroContentState extends State<_ConnectIntroContent> {
                           switchOutCurve: Curves.easeIn,
                           transitionBuilder: (child, animation) =>
                               FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: Tween(
-                                      begin: const Offset(0, 0.35),
-                                      end: Offset.zero)
-                                  .animate(animation),
-                              child: child,
-                            ),
-                          ),
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween(
+                                    begin: const Offset(0, 0.35),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              ),
                           child: Text(
                             caption,
                             key: ValueKey(caption),
@@ -678,12 +688,17 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
                                   ),
                                   decoration: BoxDecoration(
                                     color: p.lycheeSoft,
-                                    borderRadius:
-                                        BorderRadius.circular(99), // pill
+                                    borderRadius: BorderRadius.circular(
+                                      99,
+                                    ), // pill
                                   ),
                                   child: Text(
-                                    v3Copy(context,
-                                      zh: '自动', en: 'Auto', tw: '自動'),
+                                    v3Copy(
+                                      context,
+                                      zh: '自动',
+                                      en: 'Auto',
+                                      tw: '自動',
+                                    ),
                                     style: TextStyle(
                                       color: p.lycheeInk,
                                       fontSize: 9,
@@ -695,7 +710,10 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
                             ],
                           ),
                           const SizedBox(height: 4),
-                          _NodeLatencyLine(node: node),
+                          V3LatencyBadge(
+                            region: node.region,
+                            latency: node.latency,
+                          ),
                           if (node.tags.isNotEmpty) ...[
                             const SizedBox(height: 6),
                             V3NodeTags(tags: node.tags, maxVisible: 2),
@@ -723,8 +741,7 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
                 label: _modeTitle,
                 selected: controller.proxyMode,
                 busy: _busy,
-                onSelect: (mode) =>
-                    _runModeSwitch(() => _setProxyMode(mode)),
+                onSelect: (mode) => _runModeSwitch(() => _setProxyMode(mode)),
                 trackKey: 'v3-route-mode-track',
               ),
             ),
@@ -740,10 +757,7 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
 /// fire only on live transitions — never on mount, so an error-banner mount
 /// stays still.
 class _ConnectionOrb extends StatefulWidget {
-  const _ConnectionOrb({
-    required this.controller,
-    required this.status,
-  });
+  const _ConnectionOrb({required this.controller, required this.status});
   final AppController controller;
   final ConnectionStatus status;
 
@@ -763,15 +777,19 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
     vsync: this,
     duration: const Duration(milliseconds: 1400),
   );
-  late final Animation<double> _breathe =
-      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut);
+  late final Animation<double> _breathe = CurvedAnimation(
+    parent: _pulse,
+    curve: Curves.easeInOut,
+  );
   // One-shot success ripple (busy → connected).
   late final AnimationController _ripple = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 450),
   );
-  late final Animation<double> _rippleEase =
-      CurvedAnimation(parent: _ripple, curve: Curves.easeOutCubic);
+  late final Animation<double> _rippleEase = CurvedAnimation(
+    parent: _ripple,
+    curve: Curves.easeOutCubic,
+  );
   // One-shot error shake.
   late final AnimationController _shake = AnimationController(
     vsync: this,
@@ -897,14 +915,22 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
                             ? null
                             : () async {
                                 // Failure remains a persistent alert with a retry action.
-                                final error = await controller.toggleConnection();
+                                final error = await controller
+                                    .toggleConnection();
                                 if (error == null &&
                                     context.mounted &&
                                     controller.connectionStatus ==
                                         ConnectionStatus.connected) {
-                                  V3Toast.show(context, v3Copy(context,
-                                    zh: '连接成功', en: 'Connected', tw: '連線成功'),
-                                    type: V3ToastType.success);
+                                  V3Toast.show(
+                                    context,
+                                    v3Copy(
+                                      context,
+                                      zh: '连接成功',
+                                      en: 'Connected',
+                                      tw: '連線成功',
+                                    ),
+                                    type: V3ToastType.success,
+                                  );
                                 }
                               },
                         child: Center(
@@ -914,13 +940,15 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
                             switchOutCurve: Curves.easeIn,
                             transitionBuilder: (child, animation) =>
                                 FadeTransition(
-                              opacity: animation,
-                              child: ScaleTransition(
-                                scale: Tween(begin: 0.85, end: 1.0)
-                                    .animate(animation),
-                                child: child,
-                              ),
-                            ),
+                                  opacity: animation,
+                                  child: ScaleTransition(
+                                    scale: Tween(
+                                      begin: 0.85,
+                                      end: 1.0,
+                                    ).animate(animation),
+                                    child: child,
+                                  ),
+                                ),
                             child: busy
                                 ? SizedBox(
                                     key: const ValueKey('orb-spinner'),
@@ -935,7 +963,9 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
                                     connected
                                         ? Icons.stop_rounded
                                         : Icons.power_settings_new_rounded,
-                                    key: ValueKey(connected ? 'orb-stop' : 'orb-power'),
+                                    key: ValueKey(
+                                      connected ? 'orb-stop' : 'orb-power',
+                                    ),
                                     color: connected ? p.night : p.onLychee,
                                     size: 30,
                                   ),
@@ -1055,7 +1085,8 @@ class _ConnectionDurationState extends State<_ConnectionDuration> {
 /// Hide unsupported system-proxy status from Android and Linux Home.
 bool v3ShowsNetworkMode(TargetPlatform platform, NetworkMode mode) =>
     mode == NetworkMode.tun ||
-    platform == TargetPlatform.windows || platform == TargetPlatform.macOS;
+    platform == TargetPlatform.windows ||
+    platform == TargetPlatform.macOS;
 
 /// Phones merge connection, node and routing into one card; desktop keeps
 /// the three-surface workspace.
@@ -1099,14 +1130,18 @@ mixin _ModeSwitching<T extends StatefulWidget> on State<T> {
     }
     final label = _networkModeLabel(context, mode);
     final applied = controller.coreProcessRunning
-        ? v3Copy(context,
+        ? v3Copy(
+            context,
             zh: '已切换到$label，重连后生效',
             en: 'Switched mode; reconnect to apply it',
-            tw: '已切換至$label，重新連線後生效')
-        : v3Copy(context,
+            tw: '已切換至$label，重新連線後生效',
+          )
+        : v3Copy(
+            context,
             zh: '连接模式已切换，将在下次连接时生效',
             en: 'Mode switched. It applies on your next connection.',
-            tw: '連線模式已切換，將於下次連線時生效');
+            tw: '連線模式已切換，將於下次連線時生效',
+          );
     V3Toast.show(context, applied, type: V3ToastType.success);
   }
 
@@ -1117,11 +1152,16 @@ mixin _ModeSwitching<T extends StatefulWidget> on State<T> {
       V3Toast.show(context, error, type: V3ToastType.error);
       return;
     }
-    V3Toast.show(context, v3Copy(context,
-      zh: '已切换到${_modeTitle(context, mode)}',
-      en: 'Switched to ${_modeTitle(context, mode)}',
-      tw: '已切換至${_modeTitle(context, mode)}'),
-      type: V3ToastType.success);
+    V3Toast.show(
+      context,
+      v3Copy(
+        context,
+        zh: '已切换到${_modeTitle(context, mode)}',
+        en: 'Switched to ${_modeTitle(context, mode)}',
+        tw: '已切換至${_modeTitle(context, mode)}',
+      ),
+      type: V3ToastType.success,
+    );
   }
 }
 
@@ -1219,9 +1259,15 @@ class _ModeRailState extends State<_ModeRail> with _ModeSwitching {
 /// through this widget so the 2-option and 3-option groups read as one
 /// control family.
 class _ModeSegment<T> extends StatelessWidget {
-  const _ModeSegment({required this.values, required this.label,
-    required this.selected, required this.busy, required this.onSelect,
-    this.trackKey, this.optionKey});
+  const _ModeSegment({
+    required this.values,
+    required this.label,
+    required this.selected,
+    required this.busy,
+    required this.onSelect,
+    this.trackKey,
+    this.optionKey,
+  });
   final List<T> values;
   final String Function(BuildContext, T) label;
   final T selected;
@@ -1241,56 +1287,63 @@ class _ModeSegment<T> extends StatelessWidget {
         color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(V3Radius.field),
       ),
-      child: Row(children: [
-        for (final value in values)
-          Expanded(child: AnimatedContainer(
-            key: optionKey == null
-                ? null : ValueKey<String>(optionKey!(value)),
-            duration: const Duration(milliseconds: 150),
-            alignment: Alignment.center,
-            // The selection keeps the track fill and gains a lychee ring —
-            // an outline chip, not a solid slab of pink. The 1dp border is
-            // always present (transparent when unselected) so no option
-            // ever shifts by a pixel when the ring moves.
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              border: Border.all(
-                color: value == selected ? p.lychee : Colors.transparent,
-              ),
-              borderRadius: BorderRadius.circular(V3Radius.control),
-            ),
-            // V3Pressable rides inside the option so the press ink lands on
-            // the option surface instead of on a Material beneath the card
-            // fill. The padding lives inside it so the ink still covers the
-            // full option rect, as the old wrapping InkWell did.
-            child: V3Pressable(
-              onTap: busy || value == selected ? null : () => onSelect(value),
-              borderRadius: BorderRadius.circular(V3Radius.control),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    label(context, value),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: value == selected ? p.lycheeInk : p.inkMuted,
-                      fontSize: 11,
-                      fontWeight: selected == value
-                          ? FontWeight.w800 : FontWeight.w700,
+      child: Row(
+        children: [
+          for (final value in values)
+            Expanded(
+              child: AnimatedContainer(
+                key: optionKey == null
+                    ? null
+                    : ValueKey<String>(optionKey!(value)),
+                duration: const Duration(milliseconds: 150),
+                alignment: Alignment.center,
+                // The selection keeps the track fill and gains a lychee ring —
+                // an outline chip, not a solid slab of pink. The 1dp border is
+                // always present (transparent when unselected) so no option
+                // ever shifts by a pixel when the ring moves.
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  border: Border.all(
+                    color: value == selected ? p.lychee : Colors.transparent,
+                  ),
+                  borderRadius: BorderRadius.circular(V3Radius.control),
+                ),
+                // V3Pressable rides inside the option so the press ink lands on
+                // the option surface instead of on a Material beneath the card
+                // fill. The padding lives inside it so the ink still covers the
+                // full option rect, as the old wrapping InkWell did.
+                child: V3Pressable(
+                  onTap: busy || value == selected
+                      ? null
+                      : () => onSelect(value),
+                  borderRadius: BorderRadius.circular(V3Radius.control),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        label(context, value),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: value == selected ? p.lycheeInk : p.inkMuted,
+                          fontSize: 11,
+                          fontWeight: selected == value
+                              ? FontWeight.w800
+                              : FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          )),
-      ]),
+        ],
+      ),
     );
   }
 }
-
 
 /// The session card: four gauges in one row on desktop, a 2x2 grid on
 /// phones. The reachability strip is appended on desktop only — a phone's
@@ -1309,110 +1362,111 @@ class _SessionMetrics extends StatelessWidget {
         children: [
           LayoutBuilder(
             builder: (context, constraints) {
-          final compact = constraints.maxWidth < 450;
-          // Traffic arrives through ValueNotifiers, not AppController.notifyListeners.
-          // Subscribe here so the displayed B/s changes without a page rebuild.
-          final download = ValueListenableBuilder<int>(
-            valueListenable: controller.downBpsNotifier,
-            builder: (context, bps, _) => _Metric(
-              label: v3Copy(
-                context,
-                zh: '下载速度',
-                en: 'Download speed',
-                tw: '下載速度',
-              ),
-              value: _speed(bps),
-              icon: Icons.arrow_downward_rounded,
-              color: p.successInk,
-            ),
-          );
-          final upload = ValueListenableBuilder<int>(
-            valueListenable: controller.upBpsNotifier,
-            builder: (context, bps, _) => _Metric(
-              label: v3Copy(
-                context,
-                zh: '上传速度',
-                en: 'Upload speed',
-                tw: '上傳速度',
-              ),
-              value: _speed(bps),
-              icon: Icons.arrow_upward_rounded,
-              color: p.lycheeInk,
-            ),
-          );
-          final session = ValueListenableBuilder<int>(
-            valueListenable: controller.sessionBytesNotifier,
-            builder: (context, bytes, _) => _Metric(
-              label: v3Copy(
-                context,
-                zh: '本次流量',
-                en: 'This session',
-                tw: '本次流量',
-              ),
-              value: _bytes(bytes),
-              icon: Icons.data_usage_rounded,
-              color: p.warningInk,
-            ),
-          );
-          final connections = ValueListenableBuilder<int>(
-            valueListenable: controller.connectionsCountNotifier,
-            builder: (context, count, _) => _Metric(
-              label: v3Copy(
-                context,
-                zh: '活动连接',
-                en: 'Connections',
-                tw: '活動連線',
-              ),
-              value: '$count',
-              icon: Icons.link_rounded,
-              color: p.aquaInk,
-            ),
-          );
-          // One shared cell inset keeps the columns on the same grid:
-          // every label starts at the same offset from its divider.
-          Widget cell(Widget metric) => Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: metric,
-            ),
-          );
-          Widget divider() => Container(width: 1, height: 38, color: p.line);
-          final gauge = compact
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(children: [cell(session), cell(connections)]),
+              final compact = constraints.maxWidth < 450;
+              // Traffic arrives through ValueNotifiers, not AppController.notifyListeners.
+              // Subscribe here so the displayed B/s changes without a page rebuild.
+              final download = ValueListenableBuilder<int>(
+                valueListenable: controller.downBpsNotifier,
+                builder: (context, bps, _) => _Metric(
+                  label: v3Copy(
+                    context,
+                    zh: '下载速度',
+                    en: 'Download speed',
+                    tw: '下載速度',
+                  ),
+                  value: _speed(bps),
+                  icon: Icons.arrow_downward_rounded,
+                  color: p.successInk,
+                ),
+              );
+              final upload = ValueListenableBuilder<int>(
+                valueListenable: controller.upBpsNotifier,
+                builder: (context, bps, _) => _Metric(
+                  label: v3Copy(
+                    context,
+                    zh: '上传速度',
+                    en: 'Upload speed',
+                    tw: '上傳速度',
+                  ),
+                  value: _speed(bps),
+                  icon: Icons.arrow_upward_rounded,
+                  color: p.lycheeInk,
+                ),
+              );
+              final session = ValueListenableBuilder<int>(
+                valueListenable: controller.sessionBytesNotifier,
+                builder: (context, bytes, _) => _Metric(
+                  label: v3Copy(
+                    context,
+                    zh: '本次流量',
+                    en: 'This session',
+                    tw: '本次流量',
+                  ),
+                  value: _bytes(bytes),
+                  icon: Icons.data_usage_rounded,
+                  color: p.warningInk,
+                ),
+              );
+              final connections = ValueListenableBuilder<int>(
+                valueListenable: controller.connectionsCountNotifier,
+                builder: (context, count, _) => _Metric(
+                  label: v3Copy(
+                    context,
+                    zh: '活动连接',
+                    en: 'Connections',
+                    tw: '活動連線',
+                  ),
+                  value: '$count',
+                  icon: Icons.link_rounded,
+                  color: p.aquaInk,
+                ),
+              );
+              // One shared cell inset keeps the columns on the same grid:
+              // every label starts at the same offset from its divider.
+              Widget cell(Widget metric) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: metric,
+                ),
+              );
+              Widget divider() =>
+                  Container(width: 1, height: 38, color: p.line);
+              final gauge = compact
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(children: [cell(session), cell(connections)]),
+                        const SizedBox(height: 12),
+                        Row(children: [cell(download), cell(upload)]),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        cell(session),
+                        divider(),
+                        cell(connections),
+                        divider(),
+                        cell(download),
+                        divider(),
+                        cell(upload),
+                      ],
+                    );
+              // The reachability strip is a desktop presentation: phone slots
+              // are far too narrow for four sites, so the phone card ends at
+              // the gauges.
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  gauge,
+                  if (!compact) ...[
                     const SizedBox(height: 12),
-                    Row(children: [cell(download), cell(upload)]),
+                    Container(height: 1, color: p.line),
+                    const SizedBox(height: 10),
+                    _ConnectivityRow(controller: controller),
                   ],
-                )
-              : Row(
-                  children: [
-                    cell(session),
-                    divider(),
-                    cell(connections),
-                    divider(),
-                    cell(download),
-                    divider(),
-                    cell(upload),
-                  ],
-                );
-          // The reachability strip is a desktop presentation: phone slots
-          // are far too narrow for four sites, so the phone card ends at
-          // the gauges.
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              gauge,
-              if (!compact) ...[
-                const SizedBox(height: 12),
-                Container(height: 1, color: p.line),
-                const SizedBox(height: 10),
-                _ConnectivityRow(controller: controller),
-              ],
-            ],
-          );
-        },
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -1655,11 +1709,7 @@ class _ConnectivitySite extends StatelessWidget {
         v3Copy(context, zh: '检测中', en: 'Probing', tw: '檢測中'),
         p.warningInk,
       ),
-      _SitePhase.ok => (
-        p.success,
-        '${r!.latencyMs} ms',
-        p.successInk,
-      ),
+      _SitePhase.ok => (p.success, '${r!.latencyMs} ms', p.successInk),
       _SitePhase.failed => (
         p.danger,
         v3Copy(context, zh: '不通', en: 'Blocked', tw: '不通'),
@@ -1682,8 +1732,11 @@ class _ConnectivitySite extends StatelessWidget {
             target.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: p.ink, fontSize: 10,
-              fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: p.ink,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         const SizedBox(width: 3),
@@ -1756,12 +1809,7 @@ class _PlanSummary extends StatelessWidget {
                 en: '$days days left',
                 tw: '剩餘 $days 天',
               )
-            : v3Copy(
-                context,
-                zh: '今日到期',
-                en: 'Expires today',
-                tw: '今日到期',
-              );
+            : v3Copy(context, zh: '今日到期', en: 'Expires today', tw: '今日到期');
         expiryUrgent = remaining.inDays < 3;
       }
     }

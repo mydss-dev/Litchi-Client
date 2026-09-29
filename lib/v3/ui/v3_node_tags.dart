@@ -5,10 +5,20 @@ import '../theme/v3_palette.dart';
 /// Compact, read-only server labels shared by the dashboard and both node views.
 /// No synthetic Premium/streaming claims are introduced by the client.
 class V3NodeTags extends StatelessWidget {
-  const V3NodeTags({super.key, required this.tags, this.maxVisible = 3});
+  const V3NodeTags({
+    super.key,
+    required this.tags,
+    this.maxVisible = 3,
+    this.accent = true,
+  });
 
   final List<String> tags;
   final int maxVisible;
+
+  /// Brand-soft chip that lifts the tag off plain surfaces. Muted keeps the
+  /// quiet grey chip for surfaces already tinted lycheeSoft — selected node
+  /// rows — where a pink chip would dissolve into the row.
+  final bool accent;
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +35,7 @@ class V3NodeTags extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: p.surfaceRaised,
-                border: Border.all(color: p.line),
+                color: accent ? p.lycheeSoft : p.surfaceRaised,
                 borderRadius: BorderRadius.circular(99),
               ),
               child: ConstrainedBox(
@@ -36,7 +45,7 @@ class V3NodeTags extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: p.inkMuted,
+                    color: accent ? p.lycheeInk : p.inkMuted,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),

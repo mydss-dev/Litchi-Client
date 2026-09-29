@@ -4,24 +4,41 @@ import 'package:country_flags/country_flags.dart';
 import '../theme/v3_palette.dart';
 
 class V3NodeFlag extends StatelessWidget {
-  const V3NodeFlag({super.key, required this.code});
+  const V3NodeFlag({super.key, required this.code, this.large = false});
   final String code;
+
+  /// The dashboard's identity tile scale-up: 33x22 keeps the exact 3:2 flag
+  /// ratio while filling the 48px tile, where the default 28x20 read as a
+  /// stamp floating in a box. List rows keep the compact default.
+  final bool large;
 
   @override
   Widget build(BuildContext context) {
+    final width = large ? 33.0 : 28.0;
+    final height = large ? 22.0 : 20.0;
     if (!RegExp(r'^[A-Za-z]{2}$').hasMatch(code.trim())) {
-      return const SizedBox(
-        width: 28,
-        height: 20,
-        child: Icon(Icons.public_rounded, size: 20),
+      return SizedBox(
+        width: width,
+        height: height,
+        child: Icon(Icons.public_rounded, size: height),
       );
     }
-    return CountryFlag.fromCountryCode(
-      code.trim(),
-      theme: const ImageTheme(
-        width: 28,
-        height: 20,
-        shape: RoundedRectangle(3),
+    // Hairline in the shared line colour: white-field flags (US, JP) sit on
+    // light raised tiles in light mode and dissolve without an edge.
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: V3Palette.of(context).line, width: 0.5),
+      ),
+      child: CountryFlag.fromCountryCode(
+        code.trim(),
+        theme: ImageTheme(
+          width: width,
+          height: height,
+          shape: const RoundedRectangle(3),
+        ),
       ),
     );
   }
@@ -275,11 +292,16 @@ class V3StatusBadge extends StatelessWidget {
     required this.label,
     required this.color,
     this.compact = false,
+    this.icon,
   });
 
   final String label;
   final Color color;
   final bool compact;
+
+  /// Optional leading glyph replacing the plain status dot (a shield for
+  /// protection states). Painted in [color]; null keeps the 6px dot.
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -308,11 +330,13 @@ class V3StatusBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
+          icon != null
+              ? Icon(icon, size: 13, color: color)
+              : Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                ),
           const SizedBox(width: 7),
           Text(
             label.toUpperCase(),

@@ -185,11 +185,10 @@ class _V3NodePickerState extends State<V3NodePicker> {
                 node: node,
                 controller: controller,
                 busy: _pending == node.id,
-                onTap:
-                    _pending != null
+                onTap: _pending != null
                     ? null
                     : !controller.autoSelected &&
-                              controller.currentNode.id == node.id
+                          controller.currentNode.id == node.id
                     // Already the current node: tapping confirms and closes.
                     ? () => Navigator.of(context).pop()
                     : () => _select(
@@ -289,9 +288,7 @@ class V3AutoRouteRow extends StatelessWidget {
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else if (active)
-              Icon(Icons.check_circle_rounded, color: p.lycheeInk, size: 20),
+              ),
           ],
         ),
       ),
@@ -318,29 +315,10 @@ class V3NodeRow extends StatelessWidget {
     final selected =
         !controller.autoSelected && controller.currentNode.id == node.id;
     // The trailing chevron is a touch-platform affordance; desktop rows show
-    // no right arrow (the selected node still shows its check circle).
+    // no right arrow (selection reads through the row highlight alone).
     final showTrailingChevron =
         defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS;
-    // The dot+text tail reads the one shared tier scale — see
-    // v3_latency_tier.dart. Both the dot and the label use the text-safe ink.
-    final latencyColor = v3LatencyInk(p, node.region, node.latency);
-    final latencyDot = Container(
-      width: 7,
-      height: 7,
-      decoration: BoxDecoration(
-        color: latencyColor,
-        shape: BoxShape.circle,
-      ),
-    );
-    final latencyText = Text(
-      _localizedLatencyLabel(context, node.latency),
-      style: TextStyle(
-        color: latencyColor,
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-      ),
-    );
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -399,42 +377,44 @@ class V3NodeRow extends StatelessWidget {
                   ),
                   if (node.tags.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    V3NodeTags(tags: node.tags, maxVisible: 2),
+                    V3NodeTags(
+                      tags: node.tags,
+                      maxVisible: 2,
+                      accent: !selected,
+                    ),
                   ],
                 ],
               ),
             ),
-            latencyDot,
-            const SizedBox(width: 7),
-            latencyText,
+            const SizedBox(width: 8),
+            V3LatencyBadge(region: node.region, latency: node.latency),
             const SizedBox(width: 12),
-            if (busy)
-              const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else if (selected)
-              Icon(Icons.check_circle_rounded, color: p.lycheeInk, size: 19)
-            else if (showTrailingChevron)
-              Icon(Icons.chevron_right_rounded, color: p.inkMuted, size: 19),
+            // Fixed trailing slot: spinner, chevron or nothing always occupy
+            // the same width, so the badge sits at a constant distance from
+            // the row edge — rows align, and selection reads through the
+            // highlight alone.
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: Center(
+                child: busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : showTrailingChevron
+                    ? Icon(
+                        Icons.chevron_right_rounded,
+                        color: p.inkMuted,
+                        size: 20,
+                      )
+                    : null,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
-
-String _localizedLatencyLabel(BuildContext context, int value) {
-  if (value == -1) {
-    return v3Copy(context, zh: '测速中', en: 'Testing', tw: '測速中');
-  }
-  if (value <= 0) {
-    return v3Copy(context, zh: '未测速', en: 'Not tested', tw: '未測速');
-  }
-  if (value >= 9999) {
-    return v3Copy(context, zh: '超时', en: 'Timeout', tw: '逾時');
-  }
-  return '${value}ms';
-}
-

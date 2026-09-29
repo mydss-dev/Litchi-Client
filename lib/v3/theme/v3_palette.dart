@@ -266,7 +266,12 @@ class V3Theme {
       // Keep a quiet but visible press state without a spreading ripple.
       splashFactory: NoSplash.splashFactory,
       highlightColor: p.ink.withValues(alpha: 0.10),
-      hoverColor: p.ink.withValues(alpha: 0.04),
+      // Hover and keyboard/click focus stay silent: the pressed highlight is
+      // the only transient state V3 paints. Their default overlays drew a
+      // ghost "selection box" inside padded rows (the ink sits on the
+      // InkWell inside the card's padding, inset from the card border).
+      hoverColor: Colors.transparent,
+      focusColor: Colors.transparent,
       // Selection follows the cycle chooser: a soft pink ground, dark/light
       // palette-safe lychee ink, and a matching border. Never white on lime.
       chipTheme: ChipThemeData(
