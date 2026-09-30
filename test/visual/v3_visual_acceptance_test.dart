@@ -153,7 +153,10 @@ Future<void> _pumpV3(
     ),
   );
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 360));
+  // Long enough to settle the page entrance (180ms) and the slowest data
+  // sweeps (700ms progress bars, 600ms rolling money) — goldens must capture
+  // the settled truth, never a mid-animation frame.
+  await tester.pump(const Duration(milliseconds: 900));
   await tester.pump();
   expect(tester.takeException(), isNull);
 }

@@ -226,70 +226,73 @@ class V3AutoRouteRow extends StatelessWidget {
     final active = controller.autoSelected;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       decoration: BoxDecoration(
         color: active ? p.lycheeSoft : p.surface,
         borderRadius: BorderRadius.circular(V3Radius.card),
         border: Border.all(color: active ? p.lychee : p.line),
       ),
-      // V3Pressable rides inside the opaque fill so the press/hover ink lands
-      // above it instead of vanishing on the sheet Material below.
+      // V3Pressable rides inside the opaque fill so the press ink lands above
+      // it instead of vanishing on the sheet Material below; the padding rides
+      // inside the pressable so that ink covers the full row rect.
       child: V3Pressable(
         borderRadius: BorderRadius.circular(V3Radius.card),
         onTap: onTap,
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: p.surfaceRaised,
-                borderRadius: BorderRadius.circular(V3Radius.control),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: p.surfaceRaised,
+                  borderRadius: BorderRadius.circular(V3Radius.control),
+                ),
+                child: Icon(
+                  Icons.auto_awesome_rounded,
+                  color: active ? p.lycheeInk : p.ink,
+                  size: 19,
+                ),
               ),
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                color: active ? p.lycheeInk : p.ink,
-                size: 19,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    v3Copy(
-                      context,
-                      zh: '自动选择',
-                      en: 'Automatic selection',
-                      tw: '自動選擇',
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      v3Copy(
+                        context,
+                        zh: '自动选择',
+                        en: 'Automatic selection',
+                        tw: '自動選擇',
+                      ),
+                      style: TextStyle(
+                        color: p.ink,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    style: TextStyle(
-                      color: p.ink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(height: 3),
+                    Text(
+                      v3Copy(
+                        context,
+                        zh: '自动选择可用节点',
+                        en: 'Automatically choose an available node',
+                        tw: '自動選擇可用節點',
+                      ),
+                      style: TextStyle(color: p.inkMuted, fontSize: 11),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    v3Copy(
-                      context,
-                      zh: '自动选择可用节点',
-                      en: 'Automatically choose an available node',
-                      tw: '自動選擇可用節點',
-                    ),
-                    style: TextStyle(color: p.inkMuted, fontSize: 11),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (busy)
-              const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-          ],
+              if (busy)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -321,98 +324,104 @@ class V3NodeRow extends StatelessWidget {
         defaultTargetPlatform == TargetPlatform.iOS;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: selected ? p.lycheeSoft : p.surface,
         borderRadius: BorderRadius.circular(V3Radius.card),
         border: Border.all(color: selected ? p.lychee : p.line),
       ),
+      // Same shape as the auto row: press ink above the opaque fill, padding
+      // inside the pressable so the ink covers the full row rect.
       child: V3Pressable(
         borderRadius: BorderRadius.circular(V3Radius.card),
         onTap: onTap,
-        child: Row(
-          children: [
-            // Same raised tile as the auto row above: the sheet's identity
-            // column keeps one spec instead of mixing boxed and bare flags.
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: p.surfaceRaised,
-                borderRadius: BorderRadius.circular(V3Radius.control),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              // Same raised tile as the auto row above: the sheet's identity
+              // column keeps one spec instead of mixing boxed and bare flags.
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: p.surfaceRaised,
+                  borderRadius: BorderRadius.circular(V3Radius.control),
+                ),
+                child: V3NodeFlag(code: node.code),
               ),
-              child: V3NodeFlag(code: node.code),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          node.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          // Matches the auto row's name voice (14/w700);
-                          // titleMedium's w600 read lighter than the row
-                          // above it inside the same sheet.
-                          style: TextStyle(
-                            color: p.ink,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            node.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            // Matches the auto row's name voice (14/w700);
+                            // titleMedium's w600 read lighter than the row
+                            // above it inside the same sheet.
+                            style: TextStyle(
+                              color: p.ink,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      node.englishName.isNotEmpty
+                          ? node.englishName
+                          : node.code,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (node.tags.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      V3NodeTags(
+                        tags: node.tags,
+                        maxVisible: 2,
+                        accent: !selected,
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    node.englishName.isNotEmpty ? node.englishName : node.code,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  if (node.tags.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    V3NodeTags(
-                      tags: node.tags,
-                      maxVisible: 2,
-                      accent: !selected,
-                    ),
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            V3LatencyBadge(region: node.region, latency: node.latency),
-            const SizedBox(width: 12),
-            // Fixed trailing slot: spinner, chevron or nothing always occupy
-            // the same width, so the badge sits at a constant distance from
-            // the row edge — rows align, and selection reads through the
-            // highlight alone.
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: Center(
-                child: busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : showTrailingChevron
-                    ? Icon(
-                        Icons.chevron_right_rounded,
-                        color: p.inkMuted,
-                        size: 20,
-                      )
-                    : null,
+              const SizedBox(width: 8),
+              V3LatencyBadge(region: node.region, latency: node.latency),
+              const SizedBox(width: 12),
+              // Fixed trailing slot: spinner, chevron or nothing always occupy
+              // the same width, so the badge sits at a constant distance from
+              // the row edge — rows align, and selection reads through the
+              // highlight alone.
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Center(
+                  child: busy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : showTrailingChevron
+                      ? Icon(
+                          Icons.chevron_right_rounded,
+                          color: p.inkMuted,
+                          size: 20,
+                        )
+                      : null,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

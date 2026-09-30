@@ -277,10 +277,41 @@ class V3Pressable extends StatelessWidget {
     return Material(
       type: MaterialType.transparency,
       borderRadius: borderRadius,
-      child: InkWell(
-        borderRadius: borderRadius,
-        onTap: onTap,
-        child: child,
+      child: InkWell(borderRadius: borderRadius, onTap: onTap, child: child),
+    );
+  }
+}
+
+/// A money readout that rolls to its value — from zero on first build, then
+/// from the previous value on every refresh — so money arriving reads as
+/// motion instead of a hard text swap. The settled string is identical to the
+/// plain formatted value it replaces.
+class V3RollingMoney extends StatelessWidget {
+  const V3RollingMoney({
+    super.key,
+    required this.value,
+    required this.symbol,
+    this.style,
+  });
+
+  final double value;
+  final String symbol;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      // A begin of 0 only drives the first sweep; retargets animate from the
+      // current value, never from zero again.
+      tween: Tween(begin: 0, end: value),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+      // scaleDown, not the ellipsis the old stat text used: a truncated
+      // amount is a wrong amount. Where the string fits it renders 1:1; in a
+      // narrow tile the whole value shrinks a touch instead of wrapping.
+      builder: (context, amount, _) => FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text('$symbol${amount.toStringAsFixed(2)}', style: style),
       ),
     );
   }
@@ -335,7 +366,10 @@ class V3StatusBadge extends StatelessWidget {
               : Container(
                   width: 6,
                   height: 6,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
           const SizedBox(width: 7),
           Text(
@@ -373,7 +407,8 @@ class V3Switch extends StatelessWidget {
       // track itself instead of on a Material beneath its opaque fill.
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        width: 52, height: 30,
+        width: 52,
+        height: 30,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: value ? p.lychee : p.surfaceRaised,
@@ -385,9 +420,14 @@ class V3Switch extends StatelessWidget {
           child: AnimatedAlign(
             duration: const Duration(milliseconds: 160),
             alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(width: 22, height: 22, decoration: BoxDecoration(
-              color: value ? p.onLychee : p.inkMuted,
-              shape: BoxShape.circle)),
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: value ? p.onLychee : p.inkMuted,
+                shape: BoxShape.circle,
+              ),
+            ),
           ),
         ),
       ),
@@ -469,7 +509,11 @@ class V3NavRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return InkWell(
+    // V3Pressable, not a bare InkWell: the panel below is opaque surface, so
+    // a bare InkWell's hover/press ink lands on the root Material underneath
+    // it and never shows. The pressable paints its own transparent Material
+    // above the fill, keeping both washes visible.
+    return V3Pressable(
       borderRadius: BorderRadius.circular(V3Radius.card),
       onTap: onTap,
       child: Container(
@@ -487,8 +531,11 @@ class V3NavRow extends StatelessWidget {
                 color: selected ? p.surface : p.surfaceRaised,
                 borderRadius: BorderRadius.circular(V3Radius.control),
               ),
-              child: Icon(icon, size: 18,
-                color: selected ? p.lycheeInk : p.inkMuted),
+              child: Icon(
+                icon,
+                size: 18,
+                color: selected ? p.lycheeInk : p.inkMuted,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

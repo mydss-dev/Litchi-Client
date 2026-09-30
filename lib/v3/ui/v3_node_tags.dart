@@ -15,9 +15,10 @@ class V3NodeTags extends StatelessWidget {
   final List<String> tags;
   final int maxVisible;
 
-  /// Brand-soft chip that lifts the tag off plain surfaces. Muted keeps the
-  /// quiet grey chip for surfaces already tinted lycheeSoft — selected node
-  /// rows — where a pink chip would dissolve into the row.
+  /// Brand-soft chip that lifts the tag off plain surfaces. Muted flips the
+  /// fill to the opaque card colour — for selected node rows, whose
+  /// lycheeSoft tint would dissolve a pink chip — while the text stays
+  /// lychee-inked either way, so a tag reads as brand on both fills.
   final bool accent;
 
   @override
@@ -35,7 +36,7 @@ class V3NodeTags extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: accent ? p.lycheeSoft : p.surfaceRaised,
+                color: accent ? p.lycheeSoft : p.surface,
                 borderRadius: BorderRadius.circular(99),
               ),
               child: ConstrainedBox(
@@ -45,7 +46,7 @@ class V3NodeTags extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: accent ? p.lycheeInk : p.inkMuted,
+                    color: p.lycheeInk,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),

@@ -52,6 +52,11 @@ class _LitchiAppState extends State<LitchiApp> {
             theme: V3Theme.light(),
             darkTheme: V3Theme.dark(),
             themeMode: _controller.themeMode,
+            // MaterialApp already cross-fades palettes through its internal
+            // AnimatedTheme; the linear default reads mechanical, so settle
+            // the switch with the same ease every V3 surface uses.
+            themeAnimationDuration: const Duration(milliseconds: 220),
+            themeAnimationCurve: Curves.easeOutCubic,
             locale: _controller.locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,

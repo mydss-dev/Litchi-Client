@@ -264,13 +264,19 @@ class V3Theme {
       ),
       dividerColor: p.line,
       // Keep a quiet but visible press state without a spreading ripple.
+      // Brand-pink ink: the neutral ink wash read as a grey ghost box on
+      // dark surfaces, fighting the lychee selection language it sits in.
       splashFactory: NoSplash.splashFactory,
-      highlightColor: p.ink.withValues(alpha: 0.10),
-      // Hover and keyboard/click focus stay silent: the pressed highlight is
-      // the only transient state V3 paints. Their default overlays drew a
-      // ghost "selection box" inside padded rows (the ink sits on the
-      // InkWell inside the card's padding, inset from the card border).
-      hoverColor: Colors.transparent,
+      highlightColor: p.lychee.withValues(alpha: 0.12),
+      // Hover is a quiet ink wash at 4%: desktop feedback that lifts the
+      // surface under the pointer without competing with the lychee pressed
+      // highlight. The old transparent hover existed to kill a ghost
+      // "selection box" — the ink sat on the InkWell inside the card's
+      // padding, inset from the card border — but pressables now own the
+      // full row rect (padding rides inside), so the wash fills the card.
+      // Focus stays transparent: keyboard focus is chrome, not a state V3
+      // paints.
+      hoverColor: p.ink.withValues(alpha: 0.04),
       focusColor: Colors.transparent,
       // Selection follows the cycle chooser: a soft pink ground, dark/light
       // palette-safe lychee ink, and a matching border. Never white on lime.
@@ -278,7 +284,9 @@ class V3Theme {
         backgroundColor: p.surface,
         selectedColor: p.lycheeSoft,
         side: BorderSide(color: p.line),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.control)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(V3Radius.control),
+        ),
         labelStyle: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
@@ -296,16 +304,25 @@ class V3Theme {
       // One global fallback prevents new segmented controls regressing to green.
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
-          backgroundColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? p.lycheeSoft : p.surfaceRaised),
-          foregroundColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? p.lycheeInk : p.ink),
-          side: WidgetStateProperty.resolveWith((states) => BorderSide(
-            color: states.contains(WidgetState.selected) ? p.lychee : p.line,
-            width: states.contains(WidgetState.selected) ? 1.5 : 1)),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? p.lycheeSoft
+                : p.surfaceRaised,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) =>
+                states.contains(WidgetState.selected) ? p.lycheeInk : p.ink,
+          ),
+          side: WidgetStateProperty.resolveWith(
+            (states) => BorderSide(
+              color: states.contains(WidgetState.selected) ? p.lychee : p.line,
+              width: states.contains(WidgetState.selected) ? 1.5 : 1,
+            ),
+          ),
           iconColor: WidgetStatePropertyAll(p.lycheeInk),
-          textStyle: const WidgetStatePropertyAll(TextStyle(
-            fontWeight: FontWeight.w700, fontSize: 12)),
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+          ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(

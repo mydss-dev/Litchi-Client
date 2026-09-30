@@ -38,9 +38,16 @@ bool get _isDesktopTarget =>
 
 /// Pull-to-refresh belongs to the four data-centric mobile pages, not nodes.
 bool v3SupportsMobileRefresh(AppPage page) => switch (page) {
-  AppPage.dashboard || AppPage.account || AppPage.invite || AppPage.traffic => true,
+  AppPage.dashboard ||
+  AppPage.account ||
+  AppPage.invite ||
+  AppPage.traffic => true,
   _ => false,
 };
+
+/// The shell's three top surfaces. The key drives the stage cross-fade: boot
+/// and login hand over to the workspace with a fade instead of a hard cut.
+enum _ShellStage { boot, auth, workspace }
 
 class V3Shell extends StatelessWidget {
   const V3Shell({super.key, this.launchSilently = false});
@@ -49,11 +56,33 @@ class V3Shell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final body = controller.isInitializing
-        ? const _V3BootView()
+    final stage = controller.isInitializing
+        ? _ShellStage.boot
         : !controller.isAuthenticated
-        ? const V3AuthView()
-        : const V3NoticeHost(child: _V3Workspace());
+        ? _ShellStage.auth
+        : _ShellStage.workspace;
+    final body = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 240),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeOutCubic.flipped,
+      // Expand, not the default loose stack: the workspace fills the pane and
+      // short surfaces (boot view) must not center-shrink it during a fade.
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        fit: StackFit.expand,
+        alignment: Alignment.center,
+        children: [...previousChildren, ?currentChild],
+      ),
+      transitionBuilder: (child, animation) =>
+          FadeTransition(opacity: animation, child: child),
+      child: KeyedSubtree(
+        key: ValueKey(stage),
+        child: switch (stage) {
+          _ShellStage.boot => const _V3BootView(),
+          _ShellStage.auth => const V3AuthView(),
+          _ShellStage.workspace => const V3NoticeHost(child: _V3Workspace()),
+        },
+      ),
+    );
     if (!_isDesktopTarget) {
       return Material(
         color: V3Palette.of(context).canvas,
@@ -62,10 +91,12 @@ class V3Shell extends StatelessWidget {
     }
     return Material(
       color: V3Palette.of(context).canvas,
-      child: Column(children: [
-        const _DesktopWindowBar(),
-        Expanded(child: body),
-      ]),
+      child: Column(
+        children: [
+          const _DesktopWindowBar(),
+          Expanded(child: body),
+        ],
+      ),
     );
   }
 }
@@ -85,55 +116,127 @@ class _V3WorkspaceState extends State<_V3Workspace> {
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
-    return LayoutBuilder(builder: (context, constraints) {
-      final compact = constraints.maxWidth < 760;
-      final current = controller.page;
-      if (!_visited.contains(current)) _visited.add(current);
-      // StackFit.expand keeps every page's scroll view filling the pane: a
-      // loose stack shrinks short pages (empty states, error states) to their
-      // content height and the Offstage stack then centers them vertically —
-      // tall pages top-align while short ones float mid-pane.
-      final stack = Stack(fit: StackFit.expand, children: [
-        for (final page in _visited)
-          Offstage(
-            offstage: page != current,
-            child: _pageFor(page, context),
-          ),
-      ]);
-      if (compact) {
-        final mobilePage = !_isDesktopTarget &&
-                v3SupportsMobileRefresh(current)
-            ? RefreshIndicator(
-                key: const Key('v3-mobile-refresh'),
-                color: p.lychee,
-                onRefresh: controller.refreshData,
-                child: stack,
-              )
-            : stack;
-        return Scaffold(
-          backgroundColor: p.canvas,
-          body: mobilePage,
-          bottomNavigationBar: _MobileNavigation(controller: controller),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 760;
+        final current = controller.page;
+        if (!_visited.contains(current)) _visited.add(current);
+        // StackFit.expand keeps every page's scroll view filling the pane: a
+        // loose stack shrinks short pages (empty states, error states) to their
+        // content height and the Offstage stack then centers them vertically —
+        // tall pages top-align while short ones float mid-pane.
+        final stack = Stack(
+          fit: StackFit.expand,
+          children: [
+            for (final page in _visited)
+              Offstage(
+                offstage: page != current,
+                child: _PageEntrance(
+                  active: page == current,
+                  child: _pageFor(page, context),
+                ),
+              ),
+          ],
         );
-      }
-      // 12 + 176 + 12 = 200dp for the entire desktop rail, not 200dp
-      // plus margins. Keep the content's canvas black in dark mode.
-      return ColoredBox(
-        color: p.canvas,
-        child: Row(children: [
-          _DesktopRail(controller: controller),
-          Expanded(child: Padding(
-            padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
-            child: stack,
-          )),
-        ]),
-      );
-    });
+        if (compact) {
+          final mobilePage =
+              !_isDesktopTarget && v3SupportsMobileRefresh(current)
+              ? RefreshIndicator(
+                  key: const Key('v3-mobile-refresh'),
+                  color: p.lychee,
+                  onRefresh: controller.refreshData,
+                  child: stack,
+                )
+              : stack;
+          return Scaffold(
+            backgroundColor: p.canvas,
+            body: mobilePage,
+            bottomNavigationBar: _MobileNavigation(controller: controller),
+          );
+        }
+        // 12 + 176 + 12 = 200dp for the entire desktop rail, not 200dp
+        // plus margins. Keep the content's canvas black in dark mode.
+        return ColoredBox(
+          color: p.canvas,
+          child: Row(
+            children: [
+              _DesktopRail(controller: controller),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
+                  child: stack,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// One-shot entrance for a workspace page: each time a page surfaces from the
+/// Offstage stack it fades in and rises a step instead of hard-cutting. The
+/// child subtree is untouched, so per-tab state (scroll positions, form
+/// drafts) survives exactly as before.
+class _PageEntrance extends StatefulWidget {
+  const _PageEntrance({required this.active, required this.child});
+  final bool active;
+  final Widget child;
+
+  @override
+  State<_PageEntrance> createState() => _PageEntranceState();
+}
+
+class _PageEntranceState extends State<_PageEntrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 180),
+  );
+  late final Animation<double> _ease = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    // Pages join _visited the moment they become current, so creation and
+    // first activation are the same event: play the entrance then, too.
+    _controller.forward(from: 0);
+  }
+
+  @override
+  void didUpdateWidget(_PageEntrance oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) _controller.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _ease,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.015),
+          end: Offset.zero,
+        ).animate(_ease),
+        child: widget.child,
+      ),
+    );
   }
 }
 
 Widget _pageFor(AppPage page, BuildContext context) {
-  final l = Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+  final l =
+      Localizations.of<AppLocalizations>(context, AppLocalizations) ??
       AppLocalizationsZh();
   return switch (page) {
     AppPage.nodes => const V3NodesPage(),
@@ -142,13 +245,14 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.invite => const V3InvitePage(),
     AppPage.traffic => const V3TrafficPage(),
     AppPage.orders => V3SheetPageFallback(
-      kicker: v3Copy(context, zh: '订单中心',
-        en: 'ORDER CENTER', tw: '訂單中心'),
+      kicker: v3Copy(context, zh: '订单中心', en: 'ORDER CENTER', tw: '訂單中心'),
       title: l.orders,
-      description: v3Copy(context,
+      description: v3Copy(
+        context,
         zh: '所有购买记录和支付状态都集中在这里。',
         en: 'Every purchase and its payment status in one place.',
-        tw: '所有購買紀錄與付款狀態集中在這裡。'),
+        tw: '所有購買紀錄與付款狀態集中在這裡。',
+      ),
       child: const V3OrdersPage(),
     ),
     AppPage.tickets => const V3TicketsPage(),
@@ -156,14 +260,14 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.dashboard => const V3DashboardPage(),
     AppPage.more => const V3MorePage(),
     AppPage.giftCard => V3SheetPageFallback(
-      kicker: v3Copy(context, zh: '兑换中心',
-        en: 'REDEMPTION', tw: '兌換中心'),
-      title: v3Copy(context,
-        zh: '礼品卡兑换', en: 'Gift card', tw: '禮品卡兌換'),
-      description: v3Copy(context,
+      kicker: v3Copy(context, zh: '兑换中心', en: 'REDEMPTION', tw: '兌換中心'),
+      title: v3Copy(context, zh: '礼品卡兑换', en: 'Gift card', tw: '禮品卡兌換'),
+      description: v3Copy(
+        context,
         zh: '输入兑换码，权益到账后自动同步到账户。',
         en: 'Enter a code; benefits sync to your account automatically.',
-        tw: '輸入兌換碼，權益到賬後自動同步到帳戶。'),
+        tw: '輸入兌換碼，權益到賬後自動同步到帳戶。',
+      ),
       child: const V3GiftCardPage(),
     ),
   };
@@ -185,76 +289,116 @@ class _DesktopRail extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.hero,
         border: Border.all(color: p.line),
-        borderRadius: BorderRadius.circular(V3Radius.card)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(2, 0, 2, 26),
-          child: V3BrandMark(boxSize: 34),
-        ),
-        ...[
-          // Dashboard and connection are the same AppPage.dashboard route.
-          // Never introduce a second Home item alongside Connect.
-          ...enabledNavItems(kDesktopRail),
-          if (kRailSettings.isEnabled) kRailSettings,
-        ].map((item) => _RailItem(
-          key: railItemKey(item.page),
-          item: item,
-          selected: controller.page == item.page,
-          onTap: () => openV3Page(context, item.page),
-        )),
-        const Spacer(),
-        const SizedBox(height: 12),
-        Container(
-          key: kAccountCardKey,
-          decoration: BoxDecoration(color: p.surface,
-            borderRadius: BorderRadius.circular(V3Radius.card),
-            border: Border.all(color: p.line)),
-          child: V3Pressable(
-            borderRadius: BorderRadius.circular(V3Radius.card),
-            onTap: () => controller.goToPage(AppPage.account),
-            child: Padding(
-              padding: const EdgeInsets.all(9),
-              child: Row(children: [
-                CircleAvatar(
-                  radius: 17,
-                  backgroundColor: p.lychee,
-                  child: Text(user.avatarLetter.isEmpty ? '?' : user.avatarLetter,
-                    style: TextStyle(color: p.onLychee,
-                      fontWeight: FontWeight.w800)),
-                ),
-                const SizedBox(width: 7),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(user.name.isEmpty
-                        ? v3Copy(context, zh: '访客', en: 'Guest', tw: '訪客')
-                        : user.name,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: p.ink, fontWeight: FontWeight.w700,
-                        fontSize: 11)),
-                    const SizedBox(height: 2),
-                    Tooltip(message: '${plan.shortLabel} · ${plan.expiry}',
-                      child: Text(plan.shortLabel, maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: plan.usable
-                          ? p.successInk : p.inkMuted, fontSize: 10)),
-                    ),
-                  ],
-                )),
-                Icon(Icons.chevron_right_rounded,
-                  color: p.ink.withValues(alpha: 0.45), size: 16),
-              ]),
+        borderRadius: BorderRadius.circular(V3Radius.card),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(2, 0, 2, 26),
+            child: V3BrandMark(boxSize: 34),
+          ),
+          ...[
+            // Dashboard and connection are the same AppPage.dashboard route.
+            // Never introduce a second Home item alongside Connect.
+            ...enabledNavItems(kDesktopRail),
+            if (kRailSettings.isEnabled) kRailSettings,
+          ].map(
+            (item) => _RailItem(
+              key: railItemKey(item.page),
+              item: item,
+              selected: controller.page == item.page,
+              onTap: () => openV3Page(context, item.page),
             ),
           ),
-        ),
-      ]),
+          const Spacer(),
+          const SizedBox(height: 12),
+          Container(
+            key: kAccountCardKey,
+            decoration: BoxDecoration(
+              color: p.surface,
+              borderRadius: BorderRadius.circular(V3Radius.card),
+              border: Border.all(color: p.line),
+            ),
+            child: V3Pressable(
+              borderRadius: BorderRadius.circular(V3Radius.card),
+              onTap: () => controller.goToPage(AppPage.account),
+              child: Padding(
+                padding: const EdgeInsets.all(9),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 17,
+                      backgroundColor: p.lychee,
+                      child: Text(
+                        user.avatarLetter.isEmpty ? '?' : user.avatarLetter,
+                        style: TextStyle(
+                          color: p.onLychee,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user.name.isEmpty
+                                ? v3Copy(
+                                    context,
+                                    zh: '访客',
+                                    en: 'Guest',
+                                    tw: '訪客',
+                                  )
+                                : user.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: p.ink,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Tooltip(
+                            message: '${plan.shortLabel} · ${plan.expiry}',
+                            child: Text(
+                              plan.shortLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: plan.usable ? p.successInk : p.inkMuted,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: p.ink.withValues(alpha: 0.45),
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _RailItem extends StatelessWidget {
-  const _RailItem({super.key, required this.item,
-    required this.selected, required this.onTap});
+  const _RailItem({
+    super.key,
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
   final V3NavItem item;
   final bool selected;
   final VoidCallback onTap;
@@ -275,22 +419,37 @@ class _RailItem extends StatelessWidget {
           // fill instead of losing it under the rail's opaque hero.
           return Container(
             height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
               color: p.lycheeSoft.withValues(alpha: t),
               borderRadius: BorderRadius.circular(V3Radius.field),
             ),
+            // The padding rides inside the pressable so the ink covers the
+            // full item rect — an outer padding inset the ink inside the
+            // selection pill it should preview.
             child: V3Pressable(
               borderRadius: BorderRadius.circular(V3Radius.field),
               onTap: onTap,
-              child: Row(children: [
-                Icon(item.icon, color: iconColor, size: 19),
-                const SizedBox(width: 12),
-                Expanded(child: Text(item.localizedLabel(context),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: textColor,
-                    fontSize: 13, fontWeight: FontWeight.w700))),
-              ]),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: [
+                    Icon(item.icon, color: iconColor, size: 19),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        item.localizedLabel(context),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         },
@@ -436,7 +595,8 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
     final controller = AppScope.of(context);
     // Redemption moves to the title bar: the gift button replaces the V3 mark
     // when the panel offers it, and the mark stays when it does not.
-    final giftEntry = isPageEnabled(AppPage.giftCard) && controller.isAuthenticated;
+    final giftEntry =
+        isPageEnabled(AppPage.giftCard) && controller.isAuthenticated;
     // The gift button sits OUTSIDE the drag surface: a double-tap recognizer
     // on its ancestor enters the gesture arena and delays or swallows the
     // button's single tap.
@@ -444,59 +604,96 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
       behavior: HitTestBehavior.translucent,
       onPanStart: (_) => windowManager.startDragging(),
       onDoubleTap: _toggleMaximize,
-      child: Row(children: [
-        Text('LITCHI / PRIVATE NETWORK',
-          style: TextStyle(color: p.inkMuted, fontSize: 10,
-            fontWeight: FontWeight.w800, letterSpacing: 1.4)),
-        const Spacer(),
-      ]),
+      child: Row(
+        children: [
+          Text(
+            'LITCHI / PRIVATE NETWORK',
+            style: TextStyle(
+              color: p.inkMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const Spacer(),
+        ],
+      ),
     );
     return Container(
       height: 42,
       color: p.canvas,
-      child: Row(children: [
-        if (_usesNativeControls) const SizedBox(width: 76),
-        Expanded(child: Padding(
-          padding: const EdgeInsets.only(left: 22),
-          child: dragSurface,
-        )),
-        if (giftEntry) ...[
-          IconButton(
-            key: kWindowGiftCardKey,
-            tooltip: v3Copy(context, zh: '兑换中心',
-              en: 'Redemption', tw: '兌換中心'),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-            onPressed: () => openV3Page(context, AppPage.giftCard),
-            icon: Icon(Icons.redeem_rounded, size: 18, color: p.lycheeInk)),
-          const SizedBox(width: 4),
-        ] else
-          Padding(padding: const EdgeInsets.only(right: 14),
-            child: Text('V3', style: TextStyle(color: p.lycheeInk, fontSize: 10,
-              fontWeight: FontWeight.w900, letterSpacing: 1.4))),
-        if (!_usesNativeControls) ...[
-          _V3WindowButton(
-            tooltip: v3Copy(context, zh: '最小化', en: 'Minimize', tw: '最小化'),
-            icon: Icons.remove_rounded, onPressed: windowManager.minimize),
-          _V3WindowButton(
-            tooltip: _maximized
-                ? v3Copy(context, zh: '还原', en: 'Restore', tw: '還原')
-                : v3Copy(context, zh: '最大化', en: 'Maximize', tw: '最大化'),
-            icon: _maximized ? Icons.filter_none_rounded
-                : Icons.crop_square_rounded, onPressed: _toggleMaximize),
-          _V3WindowButton(
-            tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
-            icon: Icons.close_rounded,
-            close: true, onPressed: _closeWindow),
+      child: Row(
+        children: [
+          if (_usesNativeControls) const SizedBox(width: 76),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 22),
+              child: dragSurface,
+            ),
+          ),
+          if (giftEntry) ...[
+            IconButton(
+              key: kWindowGiftCardKey,
+              tooltip: v3Copy(
+                context,
+                zh: '兑换中心',
+                en: 'Redemption',
+                tw: '兌換中心',
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              onPressed: () => openV3Page(context, AppPage.giftCard),
+              icon: Icon(Icons.redeem_rounded, size: 18, color: p.lycheeInk),
+            ),
+            const SizedBox(width: 4),
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: Text(
+                'V3',
+                style: TextStyle(
+                  color: p.lycheeInk,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.4,
+                ),
+              ),
+            ),
+          if (!_usesNativeControls) ...[
+            _V3WindowButton(
+              tooltip: v3Copy(context, zh: '最小化', en: 'Minimize', tw: '最小化'),
+              icon: Icons.remove_rounded,
+              onPressed: windowManager.minimize,
+            ),
+            _V3WindowButton(
+              tooltip: _maximized
+                  ? v3Copy(context, zh: '还原', en: 'Restore', tw: '還原')
+                  : v3Copy(context, zh: '最大化', en: 'Maximize', tw: '最大化'),
+              icon: _maximized
+                  ? Icons.filter_none_rounded
+                  : Icons.crop_square_rounded,
+              onPressed: _toggleMaximize,
+            ),
+            _V3WindowButton(
+              tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
+              icon: Icons.close_rounded,
+              close: true,
+              onPressed: _closeWindow,
+            ),
+          ],
         ],
-      ]),
+      ),
     );
   }
 }
 
 class _V3WindowButton extends StatelessWidget {
-  const _V3WindowButton({required this.tooltip,
-    required this.icon, required this.onPressed, this.close = false});
+  const _V3WindowButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.close = false,
+  });
   final String tooltip;
   final IconData icon;
   final Future<void> Function() onPressed;
@@ -554,23 +751,41 @@ class _V3BootView extends StatelessWidget {
     final p = V3Palette.of(context);
     return ColoredBox(
       color: p.hero,
-      child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 54,
-          height: 54,
-          decoration: BoxDecoration(color: p.citrus,
-            borderRadius: BorderRadius.circular(V3Radius.card)),
-          child: Icon(Icons.blur_on_rounded, color: p.night, size: 34),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: p.citrus,
+                borderRadius: BorderRadius.circular(V3Radius.card),
+              ),
+              child: Icon(Icons.blur_on_rounded, color: p.night, size: 34),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'LITCHI',
+              style: TextStyle(
+                color: p.ink,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 3,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 90,
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                color: p.lycheeInk,
+                backgroundColor: p.ink.withValues(alpha: 0.15),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 18),
-        Text('LITCHI', style: TextStyle(color: p.ink,
-          fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 3)),
-        const SizedBox(height: 20),
-        SizedBox(width: 90, child: LinearProgressIndicator(
-          minHeight: 3, color: p.lycheeInk,
-          backgroundColor: p.ink.withValues(alpha: 0.15),
-        )),
-      ])),
+      ),
     );
   }
 }

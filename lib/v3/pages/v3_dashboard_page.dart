@@ -1254,10 +1254,10 @@ class _ModeRailState extends State<_ModeRail> with _ModeSwitching {
 }
 
 /// A continuous segmented capsule: one raised track holding every option,
-/// the current selection ringed in lychee — the same pink-outline language
-/// as the switch-node button beside it. Both dashboard mode groups render
-/// through this widget so the 2-option and 3-option groups read as one
-/// control family.
+/// the current selection a soft lychee pill that slides between options —
+/// the same pink selection language as the node rows and chips. Both
+/// dashboard mode groups render through this widget so the 2-option and
+/// 3-option groups read as one control family.
 class _ModeSegment<T> extends StatelessWidget {
   const _ModeSegment({
     required this.values,
@@ -1287,58 +1287,90 @@ class _ModeSegment<T> extends StatelessWidget {
         color: p.surfaceRaised,
         borderRadius: BorderRadius.circular(V3Radius.field),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          for (final value in values)
-            Expanded(
-              child: AnimatedContainer(
-                key: optionKey == null
-                    ? null
-                    : ValueKey<String>(optionKey!(value)),
-                duration: const Duration(milliseconds: 150),
-                alignment: Alignment.center,
-                // The selection keeps the track fill and gains a lychee ring —
-                // an outline chip, not a solid slab of pink. The 1dp border is
-                // always present (transparent when unselected) so no option
-                // ever shifts by a pixel when the ring moves.
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border.all(
-                    color: value == selected ? p.lychee : Colors.transparent,
-                  ),
-                  borderRadius: BorderRadius.circular(V3Radius.control),
+          // The selection is a soft pill that slides between options — the
+          // same lycheeSoft fill + lychee ring the node rows and chips select
+          // with, so every V3 selection speaks one language. Aligning a 1/n
+          // thumb on the [-1..1] axis gives iOS-style travel with no pixel
+          // math, and the pill starts at the current selection so mounts
+          // never animate.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment(
+                  values.length < 2
+                      ? 0
+                      : -1 + 2 * values.indexOf(selected) / (values.length - 1),
+                  0,
                 ),
-                // V3Pressable rides inside the option so the press ink lands on
-                // the option surface instead of on a Material beneath the card
-                // fill. The padding lives inside it so the ink still covers the
-                // full option rect, as the old wrapping InkWell did.
-                child: V3Pressable(
-                  onTap: busy || value == selected
-                      ? null
-                      : () => onSelect(value),
-                  borderRadius: BorderRadius.circular(V3Radius.control),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: Text(
-                        label(context, value),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: value == selected ? p.lycheeInk : p.inkMuted,
-                          fontSize: 11,
-                          fontWeight: selected == value
-                              ? FontWeight.w800
-                              : FontWeight.w700,
-                        ),
+                child: FractionallySizedBox(
+                  widthFactor: 1 / values.length,
+                  // DecoratedBox alone has no child and would collapse to
+                  // zero under the loose align constraints — expand first so
+                  // the pill actually fills its fraction of the track.
+                  child: SizedBox.expand(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: p.lycheeSoft,
+                        border: Border.all(color: p.lychee),
+                        borderRadius: BorderRadius.circular(V3Radius.control),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
+          ),
+          Row(
+            children: [
+              for (final value in values)
+                Expanded(
+                  // V3Pressable rides above the thumb so the press ink lands
+                  // on the option surface instead of on a Material beneath the
+                  // card fill. The padding lives inside it so the ink still
+                  // covers the full option rect, as the old wrapping InkWell did.
+                  child: V3Pressable(
+                    key: optionKey == null
+                        ? null
+                        : ValueKey<String>(optionKey!(value)),
+                    onTap: busy || value == selected
+                        ? null
+                        : () => onSelect(value),
+                    borderRadius: BorderRadius.circular(V3Radius.control),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      child: SizedBox(
+                        width: double.infinity,
+                        // The ink swap animates with the travelling pill; a
+                        // bare TextStyle color would snap while the pill glides.
+                        child: TweenAnimationBuilder<Color?>(
+                          tween: ColorTween(
+                            end: value == selected ? p.lycheeInk : p.inkMuted,
+                          ),
+                          duration: const Duration(milliseconds: 150),
+                          builder: (context, color, _) => Text(
+                            label(context, value),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 11,
+                              fontWeight: selected == value
+                                  ? FontWeight.w800
+                                  : FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -1897,11 +1929,18 @@ class _PlanSummary extends StatelessWidget {
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(V3Radius.card),
-              child: LinearProgressIndicator(
-                value: ratio,
-                minHeight: 9,
-                color: p.success,
-                backgroundColor: p.surfaceRaised,
+              // The bar sweeps from empty on load and glides between values
+              // on refresh instead of jumping to the new fill.
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: ratio),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.easeOutCubic,
+                builder: (context, swept, _) => LinearProgressIndicator(
+                  value: swept,
+                  minHeight: 9,
+                  color: p.success,
+                  backgroundColor: p.surfaceRaised,
+                ),
               ),
             ),
             const SizedBox(height: 9),

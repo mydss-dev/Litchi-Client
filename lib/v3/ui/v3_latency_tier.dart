@@ -17,10 +17,30 @@ import 'v3_locale_copy.dart';
 /// asia ≤100/200, america ≤200/350, europe ≤220/380, oceania ≤180/320.
 
 int _tierIndex(NodeRegion region, int latency) => switch (region) {
-  NodeRegion.asia => latency <= 100 ? 0 : latency <= 200 ? 1 : 2,
-  NodeRegion.america => latency <= 200 ? 0 : latency <= 350 ? 1 : 2,
-  NodeRegion.europe => latency <= 220 ? 0 : latency <= 380 ? 1 : 2,
-  NodeRegion.oceania => latency <= 180 ? 0 : latency <= 320 ? 1 : 2,
+  NodeRegion.asia =>
+    latency <= 100
+        ? 0
+        : latency <= 200
+        ? 1
+        : 2,
+  NodeRegion.america =>
+    latency <= 200
+        ? 0
+        : latency <= 350
+        ? 1
+        : 2,
+  NodeRegion.europe =>
+    latency <= 220
+        ? 0
+        : latency <= 380
+        ? 1
+        : 2,
+  NodeRegion.oceania =>
+    latency <= 180
+        ? 0
+        : latency <= 320
+        ? 1
+        : 2,
 };
 
 /// Text-safe colour for a node latency (labels, values).
@@ -97,36 +117,63 @@ class V3LatencyBadge extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          height: statusSized ? null : 22,
-          constraints: statusSized ? null : const BoxConstraints(minWidth: 22),
-          padding: statusSized
-              ? const EdgeInsets.symmetric(horizontal: 10, vertical: 7)
-              : const EdgeInsets.symmetric(horizontal: 7),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            // Same soft-fill grammar as V3StatusBadge: tier colour at 12% keeps
-            // the chip quiet in both themes and never fights the row highlight.
-            color: v3LatencyBase(p, region, latency).withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(99),
+        // A measurement landing (测速中 → 45ms, a tier recolour, a timeout)
+        // cross-fades the whole capsule instead of hard-swapping fill, glyph
+        // and text in one frame. The first build plays no transition — the
+        // page entrance owns that moment.
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 160),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeOutCubic.flipped,
+          layoutBuilder: (currentChild, previousChildren) => Stack(
+            alignment: Alignment.center,
+            children: [...previousChildren, ?currentChild],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (signal) ...[
-                _V3SignalBars(region: region, latency: latency),
-                const SizedBox(width: 5),
-              ],
-              Text(
-                v3LatencyLabel(context, latency),
-                style: TextStyle(
-                  color: v3LatencyInk(p, region, latency),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: statusSized ? 0.8 : 0.2,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween(
+                begin: const Offset(0, 0.3),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          ),
+          child: Container(
+            key: ValueKey((region, latency, signal, statusSized)),
+            height: statusSized ? null : 22,
+            constraints: statusSized
+                ? null
+                : const BoxConstraints(minWidth: 22),
+            padding: statusSized
+                ? const EdgeInsets.symmetric(horizontal: 10, vertical: 7)
+                : const EdgeInsets.symmetric(horizontal: 7),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              // Same soft-fill grammar as V3StatusBadge: tier colour at 12%
+              // keeps the chip quiet in both themes and never fights the row
+              // highlight.
+              color: v3LatencyBase(p, region, latency).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (signal) ...[
+                  _V3SignalBars(region: region, latency: latency),
+                  const SizedBox(width: 5),
+                ],
+                Text(
+                  v3LatencyLabel(context, latency),
+                  style: TextStyle(
+                    color: v3LatencyInk(p, region, latency),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: statusSized ? 0.8 : 0.2,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -149,7 +196,9 @@ class _V3SignalBars extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final base = v3LatencyBase(p, region, latency);
-    final filled = latency > 0 && latency < 9999 ? 3 - _tierIndex(region, latency) : 0;
+    final filled = latency > 0 && latency < 9999
+        ? 3 - _tierIndex(region, latency)
+        : 0;
     // Nudged up 1px: crossAxisAlignment.end lands the bars on the text box's
     // descender line, a hair below the digits' baseline.
     return Padding(

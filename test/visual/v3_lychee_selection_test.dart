@@ -5,6 +5,7 @@ import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
+import 'package:litchi_client/v3/ui/v3_components.dart';
 import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 
 import 'v3_visual_fixture.dart';
@@ -28,58 +29,95 @@ void main() {
     (ThemeMode.light, V3Palette.light),
     (ThemeMode.dark, V3Palette.dark),
   ]) {
-    testWidgets('$mode configured network mode matches pink plan-cycle selection',
-        (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
-      await tester.binding.setSurfaceSize(const Size(900, 700));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final controller = _SystemModeController();
-      addTearDown(controller.disposeVisual);
+    testWidgets(
+      '$mode configured network mode matches pink plan-cycle selection',
+      (tester) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+        await tester.binding.setSurfaceSize(const Size(900, 700));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final controller = _SystemModeController();
+        addTearDown(controller.disposeVisual);
 
-      await tester.pumpWidget(AppScope(
-        controller: controller,
-        child: MaterialApp(
-          theme: V3Theme.light(), darkTheme: V3Theme.dark(), themeMode: mode,
-          home: const Scaffold(body: V3DashboardPage()),
-        ),
-      ));
-      await tester.pump();
+        await tester.pumpWidget(
+          AppScope(
+            controller: controller,
+            child: MaterialApp(
+              theme: V3Theme.light(),
+              darkTheme: V3Theme.dark(),
+              themeMode: mode,
+              home: const Scaffold(body: V3DashboardPage()),
+            ),
+          ),
+        );
+        await tester.pump();
 
-      // The mode groups are continuous segmented capsules: one raised track
-      // per group, the selection lit as a lychee chip in place.
-      final track = tester.widget<Container>(
-        find.byKey(const ValueKey('v3-network-mode-track')));
-      expect((track.decoration! as BoxDecoration).color, palette.surfaceRaised);
-      final selected = tester.widget<AnimatedContainer>(
-        find.byKey(const ValueKey('v3-network-mode-system')));
-      final other = tester.widget<AnimatedContainer>(
-        find.byKey(const ValueKey('v3-network-mode-tun')));
-      final selectedDecoration = selected.decoration! as BoxDecoration;
-      final otherDecoration = other.decoration! as BoxDecoration;
-      // The selection is a lychee ring on the track, not a solid pink chip.
-      expect(selectedDecoration.color, Colors.transparent);
-      expect((selectedDecoration.border! as Border).top.color, palette.lychee);
-      expect(otherDecoration.color, Colors.transparent);
-      expect((otherDecoration.border! as Border).top.color,
-        Colors.transparent);
-      expect(tester.widget<Text>(find.text('系统代理')).style!.color,
-        palette.lycheeInk);
-      expect(tester.widget<Text>(find.text('TUN 模式')).style!.color,
-        palette.inkMuted);
-      debugDefaultTargetPlatformOverride = null;
-      expect(tester.takeException(), isNull);
-    });
+        // The mode groups are continuous segmented capsules: one raised track
+        // per group, the selection a soft lychee pill that slides between
+        // options — the same fill + ring the node rows and chips select with.
+        final track = tester.widget<Container>(
+          find.byKey(const ValueKey('v3-network-mode-track')),
+        );
+        expect(
+          (track.decoration! as BoxDecoration).color,
+          palette.surfaceRaised,
+        );
+        final pill = tester.widget<DecoratedBox>(
+          find.descendant(
+            of: find.byKey(const ValueKey('v3-network-mode-track')),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is DecoratedBox &&
+                  (widget.decoration as BoxDecoration).color ==
+                      palette.lycheeSoft,
+            ),
+          ),
+        );
+        expect(
+          (pill.decoration as BoxDecoration).border!.top.color,
+          palette.lychee,
+        );
+        // The current option releases its tap target; the other stays live.
+        final selected = tester.widget<V3Pressable>(
+          find.byKey(const ValueKey('v3-network-mode-system')),
+        );
+        final other = tester.widget<V3Pressable>(
+          find.byKey(const ValueKey('v3-network-mode-tun')),
+        );
+        expect(selected.onTap, isNull);
+        expect(other.onTap, isNotNull);
+        expect(
+          tester.widget<Text>(find.text('系统代理')).style!.color,
+          palette.lycheeInk,
+        );
+        expect(
+          tester.widget<Text>(find.text('TUN 模式')).style!.color,
+          palette.inkMuted,
+        );
+        debugDefaultTargetPlatformOverride = null;
+        expect(tester.takeException(), isNull);
+      },
+    );
 
-    testWidgets('$mode automatic node selection has no green selected icon',
-        (tester) async {
+    testWidgets('$mode automatic node selection has no green selected icon', (
+      tester,
+    ) async {
       final controller = _AutoSelectedController();
       addTearDown(controller.disposeVisual);
-      await tester.pumpWidget(MaterialApp(
-        theme: V3Theme.light(), darkTheme: V3Theme.dark(), themeMode: mode,
-        home: Scaffold(body: V3AutoRouteRow(
-          controller: controller, busy: false, onTap: null)),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: V3Theme.light(),
+          darkTheme: V3Theme.dark(),
+          themeMode: mode,
+          home: Scaffold(
+            body: V3AutoRouteRow(
+              controller: controller,
+              busy: false,
+              onTap: null,
+            ),
+          ),
+        ),
+      );
       final icon = tester.widget<Icon>(find.byIcon(Icons.auto_awesome_rounded));
       expect(icon.color, palette.lycheeInk);
       expect(icon.color, isNot(palette.successInk));
