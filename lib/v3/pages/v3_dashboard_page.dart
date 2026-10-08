@@ -554,6 +554,8 @@ class _ConnectIntroContentState extends State<_ConnectIntroContent> {
                           status: status,
                         ),
                         const SizedBox(height: 9),
+                        _ConnectionDuration(controller: widget.controller),
+                        const SizedBox(height: 5),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 180),
                           switchInCurve: Curves.easeOut,
@@ -572,15 +574,15 @@ class _ConnectIntroContentState extends State<_ConnectIntroContent> {
                           child: Text(
                             caption,
                             key: ValueKey(caption),
+                            // The action hint is a footnote beneath the
+                            // display-size session timer above it.
                             style: TextStyle(
-                              color: p.ink,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
+                              color: p.inkMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        _ConnectionDuration(controller: widget.controller),
                       ],
                     ),
                   ),
@@ -1077,11 +1079,26 @@ class _ConnectionDurationState extends State<_ConnectionDuration> {
   }
 
   @override
-  Widget build(BuildContext context) => Text(
-    _duration(widget.controller.connectedDuration),
-    key: const Key('v3-connection-duration'),
-    style: TextStyle(color: V3Palette.of(context).inkMuted, fontSize: 11),
-  );
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    // Display-level session timer: the single live number on the dashboard
+    // gets the largest type in the workspace (M3 display role / HIG large
+    // title). Tabular figures keep per-second digit swaps from shifting
+    // glyphs; muted gray while idle reads as "not started".
+    final connected =
+        widget.controller.connectionStatus == ConnectionStatus.connected;
+    return Text(
+      _duration(widget.controller.connectedDuration),
+      key: const Key('v3-connection-duration'),
+      style: TextStyle(
+        color: connected ? p.ink : p.inkMuted,
+        fontSize: 30,
+        height: 1.0,
+        fontWeight: FontWeight.w700,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+    );
+  }
 }
 
 /// Hide unsupported system-proxy status from Android and Linux Home.
@@ -1556,10 +1573,13 @@ class _Metric extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+          // Headline-level numerals with tabular figures: live gauges read
+          // as data, and B/s updates never jiggle the glyph columns.
           style: TextStyle(
             color: p.ink,
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
       ],
