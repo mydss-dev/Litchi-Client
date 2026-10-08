@@ -27,6 +27,7 @@ class V3Palette {
     required this.aquaInk,
     required this.onLychee,
     required this.onDanger,
+    required this.shadows,
   });
 
   final Color canvas;
@@ -83,6 +84,15 @@ class V3Palette {
   /// reads at 6.5:1.
   final Color onDanger;
 
+  /// Soft ambient shadows for floating surfaces (panels, the rail, dialogs).
+  ///
+  /// Borders no longer separate surfaces — separation is the tonal staircase
+  /// (canvas → surface → surfaceRaised) plus this one quiet lift for anything
+  /// that sits directly on the canvas. Light mode barely needs it (the sage
+  /// ground already contrasts the near-white card); dark mode leans on the
+  /// fill step and takes a slightly deeper shadow for grounding.
+  final List<BoxShadow> shadows;
+
   static const light = V3Palette(
     // Four tiers, darkest to lightest: canvas → hero → surfaceRaised → surface.
     //
@@ -130,6 +140,10 @@ class V3Palette {
     // danger red is dark enough that white clears AA, while night does not
     // (3.6:1). See the QR note under `canvas` above.
     onDanger: Color(0xFFFFFFFF),
+    shadows: [
+      BoxShadow(color: Color(0x0A000000), blurRadius: 6, offset: Offset(0, 2)),
+      BoxShadow(color: Color(0x0F000000), blurRadius: 20, offset: Offset(0, 8)),
+    ],
   );
 
   static const dark = V3Palette(
@@ -156,6 +170,9 @@ class V3Palette {
     aquaInk: Color(0xFF79E0DC),
     onLychee: Color(0xFF080B0A),
     onDanger: Color(0xFF080B0A),
+    shadows: [
+      BoxShadow(color: Color(0x40000000), blurRadius: 18, offset: Offset(0, 6)),
+    ],
   );
 
   static V3Palette of(BuildContext context) =>
@@ -281,9 +298,9 @@ class V3Theme {
       // Selection follows the cycle chooser: a soft pink ground, dark/light
       // palette-safe lychee ink, and a matching border. Never white on lime.
       chipTheme: ChipThemeData(
-        backgroundColor: p.surface,
+        backgroundColor: p.surfaceRaised,
         selectedColor: p.lycheeSoft,
-        side: BorderSide(color: p.line),
+        side: BorderSide.none,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(V3Radius.control),
         ),
@@ -315,7 +332,9 @@ class V3Theme {
           ),
           side: WidgetStateProperty.resolveWith(
             (states) => BorderSide(
-              color: states.contains(WidgetState.selected) ? p.lychee : p.line,
+              color: states.contains(WidgetState.selected)
+                  ? p.lychee
+                  : Colors.transparent,
               width: states.contains(WidgetState.selected) ? 1.5 : 1,
             ),
           ),
@@ -348,9 +367,11 @@ class V3Theme {
           borderRadius: BorderRadius.circular(V3Radius.field),
           borderSide: BorderSide.none,
         ),
+        // Filled-style inputs: the surfaceRaised fill is the boundary; only
+        // focus earns an outline (brand pink), never idle chrome.
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(V3Radius.field),
-          borderSide: BorderSide(color: p.line),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(V3Radius.field),

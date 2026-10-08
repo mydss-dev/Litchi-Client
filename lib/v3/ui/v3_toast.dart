@@ -141,7 +141,6 @@ class _V3ToastViewState extends State<_V3ToastView>
               decoration: BoxDecoration(
                 color: p.surface,
                 borderRadius: BorderRadius.circular(V3Radius.field),
-                border: Border.all(color: p.line),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: .16),

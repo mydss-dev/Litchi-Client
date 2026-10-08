@@ -249,9 +249,8 @@ class _V3NoticeBarState extends State<V3NoticeBar>
               decoration: BoxDecoration(
                 color: isUpdatePage
                     ? p.success.withValues(alpha: .10)
-                    : p.surface,
-                borderRadius: BorderRadius.circular(V3Radius.card),
-                border: Border.all(color: p.line)),
+                    : p.surfaceRaised,
+                borderRadius: BorderRadius.circular(V3Radius.card)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                 Row(children: [
@@ -424,7 +423,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(color: p.surface,
           borderRadius: BorderRadius.circular(V3Radius.panel),
-          border: Border.all(color: p.line)),
+          boxShadow: p.shadows),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Padding(padding: const EdgeInsets.fromLTRB(22, 18, 12, 10),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start,

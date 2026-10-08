@@ -71,7 +71,8 @@ class _AuthBrandPanel extends StatelessWidget {
       // 44px title strip), so the panel never tucks under the window buttons.
       margin: const EdgeInsets.fromLTRB(14, 44, 14, 14),
       decoration: BoxDecoration(color: p.hero,
-        borderRadius: BorderRadius.circular(V3Radius.panel), border: Border.all(color: p.line)),
+        borderRadius: BorderRadius.circular(V3Radius.panel),
+        boxShadow: p.shadows),
       padding: const EdgeInsets.all(34),
       child: Stack(children: [
         const Align(alignment: Alignment.topLeft,
@@ -473,9 +474,8 @@ class _RegisterFormState extends State<_RegisterForm> {
                   fontWeight: FontWeight.w800, letterSpacing: 1.5)),
               const SizedBox(height: 8),
               Container(padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(color: p.surface,
-                  borderRadius: BorderRadius.circular(V3Radius.field),
-                  border: Border.all(color: p.line)),
+                decoration: BoxDecoration(color: p.surfaceRaised,
+                  borderRadius: BorderRadius.circular(V3Radius.field)),
                 child: DropdownButtonHideUnderline(child: DropdownButton<String>(
                   isExpanded: true,
                   value: selectedDomain,

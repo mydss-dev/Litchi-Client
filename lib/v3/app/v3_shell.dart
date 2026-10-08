@@ -324,8 +324,8 @@ class _DesktopRail extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
       decoration: BoxDecoration(
         color: p.hero,
-        border: Border.all(color: p.line),
         borderRadius: BorderRadius.circular(V3Radius.card),
+        boxShadow: p.shadows,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,7 +354,6 @@ class _DesktopRail extends StatelessWidget {
             decoration: BoxDecoration(
               color: p.surface,
               borderRadius: BorderRadius.circular(V3Radius.card),
-              border: Border.all(color: p.line),
             ),
             child: V3Pressable(
               borderRadius: BorderRadius.circular(V3Radius.card),
@@ -682,7 +681,7 @@ class _DesktopTitleOverlayState extends State<_DesktopTitleOverlay>
               tw: '兌換中心',
             ),
             icon: Icons.redeem_rounded,
-            iconColor: V3Palette.of(context).lycheeInk,
+            iconColor: V3Palette.of(context).inkMuted,
             onPressed: () => openV3Page(context, AppPage.giftCard),
           ),
           const SizedBox(width: 4),

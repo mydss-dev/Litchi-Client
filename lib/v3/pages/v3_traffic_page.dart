@@ -65,12 +65,12 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                 decoration: BoxDecoration(
                   color: p.surface,
                   borderRadius: BorderRadius.circular(V3Radius.panel),
-                  border: Border.all(color: p.line),
+                  boxShadow: p.shadows,
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.data_usage_rounded, color: p.lychee, size: 34),
+                    Icon(Icons.data_usage_rounded, color: p.inkMuted, size: 34),
                     const SizedBox(height: 12),
                     Text(
                       v3Copy(
@@ -179,7 +179,7 @@ class _QuotaPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.hero,
         borderRadius: BorderRadius.circular(V3Radius.panel),
-        border: Border.all(color: p.line),
+        boxShadow: p.shadows,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,7 +435,6 @@ class _TimingTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.card),
-        border: Border.all(color: p.line),
       ),
       child: Row(
         children: [
@@ -538,7 +537,7 @@ class _TrendPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.panel),
-        border: Border.all(color: p.line),
+        boxShadow: p.shadows,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

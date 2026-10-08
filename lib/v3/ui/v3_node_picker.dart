@@ -240,9 +240,11 @@ class V3AutoRouteRow extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       decoration: BoxDecoration(
-        color: active ? p.lycheeSoft : p.surface,
+        color: active ? p.lycheeSoft : p.surfaceRaised,
         borderRadius: BorderRadius.circular(V3Radius.card),
-        border: Border.all(color: active ? p.lychee : p.line),
+        border: Border.all(
+          color: active ? p.lychee : Colors.transparent,
+        ),
       ),
       // V3Pressable rides inside the opaque fill so the press ink lands above
       // it instead of vanishing on the sheet Material below; the padding rides
@@ -338,9 +340,11 @@ class V3NodeRow extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 160),
       decoration: BoxDecoration(
-        color: selected ? p.lycheeSoft : p.surface,
+        color: selected ? p.lycheeSoft : p.surfaceRaised,
         borderRadius: BorderRadius.circular(V3Radius.card),
-        border: Border.all(color: selected ? p.lychee : p.line),
+        border: Border.all(
+          color: selected ? p.lychee : Colors.transparent,
+        ),
       ),
       // Same shape as the auto row: press ink above the opaque fill, padding
       // inside the pressable so the ink covers the full row rect.

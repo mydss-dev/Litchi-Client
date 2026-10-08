@@ -182,7 +182,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         Container(width: double.infinity, padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(color: p.surface,
             borderRadius: BorderRadius.circular(V3Radius.panel),
-            border: Border.all(color: p.line)),
+            boxShadow: p.shadows),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SingleChildScrollView(scrollDirection: Axis.horizontal,
               child: SegmentedButton<int>(

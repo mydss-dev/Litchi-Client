@@ -163,10 +163,10 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                             constraints: const BoxConstraints(maxWidth: 470),
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: message.isAdmin ? p.surface : p.lycheeSoft,
-                              borderRadius: BorderRadius.circular(V3Radius.card),
-                              border: message.isAdmin
-                                ? Border.all(color: p.line) : null),
+                              color: message.isAdmin
+                                ? p.surfaceRaised : p.lycheeSoft,
+                              borderRadius:
+                                BorderRadius.circular(V3Radius.card)),
                             child: Column(
                               crossAxisAlignment: message.isAdmin
                                 ? CrossAxisAlignment.start : CrossAxisAlignment.end,

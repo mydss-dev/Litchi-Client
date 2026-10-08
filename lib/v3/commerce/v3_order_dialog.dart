@@ -290,8 +290,8 @@ class _CycleOption extends StatelessWidget {
       width: 132,
       decoration: BoxDecoration(
         color: selected ? p.lycheeSoft : p.surfaceRaised,
-        border: Border.all(color: selected ? p.lychee : p.line,
-          width: selected ? 1.5 : 1),
+        border: selected
+          ? Border.all(color: p.lychee, width: 1.5) : null,
         borderRadius: BorderRadius.circular(V3Radius.field)),
       child: V3Pressable(borderRadius: BorderRadius.circular(V3Radius.field), onTap: onTap,
         child: Padding(padding: const EdgeInsets.all(12),

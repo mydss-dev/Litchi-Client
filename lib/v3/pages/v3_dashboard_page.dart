@@ -94,7 +94,7 @@ class _NoPlanDashboardPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inventory_2_outlined, size: 34, color: p.lychee),
+            Icon(Icons.inventory_2_outlined, size: 34, color: p.inkMuted),
             const SizedBox(height: 12),
             Text(
               v3Copy(
@@ -467,13 +467,15 @@ class _ConnectIntroContentState extends State<_ConnectIntroContent> {
     final status = _shown;
     final connected = status == ConnectionStatus.connected;
     final connecting = _isBusy(status);
-    // The corner badge speaks protection, not connection: red while exposed,
-    // lime once the tunnel is up. The orb button below carries the live state.
+    // The corner badge speaks protection, not connection: red only while a
+    // real fault exposes the tunnel, quiet gray for plain idle, lime once the
+    // tunnel is up. The orb button below carries the live state.
     final protectionColor = switch (status) {
       ConnectionStatus.connected => p.success,
       ConnectionStatus.connecting ||
       ConnectionStatus.disconnecting => p.warning,
-      ConnectionStatus.error || ConnectionStatus.disconnected => p.danger,
+      ConnectionStatus.error => p.danger,
+      ConnectionStatus.disconnected => p.inkMuted,
     };
     // The caption below the orb cross-fades on state changes; compute it once
     // so the AnimatedSwitcher key and the Text share one source.
@@ -1732,9 +1734,9 @@ class _ConnectivitySite extends StatelessWidget {
     final r = result;
     final (dotColor, statusLine, statusColor) = switch (phase) {
       _SitePhase.disconnected => (
-        p.danger,
+        p.inkMuted,
         v3Copy(context, zh: '未连接', en: 'Offline', tw: '未連線'),
-        p.dangerInk,
+        p.inkMuted,
       ),
       _SitePhase.checking => (
         p.warning,

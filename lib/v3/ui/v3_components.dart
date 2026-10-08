@@ -67,16 +67,14 @@ class V3Panel extends StatelessWidget {
       V3PanelTone.hero => p.hero,
       V3PanelTone.signal => p.lychee,
     };
-    // The hero panel used to be `p.night`, which is near-black in both modes —
-    // so it needed no border to separate itself. Now that it is a light block
-    // in light mode, it reads as a panel only if it is drawn like one.
-    final border = tone == V3PanelTone.signal ? Colors.transparent : p.line;
+    // No border: separation is the fill step plus the palette's ambient
+    // shadow. The solid signal tone is its own emphasis and floats flat.
     return Container(
       padding: padding,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: border),
+        boxShadow: tone == V3PanelTone.signal ? null : p.shadows,
       ),
       child: child,
     );
@@ -94,10 +92,11 @@ enum V3PanelTone { surface, raised, hero, signal }
 /// [ChoiceChip.side] is a plain [BorderSide] rather than a state-resolved
 /// property, so it cannot come from `ChipThemeData` with two values and every
 /// selectable chip has to ask for its own. All of them want the same answer:
-/// the brand colour when chosen, a hairline otherwise.
+/// the brand colour when chosen, nothing otherwise — the surfaceRaised fill
+/// already separates an idle chip, and borders are reserved for emphasis.
 BorderSide v3ChipSide(V3Palette p, {required bool selected}) => selected
     ? BorderSide(color: p.lychee, width: 1.5)
-    : BorderSide(color: p.line);
+    : const BorderSide(color: Colors.transparent);
 
 /// A grey block standing in for a value that has not loaded yet.
 ///
@@ -462,7 +461,7 @@ class V3NavPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.panel),
-        border: Border.all(color: p.line),
+        boxShadow: p.shadows,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

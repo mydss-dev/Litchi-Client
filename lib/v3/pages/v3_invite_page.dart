@@ -282,7 +282,7 @@ class _InviteHero extends StatelessWidget {
           decoration: BoxDecoration(
             color: p.hero,
             borderRadius: BorderRadius.circular(V3Radius.panel),
-            border: Border.all(color: p.line),
+            boxShadow: p.shadows,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -480,7 +480,6 @@ class _InviteHero extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: p.surfaceRaised,
                   borderRadius: BorderRadius.circular(V3Radius.field),
-                  border: Border.all(color: p.line),
                 ),
                 child: Row(
                   children: [
@@ -691,7 +690,7 @@ class _InviteStats extends StatelessWidget {
               decoration: BoxDecoration(
                 color: p.surface,
                 borderRadius: BorderRadius.circular(V3Radius.card),
-                border: Border.all(color: p.line),
+                boxShadow: p.shadows,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

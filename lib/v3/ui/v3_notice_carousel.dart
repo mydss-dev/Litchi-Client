@@ -103,11 +103,9 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
     final p = V3Palette.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? p.hero
-            : p.surface,
+        color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.card),
-        border: Border.all(color: p.line),
+        boxShadow: p.shadows,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(V3Radius.card),

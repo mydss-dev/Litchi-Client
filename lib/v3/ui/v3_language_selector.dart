@@ -24,7 +24,6 @@ class V3LanguageSelector extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: p.surfaceRaised,
-          border: Border.all(color: p.line),
           borderRadius: BorderRadius.circular(V3Radius.field),
         ),
         child: DropdownButtonHideUnderline(

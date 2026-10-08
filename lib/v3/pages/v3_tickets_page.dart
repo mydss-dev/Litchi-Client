@@ -117,7 +117,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
             constraints: const BoxConstraints(minHeight: kV3TicketListMinHeight + 36),
             decoration: BoxDecoration(color: p.surface,
               borderRadius: BorderRadius.circular(V3Radius.panel),
-              border: Border.all(color: p.line)),
+              boxShadow: p.shadows),
             child: skeleton
               ? const _TicketsSkeleton()
               : error != null

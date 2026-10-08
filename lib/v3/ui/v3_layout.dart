@@ -38,12 +38,14 @@ class V3WorkspaceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: dark ? p.hero : p.surface,
+        // Both modes elevate: the card sits one tonal step above the canvas.
+        // Dark mode used to sink cards into `hero` (darker than the canvas),
+        // which left only the border to draw the card — the wireframe look.
+        color: p.surface,
         borderRadius: BorderRadius.circular(V3Layout.cardRadius),
-        border: Border.all(color: p.line),
+        boxShadow: p.shadows,
       ),
       child: Padding(padding: padding, child: child),
     );

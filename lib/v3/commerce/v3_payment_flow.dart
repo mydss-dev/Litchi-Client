@@ -356,7 +356,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               decoration: BoxDecoration(
                 color: p.hero,
                 borderRadius: BorderRadius.circular(V3Radius.panel),
-                border: Border.all(color: p.line),
+                boxShadow: p.shadows,
               ),
               child: Row(
                 children: [
