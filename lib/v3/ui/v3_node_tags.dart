@@ -10,6 +10,8 @@ class V3NodeTags extends StatelessWidget {
     required this.tags,
     this.maxVisible = 3,
     this.accent = true,
+    this.chipMaxWidth = 104,
+    this.showOverflow = true,
   });
 
   final List<String> tags;
@@ -20,6 +22,17 @@ class V3NodeTags extends StatelessWidget {
   /// lycheeSoft tint would dissolve a pink chip — while the text stays
   /// lychee-inked either way, so a tag reads as brand on both fills.
   final bool accent;
+
+  /// Single-chip width cap. The dashboard cards' stacked Wrap can afford the
+  /// wide default; an inline chip beside a node name shares that line with
+  /// the title, so it passes a tighter cap and lets the name's ellipsis
+  /// absorb the rest.
+  final double chipMaxWidth;
+
+  /// Whether hidden tags surface as a trailing "+N". Node rows turn this off:
+  /// a pink "+N" floating between the chip and the latency badge reads as
+  /// clutter at the row's tail — extra tags stay searchable instead.
+  final bool showOverflow;
 
   @override
   Widget build(BuildContext context) {
@@ -34,13 +47,16 @@ class V3NodeTags extends StatelessWidget {
           Tooltip(
             message: tag,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              // Slim 2px vertical padding: the pill stays ~18px tall so it
+              // floats centred beside a 14px row title instead of filling the
+              // whole 22px name line and sagging into the subtitle.
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: accent ? p.lycheeSoft : p.surface,
                 borderRadius: BorderRadius.circular(99),
               ),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 104),
+                constraints: BoxConstraints(maxWidth: chipMaxWidth),
                 child: Text(
                   tag,
                   maxLines: 1,
@@ -54,7 +70,7 @@ class V3NodeTags extends StatelessWidget {
               ),
             ),
           ),
-        if (tags.length > maxVisible)
+        if (showOverflow && tags.length > maxVisible)
           Text(
             '+${tags.length - maxVisible}',
             style: TextStyle(color: p.inkMuted, fontSize: 10),

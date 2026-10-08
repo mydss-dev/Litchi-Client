@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -355,24 +357,70 @@ class V3NodeRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            node.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            // Matches the auto row's name voice (14/w700);
-                            // titleMedium's w600 read lighter than the row
-                            // above it inside the same sheet.
-                            style: TextStyle(
-                              color: p.ink,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                    // Fixed 22px name line for every row, tagged or not.
+                    // Tags sit centred in the void between the name and the
+                    // latency badge — a three-zone row (name left, tags
+                    // middle, status right) that keeps the tags in the same
+                    // spot on every row instead of trailing the name's
+                    // length. The name keeps its natural width but is capped
+                    // so the centred tag zone always has room; long names
+                    // ellipsize first.
+                    SizedBox(
+                      height: 22,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final tags = node.tags;
+                          // Worst-case tag zone: up to two chips at their
+                          // 80px cap plus the 6px gap between them.
+                          final tagZone = tags.isEmpty
+                              ? 0.0
+                              : (tags.length == 1 ? 80.0 : 166.0);
+                          // The name never eats into the tag zone: cap it so
+                          // the centred tags keep their space plus 8px air.
+                          final nameCap = tags.isEmpty
+                              ? constraints.maxWidth
+                              : math.max(
+                                  0.0,
+                                  math.min(
+                                    constraints.maxWidth * 0.6,
+                                    constraints.maxWidth - tagZone - 8,
+                                  ),
+                                );
+                          return Row(
+                            children: [
+                              ConstrainedBox(
+                                constraints: BoxConstraints(maxWidth: nameCap),
+                                child: Text(
+                                  node.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  // Matches the auto row's name voice
+                                  // (14/w700); titleMedium's w600 read
+                                  // lighter than the row above it inside the
+                                  // same sheet.
+                                  style: TextStyle(
+                                    color: p.ink,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              if (tags.isNotEmpty)
+                                Expanded(
+                                  child: Center(
+                                    child: V3NodeTags(
+                                      tags: tags,
+                                      maxVisible: 2,
+                                      accent: !selected,
+                                      chipMaxWidth: 80,
+                                      showOverflow: false,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
@@ -383,14 +431,6 @@ class V3NodeRow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                    if (node.tags.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      V3NodeTags(
-                        tags: node.tags,
-                        maxVisible: 2,
-                        accent: !selected,
-                      ),
-                    ],
                   ],
                 ),
               ),

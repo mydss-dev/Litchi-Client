@@ -52,6 +52,9 @@ void main() {
       ),
     );
     await tester.pump();
+    // Inline contract: the node row centres up to two tag chips in the void
+    // between the title and the latency badge — both fixture tags render; a
+    // third stays hidden (searchable, never a "+N" at the row tail).
     expect(find.text('流媒体解锁'), findsOneWidget);
     expect(find.text('家宽'), findsOneWidget);
     expect(tester.takeException(), isNull);

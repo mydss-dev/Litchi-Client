@@ -40,6 +40,10 @@ class VisualV3Controller extends AppController {
       code: 'HK',
       englishName: 'Hong Kong',
       latency: 31,
+      // A real panel tag (same one the user's server shows) so the nodes-page
+      // baseline exercises the inline tag chip and the uniform row height it
+      // must keep.
+      tags: ['xignnim'],
       region: NodeRegion.asia,
     ),
     NodeModel(
