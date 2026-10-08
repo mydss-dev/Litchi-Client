@@ -328,12 +328,77 @@ class _DesktopRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
 
-    final railItems = [
-      // Dashboard and connection are the same AppPage.dashboard route.
-      // Never introduce a second Home item alongside Connect.
-      ...enabledNavItems(kDesktopRail),
-      if (kRailSettings.isEnabled) kRailSettings,
+    // Desktop IA in three captioned groups -- Fluent NavigationView's section
+    // headers, Ant Pro's grouped menu; M3 rail guidance caps destinations
+    // near five, so eight flat equal-weight items overread. Settings stays
+    // the tail item: it is system chrome, not support. Empty groups (feature
+    // gates off) vanish together with their caption.
+    final groups = <(String, List<V3NavItem>)>[
+      (
+        v3Copy(context, zh: '网络', en: 'Network', tw: '網路'),
+        kRailNetworkGroup,
+      ),
+      (
+        v3Copy(context, zh: '订阅', en: 'Subscription', tw: '訂閱'),
+        kRailPlanGroup,
+      ),
+      (
+        v3Copy(context, zh: '支持', en: 'Support', tw: '支援'),
+        kRailSupportGroup,
+      ),
     ];
+    final railChildren = <Widget>[];
+    var railY = 0.0;
+    var firstGroup = true;
+    double? selectedTop;
+    for (final (caption, items) in groups) {
+      final enabled = enabledNavItems(items);
+      if (enabled.isEmpty) continue;
+      final topGap = firstGroup ? 0.0 : 12.0;
+      // Fixed-height caption blocks keep the pill's offset math exact.
+      railChildren.add(SizedBox(
+        height: topGap + 20,
+        child: Padding(
+          padding: EdgeInsets.only(left: 10, top: topGap + 4),
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: Text(
+              caption,
+              maxLines: 1,
+              style: TextStyle(
+                color: p.inkMuted.withValues(alpha: 0.72),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+        ),
+      ));
+      railY += topGap + 20;
+      firstGroup = false;
+      for (final item in enabled) {
+        if (controller.page == item.page) selectedTop = railY;
+        railChildren.add(_RailItem(
+          key: railItemKey(item.page),
+          item: item,
+          selected: controller.page == item.page,
+          onTap: () => openV3Page(context, item.page),
+        ));
+        railY += 48;
+      }
+    }
+    if (kRailSettings.isEnabled) {
+      railChildren.add(const SizedBox(height: 10));
+      railY += 10;
+      if (controller.page == kRailSettings.page) selectedTop = railY;
+      railChildren.add(_RailItem(
+        key: railItemKey(kRailSettings.page),
+        item: kRailSettings,
+        selected: controller.page == kRailSettings.page,
+        onTap: () => openV3Page(context, kRailSettings.page),
+      ));
+    }
     final user = controller.user;
     final plan = PlanPresentation.fromController(controller);
     return Container(
@@ -361,31 +426,17 @@ class _DesktopRail extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(2, 0, 2, 26),
             child: V3BrandMark(boxSize: 34),
           ),
-          ...[
-            // The items sit in a Stack so the shared selection pill can
-            // slide underneath them (see _RailPill) -- one indicator for the
-            // whole rail, DLSS5's dock-glow.
-            Stack(
-              children: [
-                _RailPill(
-                  selectedIndex:
-                      railItems.indexWhere((it) => it.page == controller.page),
-                ),
-                Column(
-                  children: railItems
-                      .map(
-                        (item) => _RailItem(
-                          key: railItemKey(item.page),
-                          item: item,
-                          selected: controller.page == item.page,
-                          onTap: () => openV3Page(context, item.page),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ],
-            ),
-          ],
+          // The items sit in a Stack so the shared selection pill can
+          // slide underneath them (see _RailPill) -- one indicator for the
+          // whole rail, DLSS5's dock-glow. The rail's build loop above owns
+          // the item order and the pill's offsets; captions ride in the same
+          // Column so the pill passes under them when it slides groups.
+          Stack(
+            children: [
+              _RailPill(selectedTop: selectedTop),
+              Column(children: railChildren),
+            ],
+          ),
           const Spacer(),
           const SizedBox(height: 12),
           Container(
@@ -395,7 +446,7 @@ class _DesktopRail extends StatelessWidget {
               borderRadius: BorderRadius.circular(V3Radius.card),
             ),
             child: V3Pressable(
-              borderRadius: BorderRadius.circular(V3Radius.card),
+              hoverTint: p.ink.withValues(alpha: 0.08),
               onTap: () => controller.goToPage(AppPage.account),
               child: Padding(
                 padding: const EdgeInsets.all(9),
@@ -603,6 +654,7 @@ class _RailItem extends StatelessWidget {
             // the pill can travel between items without repainting them.
             child: V3Pressable(
               borderRadius: BorderRadius.circular(V3Radius.field),
+              hoverTint: p.ink.withValues(alpha: 0.08),
               onTap: onTap,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1098,9 +1150,13 @@ class _V3BootView extends StatelessWidget {
 /// last valid position while hidden (sub-pages have no rail item), so coming
 /// back it slides from where it left.
 class _RailPill extends StatefulWidget {
-  const _RailPill({required this.selectedIndex});
+  const _RailPill({required this.selectedTop});
 
-  final int selectedIndex;
+  /// The selected item's top offset inside the rail's item stack, or null
+  /// when nothing is selected (sub-pages have no rail item). The rail
+  /// computes this while laying out its groups -- captions make the pitch
+  /// irregular, so an index times 48 no longer lands on the right item.
+  final double? selectedTop;
 
   @override
   State<_RailPill> createState() => _RailPillState();
@@ -1111,8 +1167,9 @@ class _RailPillState extends State<_RailPill> {
   bool _visible = false;
 
   void _sync() {
-    if (widget.selectedIndex >= 0) {
-      _top = widget.selectedIndex * 48.0;
+    final top = widget.selectedTop;
+    if (top != null) {
+      _top = top;
       _visible = true;
     } else {
       _visible = false;

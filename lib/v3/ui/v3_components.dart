@@ -264,24 +264,73 @@ class V3ActionButton extends StatelessWidget {
 /// Material, which sits below the card fill. Nest [V3Pressable] inside the
 /// existing decorated Container: decoration and animation stay where they
 /// are, the ink lands above them.
-class V3Pressable extends StatelessWidget {
+class V3Pressable extends StatefulWidget {
   const V3Pressable({
     super.key,
     required this.onTap,
     required this.child,
     this.borderRadius,
+    this.hoverTint,
   });
 
   final VoidCallback? onTap;
   final Widget child;
   final BorderRadius? borderRadius;
 
+  /// Opt-in hover state layer (Material 3's ~8% ink wash), tinted from the
+  /// palette instead of the theme default. When null -- the default -- the
+  /// widget keeps the stock InkWell hover so existing call sites are
+  /// untouched. The tint fades on [V3Motion.fast]; reduced motion lands
+  /// immediately.
+  final Color? hoverTint;
+
+  @override
+  State<V3Pressable> createState() => _V3PressableState();
+}
+
+class _V3PressableState extends State<V3Pressable> {
+  bool _hovering = false;
+
   @override
   Widget build(BuildContext context) {
-    return Material(
-      type: MaterialType.transparency,
-      borderRadius: borderRadius,
-      child: InkWell(borderRadius: borderRadius, onTap: onTap, child: child),
+    final hoverTint = widget.hoverTint;
+    final borderRadius = widget.borderRadius;
+    if (hoverTint == null) {
+      return Material(
+        type: MaterialType.transparency,
+        borderRadius: borderRadius,
+        child: InkWell(
+          borderRadius: borderRadius,
+          onTap: widget.onTap,
+          child: widget.child,
+        ),
+      );
+    }
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: borderRadius,
+        child: InkWell(
+          borderRadius: borderRadius,
+          onTap: widget.onTap,
+          // The animated tint below owns the hover look; the stock wash would
+          // double-paint it.
+          hoverColor: Colors.transparent,
+          child: AnimatedContainer(
+            duration: v3ReducedMotion(context)
+                ? Duration.zero
+                : V3Motion.fast,
+            curve: V3Motion.ease,
+            decoration: BoxDecoration(
+              color: _hovering ? hoverTint : Colors.transparent,
+              borderRadius: borderRadius,
+            ),
+            child: widget.child,
+          ),
+        ),
+      ),
     );
   }
 }

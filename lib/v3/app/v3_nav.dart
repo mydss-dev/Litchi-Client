@@ -161,47 +161,61 @@ const List<V3NavItem> kMobileMore = [
 // ── Desktop IA ──────────────────────────────────────────────────────────────
 //
 // Settings is pinned to the rail's footer and the account card is its own entry
-// point, so neither is part of this list.
+// point, so neither is part of this list. The rail renders the items in three
+// captioned groups (kRailNetworkGroup / kRailPlanGroup / kRailSupportGroup) --
+// named consts so the flat list and the groups stay one source of truth.
+
+const V3NavItem kRailConnect = V3NavItem(
+  page: AppPage.dashboard,
+  icon: Icons.radar_rounded,
+  placement: V3NavPlacement.desktopRail,
+);
+const V3NavItem kRailNodes = V3NavItem(
+  page: AppPage.nodes,
+  icon: Icons.hub_rounded,
+  placement: V3NavPlacement.desktopRail,
+);
+const V3NavItem kRailShop = V3NavItem(
+  page: AppPage.shop,
+  icon: Icons.shopping_bag_outlined,
+  placement: V3NavPlacement.desktopRail,
+);
+// Adjacent to shop: buy a plan, then verify the order without moving to
+// another IA region. The rail entry is feature-gated like every other item.
+const V3NavItem kRailOrders = V3NavItem(
+  page: AppPage.orders,
+  icon: Icons.receipt_long_outlined,
+  placement: V3NavPlacement.desktopRail,
+);
+const V3NavItem kRailTraffic = V3NavItem(
+  page: AppPage.traffic,
+  icon: Icons.insights_rounded,
+  placement: V3NavPlacement.desktopRail,
+);
+const V3NavItem kRailInvite = V3NavItem(
+  page: AppPage.invite,
+  icon: Icons.auto_awesome_rounded,
+  placement: V3NavPlacement.desktopRail,
+);
+const V3NavItem kRailTickets = V3NavItem(
+  page: AppPage.tickets,
+  icon: Icons.forum_outlined,
+  placement: V3NavPlacement.desktopRail,
+);
 
 const List<V3NavItem> kDesktopRail = [
-  V3NavItem(
-    page: AppPage.dashboard,
-    icon: Icons.radar_rounded,
-    placement: V3NavPlacement.desktopRail,
-  ),
-  V3NavItem(
-    page: AppPage.nodes,
-    icon: Icons.hub_rounded,
-    placement: V3NavPlacement.desktopRail,
-  ),
-  V3NavItem(
-    page: AppPage.shop,
-    icon: Icons.shopping_bag_outlined,
-    placement: V3NavPlacement.desktopRail,
-  ),
-  // Adjacent to shop: buy a plan, then verify the order without moving to
-  // another IA region. The rail entry is feature-gated like every other item.
-  V3NavItem(
-    page: AppPage.orders,
-    icon: Icons.receipt_long_outlined,
-    placement: V3NavPlacement.desktopRail,
-  ),
-  V3NavItem(
-    page: AppPage.traffic,
-    icon: Icons.insights_rounded,
-    placement: V3NavPlacement.desktopRail,
-  ),
-  V3NavItem(
-    page: AppPage.invite,
-    icon: Icons.auto_awesome_rounded,
-    placement: V3NavPlacement.desktopRail,
-  ),
-  V3NavItem(
-    page: AppPage.tickets,
-    icon: Icons.forum_outlined,
-    placement: V3NavPlacement.desktopRail,
-  ),
+  kRailConnect,
+  kRailNodes,
+  kRailShop,
+  kRailOrders,
+  kRailTraffic,
+  kRailInvite,
+  kRailTickets,
 ];
+
+const List<V3NavItem> kRailNetworkGroup = [kRailConnect, kRailNodes];
+const List<V3NavItem> kRailPlanGroup = [kRailShop, kRailOrders, kRailTraffic];
+const List<V3NavItem> kRailSupportGroup = [kRailInvite, kRailTickets];
 
 const V3NavItem kRailSettings = V3NavItem(
   page: AppPage.settings,
