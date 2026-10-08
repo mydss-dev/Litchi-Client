@@ -14,6 +14,7 @@ class V3Palette {
     required this.inkMuted,
     required this.line,
     required this.hairline,
+    required this.cardGradient,
     required this.lychee,
     required this.lycheeSoft,
     required this.citrus,
@@ -48,13 +49,13 @@ class V3Palette {
   final Color inkMuted;
   final Color line;
 
-  /// The quiet 1px outline that rides along with [shadows] on light-mode
-  /// panels and cards. Layering in light mode needs both at once — a hairline
-  /// alone reads as a wireframe, a shadow alone reads as nothing — which is
-  /// the recipe DLSS5 Swapper's "Aurora" light theme uses (`--hair:
-  /// rgba(12,22,40,.10)` under a 35% blue-black drop shadow) and Fluent and
-  /// Ant cards with it. Dark mode resolves depth through fill steps and
-  /// shadow alone, so its hairline is transparent and draws nothing.
+  /// The quiet 1px outline that rides along with [shadows] on panels and
+  /// cards. Layering needs both at once — a hairline alone reads as a
+  /// wireframe, a shadow alone reads as nothing — which is the recipe DLSS5
+  /// Swapper's "Aurora" theme uses in both modes: light draws
+  /// `--hair: rgba(12,22,40,.10)` under a 35% blue-black drop shadow, dark
+  /// draws `--hair: rgba(255,255,255,.09)` under its deep shadow, and Fluent
+  /// and Ant cards agree (white ~7% stroke in dark).
   final Color hairline;
   final Color lychee;
   final Color lycheeSoft;
@@ -96,11 +97,20 @@ class V3Palette {
 
   /// Soft ambient shadows for floating surfaces (panels, the rail, dialogs).
   ///
-  /// Light mode pairs these with the [hairline] outline — layering there
-  /// needs line and light together; either alone reads flat or wireframe-y.
-  /// Dark mode resolves depth through fill steps and leans on a deeper
-  /// shadow for grounding; its hairline is transparent.
+  /// Both modes pair these with the [hairline] outline — layering needs line
+  /// and light together; either alone reads flat or wireframe-y. Dark mode
+  /// takes a deeper, longer two-layer shadow (DLSS5's
+  /// `0 24px 60px -24px rgba(0,0,0,.85)` is the reference) so the blue-black
+  /// canvas reads as real depth under the cards.
   final List<BoxShadow> shadows;
+
+  /// The two-step vertical wash a workspace card fills itself with: a touch
+  /// brighter at the top, a touch sunk at the bottom, straddling [surface].
+  /// Flat fills are how cards disappear into sheets; DLSS5's glass cards run
+  /// `linear-gradient(180deg, var(--panel), var(--panel-2))` for the same
+  /// quiet volume, and "light from above" is the Apple-materials convention
+  /// both modes follow here. The delta is ~3% luminance — felt, not seen.
+  final List<Color> cardGradient;
 
   static const light = V3Palette(
     // Four tiers, darkest to lightest: canvas → hero → surfaceRaised → surface.
@@ -156,21 +166,29 @@ class V3Palette {
       BoxShadow(color: Color(0x240D1628), blurRadius: 10, offset: Offset(0, 4)),
       BoxShadow(color: Color(0x470D1628), blurRadius: 32, offset: Offset(0, 14), spreadRadius: -6),
     ],
+    cardGradient: [Color(0xFFFCFDFE), Color(0xFFF6F8FB)],
   );
 
   static const dark = V3Palette(
-    canvas: Color(0xFF0C1010),
-    surface: Color(0xFF151B1A),
-    surfaceRaised: Color(0xFF202826),
-    // Dark mode keeps the near-black it always had; only light mode moves.
-    hero: Color(0xFF080B0A),
-    night: Color(0xFF080B0A),
-    ink: Color(0xFFF0F5F0),
-    inkMuted: Color(0xFF9BA8A3),
-    line: Color(0xFF2B3834),
-    hairline: Color(0x00000000),
+    canvas: Color(0xFF0B0F14),
+    surface: Color(0xFF161C24),
+    surfaceRaised: Color(0xFF222A34),
+    // Same cool family as the light palette, one luminance down — dark is not
+    // a separate green-gray world anymore: DLSS5 keeps one hue across modes
+    // (light ink #0d1524 ↔ dark ink #05070c), so does the app now. The
+    // 4-tier staircase survives: hero < canvas < surface < surfaceRaised.
+    hero: Color(0xFF070A0E),
+    night: Color(0xFF070A0E),
+    ink: Color(0xFFEDF2F8),
+    // DLSS5's dark `--muted` #9fb0c6, pulled one step toward gray so it keeps
+    // clearing 4.5:1 on every new surface.
+    inkMuted: Color(0xFF9AA8BC),
+    line: Color(0xFF2A3542),
+    // DLSS5 --hair: white 9%; Fluent's dark card stroke is white ~7%. The same
+    // 1px line light draws — dark finally runs the full "line + light" recipe.
+    hairline: Color(0x14FFFFFF),
     lychee: Color(0xFFFF6683),
-    lycheeSoft: Color(0xFF3A2027),
+    lycheeSoft: Color(0xFF3A222C),
     citrus: Color(0xFFD7F267),
     aqua: Color(0xFF79E0DC),
     success: Color(0xFF57D39A),
@@ -181,11 +199,16 @@ class V3Palette {
     warningInk: Color(0xFFF1BD59),
     dangerInk: Color(0xFFFF7188),
     aquaInk: Color(0xFF79E0DC),
-    onLychee: Color(0xFF080B0A),
-    onDanger: Color(0xFF080B0A),
+    onLychee: Color(0xFF070A0E),
+    onDanger: Color(0xFF070A0E),
+    // Two-layer deep shadow, DLSS5's dark reference (0 24px 60px -24px
+    // rgba(0,0,0,.85)) split into a tight contact layer and a long ambient
+    // one — the single soft layer before read as mud on the new canvas.
     shadows: [
-      BoxShadow(color: Color(0x40000000), blurRadius: 18, offset: Offset(0, 6)),
+      BoxShadow(color: Color(0x59000000), blurRadius: 14, offset: Offset(0, 5)),
+      BoxShadow(color: Color(0x99000000), blurRadius: 40, offset: Offset(0, 16), spreadRadius: -10),
     ],
+    cardGradient: [Color(0xFF1A212B), Color(0xFF141A22)],
   );
 
   static V3Palette of(BuildContext context) =>
@@ -362,7 +385,24 @@ class V3Theme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(V3Radius.field),
           ),
+        ).copyWith(
+          // The primary action glows in the brand color from underneath —
+          // DLSS5's primary casts `0 12px 30px -16px var(--accent)` and
+          // Material 3 tints FAB shadows the same way. Disabled drops flat.
+          elevation: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.disabled) ? 0.0 : 5.0,
+          ),
+          shadowColor: WidgetStatePropertyAll(p.lychee.withValues(alpha: 0.45)),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
         ),
+      ),
+      // Thin rounded scrollbar, DLSS5/Fluent style: a small pill inset from
+      // the track edge rather than a slab glued to it.
+      scrollbarTheme: const ScrollbarThemeData(
+        thickness: WidgetStatePropertyAll(6),
+        crossAxisMargin: 2,
+        mainAxisMargin: 3,
+        radius: Radius.circular(3),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -381,15 +421,14 @@ class V3Theme {
           borderSide: BorderSide(color: p.hairline),
         ),
         // Filled-style inputs: the surfaceRaised fill carries the field, the
-        // hairline just edges it (light only); only focus earns the brand
-        // pink outline.
+        // hairline just edges it; only focus earns the brand pink outline.
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(V3Radius.field),
           borderSide: BorderSide(color: p.hairline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(V3Radius.field),
-          borderSide: BorderSide(color: p.lychee, width: 1.5),
+          borderSide: BorderSide(color: p.lychee, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,

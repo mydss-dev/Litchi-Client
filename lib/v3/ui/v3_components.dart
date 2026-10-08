@@ -67,10 +67,9 @@ class V3Panel extends StatelessWidget {
       V3PanelTone.hero => p.hero,
       V3PanelTone.signal => p.lychee,
     };
-    // The hairline rides along with the ambient shadow — light-mode layering
-    // needs line and light together (see [V3Palette.hairline]); dark mode's
-    // hairline is transparent, so the solid signal tone stays the one flat,
-    // borderless exception.
+    // The hairline rides along with the ambient shadow — layering needs line
+    // and light together (see [V3Palette.hairline]); the solid signal tone is
+    // the one flat, borderless exception.
     return Container(
       padding: padding,
       decoration: BoxDecoration(

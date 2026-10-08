@@ -428,11 +428,9 @@ class _DesktopRail extends StatelessWidget {
           // card's muted voice so it reads as chrome, not content; the dot
           // follows the same liveness signal the connection card reports.
           Row(children: [
-            Container(width: 6, height: 6,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: controller.coreProcessRunning
-                    ? p.successInk : p.inkMuted)),
+            _CoreDot(
+              running: controller.coreProcessRunning,
+              color: p.successInk),
             const SizedBox(width: 6),
             Expanded(child: Text(
               v3Copy(context,
@@ -447,6 +445,87 @@ class _DesktopRail extends StatelessWidget {
                   color: p.inkMuted.withValues(alpha: 0.72),
                   fontSize: 10)),
           ]),
+        ],
+      ),
+    );
+  }
+}
+
+/// The rail footer's core-liveness dot. When the core comes alive it throws
+/// two soft rings out once, then sits still — a steady state does not need an
+/// ongoing advertisement, and a finite animation keeps test `pumpAndSettle`s
+/// settling (a DLSS5-style infinite pulse would hang them).
+class _CoreDot extends StatefulWidget {
+  const _CoreDot({required this.running, required this.color});
+  final bool running;
+  final Color color;
+  @override
+  State<_CoreDot> createState() => _CoreDotState();
+}
+
+class _CoreDotState extends State<_CoreDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _rings = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  );
+  bool _wasRunning = false;
+
+  @override
+  void didUpdateWidget(_CoreDot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.running && !_wasRunning) _rings.forward(from: 0);
+    _wasRunning = widget.running;
+  }
+
+  @override
+  void dispose() {
+    _rings.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return SizedBox(
+      width: 6,
+      height: 6,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (widget.running)
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: _rings,
+                builder: (context, _) {
+                  final t = _rings.value;
+                  final phase = (t * 2) % 1; // two rings across the run
+                  return Transform.scale(
+                    scale: 1 + phase * 2.2,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: widget.color
+                              .withValues(alpha: 0.5 * (1 - phase)),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          Center(
+            child: Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.running ? widget.color : p.inkMuted,
+              ),
+            ),
+          ),
         ],
       ),
     );

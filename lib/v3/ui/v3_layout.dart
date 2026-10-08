@@ -40,12 +40,17 @@ class V3WorkspaceCard extends StatelessWidget {
     final p = V3Palette.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
-        // Both modes elevate: the card sits one tonal step above the canvas.
-        // Dark mode used to sink cards into `hero` (darker than the canvas),
-        // which left only the border to draw the card — the wireframe look.
-        // Light mode adds the palette hairline on top of the shadow: line and
+        // Both modes elevate: the card sits one tonal step above the canvas,
+        // and fills with the palette's two-step vertical wash ([V3Palette
+        // .cardGradient]) instead of a flat color — light from above gives
+        // the card quiet volume, the way DLSS5's glass cards and Apple's
+        // materials shade themselves. The hairline rides on top: line and
         // light together are what keep it from reading flat.
-        color: p.surface,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: p.cardGradient,
+        ),
         borderRadius: BorderRadius.circular(V3Layout.cardRadius),
         border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
