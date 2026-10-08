@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_coverage_map.dart';
@@ -22,10 +23,20 @@ class V3NodesPage extends StatefulWidget {
 }
 
 class _V3NodesPageState extends State<V3NodesPage> {
+  // The clear-filters action must empty the visible field too, not just the
+  // query state -- an uncontrolled field would keep showing what the list no
+  // longer filters by.
+  final _queryCtrl = TextEditingController();
   String _query = '';
   String? _region;
   bool _latencyFirst = false;
   String? _pending;
+
+  @override
+  void dispose() {
+    _queryCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _testLatencies() async {
     final controller = AppScope.read(context);
@@ -71,6 +82,10 @@ class _V3NodesPageState extends State<V3NodesPage> {
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
+    final groups = v3GroupNodesByCountry(controller.nodes);
+    final activeRegion = _region != null && groups.containsKey(_region)
+        ? _region
+        : null;
     final query = _query.trim().toLowerCase();
     final all = controller.nodes.where((node) => !node.isAuto).toList();
     final nodes = all
@@ -109,12 +124,14 @@ class _V3NodesPageState extends State<V3NodesPage> {
           const SizedBox(height: 18),
           V3NodeCoverageMap(
             nodes: controller.nodes,
-            selectedCode: _region,
+            selectedCode: activeRegion,
             onSelected: (code) => setState(() => _region = code),
+            showChips: false,
           ),
           const SizedBox(height: 20),
           Row(children: [
             Expanded(child: TextField(
+              controller: _queryCtrl,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search_rounded),
                 hintText: v3Copy(context,
@@ -132,6 +149,30 @@ class _V3NodesPageState extends State<V3NodesPage> {
                   : const Icon(Icons.speed_rounded, size: 17),
               label: Text(v3Copy(context, zh: '测速', en: 'Test', tw: '測速')))),
           ]),
+          // Region chips sit with the list they filter -- the map stays a pure
+          // overview (its markers still filter), and the filter survives
+          // scrolling to the list instead of living one screen above it.
+          if (groups.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(spacing: 7, runSpacing: 7, children: [
+              ChoiceChip(
+                key: const ValueKey('v3-map-country-all'),
+                label: Text(v3Copy(context,
+                  zh: '全部地区', en: 'All regions', tw: '全部地區')),
+                selected: activeRegion == null, showCheckmark: false,
+                side: v3ChipSide(p, selected: activeRegion == null),
+                onSelected: (_) => setState(() => _region = null)),
+              for (final code in groups.keys.toList()..sort())
+                ChoiceChip(
+                  key: ValueKey('v3-map-country-$code'),
+                  label: Text(
+                    '${v3NodeCountryName(context, code)} ${groups[code]!.length}'),
+                  selected: activeRegion == code, showCheckmark: false,
+                  side: v3ChipSide(p, selected: activeRegion == code),
+                  onSelected: (_) =>
+                      setState(() => _region = activeRegion == code ? null : code)),
+            ]),
+          ],
           const SizedBox(height: 16),
           Row(children: [
             Expanded(child: Text(
@@ -152,12 +193,16 @@ class _V3NodesPageState extends State<V3NodesPage> {
           ]),
           const SizedBox(height: 12),
           if (all.isEmpty)
-            V3Panel(
-              padding: const EdgeInsets.all(26),
-              child: Text(
-                v3Copy(context, zh: '暂无节点', en: 'No nodes yet', tw: '暫無節點'),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+            V3EmptyState(
+              icon: Icons.public_off_rounded,
+              title: v3Copy(context, zh: '暂无节点', en: 'No nodes yet', tw: '暫無節點'),
+              subtitle: v3Copy(context,
+                zh: '刷新订阅后，节点会出现在这里。',
+                en: 'Refresh your subscription and they will appear here.',
+                tw: '重新整理訂閱後，節點會顯示在這裡。'),
+              actionLabel: v3Copy(context,
+                zh: '刷新订阅', en: 'Refresh', tw: '重新整理訂閱'),
+              onAction: controller.refreshData,
             )
           else ...[
             V3AutoRouteRow(
@@ -172,15 +217,23 @@ class _V3NodesPageState extends State<V3NodesPage> {
             ),
             const SizedBox(height: 8),
             if (nodes.isEmpty)
-              V3Panel(
-                padding: const EdgeInsets.all(26),
-                child: Text(
-                  v3Copy(context,
-                    zh: '没有匹配的节点，请调整搜索或地区筛选。',
-                    en: 'No matching nodes. Change the search or region filter.',
-                    tw: '沒有符合的節點，請調整搜尋或地區篩選。'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+              V3EmptyState(
+                icon: Icons.search_off_rounded,
+                title: v3Copy(context,
+                  zh: '没有匹配的节点', en: 'No matching nodes', tw: '沒有符合的節點'),
+                subtitle: v3Copy(context,
+                  zh: '换个关键词，或清空搜索和地区筛选。',
+                  en: 'Try another keyword, or clear the search and region filter.',
+                  tw: '換個關鍵詞，或清空搜尋和地區篩選。'),
+                actionLabel: v3Copy(context,
+                  zh: '清空筛选', en: 'Clear filters', tw: '清空篩選'),
+                onAction: () {
+                  _queryCtrl.clear();
+                  setState(() {
+                    _query = '';
+                    _region = null;
+                  });
+                },
               )
             else
               for (final node in nodes)

@@ -149,6 +149,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('clear-filters empties the visible search field too',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final fixture = _NodeFixture();
+    addTearDown(fixture.disposeVisual);
+    await tester.pumpWidget(MaterialApp(
+      theme: V3Theme.light(),
+      home: AppScope(
+        controller: fixture,
+        child: const Scaffold(body: V3NodesPage()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    // Garbage query: nothing matches, the empty state offers 清空筛选.
+    await tester.enterText(find.byType(TextField), 'zzz');
+    await tester.pumpAndSettle();
+    expect(find.text('没有匹配的节点'), findsOneWidget);
+    expect(find.text('共 0 个'), findsOneWidget);
+
+    // The action clears the visible field as well as the query state -- an
+    // uncontrolled field used to keep showing what the list no longer
+    // filtered by.
+    await tester.ensureVisible(find.text('清空筛选'));
+    await tester.tap(find.text('清空筛选'));
+    await tester.pumpAndSettle();
+    expect(find.text('共 3 个'), findsOneWidget);
+    expect(find.text('没有匹配的节点'), findsNothing);
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller!.text, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final theme in [ThemeMode.light, ThemeMode.dark]) {
     testWidgets('360px map layout has no overflow in $theme', (tester) async {
       await tester.binding.setSurfaceSize(const Size(360, 800));

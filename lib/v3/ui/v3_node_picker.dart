@@ -29,8 +29,17 @@ class V3NodePicker extends StatefulWidget {
 }
 
 class _V3NodePickerState extends State<V3NodePicker> {
+  // Same reason as the nodes overview: 清空搜索 must empty the visible field,
+  // not only the query state behind it.
+  final _queryCtrl = TextEditingController();
   String _query = '';
   String? _pending;
+
+  @override
+  void dispose() {
+    _queryCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _select(
     String id,
@@ -86,6 +95,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
           children: [
             Expanded(
               child: TextField(
+                controller: _queryCtrl,
                 autofocus: true,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search_rounded),
@@ -188,7 +198,10 @@ class _V3NodePickerState extends State<V3NodePicker> {
                 : v3Copy(context, zh: '清空搜索', en: 'Clear search', tw: '清空搜尋'),
             onAction: controller.nodes.isEmpty
                 ? () => controller.refreshData()
-                : () => setState(() => _query = ''),
+                : () {
+                    _queryCtrl.clear();
+                    setState(() => _query = '');
+                  },
           )
         else
           for (final node in nodes)
@@ -251,6 +264,7 @@ class V3AutoRouteRow extends StatelessWidget {
       // inside the pressable so that ink covers the full row rect.
       child: V3Pressable(
         borderRadius: BorderRadius.circular(V3Radius.card),
+        hoverTint: p.ink.withValues(alpha: 0.08),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -350,6 +364,7 @@ class V3NodeRow extends StatelessWidget {
       // inside the pressable so the ink covers the full row rect.
       child: V3Pressable(
         borderRadius: BorderRadius.circular(V3Radius.card),
+        hoverTint: p.ink.withValues(alpha: 0.08),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

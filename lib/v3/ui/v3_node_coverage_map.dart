@@ -24,16 +24,41 @@ V3NodeProbeState v3NodeProbeState(Iterable<NodeModel> nodes) {
   return V3NodeProbeState.unknown;
 }
 
+/// Real nodes grouped by ISO country code. Auto routes and malformed codes
+/// (anything beyond two letters) stay out, so the map markers and the region
+/// chips answer "what is a region" from one source of truth.
+Map<String, List<NodeModel>> v3GroupNodesByCountry(List<NodeModel> nodes) {
+  final groups = <String, List<NodeModel>>{};
+  for (final node in nodes) {
+    if (node.isAuto) continue;
+    final code = node.code.trim().toUpperCase();
+    if (RegExp(r'^[A-Z]{2}$').hasMatch(code)) {
+      groups.putIfAbsent(code, () => []).add(node);
+    }
+  }
+  return groups;
+}
+
+/// Localized country name for a region code; unknown codes fall back to the
+/// code itself. Public so the nodes overview can label its own region chips
+/// with the same voice as the map.
+String v3NodeCountryName(BuildContext context, String code) =>
+    V3NodeCoverageMap._country(context, code);
+
 /// Geographic, offline world overview. Node selection is handled on dashboard.
 /// The coastlines and markers share an equirectangular longitude/latitude grid.
 class V3NodeCoverageMap extends StatelessWidget {
   const V3NodeCoverageMap({super.key, required this.nodes,
     required this.selectedCode, required this.onSelected,
-    this.readOnly = false});
+    this.readOnly = false, this.showChips = true});
   final List<NodeModel> nodes;
   final String? selectedCode;
   final ValueChanged<String?> onSelected;
   final bool readOnly;
+
+  /// Region chips render with the map by default; the nodes overview draws
+  /// its own chip row next to the list it filters and opts out here.
+  final bool showChips;
 
   // Approximate geographic country centres, (longitude, latitude) in degrees.
   // Unknown codes are kept in the list/chips instead of inventing a location.
@@ -130,16 +155,8 @@ class V3NodeCoverageMap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final groups = <String, List<NodeModel>>{};
-    var nodeCount = 0;
-    for (final node in nodes) {
-      if (node.isAuto) continue;
-      nodeCount++;
-      final code = node.code.trim().toUpperCase();
-      if (RegExp(r'^[A-Z]{2}$').hasMatch(code)) {
-        groups.putIfAbsent(code, () => []).add(node);
-      }
-    }
+    final groups = v3GroupNodesByCountry(nodes);
+    final nodeCount = nodes.where((node) => !node.isAuto).length;
     final codes = groups.keys.toList()..sort();
     final mapped = codes.where(_geo.containsKey).toList();
     final active = readOnly ? null :
@@ -171,15 +188,9 @@ class V3NodeCoverageMap extends StatelessWidget {
                     fit: BoxFit.fill,
                     semanticsLabel: v3Copy(context,
                       zh: '世界地图', en: 'World map', tw: '世界地圖'))),
-                  for (final entry in _geo.entries)
-                    if (!groups.containsKey(entry.key))
-                      Positioned(
-                        left: _x(entry.value, constraints.maxWidth),
-                        top: _y(entry.value, constraints.maxHeight),
-                        child: const SizedBox(width: 24, height: 24,
-                          child: Center(child: _MapDot(
-                            color: Colors.grey, diameter: 6))),
-                      ),
+                  // Only countries the fleet actually covers get a marker --
+                  // the old grey "potential" dots made 5 nodes read as a
+                  // global footprint.
                   for (final code in mapped)
                     Positioned(
                       key: ValueKey('v3-map-marker-$code'),
@@ -232,8 +243,8 @@ class V3NodeCoverageMap extends StatelessWidget {
             label: v3Copy(context, zh: '慢 / 超时',
               en: 'Slow / timeout', tw: '慢 / 逾時')),
           _Legend(color: p.inkMuted,
-            label: v3Copy(context, zh: '未测速 / 无节点',
-              en: 'Unknown / no nodes', tw: '未測速 / 無節點')),
+            label: v3Copy(context, zh: '未测速',
+              en: 'Not measured', tw: '未測速')),
         ]),
         const SizedBox(height: 5),
         Text(v3Copy(context,
@@ -241,7 +252,7 @@ class V3NodeCoverageMap extends StatelessWidget {
           en: 'Colors show client probe results, not live server health.',
           tw: '顏色僅代表本次測速結果，並非即時在線狀態。'),
           style: TextStyle(color: p.inkMuted, fontSize: 10)),
-        if (!readOnly && codes.isNotEmpty) ...[
+        if (showChips && !readOnly && codes.isNotEmpty) ...[
           const SizedBox(height: 12),
           Wrap(spacing: 7, runSpacing: 7, children: [
             ChoiceChip(key: const ValueKey('v3-map-country-all'),
