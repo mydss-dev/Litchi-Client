@@ -37,7 +37,7 @@ class V3DashboardPage extends StatelessWidget {
       padding: V3Layout.pageInsets,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+        children: V3Entrance.wave([
           // Phones: announcement images from the backend rotate in a card;
           // desktop keeps the slim ticker so the orb stays above the fold.
           if (v3UsesMergedConnectionCard(defaultTargetPlatform))
@@ -73,7 +73,7 @@ class V3DashboardPage extends StatelessWidget {
             ],
             _PlanSummary(controller: controller),
           ],
-        ],
+        ]),
       ),
     );
   }

@@ -23,8 +23,10 @@ import '../pages/v3_shop_page.dart';
 import '../pages/v3_tickets_page.dart';
 import '../pages/v3_traffic_page.dart';
 import '../theme/v3_palette.dart';
+import '../theme/v3_motion.dart';
 import '../ui/v3_notice_bar.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 import 'v3_nav.dart';
@@ -77,9 +79,9 @@ class V3Shell extends StatelessWidget {
         ? _ShellStage.auth
         : _ShellStage.workspace;
     final body = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 240),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeOutCubic.flipped,
+      duration: V3Motion.medium,
+      switchInCurve: V3Motion.ease,
+      switchOutCurve: V3Motion.ease.flipped,
       // Expand, not the default loose stack: the workspace fills the pane and
       // short surfaces (boot view) must not center-shrink it during a fade.
       layoutBuilder: (currentChild, previousChildren) => Stack(
@@ -204,11 +206,15 @@ class _V3WorkspaceState extends State<_V3Workspace> {
 }
 
 /// One-shot entrance for a workspace page: each time a page surfaces from the
-/// Offstage stack it fades in and rises a step instead of hard-cutting. The
-/// child subtree is untouched, so per-tab state (scroll positions, form
-/// drafts) survives exactly as before.
+/// Offstage stack it rises ~18px and fades in over the first 420ms of the
+/// window on the spring curve (DLSS5's `t2-page`: `.42s var(--spring)` from
+/// `translateY(18px)`), and the same controller clocks the page's card
+/// cascade through V3PageEntrance -- one timeline, staggered intervals, no
+/// per-card clocks. The child subtree is untouched, so per-tab state (scroll
+/// positions, form drafts) survives exactly as before.
 class _PageEntrance extends StatefulWidget {
   const _PageEntrance({required this.active, required this.child});
+
   final bool active;
   final Widget child;
 
@@ -220,11 +226,18 @@ class _PageEntranceState extends State<_PageEntrance>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 180),
+    // The whole entrance window: 420ms of rise plus the 60ms-per-card
+    // stagger, capped at eight steps (480ms), so even the longest page lands
+    // inside a second.
+    duration: const Duration(milliseconds: 900),
   );
-  late final Animation<double> _ease = CurvedAnimation(
+
+  /// The page's own rise: the first 420ms of the window on the spring. The
+  /// raw [_controller] is what the card cascade reads (via V3PageEntrance) --
+  /// cards pick their own sub-intervals out of the full window.
+  late final CurvedAnimation _rise = CurvedAnimation(
     parent: _controller,
-    curve: Curves.easeOutCubic,
+    curve: const Interval(0, 420 / 900, curve: V3Motion.spring),
   );
 
   @override
@@ -243,20 +256,26 @@ class _PageEntranceState extends State<_PageEntrance>
 
   @override
   void dispose() {
+    _rise.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _ease,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.015),
-          end: Offset.zero,
-        ).animate(_ease),
-        child: widget.child,
+    // Reduced motion: land on the final state directly, no clock at all.
+    if (v3ReducedMotion(context)) return widget.child;
+    return V3PageEntrance(
+      animation: _controller,
+      child: FadeTransition(
+        opacity: _rise,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.026),
+            end: Offset.zero,
+          ).animate(_rise),
+          child: widget.child,
+        ),
       ),
     );
   }
@@ -308,6 +327,13 @@ class _DesktopRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+
+    final railItems = [
+      // Dashboard and connection are the same AppPage.dashboard route.
+      // Never introduce a second Home item alongside Connect.
+      ...enabledNavItems(kDesktopRail),
+      if (kRailSettings.isEnabled) kRailSettings,
+    ];
     final user = controller.user;
     final plan = PlanPresentation.fromController(controller);
     return Container(
@@ -336,18 +362,30 @@ class _DesktopRail extends StatelessWidget {
             child: V3BrandMark(boxSize: 34),
           ),
           ...[
-            // Dashboard and connection are the same AppPage.dashboard route.
-            // Never introduce a second Home item alongside Connect.
-            ...enabledNavItems(kDesktopRail),
-            if (kRailSettings.isEnabled) kRailSettings,
-          ].map(
-            (item) => _RailItem(
-              key: railItemKey(item.page),
-              item: item,
-              selected: controller.page == item.page,
-              onTap: () => openV3Page(context, item.page),
+            // The items sit in a Stack so the shared selection pill can
+            // slide underneath them (see _RailPill) -- one indicator for the
+            // whole rail, DLSS5's dock-glow.
+            Stack(
+              children: [
+                _RailPill(
+                  selectedIndex:
+                      railItems.indexWhere((it) => it.page == controller.page),
+                ),
+                Column(
+                  children: railItems
+                      .map(
+                        (item) => _RailItem(
+                          key: railItemKey(item.page),
+                          item: item,
+                          selected: controller.page == item.page,
+                          onTap: () => openV3Page(context, item.page),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
             ),
-          ),
+          ],
           const Spacer(),
           const SizedBox(height: 12),
           Container(
@@ -532,6 +570,7 @@ class _CoreDotState extends State<_CoreDot>
   }
 }
 
+
 class _RailItem extends StatelessWidget {
   const _RailItem({
     super.key,
@@ -550,22 +589,18 @@ class _RailItem extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(end: selected ? 1 : 0),
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOut,
+        duration: V3Motion.fast,
+        curve: V3Motion.ease,
         builder: (context, t, _) {
           final iconColor = Color.lerp(p.inkMuted, p.lycheeInk, t)!;
           final textColor = Color.lerp(p.inkMuted, p.ink, t)!;
-          // V3Pressable keeps the press ink above the animated selection
-          // fill instead of losing it under the rail's opaque hero.
-          return Container(
+          // V3Pressable keeps the press ink above the shared selection pill
+          // instead of losing it under the rail's opaque hero.
+          return SizedBox(
             height: 44,
-            decoration: BoxDecoration(
-              color: p.lycheeSoft.withValues(alpha: t),
-              borderRadius: BorderRadius.circular(V3Radius.field),
-            ),
-            // The padding rides inside the pressable so the ink covers the
-            // full item rect — an outer padding inset the ink inside the
-            // selection pill it should preview.
+            // The selection fill is the rail's shared sliding pill
+            // (_RailPill) underneath; the item itself stays transparent so
+            // the pill can travel between items without repainting them.
             child: V3Pressable(
               borderRadius: BorderRadius.circular(V3Radius.field),
               onTap: onTap,
@@ -597,7 +632,6 @@ class _RailItem extends StatelessWidget {
     );
   }
 }
-
 class _MobileNavigation extends StatelessWidget {
   const _MobileNavigation({required this.controller});
   final AppController controller;
@@ -896,6 +930,8 @@ class _LanguageOverlayButton extends StatelessWidget {
     return PopupMenuButton<AppLocalePreference>(
       tooltip: v3Copy(context, zh: '语言', en: 'Language', tw: '語言'),
       position: PopupMenuPosition.under,
+      popUpAnimationStyle: const AnimationStyle(
+        duration: V3Motion.medium, curve: V3Motion.ease),
       onSelected: controller.setLanguage,
       itemBuilder: (context) => [
         for (final pref in AppLocalePreference.values)
@@ -1048,6 +1084,72 @@ class _V3BootView extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The rail's one selection indicator: a single pill that slides from the
+/// item you left to the one you pressed instead of blinking between them --
+/// DLSS5's dock-glow, the same mechanics as Ant's ink-bar and M3's sliding
+/// tabs indicator. The resting look is exactly the old per-item fill, so
+/// stills are unchanged; only the transition is new. The pill remembers its
+/// last valid position while hidden (sub-pages have no rail item), so coming
+/// back it slides from where it left.
+class _RailPill extends StatefulWidget {
+  const _RailPill({required this.selectedIndex});
+
+  final int selectedIndex;
+
+  @override
+  State<_RailPill> createState() => _RailPillState();
+}
+
+class _RailPillState extends State<_RailPill> {
+  double _top = 0;
+  bool _visible = false;
+
+  void _sync() {
+    if (widget.selectedIndex >= 0) {
+      _top = widget.selectedIndex * 48.0;
+      _visible = true;
+    } else {
+      _visible = false;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_RailPill oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return AnimatedPositioned(
+      duration: V3Motion.medium,
+      curve: V3Motion.spring,
+      top: _top,
+      left: 0,
+      right: 0,
+      height: 44,
+      child: AnimatedOpacity(
+        duration: V3Motion.fast,
+        curve: V3Motion.ease,
+        opacity: _visible ? 1 : 0,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: p.lycheeSoft,
+            borderRadius: BorderRadius.circular(V3Radius.field),
+          ),
         ),
       ),
     );

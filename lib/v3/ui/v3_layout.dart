@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
 /// Shared dimensions for the new Dashboard and the other V3 pages.
@@ -56,6 +57,114 @@ class V3WorkspaceCard extends StatelessWidget {
         boxShadow: p.shadows,
       ),
       child: Padding(padding: padding, child: child),
+    );
+  }
+}
+
+/// The entrance animation a workspace page is running right now, provided by
+/// the shell while the page surfaces from its Offstage stack. Cards hang
+/// [V3Entrance]s off this one clock: a single timeline, staggered intervals
+/// -- DLSS5's `.t2-panel > *` cascade (60ms a step) instead of every card
+/// carrying its own controller.
+class V3PageEntrance extends InheritedWidget {
+  const V3PageEntrance({
+    super.key,
+    required this.animation,
+    required super.child,
+  });
+
+  /// 0->1 across the page's whole entrance window (rise + full stagger).
+  final Animation<double> animation;
+
+  @override
+  bool updateShouldNotify(V3PageEntrance oldWidget) => false;
+}
+
+/// One card in a page's landing wave: it fades in and rises while the page
+/// entrance runs, [index] steps (60ms each) behind the first card. DLSS5's
+/// signature move -- the page is not one slab that slams in, the content
+/// lands in sequence, the way Fluent's entrance transitions and Apple's
+/// spring-loaded views stage content. Outside a page entrance (dialogs,
+/// fallback sheets, tests that mount a page bare) and under reduced motion
+/// it is a passthrough.
+class V3Entrance extends StatelessWidget {
+  const V3Entrance({super.key, required this.index, required this.child});
+
+  final int index;
+  final Widget child;
+
+  /// The page clock's window: 420ms of rise plus 60ms of stagger per step,
+  /// capped at eight steps so very long pages still finish inside a second.
+  static const int _totalMs = 900;
+  static const int _riseMs = 420;
+  static const int _stepMs = 60;
+
+  /// Stages a page's top-level children into the landing wave: each child
+  /// becomes a [V3Entrance] in list order. Pure spacing (a one-dimensional
+  /// [SizedBox]) passes through unwrapped -- it has nothing to show and
+  /// shouldn't burn a stagger step. Usage: `children: V3Entrance.wave([...])`
+  /// on a page's main column.
+  static List<Widget> wave(List<Widget> children) {
+    var index = 0;
+    return [
+      for (final child in children)
+        child is SizedBox && child.height != null && child.width == null
+            ? child
+            : V3Entrance(index: index++, child: child),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (v3ReducedMotion(context)) return child;
+    final scope = context.dependOnInheritedWidgetOfExactType<V3PageEntrance>();
+    if (scope == null) return child;
+    final startMs = (index * _stepMs).clamp(0, _totalMs - _riseMs);
+    final anim = CurvedAnimation(
+      parent: scope.animation,
+      curve: Interval(
+        startMs / _totalMs,
+        (startMs + _riseMs) / _totalMs,
+        curve: V3Motion.spring,
+      ),
+    );
+    // 0.02 of the pane is DLSS5's 14px card lift, scaled; opacity rides the
+    // same interval so the two stay in phase. Interval's endpoint shortcut
+    // returns exactly 1.0 at rest, so settled pixels are identical.
+    return FadeTransition(
+      opacity: anim,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.02),
+          end: Offset.zero,
+        ).animate(anim),
+        child: child,
+      ),
+    );
+  }
+}
+
+/// A [Column] whose children land in the page's staggered wave — drop-in for
+/// a page's main column so `V3Entrance.wave` doesn't have to wrap the list
+/// by hand. Behaves exactly like Column otherwise.
+class V3WaveColumn extends StatelessWidget {
+  const V3WaveColumn({
+    super.key,
+    this.mainAxisSize = MainAxisSize.max,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
+    required this.children,
+  });
+
+  final MainAxisSize mainAxisSize;
+  final CrossAxisAlignment crossAxisAlignment;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: mainAxisSize,
+      crossAxisAlignment: crossAxisAlignment,
+      children: V3Entrance.wave(children),
     );
   }
 }

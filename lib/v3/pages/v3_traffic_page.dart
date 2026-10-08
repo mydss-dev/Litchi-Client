@@ -68,7 +68,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                   border: Border.all(color: p.hairline),
                   boxShadow: p.shadows,
                 ),
-                child: Column(
+                child: V3WaveColumn(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.data_usage_rounded, color: p.inkMuted, size: 34),
@@ -120,7 +120,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
-      child: Column(
+      child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(

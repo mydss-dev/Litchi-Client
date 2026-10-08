@@ -92,7 +92,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
-      child: Column(
+      child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(

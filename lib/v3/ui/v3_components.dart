@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:country_flags/country_flags.dart';
 
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
 class V3NodeFlag extends StatelessWidget {
@@ -633,4 +634,35 @@ class V3BrandMark extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The shared dialog entrance: DLSS5's `t2-pop` -- the panel drops a step and
+/// scales 0.96->1 on the spring while fading in, instead of Material's plain
+/// fade. The exit runs the curve backwards on a quick ease (dialogs leave
+/// faster than they arrive). Reduced motion passes straight through.
+Widget v3PopTransition(
+  BuildContext context,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+  Widget child,
+) {
+  if (v3ReducedMotion(context)) return child;
+  final curved = CurvedAnimation(
+    parent: animation,
+    curve: V3Motion.spring,
+    reverseCurve: V3Motion.ease.flipped,
+  );
+  return FadeTransition(
+    opacity: curved,
+    child: SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0, -0.035),
+        end: Offset.zero,
+      ).animate(curved),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
+        child: child,
+      ),
+    ),
+  );
 }

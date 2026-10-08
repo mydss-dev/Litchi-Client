@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../pages/v3_gift_card_page.dart';
 import '../pages/v3_orders_page.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
 import 'v3_layout.dart';
@@ -24,10 +25,14 @@ Future<bool> showV3ConfirmDialog(
   required String confirmLabel,
   bool destructive = false,
 }) async {
-  final accepted = await showDialog<bool>(
+  final accepted = await showGeneralDialog<bool>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: .48),
-    builder: (dialogContext) {
+    transitionBuilder: v3PopTransition,
+    transitionDuration: V3Motion.medium,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    pageBuilder: (dialogContext, _, _) {
       final p = V3Palette.of(dialogContext);
       return AlertDialog(
         backgroundColor: p.surface,
@@ -85,9 +90,13 @@ Future<T?> showV3Sheet<T>(
       builder: content);
   }
 
-  return showDialog<T>(context: context,
+  return showGeneralDialog<T>(context: context,
+    transitionBuilder: v3PopTransition,
+    transitionDuration: V3Motion.medium,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: .48),
-    builder: (ctx) {
+    pageBuilder: (ctx, _, _) {
       final p = V3Palette.of(ctx);
       return Dialog(backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(20),
@@ -167,7 +176,7 @@ class V3SheetPageFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: V3Layout.pageInsets,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(kicker: kicker, title: title, description: description),
         const SizedBox(height: 18),
         child,

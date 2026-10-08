@@ -9,7 +9,9 @@ import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/update_service.dart';
 import '../../shared/services/url_opener.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
+import 'v3_components.dart';
 import 'v3_locale_copy.dart';
 import 'v3_toast.dart';
 
@@ -387,18 +389,24 @@ class V3NoticeDialog extends StatefulWidget {
   static Future<int?> showReader(BuildContext context, {
     required List<NoticeModel> notices,
     required int initialIndex,
-  }) => showDialog<int>(
+  }) => showGeneralDialog<int>(
     context: context,
+    transitionBuilder: v3PopTransition,
+    transitionDuration: V3Motion.medium,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: .48),
-    builder: (_) => V3NoticeDialog.reader(
+    pageBuilder: (_, _, _) => V3NoticeDialog.reader(
       notices: notices, initialIndex: initialIndex));
 
   static Future<void> showMustRead(BuildContext context, NoticeModel notice) =>
-      showDialog<void>(
+      showGeneralDialog<void>(
         context: context,
         barrierDismissible: false,
+        transitionBuilder: v3PopTransition,
+        transitionDuration: V3Motion.medium,
         barrierColor: Colors.black.withValues(alpha: .58),
-        builder: (_) => V3NoticeDialog.mustRead(notice: notice));
+        pageBuilder: (_, _, _) => V3NoticeDialog.mustRead(notice: notice));
 
   @override
   State<V3NoticeDialog> createState() => _V3NoticeDialogState();

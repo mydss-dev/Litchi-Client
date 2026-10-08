@@ -96,7 +96,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
         ? l.systemProxy : l.tunMode;
     return SingleChildScrollView(
       padding: V3Layout.pageInsets,
-      child: Column(
+      child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(

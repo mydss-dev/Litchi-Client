@@ -6,6 +6,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../../shared/services/url_opener.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
@@ -34,10 +35,14 @@ Future<bool> showV3PaymentFlow({
   Future<void> Function()? onPaid,
   VoidCallback? onViewOrders,
 }) async {
-  final paid = await showDialog<bool>(
+  final paid = await showGeneralDialog<bool>(
+    transitionBuilder: v3PopTransition,
+    transitionDuration: V3Motion.medium,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.52),
-    builder: (_) => _V3PaymentDialog(
+    pageBuilder: (_, _, _) => _V3PaymentDialog(
       tradeNo: tradeNo,
       fallbackAmount: fallbackAmount,
       currencySymbol: currencySymbol,

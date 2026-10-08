@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/api_client.dart';
 import '../../shared/services/panel_api.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
@@ -39,17 +40,25 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
 
   Future<void> _openTicket(TicketModel ticket) async {
     final controller = AppScope.read(context);
-    await showDialog<void>(context: context,
+    await showGeneralDialog<void>(context: context,
+      transitionBuilder: v3PopTransition,
+      transitionDuration: V3Motion.medium,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       barrierColor: Colors.black.withValues(alpha: .5),
-      builder: (_) => V3TicketDetailDialog(summary: ticket,
+      pageBuilder: (_, _, _) => V3TicketDetailDialog(summary: ticket,
         api: controller.api, onChanged: controller.refreshTickets));
   }
 
   Future<void> _newTicket() async {
     final controller = AppScope.read(context);
-    final created = await showDialog<bool>(context: context,
+    final created = await showGeneralDialog<bool>(context: context,
+      transitionBuilder: v3PopTransition,
+      transitionDuration: V3Motion.medium,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       barrierColor: Colors.black.withValues(alpha: .5),
-      builder: (_) => _NewTicketDialog(api: controller.api));
+      pageBuilder: (_, _, _) => _NewTicketDialog(api: controller.api));
     if (created == true && mounted) await controller.refreshTickets();
   }
 
@@ -68,7 +77,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
         en: 'New ticket', tw: '新增工單');
       return SingleChildScrollView(
         padding: V3Layout.pageInsets,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // No header height reserve: V3PageHeader bottoms-align its row, so
           // a minHeight box here pushed the heading 35dp below every other
           // page's first line.

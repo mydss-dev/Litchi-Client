@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/api_client.dart';
 import '../commerce/v3_payment_flow.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
@@ -93,9 +94,13 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
 
   Future<void> _cancel(RemoteOrder order) async {
     if (_busyTradeNo != null) return;
-    final confirmed = await showDialog<bool>(context: context,
+    final confirmed = await showGeneralDialog<bool>(context: context,
+      transitionBuilder: v3PopTransition,
+      transitionDuration: V3Motion.medium,
+      barrierDismissible: true,
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       barrierColor: Colors.black.withValues(alpha: .48),
-      builder: (context) => _CancelOrderDialog(order: order));
+      pageBuilder: (context, _, _) => _CancelOrderDialog(order: order));
     if (confirmed != true || !mounted) return;
     setState(() => _busyTradeNo = order.tradeNo);
     try {

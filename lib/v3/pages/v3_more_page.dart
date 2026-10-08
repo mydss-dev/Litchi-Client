@@ -24,7 +24,7 @@ class V3MorePage extends StatelessWidget {
     final items = enabledNavItems(kMobileMore);
     return SingleChildScrollView(
       padding: V3Layout.pageInsets,
-      child: Column(
+      child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(

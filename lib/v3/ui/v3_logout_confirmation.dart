@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
+import 'v3_components.dart';
 import 'v3_locale_copy.dart';
 
 /// A destructive account action must not execute from an accidental tap.
 Future<bool> showV3LogoutConfirmation(BuildContext context) async {
-  final accepted = await showDialog<bool>(
+  final accepted = await showGeneralDialog<bool>(
     context: context,
+    transitionBuilder: v3PopTransition,
+    transitionDuration: V3Motion.medium,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: 0.48),
-    builder: (dialogContext) {
+    pageBuilder: (dialogContext, _, _) {
       final p = V3Palette.of(dialogContext);
       return AlertDialog(
         backgroundColor: p.surface,

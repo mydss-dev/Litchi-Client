@@ -50,7 +50,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
       final cardWidth = twoColumns ? (contentWidth - spacing) / 2 : contentWidth;
       return SingleChildScrollView(
         padding: V3Layout.pageInsets,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(kicker: _tr(context, '套餐商城', 'PLAN STORE', '方案商店'),
             title: _tr(context, '选择套餐', 'Choose a plan', '選擇方案'),
             description: _tr(context, '挑选合适的套餐，付款后立即生效。',

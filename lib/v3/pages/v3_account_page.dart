@@ -4,6 +4,7 @@ import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
 import '../../config/app_config.dart';
 import '../commerce/v3_order_dialog.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_account_labels.dart';
 import '../ui/v3_components.dart';
@@ -85,7 +86,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
-      child: Column(
+      child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
@@ -133,10 +134,14 @@ class _V3AccountPageState extends State<V3AccountPage> {
           ],
           const SizedBox(height: 16),
           _AccountActions(
-            onPassword: () => showDialog<void>(
+            onPassword: () => showGeneralDialog<void>(
+              transitionBuilder: v3PopTransition,
+              transitionDuration: V3Motion.medium,
+              barrierDismissible: true,
+              barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
               context: context,
               barrierColor: Colors.black.withValues(alpha: .48),
-              builder: (_) => const _PasswordDialog(),
+              pageBuilder: (_, _, _) => const _PasswordDialog(),
             ),
             onTelegram: () => V3TelegramPage.show(context),
             onLogout: _confirmLogout,

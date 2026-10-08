@@ -2,16 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../commerce/v3_payment_flow.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
 
 /// Wallet actions retain independent dialogs, rather than a nested funds hub.
 Future<void> showV3RechargeDialog(BuildContext context) {
-  return showDialog<void>(context: context,
+  return showGeneralDialog<void>(context: context,
+    transitionBuilder: v3PopTransition,
+    transitionDuration: V3Motion.medium,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: .48),
-    builder: (_) => _RechargeDialog(
+    pageBuilder: (_, _, _) => _RechargeDialog(
       onViewOrders: () => openV3Page(context, AppPage.orders)));
 }
 
@@ -25,9 +31,13 @@ Future<void> showV3TransferDialog(BuildContext context) async {
   }
   final success = v3Copy(context, zh: '佣金已转入余额',
     en: 'Commission transferred to balance', tw: '佣金已轉入餘額');
-  final amount = await showDialog<double>(context: context,
+  final amount = await showGeneralDialog<double>(context: context,
+    transitionBuilder: v3PopTransition,
+    transitionDuration: V3Motion.medium,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: .48),
-    builder: (_) => _AmountDialog(
+    pageBuilder: (_, _, _) => _AmountDialog(
       title: v3Copy(context, zh: '佣金转余额',
         en: 'Transfer commission', tw: '佣金轉餘額'),
       subtitle: v3Copy(context,
@@ -71,9 +81,13 @@ Future<void> showV3WithdrawDialog(BuildContext context) async {
   }
   final success = v3Copy(context, zh: '提现申请已提交',
     en: 'Withdrawal request submitted', tw: '提領申請已提交');
-  final result = await showDialog<_WithdrawRequest>(context: context,
+  final result = await showGeneralDialog<_WithdrawRequest>(context: context,
+    transitionBuilder: v3PopTransition,
+    transitionDuration: V3Motion.medium,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black.withValues(alpha: .48),
-    builder: (_) => _WithdrawDialog(
+    pageBuilder: (_, _, _) => _WithdrawDialog(
       maximum: controller.withdrawable,
       minimum: controller.minWithdrawAmount,
       methods: controller.withdrawMethods,

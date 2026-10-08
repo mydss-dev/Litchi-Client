@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/panel_api.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
@@ -21,10 +22,14 @@ Future<void> showV3OrderDialog({
   required Future<void> Function() onPaid,
   required VoidCallback onViewOrders,
 }) {
-  return showDialog<void>(
+  return showGeneralDialog<void>(
+    transitionBuilder: v3PopTransition,
+    transitionDuration: V3Motion.medium,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.48),
-    builder: (_) => _V3OrderDialog(
+    pageBuilder: (_, _, _) => _V3OrderDialog(
       hostContext: context,
       plan: plan,
       initialCycle: initialCycle,

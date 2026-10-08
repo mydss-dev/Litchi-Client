@@ -156,7 +156,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
-      child: Column(
+      child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
