@@ -72,6 +72,7 @@ class _AuthBrandPanel extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(14, 44, 14, 14),
       decoration: BoxDecoration(color: p.hero,
         borderRadius: BorderRadius.circular(V3Radius.panel),
+        border: Border.all(color: p.hairline),
         boxShadow: p.shadows),
       padding: const EdgeInsets.all(34),
       child: Stack(children: [
@@ -475,7 +476,8 @@ class _RegisterFormState extends State<_RegisterForm> {
               const SizedBox(height: 8),
               Container(padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(color: p.surfaceRaised,
-                  borderRadius: BorderRadius.circular(V3Radius.field)),
+                  borderRadius: BorderRadius.circular(V3Radius.field),
+                  border: Border.all(color: p.hairline)),
                 child: DropdownButtonHideUnderline(child: DropdownButton<String>(
                   isExpanded: true,
                   value: selectedDomain,

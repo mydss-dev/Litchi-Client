@@ -203,6 +203,7 @@ class _AccountSummaryPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.panel),
+        border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
       child: Column(
@@ -556,6 +557,7 @@ class _PreferencesPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.panel),
+        border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
       child: Column(

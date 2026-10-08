@@ -43,8 +43,11 @@ class V3WorkspaceCard extends StatelessWidget {
         // Both modes elevate: the card sits one tonal step above the canvas.
         // Dark mode used to sink cards into `hero` (darker than the canvas),
         // which left only the border to draw the card — the wireframe look.
+        // Light mode adds the palette hairline on top of the shadow: line and
+        // light together are what keep it from reading flat.
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Layout.cardRadius),
+        border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
       child: Padding(padding: padding, child: child),

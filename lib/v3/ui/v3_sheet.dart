@@ -96,6 +96,7 @@ Future<T?> showV3Sheet<T>(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(color: p.surface,
             borderRadius: BorderRadius.circular(V3Radius.panel),
+            border: Border.all(color: p.hairline),
             boxShadow: p.shadows),
           child: content(ctx)));
     });

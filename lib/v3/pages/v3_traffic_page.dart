@@ -65,6 +65,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                 decoration: BoxDecoration(
                   color: p.surface,
                   borderRadius: BorderRadius.circular(V3Radius.panel),
+                  border: Border.all(color: p.hairline),
                   boxShadow: p.shadows,
                 ),
                 child: Column(
@@ -179,6 +180,7 @@ class _QuotaPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.hero,
         borderRadius: BorderRadius.circular(V3Radius.panel),
+        border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
       child: Column(
@@ -537,6 +539,7 @@ class _TrendPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.panel),
+        border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
       child: Column(

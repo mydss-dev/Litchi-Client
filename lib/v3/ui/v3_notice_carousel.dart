@@ -105,6 +105,7 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.card),
+        border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
       child: ClipRRect(

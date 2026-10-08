@@ -13,6 +13,7 @@ class V3Palette {
     required this.ink,
     required this.inkMuted,
     required this.line,
+    required this.hairline,
     required this.lychee,
     required this.lycheeSoft,
     required this.citrus,
@@ -46,6 +47,15 @@ class V3Palette {
   final Color ink;
   final Color inkMuted;
   final Color line;
+
+  /// The quiet 1px outline that rides along with [shadows] on light-mode
+  /// panels and cards. Layering in light mode needs both at once — a hairline
+  /// alone reads as a wireframe, a shadow alone reads as nothing — which is
+  /// the recipe DLSS5 Swapper's "Aurora" light theme uses (`--hair:
+  /// rgba(12,22,40,.10)` under a 35% blue-black drop shadow) and Fluent and
+  /// Ant cards with it. Dark mode resolves depth through fill steps and
+  /// shadow alone, so its hairline is transparent and draws nothing.
+  final Color hairline;
   final Color lychee;
   final Color lycheeSoft;
   final Color citrus;
@@ -86,39 +96,41 @@ class V3Palette {
 
   /// Soft ambient shadows for floating surfaces (panels, the rail, dialogs).
   ///
-  /// Borders no longer separate surfaces — separation is the tonal staircase
-  /// (canvas → surface → surfaceRaised) plus this one quiet lift for anything
-  /// that sits directly on the canvas. Light mode barely needs it (the sage
-  /// ground already contrasts the near-white card); dark mode leans on the
-  /// fill step and takes a slightly deeper shadow for grounding.
+  /// Light mode pairs these with the [hairline] outline — layering there
+  /// needs line and light together; either alone reads flat or wireframe-y.
+  /// Dark mode resolves depth through fill steps and leans on a deeper
+  /// shadow for grounding; its hairline is transparent.
   final List<BoxShadow> shadows;
 
   static const light = V3Palette(
     // Four tiers, darkest to lightest: canvas → hero → surfaceRaised → surface.
     //
-    // Light mode used to run canvas #F3F4F0 under surface #FFFFFF, which is a
-    // 3% difference — the background was there, but nothing on screen showed
-    // it, so every page read as one flat white sheet with no depth. Dark mode
-    // never had that problem (canvas #0C1010 and card #151B1A are obvious
-    // steps), so these four are spaced to mirror it: a sage-green ground, a
-    // near-white card sitting clearly above it, and a hero panel a shade below
-    // the ground rather than above it, which is the direction dark mode uses
-    // for its own hero.
+    // Light layering needs fill steps, a hairline, and a real drop shadow at
+    // the same time — a hairline alone reads as a wireframe, a shadow alone
+    // reads as nothing. The set is aligned with DLSS5 Swapper's "Aurora"
+    // light theme (--ink/--ink-2/--panel/--hair/--shadow): a cool blue-gray
+    // ground, near-white glass cards on top, a 10% dark hairline, and a
+    // strong blue-black shadow.
+    //
+    // The ground carries a blue cast rather than the old sage cast: large
+    // low-saturation tinted grays read muddy at window scale, and the cool
+    // cast sits quietly behind the pink accent instead of fighting it the
+    // way green did.
     //
     // Pure white no longer appears in light mode at all. The one exception is
     // the QR pad in the payment flow, which scanners want white and which
-    // therefore hard-codes it rather than reading a token.
-    canvas: Color(0xFFE7EBE3),
-    surface: Color(0xFFFBFCF9),
-    surfaceRaised: Color(0xFFF0F2EC),
-    hero: Color(0xFFDFE3DA),
-    night: Color(0xFF121515),
-    ink: Color(0xFF121515),
-    // Darkened from #68716F (4.17:1 on `surfaceRaised`, below AA for the
-    // segmented-control labels that sit on that track) and again from #636B69
-    // when `hero` darkened underneath it — see `hero` above.
-    inkMuted: Color(0xFF5C6462),
-    line: Color(0xFFCBD2CB),
+    // therefore hard-codes it instead of reading a token.
+    canvas: Color(0xFFEEF2F8),
+    surface: Color(0xFFFAFBFD),
+    surfaceRaised: Color(0xFFF2F5FA),
+    hero: Color(0xFFE7EDF5),
+    night: Color(0xFF0D1524),
+    ink: Color(0xFF0D1524),
+    // DLSS5's --muted: a cool gray that clears 4.5:1 on every new light
+    // surface; the old #5C6462 was tuned against the sage ground.
+    inkMuted: Color(0xFF4F5D73),
+    line: Color(0xFFD7DCE3),
+    hairline: Color(0x1A0D1628),
     lychee: Color(0xFFF25472),
     lycheeSoft: Color(0xFFFFE3E8),
     citrus: Color(0xFFD7F267),
@@ -135,14 +147,14 @@ class V3Palette {
     warningInk: Color(0xFF8A5000),
     dangerInk: Color(0xFFB02E45),
     aquaInk: Color(0xFF0B6F6C),
-    onLychee: Color(0xFF121515),
+    onLychee: Color(0xFF0D1524),
     // The one deliberate pure white in light mode besides the QR pad: the
     // danger red is dark enough that white clears AA, while night does not
     // (3.6:1). See the QR note under `canvas` above.
     onDanger: Color(0xFFFFFFFF),
     shadows: [
-      BoxShadow(color: Color(0x0A000000), blurRadius: 6, offset: Offset(0, 2)),
-      BoxShadow(color: Color(0x0F000000), blurRadius: 20, offset: Offset(0, 8)),
+      BoxShadow(color: Color(0x240D1628), blurRadius: 10, offset: Offset(0, 4)),
+      BoxShadow(color: Color(0x470D1628), blurRadius: 32, offset: Offset(0, 14), spreadRadius: -6),
     ],
   );
 
@@ -156,6 +168,7 @@ class V3Palette {
     ink: Color(0xFFF0F5F0),
     inkMuted: Color(0xFF9BA8A3),
     line: Color(0xFF2B3834),
+    hairline: Color(0x00000000),
     lychee: Color(0xFFFF6683),
     lycheeSoft: Color(0xFF3A2027),
     citrus: Color(0xFFD7F267),
@@ -300,7 +313,7 @@ class V3Theme {
       chipTheme: ChipThemeData(
         backgroundColor: p.surfaceRaised,
         selectedColor: p.lycheeSoft,
-        side: BorderSide.none,
+        side: BorderSide(color: p.hairline),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(V3Radius.control),
         ),
@@ -334,7 +347,7 @@ class V3Theme {
             (states) => BorderSide(
               color: states.contains(WidgetState.selected)
                   ? p.lychee
-                  : Colors.transparent,
+                  : p.hairline,
               width: states.contains(WidgetState.selected) ? 1.5 : 1,
             ),
           ),
@@ -365,13 +378,14 @@ class V3Theme {
         prefixIconColor: p.inkMuted,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(V3Radius.field),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: p.hairline),
         ),
-        // Filled-style inputs: the surfaceRaised fill is the boundary; only
-        // focus earns an outline (brand pink), never idle chrome.
+        // Filled-style inputs: the surfaceRaised fill carries the field, the
+        // hairline just edges it (light only); only focus earns the brand
+        // pink outline.
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(V3Radius.field),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: p.hairline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(V3Radius.field),

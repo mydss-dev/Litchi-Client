@@ -67,13 +67,18 @@ class V3Panel extends StatelessWidget {
       V3PanelTone.hero => p.hero,
       V3PanelTone.signal => p.lychee,
     };
-    // No border: separation is the fill step plus the palette's ambient
-    // shadow. The solid signal tone is its own emphasis and floats flat.
+    // The hairline rides along with the ambient shadow — light-mode layering
+    // needs line and light together (see [V3Palette.hairline]); dark mode's
+    // hairline is transparent, so the solid signal tone stays the one flat,
+    // borderless exception.
     return Container(
       padding: padding,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(radius),
+        border: tone == V3PanelTone.signal
+            ? null
+            : Border.all(color: p.hairline),
         boxShadow: tone == V3PanelTone.signal ? null : p.shadows,
       ),
       child: child,
@@ -461,6 +466,7 @@ class V3NavPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.panel),
+        border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
       child: Column(

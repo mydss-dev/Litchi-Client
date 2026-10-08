@@ -325,6 +325,7 @@ class _DesktopRail extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.hero,
         borderRadius: BorderRadius.circular(V3Radius.card),
+        border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
       child: Column(
