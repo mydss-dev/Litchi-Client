@@ -7,6 +7,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import 'v3_empty_state.dart';
 import 'v3_latency_tier.dart';
 import 'v3_locale_copy.dart';
 import 'v3_node_tags.dart';
@@ -160,24 +161,34 @@ class _V3NodePickerState extends State<V3NodePicker> {
         ),
         const SizedBox(height: 12),
         if (nodes.isEmpty)
-          V3Panel(
-            padding: const EdgeInsets.all(28),
-            child: Text(
-              controller.nodes.isEmpty
-                  ? v3Copy(
-                      context,
-                      zh: '暂无可用节点，请刷新订阅后重试。',
-                      en: 'No nodes available. Refresh your subscription and retry.',
-                      tw: '暫無可用節點，請重新整理訂閱後再試。',
-                    )
-                  : v3Copy(
-                      context,
-                      zh: '没有匹配的节点，请调整搜索。',
-                      en: 'No matching nodes. Change the search.',
-                      tw: '沒有符合的節點，請調整搜尋。',
-                    ),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+          V3EmptyState(
+            icon: controller.nodes.isEmpty
+                ? Icons.public_off_rounded
+                : Icons.search_off_rounded,
+            title: controller.nodes.isEmpty
+                ? v3Copy(context,
+                    zh: '暂无可用节点',
+                    en: 'No nodes available',
+                    tw: '暫無可用節點')
+                : v3Copy(context,
+                    zh: '没有匹配的节点',
+                    en: 'No matching nodes',
+                    tw: '沒有符合的節點'),
+            subtitle: controller.nodes.isEmpty
+                ? v3Copy(context,
+                    zh: '刷新订阅后，节点会出现在这里。',
+                    en: 'Refresh your subscription and they will appear here.',
+                    tw: '重新整理訂閱後，節點會顯示在這裡。')
+                : v3Copy(context,
+                    zh: '换个关键词，或清空搜索查看全部。',
+                    en: 'Try another keyword, or clear the search.',
+                    tw: '換個關鍵詞，或清空搜尋查看全部。'),
+            actionLabel: controller.nodes.isEmpty
+                ? v3Copy(context, zh: '刷新订阅', en: 'Refresh', tw: '重新整理訂閱')
+                : v3Copy(context, zh: '清空搜索', en: 'Clear search', tw: '清空搜尋'),
+            onAction: controller.nodes.isEmpty
+                ? () => controller.refreshData()
+                : () => setState(() => _query = ''),
           )
         else
           for (final node in nodes)

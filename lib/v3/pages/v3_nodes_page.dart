@@ -99,10 +99,12 @@ class _V3NodesPageState extends State<V3NodesPage> {
             kicker: v3Copy(context, zh: '全球网络',
               en: 'GLOBAL NETWORK', tw: '全球網路'),
             title: v3Copy(context, zh: '节点概览', en: 'Node overview', tw: '節點概覽'),
+            // DLSS5's "31 of 31 shown": the header counts the live fleet so
+            // the page answers "how big is the network" before you scroll.
             description: v3Copy(context,
-              zh: '查看全球节点分布与延迟，点击节点即可切换。',
-              en: 'See node coverage and latency. Tap a node to switch.',
-              tw: '查看全球節點分佈與延遲，點擊節點即可切換。'),
+              zh: '${all.length} 个可用节点，点击节点即可切换。',
+              en: '${all.length} nodes available. Tap a node to switch.',
+              tw: '${all.length} 個可用節點，點擊節點即可切換。'),
           ),
           const SizedBox(height: 18),
           V3NodeCoverageMap(

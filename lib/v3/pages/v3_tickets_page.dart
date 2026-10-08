@@ -8,6 +8,7 @@ import '../../shared/services/api_client.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import 'v3_ticket_detail_dialog.dart';
@@ -120,14 +121,14 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
             child: skeleton
               ? const _TicketsSkeleton()
               : error != null
-                ? _TicketEmptyState(icon: Icons.error_outline_rounded,
+                ? V3EmptyState(icon: Icons.error_outline_rounded,
                     title: v3Copy(context, zh: '工单加载失败',
                       en: 'Could not load tickets', tw: '工單載入失敗'),
                     subtitle: error,
                     actionLabel: v3Copy(context, zh: '重试', en: 'Retry', tw: '重試'),
                     onAction: controller.refreshTickets)
                 : tickets.isEmpty
-                  ? _TicketEmptyState(icon: Icons.support_agent_rounded,
+                  ? V3EmptyState(icon: Icons.support_agent_rounded,
                       title: v3Copy(context, zh: '还没有工单',
                         en: 'No tickets yet', tw: '尚無工單'),
                       subtitle: v3Copy(context,
@@ -414,33 +415,6 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
             : v3Copy(context, zh: '提交工单',
               en: 'Submit ticket', tw: '提交工單'))),
       ]);
-  }
-}
-
-class _TicketEmptyState extends StatelessWidget {
-  const _TicketEmptyState({required this.icon, required this.title,
-    required this.subtitle, this.actionLabel, this.onAction});
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 34),
-      child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: p.inkMuted, size: 28),
-        const SizedBox(height: 12),
-        Text(title, style: TextStyle(color: p.ink, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 6),
-        Text(subtitle, textAlign: TextAlign.center,
-          style: TextStyle(color: p.inkMuted, fontSize: 10)),
-        if (actionLabel != null && onAction != null) ...[
-          const SizedBox(height: 16),
-          OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
-        ],
-      ])));
   }
 }
 

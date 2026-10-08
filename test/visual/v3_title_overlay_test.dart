@@ -13,7 +13,7 @@ import 'v3_visual_fixture.dart';
 /// theme assertion records the setter call instead of reading the pinned
 /// getter; language has no pin and round-trips through the real settings.
 class _OverlayFixture extends VisualV3Controller {
-  _OverlayFixture(AppPage page) : super(page);
+  _OverlayFixture(super.page);
 
   ThemeMode? requestedTheme;
   @override

@@ -67,7 +67,9 @@ class _AuthBrandPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Container(
-      margin: const EdgeInsets.all(14),
+      // Top edge starts where workspace content starts (below the floating
+      // 44px title strip), so the panel never tucks under the window buttons.
+      margin: const EdgeInsets.fromLTRB(14, 44, 14, 14),
       decoration: BoxDecoration(color: p.hero,
         borderRadius: BorderRadius.circular(V3Radius.panel), border: Border.all(color: p.line)),
       padding: const EdgeInsets.all(34),

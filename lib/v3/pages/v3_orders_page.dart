@@ -8,6 +8,7 @@ import '../../shared/services/api_client.dart';
 import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
@@ -204,14 +205,14 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
             if (_loading)
               const _OrdersSkeleton()
             else if (_error != null)
-              _OrderEmptyState(icon: Icons.error_outline_rounded,
+              V3EmptyState(icon: Icons.error_outline_rounded,
                 title: v3Copy(context, zh: '订单加载失败',
                   en: 'Could not load orders', tw: '訂單載入失敗'),
                 subtitle: _error!,
                 actionLabel: v3Copy(context, zh: '重试',
                   en: 'Retry', tw: '重試'), onAction: _load)
             else if (visible.isEmpty)
-              _OrderEmptyState(icon: Icons.receipt_long_rounded,
+              V3EmptyState(icon: Icons.receipt_long_rounded,
                 title: v3Copy(context, zh: '这里还没有订单',
                   en: 'No orders here yet', tw: '這裡尚無訂單'),
                 subtitle: _filter == 0
@@ -477,34 +478,6 @@ class _OrderRow extends StatelessWidget {
           ],
         ],
       ]));
-  }
-}
-
-class _OrderEmptyState extends StatelessWidget {
-  const _OrderEmptyState({required this.icon, required this.title,
-    required this.subtitle, this.actionLabel, this.onAction});
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 34),
-      child: Center(child: Column(children: [
-        Icon(icon, color: p.inkMuted, size: 28),
-        const SizedBox(height: 12),
-        Text(title, style: TextStyle(color: p.ink,
-          fontWeight: FontWeight.w800)),
-        const SizedBox(height: 6),
-        Text(subtitle, textAlign: TextAlign.center,
-          style: TextStyle(color: p.inkMuted, fontSize: 10)),
-        if (actionLabel != null && onAction != null) ...[
-          const SizedBox(height: 16),
-          OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
-        ],
-      ])));
   }
 }
 

@@ -6,6 +6,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
+import '../../config/app_config.dart';
 import '../../l10n/app_locale_preference.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
@@ -421,6 +422,31 @@ class _DesktopRail extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 10),
+          // Rail footer, DLSS5-style: the core's liveness as a quiet dot +
+          // label, with the app version as the last word. Shares the account
+          // card's muted voice so it reads as chrome, not content; the dot
+          // follows the same liveness signal the connection card reports.
+          Row(children: [
+            Container(width: 6, height: 6,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: controller.coreProcessRunning
+                    ? p.successInk : p.inkMuted)),
+            const SizedBox(width: 6),
+            Expanded(child: Text(
+              v3Copy(context,
+                zh: controller.coreProcessRunning ? '核心运行中' : '核心已停止',
+                en: controller.coreProcessRunning ? 'Core running' : 'Core stopped',
+                tw: controller.coreProcessRunning ? '核心運行中' : '核心已停止'),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.inkMuted, fontSize: 10))),
+            if (AppConfig.currentVersion.trim().isNotEmpty)
+              Text(AppConfig.currentVersion.trim(),
+                style: TextStyle(
+                  color: p.inkMuted.withValues(alpha: 0.72),
+                  fontSize: 10)),
+          ]),
         ],
       ),
     );
