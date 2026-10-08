@@ -6,6 +6,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
+import '../../l10n/app_locale_preference.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
 import '../auth/v3_auth_view.dart';
@@ -44,6 +45,19 @@ bool v3SupportsMobileRefresh(AppPage page) => switch (page) {
   AppPage.traffic => true,
   _ => false,
 };
+
+/// The shell's three top surfaces. The key drives the stage cross-fade: boot
+/// and login hand over to the workspace with a fade instead of a hard cut.
+/// Height of the floating title strip. The workspace runs edge to edge under
+/// it; page content insets below the strip so page-header actions never
+/// share the strip with the window controls.
+const double _kTitleOverlayHeight = 44;
+
+/// macOS keeps the native traffic lights: the overlay hides its own window
+/// buttons there and the rail drops below the lights instead of touching
+/// the window top edge.
+bool get _usesNativeWindowControls =>
+    defaultTargetPlatform == TargetPlatform.macOS;
 
 /// The shell's three top surfaces. The key drives the stage cross-fade: boot
 /// and login hand over to the workspace with a fade instead of a hard cut.
@@ -91,10 +105,20 @@ class V3Shell extends StatelessWidget {
     }
     return Material(
       color: V3Palette.of(context).canvas,
-      child: Column(
+      // Chromeless top, DLSS5-style: the workspace runs edge to edge under a
+      // floating title strip — the shell no longer owns a full-width bar,
+      // and the rail's brand mark stays the app's single brand surface.
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          const _DesktopWindowBar(),
-          Expanded(child: body),
+          body,
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: _kTitleOverlayHeight,
+            child: _DesktopTitleOverlay(),
+          ),
         ],
       ),
     );
@@ -163,7 +187,10 @@ class _V3WorkspaceState extends State<_V3Workspace> {
               _DesktopRail(controller: controller),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
+                  // Content starts below the floating title strip, so page
+                  // header actions never share a line with the window
+                  // controls — the strip itself stays transparent canvas.
+                  padding: const EdgeInsets.fromLTRB(0, _kTitleOverlayHeight, 12, 12),
                   child: stack,
                 ),
               ),
@@ -284,7 +311,15 @@ class _DesktopRail extends StatelessWidget {
     final plan = PlanPresentation.fromController(controller);
     return Container(
       width: 176,
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      // macOS traffic lights float over the top-left corner; the rail drops
+      // under them. Windows draws nothing native, so the rail rides high —
+      // its brand mark becomes the window's top-left anchor.
+      margin: EdgeInsets.fromLTRB(
+        12,
+        _usesNativeWindowControls ? 40 : 12,
+        12,
+        12,
+      ),
       padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
       decoration: BoxDecoration(
         color: p.hero,
@@ -484,16 +519,19 @@ class _MobileNavigation extends StatelessWidget {
   }
 }
 
-class _DesktopWindowBar extends StatefulWidget {
-  const _DesktopWindowBar();
+/// The floating title strip: an invisible drag surface across the top of the
+/// window with gift, theme and language controls plus the window buttons
+/// floating at the right edge. There is no bar behind them — the workspace
+/// shows through, and the rail's brand mark above it is the only brand.
+class _DesktopTitleOverlay extends StatefulWidget {
+  const _DesktopTitleOverlay();
   @override
-  State<_DesktopWindowBar> createState() => _DesktopWindowBarState();
+  State<_DesktopTitleOverlay> createState() => _DesktopTitleOverlayState();
 }
 
-class _DesktopWindowBarState extends State<_DesktopWindowBar>
+class _DesktopTitleOverlayState extends State<_DesktopTitleOverlay>
     with WindowListener {
   bool _maximized = false;
-  bool get _usesNativeControls => defaultTargetPlatform == TargetPlatform.macOS;
 
   @override
   void initState() {
@@ -591,10 +629,9 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
     final controller = AppScope.of(context);
-    // Redemption moves to the title bar: the gift button replaces the V3 mark
-    // when the panel offers it, and the mark stays when it does not.
+    // Redemption stays a window-level shortcut; the key keeps the reachability
+    // contract able to hold it from the strip.
     final giftEntry =
         isPageEnabled(AppPage.giftCard) && controller.isAuthenticated;
     // The gift button sits OUTSIDE the drag surface: a double-tap recognizer
@@ -604,84 +641,206 @@ class _DesktopWindowBarState extends State<_DesktopWindowBar>
       behavior: HitTestBehavior.translucent,
       onPanStart: (_) => windowManager.startDragging(),
       onDoubleTap: _toggleMaximize,
-      child: Row(
-        children: [
-          Text(
-            'LITCHI / PRIVATE NETWORK',
-            style: TextStyle(
-              color: p.inkMuted,
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.4,
+      child: const SizedBox.expand(),
+    );
+    return Row(
+      children: [
+        Expanded(child: dragSurface),
+        if (giftEntry) ...[
+          _OverlayIconButton(
+            key: kWindowGiftCardKey,
+            tooltip: v3Copy(
+              context,
+              zh: '兑换中心',
+              en: 'Redemption',
+              tw: '兌換中心',
             ),
+            icon: Icons.redeem_rounded,
+            iconColor: V3Palette.of(context).lycheeInk,
+            onPressed: () => openV3Page(context, AppPage.giftCard),
           ),
-          const Spacer(),
+          const SizedBox(width: 4),
         ],
+        const _ThemeOverlayButton(),
+        const _LanguageOverlayButton(),
+        if (!_usesNativeWindowControls) ...[
+          const SizedBox(width: 4),
+          _V3WindowButton(
+            tooltip: v3Copy(context, zh: '最小化', en: 'Minimize', tw: '最小化'),
+            icon: Icons.remove_rounded,
+            onPressed: windowManager.minimize,
+          ),
+          _V3WindowButton(
+            tooltip: _maximized
+                ? v3Copy(context, zh: '还原', en: 'Restore', tw: '還原')
+                : v3Copy(context, zh: '最大化', en: 'Maximize', tw: '最大化'),
+            icon: _maximized
+                ? Icons.filter_none_rounded
+                : Icons.crop_square_rounded,
+            onPressed: _toggleMaximize,
+          ),
+          _V3WindowButton(
+            tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
+            icon: Icons.close_rounded,
+            close: true,
+            onPressed: _closeWindow,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Ghost icon button for the title strip: no chrome at rest, the theme's
+/// hover/press ink alone marks it. Shared by the gift and theme controls so
+/// the strip keeps one control spec.
+class _OverlayIconButton extends StatelessWidget {
+  const _OverlayIconButton({
+    super.key,
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.iconColor,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final Color? iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Tooltip(
+      message: tooltip,
+      child: V3Pressable(
+        borderRadius: BorderRadius.circular(V3Radius.control),
+        onTap: onPressed,
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(icon, size: 18, color: iconColor ?? p.inkMuted),
+        ),
       ),
     );
-    return Container(
-      height: 42,
-      color: p.canvas,
-      child: Row(
-        children: [
-          if (_usesNativeControls) const SizedBox(width: 76),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 22),
-              child: dragSurface,
+  }
+}
+
+/// The sun/moon quick toggle. Theme.of reports the resolved brightness (a
+/// system preference included), so the tap flips from what the user actually
+/// sees and settles on an explicit light or dark choice.
+class _ThemeOverlayButton extends StatelessWidget {
+  const _ThemeOverlayButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return _OverlayIconButton(
+      tooltip: v3Copy(
+        context,
+        zh: dark ? '切换为浅色模式' : '切换为深色模式',
+        en: dark ? 'Switch to light mode' : 'Switch to dark mode',
+        tw: dark ? '切換為淺色模式' : '切換為深色模式',
+      ),
+      icon: dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+      onPressed: () =>
+          controller.setThemeMode(dark ? ThemeMode.light : ThemeMode.dark),
+    );
+  }
+}
+
+/// The language quick switch: the face names the language the UI is drawing
+/// in right now (the resolved locale, so a system preference shows through),
+/// and the menu lists every preference, each labelled in its own tongue —
+/// the way platform settings do it.
+class _LanguageOverlayButton extends StatelessWidget {
+  const _LanguageOverlayButton();
+
+  String _menuLabel(AppLocalePreference pref, BuildContext context) =>
+      switch (pref) {
+        AppLocalePreference.system => v3Copy(
+          context,
+          zh: '跟随系统',
+          en: 'System default',
+          tw: '跟隨系統',
+        ),
+        // Each language names itself; no localization applies.
+        AppLocalePreference.simplifiedChinese => '简体中文',
+        AppLocalePreference.traditionalChinese => '繁體中文',
+        AppLocalePreference.english => 'English',
+      };
+
+  String _faceLabel(BuildContext context) {
+    final locale = Localizations.localeOf(context);
+    if (locale.languageCode != 'zh') return 'EN';
+    final script = locale.scriptCode;
+    final country = locale.countryCode;
+    return script == 'Hant' ||
+            country == 'TW' ||
+            country == 'HK' ||
+            country == 'MO'
+        ? '繁'
+        : '中';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AppScope.of(context);
+    final p = V3Palette.of(context);
+    return PopupMenuButton<AppLocalePreference>(
+      tooltip: v3Copy(context, zh: '语言', en: 'Language', tw: '語言'),
+      position: PopupMenuPosition.under,
+      onSelected: controller.setLanguage,
+      itemBuilder: (context) => [
+        for (final pref in AppLocalePreference.values)
+          PopupMenuItem(
+            value: pref,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _menuLabel(pref, context),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color:
+                          pref == controller.language ? p.lycheeInk : p.ink,
+                      fontWeight: pref == controller.language
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (pref == controller.language)
+                  Icon(Icons.check_rounded, size: 16, color: p.lycheeInk),
+              ],
             ),
           ),
-          if (giftEntry) ...[
-            IconButton(
-              key: kWindowGiftCardKey,
-              tooltip: v3Copy(
-                context,
-                zh: '兑换中心',
-                en: 'Redemption',
-                tw: '兌換中心',
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-              onPressed: () => openV3Page(context, AppPage.giftCard),
-              icon: Icon(Icons.redeem_rounded, size: 18, color: p.lycheeInk),
-            ),
-            const SizedBox(width: 4),
-          ] else
-            Padding(
-              padding: const EdgeInsets.only(right: 14),
-              child: Text(
-                'V3',
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: SizedBox(
+          height: 34,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _faceLabel(context),
                 style: TextStyle(
-                  color: p.lycheeInk,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.4,
+                  color: p.inkMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
                 ),
               ),
-            ),
-          if (!_usesNativeControls) ...[
-            _V3WindowButton(
-              tooltip: v3Copy(context, zh: '最小化', en: 'Minimize', tw: '最小化'),
-              icon: Icons.remove_rounded,
-              onPressed: windowManager.minimize,
-            ),
-            _V3WindowButton(
-              tooltip: _maximized
-                  ? v3Copy(context, zh: '还原', en: 'Restore', tw: '還原')
-                  : v3Copy(context, zh: '最大化', en: 'Maximize', tw: '最大化'),
-              icon: _maximized
-                  ? Icons.filter_none_rounded
-                  : Icons.crop_square_rounded,
-              onPressed: _toggleMaximize,
-            ),
-            _V3WindowButton(
-              tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
-              icon: Icons.close_rounded,
-              close: true,
-              onPressed: _closeWindow,
-            ),
-          ],
-        ],
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: p.inkMuted,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -704,7 +863,7 @@ class _V3WindowButton extends StatelessWidget {
     final p = V3Palette.of(context);
     return SizedBox(
       width: 46,
-      height: 42,
+      height: _kTitleOverlayHeight,
       child: IconButton(
         tooltip: tooltip,
         padding: EdgeInsets.zero,
