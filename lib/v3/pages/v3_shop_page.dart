@@ -76,6 +76,26 @@ class _V3ShopPageState extends State<V3ShopPage> {
               actionLabel: _tr(context, '刷新套餐', 'Refresh plans', '重新整理方案'),
               onAction: controller.refreshData,
             )
+          else if (twoColumns)
+            // Pairs under an IntrinsicHeight: each row sizes to its taller
+            // card, both price rows anchor to the card bottom, and short
+            // feature lists stop leaving a dead band under a fixed 380px box
+            // (the pricing-table convention on desktop).
+            Column(children: [
+              for (var i = 0; i < plans.length; i += 2)
+                Padding(padding: EdgeInsets.only(top: i == 0 ? 0 : spacing),
+                  child: IntrinsicHeight(child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final plan in plans.skip(i).take(2))
+                        Expanded(child: _PlanCard(plan: plan,
+                          currencySymbol: controller.currencySymbol,
+                          desktop: true,
+                          onBuy: () => _openOrder(controller, plan,
+                            v3DefaultCycle(plan)))),
+                      if (plans.length - i == 1) const Expanded(child: SizedBox()),
+                    ]))),
+            ])
           else Wrap(spacing: spacing, runSpacing: spacing, children: [
             for (final plan in plans) SizedBox(width: cardWidth,
               child: _PlanCard(plan: plan,
@@ -273,13 +293,14 @@ class _PlanCard extends StatelessWidget {
       ]);
     return V3Panel(padding: const EdgeInsets.all(16),
       child: desktop
-        // Long localized feature text scrolls inside the fixed-height card
-        // instead of painting overflow stripes; heights stay uniform.
-        ? SizedBox(height: 380,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: SingleChildScrollView(child: info)),
-                purchase]))
+        ? Column(crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // The row's IntrinsicHeight sizes every card to its tallest
+              // sibling; long localized feature text scrolls inside whatever
+              // slack remains instead of painting overflow stripes, and the
+              // price anchors to the card bottom (pricing-table convention).
+              Flexible(child: SingleChildScrollView(child: info)),
+              purchase])
         : Column(crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [info, const SizedBox(height: 14), purchase]));
   }

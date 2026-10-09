@@ -10,6 +10,7 @@ import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_toast.dart';
 
 /// The one payment dialog. Every entry point that can take money — a plan
 /// purchase, a wallet top-up, an unpaid order — goes through here.
@@ -41,7 +42,7 @@ Future<bool> showV3PaymentFlow({
     barrierDismissible: true,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.52),
+    barrierColor: Colors.black.withValues(alpha: .48),
     pageBuilder: (_, _, _) => _V3PaymentDialog(
       tradeNo: tradeNo,
       fallbackAmount: fallbackAmount,
@@ -153,7 +154,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = _message(error);
+        _error = v3ErrorMessage(error);
       });
     }
   }
@@ -188,7 +189,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
       if (!mounted) return;
       setState(() {
         _checkingOut = false;
-        _error = _message(error);
+        _error = v3ErrorMessage(error);
       });
     }
   }
@@ -214,7 +215,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
         );
       }
     } catch (error) {
-      if (mounted) setState(() => _error = _message(error));
+      if (mounted) setState(() => _error = v3ErrorMessage(error));
     } finally {
       if (mounted) setState(() => _checkingStatus = false);
     }
@@ -526,7 +527,3 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
   }
 }
 
-String _message(Object error) => error
-    .toString()
-    .replaceFirst('ApiException: ', '')
-    .replaceFirst('Exception: ', '');

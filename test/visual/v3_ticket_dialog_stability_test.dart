@@ -6,6 +6,7 @@ import 'package:litchi_client/shared/models/api_models.dart';
 import 'package:litchi_client/shared/services/api_client.dart';
 import 'package:litchi_client/shared/services/panel_api.dart';
 import 'package:litchi_client/v3/pages/v3_ticket_detail_dialog.dart';
+import 'package:litchi_client/v3/ui/v3_components.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 const _summary = TicketModel(
@@ -95,7 +96,9 @@ void main() {
     ) async {
       final api = _DelayedTicketApi();
       await _pumpDialog(tester, api, size);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // First load shows the skeleton voice shared with the other lists,
+      // not a lone spinner.
+      expect(find.byType(V3SkeletonBlock), findsAtLeast(3));
       expect(find.text('香港节点连接问题'), findsOneWidget);
       final frame = tester.getRect(
         find.byKey(const ValueKey('v3-ticket-dialog-frame')),

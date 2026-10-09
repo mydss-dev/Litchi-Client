@@ -12,6 +12,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_toast.dart';
 import 'v3_ticket_detail_dialog.dart';
 
 // Loading and loaded rows reserve the same space. Avoid the list shifting
@@ -45,7 +46,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
       transitionDuration: V3Motion.medium,
       barrierDismissible: true,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: Colors.black.withValues(alpha: .5),
+      barrierColor: Colors.black.withValues(alpha: .48),
       pageBuilder: (_, _, _) => V3TicketDetailDialog(summary: ticket,
         api: controller.api, onChanged: controller.refreshTickets));
   }
@@ -57,7 +58,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
       transitionDuration: V3Motion.medium,
       barrierDismissible: true,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: Colors.black.withValues(alpha: .5),
+      barrierColor: Colors.black.withValues(alpha: .48),
       pageBuilder: (_, _, _) => _NewTicketDialog(api: controller.api));
     if (created == true && mounted) await controller.refreshTickets();
   }
@@ -365,6 +366,8 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       return;
     }
     if (_submitting) return;
+    // Captured before the await so the failure toast outlives the dialog.
+    final overlay = Overlay.of(context, rootOverlay: true);
     setState(() { _submitting = true; _error = null; });
     try {
       await widget.api.createTicket(subject: subject,
@@ -378,7 +381,11 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
         Navigator.of(context).pop(false);
         return;
       }
-      setState(() { _submitting = false; _error = _message(error); });
+      // Async result errors are transient toasts; only field validation
+      // stays inline (M3).
+      V3Toast.showInOverlay(overlay, v3ErrorMessage(error),
+        type: V3ToastType.error);
+      setState(() => _submitting = false);
     }
   }
 
@@ -424,14 +431,13 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
           : () => Navigator.of(context).pop(false),
           child: Text(v3Copy(context, zh: '取消', en: 'Cancel', tw: '取消'))),
         FilledButton(onPressed: _submitting ? null : _submit,
-          child: Text(_submitting ? v3Copy(context, zh: '提交中…',
-              en: 'Submitting…', tw: '提交中…')
-            : v3Copy(context, zh: '提交工单',
-              en: 'Submit ticket', tw: '提交工單'))),
+          child: _submitting
+            ? SizedBox(width: 16, height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2,
+                  color: p.onLychee))
+            : Text(v3Copy(context, zh: '提交工单',
+                en: 'Submit ticket', tw: '提交工單'))),
       ]);
   }
 }
 
-String _message(Object error) => error.toString()
-    .replaceFirst('ApiException: ', '')
-    .replaceFirst('Exception: ', '');

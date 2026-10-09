@@ -7,6 +7,7 @@ import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_toast.dart';
 import 'v3_payment_flow.dart';
 
 /// The one order-confirm dialog, shared by the shop (buy a plan) and the
@@ -45,12 +46,6 @@ Future<void> showV3OrderDialog({
 /// with the keyboard open, only the viewport caps its size; the body scrolls.
 const Key kV3PurchaseDialogBodyKey = ValueKey('v3-purchase-dialog-body');
 
-/// Backend exceptions arrive as `Exception: ...` strings; strip the prefixes
-/// the other pages strip, so shop error surfaces show the backend message
-/// alone.
-String _orderErrorText(Object error) => error.toString()
-    .replaceFirst('ApiException: ', '')
-    .replaceFirst('Exception: ', '');
 
 class _V3OrderDialog extends StatefulWidget {
   const _V3OrderDialog({
@@ -120,7 +115,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
         }
       });
     } catch (error) {
-      if (mounted) setState(() => _error = _orderErrorText(error));
+      if (mounted) setState(() => _error = v3ErrorMessage(error));
     } finally {
       if (mounted) setState(() => _checkingCoupon = false);
     }
@@ -148,7 +143,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
         onViewOrders: widget.onViewOrders,
       );
     } catch (error) {
-      if (mounted) setState(() { _error = _orderErrorText(error); _submitting = false; });
+      if (mounted) setState(() { _error = v3ErrorMessage(error); _submitting = false; });
     }
   }
 

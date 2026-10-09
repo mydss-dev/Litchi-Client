@@ -165,7 +165,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
     } catch (error) {
       // Async result errors are transient toasts; only field validation
       // stays inline (M3).
-      V3Toast.showInOverlay(overlay, _message(error), type: V3ToastType.error);
+      V3Toast.showInOverlay(overlay, v3ErrorMessage(error), type: V3ToastType.error);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -438,6 +438,3 @@ class _WithdrawRequest {
   final String method;
 }
 
-String _message(Object error) => error.toString()
-    .replaceFirst('ApiException: ', '')
-    .replaceFirst('Exception: ', '');

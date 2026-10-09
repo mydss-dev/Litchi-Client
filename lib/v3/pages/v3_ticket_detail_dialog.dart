@@ -8,6 +8,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
+import '../ui/v3_components.dart';
 import '../ui/v3_toast.dart';
 
 /// Stable outer bounds and title position while detail requests complete.
@@ -44,7 +45,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
       setState(() { _ticket = ticket; _loading = false; _error = null; });
     } catch (error) {
       if (!mounted) return;
-      setState(() { _loading = false; _error = _ticketError(error); });
+      setState(() { _loading = false; _error = v3ErrorMessage(error); });
     }
   }
 
@@ -62,7 +63,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
     } catch (error) {
       // Async result errors are transient toasts; only field validation stays
       // inline (M3). _error is reserved for the initial load.
-      V3Toast.showInOverlay(overlay, _ticketError(error),
+      V3Toast.showInOverlay(overlay, v3ErrorMessage(error),
         type: V3ToastType.error);
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -91,7 +92,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
       await _load();
       await widget.onChanged();
     } catch (error) {
-      V3Toast.showInOverlay(overlay, _ticketError(error),
+      V3Toast.showInOverlay(overlay, v3ErrorMessage(error),
         type: V3ToastType.error);
     } finally {
       if (mounted) setState(() => _closing = false);
@@ -156,7 +157,15 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
             decoration: BoxDecoration(color: p.surfaceRaised,
               borderRadius: BorderRadius.circular(V3Radius.card)),
             child: _ticket == null && _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Padding(padding: EdgeInsets.all(16),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min, children: [
+                    V3SkeletonBlock(width: 160, height: 12),
+                    SizedBox(height: 10),
+                    V3SkeletonBlock(width: 260, height: 12),
+                    SizedBox(height: 10),
+                    V3SkeletonBlock(width: 200, height: 12),
+                  ]))
               : _ticket == null
                 ? Center(child: SingleChildScrollView(
                     child: V3EmptyState(icon: Icons.error_outline_rounded,
@@ -232,6 +241,3 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
   }
 }
 
-String _ticketError(Object error) => error.toString()
-    .replaceFirst('ApiException: ', '')
-    .replaceFirst('Exception: ', '');

@@ -220,3 +220,11 @@ class _V3ToastViewState extends State<_V3ToastView>
     );
   }
 }
+
+/// Backend exceptions arrive as `ApiException: ...`/`Exception: ...` strings;
+/// strip the wrappers so toast and inline error surfaces show the backend
+/// message alone. ApiException keeps its name so support tickets stay
+/// greppable.
+String v3ErrorMessage(Object error) => error.toString()
+    .replaceFirst('ApiException: ', '')
+    .replaceFirst('Exception: ', '');

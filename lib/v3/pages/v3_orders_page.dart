@@ -72,7 +72,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         // Setup stage: a neutral empty ledger, not a failure to retry.
         setState(() { _orders = const []; _loading = false; });
       } else {
-        setState(() { _loading = false; _error = _message(error); });
+        setState(() { _loading = false; _error = v3ErrorMessage(error); });
       }
     }
   }
@@ -107,7 +107,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
       await AppScope.read(context).api.cancelOrder(order.tradeNo);
       if (mounted) await _load();
     } catch (error) {
-      if (mounted) _toast(_message(error));
+      if (mounted) _toast(v3ErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busyTradeNo = null);
     }
@@ -517,6 +517,3 @@ class _CancelOrderDialog extends StatelessWidget {
   }
 }
 
-String _message(Object error) => error.toString()
-    .replaceFirst('ApiException: ', '')
-    .replaceFirst('Exception: ', '');
