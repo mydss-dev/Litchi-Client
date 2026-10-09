@@ -313,6 +313,7 @@ class _AccountSummaryPanel extends StatelessWidget {
                         color: p.ink,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -489,6 +490,7 @@ class _MoneyStat extends StatelessWidget {
             color: p.ink,
             fontSize: 20,
             fontWeight: FontWeight.w900,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
       ],
@@ -979,21 +981,25 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                       borderRadius: BorderRadius.circular(V3Radius.field),
                     ),
                   ),
-                  child: Text(
-                    _busy
-                        ? v3Copy(
-                            context,
-                            zh: '正在提交…',
-                            en: 'Submitting…',
-                            tw: '正在提交…',
-                          )
-                        : v3Copy(
+                  // The spinner replaces the label inside the fixed-width
+                  // slot, so the button never resizes mid-submit (M3).
+                  child: _busy
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: p.onLychee,
+                          ),
+                        )
+                      : Text(
+                          v3Copy(
                             context,
                             zh: '保存新密码',
                             en: 'Save password',
                             tw: '儲存新密碼',
                           ),
-                  ),
+                        ),
                 ),
               ),
             ],

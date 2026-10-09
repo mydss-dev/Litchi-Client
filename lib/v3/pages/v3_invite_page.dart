@@ -392,6 +392,7 @@ class _InviteHero extends StatelessWidget {
                                 style: TextStyle(
                                   color: p.inkMuted,
                                   fontSize: 11,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               ),
                           ],
@@ -720,6 +721,7 @@ class _InviteStats extends StatelessWidget {
                                   color: entry.positive ? p.successInk : p.ink,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               )
                             : Text(
@@ -730,6 +732,7 @@ class _InviteStats extends StatelessWidget {
                                   color: entry.positive ? p.successInk : p.ink,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               ),
                       ),
@@ -890,12 +893,14 @@ class _ReferralLedger extends StatelessWidget {
                             color: p.successInk,
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           record.amountDisplay(controller.currencySymbol),
-                          style: TextStyle(color: p.inkMuted, fontSize: 10),
+                          style: TextStyle(color: p.inkMuted, fontSize: 10,
+                            fontFeatures: const [FontFeature.tabularFigures()]),
                         ),
                       ],
                     ),

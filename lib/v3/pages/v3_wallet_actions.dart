@@ -220,11 +220,15 @@ class _RechargeDialogState extends State<_RechargeDialog> {
                   foregroundColor: p.onLychee,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(V3Radius.field))),
-                icon: const Icon(Icons.add_card_rounded, size: 18),
-                label: Text(_busy ? v3Copy(context, zh: '正在创建订单…',
-                    en: 'Creating order…', tw: '正在建立訂單…')
-                  : v3Copy(context, zh: '去支付',
-                    en: 'Continue to payment', tw: '前往付款')))),
+                // The spinner rides the 18px icon slot, so the button keeps
+                // its geometry while the order is in flight (M3).
+                icon: _busy
+                    ? SizedBox(width: 18, height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2,
+                          color: p.onLychee))
+                    : const Icon(Icons.add_card_rounded, size: 18),
+                label: Text(v3Copy(context, zh: '去支付',
+                  en: 'Continue to payment', tw: '前往付款')))),
           ]))));
   }
 }
@@ -280,7 +284,8 @@ class _AmountDialogState extends State<_AmountDialog> {
             ]),
             const SizedBox(height: 6),
             Text(widget.subtitle,
-              style: TextStyle(color: p.inkMuted, fontSize: 10)),
+              style: TextStyle(color: p.inkMuted, fontSize: 10,
+                fontFeatures: const [FontFeature.tabularFigures()])),
             const SizedBox(height: 18),
             TextField(controller: _controller, autofocus: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),

@@ -123,7 +123,8 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                     en: 'TICKET #${widget.summary.id}',
                     tw: '工單 #${widget.summary.id}'),
                     style: TextStyle(color: p.lycheeInk, fontSize: 10,
-                      fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+                      fontWeight: FontWeight.w900, letterSpacing: 1.5,
+                      fontFeatures: const [FontFeature.tabularFigures()])),
                   const SizedBox(height: 5),
                   Text(ticket.subject.trim().isEmpty
                       ? v3Copy(context, zh: '未命名工单',
@@ -136,10 +137,12 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
               SizedBox(width: 94,
                 child: open ? OutlinedButton(
                   onPressed: _loading || _closing || _sending ? null : _closeTicket,
-                  child: Text(_closing
-                    ? v3Copy(context, zh: '关闭中…',
-                        en: 'Closing…', tw: '關閉中…')
-                    : v3Copy(context, zh: '关闭工单',
+                  // The fixed 94px slot absorbs the spinner: no width jump.
+                  child: _closing
+                    ? SizedBox(width: 14, height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2,
+                          color: p.lychee))
+                    : Text(v3Copy(context, zh: '关闭工单',
                         en: 'Close ticket', tw: '關閉工單'))) : null),
               IconButton(tooltip: v3Copy(context, zh: '关闭',
                   en: 'Close', tw: '關閉'),
@@ -202,7 +205,8 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                                         en: 'Support', tw: '客服')
                                     : v3Copy(context, zh: '我',
                                         en: 'Me', tw: '我')} · ${message.timeDisplay}',
-                                  style: TextStyle(color: p.inkMuted, fontSize: 10)),
+                                  style: TextStyle(color: p.inkMuted, fontSize: 10,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
                               ])));
                       }))),
           if (open) ...[
@@ -215,10 +219,13 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
               const SizedBox(width: 10),
               SizedBox(height: 48, child: FilledButton.icon(
                 onPressed: _ticket == null || _sending || _closing ? null : _send,
-                icon: const Icon(Icons.send_rounded, size: 17),
-                label: Text(_sending
-                  ? v3Copy(context, zh: '发送中', en: 'Sending', tw: '傳送中')
-                  : v3Copy(context, zh: '发送', en: 'Send', tw: '傳送')))),
+                // The spinner rides the 17px icon slot: no geometry shift.
+                icon: _sending
+                  ? SizedBox(width: 17, height: 17,
+                      child: CircularProgressIndicator(strokeWidth: 2,
+                        color: p.onLychee))
+                  : const Icon(Icons.send_rounded, size: 17),
+                label: Text(v3Copy(context, zh: '发送', en: 'Send', tw: '傳送')))),
             ])),
           ],
         ])));

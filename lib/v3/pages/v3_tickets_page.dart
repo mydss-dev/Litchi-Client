@@ -187,7 +187,8 @@ class _TicketMetric extends StatelessWidget {
             if (loading)
               const V3SkeletonBlock(width: 30, height: 16)
             else Text(value, style: TextStyle(color: p.ink,
-              fontSize: 19, fontWeight: FontWeight.w900)),
+              fontSize: 19, fontWeight: FontWeight.w900,
+              fontFeatures: const [FontFeature.tabularFigures()])),
           ]),
       ]));
   }
@@ -286,7 +287,8 @@ class _TicketRow extends StatelessWidget {
                   Expanded(child: Text('#${ticket.id} · ${ticket.dateDisplay}',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
-                    style: TextStyle(color: p.inkMuted, fontSize: 10))),
+                    style: TextStyle(color: p.inkMuted, fontSize: 10,
+                      fontFeatures: const [FontFeature.tabularFigures()]))),
                 ]),
               ]))));
     }
@@ -312,7 +314,8 @@ class _TicketRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text('#${ticket.id} · ${ticket.dateDisplay}', maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 10)),
+                  style: TextStyle(color: p.inkMuted, fontSize: 10,
+                    fontFeatures: const [FontFeature.tabularFigures()])),
               ])),
             const SizedBox(width: 12),
             Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
