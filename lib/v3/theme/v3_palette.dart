@@ -117,30 +117,25 @@ class V3Palette {
     //
     // Light layering needs fill steps, a hairline, and a real drop shadow at
     // the same time — a hairline alone reads as a wireframe, a shadow alone
-    // reads as nothing. The set is aligned with DLSS5 Swapper's "Aurora"
-    // light theme (--ink/--ink-2/--panel/--hair/--shadow): a cool blue-gray
-    // ground, near-white glass cards on top, a 10% dark hairline, and a
-    // strong blue-black shadow.
-    //
-    // The ground carries a blue cast rather than the old sage cast: large
-    // low-saturation tinted grays read muddy at window scale, and the cool
-    // cast sits quietly behind the pink accent instead of fighting it the
-    // way green did.
+    // reads as nothing. The ground is a neutral warm gray — the macOS
+    // #F5F5F7 convention — instead of a blue-gray cast: the old cool ground
+    // fought the warm lychee accent (cold canvas, warm ink) and read
+    // washed-out at window scale.
     //
     // Pure white no longer appears in light mode at all. The one exception is
     // the QR pad in the payment flow, which scanners want white and which
     // therefore hard-codes it instead of reading a token.
-    canvas: Color(0xFFEEF2F8),
-    surface: Color(0xFFFAFBFD),
-    surfaceRaised: Color(0xFFF2F5FA),
-    hero: Color(0xFFE7EDF5),
+    canvas: Color(0xFFF2F1F3),
+    surface: Color(0xFFFDFDFD),
+    surfaceRaised: Color(0xFFF8F7F8),
+    hero: Color(0xFFECEAEC),
     night: Color(0xFF0D1524),
     ink: Color(0xFF0D1524),
-    // DLSS5's --muted: a cool gray that clears 4.5:1 on every new light
-    // surface; the old #5C6462 was tuned against the sage ground.
-    inkMuted: Color(0xFF4F5D73),
-    line: Color(0xFFD7DCE3),
-    hairline: Color(0x1A0D1628),
+    // A warm-gray muted ink that clears 4.5:1 on every light surface
+    // (~7.5:1 on cards) without re-importing the cool cast.
+    inkMuted: Color(0xFF575158),
+    line: Color(0xFFDDD9DC),
+    hairline: Color(0x1A1A141A),
     lychee: Color(0xFFF25472),
     lycheeSoft: Color(0xFFFFE3E8),
     citrus: Color(0xFFD7F267),
@@ -163,27 +158,29 @@ class V3Palette {
     // (3.6:1). See the QR note under `canvas` above.
     onDanger: Color(0xFFFFFFFF),
     shadows: [
-      BoxShadow(color: Color(0x240D1628), blurRadius: 10, offset: Offset(0, 4)),
-      BoxShadow(color: Color(0x470D1628), blurRadius: 32, offset: Offset(0, 14), spreadRadius: -6),
+      BoxShadow(color: Color(0x24171218), blurRadius: 10, offset: Offset(0, 4)),
+      BoxShadow(color: Color(0x47171218), blurRadius: 32, offset: Offset(0, 14), spreadRadius: -6),
     ],
-    cardGradient: [Color(0xFFFCFDFE), Color(0xFFF6F8FB)],
+    cardGradient: [Color(0xFFFEFDFE), Color(0xFFF9F7F9)],
   );
 
   static const dark = V3Palette(
-    canvas: Color(0xFF0B0F14),
-    surface: Color(0xFF161C24),
-    surfaceRaised: Color(0xFF222A34),
-    // Same cool family as the light palette, one luminance down — dark is not
-    // a separate green-gray world anymore: DLSS5 keeps one hue across modes
-    // (light ink #0d1524 ↔ dark ink #05070c), so does the app now. The
-    // 4-tier staircase survives: hero < canvas < surface < surfaceRaised.
-    hero: Color(0xFF070A0E),
-    night: Color(0xFF070A0E),
+    // M3's dark-surface guidance: near-black grounds carry a subtle tint of
+    // the primary rather than sitting at pure neutral. The plum cast ties the
+    // ground to the lychee accent, and the tiers are pulled roughly twice as
+    // far apart in luminance — the old cool grays sat so close that cards and
+    // canvas read as one muddy field with hairlines doing all the separation.
+    // The 4-tier staircase survives: hero < canvas < surface < surfaceRaised.
+    canvas: Color(0xFF100B11),
+    surface: Color(0xFF1D1520),
+    surfaceRaised: Color(0xFF2A1F2B),
+    hero: Color(0xFF0A070C),
+    night: Color(0xFF0A070C),
     ink: Color(0xFFEDF2F8),
-    // DLSS5's dark `--muted` #9fb0c6, pulled one step toward gray so it keeps
-    // clearing 4.5:1 on every new surface.
-    inkMuted: Color(0xFF9AA8BC),
-    line: Color(0xFF2A3542),
+    // Plum-gray muted ink, still clearing 4.5:1 on every dark surface
+    // (~6.7:1 on cards).
+    inkMuted: Color(0xFFA99BAA),
+    line: Color(0xFF3A2E3A),
     // DLSS5 --hair: white 9%; Fluent's dark card stroke is white ~7%. The same
     // 1px line light draws — dark finally runs the full "line + light" recipe.
     hairline: Color(0x14FFFFFF),
@@ -208,7 +205,7 @@ class V3Palette {
       BoxShadow(color: Color(0x59000000), blurRadius: 14, offset: Offset(0, 5)),
       BoxShadow(color: Color(0x99000000), blurRadius: 40, offset: Offset(0, 16), spreadRadius: -10),
     ],
-    cardGradient: [Color(0xFF1A212B), Color(0xFF141A22)],
+    cardGradient: [Color(0xFF261C28), Color(0xFF1A1220)],
   );
 
   static V3Palette of(BuildContext context) =>

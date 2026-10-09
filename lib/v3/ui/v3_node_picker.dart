@@ -441,7 +441,6 @@ class V3NodeRow extends StatelessWidget {
                                     child: V3NodeTags(
                                       tags: tags,
                                       maxVisible: 2,
-                                      accent: !selected,
                                       chipMaxWidth: 80,
                                       showOverflow: false,
                                     ),

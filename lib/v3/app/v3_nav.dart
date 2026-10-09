@@ -160,10 +160,11 @@ const List<V3NavItem> kMobileMore = [
 
 // ── Desktop IA ──────────────────────────────────────────────────────────────
 //
-// Settings is pinned to the rail's footer and the account card is its own entry
-// point, so neither is part of this list. The rail renders the items in three
-// captioned groups (kRailNetworkGroup / kRailPlanGroup / kRailSupportGroup) --
-// named consts so the flat list and the groups stay one source of truth.
+// Settings is anchored at the rail's foot (below a separator, above the
+// account card) and the account card is its own entry point, so neither is
+// part of this list. The rail renders kDesktopRail as one flat, uncaptioned
+// list -- at eight destinations, captions read as noise the selection pill
+// already answers.
 
 const V3NavItem kRailConnect = V3NavItem(
   page: AppPage.dashboard,
@@ -212,10 +213,6 @@ const List<V3NavItem> kDesktopRail = [
   kRailInvite,
   kRailTickets,
 ];
-
-const List<V3NavItem> kRailNetworkGroup = [kRailConnect, kRailNodes];
-const List<V3NavItem> kRailPlanGroup = [kRailShop, kRailOrders, kRailTraffic];
-const List<V3NavItem> kRailSupportGroup = [kRailInvite, kRailTickets];
 
 const V3NavItem kRailSettings = V3NavItem(
   page: AppPage.settings,

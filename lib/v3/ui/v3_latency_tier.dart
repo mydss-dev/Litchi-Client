@@ -10,8 +10,10 @@ import 'v3_locale_copy.dart';
 /// a 150ms Hong Kong — so every surface that paints a node latency (node
 /// rows, the dashboard's current-node cards, the coverage map) resolves its
 /// colour here rather than keeping a private threshold. Green clears the
-/// region's fast bar, amber clears the okay bar, red is slower or timed out,
-/// grey is untested.
+/// region's fast bar, amber clears the okay bar, red is slow, and a timed-out
+/// probe is amber too — a missing reading is a caution, not a measured
+/// failure, and it keeps the danger red out of routine node lists. Grey is
+/// untested.
 ///
 /// Fast/okay bars, measured from mainland China departure points:
 /// asia ≤100/200, america ≤200/350, europe ≤220/380, oceania ≤180/320.
@@ -45,7 +47,7 @@ int _tierIndex(NodeRegion region, int latency) => switch (region) {
 
 /// Text-safe colour for a node latency (labels, values).
 Color v3LatencyInk(V3Palette p, NodeRegion region, int latency) {
-  if (latency >= 9999) return p.dangerInk;
+  if (latency >= 9999) return p.warningInk;
   if (latency <= 0) return p.inkMuted;
   return switch (_tierIndex(region, latency)) {
     0 => p.successInk,
@@ -57,7 +59,7 @@ Color v3LatencyInk(V3Palette p, NodeRegion region, int latency) {
 /// Fill/border-safe tier colour — the counterpart of [v3LatencyInk] for
 /// surfaces instead of text.
 Color v3LatencyBase(V3Palette p, NodeRegion region, int latency) {
-  if (latency >= 9999) return p.danger;
+  if (latency >= 9999) return p.warning;
   if (latency <= 0) return p.inkMuted;
   return switch (_tierIndex(region, latency)) {
     0 => p.success,
@@ -185,7 +187,7 @@ class V3LatencyBadge extends StatelessWidget {
 /// fast, 2 okay, 1 slow, 0 for untested and timeout — so the glyph reads as
 /// signal strength before the number beside it is parsed. Unfilled bars keep
 /// the tier colour at low alpha, so an untested badge greys out and a timeout
-/// reads dim red without a second palette.
+/// reads dim amber without a second palette.
 class _V3SignalBars extends StatelessWidget {
   const _V3SignalBars({required this.region, required this.latency});
 

@@ -9,19 +9,12 @@ class V3NodeTags extends StatelessWidget {
     super.key,
     required this.tags,
     this.maxVisible = 3,
-    this.accent = true,
     this.chipMaxWidth = 104,
     this.showOverflow = true,
   });
 
   final List<String> tags;
   final int maxVisible;
-
-  /// Brand-soft chip that lifts the tag off plain surfaces. Muted flips the
-  /// fill to the opaque card colour — for selected node rows, whose
-  /// lycheeSoft tint would dissolve a pink chip — while the text stays
-  /// lychee-inked either way, so a tag reads as brand on both fills.
-  final bool accent;
 
   /// Single-chip width cap. The dashboard cards' stacked Wrap can afford the
   /// wide default; an inline chip beside a node name shares that line with
@@ -30,7 +23,7 @@ class V3NodeTags extends StatelessWidget {
   final double chipMaxWidth;
 
   /// Whether hidden tags surface as a trailing "+N". Node rows turn this off:
-  /// a pink "+N" floating between the chip and the latency badge reads as
+  /// a "+N" floating between the chip and the latency badge reads as
   /// clutter at the row's tail — extra tags stay searchable instead.
   final bool showOverflow;
 
@@ -52,7 +45,12 @@ class V3NodeTags extends StatelessWidget {
               // whole 22px name line and sagging into the subtitle.
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: accent ? p.lycheeSoft : p.surface,
+                // Neutral capability chips: streaming-unlock, residential
+                // etc. are facts about the node, not brand moments or alarm
+                // states — the lychee pink stays with selection, primary
+                // actions and connection status, so a card full of tags
+                // stops reading as a wall of alerts.
+                color: p.ink.withValues(alpha: 0.07),
                 borderRadius: BorderRadius.circular(99),
               ),
               child: ConstrainedBox(
@@ -62,7 +60,7 @@ class V3NodeTags extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: p.lycheeInk,
+                    color: p.inkMuted,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),

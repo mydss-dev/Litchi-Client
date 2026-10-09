@@ -328,75 +328,22 @@ class _DesktopRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
 
-    // Desktop IA in three captioned groups -- Fluent NavigationView's section
-    // headers, Ant Pro's grouped menu; M3 rail guidance caps destinations
-    // near five, so eight flat equal-weight items overread. Settings stays
-    // the tail item: it is system chrome, not support. Empty groups (feature
-    // gates off) vanish together with their caption.
-    final groups = <(String, List<V3NavItem>)>[
-      (
-        v3Copy(context, zh: '网络', en: 'Network', tw: '網路'),
-        kRailNetworkGroup,
-      ),
-      (
-        v3Copy(context, zh: '订阅', en: 'Subscription', tw: '訂閱'),
-        kRailPlanGroup,
-      ),
-      (
-        v3Copy(context, zh: '支持', en: 'Support', tw: '支援'),
-        kRailSupportGroup,
-      ),
-    ];
+    // Desktop IA is one flat list. Eight destinations read as equals at a
+    // glance — captioned groups earn their keep only in 15+-item enterprise
+    // menus (Ant Pro), and at this size the 10px captions read as noise the
+    // selection pill already answers (M3 navigation drawer, Linear).
+    final items = enabledNavItems(kDesktopRail);
+    // 44px item + 8px gap, matching _RailItem's bottom padding.
+    const itemPitch = 52.0;
     final railChildren = <Widget>[];
-    var railY = 0.0;
-    var firstGroup = true;
     double? selectedTop;
-    for (final (caption, items) in groups) {
-      final enabled = enabledNavItems(items);
-      if (enabled.isEmpty) continue;
-      final topGap = firstGroup ? 0.0 : 12.0;
-      // Fixed-height caption blocks keep the pill's offset math exact.
-      railChildren.add(SizedBox(
-        height: topGap + 20,
-        child: Padding(
-          padding: EdgeInsets.only(left: 10, top: topGap + 4),
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: Text(
-              caption,
-              maxLines: 1,
-              style: TextStyle(
-                color: p.inkMuted.withValues(alpha: 0.72),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ),
-        ),
-      ));
-      railY += topGap + 20;
-      firstGroup = false;
-      for (final item in enabled) {
-        if (controller.page == item.page) selectedTop = railY;
-        railChildren.add(_RailItem(
-          key: railItemKey(item.page),
-          item: item,
-          selected: controller.page == item.page,
-          onTap: () => openV3Page(context, item.page),
-        ));
-        railY += 48;
-      }
-    }
-    if (kRailSettings.isEnabled) {
-      railChildren.add(const SizedBox(height: 10));
-      railY += 10;
-      if (controller.page == kRailSettings.page) selectedTop = railY;
+    for (final (index, item) in items.indexed) {
+      if (controller.page == item.page) selectedTop = index * itemPitch;
       railChildren.add(_RailItem(
-        key: railItemKey(kRailSettings.page),
-        item: kRailSettings,
-        selected: controller.page == kRailSettings.page,
-        onTap: () => openV3Page(context, kRailSettings.page),
+        key: railItemKey(item.page),
+        item: item,
+        selected: controller.page == item.page,
+        onTap: () => openV3Page(context, item.page),
       ));
     }
     final user = controller.user;
@@ -429,8 +376,7 @@ class _DesktopRail extends StatelessWidget {
           // The items sit in a Stack so the shared selection pill can
           // slide underneath them (see _RailPill) -- one indicator for the
           // whole rail, DLSS5's dock-glow. The rail's build loop above owns
-          // the item order and the pill's offsets; captions ride in the same
-          // Column so the pill passes under them when it slides groups.
+          // the item order and the pill's offsets.
           Stack(
             children: [
               _RailPill(selectedTop: selectedTop),
@@ -438,6 +384,20 @@ class _DesktopRail extends StatelessWidget {
             ],
           ),
           const Spacer(),
+          // Fluent NavigationView anchors Settings at the foot of the nav,
+          // under a separator: it is system chrome, not a peer destination.
+          // It sits outside the pill's stack above, so it owns its selection
+          // fill (see _RailItem.selfFilled).
+          Container(height: 1, color: p.hairline),
+          const SizedBox(height: 10),
+          if (kRailSettings.isEnabled)
+            _RailItem(
+              key: railItemKey(kRailSettings.page),
+              item: kRailSettings,
+              selected: controller.page == kRailSettings.page,
+              selfFilled: true,
+              onTap: () => openV3Page(context, kRailSettings.page),
+            ),
           const SizedBox(height: 12),
           Container(
             key: kAccountCardKey,
@@ -628,16 +588,22 @@ class _RailItem extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.onTap,
+    this.selfFilled = false,
   });
   final V3NavItem item;
   final bool selected;
   final VoidCallback onTap;
 
+  /// Bottom-anchored items (Settings) live outside the shared pill's stack,
+  /// so they fade their own selection fill in instead of borrowing the one
+  /// that slides behind the main list.
+  final bool selfFilled;
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 8),
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(end: selected ? 1 : 0),
         duration: V3Motion.fast,
@@ -647,11 +613,21 @@ class _RailItem extends StatelessWidget {
           final textColor = Color.lerp(p.inkMuted, p.ink, t)!;
           // V3Pressable keeps the press ink above the shared selection pill
           // instead of losing it under the rail's opaque hero.
-          return SizedBox(
+          return Container(
             height: 44,
-            // The selection fill is the rail's shared sliding pill
-            // (_RailPill) underneath; the item itself stays transparent so
-            // the pill can travel between items without repainting them.
+            // Bottom-anchored items (Settings) fade their own selection
+            // fill in; stack items stay transparent so the shared pill can
+            // travel between them without repainting.
+            decoration: selfFilled
+                ? BoxDecoration(
+                    color: Color.lerp(
+                      p.lycheeSoft.withValues(alpha: 0),
+                      p.lycheeSoft,
+                      t,
+                    ),
+                    borderRadius: BorderRadius.circular(V3Radius.field),
+                  )
+                : null,
             child: V3Pressable(
               borderRadius: BorderRadius.circular(V3Radius.field),
               hoverTint: p.ink.withValues(alpha: 0.08),
@@ -1153,9 +1129,9 @@ class _RailPill extends StatefulWidget {
   const _RailPill({required this.selectedTop});
 
   /// The selected item's top offset inside the rail's item stack, or null
-  /// when nothing is selected (sub-pages have no rail item). The rail
-  /// computes this while laying out its groups -- captions make the pitch
-  /// irregular, so an index times 48 no longer lands on the right item.
+  /// when nothing is selected (sub-pages have no rail item). The rail's
+  /// build loop computes it from the flat item pitch, so the pill and the
+  /// items share one source of truth.
   final double? selectedTop;
 
   @override
