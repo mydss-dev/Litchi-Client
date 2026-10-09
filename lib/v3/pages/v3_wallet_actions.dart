@@ -142,6 +142,8 @@ class _RechargeDialogState extends State<_RechargeDialog> {
         en: 'Enter a valid top-up amount', tw: '請輸入有效儲值金額'));
       return;
     }
+    // Captured before the await so the failure toast outlives the dialog.
+    final overlay = Overlay.of(context, rootOverlay: true);
     setState(() { _busy = true; _error = null; });
     try {
       final tradeNo = await controller.api.submitRechargeOrder((amount * 100).round());
@@ -161,7 +163,9 @@ class _RechargeDialogState extends State<_RechargeDialog> {
         Navigator.of(context).pop();
       }
     } catch (error) {
-      if (mounted) setState(() => _error = _message(error));
+      // Async result errors are transient toasts; only field validation
+      // stays inline (M3).
+      V3Toast.showInOverlay(overlay, _message(error), type: V3ToastType.error);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

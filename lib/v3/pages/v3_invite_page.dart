@@ -5,6 +5,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_toast.dart';
@@ -814,18 +815,19 @@ class _ReferralLedger extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (records.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 26),
-              child: Center(
-                child: Text(
-                  v3Copy(
-                    context,
-                    zh: '暂无返佣记录',
-                    en: 'No commission records',
-                    tw: '暫無返佣紀錄',
-                  ),
-                  style: TextStyle(color: p.inkMuted, fontSize: 12),
-                ),
+            V3EmptyState(
+              icon: Icons.receipt_long_rounded,
+              title: v3Copy(
+                context,
+                zh: '暂无返佣记录',
+                en: 'No commission records',
+                tw: '暫無返佣紀錄',
+              ),
+              subtitle: v3Copy(
+                context,
+                zh: '好友消费后，返佣会显示在这里。',
+                en: 'Commission shows up here once your referrals pay.',
+                tw: '好友消費後，返佣會顯示在這裡。',
               ),
             )
           else

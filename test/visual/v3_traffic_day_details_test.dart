@@ -28,7 +28,30 @@ class _TrafficController extends VisualV3Controller {
   ];
 }
 
-Future<void> _pump(WidgetTester tester, _TrafficController controller) async {
+class _PinnedController extends VisualV3Controller {
+  _PinnedController() : super(AppPage.traffic);
+
+  @override
+  List<double> get dailyUsage => const [];
+
+  @override
+  List<TrafficUsagePoint> get trafficUsage => [
+    TrafficUsagePoint(
+      date: DateTime.now().subtract(const Duration(days: 2)),
+      totalGb: 1.25,
+      uploadGb: 0.25,
+      downloadGb: 1.0,
+    ),
+    TrafficUsagePoint(
+      date: DateTime.now().subtract(const Duration(days: 1)),
+      totalGb: 3.75,
+      uploadGb: 0.75,
+      downloadGb: 3.0,
+    ),
+  ];
+}
+
+Future<void> _pump(WidgetTester tester, VisualV3Controller controller) async {
   await tester.binding.setSurfaceSize(const Size(900, 700));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   addTearDown(controller.disposeVisual);
@@ -86,6 +109,26 @@ void main() {
     final message = tester.widget<Tooltip>(tooltip).message;
     expect(message, '$missing\n暂无记录');
     expect(message, isNot(contains('0.00 GB')));
+    expect(tester.takeException(), isNull);
+  });
+
+  // The pinned readout makes the bar numbers readable without hover (M3/HIG:
+  // a tooltip is a desktop supplement, never the only carrier). Tapping a bar
+  // pins its day; the readout defaults to the latest recorded day.
+  testWidgets('tapping a bar pins the day readout above the chart',
+      (tester) async {
+    await _pump(tester, _PinnedController());
+    final twoDaysAgo = _day(DateTime.now().subtract(const Duration(days: 2)));
+    // Default readout: the most recent day that has a record.
+    expect(find.text('上传 0.75 GB · 下载 3.00 GB'), findsOneWidget);
+    expect(find.text('3.75 GB'), findsOneWidget);
+
+    await tester.ensureVisible(_dayTooltip(twoDaysAgo));
+    await tester.tap(_dayTooltip(twoDaysAgo));
+    await tester.pump();
+    expect(find.text('上传 0.25 GB · 下载 1.00 GB'), findsOneWidget);
+    expect(find.text('1.25 GB'), findsOneWidget);
+    expect(find.text(twoDaysAgo), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

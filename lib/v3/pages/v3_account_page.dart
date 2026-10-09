@@ -8,6 +8,7 @@ import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_account_labels.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_logout_confirmation.dart';
@@ -82,7 +83,6 @@ class _V3AccountPageState extends State<V3AccountPage> {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final p = V3Palette.of(context);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
@@ -148,17 +148,20 @@ class _V3AccountPageState extends State<V3AccountPage> {
           ),
           if (controller.dataLoadError != null) ...[
             const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: p.warning.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(V3Radius.card),
+            // Same failure voice as the tickets and orders pages (icon tile,
+            // one muted line, one retry step) instead of a private yellow
+            // strip.
+            V3EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: v3Copy(
+                context,
+                zh: '账户信息加载失败',
+                en: 'Could not load account info',
+                tw: '帳戶資訊載入失敗',
               ),
-              child: Text(
-                controller.dataLoadError!,
-                style: TextStyle(color: p.warningInk, fontSize: 11),
-              ),
+              subtitle: controller.dataLoadError!,
+              actionLabel: v3Copy(context, zh: '重试', en: 'Retry', tw: '重試'),
+              onAction: controller.refreshData,
             ),
           ],
         ],
@@ -758,6 +761,7 @@ class _AccountAction extends StatelessWidget {
     // press/hover highlight is actually visible.
     return V3Pressable(
       onTap: onTap,
+      hoverTint: p.ink.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(V3Radius.field),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 6),
@@ -850,10 +854,11 @@ class _PasswordDialogState extends State<_PasswordDialog> {
       V3Toast.showInOverlay(overlay, message, type: V3ToastType.success);
     } catch (error) {
       if (mounted) {
-        setState(() {
-          _busy = false;
-          _error = '$error';
-        });
+        // Async result errors are transient toasts, same voice as the success
+        // path; only field validation stays inline (M3).
+        final overlay = Overlay.of(context, rootOverlay: true);
+        V3Toast.showInOverlay(overlay, '$error', type: V3ToastType.error);
+        setState(() => _busy = false);
       }
     }
   }

@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
+import '../ui/v3_empty_state.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
+import '../ui/v3_toast.dart';
 
 /// Stable outer bounds and title position while detail requests complete.
 class V3TicketDetailDialog extends StatefulWidget {
@@ -49,14 +51,19 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
   Future<void> _send() async {
     final text = _reply.text.trim();
     if (text.isEmpty || _sending || _closing) return;
-    setState(() { _sending = true; _error = null; });
+    // Captured before the await so the toast outlives the dialog route.
+    final overlay = Overlay.of(context, rootOverlay: true);
+    setState(() => _sending = true);
     try {
       await widget.api.replyTicket(ticketId: widget.summary.id, message: text);
       _reply.clear();
       await _load();
       await widget.onChanged();
     } catch (error) {
-      if (mounted) setState(() => _error = _ticketError(error));
+      // Async result errors are transient toasts; only field validation stays
+      // inline (M3). _error is reserved for the initial load.
+      V3Toast.showInOverlay(overlay, _ticketError(error),
+        type: V3ToastType.error);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -77,13 +84,15 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
         en: 'Close ticket', tw: '關閉工單'),
       destructive: true);
     if (!confirmed || !mounted) return;
-    setState(() { _closing = true; _error = null; });
+    final overlay = Overlay.of(context, rootOverlay: true);
+    setState(() => _closing = true);
     try {
       await widget.api.closeTicket(widget.summary.id);
       await _load();
       await widget.onChanged();
     } catch (error) {
-      if (mounted) setState(() => _error = _ticketError(error));
+      V3Toast.showInOverlay(overlay, _ticketError(error),
+        type: V3ToastType.error);
     } finally {
       if (mounted) setState(() => _closing = false);
     }
@@ -146,11 +155,25 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
             child: _ticket == null && _loading
               ? const Center(child: CircularProgressIndicator())
               : _ticket == null
-                ? _TicketLoadError(error: _error, retry: _load)
+                ? Center(child: SingleChildScrollView(
+                    child: V3EmptyState(icon: Icons.error_outline_rounded,
+                      title: v3Copy(context, zh: '无法打开工单',
+                        en: 'Cannot open ticket', tw: '無法開啟工單'),
+                      subtitle: _error ??
+                        v3Copy(context, zh: '请求未能完成，请重试。',
+                          en: 'The request did not complete. Try again.',
+                          tw: '請求未能完成，請重試。'),
+                      actionLabel: v3Copy(context, zh: '重试',
+                        en: 'Retry', tw: '重試'),
+                      onAction: _load)))
                 : _ticket!.messages.isEmpty
-                  ? Center(child: Text(v3Copy(context, zh: '暂无消息',
-                      en: 'No messages yet', tw: '暫無訊息'),
-                    style: TextStyle(color: p.inkMuted, fontSize: 11)))
+                  ? V3EmptyState(icon: Icons.chat_bubble_outline_rounded,
+                      title: v3Copy(context, zh: '暂无消息',
+                        en: 'No messages yet', tw: '暫無訊息'),
+                      subtitle: v3Copy(context,
+                        zh: '客服回复后会出现在这里。',
+                        en: 'Replies from support appear here.',
+                        tw: '客服回覆後會出現在這裡。'))
                   : ListView.separated(
                       itemCount: _ticket!.messages.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -182,12 +205,6 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                                   style: TextStyle(color: p.inkMuted, fontSize: 10)),
                               ])));
                       }))),
-          if (_error != null && _ticket != null)
-            SizedBox(height: 26,
-              child: Align(alignment: Alignment.centerLeft,
-                child: Text(_error!, maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.dangerInk, fontSize: 10)))),
           if (open) ...[
             const SizedBox(height: 14),
             SizedBox(height: 48, child: Row(children: [
@@ -205,30 +222,6 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
             ])),
           ],
         ])));
-  }
-}
-
-class _TicketLoadError extends StatelessWidget {
-  const _TicketLoadError({required this.error, required this.retry});
-  final String? error;
-  final VoidCallback retry;
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Center(child: SingleChildScrollView(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.error_outline_rounded, color: p.dangerInk),
-        const SizedBox(height: 10),
-        Text(v3Copy(context, zh: '无法打开工单',
-          en: 'Cannot open ticket', tw: '無法開啟工單')),
-        const SizedBox(height: 8),
-        if (error != null)
-          Text(error!, textAlign: TextAlign.center,
-            style: TextStyle(color: p.dangerInk, fontSize: 11)),
-        const SizedBox(height: 12),
-        OutlinedButton(onPressed: retry, child: Text(v3Copy(context,
-          zh: '重试', en: 'Retry', tw: '重試'))),
-      ])));
   }
 }
 

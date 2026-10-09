@@ -320,6 +320,48 @@ class VisualV3Controller extends AppController {
   List<String> get withdrawMethods => const ['支付宝', 'USDT'];
   @override
   double get minWithdrawAmount => 20;
+  // Tickets render as real rows in goldens: the list and its loaded flag are
+  // overridden, and the mount-time refresh is a no-op so the fixture state is
+  // fully synchronous.
+  @override
+  List<TicketModel> get tickets => _tickets;
+  @override
+  bool get ticketsLoaded => true;
+  @override
+  Future<void> refreshTickets() async {}
+
+  static const _tickets = <TicketModel>[
+    TicketModel(
+      id: 101,
+      subject: '香港节点连接问题',
+      level: 2,
+      status: 0,
+      createdAt: 1789430400,
+      updatedAt: 1789516800,
+      messages: [
+        TicketMessageModel(
+          id: 1,
+          isAdmin: false,
+          message: '连接香港节点后偶尔无法访问，请帮忙检查。',
+          createdAt: 1789430400,
+        ),
+        TicketMessageModel(
+          id: 2,
+          isAdmin: true,
+          message: '已为线路执行切换，请重新连接后测试。',
+          createdAt: 1789516800,
+        ),
+      ],
+    ),
+    TicketModel(
+      id: 99,
+      subject: '套餐到账确认',
+      level: 1,
+      status: 1,
+      createdAt: 1789000000,
+      updatedAt: 1789086400,
+    ),
+  ];
 
   void disposeVisual() {
     ConnectivityCheckService.override = null;
@@ -361,46 +403,13 @@ class _VisualPanelApi extends PanelApi {
     ),
   ];
 
-  static const _tickets = <TicketModel>[
-    TicketModel(
-      id: 101,
-      subject: '香港节点连接问题',
-      level: 2,
-      status: 0,
-      createdAt: 1789430400,
-      updatedAt: 1789516800,
-      messages: [
-        TicketMessageModel(
-          id: 1,
-          isAdmin: false,
-          message: '连接香港节点后偶尔无法访问，请帮忙检查。',
-          createdAt: 1789430400,
-        ),
-        TicketMessageModel(
-          id: 2,
-          isAdmin: true,
-          message: '已为线路执行切换，请重新连接后测试。',
-          createdAt: 1789516800,
-        ),
-      ],
-    ),
-    TicketModel(
-      id: 99,
-      subject: '套餐到账确认',
-      level: 1,
-      status: 1,
-      createdAt: 1789000000,
-      updatedAt: 1789086400,
-    ),
-  ];
-
   @override
   Future<List<RemoteOrder>> fetchOrders() async => _orders;
   @override
-  Future<List<TicketModel>> getTickets() async => _tickets;
+  Future<List<TicketModel>> getTickets() async => VisualV3Controller._tickets;
   @override
   Future<TicketModel> getTicketDetail(int ticketId) async =>
-      _tickets.firstWhere((ticket) => ticket.id == ticketId);
+      VisualV3Controller._tickets.firstWhere((ticket) => ticket.id == ticketId);
 
   // Telegram binding runs entirely through these three, none of which touch
   // the network in a widget test.
