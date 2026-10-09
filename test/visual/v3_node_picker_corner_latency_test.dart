@@ -57,7 +57,9 @@ void main() {
       (NodeRegion.europe, 450, p.dangerInk),
       (NodeRegion.oceania, 180, p.successInk),
       (NodeRegion.oceania, 350, p.dangerInk),
-      (NodeRegion.asia, 9999, p.dangerInk),
+      // Timeout is a caution, not a measured failure — the shared scale
+      // reads it amber (see v3_latency_tier.dart).
+      (NodeRegion.asia, 9999, p.warningInk),
       (NodeRegion.asia, 0, p.inkMuted),
     ];
     for (final (region, latency, expected) in cases) {
