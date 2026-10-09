@@ -384,21 +384,8 @@ class _DesktopRail extends StatelessWidget {
             ],
           ),
           const Spacer(),
-          // Fluent NavigationView anchors Settings at the foot of the nav,
-          // under a separator: it is system chrome, not a peer destination.
-          // It sits outside the pill's stack above, so it owns its selection
-          // fill (see _RailItem.selfFilled).
-          Container(height: 1, color: p.hairline),
-          const SizedBox(height: 10),
-          if (kRailSettings.isEnabled)
-            _RailItem(
-              key: railItemKey(kRailSettings.page),
-              item: kRailSettings,
-              selected: controller.page == kRailSettings.page,
-              selfFilled: true,
-              onTap: () => openV3Page(context, kRailSettings.page),
-            ),
-          const SizedBox(height: 12),
+          // The account card is the rail's only bottom-anchored element;
+          // Settings is a peer destination and lives in the flat list above.
           Container(
             key: kAccountCardKey,
             decoration: BoxDecoration(
@@ -588,16 +575,10 @@ class _RailItem extends StatelessWidget {
     required this.item,
     required this.selected,
     required this.onTap,
-    this.selfFilled = false,
   });
   final V3NavItem item;
   final bool selected;
   final VoidCallback onTap;
-
-  /// Bottom-anchored items (Settings) live outside the shared pill's stack,
-  /// so they fade their own selection fill in instead of borrowing the one
-  /// that slides behind the main list.
-  final bool selfFilled;
 
   @override
   Widget build(BuildContext context) {
@@ -613,21 +594,8 @@ class _RailItem extends StatelessWidget {
           final textColor = Color.lerp(p.inkMuted, p.ink, t)!;
           // V3Pressable keeps the press ink above the shared selection pill
           // instead of losing it under the rail's opaque hero.
-          return Container(
+          return SizedBox(
             height: 44,
-            // Bottom-anchored items (Settings) fade their own selection
-            // fill in; stack items stay transparent so the shared pill can
-            // travel between them without repainting.
-            decoration: selfFilled
-                ? BoxDecoration(
-                    color: Color.lerp(
-                      p.lycheeSoft.withValues(alpha: 0),
-                      p.lycheeSoft,
-                      t,
-                    ),
-                    borderRadius: BorderRadius.circular(V3Radius.field),
-                  )
-                : null,
             child: V3Pressable(
               borderRadius: BorderRadius.circular(V3Radius.field),
               hoverTint: p.ink.withValues(alpha: 0.08),

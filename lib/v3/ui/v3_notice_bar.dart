@@ -259,16 +259,18 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                 Row(children: [
                   Container(width: 28, height: 28, alignment: Alignment.center,
                     decoration: BoxDecoration(
+                      // Neutral icon tile: an announcement is information, not
+                      // a brand moment — the pink stays on the action link.
                       color: isUpdatePage
                           ? p.success.withValues(alpha: .12)
-                          : p.lycheeSoft,
+                          : p.ink.withValues(alpha: .06),
                       borderRadius: BorderRadius.circular(V3Radius.control)),
                     child: Icon(
                       isUpdatePage
                           ? Icons.arrow_circle_up_rounded
                           : Icons.campaign_rounded,
                       size: 15,
-                      color: isUpdatePage ? p.successInk : p.lycheeInk)),
+                      color: isUpdatePage ? p.successInk : p.inkMuted)),
                   const SizedBox(width: 10),
                   Expanded(child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 220),
@@ -440,10 +442,10 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
               children: [
                 if (widget.mustRead) ...[
                   Container(width: 30, height: 30, alignment: Alignment.center,
-                    decoration: BoxDecoration(color: p.lycheeSoft,
+                    decoration: BoxDecoration(color: p.ink.withValues(alpha: .06),
                       borderRadius: BorderRadius.circular(V3Radius.control)),
                     child: Icon(Icons.campaign_rounded, size: 16,
-                      color: p.lycheeInk)),
+                      color: p.inkMuted)),
                   const SizedBox(width: 12),
                 ],
                 Expanded(child: Padding(

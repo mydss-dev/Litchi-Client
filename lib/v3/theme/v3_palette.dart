@@ -117,25 +117,24 @@ class V3Palette {
     //
     // Light layering needs fill steps, a hairline, and a real drop shadow at
     // the same time — a hairline alone reads as a wireframe, a shadow alone
-    // reads as nothing. The ground is a neutral warm gray — the macOS
-    // #F5F5F7 convention — instead of a blue-gray cast: the old cool ground
-    // fought the warm lychee accent (cold canvas, warm ink) and read
-    // washed-out at window scale.
+    // reads as nothing. The ground is a clean neutral near-white — the macOS
+    // #F5F5F7 convention, de-warmed after the warm-gray round read as a dusty
+    // film and made text feel soft at window scale.
     //
     // Pure white no longer appears in light mode at all. The one exception is
     // the QR pad in the payment flow, which scanners want white and which
     // therefore hard-codes it instead of reading a token.
-    canvas: Color(0xFFF2F1F3),
+    canvas: Color(0xFFF4F4F6),
     surface: Color(0xFFFDFDFD),
-    surfaceRaised: Color(0xFFF8F7F8),
-    hero: Color(0xFFECEAEC),
+    surfaceRaised: Color(0xFFF7F7F9),
+    hero: Color(0xFFEBEBED),
     night: Color(0xFF0D1524),
     ink: Color(0xFF0D1524),
-    // A warm-gray muted ink that clears 4.5:1 on every light surface
-    // (~7.5:1 on cards) without re-importing the cool cast.
-    inkMuted: Color(0xFF575158),
-    line: Color(0xFFDDD9DC),
-    hairline: Color(0x1A1A141A),
+    // One step darker than the warm-gray muted ink: secondary text must read
+    // crisp, not atmospheric (~8.5:1 on cards).
+    inkMuted: Color(0xFF4E4A50),
+    line: Color(0xFFDBDBDF),
+    hairline: Color(0x2414181C),
     lychee: Color(0xFFF25472),
     lycheeSoft: Color(0xFFFFE3E8),
     citrus: Color(0xFFD7F267),
@@ -157,35 +156,39 @@ class V3Palette {
     // danger red is dark enough that white clears AA, while night does not
     // (3.6:1). See the QR note under `canvas` above.
     onDanger: Color(0xFFFFFFFF),
+    // Quieter than the previous round: soft contact shadow + a faint ambient
+    // lift. The heavy two-layer stack haloed every card and read as blur.
     shadows: [
-      BoxShadow(color: Color(0x24171218), blurRadius: 10, offset: Offset(0, 4)),
-      BoxShadow(color: Color(0x47171218), blurRadius: 32, offset: Offset(0, 14), spreadRadius: -6),
+      BoxShadow(color: Color(0x1A141518), blurRadius: 8, offset: Offset(0, 3)),
+      BoxShadow(color: Color(0x3D141518), blurRadius: 28, offset: Offset(0, 12), spreadRadius: -8),
     ],
-    cardGradient: [Color(0xFFFEFDFE), Color(0xFFF9F7F9)],
+    cardGradient: [Color(0xFFFDFDFE), Color(0xFFF9F9FA)],
   );
 
   static const dark = V3Palette(
-    // M3's dark-surface guidance: near-black grounds carry a subtle tint of
-    // the primary rather than sitting at pure neutral. The plum cast ties the
-    // ground to the lychee accent, and the tiers are pulled roughly twice as
-    // far apart in luminance — the old cool grays sat so close that cards and
-    // canvas read as one muddy field with hairlines doing all the separation.
+    // Neutral black staircase — the palette the product actually wants. The
+    // plum-tinted round read as a red cast on the whole app, and heavy dark
+    // shadows haloed every card onto its neighbours (stacked-card mud).
+    // Levels follow the macOS/Fluent dark convention: near-black canvas,
+    // two quiet elevation steps, hierarchy from luminance — no hue.
     // The 4-tier staircase survives: hero < canvas < surface < surfaceRaised.
-    canvas: Color(0xFF100B11),
-    surface: Color(0xFF1D1520),
-    surfaceRaised: Color(0xFF2A1F2B),
-    hero: Color(0xFF0A070C),
-    night: Color(0xFF0A070C),
-    ink: Color(0xFFEDF2F8),
-    // Plum-gray muted ink, still clearing 4.5:1 on every dark surface
-    // (~6.7:1 on cards).
-    inkMuted: Color(0xFFA99BAA),
-    line: Color(0xFF3A2E3A),
+    canvas: Color(0xFF0A0A0B),
+    surface: Color(0xFF161618),
+    surfaceRaised: Color(0xFF1F1F22),
+    hero: Color(0xFF000000),
+    night: Color(0xFF000000),
+    ink: Color(0xFFEDEDEF),
+    // Neutral gray muted ink, still clearing 4.5:1 on every dark surface
+    // (~6:1 on cards).
+    inkMuted: Color(0xFF9D9DA3),
+    line: Color(0xFF2A2A2E),
     // DLSS5 --hair: white 9%; Fluent's dark card stroke is white ~7%. The same
     // 1px line light draws — dark finally runs the full "line + light" recipe.
     hairline: Color(0x14FFFFFF),
     lychee: Color(0xFFFF6683),
-    lycheeSoft: Color(0xFF3A222C),
+    // Selection fill only: a subdued pink-tinted pocket on black. Surfaces
+    // around it stay neutral — the accent lives in small states, not the cast.
+    lycheeSoft: Color(0xFF331F24),
     citrus: Color(0xFFD7F267),
     aqua: Color(0xFF79E0DC),
     success: Color(0xFF57D39A),
@@ -196,16 +199,16 @@ class V3Palette {
     warningInk: Color(0xFFF1BD59),
     dangerInk: Color(0xFFFF7188),
     aquaInk: Color(0xFF79E0DC),
-    onLychee: Color(0xFF070A0E),
-    onDanger: Color(0xFF070A0E),
-    // Two-layer deep shadow, DLSS5's dark reference (0 24px 60px -24px
-    // rgba(0,0,0,.85)) split into a tight contact layer and a long ambient
-    // one — the single soft layer before read as mud on the new canvas.
+    onLychee: Color(0xFF0A0A0B),
+    onDanger: Color(0xFF0A0A0B),
+    // Flat by design: on black, big blurred shadows paint as gray smudges over
+    // whatever sits below (the "stacked cards" look). One tight contact shadow
+    // for depth over scroll content; separation itself comes from the surface
+    // steps and the 1px stroke.
     shadows: [
-      BoxShadow(color: Color(0x59000000), blurRadius: 14, offset: Offset(0, 5)),
-      BoxShadow(color: Color(0x99000000), blurRadius: 40, offset: Offset(0, 16), spreadRadius: -10),
+      BoxShadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 2)),
     ],
-    cardGradient: [Color(0xFF261C28), Color(0xFF1A1220)],
+    cardGradient: [Color(0xFF1B1B1D), Color(0xFF141416)],
   );
 
   static V3Palette of(BuildContext context) =>

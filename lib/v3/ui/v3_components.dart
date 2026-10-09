@@ -632,11 +632,11 @@ class V3NavRow extends StatelessWidget {
 
 /// The Litchi mark.
 ///
-/// The login screen and the desktop rail each drew their own: a pink square
-/// holding a letter "L" on one, a citrus square holding a glyph on the other.
-/// The pink was a hard-coded literal rather than a palette colour, so it stayed
-/// pink through a theme change while everything around it did not — and two
-/// marks for one product is not a mark.
+/// The box shows the bundle's brand icon (CI bakes `logo_url` into
+/// `assets/images/app_icon.png`; local builds ship the default lychee). The
+/// old hand-drawn citrus squircle is kept only as the errorBuilder fallback
+/// for environments where the branding step never ran — two marks for one
+/// product is not a mark.
 class V3BrandMark extends StatelessWidget {
   const V3BrandMark({
     super.key,
@@ -655,19 +655,25 @@ class V3BrandMark extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
+        SizedBox(
           width: boxSize,
           height: boxSize,
-          decoration: BoxDecoration(
-            color: p.citrus,
-            // Kept proportional so the 30dp rail mark and the 34dp login mark
-            // stay the same shape rather than two rounded squares by accident.
-            borderRadius: BorderRadius.circular(boxSize / 3),
-          ),
-          child: Icon(
-            Icons.blur_on_rounded,
-            color: p.night,
-            size: boxSize * 2 / 3,
+          // The baked icon carries its own rounded-square shape and
+          // transparency, so it renders as-is.
+          child: Image.asset(
+            'assets/images/app_icon.png',
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => Container(
+              decoration: BoxDecoration(
+                color: p.citrus,
+                borderRadius: BorderRadius.circular(boxSize / 3),
+              ),
+              child: Icon(
+                Icons.blur_on_rounded,
+                color: p.night,
+                size: boxSize * 2 / 3,
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 10),

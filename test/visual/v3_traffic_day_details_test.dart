@@ -28,8 +28,8 @@ class _TrafficController extends VisualV3Controller {
   ];
 }
 
-class _PinnedController extends VisualV3Controller {
-  _PinnedController() : super(AppPage.traffic);
+class _MultiDayController extends VisualV3Controller {
+  _MultiDayController() : super(AppPage.traffic);
 
   @override
   List<double> get dailyUsage => const [];
@@ -112,23 +112,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  // The pinned readout makes the bar numbers readable without hover (M3/HIG:
-  // a tooltip is a desktop supplement, never the only carrier). Tapping a bar
-  // pins its day; the readout defaults to the latest recorded day.
-  testWidgets('tapping a bar pins the day readout above the chart',
-      (tester) async {
-    await _pump(tester, _PinnedController());
-    final twoDaysAgo = _day(DateTime.now().subtract(const Duration(days: 2)));
-    // Default readout: the most recent day that has a record.
-    expect(find.text('上传 0.75 GB · 下载 3.00 GB'), findsOneWidget);
-    expect(find.text('3.75 GB'), findsOneWidget);
+  // The standalone readout row (date + split + total) is gone by owner
+  // decision: the trend panel keeps only the chart, and the hover tooltip is
+  // the per-day carrier on desktop — the three tests above pin its content.
+  testWidgets('tapping a bar does not summon a readout row', (tester) async {
+    await _pump(tester, _MultiDayController());
+    // Neither the latest recorded day…
+    expect(find.text('上传 0.75 GB · 下载 3.00 GB'), findsNothing);
+    expect(find.text('3.75 GB'), findsNothing);
 
+    // …nor a tap-pinned one: bars are not tappable any more.
+    final twoDaysAgo = _day(DateTime.now().subtract(const Duration(days: 2)));
     await tester.ensureVisible(_dayTooltip(twoDaysAgo));
     await tester.tap(_dayTooltip(twoDaysAgo));
     await tester.pump();
-    expect(find.text('上传 0.25 GB · 下载 1.00 GB'), findsOneWidget);
-    expect(find.text('1.25 GB'), findsOneWidget);
-    expect(find.text(twoDaysAgo), findsOneWidget);
+    expect(find.text('上传 0.25 GB · 下载 1.00 GB'), findsNothing);
+    expect(find.text('1.25 GB'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

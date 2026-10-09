@@ -160,11 +160,9 @@ const List<V3NavItem> kMobileMore = [
 
 // ── Desktop IA ──────────────────────────────────────────────────────────────
 //
-// Settings is anchored at the rail's foot (below a separator, above the
-// account card) and the account card is its own entry point, so neither is
-// part of this list. The rail renders kDesktopRail as one flat, uncaptioned
-// list -- at eight destinations, captions read as noise the selection pill
-// already answers.
+// One flat, uncaptioned list; the account card is its own entry point at the
+// rail's foot, so it is not part of this list. Settings is a peer destination
+// in the list — the owner prefers it alongside the rest over a foot anchor.
 
 const V3NavItem kRailConnect = V3NavItem(
   page: AppPage.dashboard,
@@ -203,6 +201,11 @@ const V3NavItem kRailTickets = V3NavItem(
   icon: Icons.forum_outlined,
   placement: V3NavPlacement.desktopRail,
 );
+const V3NavItem kRailSettings = V3NavItem(
+  page: AppPage.settings,
+  icon: Icons.tune_rounded,
+  placement: V3NavPlacement.desktopRail,
+);
 
 const List<V3NavItem> kDesktopRail = [
   kRailConnect,
@@ -212,13 +215,8 @@ const List<V3NavItem> kDesktopRail = [
   kRailTraffic,
   kRailInvite,
   kRailTickets,
+  kRailSettings,
 ];
-
-const V3NavItem kRailSettings = V3NavItem(
-  page: AppPage.settings,
-  icon: Icons.tune_rounded,
-  placement: V3NavPlacement.desktopRail,
-);
 
 const V3NavItem kAccountDestination = V3NavItem(
   page: AppPage.account,

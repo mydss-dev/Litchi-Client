@@ -234,9 +234,9 @@ class _PlanCard extends StatelessWidget {
           : plan.capacity,
         style: TextStyle(color: p.ink, fontSize: 29, fontWeight: FontWeight.w900,
           fontFeatures: const [FontFeature.tabularFigures()])),
-      const SizedBox(height: 14),
-      Divider(color: p.line, height: 1),
       const SizedBox(height: 12),
+      // No divider here: title → capacity → features already read as one
+      // group; the card keeps a single rule above the price block.
       if (features.isEmpty)
         Text(_tr(context, '暂无套餐说明', 'No plan description', '暫無方案說明'),
           style: TextStyle(color: p.inkMuted, fontSize: 12))

@@ -7,7 +7,7 @@ import 'package:litchi_client/v3/app/v3_nav.dart';
 void main() {
   final items = [
     ...kMobilePrimary, ...kMobileMore,
-    ...kDesktopRail, kRailSettings,
+    ...kDesktopRail,
   ];
 
   Future<void> check(WidgetTester tester, Locale locale,

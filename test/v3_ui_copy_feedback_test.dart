@@ -23,7 +23,7 @@ void main() {
       AppPage.tickets: '工单',
       AppPage.settings: '设置',
     };
-    for (final item in [...kDesktopRail, kRailSettings]) {
+    for (final item in kDesktopRail) {
       expect(item.localizedLabel(context), expected[item.page]);
       expect(item.localizedLabel(context).runes.length, 2);
     }

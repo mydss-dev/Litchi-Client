@@ -162,7 +162,7 @@ void main() {
     for (final surface in <(String, List<V3NavItem>)>[
       ('kMobilePrimary', kMobilePrimary),
       ('kMobileMore', kMobileMore),
-      ('kDesktopRail', [...kDesktopRail, kRailSettings]),
+      ('kDesktopRail', kDesktopRail),
     ]) {
       final (name, items) = surface;
       final seen = <AppPage>{};
@@ -175,7 +175,6 @@ void main() {
       ...kMobilePrimary.map((item) => item.page),
       ...kMobileMore.map((item) => item.page),
       ...kDesktopRail.map((item) => item.page),
-      kRailSettings.page,
     };
     for (final page in AppPage.values) {
       expect(declared.contains(page), isTrue,

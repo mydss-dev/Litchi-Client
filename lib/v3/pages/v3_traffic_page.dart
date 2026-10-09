@@ -504,11 +504,10 @@ class _DayDetails {
   }
 }
 
-/// The trend panel is stateful only for the pinned-day readout: tapping a bar
-/// pins its day, and the readout row defaults to the latest recorded day
-/// (M3/HIG: the numbers must be readable without hover; the tooltip stays as
-/// a desktop supplement).
-class _TrendPanel extends StatefulWidget {
+/// The trend panel. No pinned-day readout: the numbers live on the bar
+/// captions (7-day view) and the hover tooltip — the owner found the
+/// always-on date row noise, and the chart reads fine without it.
+class _TrendPanel extends StatelessWidget {
   const _TrendPanel({
     required this.series,
     required this.periodDays,
@@ -521,25 +520,15 @@ class _TrendPanel extends StatefulWidget {
   final List<TrafficUsagePoint> usagePoints;
   final ValueChanged<int> onPeriodChanged;
   final ScrollController scrollController;
-  @override
-  State<_TrendPanel> createState() => _TrendPanelState();
-}
-
-class _TrendPanelState extends State<_TrendPanel> {
-  // A date, not an index: a period switch or refresh that still contains the
-  // day keeps the readout; anything else falls back to the latest record.
-  DateTime? _pinnedDay;
 
   @override
   Widget build(BuildContext context) {
     return _TrendPanelView(
-      series: widget.series,
-      periodDays: widget.periodDays,
-      usagePoints: widget.usagePoints,
-      onPeriodChanged: widget.onPeriodChanged,
-      scrollController: widget.scrollController,
-      pinnedDay: _pinnedDay,
-      onPinDay: (day) => setState(() => _pinnedDay = day),
+      series: series,
+      periodDays: periodDays,
+      usagePoints: usagePoints,
+      onPeriodChanged: onPeriodChanged,
+      scrollController: scrollController,
     );
   }
 }
@@ -551,22 +540,16 @@ class _TrendPanelView extends StatelessWidget {
     required this.usagePoints,
     required this.onPeriodChanged,
     required this.scrollController,
-    required this.pinnedDay,
-    required this.onPinDay,
   });
   final TrafficHistorySeries series;
   final int periodDays;
   final List<TrafficUsagePoint> usagePoints;
   final ValueChanged<int> onPeriodChanged;
   final ScrollController scrollController;
-  final DateTime? pinnedDay;
-  final ValueChanged<DateTime> onPinDay;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final days = series.days;
-    final readoutIndex = _pinnedReadoutIndex(days, pinnedDay);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -672,16 +655,6 @@ class _TrendPanelView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          // The pinned-day readout: date, directional split and total stay on
-          // screen (M3/HIG: a tooltip is a desktop supplement, never the only
-          // carrier).
-          if (readoutIndex >= 0) ...[
-            _TrendReadout(
-              point: days[readoutIndex],
-              details: _DayDetails.forDate(days[readoutIndex], usagePoints),
-            ),
-            const SizedBox(height: 12),
-          ],
           SizedBox(
             height: 146,
             child: series.recordedDays == 0
@@ -771,9 +744,6 @@ class _TrendPanelView extends StatelessWidget {
                                         ),
                                         compact: periodDays != 7,
                                         showValue: periodDays == 7,
-                                        selected: readoutIndex == i,
-                                        onTap: () =>
-                                            onPinDay(series.days[i].date),
                                         showLabel:
                                             periodDays == 7 ||
                                             i % (periodDays == 15 ? 3 : 5) ==
@@ -825,77 +795,6 @@ class _TrendPanelView extends StatelessWidget {
   }
 }
 
-/// Index of the day the readout shows: the pinned day while the series still
-/// contains it, otherwise the most recent day that actually has a record.
-int _pinnedReadoutIndex(List<TrafficHistoryDay> days, DateTime? pinned) {
-  if (days.isEmpty) return -1;
-  if (pinned != null) {
-    for (var i = 0; i < days.length; i++) {
-      final d = days[i].date;
-      if (d.year == pinned.year &&
-          d.month == pinned.month &&
-          d.day == pinned.day) {
-        return i;
-      }
-    }
-  }
-  for (var i = days.length - 1; i >= 0; i--) {
-    if (days[i].gb != null) return i;
-  }
-  return -1;
-}
-
-/// One pinned day's numbers, always on screen: date, directional split when
-/// the server supplies it, and the total (M3/HIG: never hover-only data).
-class _TrendReadout extends StatelessWidget {
-  const _TrendReadout({required this.point, required this.details});
-  final TrafficHistoryDay point;
-  final _DayDetails details;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final gb = point.gb;
-    final total = gb == null
-        ? v3Copy(context, zh: '暂无记录', en: 'No record', tw: '暫無紀錄')
-        : '${gb.toStringAsFixed(2)} GB';
-    final split = details.upload == null || details.download == null
-        ? ''
-        : v3Copy(
-            context,
-            zh: '上传 ${details.upload!.toStringAsFixed(2)} GB · 下载 ${details.download!.toStringAsFixed(2)} GB',
-            en: 'Upload ${details.upload!.toStringAsFixed(2)} GB · Download ${details.download!.toStringAsFixed(2)} GB',
-            tw: '上傳 ${details.upload!.toStringAsFixed(2)} GB · 下載 ${details.download!.toStringAsFixed(2)} GB',
-          );
-    final hint = v3Copy(
-      context,
-      zh: '点击柱子查看某天',
-      en: 'Tap a bar to inspect a day',
-      tw: '點擊柱子查看某天',
-    );
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(V3Radius.control),
-      ),
-      child: Row(children: [
-        Text(_dayLabel(point.date), style: TextStyle(
-          color: p.ink, fontSize: 11, fontWeight: FontWeight.w800)),
-        const SizedBox(width: 10),
-        Expanded(child: Text(
-          split.isNotEmpty ? split : hint,
-          maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: p.inkMuted, fontSize: 10))),
-        const SizedBox(width: 10),
-        Text(total, style: TextStyle(color: p.ink, fontSize: 13,
-          fontWeight: FontWeight.w900,
-          fontFeatures: const [FontFeature.tabularFigures()])),
-      ]),
-    );
-  }
-}
-
 class _UsageBar extends StatelessWidget {
   const _UsageBar({
     required this.point,
@@ -904,8 +803,6 @@ class _UsageBar extends StatelessWidget {
     required this.showValue,
     required this.compact,
     required this.details,
-    required this.selected,
-    required this.onTap,
   });
   final TrafficHistoryDay point;
   final bool showValue;
@@ -913,8 +810,6 @@ class _UsageBar extends StatelessWidget {
   final bool showLabel;
   final bool compact;
   final _DayDetails details;
-  final bool selected;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -944,10 +839,7 @@ class _UsageBar extends StatelessWidget {
     final caption = gb == null || !showValue
         ? null
         : '${gb >= 10 ? gb.toStringAsFixed(0) : gb.toStringAsFixed(1)}G';
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Tooltip(
+    return Tooltip(
       message: '${_dayLabel(point.date)}\n$value$detailsText',
       child: Semantics(
         label: '${_dayLabel(point.date)}，$value',
@@ -988,16 +880,10 @@ class _UsageBar extends StatelessWidget {
                       : const BorderRadius.vertical(top: Radius.circular(5)),
                 ),
               ),
-              // The pin marker rides the existing gap below the bar so
-              // selecting a day never shifts the row.
-              SizedBox(
-                height: 8,
-                child: selected
-                    ? Center(child: Container(width: 14, height: 2,
-                        decoration: BoxDecoration(color: p.ink,
-                          borderRadius: BorderRadius.circular(1))))
-                    : null,
-              ),
+              // Breathing room between the bars and the date labels; keeping
+              // the slot identical to the old pin-marker row means removing
+              // the marker never shifts the chart.
+              const SizedBox(height: 8),
               SizedBox(
                 height: 16,
                 child: showLabel
@@ -1015,7 +901,6 @@ class _UsageBar extends StatelessWidget {
             ],
           ),
         ),
-      ),
       ),
     );
   }
