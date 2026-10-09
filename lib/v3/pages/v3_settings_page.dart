@@ -11,6 +11,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_language_selector.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_toast.dart';
 
 // Reuse the existing ARB translations for established UI copy. These short
 // hints have no ARB entries yet; keeping them together avoids mixing Chinese
@@ -38,9 +39,10 @@ class V3SettingsPage extends StatefulWidget {
 }
 
 class _V3SettingsPageState extends State<V3SettingsPage> {
-  bool _busy = false;
-  bool _failed = false;
-  String? _message;
+  // The setting currently applying: its control dims under a spinner (the
+  // nodes page's per-row busy pattern) and the result surfaces as a V3Toast,
+  // instead of a banner line that shifted every section down and never left.
+  String? _pending;
   late final Future<String> _coreVersionFuture = _loadCoreVersion();
 
   Future<String> _loadCoreVersion() async {
@@ -51,39 +53,36 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
     }
   }
 
-  Future<void> _apply(Future<String?> Function() action, String success) async {
-    if (_busy) return;
+  Future<void> _apply(
+    String id,
+    Future<String?> Function() action,
+    String success,
+  ) async {
+    if (_pending != null) return;
+    final overlay = Overlay.of(context, rootOverlay: true);
     final l = _copy(context);
-    setState(() {
-      _busy = true;
-      _message = _hint(l,
-        zh: '正在应用设置，请稍候…', en: 'Applying settings, please wait…',
-        tw: '正在套用設定，請稍候…');
-      _failed = false;
-    });
+    final failureSuffix = _hint(l,
+      zh: '。请重试或重新连接。',
+      en: '. Retry or reconnect.',
+      tw: '。請重試或重新連線。');
+    final failureText = _hint(l,
+      zh: '设置未能完成，请重试或修复网络。',
+      en: 'Settings could not be applied. Retry or reconnect.',
+      tw: '設定未能完成，請重試或重新連線。');
+    setState(() => _pending = id);
+    String? error;
     try {
-      final error = await action();
-      if (mounted) {
-        setState(() {
-          _failed = error != null;
-          _message = error == null ? success :
-              '$error${_hint(_copy(context), zh: '。请重试或重新连接。',
-                en: '. Retry or reconnect.', tw: '。請重試或重新連線。')}';
-        });
-      }
+      error = await action();
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _failed = true;
-          _message = _hint(_copy(context),
-            zh: '设置未能完成，请重试或重新连接。',
-            en: 'Settings could not be applied. Retry or reconnect.',
-            tw: '設定未能完成，請重試或重新連線。');
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      error = failureText;
     }
+    if (!mounted) return;
+    // Same voice as every other V3 surface: transient overlay feedback (M3
+    // snackbar guidance), resolved on the root overlay so it outlives scroll.
+    V3Toast.showInOverlay(overlay,
+      error == null ? success : '$error$failureSuffix',
+      type: error == null ? V3ToastType.success : V3ToastType.error);
+    setState(() => _pending = null);
   }
 
   @override
@@ -107,20 +106,8 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
             description: l.settingsSubtitle,
           ),
           const SizedBox(height: 18),
-          if (_message != null) ...[
-            Semantics(
-              liveRegion: true,
-              child: Text(_message!, style: TextStyle(
-                color: _failed ? p.dangerInk : p.inkMuted, fontSize: 13)),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (_busy) ...[
-            const LinearProgressIndicator(),
-            const SizedBox(height: 16),
-          ],
           AbsorbPointer(
-            absorbing: _busy,
+            absorbing: _pending != null,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -130,38 +117,44 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                   padding: EdgeInsets.zero,
                   child: Column(children: [
                     if (desktopTools) _SettingRow(
-                      index: '01', title: l.launchAtStartup,
+                      icon: Icons.power_settings_new_rounded,
+                      title: l.launchAtStartup,
                       description: _hint(l,
                         zh: '登录系统时自动启动 Litchi。',
                         en: 'Start Litchi automatically when you sign in.',
                         tw: '登入系統時自動啟動 Litchi。'),
+                      busy: _pending == 'autoStart',
                       control: V3Switch(value: controller.autoStart,
-                        onChanged: (v) => _apply(() async {
+                        onChanged: (v) => _apply('autoStart', () async {
                           controller.setAutoStart(v);
                           return null;
                         }, l.settingsUpdated)),
                     ),
                     if (desktopTools) _SettingRow(
-                      index: '02', title: l.silentStartup,
+                      icon: Icons.visibility_off_rounded,
+                      title: l.silentStartup,
                       description: _hint(l,
                         zh: '启动时隐藏主窗口。',
                         en: 'Hide the main window at startup.',
                         tw: '啟動時隱藏主視窗。'),
+                      busy: _pending == 'silentStart',
                       control: V3Switch(value: controller.silentStart,
-                        onChanged: (v) => _apply(() async {
+                        onChanged: (v) => _apply('silentStart', () async {
                           controller.setSilentStart(v);
                           return null;
                         }, l.settingsUpdated)),
                     ),
                     _SettingRow(
-                      index: desktopTools ? '03' : '01', title: l.automaticUpdates,
+                      icon: Icons.system_update_alt_rounded,
+                      title: l.automaticUpdates,
                       description: _hint(l,
                         zh: '在后台检查是否有新版本。',
                         en: 'Check for new versions in the background.',
                         tw: '在背景檢查是否有新版本。'),
                       last: true,
+                      busy: _pending == 'autoUpdate',
                       control: V3Switch(value: controller.autoUpdate,
-                        onChanged: (v) => _apply(() async {
+                        onChanged: (v) => _apply('autoUpdate', () async {
                           controller.setAutoUpdate(v);
                           return null;
                         }, l.settingsUpdated)),
@@ -175,7 +168,8 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                   padding: EdgeInsets.zero,
                   child: Column(children: [
                     _SettingRow(
-                      index: desktopTools ? '04' : '02', title: l.appearance,
+                      icon: Icons.dark_mode_rounded,
+                      title: l.appearance,
                       description: _hint(l,
                         zh: '跟随系统外观，或手动选择浅色和深色界面。',
                         en: 'Follow your system appearance or choose light/dark.',
@@ -193,7 +187,8 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     _SettingRow(
-                      index: desktopTools ? '05' : '03', title: l.language,
+                      icon: Icons.language_rounded,
+                      title: l.language,
                       description: _hint(l,
                         zh: '选择界面语言；跟随系统将使用设备的语言。',
                         en: 'Choose an interface language or follow your device.',
@@ -211,15 +206,17 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                   padding: EdgeInsets.zero,
                   child: Column(children: [
                     if (desktopTools) _SettingRow(
-                      index: '06',
+                      icon: Icons.swap_horiz_rounded,
                       title: l.connectionMethod,
                       description: '${l.systemProxyDescription}; ${l.tunDescription}.',
                       fullWidthControl: true,
+                      busy: _pending == 'networkMode',
                       control: _Segment<NetworkMode>(
                         value: controller.networkMode,
                         items: const [NetworkMode.system, NetworkMode.tun],
                         label: (v) => v == NetworkMode.system ? l.systemProxy : l.tunMode,
                         onChanged: (v) => _apply(
+                          'networkMode',
                           () => controller.setNetworkMode(v),
                           controller.coreProcessRunning
                               ? l.networkModeReconnect : l.proxyModeNextConnection,
@@ -227,13 +224,15 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     _SettingRow(
-                      index: desktopTools ? '07' : '04', title: l.dns,
+                      icon: Icons.dns_rounded,
+                      title: l.dns,
                       description: _hint(l,
                         zh: '使用系统 DNS，或选择其他解析服务。',
                         en: 'Use system DNS or choose another resolver.',
                         tw: '使用系統 DNS，或選擇其他解析服務。'),
                       last: !desktopTools,
                       fullWidthControl: true,
+                      busy: _pending == 'dns',
                       control: _Segment<DnsMode>(
                         value: controller.dnsMode,
                         items: const [DnsMode.system, DnsMode.cloudflare, DnsMode.google],
@@ -243,13 +242,15 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                           DnsMode.google => 'Google',
                         },
                         onChanged: (v) => _apply(
+                          'dns',
                           () => controller.setDnsMode(v),
                           l.settingsUpdated,
                         ),
                       ),
                     ),
                     if (desktopTools) _SettingRow(
-                      index: '08', title: l.connectionProtection,
+                      icon: Icons.shield_outlined,
+                      title: l.connectionProtection,
                       description: _hint(l,
                         zh: '节点意外断开时暂停联网，防止流量绕过代理直接暴露；重新连接后自动恢复。',
                         en: 'Pauses internet if the node drops unexpectedly '
@@ -257,9 +258,11 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                             'automatically on reconnect.',
                         tw: '節點意外斷開時暫停連網，防止流量繞過代理直接暴露；重新連線後自動恢復。'),
                       last: true,
+                      busy: _pending == 'killSwitch',
                       control: V3Switch(
                         value: controller.killSwitch,
                         onChanged: (v) => _apply(
+                          'killSwitch',
                           () => controller.setKillSwitch(v), l.settingsUpdated),
                       ),
                     ),
@@ -274,7 +277,8 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                     label: currentNetwork,
                     title: l.repairSystemProxy,
                     action: l.repair,
-                    onRepair: () => _apply(() async {
+                    busy: _pending == 'repair',
+                    onRepair: () => _apply('repair', () async {
                       await controller.fixProxy();
                       return null;
                     }, l.networkSettingsRepaired),
@@ -330,16 +334,17 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
 }
 
 class _SettingRow extends StatelessWidget {
-  const _SettingRow({required this.index, required this.title,
+  const _SettingRow({required this.icon, required this.title,
     required this.description, required this.control, this.last = false,
-    this.fullWidthControl = false});
+    this.fullWidthControl = false, this.busy = false});
 
-  final String index;
+  final IconData icon;
   final String title;
   final String description;
   final Widget control;
   final bool last;
   final bool fullWidthControl;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -351,12 +356,23 @@ class _SettingRow extends StatelessWidget {
       ),
       child: LayoutBuilder(builder: (context, constraints) {
         final stacked = constraints.maxWidth < 600;
+        // The same identity tile the node rows use (raised fill, one ink
+        // glyph): setting rows read as the same family as list rows
+        // elsewhere in V3 instead of an editorial numbered index.
+        final tile = Container(
+          width: 38, height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: p.surfaceRaised,
+            borderRadius: BorderRadius.circular(V3Radius.control),
+          ),
+          child: Icon(icon, color: p.ink, size: 19),
+        );
         final copy = Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 38, child: Text(index, style: TextStyle(
-              color: p.lycheeInk, fontSize: 10, fontWeight: FontWeight.w900,
-              letterSpacing: 1.4))),
+            tile,
+            const SizedBox(width: 12),
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -367,16 +383,27 @@ class _SettingRow extends StatelessWidget {
             )),
           ],
         );
+        // While the setting applies, the control stays in place (no layout
+        // shift) but dims under a small spinner: the affected control carries
+        // the progress (M3), not the whole page.
+        Widget slot(Widget control) => !busy
+            ? control
+            : Stack(alignment: Alignment.center, children: [
+                Opacity(opacity: 0.35,
+                  child: AbsorbPointer(absorbing: true, child: control)),
+                const SizedBox(width: 18, height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+              ]);
         return stacked
             ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 copy, const SizedBox(height: 14),
-                if (fullWidthControl) control
-                else Align(alignment: Alignment.centerRight, child: control),
+                if (fullWidthControl) slot(control)
+                else Align(alignment: Alignment.centerRight, child: slot(control)),
               ])
             : Row(children: [
                 Expanded(child: copy), const SizedBox(width: 20),
-                if (fullWidthControl) SizedBox(width: 240, child: control)
-                else control,
+                if (fullWidthControl) SizedBox(width: 240, child: slot(control))
+                else slot(control),
               ]);
       }),
     );
@@ -428,12 +455,14 @@ class _Segment<T> extends StatelessWidget {
 
 class _RecoveryPanel extends StatelessWidget {
   const _RecoveryPanel({required this.controller, required this.label,
-    required this.title, required this.action, required this.onRepair});
+    required this.title, required this.action, required this.onRepair,
+    this.busy = false});
   final AppController controller;
   final String label;
   final String title;
   final String action;
   final VoidCallback onRepair;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -458,11 +487,14 @@ class _RecoveryPanel extends StatelessWidget {
               style: TextStyle(color: p.inkMuted, fontSize: 12)),
           ])),
         OutlinedButton(
-          onPressed: onRepair,
+          onPressed: busy ? null : onRepair,
           style: OutlinedButton.styleFrom(foregroundColor: p.ink,
             side: BorderSide(color: p.line),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field))),
-          child: Text(action),
+          child: busy
+              ? const SizedBox(width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(action),
         ),
       ]),
     );

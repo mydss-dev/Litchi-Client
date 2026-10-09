@@ -12,6 +12,7 @@ import 'package:litchi_client/v3/pages/v3_nodes_page.dart';
 import 'package:litchi_client/v3/pages/v3_settings_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_node_picker.dart';
+import 'package:litchi_client/v3/ui/v3_toast.dart';
 
 import 'v3_visual_fixture.dart';
 
@@ -203,11 +204,20 @@ void main() {
       await _pump(tester, controller, const V3SettingsPage());
       await tester.tap(find.text('系统代理'));
       await tester.pump();
-      expect(find.text('正在应用设置，请稍候…'), findsOneWidget);
+      // The applying row's control dims under a spinner; no banner text and
+      // no page-wide progress bar shift the sections down.
+      expect(find.text('正在应用设置，请稍候…'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
       controller.result.complete('核心未响应');
       await tester.pump();
+      // The result arrives as a transient toast, the same voice as the rest
+      // of V3 (M3 snackbar guidance) instead of a permanent inline line.
       expect(find.textContaining('核心未响应'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(controller.networkChanges, 1);
+      // Expire the toast's auto-dismiss timer so teardown has none pending.
+      await tester.pump(V3Toast.defaultDuration);
+      await tester.pump(const Duration(milliseconds: 300));
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
