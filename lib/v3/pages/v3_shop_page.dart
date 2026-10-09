@@ -8,6 +8,7 @@ import '../../shared/models/app_models.dart';
 import '../commerce/v3_order_dialog.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_sheet.dart';
 
@@ -63,16 +64,18 @@ class _V3ShopPageState extends State<V3ShopPage> {
             onChanged: (value) => setState(() => _category = value)),
           const SizedBox(height: 14),
           if (plans.isEmpty)
-            // Full-bleed like every other page-level empty state; an
-            // intrinsic-width panel reads as a misplaced chip.
-            V3Panel(child: SizedBox(width: double.infinity,
-              child: Column(children: [
-                Text(_tr(context, '当前分类没有可购买套餐',
-                    'No plans available in this category', '目前類別沒有可購買的方案')),
-                const SizedBox(height: 12),
-                OutlinedButton(onPressed: controller.refreshData,
-                  child: Text(_tr(context, '刷新套餐', 'Refresh plans', '重新整理方案'))),
-              ])))
+            // The shared empty-state voice (icon tile, one muted line, one
+            // step out) -- the last hand-rolled empty panel left in V3.
+            V3EmptyState(
+              icon: Icons.inventory_2_rounded,
+              title: _tr(context, '当前分类没有可购买套餐',
+                  'No plans available in this category', '目前類別沒有可購買的方案'),
+              subtitle: _tr(context, '切换分类看看，或刷新套餐列表。',
+                  'Try another category, or refresh the list.',
+                  '切換類別看看，或重新整理方案清單。'),
+              actionLabel: _tr(context, '刷新套餐', 'Refresh plans', '重新整理方案'),
+              onAction: controller.refreshData,
+            )
           else Wrap(spacing: spacing, runSpacing: spacing, children: [
             for (final plan in plans) SizedBox(width: cardWidth,
               child: _PlanCard(plan: plan,
@@ -144,22 +147,33 @@ class _CurrentPlanBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final plan = PlanPresentation.fromController(controller);
+    // Expiry rides the visible meta line, not a hover tooltip: touch has no
+    // hover (Apple HIG: never gate essential info; M3 tooltips are desktop
+    // supplements).
+    final meta = <String>[
+      if (controller.traffic.totalGb > 0)
+        _tr(context,
+          '剩余 ${controller.traffic.remainGb.toStringAsFixed(1)} GB',
+          '${controller.traffic.remainGb.toStringAsFixed(1)} GB remaining',
+          '剩餘 ${controller.traffic.remainGb.toStringAsFixed(1)} GB'),
+      plan.expiry,
+    ];
     return V3Panel(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
       child: Row(children: [
         Icon(plan.usable ? Icons.verified_rounded : Icons.info_outline_rounded,
           size: 17, color: plan.usable ? p.successInk : p.inkMuted),
         const SizedBox(width: 9),
-        Expanded(child: Tooltip(message: '${plan.shortLabel} · ${plan.expiry}',
-          child: Text(plan.shortLabel, maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: p.ink, fontSize: 12,
-              fontWeight: FontWeight.w700)))),
-        if (controller.traffic.totalGb > 0)
-          Text(_tr(context,
-            '剩余 ${controller.traffic.remainGb.toStringAsFixed(1)} GB',
-            '${controller.traffic.remainGb.toStringAsFixed(1)} GB remaining',
-            '剩餘 ${controller.traffic.remainGb.toStringAsFixed(1)} GB'),
-            style: TextStyle(color: p.inkMuted, fontSize: 11)),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(plan.shortLabel, maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.ink, fontSize: 12,
+                fontWeight: FontWeight.w700)),
+            const SizedBox(height: 3),
+            Text(meta.join(' · '), maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+          ])),
       ]),
     );
   }
@@ -198,7 +212,8 @@ class _PlanCard extends StatelessWidget {
       Text(plan.capacity.isEmpty
           ? _tr(context, '流量未标注', 'Traffic not specified', '未標示流量')
           : plan.capacity,
-        style: TextStyle(color: p.ink, fontSize: 29, fontWeight: FontWeight.w900)),
+        style: TextStyle(color: p.ink, fontSize: 29, fontWeight: FontWeight.w900,
+          fontFeatures: const [FontFeature.tabularFigures()])),
       const SizedBox(height: 14),
       Divider(color: p.line, height: 1),
       const SizedBox(height: 12),
@@ -237,7 +252,8 @@ class _PlanCard extends StatelessWidget {
               : '$currencySymbol${price.toStringAsFixed(2)}',
             maxLines: 1, overflow: TextOverflow.ellipsis,
             style: TextStyle(color: p.ink, fontSize: price == null ? 14 : 24,
-              fontWeight: FontWeight.w900))),
+              fontWeight: FontWeight.w900,
+              fontFeatures: const [FontFeature.tabularFigures()]))),
           Text(plan.category == PlanCategory.recurring
               ? v3CycleLabel(context, cycle)
               : _tr(context, '一次性', 'One-time', '一次性'),
