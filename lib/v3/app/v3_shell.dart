@@ -108,9 +108,9 @@ class V3Shell extends StatelessWidget {
     }
     return Material(
       color: V3Palette.of(context).canvas,
-      // Chromeless top, DLSS5-style: the workspace runs edge to edge under a
-      // floating title strip — the shell no longer owns a full-width bar,
-      // and the rail's brand mark stays the app's single brand surface.
+      // Chromeless top: the workspace runs edge to edge under a floating
+      // title strip, and the rail's brand mark stays the app's single brand
+      // surface.
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -158,9 +158,16 @@ class _V3WorkspaceState extends State<_V3Workspace> {
             for (final page in _visited)
               Offstage(
                 offstage: page != current,
-                child: _PageEntrance(
-                  active: page == current,
-                  child: _pageFor(page, context),
+                // TickerMode mutes every AnimationController on mounted-but-
+                // hidden pages: a backgrounded dashboard stops pulsing its orb
+                // and ticking its notice lane instead of burning frames. The
+                // page's own entrance re-forwards when it goes active again.
+                child: TickerMode(
+                  enabled: page == current,
+                  child: _PageEntrance(
+                    active: page == current,
+                    child: _pageFor(page, context),
+                  ),
                 ),
               ),
           ],
@@ -714,10 +721,9 @@ class _DesktopTitleOverlayState extends State<_DesktopTitleOverlay>
 
   bool _quitting = false;
 
-  /// The legacy quit order, re-adopted: remove the visible UI first so a
-  /// quit feels immediate, then run the cleanup behind the hidden window,
-  /// then destroy. A slow core teardown can no longer freeze the window on
-  /// screen, and the bounded timeout keeps the exit unconditional.
+  /// Remove the visible UI first so a quit feels immediate, then run the
+  /// cleanup behind the hidden window, then destroy. The bounded timeout
+  /// keeps the exit unconditional.
   Future<void> _quitApp() async {
     if (_quitting) return;
     _quitting = true;
@@ -1089,10 +1095,8 @@ class _V3BootView extends StatelessWidget {
 /// The rail's one selection indicator: a single pill that slides from the
 /// item you left to the one you pressed instead of blinking between them --
 /// DLSS5's dock-glow, the same mechanics as Ant's ink-bar and M3's sliding
-/// tabs indicator. The resting look is exactly the old per-item fill, so
-/// stills are unchanged; only the transition is new. The pill remembers its
-/// last valid position while hidden (sub-pages have no rail item), so coming
-/// back it slides from where it left.
+/// tabs indicator. The pill remembers its last valid position while hidden
+/// (sub-pages have no rail item), so coming back it slides from where it left.
 class _RailPill extends StatefulWidget {
   const _RailPill({required this.selectedTop});
 

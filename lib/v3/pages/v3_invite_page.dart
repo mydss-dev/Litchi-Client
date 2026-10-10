@@ -191,9 +191,9 @@ class _V3InvitePageState extends State<V3InvitePage> {
             ),
           ),
           const SizedBox(height: 18),
-          // Legacy rhythm, rebuilt in V3 language: full-width hero, then stats,
-          // then the ledger. Splitting hero beside stats starves the code stage
-          // (~370dp at 900x700) and cramps the link bar and share row.
+          // Full-width hero, then stats, then the ledger. Splitting hero
+          // beside stats starves the code stage and cramps the link bar and
+          // share row.
           hero,
           const SizedBox(height: 16),
           _InviteStats(controller: controller),
@@ -235,34 +235,10 @@ class _InviteHero extends StatelessWidget {
   // they identify the destination app, not Litchi's own palette. X stays
   // monochrome on purpose — its mark is black/white.
   static const _shareTargets = [
-    (
-      label: '微信',
-      en: 'WeChat',
-      tw: '微信',
-      icon: Icons.chat_bubble_rounded,
-      brand: Color(0xFF2AAE67),
-    ),
-    (
-      label: 'QQ',
-      en: 'QQ',
-      tw: 'QQ',
-      icon: Icons.question_answer_rounded,
-      brand: Color(0xFF12B7F5),
-    ),
-    (
-      label: 'Twitter',
-      en: 'X',
-      tw: 'Twitter',
-      icon: Icons.tag_rounded,
-      brand: null,
-    ),
-    (
-      label: 'Telegram',
-      en: 'Telegram',
-      tw: 'Telegram',
-      icon: Icons.send_rounded,
-      brand: Color(0xFF27A7E5),
-    ),
+    (label: '微信', en: 'WeChat', tw: '微信', brand: Color(0xFF2AAE67)),
+    (label: 'QQ', en: 'QQ', tw: 'QQ', brand: Color(0xFF12B7F5)),
+    (label: 'Twitter', en: 'X', tw: 'Twitter', brand: null),
+    (label: 'Telegram', en: 'Telegram', tw: 'Telegram', brand: Color(0xFF27A7E5)),
   ];
 
   @override
@@ -274,9 +250,8 @@ class _InviteHero extends StatelessWidget {
       builder: (context, box) {
         // Neutral hero ground, same material as the traffic quota panel and the
         // shell sidebar — brand color comes from the accents (gift tile, chips,
-        // share icons), not from a tinted slab no other page uses.
-        // Narrow panes (390dp phones, split panes) drop the header create
-        // button; it returns as a full-width row below the code stage.
+        // share icons). Narrow panes drop the header create button; it returns
+        // as a full-width row below the code stage.
         final narrow = box.maxWidth < 520;
         return Container(
           padding: const EdgeInsets.all(22),
@@ -566,7 +541,14 @@ class _InviteHero extends StatelessWidget {
                               ),
                             )
                           : null,
-                      icon: Icon(target.icon, size: 15, color: target.brand),
+                      icon: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: target.brand ?? p.inkMuted,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: p.ink,
                         side: BorderSide(color: p.line),
@@ -682,69 +664,48 @@ class _InviteStats extends StatelessWidget {
         amount: controller.withdrawable,
       ),
     ];
-    // Same tile material as the traffic page's stat band: separate cards on
-    // the canvas. The inset panel with hairline dividers read as a different
-    // system from every other page.
+    // Separate cards on the canvas, matching the traffic page's stat band.
     return LayoutBuilder(
       builder: (context, box) {
         final tiles = <Widget>[
           for (final entry in entries)
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: p.surface,
-                borderRadius: BorderRadius.circular(V3Radius.card),
-                border: Border.all(color: p.hairline),
-                boxShadow: p.shadows,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            V3StatTile(
+              label: entry.label,
+              valueWidget: Row(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    entry.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.inkMuted, fontSize: 10),
+                  Flexible(
+                    child: entry.amount != null
+                        ? V3RollingMoney(
+                            value: entry.amount!,
+                            symbol: symbol,
+                            style: TextStyle(
+                              color: entry.positive ? p.successInk : p.ink,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          )
+                        : Text(
+                            entry.value,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: entry.positive ? p.successInk : p.ink,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Flexible(
-                        child: entry.amount != null
-                            ? V3RollingMoney(
-                                value: entry.amount!,
-                                symbol: symbol,
-                                style: TextStyle(
-                                  color: entry.positive ? p.successInk : p.ink,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
-                                ),
-                              )
-                            : Text(
-                                entry.value,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: entry.positive ? p.successInk : p.ink,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
-                                ),
-                              ),
-                      ),
-                      if (entry.suffix.isNotEmpty) ...[
-                        const SizedBox(width: 3),
-                        Text(
-                          entry.suffix,
-                          style: TextStyle(color: p.inkMuted, fontSize: 10),
-                        ),
-                      ],
-                    ],
-                  ),
+                  if (entry.suffix.isNotEmpty) ...[
+                    const SizedBox(width: 3),
+                    Text(
+                      entry.suffix,
+                      style: TextStyle(color: p.inkMuted, fontSize: 10),
+                    ),
+                  ],
                 ],
               ),
             ),

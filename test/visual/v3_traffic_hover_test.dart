@@ -58,6 +58,9 @@ void main() {
     await tester.pump();
     expect(find.byType(Dialog), findsNothing,
       reason: 'traffic details belong in hover tooltips, not tap dialogs');
+    // The tap also surfaces a short-lived toast; let its entrance and the
+    // dismiss timer run out so nothing leaks into test teardown.
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 }

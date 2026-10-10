@@ -39,10 +39,7 @@ class V3Palette {
   /// Background for the large "hero" panels — the connect workspace, the login
   /// brand block, the sidebar.
   ///
-  /// These used to be [night], which is near-black in *both* modes and turned
-  /// every one of them into a black slab on an otherwise light screen. [night]
-  /// is now only a *foreground* colour (something drawn on top of [citrus]);
-  /// this is the surface behind it.
+  /// [night] is a *foreground* colour; this is the surface behind it.
   final Color hero;
   final Color night;
   final Color ink;
@@ -118,20 +115,17 @@ class V3Palette {
     // Light layering needs fill steps, a hairline, and a real drop shadow at
     // the same time — a hairline alone reads as a wireframe, a shadow alone
     // reads as nothing. The ground is a clean neutral near-white — the macOS
-    // #F5F5F7 convention, de-warmed after the warm-gray round read as a dusty
-    // film and made text feel soft at window scale.
+    // #F5F5F7 convention.
     //
-    // Pure white no longer appears in light mode at all. The one exception is
-    // the QR pad in the payment flow, which scanners want white and which
-    // therefore hard-codes it instead of reading a token.
+    // Pure white appears only in the QR pad of the payment flow, which
+    // scanners want white and which hard-codes it instead of reading a token.
     canvas: Color(0xFFF4F4F6),
     surface: Color(0xFFFDFDFD),
     surfaceRaised: Color(0xFFF7F7F9),
     hero: Color(0xFFEBEBED),
     night: Color(0xFF0D1524),
     ink: Color(0xFF0D1524),
-    // One step darker than the warm-gray muted ink: secondary text must read
-    // crisp, not atmospheric (~8.5:1 on cards).
+    // Secondary text must read crisp, not atmospheric (~8.5:1 on cards).
     inkMuted: Color(0xFF4E4A50),
     line: Color(0xFFDBDBDF),
     hairline: Color(0x2414181C),
@@ -140,8 +134,7 @@ class V3Palette {
     citrus: Color(0xFFD7F267),
     aqua: Color(0xFF70D7D5),
     success: Color(0xFF249A6A),
-    // Darkened from #C68122, which was 2.90:1 on `canvas` — below the 3:1 WCAG
-    // asks of an icon or UI shape drawn on that ground.
+    // Must stay at or above the 3:1 WCAG floor for icons drawn on `canvas`.
     warning: Color(0xFFBA771C),
     danger: Color(0xFFCC3F57),
     // Keep text safe even on a green-tinted hero: #177045 only reached 4.18:1
@@ -156,8 +149,7 @@ class V3Palette {
     // danger red is dark enough that white clears AA, while night does not
     // (3.6:1). See the QR note under `canvas` above.
     onDanger: Color(0xFFFFFFFF),
-    // Quieter than the previous round: soft contact shadow + a faint ambient
-    // lift. The heavy two-layer stack haloed every card and read as blur.
+    // Soft contact shadow plus a faint ambient lift.
     shadows: [
       BoxShadow(color: Color(0x1A141518), blurRadius: 8, offset: Offset(0, 3)),
       BoxShadow(color: Color(0x3D141518), blurRadius: 28, offset: Offset(0, 12), spreadRadius: -8),
@@ -166,12 +158,9 @@ class V3Palette {
   );
 
   static const dark = V3Palette(
-    // Neutral black staircase — the palette the product actually wants. The
-    // plum-tinted round read as a red cast on the whole app, and heavy dark
-    // shadows haloed every card onto its neighbours (stacked-card mud).
-    // Levels follow the macOS/Fluent dark convention: near-black canvas,
-    // two quiet elevation steps, hierarchy from luminance — no hue.
-    // The 4-tier staircase survives: hero < canvas < surface < surfaceRaised.
+    // Neutral black staircase. Levels follow the macOS/Fluent dark convention:
+    // near-black canvas, two quiet elevation steps, hierarchy from luminance —
+    // no hue. The 4-tier staircase: hero < canvas < surface < surfaceRaised.
     canvas: Color(0xFF0A0A0B),
     surface: Color(0xFF161618),
     surfaceRaised: Color(0xFF1F1F22),
@@ -183,7 +172,7 @@ class V3Palette {
     inkMuted: Color(0xFF9D9DA3),
     line: Color(0xFF2A2A2E),
     // DLSS5 --hair: white 9%; Fluent's dark card stroke is white ~7%. The same
-    // 1px line light draws — dark finally runs the full "line + light" recipe.
+    // 1px line light draws keeps the "line + light" recipe intact.
     hairline: Color(0x14FFFFFF),
     lychee: Color(0xFFFF6683),
     // Selection fill only: a subdued pink-tinted pocket on black. Surfaces
@@ -255,6 +244,22 @@ class V3Theme {
       surface: p.surface,
       onSurface: p.ink,
       outline: p.line,
+      // Complete the M3 roles instead of letting missing slots fall back to
+      // the seed defaults (a surprise green/blue on controls that read
+      // primaryContainer or tertiary). Containers tint toward the selected
+      // pink and the decorative aqua, never toward status green.
+      primaryContainer: p.lycheeSoft,
+      onPrimaryContainer: p.lycheeInk,
+      secondaryContainer: p.lycheeSoft,
+      onSecondaryContainer: p.lycheeInk,
+      tertiary: p.aqua,
+      onTertiary: p.night,
+      errorContainer: p.danger.withValues(alpha: .14),
+      onErrorContainer: p.dangerInk,
+      outlineVariant: p.line,
+      inverseSurface: p.ink,
+      onInverseSurface: p.surface,
+      inversePrimary: p.lycheeInk,
       surfaceContainerHighest: p.surfaceRaised,
     );
     return ThemeData(
@@ -263,6 +268,13 @@ class V3Theme {
       colorScheme: scheme,
       scaffoldBackgroundColor: p.canvas,
       fontFamily: 'Segoe UI',
+      fontFamilyFallback: const [
+        'Segoe UI Variable',
+        'SF Pro Text',
+        'Roboto',
+        'Noto Sans',
+        'sans-serif',
+      ],
       textTheme: TextTheme(
         displayLarge: TextStyle(
           fontSize: 36,
@@ -309,7 +321,7 @@ class V3Theme {
           color: p.ink,
         ),
         labelSmall: TextStyle(
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w800,
           letterSpacing: 1.2,
           color: p.inkMuted,
@@ -323,12 +335,9 @@ class V3Theme {
       highlightColor: p.lychee.withValues(alpha: 0.12),
       // Hover is a quiet ink wash at 4%: desktop feedback that lifts the
       // surface under the pointer without competing with the lychee pressed
-      // highlight. The old transparent hover existed to kill a ghost
-      // "selection box" — the ink sat on the InkWell inside the card's
-      // padding, inset from the card border — but pressables now own the
-      // full row rect (padding rides inside), so the wash fills the card.
-      // Focus stays transparent: keyboard focus is chrome, not a state V3
-      // paints.
+      // highlight. Pressables own the full row rect (padding rides inside),
+      // so the wash fills the card. Focus stays transparent: keyboard focus
+      // is chrome, not a state V3 paints.
       hoverColor: p.ink.withValues(alpha: 0.04),
       focusColor: Colors.transparent,
       // Selection follows the cycle chooser: a soft pink ground, dark/light

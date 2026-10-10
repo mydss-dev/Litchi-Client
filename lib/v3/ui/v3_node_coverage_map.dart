@@ -115,8 +115,7 @@ class V3NodeCoverageMap extends StatelessWidget {
 
   /// A country paints the tier of its best measured node: green/amber/red by
   /// the shared per-region latency scale, red when every node timed out, grey
-  /// when nothing has been measured. Reachability alone (the old colouring)
-  /// collapsed a 128ms Los Angeles and a 150ms Hong Kong into the same green.
+  /// when nothing has been measured.
   static Color _countryColor(V3Palette p, List<NodeModel> nodes) {
     final measured = nodes
         .where((node) => !node.isAuto && node.latency > 0 && node.latency < 9999)
@@ -188,9 +187,7 @@ class V3NodeCoverageMap extends StatelessWidget {
                     fit: BoxFit.fill,
                     semanticsLabel: v3Copy(context,
                       zh: '世界地图', en: 'World map', tw: '世界地圖'))),
-                  // Only countries the fleet actually covers get a marker --
-                  // the old grey "potential" dots made 5 nodes read as a
-                  // global footprint.
+                  // Only countries the fleet actually covers get a marker.
                   for (final code in mapped)
                     Positioned(
                       key: ValueKey('v3-map-marker-$code'),

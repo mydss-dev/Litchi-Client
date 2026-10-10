@@ -7,9 +7,8 @@ import '../theme/v3_palette.dart';
 
 /// Short-lived feedback for user actions, not server announcements.
 ///
-/// Restores the pre-V3 top-center floating toast without importing the retired
-/// greenfield theme. Successful actions use the Litchi brand color; errors and
-/// warnings retain their distinct icons and semantic colors.
+/// Successful actions use the Litchi brand color; errors and warnings retain
+/// their distinct icons and semantic colors.
 enum V3ToastType { success, error, warning, info }
 
 class V3Toast {

@@ -162,7 +162,7 @@ const List<V3NavItem> kMobileMore = [
 //
 // One flat, uncaptioned list; the account card is its own entry point at the
 // rail's foot, so it is not part of this list. Settings is a peer destination
-// in the list — the owner prefers it alongside the rest over a foot anchor.
+// in the list.
 
 const V3NavItem kRailConnect = V3NavItem(
   page: AppPage.dashboard,

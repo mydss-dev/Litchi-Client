@@ -10,6 +10,7 @@ import '../../app/plan_presentation.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/connectivity_check_service.dart';
 import '../theme/v3_palette.dart';
+import '../theme/v3_motion.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_dashboard_alerts.dart';
 import '../ui/v3_latency_tier.dart';
@@ -307,7 +308,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                                             ),
                                             style: TextStyle(
                                               color: p.lycheeInk,
-                                              fontSize: 9,
+                                              fontSize: 10,
                                               fontWeight: FontWeight.w800,
                                             ),
                                           ),
@@ -705,7 +706,7 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
                                     ),
                                     style: TextStyle(
                                       color: p.lycheeInk,
-                                      fontSize: 9,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
@@ -801,11 +802,16 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
   );
 
   @override
-  void initState() {
-    super.initState();
-    // Mounting mid-connect (silent start): join the breathe loop, but never
-    // fire one-shots on mount.
-    if (_isBusy(widget.status)) _pulse.repeat(reverse: true);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Mounted mid-connect (silent start): join the breathe loop, but never
+    // fire one-shots on mount. Reduced motion keeps the orb static — it still
+    // swaps spinner/icon and color, just without the pulsing halo.
+    if (!v3ReducedMotion(context) &&
+        _isBusy(widget.status) &&
+        !_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
   }
 
   @override
@@ -816,13 +822,15 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
     if (oldWidget.status == widget.status) return;
     final wasBusy = _isBusy(oldWidget.status);
     final isBusy = _isBusy(widget.status);
+    final reduced = v3ReducedMotion(context);
     if (isBusy && !wasBusy) {
-      _pulse.repeat(reverse: true);
+      if (!reduced) _pulse.repeat(reverse: true);
     } else if (!isBusy && wasBusy) {
       _pulse
         ..stop()
         ..value = 0;
     }
+    if (reduced) return;
     if (widget.status == ConnectionStatus.connected) _ripple.forward(from: 0);
     if (widget.status == ConnectionStatus.error) _shake.forward(from: 0);
   }
@@ -1350,7 +1358,7 @@ class _ModeSegment<T> extends StatelessWidget {
                   // V3Pressable rides above the thumb so the press ink lands
                   // on the option surface instead of on a Material beneath the
                   // card fill. The padding lives inside it so the ink still
-                  // covers the full option rect, as the old wrapping InkWell did.
+                  // covers the full option rect.
                   child: V3Pressable(
                     key: optionKey == null
                         ? null
@@ -1601,7 +1609,7 @@ class _ConnectivityRowState extends State<_ConnectivityRow> {
   final Map<int, ConnectivityResult?> _results = {};
   bool _running = false;
   ConnectionStatus? _lastStatus;
-  // The 30s re-probe cadence replaces the old manual refresh button.
+  // Re-probe on a fixed cadence.
   static const Duration _reprobeInterval = Duration(seconds: 30);
   Timer? _reprobeTimer;
 
@@ -1772,11 +1780,10 @@ class _ConnectivitySite extends StatelessWidget {
     };
     // Inline tile on a fixed grid: icon and name anchor the left edge, the
     // lamp dot and a fixed-width right-aligned status cell anchor the right.
-    // Name length no longer shifts the dot, so all four dots sit on one
-    // vertical rhythm and results landing never jiggle the row. The icon is
-    // a quiet always-visible mark; the dot is the lamp — its color and the
-    // status text transition, so a probe outcome change reads as a soft
-    // cross-fade instead of a hard swap.
+    // The fixed-width name cell keeps all four dots on one vertical rhythm and
+    // results landing never jiggle the row. The icon is a quiet always-visible
+    // mark; the dot is the lamp — its color and the status text transition, so
+    // a probe outcome change reads as a soft cross-fade instead of a hard swap.
     return Row(
       children: [
         Icon(_siteIcon(target.name), color: p.inkMuted, size: 14),

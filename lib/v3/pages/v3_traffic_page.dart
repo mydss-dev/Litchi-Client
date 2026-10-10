@@ -10,6 +10,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_toast.dart';
 
 /// Supported chart periods are the same on desktop and mobile.
 const List<int> kV3TrafficPeriods = [7, 15, 30];
@@ -98,8 +99,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     final usedRatio = traffic.totalGb <= 0
         ? 0.0
         : (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0).toDouble();
-    // The legacy page's single-column rhythm, rebuilt in V3 language:
-    // full-width summary, then the stat-tile band, then the chart. No
+    // Full-width summary, then the stat-tile band, then the chart. No
     // side-by-side split — every block owns the whole row.
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -295,10 +295,9 @@ class _QuotaValue extends StatelessWidget {
   }
 }
 
-/// The stat-tile band: the legacy page's 2x2 stat-card rhythm, widened to
-/// carry everything the old side panel held. Wide panes lay it out 3x2,
-/// narrow ones 2x3; each tile keeps its accent so the band is the page's
-/// color stripe.
+/// The stat-tile band, kept as separate cards on the canvas. Wide panes lay
+/// it out 3x2, narrow ones 2x3; each tile keeps its accent so the band is
+/// the page's color stripe.
 class _TimingGrid extends StatelessWidget {
   const _TimingGrid({required this.controller});
   final AppController controller;
@@ -313,13 +312,13 @@ class _TimingGrid extends StatelessWidget {
     );
     final days = expiry.days;
     final tiles = <Widget>[
-      _TimingTile(
+      V3StatTile(
         icon: Icons.today_rounded,
         label: v3Copy(context, zh: '今日已用', en: 'Used today', tw: '今日已用'),
         value: '${controller.todayTrafficGb.toStringAsFixed(2)} GB',
         accent: p.lychee,
       ),
-      _TimingTile(
+      V3StatTile(
         icon: Icons.compare_arrows_rounded,
         label: v3Copy(context, zh: '昨日对比', en: 'Vs. yesterday', tw: '昨日對比'),
         value: _v3YesterdayComparison(
@@ -327,16 +326,16 @@ class _TimingGrid extends StatelessWidget {
           controller.trafficUsage,
           controller.todayTrafficGb,
         ),
-        accent: p.aqua,
+        accent: p.aquaInk,
       ),
-      _TimingTile(
+      V3StatTile(
         icon: Icons.event_available_rounded,
         label: v3Copy(context, zh: '套餐有效期', en: 'Plan expires', tw: '方案有效期'),
         value: controller.planExpiryLabel,
-        accent: p.aqua,
+        accent: p.aquaInk,
       ),
       if (days != null)
-        _TimingTile(
+        V3StatTile(
           icon: Icons.hourglass_bottom_rounded,
           label: v3Copy(context, zh: '距离到期', en: 'Time remaining', tw: '距離到期'),
           value: days < 0
@@ -344,9 +343,9 @@ class _TimingGrid extends StatelessWidget {
               : days == 0
               ? v3Copy(context, zh: '今天到期', en: 'Expires today', tw: '今天到期')
               : v3Copy(context, zh: '$days 天', en: '$days days', tw: '$days 天'),
-          accent: days <= 0 ? p.warning : p.aqua,
+          accent: days <= 0 ? p.warning : p.aquaInk,
         ),
-      _TimingTile(
+      V3StatTile(
         icon: Icons.restart_alt_rounded,
         label: v3Copy(context, zh: '流量重置', en: 'Data resets', tw: '流量重置'),
         value: controller.resetDay == null
@@ -366,7 +365,7 @@ class _TimingGrid extends StatelessWidget {
               ),
         accent: p.success,
       ),
-      _TimingTile(
+      V3StatTile(
         icon: Icons.devices_rounded,
         label: v3Copy(context, zh: '在线设备', en: 'Online devices', tw: '線上裝置'),
         value: controller.aliveIp == null
@@ -400,71 +399,6 @@ class _TimingGrid extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _TimingTile extends StatelessWidget {
-  const _TimingTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.accent,
-  });
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(V3Radius.card),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: .11),
-              borderRadius: BorderRadius.circular(V3Radius.control),
-            ),
-            child: Icon(icon, color: accent, size: 16),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 10),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: p.ink,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -505,8 +439,7 @@ class _DayDetails {
 }
 
 /// The trend panel. No pinned-day readout: the numbers live on the bar
-/// captions (7-day view) and the hover tooltip — the owner found the
-/// always-on date row noise, and the chart reads fine without it.
+/// captions (7-day view) and the hover tooltip.
 class _TrendPanel extends StatelessWidget {
   const _TrendPanel({
     required this.series,
@@ -839,66 +772,72 @@ class _UsageBar extends StatelessWidget {
     final caption = gb == null || !showValue
         ? null
         : '${gb >= 10 ? gb.toStringAsFixed(0) : gb.toStringAsFixed(1)}G';
+    final message = '${_dayLabel(point.date)}\n$value$detailsText';
     return Tooltip(
-      message: '${_dayLabel(point.date)}\n$value$detailsText',
+      message: message,
       child: Semantics(
         label: '${_dayLabel(point.date)}，$value',
-        child: SizedBox(
-          height: 140,
-          width: double.infinity,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (caption != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    caption,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: isToday ? p.lycheeInk : p.inkMuted,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+        // Touch has no hover, so compact 15/30-day bars never reveal their
+        // numbers through the tooltip; a tap opens the same readout as a
+        // toast instead of leaving a day's amount invisible on mobile.
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => V3Toast.show(context, message),
+          child: SizedBox(
+            height: 140,
+            width: double.infinity,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (caption != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isToday ? p.lycheeInk : p.inkMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
+                Container(
+                  width: double.infinity,
+                  height: gb == null ? 4 : 6 + 90 * ratio,
+                  constraints: BoxConstraints(maxWidth: compact ? 22 : 34),
+                  decoration: BoxDecoration(
+                    color: gb == null
+                        ? p.line
+                        : isToday || ratio >= .75
+                        ? p.lychee
+                        : p.aqua.withValues(alpha: .78),
+                    borderRadius: gb == null
+                        ? BorderRadius.circular(2)
+                        : const BorderRadius.vertical(top: Radius.circular(5)),
+                  ),
                 ),
-              Container(
-                width: double.infinity,
-                height: gb == null ? 4 : 6 + 90 * ratio,
-                constraints: BoxConstraints(maxWidth: compact ? 22 : 34),
-                decoration: BoxDecoration(
-                  color: gb == null
-                      ? p.line
-                      : isToday || ratio >= .75
-                      ? p.lychee
-                      : p.aqua.withValues(alpha: .78),
-                  borderRadius: gb == null
-                      ? BorderRadius.circular(2)
-                      : const BorderRadius.vertical(top: Radius.circular(5)),
+                // Breathing room between the bars and the date labels.
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 16,
+                  child: showLabel
+                      ? Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isToday ? p.ink : p.inkMuted,
+                            fontSize: 10,
+                          ),
+                        )
+                      : null,
                 ),
-              ),
-              // Breathing room between the bars and the date labels; keeping
-              // the slot identical to the old pin-marker row means removing
-              // the marker never shifts the chart.
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 16,
-                child: showLabel
-                    ? Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isToday ? p.ink : p.inkMuted,
-                          fontSize: compact ? 9 : 10,
-                        ),
-                      )
-                    : null,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

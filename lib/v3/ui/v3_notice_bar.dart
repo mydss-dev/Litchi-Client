@@ -49,10 +49,9 @@ class V3NoticeBar extends StatefulWidget {
 
 /// The dashboard's single top lane. Server notices and the update prompt
 /// rotate through the same one-line ticker instead of stacking banners above
-/// the connect card, which used to push the primary action below the fold at
-/// the 700dp acceptance height. The update prompt outranks announcements and
-/// opens the rotation; error and data-warning alerts stay separate: they are
-/// connection state, not announcements.
+/// the connect card. The update prompt outranks announcements and opens the
+/// rotation; error and data-warning alerts stay separate: they are connection
+/// state, not announcements.
 class _V3NoticeBarState extends State<V3NoticeBar>
     with SingleTickerProviderStateMixin {
   static const _interval = Duration(seconds: 8);

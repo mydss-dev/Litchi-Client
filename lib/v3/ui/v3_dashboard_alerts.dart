@@ -129,7 +129,7 @@ class _DashboardAlertTileState extends State<_DashboardAlertTile> {
             OutlinedButton(
               onPressed: _retrying || widget.onRetry == null ? null : _retry,
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size(58, 44),
+                minimumSize: const Size(0, 30),
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 foregroundColor: ink,
                 side: BorderSide(color: color.withValues(alpha: .4)),

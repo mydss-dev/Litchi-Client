@@ -88,8 +88,7 @@ class V3Panel extends StatelessWidget {
 
 /// Which palette colour a [V3Panel] is painted with.
 ///
-/// `hero` was called `ink` until the light theme stopped painting its large
-/// panels black — the name described the old colour, not the role.
+/// Large panels paint with `hero`; `ink` is reserved for text.
 enum V3PanelTone { surface, raised, hero, signal }
 
 /// The border for a chip that has a chosen state.
@@ -130,6 +129,165 @@ class V3SkeletonBlock extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.ink.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+}
+
+/// A single summary figure on a raised panel: an accent bar, a muted label and
+/// one bold number. Orders and tickets share this instead of carrying two
+/// near-identical private copies; `loading` swaps the figure for a skeleton.
+class V3MetricTile extends StatelessWidget {
+  const V3MetricTile({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.accent,
+    this.loading = false,
+  });
+
+  final String label;
+  final String value;
+  final Color accent;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      height: 96,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: p.surfaceRaised,
+        borderRadius: BorderRadius.circular(V3Radius.panel),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 44,
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: BorderRadius.circular(V3Radius.control),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.inkMuted, fontSize: 10),
+                ),
+                const SizedBox(height: 4),
+                if (loading)
+                  const V3SkeletonBlock(width: 30, height: 16)
+                else
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: p.ink,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One card in a page's stat band — the row of equal tiles on the canvas
+/// (traffic's timing figures, invite's commission figures). The shell is
+/// shared; the figure is caller-supplied so a plain count and a rolling-money
+/// figure both fit without a style switch.
+class V3StatTile extends StatelessWidget {
+  const V3StatTile({
+    super.key,
+    required this.label,
+    this.value = '',
+    this.valueWidget,
+    this.icon,
+    this.accent,
+  });
+
+  final String label;
+
+  /// Plain figure rendered in the band's compact voice (12/w800 tabular).
+  /// Ignored when [valueWidget] is provided.
+  final String value;
+
+  /// Custom figure content (rolling money, a suffix, a larger size) that
+  /// replaces the plain [value] text.
+  final Widget? valueWidget;
+
+  final IconData? icon;
+  final Color? accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final accentColor = accent ?? p.lycheeInk;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        border: Border.all(color: p.hairline),
+        boxShadow: p.shadows,
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: .11),
+                borderRadius: BorderRadius.circular(V3Radius.control),
+              ),
+              child: Icon(icon, color: accentColor, size: 16),
+            ),
+            const SizedBox(width: 10),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.inkMuted, fontSize: 10),
+                ),
+                const SizedBox(height: 4),
+                valueWidget ??
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: p.ink,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -359,9 +517,9 @@ class V3RollingMoney extends StatelessWidget {
       tween: Tween(begin: 0, end: value),
       duration: const Duration(milliseconds: 600),
       curve: Curves.easeOutCubic,
-      // scaleDown, not the ellipsis the old stat text used: a truncated
-      // amount is a wrong amount. Where the string fits it renders 1:1; in a
-      // narrow tile the whole value shrinks a touch instead of wrapping.
+      // scaleDown, not ellipsis: a truncated amount is a wrong amount. Where
+      // the string fits it renders 1:1; in a narrow tile the whole value
+      // shrinks a touch instead of wrapping.
       builder: (context, amount, _) => FittedBox(
         fit: BoxFit.scaleDown,
         child: Text('$symbol${amount.toStringAsFixed(2)}', style: style),
@@ -441,9 +599,8 @@ class V3StatusBadge extends StatelessWidget {
 }
 
 /// The one V3 toggle switch: lychee track when on, a raised grey track and
-/// knob when off. Settings and the account preferences previously drew two
-/// different switches; both now draw this one. A null [onChanged] disables
-/// the toggle while work is in flight.
+/// knob when off. A null [onChanged] disables the toggle while work is in
+/// flight.
 class V3Switch extends StatelessWidget {
   const V3Switch({super.key, required this.value, this.onChanged});
 
@@ -634,9 +791,8 @@ class V3NavRow extends StatelessWidget {
 ///
 /// The box shows the bundle's brand icon (CI bakes `logo_url` into
 /// `assets/images/app_icon.png`; local builds ship the default lychee). The
-/// old hand-drawn citrus squircle is kept only as the errorBuilder fallback
-/// for environments where the branding step never ran — two marks for one
-/// product is not a mark.
+/// citrus squircle is kept only as the errorBuilder fallback for environments
+/// where the branding step never ran.
 class V3BrandMark extends StatelessWidget {
   const V3BrandMark({
     super.key,

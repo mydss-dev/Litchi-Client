@@ -139,17 +139,17 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
       .fold<int>(0, (sum, order) => sum + order.totalAmount);
 
     final metrics = <Widget>[
-      _OrderMetric(label: v3Copy(context, zh: '全部订单',
+      V3MetricTile(label: v3Copy(context, zh: '全部订单',
           en: 'All orders', tw: '全部訂單'),
         value: '${_orders.length}', accent: p.lychee, loading: _loading),
-      _OrderMetric(label: v3Copy(context, zh: '待处理',
+      V3MetricTile(label: v3Copy(context, zh: '待处理',
           en: 'Pending', tw: '待處理'),
         value: '$pending', accent: p.warning, loading: _loading),
-      _OrderMetric(label: v3Copy(context, zh: '已完成',
+      V3MetricTile(label: v3Copy(context, zh: '已完成',
           en: 'Completed', tw: '已完成'),
         value: '$completed', accent: p.success, loading: _loading),
-      _OrderMetric(label: v3Copy(context, zh: '累计支付',
-          en: 'Total paid', tw: '累計支付'),
+      V3MetricTile(label: v3Copy(context, zh: '已完成金额',
+          en: 'Completed amount', tw: '已完成金額'),
         value: '${controller.currencySymbol}${(spent / 100).toStringAsFixed(2)}',
         accent: p.aqua, loading: _loading),
     ];
@@ -256,41 +256,6 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         ),
       ]);
     });
-  }
-}
-
-class _OrderMetric extends StatelessWidget {
-  const _OrderMetric({required this.label, required this.value,
-    required this.accent, this.loading = false});
-  final String label;
-  final String value;
-  final Color accent;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Container(height: 100, padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(V3Radius.panel)),
-      child: Row(children: [
-        Container(width: 4, height: 48,
-          decoration: BoxDecoration(color: accent,
-            borderRadius: BorderRadius.circular(V3Radius.control))),
-        const SizedBox(width: 12),
-        Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
-            const SizedBox(height: 4),
-            if (loading)
-              const V3SkeletonBlock(width: 30, height: 16)
-            else Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: p.ink, fontSize: 18,
-                fontWeight: FontWeight.w900,
-                fontFeatures: const [FontFeature.tabularFigures()])),
-          ])),
-      ]),
-    );
   }
 }
 

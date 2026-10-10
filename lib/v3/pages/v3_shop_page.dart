@@ -64,8 +64,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
             onChanged: (value) => setState(() => _category = value)),
           const SizedBox(height: 14),
           if (plans.isEmpty)
-            // The shared empty-state voice (icon tile, one muted line, one
-            // step out) -- the last hand-rolled empty panel left in V3.
+            // Shared empty-state voice (icon tile, one muted line, one step).
             V3EmptyState(
               icon: Icons.inventory_2_rounded,
               title: _tr(context, '当前分类没有可购买套餐',
@@ -295,11 +294,9 @@ class _PlanCard extends StatelessWidget {
       child: desktop
         ? Column(crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // The row's IntrinsicHeight sizes every card to its tallest
-              // sibling; long localized feature text scrolls inside whatever
-              // slack remains instead of painting overflow stripes, and the
+              // IntrinsicHeight sizes every card to its tallest sibling; the
               // price anchors to the card bottom (pricing-table convention).
-              Flexible(child: SingleChildScrollView(child: info)),
+              Expanded(child: info),
               purchase])
         : Column(crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [info, const SizedBox(height: 14), purchase]));

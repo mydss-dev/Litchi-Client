@@ -110,15 +110,15 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
           ],
           const SizedBox(height: 18),
           Row(children: [
-            Expanded(child: _TicketMetric(label: v3Copy(context,
+            Expanded(child: V3MetricTile(label: v3Copy(context,
                 zh: '全部工单', en: 'All tickets', tw: '全部工單'),
               value: '${tickets.length}', accent: p.lychee, loading: skeleton)),
             const SizedBox(width: 12),
-            Expanded(child: _TicketMetric(label: v3Copy(context,
+            Expanded(child: V3MetricTile(label: v3Copy(context,
                 zh: '处理中', en: 'Open', tw: '處理中'),
               value: '$openCount', accent: p.warning, loading: skeleton)),
             const SizedBox(width: 12),
-            Expanded(child: _TicketMetric(label: v3Copy(context,
+            Expanded(child: V3MetricTile(label: v3Copy(context,
                 zh: '已关闭', en: 'Closed', tw: '已關閉'),
               value: '$closedCount', accent: p.success, loading: skeleton)),
           ]),
@@ -160,38 +160,6 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
         ]),
       );
     });
-  }
-}
-
-class _TicketMetric extends StatelessWidget {
-  const _TicketMetric({required this.label, required this.value,
-    required this.accent, this.loading = false});
-  final String label;
-  final String value;
-  final Color accent;
-  final bool loading;
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Container(height: 96, padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(V3Radius.panel)),
-      child: Row(children: [
-        Container(width: 4, height: 44,
-          decoration: BoxDecoration(color: accent,
-            borderRadius: BorderRadius.circular(V3Radius.control))),
-        const SizedBox(width: 12),
-        Column(mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
-            const SizedBox(height: 4),
-            if (loading)
-              const V3SkeletonBlock(width: 30, height: 16)
-            else Text(value, style: TextStyle(color: p.ink,
-              fontSize: 19, fontWeight: FontWeight.w900,
-              fontFeatures: const [FontFeature.tabularFigures()])),
-          ]),
-      ]));
   }
 }
 
