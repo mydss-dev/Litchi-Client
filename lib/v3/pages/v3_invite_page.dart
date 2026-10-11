@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
@@ -44,11 +47,34 @@ class _V3InvitePageState extends State<V3InvitePage> {
     return _selected.clamp(0, codes.length - 1);
   }
 
-  void _select(List<InviteCodeModel> codes, int index) {
+  // The pager is linear over codes.length + 1 pages — every code, then the
+  // create card as the terminal page. The ends hold; no wraparound.
+  bool _onCreatePage = false;
+
+  void _goTo(List<InviteCodeModel> codes, int index) {
     setState(() {
+      _onCreatePage = false;
       _selected = index;
       _selectedIdentity = _identity(codes[index]);
     });
+  }
+
+  void _next(List<InviteCodeModel> codes) {
+    if (_onCreatePage) return;
+    if (_selected >= codes.length - 1) {
+      setState(() => _onCreatePage = true);
+      return;
+    }
+    _goTo(codes, _selected + 1);
+  }
+
+  void _prev(List<InviteCodeModel> codes) {
+    if (_onCreatePage) {
+      _goTo(codes, codes.length - 1);
+      return;
+    }
+    if (_selected <= 0) return;
+    _goTo(codes, _selected - 1);
   }
 
   void _toast(String message, {V3ToastType type = V3ToastType.info}) {
@@ -89,7 +115,31 @@ class _V3InvitePageState extends State<V3InvitePage> {
       tw: '建立請求已完成，但邀請碼尚未同步，請稍後重新整理',
     );
     setState(() => _creating = true);
-    final error = await controller.createInviteCode();
+    // The create chain (API + full refresh) can crawl for minutes when the
+    // server is down — the spinner must never outlive the user's patience.
+    // A page-level cap releases the UI with an honest, retryable message;
+    // the request itself keeps running and a later refresh picks it up.
+    final String? error;
+    try {
+      error = await controller.createInviteCode().timeout(
+        const Duration(seconds: 20),
+      );
+    } on TimeoutException {
+      if (!mounted) return;
+      final timedOut = v3Copy(
+        context,
+        zh: '创建请求超时，请稍后刷新查看是否成功',
+        en: 'Create request timed out. Refresh later to check.',
+        tw: '建立請求逾時，請稍後重新整理查看是否成功',
+      );
+      setState(() {
+        _creating = false;
+        _onCreatePage = false;
+        _selected = _activeIndex(_codes(controller));
+      });
+      _toast(timedOut, type: V3ToastType.error);
+      return;
+    }
     if (!mounted) return;
     final after = _codes(controller);
     final added = error == null
@@ -97,6 +147,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
         : <InviteCodeModel>[];
     setState(() {
       _creating = false;
+      _onCreatePage = false;
       if (added.isNotEmpty) {
         _selectedIdentity = _identity(added.last);
         _selected = after.indexWhere(
@@ -120,19 +171,19 @@ class _V3InvitePageState extends State<V3InvitePage> {
     final controller = AppScope.of(context);
     final codes = _codes(controller);
     final index = _activeIndex(codes);
+    // The selected code stays resolved on the create page too: the link bar
+    // and share rows below keep their content while paging. Only the empty
+    // state has nothing to show.
     final active = codes.isEmpty ? null : codes[index];
     final hero = _InviteHero(
       code: active?.code ?? '',
       link: active?.link ?? '',
       currentIndex: index,
       total: codes.length,
+      onCreatePage: _onCreatePage,
       creating: _creating,
-      onPrevious: codes.length <= 1
-          ? null
-          : () => _select(codes, (index - 1 + codes.length) % codes.length),
-      onNext: codes.length <= 1
-          ? null
-          : () => _select(codes, (index + 1) % codes.length),
+      onPrevious: codes.isEmpty ? null : () => _prev(codes),
+      onNext: codes.isEmpty ? null : () => _next(codes),
       onCreate: _createCode,
       onCopyCode: () => _copy(
         active?.code ?? '',
@@ -211,6 +262,7 @@ class _InviteHero extends StatelessWidget {
     required this.link,
     required this.currentIndex,
     required this.total,
+    required this.onCreatePage,
     required this.creating,
     required this.onPrevious,
     required this.onNext,
@@ -223,6 +275,7 @@ class _InviteHero extends StatelessWidget {
   final String link;
   final int currentIndex;
   final int total;
+  final bool onCreatePage;
   final bool creating;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
@@ -246,293 +299,138 @@ class _InviteHero extends StatelessWidget {
     final p = V3Palette.of(context);
     final hasCode = code.trim().isNotEmpty;
     final hasLink = link.trim().isNotEmpty;
-    return LayoutBuilder(
-      builder: (context, box) {
-        // Neutral hero ground, same material as the traffic quota panel and the
-        // shell sidebar — brand color comes from the accents (gift tile, chips,
-        // share icons). Narrow panes drop the header create button; it returns
-        // as a full-width row below the code stage.
-        final narrow = box.maxWidth < 520;
-        return Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: p.hero,
-            borderRadius: BorderRadius.circular(V3Radius.panel),
-            border: Border.all(color: p.hairline),
-            boxShadow: p.shadows,
+    // The pager's terminal page is the create card; with no codes at all it
+    // is the whole panel — nothing to page through, so no arrows.
+    final empty = total == 0;
+    final onCard = onCreatePage || empty;
+    // Link bar and share row carry the active code's link — kept on the
+    // create page too, so paging there no longer collapses the panel and
+    // makes it jump. Only the empty state has nothing to share.
+    final showShareRows = total > 0;
+    // Neutral hero ground, same material as the traffic quota panel and the
+    // shell sidebar — brand color comes from the accents (create tile, chips,
+    // share icons). The old inner title/description duplicated the page
+    // header, so the panel is purely functional now: stage first, then the
+    // action rows.
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: p.hero,
+        borderRadius: BorderRadius.circular(V3Radius.panel),
+        border: Border.all(color: p.hairline),
+        boxShadow: p.shadows,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // The pager owns the panel's face: the card takes the full width
+          // and the arrows live INSIDE as hover/focus-revealed overlays
+          // (linear paging — the ends hold, no wraparound).
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: empty
+                ? _createCard(context, p)
+                : _InvitePager(
+                    canPrevious: onCreatePage || currentIndex > 0,
+                    canNext: !onCreatePage,
+                    onPrevious: onPrevious,
+                    onNext: onNext,
+                    child: onCard
+                        ? _createCard(context, p)
+                        : _InviteStageCard(
+                            code: code,
+                            link: link,
+                            currentIndex: currentIndex,
+                            total: total,
+                            onCopyCode: onCopyCode,
+                          ),
+                  ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: p.lychee,
-                      borderRadius: BorderRadius.circular(V3Radius.field),
-                    ),
-                    child: Icon(
-                      Icons.redeem_rounded,
-                      color: p.onLychee,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          v3Copy(
-                            context,
-                            zh: '分享邀请，好友注册即计入奖励',
-                            en: 'Share and earn on every signup',
-                            tw: '分享邀請，好友註冊即計入獎勵',
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: p.ink,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          v3Copy(
-                            context,
-                            zh: '邀请链接与返佣进度都保存在本页',
-                            en: 'Your link and commission progress live here',
-                            tw: '邀請連結與返佣進度都保存在本頁',
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: p.inkMuted, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (!narrow) ...[
-                    const SizedBox(width: 14),
-                    _CreateButton(
-                      key: const ValueKey('v3-invite-create'),
-                      creating: creating,
-                      onCreate: onCreate,
-                    ),
-                  ],
-                ],
+          if (showShareRows) ...[
+            const SizedBox(height: 10),
+            // Link bar: the URL reads like an input, with its copy action
+            // inline where the eye already is.
+            Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+              decoration: BoxDecoration(
+                color: p.surfaceRaised,
+                borderRadius: BorderRadius.circular(V3Radius.field),
+                border: Border.all(color: p.hairline),
               ),
-              const SizedBox(height: 18),
-              // Code stage: the flanking arrows sit against the code, not in a
-              // far corner — the carousel is the hero of this page.
-              Row(
+              child: Row(
                 children: [
-                  if (total > 1)
-                    IconButton(
-                      tooltip: v3Copy(
-                        context,
-                        zh: '上一个邀请码',
-                        en: 'Previous code',
-                        tw: '上一個邀請碼',
-                      ),
-                      onPressed: onPrevious,
-                      icon: const Icon(Icons.chevron_left_rounded),
-                    ),
+                  Icon(Icons.link_rounded, size: 16, color: p.inkMuted),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              v3Copy(
-                                context,
-                                zh: '邀请码',
-                                en: 'Invite code',
-                                tw: '邀請碼',
-                              ),
-                              style: TextStyle(
-                                color: p.inkMuted,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (total > 0)
-                              Text(
-                                '${currentIndex + 1} / $total',
-                                style: TextStyle(
-                                  color: p.inkMuted,
-                                  fontSize: 11,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          hasCode
-                              ? code.trim()
-                              : hasLink
+                    child: Text(
+                      hasLink
+                          ? link.trim()
+                          : hasCode
                               ? v3Copy(
                                   context,
-                                  zh: '后台未返回邀请码',
-                                  en: 'No code returned by the server',
-                                  tw: '後台未傳回邀請碼',
+                                  zh: '后台尚未提供邀请链接，可分享邀请码',
+                                  en: 'No link yet. You can share your invite code.',
+                                  tw: '後台尚未提供邀請連結，可分享邀請碼',
                                 )
                               : v3Copy(
                                   context,
-                                  zh: '还没有邀请码',
-                                  en: 'No invite code yet',
-                                  tw: '尚無邀請碼',
+                                  zh: '创建邀请码后即可分享',
+                                  en: 'Create an invite code to start sharing',
+                                  tw: '建立邀請碼後即可分享',
                                 ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: hasCode ? p.ink : p.inkMuted,
-                            fontSize: hasCode ? 28 : 17,
-                            fontWeight: hasCode
-                                ? FontWeight.w900
-                                : FontWeight.w600,
-                            letterSpacing: hasCode ? .8 : 0,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          key: const ValueKey('v3-invite-copy-code'),
-                          onPressed: hasCode ? onCopyCode : null,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: p.ink,
-                            side: BorderSide(color: p.line),
-                            minimumSize: const Size(0, 34),
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                          ),
-                          child: Text(
-                            v3Copy(
-                              context,
-                              zh: '复制邀请码',
-                              en: 'Copy code',
-                              tw: '複製邀請碼',
-                            ),
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: hasLink ? p.ink : p.inkMuted,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
-                  if (total > 1)
-                    IconButton(
-                      key: const ValueKey('v3-invite-next'),
-                      tooltip: v3Copy(
-                        context,
-                        zh: '下一个邀请码',
-                        en: 'Next code',
-                        tw: '下一個邀請碼',
-                      ),
-                      onPressed: onNext,
-                      icon: const Icon(Icons.chevron_right_rounded),
+                  const SizedBox(width: 10),
+                  OutlinedButton(
+                    key: const ValueKey('v3-invite-copy-link'),
+                    onPressed: hasLink ? onCopyLink : null,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: p.ink,
+                      side: const BorderSide(color: Colors.transparent),
+                      backgroundColor: p.surface,
+                      minimumSize: const Size(0, 34),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                     ),
+                    child: Text(
+                      v3Copy(
+                        context,
+                        zh: '复制链接',
+                        en: 'Copy link',
+                        tw: '複製連結',
+                      ),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
                 ],
               ),
-              if (narrow) ...[
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: _CreateButton(
-                    key: const ValueKey('v3-invite-create'),
-                    creating: creating,
-                    onCreate: onCreate,
+            ),
+            const SizedBox(height: 14),
+            // One-tap share: copies the link and tells the user where to paste
+            // it. Desktop has no share sheet; the clipboard hand-off is the
+            // share. Disabled while there is no link to hand off.
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 2),
+                  child: Text(
+                    v3Copy(context, zh: '分享到', en: 'Share to', tw: '分享到'),
+                    style: TextStyle(color: p.inkMuted, fontSize: 11),
                   ),
                 ),
-              ],
-              const SizedBox(height: 14),
-              // Link bar: the URL reads like an input, with its copy action
-              // inline where the eye already is.
-              Container(
-                constraints: const BoxConstraints(minHeight: 48),
-                padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
-                decoration: BoxDecoration(
-                  color: p.surfaceRaised,
-                  borderRadius: BorderRadius.circular(V3Radius.field),
-                  border: Border.all(color: p.hairline),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.link_rounded, size: 16, color: p.inkMuted),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        hasLink
-                            ? link.trim()
-                            : hasCode
-                            ? v3Copy(
-                                context,
-                                zh: '后台尚未提供邀请链接，可分享邀请码',
-                                en: 'No link yet. You can share your invite code.',
-                                tw: '後台尚未提供邀請連結，可分享邀請碼',
-                              )
-                            : v3Copy(
-                                context,
-                                zh: '创建邀请码后即可分享',
-                                en: 'Create an invite code to start sharing',
-                                tw: '建立邀請碼後即可分享',
-                              ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: hasLink ? p.ink : p.inkMuted,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    OutlinedButton(
-                      key: const ValueKey('v3-invite-copy-link'),
-                      onPressed: hasLink ? onCopyLink : null,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: p.ink,
-                        side: const BorderSide(color: Colors.transparent),
-                        backgroundColor: p.surface,
-                        minimumSize: const Size(0, 34),
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                      ),
-                      child: Text(
-                        v3Copy(
-                          context,
-                          zh: '复制链接',
-                          en: 'Copy link',
-                          tw: '複製連結',
-                        ),
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              // One-tap share: copies the link and tells the user where to paste
-              // it. Desktop has no share sheet; the clipboard hand-off is the
-              // share. Disabled while there is no link to hand off.
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 2),
-                    child: Text(
-                      v3Copy(context, zh: '分享到', en: 'Share to', tw: '分享到'),
-                      style: TextStyle(color: p.inkMuted, fontSize: 11),
-                    ),
-                  ),
-                  for (final target in _shareTargets)
-                    OutlinedButton.icon(
-                      onPressed: hasLink
-                          ? () => onShareTo(
+                for (final target in _shareTargets)
+                  OutlinedButton.icon(
+                    onPressed: hasLink
+                        ? () => onShareTo(
                               v3Copy(
                                 context,
                                 zh: target.label,
@@ -540,76 +438,424 @@ class _InviteHero extends StatelessWidget {
                                 tw: target.tw,
                               ),
                             )
-                          : null,
-                      icon: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: target.brand ?? p.inkMuted,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: p.ink,
-                        side: BorderSide(color: p.line),
-                        minimumSize: const Size(0, 34),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      label: Text(
-                        v3Copy(
-                          context,
-                          zh: target.label,
-                          en: target.en,
-                          tw: target.tw,
-                        ),
-                        style: const TextStyle(fontSize: 12),
+                        : null,
+                    icon: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: target.brand ?? p.inkMuted,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                ],
-              ),
-            ],
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: p.ink,
+                      side: BorderSide(color: p.line),
+                      minimumSize: const Size(0, 34),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    label: Text(
+                      v3Copy(
+                        context,
+                        zh: target.label,
+                        en: target.en,
+                        tw: target.tw,
+                      ),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// The pager's terminal page: a dashed add-card, the shared "create new"
+  /// affordance (Ant's dashed add-tile, the iOS Wallet add page). In the
+  /// empty state it is the whole panel; tapping anywhere creates.
+  Widget _createCard(BuildContext context, V3Palette p) {
+    return InkWell(
+      key: const ValueKey('v3-invite-create'),
+      onTap: creating ? null : onCreate,
+      borderRadius: BorderRadius.circular(V3Radius.field),
+      child: CustomPaint(
+        painter: _DashedRRectPainter(color: p.line, radius: V3Radius.field),
+        child: SizedBox(
+          height: 172,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: p.lychee.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(V3Radius.control),
+                  ),
+                  child: creating
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: p.lychee,
+                          ),
+                        )
+                      : Icon(Icons.add_rounded, color: p.lychee, size: 20),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  v3Copy(
+                    context,
+                    zh: '新建邀请码',
+                    en: 'New invite code',
+                    tw: '建立邀請碼',
+                  ),
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
 
-class _CreateButton extends StatelessWidget {
-  const _CreateButton({
-    super.key,
-    required this.creating,
-    required this.onCreate,
+/// The invite-code stage as a tinted card — the one colored surface on the
+/// hero. A soft lychee wash lifts the code off the neutral panel, and the
+/// card owns the pager's full width: the arrows float inside its edges as
+/// hover/focus-revealed overlays ([_InvitePager]) instead of eating flanks.
+class _InviteStageCard extends StatelessWidget {
+  const _InviteStageCard({
+    required this.code,
+    required this.link,
+    required this.currentIndex,
+    required this.total,
+    required this.onCopyCode,
   });
-  final bool creating;
-  final VoidCallback onCreate;
+
+  final String code;
+  final String link;
+  final int currentIndex;
+  final int total;
+  final VoidCallback onCopyCode;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return FilledButton.icon(
-      onPressed: creating ? null : onCreate,
-      style: FilledButton.styleFrom(
-        backgroundColor: p.lychee,
-        foregroundColor: p.onLychee,
+    final hasCode = code.trim().isNotEmpty;
+    final hasLink = link.trim().isNotEmpty;
+    return Container(
+      key: const ValueKey('v3-invite-stage'),
+      width: double.infinity,
+      // Same fixed height as the create card, so paging between codes and
+      // the create card never resizes the panel mid-hover.
+      height: 172,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            p.lychee.withValues(alpha: .11),
+            p.lychee.withValues(alpha: .04),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(V3Radius.field),
+        border: Border.all(color: p.lychee.withValues(alpha: .20)),
       ),
-      icon: creating
-          ? SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: p.onLychee,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Text(
+                v3Copy(
+                  context,
+                  zh: '邀请码',
+                  en: 'Invite code',
+                  tw: '邀請碼',
+                ),
+                style: TextStyle(
+                  color: p.inkMuted,
+                  fontSize: 11,
+                  height: 1.2,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            )
-          : const Icon(Icons.add_rounded, size: 18),
-      label: Text(
-        creating
-            ? v3Copy(context, zh: '创建中', en: 'Creating', tw: '建立中')
-            : v3Copy(context, zh: '新建邀请码', en: 'New invite code', tw: '建立邀請碼'),
+              const Spacer(),
+              if (total > 0)
+                Text(
+                  '${currentIndex + 1} / $total',
+                  style: TextStyle(
+                    color: p.inkMuted,
+                    fontSize: 11,
+                    height: 1.2,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            hasCode
+                ? code.trim()
+                : hasLink
+                    ? v3Copy(
+                        context,
+                        zh: '后台未返回邀请码',
+                        en: 'No code returned by the server',
+                        tw: '後台未傳回邀請碼',
+                      )
+                    : v3Copy(
+                        context,
+                        zh: '还没有邀请码',
+                        en: 'No invite code yet',
+                        tw: '尚無邀請碼',
+                      ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: hasCode ? p.ink : p.inkMuted,
+              fontSize: hasCode ? 28 : 15,
+              height: 1.2,
+              fontWeight: hasCode ? FontWeight.w900 : FontWeight.w600,
+              letterSpacing: hasCode ? .8 : 0,
+            ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            key: const ValueKey('v3-invite-copy-code'),
+            onPressed: hasCode ? onCopyCode : null,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: p.ink,
+              side: BorderSide(color: p.line),
+              minimumSize: const Size(0, 34),
+              // Desktop mouse target — shrinkWrap keeps the measured height
+              // pinned at 34 instead of the padded 48 tap target.
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+            ),
+            child: Text(
+              v3Copy(
+                context,
+                zh: '复制邀请码',
+                en: 'Copy code',
+                tw: '複製邀請碼',
+              ),
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+/// The pager chrome around the stage/create card. The whole area is
+/// focusable (click or Tab), and the left/right arrows float INSIDE the
+/// card's edges — revealed only on hover or focus, the Fluent/Apple carousel
+/// behavior — so the card keeps its full width. Paging is linear: the first
+/// page holds the left arrow, the create card is the terminal right stop;
+/// no wraparound.
+class _InvitePager extends StatefulWidget {
+  const _InvitePager({
+    required this.canPrevious,
+    required this.canNext,
+    required this.onPrevious,
+    required this.onNext,
+    required this.child,
+  });
+
+  final bool canPrevious;
+  final bool canNext;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+  final Widget child;
+
+  @override
+  State<_InvitePager> createState() => _InvitePagerState();
+}
+
+class _InvitePagerState extends State<_InvitePager> {
+  final FocusNode _focusNode = FocusNode();
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  // KeyDown plus KeyRepeat: holding an arrow pages like holding it in a text
+  // field. Events arrive here while focus sits on the pager or any child
+  // (the copy button) — they bubble through this Focus node. At either end
+  // the key is left for the system: the ends hold, no wraparound.
+  KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      if (!widget.canPrevious) return KeyEventResult.ignored;
+      widget.onPrevious?.call();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      if (!widget.canNext) return KeyEventResult.ignored;
+      widget.onNext?.call();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  Widget _arrow(
+    V3Palette p, {
+    required Key key,
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback? onTap,
+    required String tooltip,
+  }) {
+    // Hover/focus reveals BOTH arrows even at the ends — the disabled one
+    // stays visible, dimmed and inert, so the pair never looks lopsided
+    // (Fluent/Apple carousel chrome).
+    final revealed = _focused || _hovered;
+    return Tooltip(
+      message: tooltip,
+      child: AnimatedOpacity(
+        opacity: revealed ? (enabled ? 1.0 : 0.4) : 0.0,
+        duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.fast,
+        child: IgnorePointer(
+          ignoring: !revealed || !enabled,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: p.surfaceRaised,
+              shape: BoxShape.circle,
+              border: Border.all(color: p.hairline),
+              boxShadow: p.shadows,
+            ),
+            child: IconButton(
+              key: key,
+              padding: EdgeInsets.zero,
+              iconSize: 20,
+              onPressed: enabled ? onTap : null,
+              icon: Icon(icon, color: p.ink, size: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Focus(
+      focusNode: _focusNode,
+      onKeyEvent: _handleKey,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: _focusNode.requestFocus,
+          behavior: HitTestBehavior.opaque,
+          child: Stack(
+            children: [
+              widget.child,
+              Positioned(
+                left: 10,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _arrow(
+                    p,
+                    key: const ValueKey('v3-invite-previous'),
+                    icon: Icons.chevron_left_rounded,
+                    enabled: widget.canPrevious,
+                    onTap: widget.onPrevious,
+                    tooltip: v3Copy(
+                      context,
+                      zh: '上一个邀请码',
+                      en: 'Previous code',
+                      tw: '上一個邀請碼',
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 10,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: _arrow(
+                    p,
+                    key: const ValueKey('v3-invite-next'),
+                    icon: Icons.chevron_right_rounded,
+                    enabled: widget.canNext,
+                    onTap: widget.onNext,
+                    tooltip: v3Copy(
+                      context,
+                      zh: '下一个邀请码',
+                      en: 'Next code',
+                      tw: '下一個邀請碼',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dashed rounded-rect stroke for the create card — the shared "add new"
+/// signifier (Ant's dashed add-tile, HTML dropzones). Flutter ships no
+/// dashed [Border], so the card paints its own.
+class _DashedRRectPainter extends CustomPainter {
+  const _DashedRRectPainter({required this.color, required this.radius});
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+          Offset.zero & size, Radius.circular(radius)));
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = color;
+    // Walk the path dash-on/dash-off; per-metric so the rounded corners keep
+    // the rhythm instead of clipping a fixed dash count per edge.
+    for (final metric in path.computeMetrics()) {
+      final length = metric.length;
+      var distance = 0.0;
+      while (distance < length) {
+        final end = (distance + 4).clamp(0.0, length);
+        canvas.drawPath(metric.extractPath(distance, end), paint);
+        distance = end + 4;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedRRectPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.radius != radius;
 }
 
 class _InviteStats extends StatelessWidget {
@@ -627,6 +873,8 @@ class _InviteStats extends StatelessWidget {
         suffix: v3Copy(context, zh: '人', en: ' people', tw: '人'),
         positive: false,
         amount: null,
+        icon: Icons.group_add_rounded,
+        accent: p.lychee,
       ),
       (
         label: v3Copy(context, zh: '返佣比例', en: 'Commission rate', tw: '返佣比例'),
@@ -634,6 +882,8 @@ class _InviteStats extends StatelessWidget {
         suffix: '%',
         positive: false,
         amount: null,
+        icon: Icons.percent_rounded,
+        accent: p.aquaInk,
       ),
       (
         label: v3Copy(context, zh: '累计佣金', en: 'Total commission', tw: '累計佣金'),
@@ -641,6 +891,8 @@ class _InviteStats extends StatelessWidget {
         suffix: '',
         positive: false,
         amount: controller.earnedCommission,
+        icon: Icons.payments_rounded,
+        accent: p.aquaInk,
       ),
       (
         label: v3Copy(
@@ -653,82 +905,138 @@ class _InviteStats extends StatelessWidget {
         suffix: '',
         positive: false,
         amount: controller.pendingCommission,
+        icon: Icons.schedule_rounded,
+        accent: p.warning,
       ),
       // Withdrawable balance is the one number the user can act on — green
-      // marks it as money in hand, not just a counter.
+      // marks it as money in hand, not just a counter, and it leads the band
+      // by a step in size.
       (
         label: v3Copy(context, zh: '可提现佣金', en: 'Withdrawable', tw: '可提領佣金'),
         value: '',
         suffix: '',
         positive: controller.withdrawable > 0,
         amount: controller.withdrawable,
+        icon: Icons.account_balance_wallet_rounded,
+        accent: p.success,
       ),
     ];
-    // Separate cards on the canvas, matching the traffic page's stat band.
-    return LayoutBuilder(
-      builder: (context, box) {
-        final tiles = <Widget>[
-          for (final entry in entries)
-            V3StatTile(
-              label: entry.label,
-              valueWidget: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: entry.amount != null
-                        ? V3RollingMoney(
-                            value: entry.amount!,
-                            symbol: symbol,
-                            style: TextStyle(
-                              color: entry.positive ? p.successInk : p.ink,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              fontFeatures: const [FontFeature.tabularFigures()],
-                            ),
-                          )
-                        : Text(
-                            entry.value,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: entry.positive ? p.successInk : p.ink,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              fontFeatures: const [FontFeature.tabularFigures()],
-                            ),
-                          ),
-                  ),
-                  if (entry.suffix.isNotEmpty) ...[
-                    const SizedBox(width: 3),
+
+    // One quiet band instead of five floating cards: a single panel whose
+    // cells are divided by 1px hairlines (the Stripe/Ant-Pro KPI-strip
+    // structure), with the traffic page's colored icon-tile DNA so the stats
+    // read as the same family. The compact pane stacks the same cells as a
+    // 2-column grid inside the same panel.
+    Widget cell(entry) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: entry.accent.withValues(alpha: .11),
+                  borderRadius: BorderRadius.circular(V3Radius.control),
+                ),
+                child: Icon(entry.icon, color: entry.accent, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      entry.suffix,
+                      entry.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: p.inkMuted, fontSize: 10),
                     ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Flexible(
+                          child: entry.amount != null
+                              ? V3RollingMoney(
+                                  value: entry.amount!,
+                                  symbol: symbol,
+                                  style: TextStyle(
+                                    color: entry.positive
+                                        ? p.successInk
+                                        : p.ink,
+                                    fontSize: entry.positive ? 18 : 16,
+                                    fontWeight: FontWeight.w900,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures()
+                                    ],
+                                  ),
+                                )
+                              : Text(
+                                  entry.value,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: entry.positive
+                                        ? p.successInk
+                                        : p.ink,
+                                    fontSize: entry.positive ? 18 : 16,
+                                    fontWeight: FontWeight.w900,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures()
+                                    ],
+                                  ),
+                                ),
+                        ),
+                        if (entry.suffix.isNotEmpty) ...[
+                          const SizedBox(width: 3),
+                          Text(
+                            entry.suffix,
+                            style: TextStyle(color: p.inkMuted, fontSize: 10),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
-                ],
-              ),
-            ),
-        ];
-        final cols = box.maxWidth >= V3Layout.paneCompact ? 5 : 2;
-        return Column(
-          children: [
-            for (var i = 0; i < tiles.length; i += cols) ...[
-              if (i > 0) const SizedBox(height: 12),
-              Row(
-                children: [
-                  for (
-                    var j = i;
-                    j < (i + cols).clamp(0, tiles.length);
-                    j++
-                  ) ...[
-                    if (j > i) const SizedBox(width: 12),
-                    Expanded(child: tiles[j]),
-                  ],
-                ],
+                ),
               ),
             ],
-          ],
+          ),
+        );
+
+    Widget hairline({required bool vertical}) => Container(
+          width: vertical ? 1 : double.infinity,
+          height: vertical ? 32 : 1,
+          color: p.line,
+        );
+
+    return LayoutBuilder(
+      builder: (context, box) {
+        final wide = box.maxWidth >= V3Layout.paneCompact;
+        return V3Panel(
+          padding: EdgeInsets.zero,
+          child: wide
+              ? Row(children: [
+                  for (var i = 0; i < entries.length; i++) ...[
+                    if (i > 0) hairline(vertical: true),
+                    Expanded(child: cell(entries[i])),
+                  ],
+                ])
+              // Compact: the same cells pair up into a 2-column grid inside
+              // the one panel, separated by horizontal hairlines.
+              : Column(children: [
+                  for (var r = 0; r < entries.length; r += 2) ...[
+                    if (r > 0) hairline(vertical: false),
+                    Row(children: [
+                      Expanded(child: cell(entries[r])),
+                      if (r + 1 < entries.length)
+                        Expanded(child: cell(entries[r + 1]))
+                      else
+                        const Spacer(),
+                    ]),
+                  ],
+                ]),
         );
       },
     );
