@@ -86,6 +86,9 @@ void main() {
     expect(find.byType(Dialog), findsNothing,
       reason: 'day details are tooltips, not tap-triggered dialogs');
     expect(tester.takeException(), isNull);
+    // The tap answers with a transient toast (the mobile readout); run out
+    // its 2.5s auto-dismiss so teardown has no timer pending.
+    await tester.pump(const Duration(milliseconds: 2600));
   });
 
   testWidgets('missing directional data is not represented as measured zero',
@@ -129,5 +132,7 @@ void main() {
     expect(find.text('上传 0.25 GB · 下载 1.00 GB'), findsNothing);
     expect(find.text('1.25 GB'), findsNothing);
     expect(tester.takeException(), isNull);
+    // Same toast flush as above: the tap still surfaces the day readout.
+    await tester.pump(const Duration(milliseconds: 2600));
   });
 }

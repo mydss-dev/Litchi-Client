@@ -51,9 +51,15 @@ void main() {
           find.descendant(of: card, matching: find.byType(DecoratedBox)).first,
         );
         final decoration = decorated.decoration as BoxDecoration;
+        // The card fills with the palette's two-step vertical wash
+        // (cardGradient) rather than a flat colour — assert the wash's
+        // colours stay theme-aware.
+        final gradient = decoration.gradient;
         expect(
-          decoration.color,
-          dark ? V3Palette.dark.hero : V3Palette.light.surface,
+          gradient is LinearGradient && gradient.colors == (dark
+              ? V3Palette.dark.cardGradient
+              : V3Palette.light.cardGradient),
+          isTrue,
         );
         expect(decoration.borderRadius, BorderRadius.circular(V3Radius.card));
       },

@@ -202,10 +202,14 @@ void main() {
     try {
       final controller = _InteractiveController(AppPage.settings);
       await _pump(tester, controller, const V3SettingsPage());
+      // The connection method is a V3Dropdown (commit 3ec2a0a): open its menu
+      // and pick the other mode. While the change applies, the row's control
+      // dims under a spinner; no banner text and no page-wide progress bar
+      // shift the sections down.
+      await tester.tap(find.byKey(const ValueKey('v3-network-mode-select')));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('系统代理'));
       await tester.pump();
-      // The applying row's control dims under a spinner; no banner text and
-      // no page-wide progress bar shift the sections down.
       expect(find.text('正在应用设置，请稍候…'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       controller.result.complete('核心未响应');
