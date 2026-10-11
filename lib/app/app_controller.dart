@@ -1206,15 +1206,26 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Explicit button action: bounded batches with progressive per-node UI.
-  Future<bool> testLatencies() async {
+  /// [ids] restricts the run to those nodes (multi-select latency testing):
+  /// only the chosen ones are marked 测速中 and probed; every other result
+  /// stays untouched. Null or empty tests the whole fleet.
+  Future<bool> testLatencies({Set<String>? ids}) async {
     if (!supportsCoreConnection || _nodes.isEmpty || _latencyTestInFlight) {
       return false;
     }
+    final wanted = (ids == null || ids.isEmpty)
+        ? null
+        : _nodes.nodes.where((node) => ids.contains(node.id)).toList();
+    if (wanted != null && wanted.isEmpty) return false;
     _latencyTestInFlight = true;
     notifyListeners();
     final runId = _nextLatencyRunId();
-    final snapshot = List<NodeModel>.from(_nodes.nodes);
-    _nodes.markAllLatency(-1);
+    final snapshot = List<NodeModel>.from(wanted ?? _nodes.nodes);
+    if (wanted == null) {
+      _nodes.markAllLatency(-1);
+    } else {
+      _nodes.applyLatencyById({for (final node in wanted) node.id: -1});
+    }
     try {
       if (!coreProcessRunning && !await _preloadCoreOnly()) {
         _markLatencyTestFailed(runId, snapshot);
@@ -1223,11 +1234,29 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       await _core.testLatencies(
         snapshot,
         onResult: (idx, updated) {
-          if (_isCurrentLatencyRun(runId)) _nodes.applyLatencyAt(idx, updated);
+          if (!_isCurrentLatencyRun(runId)) return;
+          if (wanted == null) {
+            // The full-run snapshot IS the controller list, so the index
+            // maps 1:1. A subset snapshot does not — apply by id instead.
+            _nodes.applyLatencyAt(idx, updated);
+          } else if (idx >= 0 && idx < wanted.length) {
+            _nodes.markNodeLatency(wanted[idx].id, updated.latency);
+          }
         },
       );
-      return _isCurrentLatencyRun(runId) &&
-          _nodes.nodes.any((node) => node.latency > 0 && node.latency < 9999);
+      if (!_isCurrentLatencyRun(runId)) return false;
+      if (wanted == null) {
+        return _nodes.nodes
+            .any((node) => node.latency > 0 && node.latency < 9999);
+      }
+      // A subset run succeeds only when one of ITS nodes got a fresh
+      // reading — pre-existing results elsewhere must not mask an
+      // all-timed-out selection.
+      final byId = {for (final node in _nodes.nodes) node.id: node.latency};
+      return wanted.any((node) {
+        final latency = byId[node.id];
+        return latency != null && latency > 0 && latency < 9999;
+      });
     } catch (_) {
       _markLatencyTestFailed(runId, snapshot);
       return false;

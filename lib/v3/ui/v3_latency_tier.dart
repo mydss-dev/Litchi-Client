@@ -45,6 +45,16 @@ int _tierIndex(NodeRegion region, int latency) => switch (region) {
         : 2,
 };
 
+/// Public tier classification for list filters: 0 fast, 1 okay, 2 slow,
+/// -1 untested (no reading yet), 3 timed-out probe. The nodes overview's
+/// tier chips filter on the same region-aware scale the badges paint, so a
+/// "快" filter and a green badge can never disagree.
+int v3LatencyTierIndex(NodeRegion region, int latency) {
+  if (latency >= 9999) return 3;
+  if (latency <= 0) return -1;
+  return _tierIndex(region, latency);
+}
+
 /// Text-safe colour for a node latency (labels, values).
 Color v3LatencyInk(V3Palette p, NodeRegion region, int latency) {
   if (latency >= 9999) return p.warningInk;

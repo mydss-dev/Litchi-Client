@@ -8,7 +8,6 @@ import '../../app/app_controller.dart';
 import '../../app/core_controller.dart';
 import '../../app/plan_presentation.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/services/connectivity_check_service.dart';
 import '../theme/v3_palette.dart';
 import '../theme/v3_motion.dart';
 import '../ui/v3_components.dart';
@@ -1510,21 +1509,10 @@ class _SessionMetrics extends StatelessWidget {
                         cell(upload),
                       ],
                     );
-              // The reachability strip is a desktop presentation: phone slots
-              // are far too narrow for four sites, so the phone card ends at
-              // the gauges.
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  gauge,
-                  if (!compact) ...[
-                    const SizedBox(height: 12),
-                    Container(height: 1, color: p.line),
-                    const SizedBox(height: 10),
-                    _ConnectivityRow(controller: controller),
-                  ],
-                ],
-              );
+              // The gauges are the card's whole content: the four-site
+              // reachability strip is gone — it read a server-side story the
+              // app can't act on, and the gauges already carry the live truth.
+              return gauge;
             },
           ),
         ],
@@ -1533,8 +1521,7 @@ class _SessionMetrics extends StatelessWidget {
   }
 }
 
-/// The reachability strip lives inside [_SessionMetrics] on desktop only —
-/// the phone's merged connection card does not render it.
+/// One gauge cell: an icon+label line over a tabular-figure value.
 class _Metric extends StatelessWidget {
   const _Metric({
     required this.label,
@@ -1595,247 +1582,6 @@ class _Metric extends StatelessWidget {
   }
 }
 
-class _ConnectivityRow extends StatefulWidget {
-  const _ConnectivityRow({required this.controller});
-  final AppController controller;
-
-  @override
-  State<_ConnectivityRow> createState() => _ConnectivityRowState();
-}
-
-class _ConnectivityRowState extends State<_ConnectivityRow> {
-  static const _targets = ConnectivityCheckService.defaultTargets;
-  // index → result; absent = not probed yet, explicit null = probing now.
-  final Map<int, ConnectivityResult?> _results = {};
-  bool _running = false;
-  ConnectionStatus? _lastStatus;
-  // Re-probe on a fixed cadence.
-  static const Duration _reprobeInterval = Duration(seconds: 30);
-  Timer? _reprobeTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onControllerChanged);
-    _lastStatus = widget.controller.connectionStatus;
-    // Restored/silent-start sessions mount already connected: probe once the
-    // first frame exists so the strip never sits empty while connected.
-    if (_lastStatus == ConnectionStatus.connected) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted &&
-            widget.controller.connectionStatus == ConnectionStatus.connected) {
-          unawaited(_runCheck());
-        }
-      });
-      _syncReprobe(true);
-    }
-  }
-
-  // The 30s re-probe only ticks while connected and is cancelled the moment
-  // the connection leaves — the automated replacement for the refresh button.
-  void _syncReprobe(bool connected) {
-    if (connected) {
-      _reprobeTimer ??= Timer.periodic(_reprobeInterval, (_) {
-        if (!mounted) return;
-        if (widget.controller.connectionStatus != ConnectionStatus.connected) {
-          return;
-        }
-        unawaited(_runCheck());
-      });
-    } else {
-      _reprobeTimer?.cancel();
-      _reprobeTimer = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _reprobeTimer?.cancel();
-    widget.controller.removeListener(_onControllerChanged);
-    super.dispose();
-  }
-
-  void _onControllerChanged() {
-    final status = widget.controller.connectionStatus;
-    if (status == _lastStatus) return;
-    final becameConnected =
-        status == ConnectionStatus.connected &&
-        _lastStatus != ConnectionStatus.connected;
-    _lastStatus = status;
-    if (!mounted) return;
-    _syncReprobe(status == ConnectionStatus.connected);
-    if (status != ConnectionStatus.connected && _results.isNotEmpty) {
-      setState(_results.clear);
-    }
-    if (becameConnected && !_running) {
-      unawaited(_runCheck());
-    }
-  }
-
-  Future<void> _runCheck() async {
-    if (_running) return;
-    setState(() => _running = true);
-    for (var i = 0; i < _targets.length; i++) {
-      setState(() => _results[i] = null);
-    }
-    await Future.wait([
-      for (var i = 0; i < _targets.length; i++)
-        ConnectivityCheckService.probe(_targets[i]).then((result) {
-          if (mounted) setState(() => _results[i] = result);
-        }),
-    ]);
-    if (mounted) setState(() => _running = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final status = widget.controller.connectionStatus;
-    // Fixed height, always four slots: nothing in this row can change its
-    // height, so the plan card below never shifts when a probe starts. The
-    // 12px cell insets and 1px dividers mirror the gauge row above, so both
-    // rows read as one grid.
-    return SizedBox(
-      key: const ValueKey('v3-connectivity-strip'),
-      height: 16,
-      child: Row(
-        children: [
-          for (var i = 0; i < _targets.length; i++) ...[
-            if (i > 0) Container(width: 1, height: 16, color: p.line),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: _ConnectivitySite(
-                  target: _targets[i],
-                  phase: _phaseFor(status, i),
-                  result: _results[i],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  _SitePhase _phaseFor(ConnectionStatus status, int index) {
-    switch (status) {
-      case ConnectionStatus.connecting:
-      case ConnectionStatus.disconnecting:
-        return _SitePhase.checking;
-      case ConnectionStatus.connected:
-        final r = _results[index];
-        if (r == null) return _SitePhase.checking;
-        return r.ok ? _SitePhase.ok : _SitePhase.failed;
-      case ConnectionStatus.disconnected:
-      case ConnectionStatus.error:
-        return _SitePhase.disconnected;
-    }
-  }
-}
-
-/// Well-known glyphs for the probe targets. Material's icon set has no
-/// brand logos, so each site gets its closest recognizable stand-in.
-IconData _siteIcon(String name) => switch (name) {
-  'Google' => Icons.public_rounded,
-  'YouTube' => Icons.play_circle_fill_rounded,
-  'GitHub' => Icons.code_rounded,
-  'ChatGPT' => Icons.auto_awesome_rounded,
-  _ => Icons.language_rounded,
-};
-
-enum _SitePhase { disconnected, checking, ok, failed }
-
-class _ConnectivitySite extends StatelessWidget {
-  const _ConnectivitySite({
-    required this.target,
-    required this.phase,
-    required this.result,
-  });
-  final ConnectivityTarget target;
-  final _SitePhase phase;
-  final ConnectivityResult? result;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final r = result;
-    final (dotColor, statusLine, statusColor) = switch (phase) {
-      _SitePhase.disconnected => (
-        p.inkMuted,
-        v3Copy(context, zh: '未连接', en: 'Offline', tw: '未連線'),
-        p.inkMuted,
-      ),
-      _SitePhase.checking => (
-        p.warning,
-        v3Copy(context, zh: '检测中', en: 'Probing', tw: '檢測中'),
-        p.warningInk,
-      ),
-      _SitePhase.ok => (p.success, '${r!.latencyMs} ms', p.successInk),
-      _SitePhase.failed => (
-        p.danger,
-        v3Copy(context, zh: '不通', en: 'Blocked', tw: '不通'),
-        p.dangerInk,
-      ),
-    };
-    // Inline tile on a fixed grid: icon and name anchor the left edge, the
-    // lamp dot and a fixed-width right-aligned status cell anchor the right.
-    // The fixed-width name cell keeps all four dots on one vertical rhythm and
-    // results landing never jiggle the row. The icon is a quiet always-visible
-    // mark; the dot is the lamp — its color and the status text transition, so
-    // a probe outcome change reads as a soft cross-fade instead of a hard swap.
-    return Row(
-      children: [
-        Icon(_siteIcon(target.name), color: p.inkMuted, size: 14),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            target.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: p.ink,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(width: 3),
-        TweenAnimationBuilder<Color?>(
-          tween: ColorTween(end: dotColor),
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          builder: (context, color, _) => Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: color!, shape: BoxShape.circle),
-          ),
-        ),
-        const SizedBox(width: 3),
-        SizedBox(
-          width: 40,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 160),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              // Keyed by phase: a re-probe with the same outcome never fades,
-              // a real change (12 ms → 不通) cross-fades in place.
-              child: Text(
-                statusLine,
-                key: ValueKey(phase),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: statusColor, fontSize: 10),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class _PlanSummary extends StatelessWidget {
   const _PlanSummary({required this.controller});

@@ -2,11 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
-import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/pages/v3_settings_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
-import 'package:litchi_client/v3/ui/v3_node_coverage_map.dart';
 
 import 'visual/v3_visual_fixture.dart';
 
@@ -94,52 +92,4 @@ void main() {
     }
   });
 
-  testWidgets('interactive map region chips clear the touch-target floor', (
-    tester,
-  ) async {
-    try {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      await tester.binding.setSurfaceSize(const Size(390, 844));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(MaterialApp(
-        theme: V3Theme.light(),
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: V3NodeCoverageMap(
-              nodes: const [
-                NodeModel(
-                  id: 'hk-01',
-                  name: 'Hong Kong',
-                  flag: '',
-                  code: 'HK',
-                  englishName: 'Hong Kong',
-                  latency: 32,
-                  region: NodeRegion.asia,
-                ),
-              ],
-              selectedCode: null,
-              onSelected: (_) {},
-            ),
-          ),
-        ),
-      ));
-      await tester.pumpAndSettle();
-      final chips = find.byType(ChoiceChip);
-      expect(chips, findsWidgets,
-          reason: 'the interactive map must retain its region filters');
-      for (final element in chips.evaluate()) {
-        final rect = tester.getRect(find.byWidget(element.widget));
-        expect(
-          rect.height,
-          greaterThanOrEqualTo(minimum),
-          reason:
-              'an interactive region chip is only '
-              '${rect.height.toStringAsFixed(1)}dp tall',
-        );
-      }
-      expect(tester.takeException(), isNull);
-    } finally {
-      debugDefaultTargetPlatformOverride = null;
-    }
-  });
 }

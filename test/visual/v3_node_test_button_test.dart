@@ -10,7 +10,7 @@ class _TestFixture extends VisualV3Controller {
   _TestFixture() : super(AppPage.dashboard);
   int calls = 0;
   @override
-  Future<bool> testLatencies() async {
+  Future<bool> testLatencies({Set<String>? ids}) async {
     calls++;
     return true;
   }
