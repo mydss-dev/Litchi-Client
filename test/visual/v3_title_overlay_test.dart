@@ -60,9 +60,10 @@ Future<void> _run(WidgetTester tester) async {
   await tester.pump();
   expect(controller.requestedTheme, ThemeMode.dark);
 
-  // The language face opens the preference menu; each option is labelled
-  // in its own tongue, and picking one writes the preference.
-  await tester.tap(find.text('中'));
+  // The language face (a compact CN/TW/EN code) opens the preference menu;
+  // each option is labelled in its own tongue, and picking one writes the
+  // preference and flips the face to the picked code.
+  await tester.tap(find.text('CN'));
   await tester.pumpAndSettle();
   expect(find.text('简体中文'), findsOneWidget);
   expect(find.text('繁體中文'), findsOneWidget);
@@ -70,4 +71,5 @@ Future<void> _run(WidgetTester tester) async {
   await tester.tap(find.text('English'));
   await tester.pumpAndSettle();
   expect(controller.language, AppLocalePreference.english);
+  expect(find.text('EN'), findsOneWidget);
 }

@@ -189,7 +189,7 @@ class _ConnectionWorkspace extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 500;
-        final cardHeight = stacked ? 224.0 : 236.0;
+        final cardHeight = stacked ? 224.0 : 212.0;
         final intro = SizedBox(
           key: kConnectActionCardKey,
           height: cardHeight,
@@ -1875,7 +1875,7 @@ class _PlanSummary extends StatelessWidget {
       }
     }
     return _DashboardCard(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1904,7 +1904,7 @@ class _PlanSummary extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -1955,7 +1955,7 @@ class _PlanSummary extends StatelessWidget {
             ],
           ),
           if (total > 0) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(V3Radius.card),
               // The bar sweeps from empty on load and glides between values
@@ -1972,7 +1972,7 @@ class _PlanSummary extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 7),
             Row(
               children: [
                 Expanded(

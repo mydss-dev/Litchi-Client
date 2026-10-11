@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
+import 'package:litchi_client/v3/pages/v3_settings_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_node_coverage_map.dart';
 
@@ -39,35 +40,30 @@ void main() {
   // floor the design system commits to for every control it draws.
   const minimum = 44.0;
 
-  testWidgets('settings segmented control clears the touch-target floor', (
+  testWidgets('settings dropdowns clear the touch-target floor', (
     tester,
   ) async {
     try {
       await _pump(tester, AppPage.settings, const Size(390, 844));
-      // The segmented control is now a full-width row, not a FittedBox-scaled
-      // one, so the segments are found by their own key rather than by the
-      // wrapper that used to scale them. The key rides the V3Pressable since
-      // the ink rework; its rect IS the tap target being measured.
-      final segments = find.byWidgetPredicate(
-        (widget) =>
-            widget.key is ValueKey<String> &&
-            (widget.key! as ValueKey<String>).value.startsWith(
-              'v3-settings-segment',
-            ),
-      );
-      expect(
-        segments,
-        findsWidgets,
-        reason: 'the segmented control should render its segments',
-      );
-      for (final element in segments.evaluate()) {
-        final rect = tester.getRect(find.byWidget(element.widget));
+      // The four settings dropdowns (theme/language/connection/DNS) carry
+      // their own keys; each trigger's rect is the tap target being measured.
+      // The connection-method row renders on desktop platforms only.
+      final desktopTools = v3HasDesktopSystemTools(defaultTargetPlatform);
+      final keys = <String>[
+        'v3-theme-select',
+        'v3-language-select',
+        if (desktopTools) 'v3-network-mode-select',
+        'v3-dns-select',
+      ];
+      for (final key in keys) {
+        final trigger = find.byKey(ValueKey<String>(key));
+        expect(trigger, findsOneWidget, reason: '$key should render');
+        final rect = tester.getRect(trigger);
         expect(
           rect.height,
           greaterThanOrEqualTo(minimum),
           reason:
-              'segment ${rect.width.toStringAsFixed(0)}dp wide is only '
-              '${rect.height.toStringAsFixed(1)}dp tall',
+              'the $key trigger is only ${rect.height.toStringAsFixed(1)}dp tall',
         );
       }
     } finally {

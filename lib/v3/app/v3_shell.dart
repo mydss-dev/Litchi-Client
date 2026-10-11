@@ -24,6 +24,7 @@ import '../pages/v3_tickets_page.dart';
 import '../pages/v3_traffic_page.dart';
 import '../theme/v3_palette.dart';
 import '../theme/v3_motion.dart';
+import '../ui/v3_dropdown.dart';
 import '../ui/v3_notice_bar.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_layout.dart';
@@ -891,10 +892,9 @@ class _ThemeOverlayButton extends StatelessWidget {
   }
 }
 
-/// The language quick switch: the face names the language the UI is drawing
-/// in right now (the resolved locale, so a system preference shows through),
-/// and the menu lists every preference, each labelled in its own tongue —
-/// the way platform settings do it.
+/// The language quick switch: a two-letter code for the tongue the UI is
+/// drawing in (CN/TW/EN -- the resolved locale, so a system preference shows
+/// through), opening a menu that lists every preference in its own tongue.
 class _LanguageOverlayButton extends StatelessWidget {
   const _LanguageOverlayButton();
 
@@ -912,7 +912,7 @@ class _LanguageOverlayButton extends StatelessWidget {
         AppLocalePreference.english => 'English',
       };
 
-  String _faceLabel(BuildContext context) {
+  String _resolveCode(BuildContext context) {
     final locale = Localizations.localeOf(context);
     if (locale.languageCode != 'zh') return 'EN';
     final script = locale.scriptCode;
@@ -921,70 +921,28 @@ class _LanguageOverlayButton extends StatelessWidget {
             country == 'TW' ||
             country == 'HK' ||
             country == 'MO'
-        ? '繁'
-        : '中';
+        ? 'TW'
+        : 'CN';
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final p = V3Palette.of(context);
-    return PopupMenuButton<AppLocalePreference>(
+    final resolved = _resolveCode(context);
+    return V3Dropdown<AppLocalePreference>(
+      value: controller.language,
+      items: AppLocalePreference.values,
+      face: (pref) => switch (pref) {
+        AppLocalePreference.system => resolved,
+        AppLocalePreference.simplifiedChinese => 'CN',
+        AppLocalePreference.traditionalChinese => 'TW',
+        AppLocalePreference.english => 'EN',
+      },
+      label: (pref) => _menuLabel(pref, context),
+      onChanged: controller.setLanguage,
+      dense: true,
+      menuWidth: 168,
       tooltip: v3Copy(context, zh: '语言', en: 'Language', tw: '語言'),
-      position: PopupMenuPosition.under,
-      popUpAnimationStyle: const AnimationStyle(
-        duration: V3Motion.medium, curve: V3Motion.ease),
-      onSelected: controller.setLanguage,
-      itemBuilder: (context) => [
-        for (final pref in AppLocalePreference.values)
-          PopupMenuItem(
-            value: pref,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _menuLabel(pref, context),
-                    style: TextStyle(
-                      fontSize: 13,
-                      color:
-                          pref == controller.language ? p.lycheeInk : p.ink,
-                      fontWeight: pref == controller.language
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (pref == controller.language)
-                  Icon(Icons.check_rounded, size: 16, color: p.lycheeInk),
-              ],
-            ),
-          ),
-      ],
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: SizedBox(
-          height: 34,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _faceLabel(context),
-                style: TextStyle(
-                  color: p.inkMuted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.4,
-                ),
-              ),
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 16,
-                color: p.inkMuted,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

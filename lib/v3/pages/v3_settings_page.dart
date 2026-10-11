@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../config/app_config.dart';
+import '../../l10n/app_locale_preference.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
-import '../ui/v3_language_selector.dart';
+import '../ui/v3_dropdown.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_toast.dart';
@@ -169,13 +170,13 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                   child: Column(children: [
                     _SettingRow(
                       icon: Icons.dark_mode_rounded,
-                      title: l.appearance,
+                      title: _hint(l, zh: '主题', en: 'Theme', tw: '主題'),
                       description: _hint(l,
                         zh: '跟随系统外观，或手动选择浅色和深色界面。',
                         en: 'Follow your system appearance or choose light/dark.',
                         tw: '跟隨系統外觀，或手動選擇淺色與深色介面。'),
-                      fullWidthControl: true,
-                      control: _Segment<ThemeMode>(
+                      control: V3Dropdown<ThemeMode>(
+                        key: const ValueKey('v3-theme-select'),
                         value: controller.themeMode,
                         items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
                         label: (v) => switch (v) {
@@ -184,6 +185,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                           ThemeMode.dark => l.darkMode,
                         },
                         onChanged: controller.setThemeMode,
+                        width: 168,
                       ),
                     ),
                     _SettingRow(
@@ -193,9 +195,20 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         zh: '选择界面语言；跟随系统将使用设备的语言。',
                         en: 'Choose an interface language or follow your device.',
                         tw: '選擇介面語言；跟隨系統將使用裝置語言。'),
-                      fullWidthControl: true,
                       last: true,
-                      control: const V3LanguageSelector(),
+                      control: V3Dropdown<AppLocalePreference>(
+                        key: const ValueKey('v3-language-select'),
+                        value: controller.language,
+                        items: AppLocalePreference.values,
+                        label: (v) => switch (v) {
+                          AppLocalePreference.system => l.followSystem,
+                          AppLocalePreference.simplifiedChinese => l.simplifiedChinese,
+                          AppLocalePreference.traditionalChinese => l.traditionalChinese,
+                          AppLocalePreference.english => l.english,
+                        },
+                        onChanged: controller.setLanguage,
+                        width: 168,
+                      ),
                     ),
                   ]),
                 ),
@@ -209,9 +222,9 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       icon: Icons.swap_horiz_rounded,
                       title: l.connectionMethod,
                       description: '${l.systemProxyDescription}; ${l.tunDescription}.',
-                      fullWidthControl: true,
                       busy: _pending == 'networkMode',
-                      control: _Segment<NetworkMode>(
+                      control: V3Dropdown<NetworkMode>(
+                        key: const ValueKey('v3-network-mode-select'),
                         value: controller.networkMode,
                         items: const [NetworkMode.system, NetworkMode.tun],
                         label: (v) => v == NetworkMode.system ? l.systemProxy : l.tunMode,
@@ -221,6 +234,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                           controller.coreProcessRunning
                               ? l.networkModeReconnect : l.proxyModeNextConnection,
                         ),
+                        width: 168,
                       ),
                     ),
                     _SettingRow(
@@ -231,9 +245,9 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         en: 'Use system DNS or choose another resolver.',
                         tw: '使用系統 DNS，或選擇其他解析服務。'),
                       last: !desktopTools,
-                      fullWidthControl: true,
                       busy: _pending == 'dns',
-                      control: _Segment<DnsMode>(
+                      control: V3Dropdown<DnsMode>(
+                        key: const ValueKey('v3-dns-select'),
                         value: controller.dnsMode,
                         items: const [DnsMode.system, DnsMode.cloudflare, DnsMode.google],
                         label: (v) => switch (v) {
@@ -246,6 +260,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                           () => controller.setDnsMode(v),
                           l.settingsUpdated,
                         ),
+                        width: 168,
                       ),
                     ),
                     if (desktopTools) _SettingRow(
@@ -336,14 +351,13 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
 class _SettingRow extends StatelessWidget {
   const _SettingRow({required this.icon, required this.title,
     required this.description, required this.control, this.last = false,
-    this.fullWidthControl = false, this.busy = false});
+    this.busy = false});
 
   final IconData icon;
   final String title;
   final String description;
   final Widget control;
   final bool last;
-  final bool fullWidthControl;
   final bool busy;
 
   @override
@@ -355,7 +369,12 @@ class _SettingRow extends StatelessWidget {
         border: last ? null : Border(bottom: BorderSide(color: p.line)),
       ),
       child: LayoutBuilder(builder: (context, constraints) {
-        final stacked = constraints.maxWidth < 600;
+        // The desktop pane (688dp at the 900px window, less insets, the panel
+        // border and a scrollbar) lands just above 600, so a hard 600 here
+        // flips desktop rows into their stacked phone layout. Reuse the
+        // page-level compact breakpoint instead: rows stay single-line on the
+        // desktop and only wrap where the whole page already goes compact.
+        final stacked = constraints.maxWidth < V3Layout.paneCompact;
         // The same identity tile the node rows use (raised fill, one ink
         // glyph): setting rows read as the same family as list rows
         // elsewhere in V3 instead of an editorial numbered index.
@@ -386,69 +405,29 @@ class _SettingRow extends StatelessWidget {
         // While the setting applies, the control stays in place (no layout
         // shift) but dims under a small spinner: the affected control carries
         // the progress (M3), not the whole page.
-        Widget slot(Widget control) => !busy
-            ? control
+        Widget slot(Widget c) => !busy
+            ? c
             : Stack(alignment: Alignment.center, children: [
                 Opacity(opacity: 0.35,
-                  child: AbsorbPointer(absorbing: true, child: control)),
+                  child: AbsorbPointer(absorbing: true, child: c)),
                 const SizedBox(width: 18, height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2)),
               ]);
+        // A control never leaves its title line on a wide pane: it sits right
+        // of the copy, so every row reads "title left / control right". On a
+        // narrow pane the control drops below the copy, left-aligned.
         return stacked
             ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                copy, const SizedBox(height: 14),
-                if (fullWidthControl) slot(control)
-                else Align(alignment: Alignment.centerRight, child: slot(control)),
+                copy,
+                const SizedBox(height: 14),
+                Align(alignment: Alignment.centerLeft, child: slot(control)),
               ])
             : Row(children: [
-                Expanded(child: copy), const SizedBox(width: 20),
-                if (fullWidthControl) SizedBox(width: 240, child: slot(control))
-                else slot(control),
+                Expanded(child: copy),
+                const SizedBox(width: 20),
+                slot(control),
               ]);
       }),
-    );
-  }
-}
-
-class _Segment<T> extends StatelessWidget {
-  const _Segment({required this.value, required this.items,
-    required this.label, required this.onChanged});
-
-  final T value;
-  final List<T> items;
-  final String Function(T) label;
-  final ValueChanged<T> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: p.surfaceRaised, borderRadius: BorderRadius.circular(V3Radius.field)),
-      child: Row(children: items.map((item) {
-        final selected = item == value;
-        // V3Pressable paints the ink above the raised track fill instead of
-        // on the root Material beneath it.
-        return Expanded(child: V3Pressable(
-          key: ValueKey('v3-settings-segment-${label(item)}'),
-          borderRadius: BorderRadius.circular(V3Radius.control),
-          onTap: () => onChanged(item),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
-            decoration: BoxDecoration(
-              color: selected ? p.surface : Colors.transparent,
-              borderRadius: BorderRadius.circular(V3Radius.control),
-            ),
-            child: Text(label(item), textAlign: TextAlign.center, maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: selected ? p.lycheeInk : p.inkMuted,
-                fontSize: 12, fontWeight: FontWeight.w700)),
-          ),
-        ));
-      }).toList()),
     );
   }
 }
