@@ -1,7 +1,6 @@
 {
   "@@locale": "zh",
   "settings": "设置",
-  "settingsSubtitle": "配置客户端偏好和网络选项",
   "systemSettings": "系统设置",
   "launchAtStartup": "开机启动",
   "silentStartup": "静默启动",

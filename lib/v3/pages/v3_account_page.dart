@@ -90,19 +90,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: v3Copy(
-              context,
-              zh: '账户中心',
-              en: 'ACCOUNT CENTER',
-              tw: '帳戶中心',
-            ),
             title: v3Copy(context, zh: '我的账户', en: 'My account', tw: '我的帳戶'),
-            description: v3Copy(
-              context,
-              zh: '余额、偏好与安全设置集中管理。',
-              en: 'Balance, preferences and security in one place.',
-              tw: '餘額、偏好與安全設定集中管理。',
-            ),
             trailing: IconButton(
               tooltip: v3Copy(
                 context,

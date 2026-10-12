@@ -300,14 +300,7 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.invite => const V3InvitePage(),
     AppPage.traffic => const V3TrafficPage(),
     AppPage.orders => V3SheetPageFallback(
-      kicker: v3Copy(context, zh: '订单中心', en: 'ORDER CENTER', tw: '訂單中心'),
       title: l.orders,
-      description: v3Copy(
-        context,
-        zh: '所有购买记录和支付状态都集中在这里。',
-        en: 'Every purchase and its payment status in one place.',
-        tw: '所有購買紀錄與付款狀態集中在這裡。',
-      ),
       child: const V3OrdersPage(),
     ),
     AppPage.tickets => const V3TicketsPage(),
@@ -315,14 +308,7 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.dashboard => const V3DashboardPage(),
     AppPage.more => const V3MorePage(),
     AppPage.giftCard => V3SheetPageFallback(
-      kicker: v3Copy(context, zh: '兑换中心', en: 'REDEMPTION', tw: '兌換中心'),
       title: v3Copy(context, zh: '礼品卡兑换', en: 'Gift card', tw: '禮品卡兌換'),
-      description: v3Copy(
-        context,
-        zh: '输入兑换码，权益到账后自动同步到账户。',
-        en: 'Enter a code; benefits sync to your account automatically.',
-        tw: '輸入兌換碼，權益到賬後自動同步到帳戶。',
-      ),
       child: const V3GiftCardPage(),
     ),
   };

@@ -266,6 +266,18 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                   ? v3Copy(context, zh: '正在创建订单…', en: 'Creating order…', tw: '正在建立訂單…')
                   : v3Copy(context, zh: '确认并创建订单', en: 'Confirm and create order',
                     tw: '確認並建立訂單')))),
+            // The activation note from the old shop header moved next to the
+            // one button where it is actually actionable (reassurance copy
+            // belongs beside its CTA).
+            const SizedBox(height: 6),
+            Text(
+              v3Copy(context,
+                zh: '付款成功后立即生效。',
+                en: 'Activates right after payment.',
+                tw: '付款成功後立即生效。'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ]),
         ),
       ),

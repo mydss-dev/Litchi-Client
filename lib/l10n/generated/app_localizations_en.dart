@@ -12,10 +12,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
-  String get settingsSubtitle =>
-      'Configure client preferences and network options';
-
-  @override
   String get systemSettings => 'System';
 
   @override

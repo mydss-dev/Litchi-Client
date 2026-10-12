@@ -12,9 +12,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
-  String get settingsSubtitle => '配置客户端偏好和网络选项';
-
-  @override
   String get systemSettings => '系统设置';
 
   @override
@@ -1780,9 +1777,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get settings => '設定';
-
-  @override
-  String get settingsSubtitle => '設定用戶端偏好與網路選項';
 
   @override
   String get systemSettings => '系統設定';

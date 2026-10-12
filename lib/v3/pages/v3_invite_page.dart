@@ -212,23 +212,11 @@ class _V3InvitePageState extends State<V3InvitePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: v3Copy(
-              context,
-              zh: '邀请奖励',
-              en: 'REFERRAL REWARDS',
-              tw: '邀請獎勵',
-            ),
             title: v3Copy(
               context,
               zh: '邀请好友',
               en: 'Invite friends',
               tw: '邀請好友',
-            ),
-            description: v3Copy(
-              context,
-              zh: '复制邀请码或链接，分享给好友。',
-              en: 'Copy your invite code or link and share it with friends.',
-              tw: '複製邀請碼或連結並分享給好友。',
             ),
             trailing: IconButton(
               tooltip: v3Copy(

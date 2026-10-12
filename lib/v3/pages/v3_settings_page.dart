@@ -100,11 +100,8 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: v3Copy(context, zh: '应用设置',
-              en: 'APP SETTINGS', tw: '應用設定'),
             title: v3Copy(context,
               zh: '设置中心', en: 'Settings', tw: '設定中心'),
-            description: l.settingsSubtitle,
           ),
           const SizedBox(height: 18),
           AbsorbPointer(

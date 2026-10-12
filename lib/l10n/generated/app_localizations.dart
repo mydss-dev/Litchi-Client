@@ -105,12 +105,6 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settings;
 
-  /// No description provided for @settingsSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Configure client preferences and network options'**
-  String get settingsSubtitle;
-
   /// No description provided for @systemSettings.
   ///
   /// In en, this message translates to:

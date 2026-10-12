@@ -83,14 +83,8 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
           // a minHeight box here pushed the heading 35dp below every other
           // page's first line.
           V3PageHeader(
-            kicker: v3Copy(context, zh: '帮助与支持',
-              en: 'HELP & SUPPORT', tw: '協助與支援'),
             title: v3Copy(context, zh: '支持工单',
               en: 'Support tickets', tw: '支援工單'),
-            description: v3Copy(context,
-              zh: '问题、回复和处理状态都集中在同一个支持收件箱。',
-              en: 'Keep questions, replies and ticket statuses in one inbox.',
-              tw: '問題、回覆及處理狀態都集中在同一個支援收件匣。'),
             trailing: Row(mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end, children: [
                 if (!compact)

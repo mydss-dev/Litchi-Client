@@ -1,7 +1,6 @@
 {
   "@@locale": "en",
   "settings": "Settings",
-  "settingsSubtitle": "Configure client preferences and network options",
   "systemSettings": "System",
   "launchAtStartup": "Launch at startup",
   "silentStartup": "Start silently",

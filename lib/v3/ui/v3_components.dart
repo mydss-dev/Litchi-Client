@@ -293,46 +293,52 @@ class V3StatTile extends StatelessWidget {
   }
 }
 
+/// The one quiet page header, Fluent-style: a single row with the title and
+/// the page's primary actions. No kicker, no stacked description — the nav
+/// already says where you are, and a subtitle earns its place only when it
+/// carries live data (e.g. the node count), rendered inline beside the title.
 class V3PageHeader extends StatelessWidget {
   const V3PageHeader({
     super.key,
-    required this.kicker,
     required this.title,
-    this.description,
+    this.subtitle,
     this.trailing,
   });
 
-  final String kicker;
   final String title;
-  final String? description;
+
+  /// Short live-data note rendered beside the title; ellipsizes on narrow
+  /// windows rather than wrapping into a second row.
+  final String? subtitle;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                kicker.toUpperCase(),
-                style: TextStyle(
-                  color: p.lycheeInk,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.8,
-                ),
+              Flexible(
+                child: Text(title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.displayMedium),
               ),
-              const SizedBox(height: 8),
-              Text(title, style: Theme.of(context).textTheme.displayMedium),
-              if (description != null) ...[
-                const SizedBox(height: 7),
-                Text(
-                  description!,
-                  style: Theme.of(context).textTheme.bodySmall,
+              if (subtitle != null) ...[
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Text(
+                      subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
                 ),
               ],
             ],
