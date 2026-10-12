@@ -143,15 +143,13 @@ class _V3NodesPageState extends State<V3NodesPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: v3Copy(context, zh: '全球网络',
-              en: 'GLOBAL NETWORK', tw: '全球網路'),
             title: v3Copy(context, zh: '节点概览', en: 'Node overview', tw: '節點概覽'),
             // DLSS5's "31 of 31 shown": the header counts the live fleet so
             // the page answers "how big is the network" before you scroll.
-            description: v3Copy(context,
-              zh: '${all.length} 个可用节点，点击节点即可切换。',
-              en: '${all.length} nodes available. Tap a node to switch.',
-              tw: '${all.length} 個可用節點，點擊節點即可切換。'),
+            subtitle: v3Copy(context,
+              zh: '${all.length} 个可用节点',
+              en: '${all.length} nodes available',
+              tw: '${all.length} 個可用節點'),
           ),
           const SizedBox(height: 18),
           Row(children: [
@@ -198,7 +196,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
           // Hong Kong" is two taps instead of scanning every badge.
           if (groups.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Wrap(spacing: 7, runSpacing: 7, children: [
+            _ChipLine(children: [
               ChoiceChip(
                 key: const ValueKey('v3-map-country-all'),
                 label: Text(v3Copy(context,
@@ -219,7 +217,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
           ],
           if (all.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Wrap(spacing: 7, runSpacing: 7, children: [
+            _ChipLine(children: [
               ChoiceChip(
                 key: const ValueKey('v3-tier-all'),
                 label: Text(v3Copy(context,
@@ -498,5 +496,34 @@ class _SelectionRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The two filter-chip rows. On a phone the rows don't wrap onto extra lines
+/// (M3's scrollable filter-chip list): one tappable line each, swipe sideways
+/// to reach the rest. Desktop keeps free wrapping.
+class _ChipLine extends StatelessWidget {
+  const _ChipLine({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < V3Layout.paneCompact) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) const SizedBox(width: 7),
+                children[i],
+              ],
+            ],
+          ),
+        );
+      }
+      return Wrap(spacing: 7, runSpacing: 7, children: children);
+    });
   }
 }

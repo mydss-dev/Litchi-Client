@@ -22,19 +22,14 @@ class V3MorePage extends StatelessWidget {
     final english = l.localeName.startsWith('en');
     final traditional = l.localeName.toLowerCase().contains('tw');
     final items = enabledNavItems(kMobileMore);
+    final p = V3Palette.of(context);
     return SingleChildScrollView(
       padding: V3Layout.pageInsets,
       child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            kicker: english ? 'Tools & services' : traditional ? '服務與工具' : '服务与工具',
             title: english ? 'More services' : traditional ? '更多服務' : '更多服务',
-            description: english
-                ? 'Features outside the account and primary tabs live here.'
-                : traditional
-                    ? '帳戶及主要分頁以外的功能都在這裡。'
-                    : '不属于账户，也不常驻底栏的功能都在这里。',
           ),
           const SizedBox(height: 18),
           if (items.isEmpty)
@@ -43,25 +38,58 @@ class V3MorePage extends StatelessWidget {
                 english ? 'No additional features are enabled on this server.'
                     : traditional ? '目前伺服器沒有提供其他功能。' : '当前服务端没有提供其他功能。',
                 style: TextStyle(
-                  color: V3Palette.of(context).inkMuted,
+                  color: p.inkMuted,
                   fontSize: 12,
                 ),
               ),
             )
           else
-            V3NavPanel(
-              title: english ? 'All features' : traditional ? '全部功能' : '全部功能',
-              children: [
-                for (final item in items)
-                  V3NavRow(
-                    key: moreRowKey(item.page),
-                    icon: item.icon,
-                    label: item.localizedLabel(context),
-                    selected: controller.page == item.page,
-                    onTap: () => openV3Page(context, item.page),
-                  ),
-              ],
-            ),
+            LayoutBuilder(builder: (context, constraints) {
+              // On a phone the destinations stay one list to scan. On a wide
+              // window the full-width card hugs the top of an otherwise empty
+              // page, so the same rows tile two-across and use the canvas
+              // (the Windows-Settings home pattern).
+              if (constraints.maxWidth < V3Layout.paneCompact) {
+                return V3NavPanel(
+                  title:
+                      english ? 'All features' : traditional ? '全部功能' : '全部功能',
+                  children: [
+                    for (final item in items)
+                      V3NavRow(
+                        key: moreRowKey(item.page),
+                        icon: item.icon,
+                        label: item.localizedLabel(context),
+                        selected: controller.page == item.page,
+                        onTap: () => openV3Page(context, item.page),
+                      ),
+                  ],
+                );
+              }
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final item in items)
+                    Container(
+                      width: (constraints.maxWidth - 12) / 2,
+                      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+                      decoration: BoxDecoration(
+                        color: p.surface,
+                        borderRadius: BorderRadius.circular(V3Radius.panel),
+                        border: Border.all(color: p.hairline),
+                        boxShadow: p.shadows,
+                      ),
+                      child: V3NavRow(
+                        key: moreRowKey(item.page),
+                        icon: item.icon,
+                        label: item.localizedLabel(context),
+                        selected: controller.page == item.page,
+                        onTap: () => openV3Page(context, item.page),
+                      ),
+                    ),
+                ],
+              );
+            }),
         ],
       ),
     );
