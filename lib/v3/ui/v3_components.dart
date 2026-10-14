@@ -181,7 +181,7 @@ class V3MetricTile extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 10),
+                  style: TextStyle(color: p.inkMuted, fontSize: 11),
                 ),
                 const SizedBox(height: 4),
                 if (loading)
@@ -269,7 +269,7 @@ class V3StatTile extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 10),
+                  style: TextStyle(color: p.inkMuted, fontSize: 11),
                 ),
                 const SizedBox(height: 4),
                 valueWidget ??
@@ -593,7 +593,7 @@ class V3StatusBadge extends StatelessWidget {
             label.toUpperCase(),
             style: TextStyle(
               color: ink,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.8,
             ),
@@ -690,7 +690,7 @@ class V3NavPanel extends StatelessWidget {
               title,
               style: TextStyle(
                 color: p.inkMuted,
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.5,
               ),

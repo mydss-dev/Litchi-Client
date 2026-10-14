@@ -307,7 +307,7 @@ class _ConnectionWorkspace extends StatelessWidget {
                                             ),
                                             style: TextStyle(
                                               color: p.lycheeInk,
-                                              fontSize: 10,
+                                              fontSize: 11,
                                               fontWeight: FontWeight.w800,
                                             ),
                                           ),
@@ -705,7 +705,7 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
                                     ),
                                     style: TextStyle(
                                       color: p.lycheeInk,
-                                      fontSize: 10,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
@@ -1556,7 +1556,7 @@ class _Metric extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: p.inkMuted,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1729,7 +1729,7 @@ class _PlanSummary extends StatelessWidget {
                       en: '${used.toStringAsFixed(1)} GB used / ${total.toStringAsFixed(1)} GB',
                       tw: '已用 ${used.toStringAsFixed(1)} GB / 共 ${total.toStringAsFixed(1)} GB',
                     ),
-                    style: TextStyle(color: p.inkMuted, fontSize: 10),
+                    style: TextStyle(color: p.inkMuted, fontSize: 11),
                   ),
                 ),
                 Text(
@@ -1739,7 +1739,7 @@ class _PlanSummary extends StatelessWidget {
                     en: '${controller.traffic.remainGb.toStringAsFixed(1)} GB left',
                     tw: '剩餘 ${controller.traffic.remainGb.toStringAsFixed(1)} GB',
                   ),
-                  style: TextStyle(color: p.ink, fontSize: 10),
+                  style: TextStyle(color: p.ink, fontSize: 11),
                 ),
               ],
             ),

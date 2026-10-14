@@ -323,7 +323,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                       _copy(zh: '支付', en: 'PAYMENT', tw: '支付'),
                       style: TextStyle(
                         color: p.lycheeInk,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.8,
                       ),
@@ -346,7 +346,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
           const SizedBox(height: 8),
           Text(
             '${_copy(zh: '订单', en: 'Order', tw: '訂單')} ${widget.tradeNo}',
-            style: TextStyle(color: p.inkMuted, fontSize: 10),
+            style: TextStyle(color: p.inkMuted, fontSize: 11),
           ),
           const SizedBox(height: 22),
           if (_loading)
@@ -369,7 +369,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                 children: [
                   Text(
                     _copy(zh: '需支付', en: 'Amount due', tw: '需支付'),
-                    style: TextStyle(color: p.inkMuted, fontSize: 10),
+                    style: TextStyle(color: p.inkMuted, fontSize: 11),
                   ),
                   const Spacer(),
                   Text(
@@ -389,7 +389,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                 _copy(zh: '支付方式', en: 'Payment method', tw: '支付方式'),
                 style: TextStyle(
                   color: p.inkMuted,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w800,
                 ),
               ),

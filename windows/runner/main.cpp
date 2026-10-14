@@ -26,10 +26,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
-  // Keep the native surface in sync with the first Dart WindowOptions frame.
-  // Creating a large backing surface and shrinking it after startup can expose
-  // the old frame briefly, which looks like a second overlapping window.
-  Win32Window::Size size(400, 560);
+  // Keep the native surface at the final size: the first Dart frame paints in
+  // place with no launch resize. Growing the surface after startup showed a
+  // visible jump on every launch; shrinking a large one can briefly expose
+  // the old frame, which looks like a second overlapping window, so the
+  // choreography never resizes at all.
+  Win32Window::Size size(900, 700);
   if (!window.Create(L"Client", origin, size)) {
     return EXIT_FAILURE;
   }

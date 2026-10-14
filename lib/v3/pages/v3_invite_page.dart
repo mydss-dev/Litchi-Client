@@ -938,7 +938,7 @@ class _InviteStats extends StatelessWidget {
                       entry.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: p.inkMuted, fontSize: 10),
+                      style: TextStyle(color: p.inkMuted, fontSize: 11),
                     ),
                     const SizedBox(height: 4),
                     Row(
@@ -981,7 +981,7 @@ class _InviteStats extends StatelessWidget {
                           const SizedBox(width: 3),
                           Text(
                             entry.suffix,
-                            style: TextStyle(color: p.inkMuted, fontSize: 10),
+                            style: TextStyle(color: p.inkMuted, fontSize: 11),
                           ),
                         ],
                       ],

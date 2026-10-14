@@ -179,7 +179,7 @@ class V3LatencyBadge extends StatelessWidget {
                   v3LatencyLabel(context, latency),
                   style: TextStyle(
                     color: v3LatencyInk(p, region, latency),
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: statusSized ? 0.8 : 0.2,
                   ),

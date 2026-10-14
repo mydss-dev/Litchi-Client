@@ -201,7 +201,12 @@ class _V3WorkspaceState extends State<_V3Workspace> {
                   // Content starts below the floating title strip, so page
                   // header actions never share a line with the window
                   // controls — the strip itself stays transparent canvas.
-                  padding: const EdgeInsets.fromLTRB(0, _kTitleOverlayHeight, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(
+                    0,
+                    _kTitleOverlayHeight,
+                    12,
+                    12,
+                  ),
                   child: stack,
                 ),
               ),
@@ -333,12 +338,14 @@ class _DesktopRail extends StatelessWidget {
     double? selectedTop;
     for (final (index, item) in items.indexed) {
       if (controller.page == item.page) selectedTop = index * itemPitch;
-      railChildren.add(_RailItem(
-        key: railItemKey(item.page),
-        item: item,
-        selected: controller.page == item.page,
-        onTap: () => openV3Page(context, item.page),
-      ));
+      railChildren.add(
+        _RailItem(
+          key: railItemKey(item.page),
+          item: item,
+          selected: controller.page == item.page,
+          onTap: () => openV3Page(context, item.page),
+        ),
+      );
     }
     final user = controller.user;
     final plan = PlanPresentation.fromController(controller);
@@ -435,7 +442,7 @@ class _DesktopRail extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: plan.usable ? p.successInk : p.inkMuted,
-                                fontSize: 10,
+                                fontSize: 11,
                               ),
                             ),
                           ),
@@ -457,24 +464,38 @@ class _DesktopRail extends StatelessWidget {
           // label, with the app version as the last word. Shares the account
           // card's muted voice so it reads as chrome, not content; the dot
           // follows the same liveness signal the connection card reports.
-          Row(children: [
-            _CoreDot(
-              running: controller.coreProcessRunning,
-              color: p.successInk),
-            const SizedBox(width: 6),
-            Expanded(child: Text(
-              v3Copy(context,
-                zh: controller.coreProcessRunning ? '核心运行中' : '核心已停止',
-                en: controller.coreProcessRunning ? 'Core running' : 'Core stopped',
-                tw: controller.coreProcessRunning ? '核心運行中' : '核心已停止'),
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: p.inkMuted, fontSize: 10))),
-            if (AppConfig.currentVersion.trim().isNotEmpty)
-              Text(AppConfig.currentVersion.trim(),
-                style: TextStyle(
-                  color: p.inkMuted.withValues(alpha: 0.72),
-                  fontSize: 10)),
-          ]),
+          Row(
+            children: [
+              _CoreDot(
+                running: controller.coreProcessRunning,
+                color: p.successInk,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  v3Copy(
+                    context,
+                    zh: controller.coreProcessRunning ? '核心运行中' : '核心已停止',
+                    en: controller.coreProcessRunning
+                        ? 'Core running'
+                        : 'Core stopped',
+                    tw: controller.coreProcessRunning ? '核心運行中' : '核心已停止',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.inkMuted, fontSize: 11),
+                ),
+              ),
+              if (AppConfig.currentVersion.trim().isNotEmpty)
+                Text(
+                  AppConfig.currentVersion.trim(),
+                  style: TextStyle(
+                    color: p.inkMuted.withValues(alpha: 0.72),
+                    fontSize: 10,
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -536,8 +557,9 @@ class _CoreDotState extends State<_CoreDot>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: widget.color
-                              .withValues(alpha: 0.5 * (1 - phase)),
+                          color: widget.color.withValues(
+                            alpha: 0.5 * (1 - phase),
+                          ),
                           width: 1,
                         ),
                       ),
@@ -561,7 +583,6 @@ class _CoreDotState extends State<_CoreDot>
     );
   }
 }
-
 
 class _RailItem extends StatelessWidget {
   const _RailItem({
@@ -622,6 +643,7 @@ class _RailItem extends StatelessWidget {
     );
   }
 }
+
 class _MobileNavigation extends StatelessWidget {
   const _MobileNavigation({required this.controller});
   final AppController controller;
@@ -777,12 +799,7 @@ class _DesktopTitleOverlayState extends State<_DesktopTitleOverlay>
         if (giftEntry) ...[
           _OverlayIconButton(
             key: kWindowGiftCardKey,
-            tooltip: v3Copy(
-              context,
-              zh: '兑换中心',
-              en: 'Redemption',
-              tw: '兌換中心',
-            ),
+            tooltip: v3Copy(context, zh: '兑换中心', en: 'Redemption', tw: '兌換中心'),
             icon: Icons.redeem_rounded,
             iconColor: V3Palette.of(context).inkMuted,
             onPressed: () => openV3Page(context, AppPage.giftCard),
@@ -954,17 +971,19 @@ class _V3WindowButton extends StatelessWidget {
       child: IconButton(
         tooltip: tooltip,
         padding: EdgeInsets.zero,
-        // Hover swaps the glyph to night-on-lychee: the hovered state must
-        // stay visible against its own fill, and white fails on the dark-mode
-        // lychee (2.8:1) where night clears 4.5:1 in both themes.
+        // The close button follows the Windows convention (Win11's danger
+        // red on hover): at rest it reads as chrome like its siblings — the
+        // resting brand-pink glyph borrowed a CTA slot the palette reserves
+        // for selection and actions. onDanger keeps the glyph legible over
+        // the danger fill in both themes.
         style: ButtonStyle(
           shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
             if (close) {
               return states.contains(WidgetState.hovered) ||
                       states.contains(WidgetState.pressed)
-                  ? p.onLychee
-                  : p.lychee;
+                  ? p.onDanger
+                  : p.inkMuted;
             }
             return p.inkMuted;
           }),
@@ -972,7 +991,7 @@ class _V3WindowButton extends StatelessWidget {
             if (close) {
               return states.contains(WidgetState.hovered) ||
                       states.contains(WidgetState.pressed)
-                  ? p.lychee
+                  ? p.danger
                   : null;
             }
             return states.contains(WidgetState.hovered)

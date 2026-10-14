@@ -15,6 +15,7 @@ import 'config/app_config.dart';
 import 'shared/services/app_paths.dart';
 import 'shared/services/brand_asset_cache.dart';
 import 'shared/services/secure_logger.dart';
+import 'v3/app/v3_window_bootstrap.dart';
 
 bool get _isDesktop =>
     Platform.isWindows || Platform.isMacOS || Platform.isLinux;
@@ -156,22 +157,41 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
   // shadow); only the hidden title bar lets content run full-height. Windows /
   // Linux uses a transparent Flutter clip. Windows stays opaque and lets the
   // native runner shape the window, avoiding black transparent corner pixels.
+  // One size for the window's whole life: the native runner surface, the
+  // first Dart frame and the workspace all agree on 900x700, so no launch
+  // resize is ever visible. Growing 400x560 -> 900x700 after the first frame
+  // painted a jump on every start; shrinking a large surface is what risks
+  // the duplicated-frame ghost on Windows with DPI scale, and this
+  // choreography never shrinks.
   final windowOptions = WindowOptions(
-    // Match the first logged-out frame. Starting large and shrinking after
-    // Flutter paints can leave a duplicated surface on Windows with DPI scale.
-    size: const Size(400, 560),
-    // Keep the native pre-Flutter surface compact. V3WindowBootstrap establishes
-    // the final workspace size as soon as the first V3 frame is available.
-    minimumSize: const Size(380, 480),
+    size: const Size(900, 700),
+    // The 900x700 acceptance floor is also the minimum: the desktop rail plus
+    // the page breakpoints are tuned to the pane this leaves.
+    minimumSize: const Size(900, 700),
     center: true,
     backgroundColor: Platform.isLinux ? Colors.transparent : null,
     titleBarStyle: TitleBarStyle.hidden,
     title: AppConfig.appName,
   );
 
+  // Last session's frame, restored before the window shows so returning
+  // users never see a centered default jump to their saved spot.
+  final savedWindowBounds = _loadSavedWindowBounds(prefs);
+
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.setResizable(false);
+    // Keep the native resize frame: drag borders, Snap and the Win11 DWM
+    // treatment hang off WS_THICKFRAME. The 900x700 minimum above is the
+    // actual size contract; setResizable(false) stripped the borders while
+    // the window stayed maximizable, contradicting it.
+    await windowManager.setResizable(true);
     await windowManager.setMaximizable(true);
+    if (savedWindowBounds != null) {
+      try {
+        await windowManager.setBounds(savedWindowBounds);
+      } catch (_) {
+        // Restore is a convenience; the centered default is always valid.
+      }
+    }
     if (Platform.isLinux) {
       await windowManager.setBackgroundColor(Colors.transparent);
       await windowManager.setAsFrameless();
@@ -188,4 +208,22 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
   });
 
   runApp(LitchiApp(launchSilently: launchOptions.silent));
+}
+
+/// Last session's window frame as "left,top,width,height", or null when
+/// absent or implausible. Maximised sessions never save their oversized rect
+/// (V3WindowBootstrap skips them), and coordinates outside any sane desktop
+/// fall back to the centered default rather than an off-screen window.
+Rect? _loadSavedWindowBounds(SharedPreferences prefs) {
+  final raw = prefs.getString(kV3WindowBoundsPref);
+  if (raw == null) return null;
+  final parts = raw.split(',');
+  if (parts.length != 4) return null;
+  final values = parts.map(double.tryParse).toList();
+  if (values.any((v) => v == null)) return null;
+  final rect = Rect.fromLTWH(values[0]!, values[1]!, values[2]!, values[3]!);
+  if (rect.width < 900 || rect.height < 700) return null;
+  if (rect.left < -200 || rect.top < -200) return null;
+  if (rect.left > 20000 || rect.top > 20000) return null;
+  return rect;
 }

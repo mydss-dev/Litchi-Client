@@ -152,7 +152,12 @@ class V3Palette {
     // Soft contact shadow plus a faint ambient lift.
     shadows: [
       BoxShadow(color: Color(0x1A141518), blurRadius: 8, offset: Offset(0, 3)),
-      BoxShadow(color: Color(0x3D141518), blurRadius: 28, offset: Offset(0, 12), spreadRadius: -8),
+      BoxShadow(
+        color: Color(0x3D141518),
+        blurRadius: 28,
+        offset: Offset(0, 12),
+        spreadRadius: -8,
+      ),
     ],
     cardGradient: [Color(0xFFFDFDFE), Color(0xFFF9F9FA)],
   );
@@ -271,6 +276,10 @@ class V3Theme {
       fontFamilyFallback: const [
         'Segoe UI Variable',
         'SF Pro Text',
+        // Explicit CJK fallback: Windows resolves it anyway, but a named
+        // entry keeps CJK metrics identical when the default fallback chain
+        // changes (Win11 newer builds, other hosts).
+        'Microsoft YaHei UI',
         'Roboto',
         'Noto Sans',
         'sans-serif',
@@ -336,10 +345,12 @@ class V3Theme {
       // Hover is a quiet ink wash at 4%: desktop feedback that lifts the
       // surface under the pointer without competing with the lychee pressed
       // highlight. Pressables own the full row rect (padding rides inside),
-      // so the wash fills the card. Focus stays transparent: keyboard focus
-      // is chrome, not a state V3 paints.
+      // so the wash fills the card. Focus draws at 12% — three times the
+      // hover strength — so keyboard navigation stays visible: Fluent 2
+      // requires a focus rect, M3 raises the same state layer, and a
+      // transparent focus on a desktop client hides Tab navigation entirely.
       hoverColor: p.ink.withValues(alpha: 0.04),
-      focusColor: Colors.transparent,
+      focusColor: p.ink.withValues(alpha: 0.12),
       // Selection follows the cycle chooser: a soft pink ground, dark/light
       // palette-safe lychee ink, and a matching border. Never white on lime.
       chipTheme: ChipThemeData(
@@ -390,20 +401,25 @@ class V3Theme {
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(V3Radius.field),
-          ),
-        ).copyWith(
-          // The primary action glows in the brand color from underneath —
-          // DLSS5's primary casts `0 12px 30px -16px var(--accent)` and
-          // Material 3 tints FAB shadows the same way. Disabled drops flat.
-          elevation: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.disabled) ? 0.0 : 5.0,
-          ),
-          shadowColor: WidgetStatePropertyAll(p.lychee.withValues(alpha: 0.45)),
-          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        ),
+        style:
+            FilledButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(V3Radius.field),
+              ),
+            ).copyWith(
+              // The primary action glows in the brand color from underneath —
+              // DLSS5's primary casts `0 12px 30px -16px var(--accent)` and
+              // Material 3 tints FAB shadows the same way. Disabled drops flat.
+              elevation: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.disabled) ? 0.0 : 5.0,
+              ),
+              shadowColor: WidgetStatePropertyAll(
+                p.lychee.withValues(alpha: 0.45),
+              ),
+              surfaceTintColor: const WidgetStatePropertyAll(
+                Colors.transparent,
+              ),
+            ),
       ),
       // Thin rounded scrollbar, DLSS5/Fluent style: a small pill inset from
       // the track edge rather than a slab glued to it.

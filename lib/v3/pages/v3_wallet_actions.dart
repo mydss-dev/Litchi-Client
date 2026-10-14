@@ -284,7 +284,7 @@ class _AmountDialogState extends State<_AmountDialog> {
             ]),
             const SizedBox(height: 6),
             Text(widget.subtitle,
-              style: TextStyle(color: p.inkMuted, fontSize: 10,
+              style: TextStyle(color: p.inkMuted, fontSize: 11,
                 fontFeatures: const [FontFeature.tabularFigures()])),
             const SizedBox(height: 18),
             TextField(controller: _controller, autofocus: true,
@@ -298,7 +298,7 @@ class _AmountDialogState extends State<_AmountDialog> {
                   borderSide: BorderSide.none))),
             if (_error != null) ...[
               const SizedBox(height: 10),
-              Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 10)),
+              Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 11)),
             ],
             const SizedBox(height: 18),
             SizedBox(width: double.infinity, height: 46,
@@ -403,7 +403,7 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
                   _amountController.text = widget.maximum.toStringAsFixed(2)))),
             if (_error != null) ...[
               const SizedBox(height: 10),
-              Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 10)),
+              Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 11)),
             ],
             const SizedBox(height: 18),
             SizedBox(width: double.infinity, height: 46,

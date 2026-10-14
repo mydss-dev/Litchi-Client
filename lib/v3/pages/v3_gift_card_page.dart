@@ -143,7 +143,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
                 l.giftCardTitle,
                 style: TextStyle(
                   color: p.inkMuted,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
                 ),

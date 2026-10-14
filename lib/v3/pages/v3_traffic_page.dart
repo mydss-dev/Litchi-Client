@@ -267,7 +267,7 @@ class _QuotaValue extends StatelessWidget {
           ? CrossAxisAlignment.end
           : CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10)),
+        Text(label, style: TextStyle(color: p.inkMuted, fontSize: 11)),
         const SizedBox(height: 3),
         Text(
           value,
@@ -617,7 +617,7 @@ class _TrendPanelView extends StatelessWidget {
                           ),
                           style: TextStyle(
                             color: p.inkMuted.withValues(alpha: .7),
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                         ),
                       ],
@@ -705,7 +705,7 @@ class _TrendPanelView extends StatelessWidget {
                     en: 'Gray: no record',
                     tw: '灰色表示暫無紀錄',
                   ),
-                  style: TextStyle(color: p.inkMuted, fontSize: 10),
+                  style: TextStyle(color: p.inkMuted, fontSize: 11),
                 ),
               ],
             ),

@@ -287,7 +287,7 @@ class _AccountSummaryPanel extends StatelessWidget {
                       ),
                       style: TextStyle(
                         color: p.inkMuted,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.5,
                       ),
@@ -374,7 +374,7 @@ class _WalletPanel extends StatelessWidget {
             v3Copy(context, zh: '钱包', en: 'WALLET', tw: '錢包'),
             style: TextStyle(
               color: p.inkMuted,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
             ),
@@ -466,7 +466,7 @@ class _MoneyStat extends StatelessWidget {
           label,
           style: TextStyle(
             color: p.inkMuted,
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -572,7 +572,7 @@ class _PreferencesPanel extends StatelessWidget {
                 ),
                 style: TextStyle(
                   color: p.inkMuted,
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.5,
                 ),
@@ -666,7 +666,7 @@ class _PreferenceRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: TextStyle(color: p.inkMuted, fontSize: 10),
+                  style: TextStyle(color: p.inkMuted, fontSize: 11),
                 ),
               ],
             ),
@@ -763,7 +763,7 @@ class _AccountAction extends StatelessWidget {
               label,
               style: TextStyle(
                 color: danger ? p.danger : p.ink,
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
             ),

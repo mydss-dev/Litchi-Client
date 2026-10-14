@@ -123,7 +123,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                     zh: '工单 #${widget.summary.id}',
                     en: 'TICKET #${widget.summary.id}',
                     tw: '工單 #${widget.summary.id}'),
-                    style: TextStyle(color: p.lycheeInk, fontSize: 10,
+                    style: TextStyle(color: p.lycheeInk, fontSize: 11,
                       fontWeight: FontWeight.w900, letterSpacing: 1.5,
                       fontFeatures: const [FontFeature.tabularFigures()])),
                   const SizedBox(height: 5),
@@ -214,7 +214,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                                         en: 'Support', tw: '客服')
                                     : v3Copy(context, zh: '我',
                                         en: 'Me', tw: '我')} · ${message.timeDisplay}',
-                                  style: TextStyle(color: p.inkMuted, fontSize: 10,
+                                  style: TextStyle(color: p.inkMuted, fontSize: 11,
                                     fontFeatures: const [FontFeature.tabularFigures()])),
                               ])));
                       }))),

@@ -471,7 +471,7 @@ class _RegisterFormState extends State<_RegisterForm> {
             crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(v3Copy(context, zh: '邮箱后缀',
                 en: 'DOMAIN', tw: '電子郵件後綴'),
-                style: TextStyle(color: p.inkMuted, fontSize: 10,
+                style: TextStyle(color: p.inkMuted, fontSize: 11,
                   fontWeight: FontWeight.w800, letterSpacing: 1.5)),
               const SizedBox(height: 8),
               Container(padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -818,7 +818,7 @@ class _V3Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: TextStyle(color: p.inkMuted, fontSize: 10,
+      Text(label, style: TextStyle(color: p.inkMuted, fontSize: 11,
         fontWeight: FontWeight.w800, letterSpacing: 1.5)),
       const SizedBox(height: 8),
       TextField(controller: controller, keyboardType: keyboardType,

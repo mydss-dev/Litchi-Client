@@ -349,7 +349,7 @@ class _OrderRow extends StatelessWidget {
                 fontWeight: FontWeight.w800))),
             const SizedBox(width: 10),
             Text(_statusLabel(context, order),
-              style: TextStyle(color: statusColor, fontSize: 10,
+              style: TextStyle(color: statusColor, fontSize: 11,
                 fontWeight: FontWeight.w800)),
           ]),
           const SizedBox(height: 7),
@@ -413,7 +413,7 @@ class _OrderRow extends StatelessWidget {
             fontFeatures: const [FontFeature.tabularFigures()])),
         const SizedBox(width: 12),
         Text(_statusLabel(context, order),
-          style: TextStyle(color: statusColor, fontSize: 10,
+          style: TextStyle(color: statusColor, fontSize: 11,
             fontWeight: FontWeight.w800)),
         if (order.status == 0) ...[
           const SizedBox(width: 12),
