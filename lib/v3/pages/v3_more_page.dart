@@ -6,6 +6,7 @@ import '../../l10n/generated/app_localizations_zh.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_sheet.dart';
 
@@ -24,6 +25,7 @@ class V3MorePage extends StatelessWidget {
     final items = enabledNavItems(kMobileMore);
     final p = V3Palette.of(context);
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
       child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,15 +35,15 @@ class V3MorePage extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           if (items.isEmpty)
-            V3Panel(
-              child: Text(
-                english ? 'No additional features are enabled on this server.'
-                    : traditional ? '目前伺服器沒有提供其他功能。' : '当前服务端没有提供其他功能。',
-                style: TextStyle(
-                  color: p.inkMuted,
-                  fontSize: 12,
-                ),
-              ),
+            // Shared empty-state voice (icon tile, one muted line) instead of
+            // a bare panel of text.
+            V3EmptyState(
+              icon: Icons.widgets_rounded,
+              title: english ? 'No extra services on this server.'
+                  : traditional ? '暫無更多服務' : '暂无更多服务',
+              subtitle: english
+                  ? 'No additional features are enabled on this server.'
+                  : traditional ? '目前伺服器沒有提供其他功能。' : '当前服务端没有提供其他功能。',
             )
           else
             LayoutBuilder(builder: (context, constraints) {

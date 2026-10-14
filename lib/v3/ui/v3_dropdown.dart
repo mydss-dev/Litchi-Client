@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
@@ -70,6 +71,11 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
   AnimationStatus _status = AnimationStatus.dismissed;
   bool _hovered = false;
 
+  // Only keyboard navigation focuses the trigger (a pointer tap opens the
+  // menu without a focus request), so this is the focus-visible state the
+  // field paints for.
+  bool _focused = false;
+
   void _toggle() {
     if (_status == AnimationStatus.reverse) return;
     if (_controller.isOpen) {
@@ -96,7 +102,12 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
       width: widget.width,
       padding: EdgeInsets.only(left: dense ? 10 : 12, right: dense ? 6 : 8),
       decoration: BoxDecoration(
-        color: p.surfaceRaised,
+        // Keyboard focus raises the theme's 12% ink state layer on the fill —
+        // the same wash an InkWell paints — composited onto the field fill so
+        // the color is identical wherever the dropdown sits.
+        color: _focused
+            ? Color.alphaBlend(p.ink.withValues(alpha: 0.12), p.surfaceRaised)
+            : p.surfaceRaised,
         // Hover deepens the outline one step (the Fluent ComboBox affordance);
         // the fill stays put so the field does not flicker under the pointer.
         border: Border.all(color: _hovered ? p.line : p.hairline),
@@ -106,8 +117,8 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
       child: SizedBox(
         // 44 clears the design system's touch-target floor (WCAG 2.5.5) on
         // the settings rows and lands next to the ~50px text fields on the
-        // same page; the dense title-bar switch keeps its compact 30.
-        height: dense ? 30 : 44,
+        // same page; the dense title-bar switch keeps its compact 32.
+        height: dense ? 32 : 44,
         child: Row(
           mainAxisSize: widget.width == null ? MainAxisSize.min : MainAxisSize.max,
           children: [
@@ -145,12 +156,29 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
         minimumSize: WidgetStatePropertyAll(Size(0, 0)),
       ),
       menuChildren: [_menuSurface(p, fontSize, itemWidth)],
-      builder: (context, controller, child) => GestureDetector(
-        onTap: _toggle,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
-          child: child,
+      builder: (context, controller, child) => FocusableActionDetector(
+        // The trigger is focusable and keyboard-activatable: Tab reaches it,
+        // Enter/Space reuse the pointer's [_toggle], and the framework's own
+        // hover/focus-highlight callbacks (no-op in touch mode) drive the
+        // field's states instead of a hand-rolled MouseRegion.
+        onShowHoverHighlight: (value) => setState(() => _hovered = value),
+        onShowFocusHighlight: (value) => setState(() => _focused = value),
+        shortcuts: const <ShortcutActivator, Intent>{
+          SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+          SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
+          SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+        },
+        actions: <Type, Action<Intent>>{
+          ActivateIntent:
+              CallbackAction<ActivateIntent>(onInvoke: (_) => _toggle()),
+        },
+        child: GestureDetector(
+          onTap: _toggle,
+          child: Semantics(
+            button: true,
+            onTap: _toggle,
+            child: child,
+          ),
         ),
       ),
       child: trigger,
@@ -204,7 +232,7 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
                 child: SizedBox(
                   height: widget.dense ? 36 : 40,
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(V3Radius.control),
                     onTap: () {
                       _controller.close();
                       widget.onChanged(item);

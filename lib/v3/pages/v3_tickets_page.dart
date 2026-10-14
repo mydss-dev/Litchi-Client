@@ -77,6 +77,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
       final createLabel = v3Copy(context, zh: '新建工单',
         en: 'New ticket', tw: '新增工單');
       return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: V3Layout.pageInsets,
         child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // No header height reserve: V3PageHeader bottoms-align its row, so
@@ -360,7 +361,8 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       content: SizedBox(width: 520,
         child: SingleChildScrollView(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            TextField(controller: _subject,
+            TextField(controller: _subject, autofocus: true,
+              textInputAction: TextInputAction.next,
               decoration: InputDecoration(labelText: v3Copy(context,
                 zh: '主题', en: 'Subject', tw: '主題'))),
             const SizedBox(height: 16),

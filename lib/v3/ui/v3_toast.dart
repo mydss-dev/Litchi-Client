@@ -7,8 +7,9 @@ import '../theme/v3_palette.dart';
 
 /// Short-lived feedback for user actions, not server announcements.
 ///
-/// Successful actions use the Litchi brand color; errors and warnings retain
-/// their distinct icons and semantic colors.
+/// Successful actions confirm with the semantic green (the brand pink stays
+/// reserved for CTA/selected/link); errors and warnings retain their distinct
+/// icons and semantic colors, and info reads as a quiet grey.
 enum V3ToastType { success, error, warning, info }
 
 class V3Toast {
@@ -120,10 +121,10 @@ class _V3ToastViewState extends State<_V3ToastView>
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final (icon, accent) = switch (widget.type) {
-      V3ToastType.success => (Icons.check_circle_outline_rounded, p.lychee),
+      V3ToastType.success => (Icons.check_circle_outline_rounded, p.success),
       V3ToastType.error => (Icons.error_outline_rounded, p.danger),
       V3ToastType.warning => (Icons.warning_amber_rounded, p.warning),
-      V3ToastType.info => (Icons.info_outline_rounded, p.lychee),
+      V3ToastType.info => (Icons.info_outline_rounded, p.inkMuted),
     };
     final platform = Theme.of(context).platform;
     final mobile = !kIsWeb &&
@@ -191,7 +192,7 @@ class _V3ToastViewState extends State<_V3ToastView>
                       value: _progressController.value,
                       minHeight: 3,
                       backgroundColor: Colors.transparent,
-                      color: accent.withValues(alpha: .65),
+                      color: accent,
                     ),
                   ),
                 ],

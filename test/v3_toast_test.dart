@@ -4,7 +4,8 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_toast.dart';
 
 void main() {
-  testWidgets('success toast floats with lychee icon and progress', (tester) async {
+  testWidgets('success toast floats with semantic green icon and progress',
+      (tester) async {
     await tester.pumpWidget(MaterialApp(
       theme: V3Theme.light(),
       home: Scaffold(
@@ -22,13 +23,14 @@ void main() {
     await tester.tap(find.text('Notify'));
     await tester.pump();
     expect(find.text('节点切换成功'), findsOneWidget);
+    // Green = confirmed status: a success toast reads semantic, not brand.
     expect(
       tester.widget<Icon>(find.byIcon(Icons.check_circle_outline_rounded)).color,
-      V3Palette.light.lychee,
+      V3Palette.light.success,
     );
     expect(
       tester.widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator)).color,
-      V3Palette.light.lychee.withValues(alpha: .65),
+      V3Palette.light.success,
     );
     expect(find.byType(SnackBar), findsNothing);
 

@@ -9,6 +9,13 @@ abstract final class V3Layout {
   static const double pageGutter = 18;
   static const double cardRadius = V3Radius.card;
   static const double cardGap = 12;
+
+  /// Inner-padding tiers: workspace/card interiors, page panels, dialog and
+  /// sheet bodies. One value per pattern — the round-2 audit found the same
+  /// roles drifting across eight hand-written paddings (14/15/16/18/20/22/24/26).
+  static const double cardPadding = 14;
+  static const double panelPadding = 18;
+  static const double dialogPadding = 24;
   static const EdgeInsets pageInsets = EdgeInsets.fromLTRB(18, 18, 18, 28);
 
   /// Breakpoint for page content measured against the page's own width —

@@ -39,6 +39,8 @@ Future<bool> showV3ConfirmDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(V3Radius.panel)),
         title: Text(title),
+        titleTextStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+          height: 1.2, color: p.ink),
         content: Text(body),
         actions: [
           TextButton(
@@ -72,6 +74,7 @@ Future<T?> showV3Sheet<T>(
     return Column(mainAxisSize: MainAxisSize.min, children: [
       V3SheetHeader(title: title, trailing: trailing),
       Flexible(child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(22, 2, 22,
           22 + MediaQuery.paddingOf(ctx).bottom),
         child: Builder(builder: builder))),
@@ -123,7 +126,7 @@ class V3SheetHeader extends StatelessWidget {
       child: Row(children: [
         Expanded(child: Text(title, maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: p.ink, fontSize: 19,
+          style: TextStyle(color: p.ink, fontSize: 18,
             fontWeight: FontWeight.w800, letterSpacing: -.2))),
         ?trailing,
         IconButton(
@@ -174,6 +177,7 @@ class V3SheetPageFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
       child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(title: title, subtitle: subtitle),

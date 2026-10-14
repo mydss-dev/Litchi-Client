@@ -448,7 +448,22 @@ class _V3NodesPageState extends State<V3NodesPage> {
     ];
     final listChildren = <Widget>[
       const SizedBox(height: 12),
-      if (all.isEmpty)
+      if (controller.isInitialLoading)
+        // First-load placeholders in the shape of node rows, so the loaded
+        // list hands in without an empty-state flash (the tickets page's
+        // loading-space rule).
+        for (var i = 0; i < 3; i++) const V3NodeSkeletonRow()
+      else if (controller.dataLoadError != null && all.isEmpty)
+        // Failure is not emptiness: name the error and offer the retry.
+        V3EmptyState(
+          icon: Icons.error_outline_rounded,
+          title: v3Copy(context, zh: '节点加载失败', en: 'Could not load nodes',
+            tw: '節點載入失敗'),
+          subtitle: controller.dataLoadError!,
+          actionLabel: v3Copy(context, zh: '重试', en: 'Retry', tw: '重試'),
+          onAction: controller.refreshData,
+        )
+      else if (all.isEmpty)
         V3EmptyState(
           icon: Icons.public_off_rounded,
           title: v3Copy(context, zh: '暂无节点', en: 'No nodes yet', tw: '暫無節點'),

@@ -249,7 +249,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
               padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
               decoration: BoxDecoration(
                 color: isUpdatePage
-                    ? p.success.withValues(alpha: .10)
+                    ? p.lychee.withValues(alpha: .10)
                     : p.surfaceRaised,
                 borderRadius: BorderRadius.circular(V3Radius.card),
                 border: Border.all(color: p.hairline)),
@@ -261,7 +261,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                       // Neutral icon tile: an announcement is information, not
                       // a brand moment — the pink stays on the action link.
                       color: isUpdatePage
-                          ? p.success.withValues(alpha: .12)
+                          ? p.lychee.withValues(alpha: .12)
                           : p.ink.withValues(alpha: .06),
                       borderRadius: BorderRadius.circular(V3Radius.control)),
                     child: Icon(
@@ -269,10 +269,14 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                           ? Icons.arrow_circle_up_rounded
                           : Icons.campaign_rounded,
                       size: 15,
-                      color: isUpdatePage ? p.successInk : p.inkMuted)),
+                      color: isUpdatePage ? p.lycheeInk : p.inkMuted)),
                   const SizedBox(width: 10),
                   Expanded(child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
+                    duration: v3ReducedMotion(context)
+                        ? Duration.zero
+                        : V3Motion.fast,
+                    switchInCurve: V3Motion.ease,
+                    switchOutCurve: V3Motion.ease.flipped,
                     layoutBuilder: (current, previous) => Stack(
                       alignment: Alignment.centerLeft,
                       children: [...previous, ?current]),
@@ -308,12 +312,12 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                     const SizedBox(width: 8),
                     if (_downloading)
                       Text('${(_downloadProgress * 100).toStringAsFixed(0)}%',
-                        style: TextStyle(color: p.successInk, fontSize: 12,
+                        style: TextStyle(color: p.lycheeInk, fontSize: 12,
                           fontWeight: FontWeight.w700))
                     else if (_canInstallInPlace || _canOpenReleasePage)
                       TextButton(
                         onPressed: () => _download(update),
-                        style: TextButton.styleFrom(foregroundColor: p.successInk,
+                        style: TextButton.styleFrom(foregroundColor: p.lycheeInk,
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           minimumSize: const Size(0, 34),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -369,7 +373,7 @@ class _NavButton extends StatelessWidget {
       tooltip: tooltip, onPressed: onPressed, icon: Icon(icon),
       iconSize: 15, padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints.tightFor(width: 24, height: 24),
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       style: IconButton.styleFrom(foregroundColor: p.ink,
         backgroundColor: p.surfaceRaised, side: BorderSide(color: p.line),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.control))));
@@ -473,7 +477,13 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                   ClipRRect(borderRadius: BorderRadius.circular(V3Radius.field),
                     child: Image.network(image, width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink())),
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                      // Fixed-height placeholder: the loaded photo's own
+                      // aspect sets the final height once it decodes.
+                      loadingBuilder: (context, child, progress) =>
+                          progress == null ? child
+                              : Container(height: 180,
+                                  color: p.surfaceRaised))),
                 ],
                 const SizedBox(height: 14),
                 Text(body.isEmpty ? v3Copy(context,

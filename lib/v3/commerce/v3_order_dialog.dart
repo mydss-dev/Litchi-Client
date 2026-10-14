@@ -210,6 +210,8 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                   Row(children: [
                     Expanded(child: TextField(controller: _couponController,
                       onChanged: (_) => setState(() => _error = null),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _verifyCoupon(),
                       decoration: InputDecoration(hintText: v3Copy(context,
                         zh: '选填优惠码', en: 'Coupon code (optional)', tw: '選填優惠碼')))),
                     const SizedBox(width: 9),
@@ -298,7 +300,9 @@ class _CycleOption extends StatelessWidget {
     // AnimatedContainer stays outside so the selection fill keeps animating;
     // V3Pressable inside it puts the ink above the opaque fill. The padding
     // rides inside the pressable so the whole card stays tappable.
-    return AnimatedContainer(duration: const Duration(milliseconds: 160),
+    return AnimatedContainer(
+      duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.fast,
+      curve: V3Motion.ease,
       width: 132,
       decoration: BoxDecoration(
         color: selected ? p.lycheeSoft : p.surfaceRaised,
@@ -318,7 +322,7 @@ class _CycleOption extends StatelessWidget {
             ]),
             const SizedBox(height: 7),
             Text(price, style: TextStyle(color: selected ? p.lycheeInk : p.ink,
-              fontSize: 15, fontWeight: FontWeight.w800)),
+              fontSize: 14, fontWeight: FontWeight.w800)),
           ]))),
     );
   }

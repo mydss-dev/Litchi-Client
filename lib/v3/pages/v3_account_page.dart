@@ -195,7 +195,7 @@ class _AccountSummaryPanel extends StatelessWidget {
         ? 'L'
         : user.avatarLetter.trim().substring(0, 1).toUpperCase();
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.panel),
@@ -354,8 +354,29 @@ class _AccountSummaryPanel extends StatelessWidget {
   }
 }
 
-class _WalletPanel extends StatelessWidget {
+/// Which wallet entry currently has its dialog flow (and awaited API call)
+/// in flight; its button spins while the siblings disable, so a second
+/// money movement cannot start against a stale balance.
+enum _WalletFlow { withdraw, transfer }
+
+class _WalletPanel extends StatefulWidget {
   const _WalletPanel();
+  @override
+  State<_WalletPanel> createState() => _WalletPanelState();
+}
+
+class _WalletPanelState extends State<_WalletPanel> {
+  _WalletFlow? _inFlight;
+
+  /// Busy rides only the API await — the window after every wallet dialog
+  /// has closed and the entry buttons are reachable again. Wrapping the
+  /// dialog phase would spin the entry for as long as the user keeps the
+  /// dialog open, and that phase is input, not a pending money movement;
+  /// the recharge dialog owns its own CTA spinner underneath.
+  void _markFlow(_WalletFlow? flow) {
+    if (mounted) setState(() => _inFlight = flow);
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
@@ -428,7 +449,10 @@ class _WalletPanel extends StatelessWidget {
                 child: _WalletActionButton(
                   icon: Icons.account_balance_rounded,
                   label: v3Copy(context, zh: '提现', en: 'Withdraw', tw: '提領'),
-                  onTap: () => showV3WithdrawDialog(context),
+                  busy: _inFlight == _WalletFlow.withdraw,
+                  onTap: () => showV3WithdrawDialog(context,
+                      setBusy: (busy) =>
+                          _markFlow(busy ? _WalletFlow.withdraw : null)),
                 ),
               ),
               const SizedBox(width: 10),
@@ -436,7 +460,10 @@ class _WalletPanel extends StatelessWidget {
                 child: _WalletActionButton(
                   icon: Icons.swap_horiz_rounded,
                   label: v3Copy(context, zh: '划转', en: 'Transfer', tw: '轉帳'),
-                  onTap: () => showV3TransferDialog(context),
+                  busy: _inFlight == _WalletFlow.transfer,
+                  onTap: () => showV3TransferDialog(context,
+                      setBusy: (busy) =>
+                          _markFlow(busy ? _WalletFlow.transfer : null)),
                 ),
               ),
             ],
@@ -476,7 +503,7 @@ class _MoneyStat extends StatelessWidget {
           symbol: symbol,
           style: TextStyle(
             color: p.ink,
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
@@ -492,11 +519,13 @@ class _WalletActionButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.primary = false,
+    this.busy = false,
   });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool primary;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -504,29 +533,42 @@ class _WalletActionButton extends StatelessWidget {
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(V3Radius.field),
     );
+    // While the flow is in flight the spinner rides a 16px icon slot
+    // (recharge-dialog standard) and the null onPressed blocks the repeat
+    // clicks that would double-spend.
+    final leading = busy
+        ? SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: primary ? p.onLychee : p.ink,
+            ),
+          )
+        : Icon(icon, size: 17);
     return SizedBox(
       height: 46,
       child: primary
           ? FilledButton.icon(
-              onPressed: onTap,
+              onPressed: busy ? null : onTap,
               style: FilledButton.styleFrom(
                 backgroundColor: p.lychee,
                 foregroundColor: p.onLychee,
                 padding: EdgeInsets.zero,
                 shape: shape,
               ),
-              icon: Icon(icon, size: 17),
+              icon: leading,
               label: Text(label),
             )
           : OutlinedButton.icon(
-              onPressed: onTap,
+              onPressed: busy ? null : onTap,
               style: OutlinedButton.styleFrom(
                 foregroundColor: p.ink,
                 side: BorderSide(color: p.line),
                 padding: EdgeInsets.zero,
                 shape: shape,
               ),
-              icon: Icon(icon, size: 17),
+              icon: leading,
               label: Text(label),
             ),
     );
@@ -551,7 +593,7 @@ class _PreferencesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.panel),
@@ -864,7 +906,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.85,
         ),
-        padding: const EdgeInsets.all(26),
+        padding: const EdgeInsets.all(V3Layout.dialogPadding),
         decoration: BoxDecoration(
           color: p.surface,
           borderRadius: BorderRadius.circular(V3Radius.panel),
@@ -884,7 +926,12 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                         en: 'Change account password',
                         tw: '修改帳戶密碼',
                       ),
-                      style: Theme.of(context).textTheme.headlineLarge,
+                      style: TextStyle(
+                        color: p.ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -903,6 +950,8 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                   en: 'Current password',
                   tw: '目前密碼',
                 ),
+                autofocus: true,
+                textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 12),
               _PasswordField(
@@ -913,6 +962,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                   en: 'New password',
                   tw: '新密碼',
                 ),
+                textInputAction: TextInputAction.next,
                 obscureText: _obscure,
                 trailing: IconButton(
                   tooltip: _obscure
@@ -948,6 +998,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                   tw: '確認新密碼',
                 ),
                 obscureText: _obscure,
+                onSubmitted: (_) => _submit(),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
@@ -1004,16 +1055,25 @@ class _PasswordField extends StatelessWidget {
     required this.label,
     this.trailing,
     this.obscureText = true,
+    this.autofocus = false,
+    this.textInputAction,
+    this.onSubmitted,
   });
   final TextEditingController controller;
   final String label;
   final Widget? trailing;
   final bool obscureText;
+  final bool autofocus;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return TextField(
       controller: controller,
+      autofocus: autofocus,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       obscureText: obscureText,
       decoration: InputDecoration(
         labelText: label,

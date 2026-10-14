@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/utils/traffic_summary_text.dart';
 import '../../shared/utils/traffic_metrics.dart';
 import '../../shared/services/traffic_history_series.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
@@ -178,7 +180,7 @@ class _QuotaPanel extends StatelessWidget {
                   tw: '已用 ${(usedRatio * 100).toStringAsFixed(0)}%',
                 ),
                 style: TextStyle(
-                  color: p.lycheeInk,
+                  color: p.ink,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   fontFeatures: const [FontFeature.tabularFigures()],
@@ -191,7 +193,7 @@ class _QuotaPanel extends StatelessWidget {
             '${traffic.remainGb.toStringAsFixed(1)} GB',
             style: TextStyle(
               color: p.ink,
-              fontSize: 33,
+              fontSize: 36,
               height: 1,
               fontWeight: FontWeight.w900,
               letterSpacing: -1,
@@ -210,7 +212,9 @@ class _QuotaPanel extends StatelessWidget {
             // refresh instead of jumping to the new fill.
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: usedRatio),
-              duration: const Duration(milliseconds: 700),
+              duration: v3ReducedMotion(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 700),
               curve: Curves.easeOutCubic,
               builder: (context, swept, _) => LinearProgressIndicator(
                 value: swept,
@@ -616,7 +620,7 @@ class _TrendPanelView extends StatelessWidget {
                             tw: '有每日用量後，趨勢會畫在這裡',
                           ),
                           style: TextStyle(
-                            color: p.inkMuted.withValues(alpha: .7),
+                            color: p.inkMuted,
                             fontSize: 11,
                           ),
                         ),
@@ -642,7 +646,7 @@ class _TrendPanelView extends StatelessWidget {
                           final width = constraints.maxWidth > minChartWidth
                               ? constraints.maxWidth
                               : minChartWidth;
-                          return SingleChildScrollView(
+                          final scrollable = SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             controller: scrollController,
                             child: SizedBox(
@@ -679,6 +683,16 @@ class _TrendPanelView extends StatelessWidget {
                               ),
                             ),
                           );
+                          // The scrollbar only arms when the days overflow
+                          // the pane — a fitting range shows no empty track.
+                          if (minChartWidth > constraints.maxWidth) {
+                            return Scrollbar(
+                              controller: scrollController,
+                              thumbVisibility: true,
+                              child: scrollable,
+                            );
+                          }
+                          return scrollable;
                         },
                       ),
                     ],
@@ -768,63 +782,84 @@ class _UsageBar extends StatelessWidget {
         // Touch has no hover, so compact 15/30-day bars never reveal their
         // numbers through the tooltip; a tap opens the same readout as a
         // toast instead of leaving a day's amount invisible on mobile.
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => V3Toast.show(context, message),
-          child: SizedBox(
-            height: 140,
-            width: double.infinity,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (caption != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      caption,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: isToday ? p.lycheeInk : p.inkMuted,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+        // Desktop reaches the same readout from hover or keyboard focus
+        // (Enter/Space); touch suppresses those callbacks, keeping the tap.
+        child: FocusableActionDetector(
+          onShowHoverHighlight: (hovering) {
+            if (hovering) V3Toast.show(context, message);
+          },
+          onShowFocusHighlight: (focused) {
+            if (focused) V3Toast.show(context, message);
+          },
+          shortcuts: const <ShortcutActivator, Intent>{
+            SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+            SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+          },
+          actions: <Type, Action<Intent>>{
+            ActivateIntent: CallbackAction<ActivateIntent>(
+              onInvoke: (_) => V3Toast.show(context, message),
+            ),
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => V3Toast.show(context, message),
+            child: SizedBox(
+              height: 140,
+              width: double.infinity,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (caption != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        caption,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isToday ? p.lycheeInk : p.inkMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
                     ),
+                  Container(
+                    width: double.infinity,
+                    height: gb == null ? 4 : 6 + 90 * ratio,
+                    constraints: BoxConstraints(maxWidth: compact ? 22 : 34),
+                    decoration: BoxDecoration(
+                      color: gb == null
+                          ? p.line
+                          : isToday || ratio >= .75
+                          ? p.lychee
+                          : p.aqua.withValues(alpha: .78),
+                      borderRadius: gb == null
+                          ? BorderRadius.circular(V3Radius.glyph)
+                          : const BorderRadius.vertical(
+                              top: Radius.circular(V3Radius.glyph),
+                            ),
+                    ),
                   ),
-                Container(
-                  width: double.infinity,
-                  height: gb == null ? 4 : 6 + 90 * ratio,
-                  constraints: BoxConstraints(maxWidth: compact ? 22 : 34),
-                  decoration: BoxDecoration(
-                    color: gb == null
-                        ? p.line
-                        : isToday || ratio >= .75
-                        ? p.lychee
-                        : p.aqua.withValues(alpha: .78),
-                    borderRadius: gb == null
-                        ? BorderRadius.circular(2)
-                        : const BorderRadius.vertical(top: Radius.circular(5)),
+                  // Breathing room between the bars and the date labels.
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 16,
+                    child: showLabel
+                        ? Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isToday ? p.ink : p.inkMuted,
+                              fontSize: 10,
+                            ),
+                          )
+                        : null,
                   ),
-                ),
-                // Breathing room between the bars and the date labels.
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 16,
-                  child: showLabel
-                      ? Text(
-                          label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: isToday ? p.ink : p.inkMuted,
-                            fontSize: 10,
-                          ),
-                        )
-                      : null,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

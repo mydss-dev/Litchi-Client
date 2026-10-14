@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/models/app_models.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import 'v3_locale_copy.dart';
 
@@ -134,9 +135,9 @@ class V3LatencyBadge extends StatelessWidget {
         // and text in one frame. The first build plays no transition — the
         // page entrance owns that moment.
         AnimatedSwitcher(
-          duration: const Duration(milliseconds: 160),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeOutCubic.flipped,
+          duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.fast,
+          switchInCurve: V3Motion.ease,
+          switchOutCurve: V3Motion.ease.flipped,
           layoutBuilder: (currentChild, previousChildren) => Stack(
             alignment: Alignment.center,
             children: [...previousChildren, ?currentChild],
@@ -226,7 +227,7 @@ class _V3SignalBars extends StatelessWidget {
               margin: EdgeInsets.only(right: index == 2 ? 0 : 2),
               decoration: BoxDecoration(
                 color: index < filled ? base : base.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(1),
+                borderRadius: BorderRadius.circular(V3Radius.glyph),
               ),
             ),
         ],

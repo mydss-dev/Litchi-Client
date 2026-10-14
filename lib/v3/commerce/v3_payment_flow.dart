@@ -95,6 +95,10 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
 
   bool get _balanceOnly => _detail?.balanceOnly ?? false;
 
+  /// True when a load failure left no methods: the CTA's checkout path would
+  /// early-return on a null method, so it turns into the retry affordance.
+  bool get _loadFailed => _error != null && _methods.isEmpty && !_balanceOnly;
+
   double get _amountDue {
     final cents = _detail?.totalAmount;
     return cents == null ? widget.fallbackAmount : cents / 100;
@@ -409,15 +413,29 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                   runSpacing: 8,
                   children: [
                     for (final method in _methods)
-                      ChoiceChip(
-                        label: Text(method.name),
-                        selected: _selectedMethodId == method.id,
-                        side: v3ChipSide(
-                          p,
+                      Tooltip(
+                        message: method.name,
+                        child: ChoiceChip(
+                          // Server method names can be arbitrarily long; the
+                          // chip caps at 220 and the tooltip carries the rest.
+                          label: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: 220,
+                            ),
+                            child: Text(
+                              method.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                           selected: _selectedMethodId == method.id,
+                          side: v3ChipSide(
+                            p,
+                            selected: _selectedMethodId == method.id,
+                          ),
+                          onSelected: (_) =>
+                              setState(() => _selectedMethodId = method.id),
                         ),
-                        onSelected: (_) =>
-                            setState(() => _selectedMethodId = method.id),
                       ),
                   ],
                 ),
@@ -478,7 +496,12 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               height: 50,
               child: FilledButton(
                 onPressed: _paymentUrl == null
-                    ? (_checkingOut ? null : _checkout)
+                    ? (_loadFailed
+                          ? () {
+                              setState(() => _error = null);
+                              unawaited(_load());
+                            }
+                          : (_checkingOut ? null : _checkout))
                     : (_checkingStatus ? null : _checkStatus),
                 style: FilledButton.styleFrom(
                   backgroundColor: p.lychee,
@@ -489,7 +512,9 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                 ),
                 child: Text(
                   _paymentUrl == null
-                      ? (_checkingOut
+                      ? (_loadFailed
+                            ? _copy(zh: '重试', en: 'Retry', tw: '重試')
+                            : _checkingOut
                             ? _copy(
                                 zh: '正在发起支付…',
                                 en: 'Starting payment…',

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -483,16 +484,19 @@ class _InviteHero extends StatelessWidget {
                     color: p.lychee.withValues(alpha: .12),
                     borderRadius: BorderRadius.circular(V3Radius.control),
                   ),
+                  // Raw lychee sits at 2.47:1 on the 12% wash in light
+                  // mode — the text-safe ink carries the glyph there (dark
+                  // mode's lycheeInk is the base color itself).
                   child: creating
                       ? SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: p.lychee,
+                            color: p.lycheeInk,
                           ),
                         )
-                      : Icon(Icons.add_rounded, color: p.lychee, size: 20),
+                      : Icon(Icons.add_rounded, color: p.lycheeInk, size: 20),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -541,6 +545,8 @@ class _InviteStageCard extends StatelessWidget {
     final p = V3Palette.of(context);
     final hasCode = code.trim().isNotEmpty;
     final hasLink = link.trim().isNotEmpty;
+    final touch = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       key: const ValueKey('v3-invite-stage'),
       width: double.infinity,
@@ -627,10 +633,14 @@ class _InviteStageCard extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               foregroundColor: p.ink,
               side: BorderSide(color: p.line),
-              minimumSize: const Size(0, 34),
-              // Desktop mouse target — shrinkWrap keeps the measured height
-              // pinned at 34 instead of the padded 48 tap target.
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              // Touch raises the hit target to 44 and keeps the theme's
+              // padded tap size; desktop pins the mouse-sized 34 —
+              // shrinkWrap holds the measured height at 34 instead of the
+              // padded 48 tap target.
+              minimumSize: Size(0, touch ? 44 : 34),
+              tapTargetSize: touch
+                  ? MaterialTapTargetSize.padded
+                  : MaterialTapTargetSize.shrinkWrap,
               padding: const EdgeInsets.symmetric(horizontal: 14),
             ),
             child: Text(
@@ -716,8 +726,11 @@ class _InvitePagerState extends State<_InvitePager> {
   }) {
     // Hover/focus reveals BOTH arrows even at the ends — the disabled one
     // stays visible, dimmed and inert, so the pair never looks lopsided
-    // (Fluent/Apple carousel chrome).
-    final revealed = _focused || _hovered;
+    // (Fluent/Apple carousel chrome). Touch has no hover to reveal with,
+    // so the pair stays visible and tappable there.
+    final touch = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    final revealed = touch || _focused || _hovered;
     return Tooltip(
       message: tooltip,
       child: AnimatedOpacity(
@@ -934,11 +947,16 @@ class _InviteStats extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      entry.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: p.inkMuted, fontSize: 11),
+                    // Scale the label to fit instead of ellipsizing: the
+                    // full name still reads at the 900x700 floor and the
+                    // KPI band keeps its single-line cell rhythm.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        entry.label,
+                        maxLines: 1,
+                        style: TextStyle(color: p.inkMuted, fontSize: 11),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Row(

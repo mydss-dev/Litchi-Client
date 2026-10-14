@@ -95,6 +95,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
     final currentNetwork = controller.networkMode == NetworkMode.system
         ? l.systemProxy : l.tunMode;
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
       child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,

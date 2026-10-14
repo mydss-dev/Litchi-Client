@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
@@ -32,6 +33,7 @@ class _V3AuthViewState extends State<V3AuthView> {
             flex: wide ? 9 : 1,
             child: Center(
               child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: EdgeInsets.symmetric(
                   horizontal: wide ? 52 : 28, vertical: 32),
                 child: ConstrainedBox(
@@ -88,7 +90,7 @@ class _AuthBrandPanel extends StatelessWidget {
                   en: 'A QUIETER WAY\nTO CROSS THE NET.',
                   tw: 'A QUIETER WAY\nTO CROSS THE NET.'),
                   style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    color: p.ink, fontSize: 42, height: .98)),
+                    color: p.ink)),
                 const SizedBox(height: 20),
                 Text(v3Copy(context,
                   zh: '选择线路、查看流量、确认连接状态，都在一个界面里完成。',
@@ -208,7 +210,8 @@ class _LoginFormState extends State<_LoginForm> {
       const SizedBox(height: 32),
       _V3Field(controller: _email, label: v3Copy(context,
             zh: '邮箱', en: 'EMAIL', tw: '電子郵件'), hint: 'name@example.com',
-        keyboardType: TextInputType.emailAddress),
+        keyboardType: TextInputType.emailAddress,
+        textInputAction: TextInputAction.next),
       const SizedBox(height: 16),
       _V3Field(controller: _password, label: v3Copy(context,
             zh: '密码', en: 'PASSWORD', tw: '密碼'), hint: '••••••••',
@@ -224,9 +227,8 @@ class _LoginFormState extends State<_LoginForm> {
         onSubmitted: (_) => _login()),
       const SizedBox(height: 8),
       Row(children: [
-        _RememberToggle(value: _remember,
-          onChanged: (value) => setState(() => _remember = value)),
-        const Spacer(),
+        Expanded(child: _RememberToggle(value: _remember,
+          onChanged: (value) => setState(() => _remember = value))),
         _InlineTextButton(label: v3Copy(context, zh: '忘记密码？',
           en: 'Forgot password?', tw: '忘記密碼？'),
           onPressed: () => controller.goToAuthScreen(AuthScreen.forgotPassword)),
@@ -464,7 +466,8 @@ class _RegisterFormState extends State<_RegisterForm> {
             controller: _emailPrefix,
             label: v3Copy(context, zh: '邮箱前缀',
               en: 'EMAIL NAME', tw: '電子郵件前綴'),
-            hint: 'name', enabled: !_codeSent)),
+            hint: 'name', enabled: !_codeSent,
+            textInputAction: TextInputAction.next)),
           Padding(padding: const EdgeInsets.fromLTRB(6, 0, 6, 17),
             child: Text('@', style: TextStyle(color: p.inkMuted))),
           Expanded(flex: 4, child: Column(
@@ -493,7 +496,8 @@ class _RegisterFormState extends State<_RegisterForm> {
       else
         _V3Field(controller: _email, label: v3Copy(context,
             zh: '邮箱', en: 'EMAIL', tw: '電子郵件'), hint: 'name@example.com',
-          keyboardType: TextInputType.emailAddress, enabled: !_codeSent),
+          keyboardType: TextInputType.emailAddress, enabled: !_codeSent,
+          textInputAction: TextInputAction.next),
       if (config.emailSuffixes.isNotEmpty) ...[
         const SizedBox(height: 8),
         Text('${v3Copy(context,
@@ -509,6 +513,7 @@ class _RegisterFormState extends State<_RegisterForm> {
       const SizedBox(height: 16),
       _V3Field(controller: _password, label: v3Copy(context,
             zh: '密码', en: 'PASSWORD', tw: '密碼'), hint: '••••••••',
+        textInputAction: TextInputAction.next,
         obscureText: _obscure,
         trailing: IconButton(tooltip: _obscure
             ? v3Copy(context, zh: '显示密码', en: 'Show password', tw: '顯示密碼')
@@ -519,13 +524,17 @@ class _RegisterFormState extends State<_RegisterForm> {
       const SizedBox(height: 16),
       _V3Field(controller: _confirm, label: v3Copy(context,
             zh: '确认密码', en: 'CONFIRM PASSWORD', tw: '確認密碼'), hint: '••••••••',
+        textInputAction: TextInputAction.next,
         obscureText: _obscure),
       const SizedBox(height: 16),
       _V3Field(controller: _inviteCode,
         label: v3Copy(context, zh: '邀请码（选填）',
           en: 'Invite code (optional)', tw: '邀請碼（選填）'),
         hint: v3Copy(context, zh: '如有邀请码可填写',
-          en: 'Enter an invite code if you have one', tw: '如有邀請碼可填寫')),
+          en: 'Enter an invite code if you have one', tw: '如有邀請碼可填寫'),
+        textInputAction: emailVerifyRequired
+            ? TextInputAction.next : TextInputAction.done,
+        onSubmitted: emailVerifyRequired ? null : (_) => _register()),
       if (emailVerifyRequired) ...[
         const SizedBox(height: 16),
         _V3Field(controller: _emailCode,
@@ -534,6 +543,7 @@ class _RegisterFormState extends State<_RegisterForm> {
           hint: v3Copy(context, zh: '6 位验证码',
             en: '6-digit code', tw: '6 位驗證碼'),
           keyboardType: TextInputType.number,
+          onSubmitted: (_) => _register(),
           trailing: _InlineTextButton(label: _sendingCode
             ? v3Copy(context, zh: '发送中…', en: 'Sending…', tw: '傳送中…')
             : _cooldownSeconds > 0
@@ -700,7 +710,8 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
       const SizedBox(height: 32),
       _V3Field(controller: _email, label: v3Copy(context,
             zh: '邮箱', en: 'EMAIL', tw: '電子郵件'), hint: 'name@example.com',
-        keyboardType: TextInputType.emailAddress),
+        keyboardType: TextInputType.emailAddress,
+        textInputAction: TextInputAction.next),
       const SizedBox(height: 16),
       _V3Field(controller: _code,
         label: v3Copy(context, zh: '邮箱验证码',
@@ -708,6 +719,7 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
         hint: v3Copy(context, zh: '6 位验证码',
           en: '6-digit code', tw: '6 位驗證碼'),
         keyboardType: TextInputType.number,
+        textInputAction: TextInputAction.next,
         trailing: _InlineTextButton(label: _sendingCode
           ? v3Copy(context, zh: '发送中…', en: 'Sending…', tw: '傳送中…')
           : _cooldownSeconds > 0
@@ -720,6 +732,7 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
       _V3Field(controller: _password,
         label: v3Copy(context, zh: '新密码', en: 'New password', tw: '新密碼'),
         hint: '••••••••', obscureText: _obscure,
+        textInputAction: TextInputAction.next,
         trailing: IconButton(tooltip: _obscure
             ? v3Copy(context, zh: '显示密码', en: 'Show password', tw: '顯示密碼')
             : v3Copy(context, zh: '隐藏密码', en: 'Hide password', tw: '隱藏密碼'),
@@ -730,7 +743,8 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
       _V3Field(controller: _confirm,
         label: v3Copy(context, zh: '确认新密码',
           en: 'Confirm new password', tw: '確認新密碼'),
-        hint: '••••••••', obscureText: _obscure),
+        hint: '••••••••', obscureText: _obscure,
+        onSubmitted: (_) => _reset()),
       if (_error != null) ...[
         const SizedBox(height: 14),
         Text(_error!, style: TextStyle(color: p.dangerInk, fontSize: 12)),
@@ -767,8 +781,8 @@ class _RememberToggle extends StatelessWidget {
     return InkWell(onTap: () => onChanged(!value),
       borderRadius: BorderRadius.circular(V3Radius.control),
       child: Padding(padding: const EdgeInsets.symmetric(
-          vertical: 4, horizontal: 2),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          vertical: 12, horizontal: 2),
+        child: Row(children: [
           SizedBox(width: 18, height: 18,
             child: Checkbox(value: value,
               onChanged: (next) => onChanged(next ?? false),
@@ -792,11 +806,17 @@ class _InlineTextButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    // Touch platforms get the 44px minimum hit target with the padded tap
+    // target; desktop keeps the compact inline sizing.
+    final touch = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
     return TextButton(onPressed: onPressed,
       style: TextButton.styleFrom(
         foregroundColor: accent ? p.lycheeInk : p.inkMuted,
-        padding: EdgeInsets.zero, minimumSize: const Size(0, 32),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: EdgeInsets.zero,
+        minimumSize: Size(0, touch ? 44 : 32),
+        tapTargetSize: touch
+            ? MaterialTapTargetSize.padded : MaterialTapTargetSize.shrinkWrap,
         textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
       child: Text(label));
   }
@@ -804,12 +824,14 @@ class _InlineTextButton extends StatelessWidget {
 
 class _V3Field extends StatelessWidget {
   const _V3Field({required this.controller, required this.label,
-    required this.hint, this.keyboardType, this.obscureText = false,
+    required this.hint, this.keyboardType, this.textInputAction,
+    this.obscureText = false,
     this.trailing, this.onSubmitted, this.enabled = true});
   final TextEditingController controller;
   final String label;
   final String hint;
   final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
   final bool obscureText;
   final Widget? trailing;
   final ValueChanged<String>? onSubmitted;
@@ -822,6 +844,7 @@ class _V3Field extends StatelessWidget {
         fontWeight: FontWeight.w800, letterSpacing: 1.5)),
       const SizedBox(height: 8),
       TextField(controller: controller, keyboardType: keyboardType,
+        textInputAction: textInputAction,
         obscureText: obscureText, onSubmitted: onSubmitted, enabled: enabled,
         decoration: InputDecoration(hintText: hint, suffixIcon: trailing,
           filled: true, fillColor: p.surface,

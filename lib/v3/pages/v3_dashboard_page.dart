@@ -207,7 +207,7 @@ class _ConnectionWorkspace extends StatelessWidget {
           key: kCurrentNodeCardKey,
           height: cardHeight,
           child: _DashboardCard(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(V3Layout.cardPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -501,7 +501,7 @@ class _ConnectIntroContentState extends State<_ConnectIntroContent> {
         ),
         Positioned.fill(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(V3Layout.cardPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -526,9 +526,9 @@ class _ConnectIntroContentState extends State<_ConnectIntroContent> {
                       ),
                     ),
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
+                      duration: V3Motion.fast,
+                      switchInCurve: V3Motion.ease,
+                      switchOutCurve: V3Motion.ease.flipped,
                       transitionBuilder: (child, animation) =>
                           FadeTransition(opacity: animation, child: child),
                       child: V3StatusBadge(
@@ -677,7 +677,7 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: p.ink,
-                                    fontSize: 15,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -739,7 +739,7 @@ class _MobileConnectionCardState extends State<_MobileConnectionCard>
             // The merged card makes its own context obvious; the routing
             // label would repeat what the segment already says.
             Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(V3Layout.cardPadding),
               child: _ModeSegment<ProxyMode>(
                 values: ProxyMode.values,
                 label: _modeTitle,
@@ -946,9 +946,9 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
                               },
                         child: Center(
                           child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 160),
-                            switchInCurve: Curves.easeOut,
-                            switchOutCurve: Curves.easeIn,
+                            duration: V3Motion.fast,
+                            switchInCurve: V3Motion.ease,
+                            switchOutCurve: V3Motion.ease.flipped,
                             transitionBuilder: (child, animation) =>
                                 FadeTransition(
                                   opacity: animation,
@@ -1099,7 +1099,7 @@ class _ConnectionDurationState extends State<_ConnectionDuration> {
       key: const Key('v3-connection-duration'),
       style: TextStyle(
         color: connected ? p.ink : p.inkMuted,
-        fontSize: 30,
+        fontSize: 28,
         height: 1.0,
         fontWeight: FontWeight.w700,
         fontFeatures: const [FontFeature.tabularFigures()],
@@ -1250,7 +1250,7 @@ class _ModeRailState extends State<_ModeRail> with _ModeSwitching {
       ],
     );
     return _DashboardCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(V3Layout.cardPadding),
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (network == null) return routing;
@@ -1324,8 +1324,8 @@ class _ModeSegment<T> extends StatelessWidget {
           Positioned.fill(
             child: IgnorePointer(
               child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
+                duration: V3Motion.fast,
+                curve: V3Motion.ease,
                 alignment: Alignment(
                   values.length < 2
                       ? 0
@@ -1376,7 +1376,8 @@ class _ModeSegment<T> extends StatelessWidget {
                           tween: ColorTween(
                             end: value == selected ? p.lycheeInk : p.inkMuted,
                           ),
-                          duration: const Duration(milliseconds: 150),
+                          duration: V3Motion.fast,
+                          curve: V3Motion.ease,
                           builder: (context, color, _) => Text(
                             label(context, value),
                             maxLines: 1,
@@ -1414,7 +1415,7 @@ class _SessionMetrics extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return _DashboardCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(V3Layout.cardPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1572,7 +1573,7 @@ class _Metric extends StatelessWidget {
           // as data, and B/s updates never jiggle the glyph columns.
           style: TextStyle(
             color: p.ink,
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.w700,
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
@@ -1621,7 +1622,7 @@ class _PlanSummary extends StatelessWidget {
       }
     }
     return _DashboardCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(V3Layout.cardPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1662,7 +1663,7 @@ class _PlanSummary extends StatelessWidget {
                   color: p.surfaceRaised,
                   borderRadius: BorderRadius.circular(V3Radius.field),
                 ),
-                child: Icon(Icons.diamond_outlined, color: p.citrus, size: 21),
+                child: Icon(Icons.diamond_outlined, color: p.citrusInk, size: 21),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1675,7 +1676,7 @@ class _PlanSummary extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: p.ink,
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1708,7 +1709,9 @@ class _PlanSummary extends StatelessWidget {
               // on refresh instead of jumping to the new fill.
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: ratio),
-                duration: const Duration(milliseconds: 700),
+                duration: v3ReducedMotion(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 700),
                 curve: Curves.easeOutCubic,
                 builder: (context, swept, _) => LinearProgressIndicator(
                   value: swept,

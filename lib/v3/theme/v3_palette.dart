@@ -27,6 +27,7 @@ class V3Palette {
     required this.warningInk,
     required this.dangerInk,
     required this.aquaInk,
+    required this.citrusInk,
     required this.onLychee,
     required this.onDanger,
     required this.shadows,
@@ -79,6 +80,14 @@ class V3Palette {
   /// four-accent spread. Light mode darkens the decorative aqua to a deep
   /// teal (~5:1 on [surface]); dark mode is the base aqua itself (10:1).
   final Color aquaInk;
+
+  /// The one ink for [citrus] as a *foreground*. Citrus is a tile background
+  /// everywhere else (a dark foreground rides on the lime tile); the
+  /// dashboard plan tile is the one place it runs as an icon color on a light
+  /// surface, where the raw lime washes out (1.17:1 on [surfaceRaised]).
+  /// Light mode darkens it to a deep olive (~5.4:1 on [surfaceRaised]); dark
+  /// mode is the base citrus itself (13:1).
+  final Color citrusInk;
 
   /// Foregrounds drawn on top of solid [lychee] fills (primary buttons, the
   /// connect orb, the brand avatar). White fails here: light mode sits at
@@ -144,6 +153,7 @@ class V3Palette {
     warningInk: Color(0xFF8A5000),
     dangerInk: Color(0xFFB02E45),
     aquaInk: Color(0xFF0B6F6C),
+    citrusInk: Color(0xFF5F6B0E),
     onLychee: Color(0xFF0D1524),
     // The one deliberate pure white in light mode besides the QR pad: the
     // danger red is dark enough that white clears AA, while night does not
@@ -193,6 +203,7 @@ class V3Palette {
     warningInk: Color(0xFFF1BD59),
     dangerInk: Color(0xFFFF7188),
     aquaInk: Color(0xFF79E0DC),
+    citrusInk: Color(0xFFD7F267),
     onLychee: Color(0xFF0A0A0B),
     onDanger: Color(0xFF0A0A0B),
     // Flat by design: on black, big blurred shadows paint as gray smudges over
@@ -218,6 +229,8 @@ class V3Palette {
 /// * [card] — list rows, standard cards, inner panels. This is the curve a
 ///   [V3Panel] draws unless told otherwise.
 /// * [panel] — page-level panels, dialogs and sheets.
+/// * [glyph] — micro glyph shapes below the control tier: latency signal
+///   bars, flag chips, chart column tops.
 ///
 /// Two non-tier values remain literal on purpose: the 2dp progress hairline
 /// and the 99 pill.
@@ -226,6 +239,7 @@ abstract final class V3Radius {
   static const double field = 12;
   static const double card = 16;
   static const double panel = 24;
+  static const double glyph = 2;
 }
 
 class V3Theme {
@@ -386,14 +400,10 @@ class V3Theme {
             (states) =>
                 states.contains(WidgetState.selected) ? p.lycheeInk : p.ink,
           ),
-          side: WidgetStateProperty.resolveWith(
-            (states) => BorderSide(
-              color: states.contains(WidgetState.selected)
-                  ? p.lychee
-                  : p.hairline,
-              width: states.contains(WidgetState.selected) ? 1.5 : 1,
-            ),
-          ),
+          // Selection reads through the pink fill and lycheeInk foreground,
+          // not the border — a pink group outline disagrees with the
+          // hairline-edged pickers the traffic and shop pages draw by hand.
+          side: WidgetStatePropertyAll(BorderSide(color: p.hairline)),
           iconColor: WidgetStatePropertyAll(p.lycheeInk),
           textStyle: const WidgetStatePropertyAll(
             TextStyle(fontWeight: FontWeight.w700, fontSize: 12),

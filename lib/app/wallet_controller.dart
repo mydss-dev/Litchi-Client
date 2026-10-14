@@ -23,6 +23,11 @@ class WalletController extends ChangeNotifier {
   double _minWithdrawAmount = 0;
   String _currencySymbol = '¥';
 
+  /// Set while a transfer / withdraw API call is in flight. Repeat calls
+  /// return early instead of double-spending against the stale balance, and
+  /// the wallet page disables its entry buttons while it is up.
+  bool _busy = false;
+
   List<RemoteInviteRecord> get inviteRecords => _inviteRecords;
   double get commissionRate => _commissionRate;
   int get invitedCount => _invitedCount;
@@ -33,6 +38,7 @@ class WalletController extends ChangeNotifier {
   List<String> get withdrawMethods => _withdrawMethods;
   double get minWithdrawAmount => _minWithdrawAmount;
   String get currencySymbol => _currencySymbol;
+  bool get walletBusy => _busy;
 
   void applySnapshot({
     List<RemoteInviteRecord>? inviteRecords,
@@ -85,15 +91,21 @@ class WalletController extends ChangeNotifier {
       transferCommissionToBalance(_withdrawable);
 
   Future<String?> transferCommissionToBalance(double amount) async {
+    if (_busy) return '操作仍在处理中，请稍候';
     if (_withdrawable <= 0) return '暂无可划转佣金';
     if (amount <= 0) return '请输入划转金额';
     if (amount > _withdrawable) return '划转金额不能超过可提现佣金';
+    _busy = true;
+    notifyListeners();
     try {
       await _api.transferCommission((amount * 100).round());
       await _refresh();
       return null;
     } catch (e) {
       return e.toString().replaceFirst('ApiException: ', '');
+    } finally {
+      _busy = false;
+      notifyListeners();
     }
   }
 
@@ -102,6 +114,7 @@ class WalletController extends ChangeNotifier {
     required String account,
     required String method,
   }) async {
+    if (_busy) return '操作仍在处理中，请稍候';
     if (amount <= 0) return '请输入提现金额';
     if (!withdrawEnabled) return '提现暂未开放';
     if (amount > _withdrawable) return '提现金额不能超过可提现佣金';
@@ -114,6 +127,8 @@ class WalletController extends ChangeNotifier {
         !_withdrawMethods.contains(method.trim())) {
       return '请选择可用的提现方式';
     }
+    _busy = true;
+    notifyListeners();
     try {
       await _api.withdrawCommission(
         amountCents: (amount * 100).round(),
@@ -124,6 +139,9 @@ class WalletController extends ChangeNotifier {
       return null;
     } catch (e) {
       return e.toString().replaceFirst('ApiException: ', '');
+    } finally {
+      _busy = false;
+      notifyListeners();
     }
   }
 }

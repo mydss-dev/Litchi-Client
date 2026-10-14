@@ -451,7 +451,7 @@ class _DesktopRail extends StatelessWidget {
                     ),
                     Icon(
                       Icons.chevron_right_rounded,
-                      color: p.ink.withValues(alpha: 0.45),
+                      color: p.inkMuted,
                       size: 16,
                     ),
                   ],
@@ -490,8 +490,8 @@ class _DesktopRail extends StatelessWidget {
                 Text(
                   AppConfig.currentVersion.trim(),
                   style: TextStyle(
-                    color: p.inkMuted.withValues(alpha: 0.72),
-                    fontSize: 10,
+                    color: p.inkMuted,
+                    fontSize: 11,
                   ),
                 ),
             ],
@@ -525,7 +525,10 @@ class _CoreDotState extends State<_CoreDot>
   @override
   void didUpdateWidget(_CoreDot oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.running && !_wasRunning) _rings.forward(from: 0);
+    // Reduced motion: no ring burst -- the dot stays the static 6px mark.
+    if (widget.running && !_wasRunning && !v3ReducedMotion(context)) {
+      _rings.forward(from: 0);
+    }
     _wasRunning = widget.running;
   }
 
@@ -538,13 +541,15 @@ class _CoreDotState extends State<_CoreDot>
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    // Reduced motion: no ring branch at all, just the static 6px dot.
+    final reduced = v3ReducedMotion(context);
     return SizedBox(
       width: 6,
       height: 6,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          if (widget.running)
+          if (widget.running && !reduced)
             Positioned.fill(
               child: AnimatedBuilder(
                 animation: _rings,

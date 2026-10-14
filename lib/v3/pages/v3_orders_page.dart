@@ -359,7 +359,7 @@ class _OrderRow extends StatelessWidget {
               fontFeatures: const [FontFeature.tabularFigures()])),
           const SizedBox(height: 8),
           Text(order.amountDisplay(currencySymbol),
-            style: TextStyle(color: p.ink, fontSize: 15,
+            style: TextStyle(color: p.ink, fontSize: 14,
               fontWeight: FontWeight.w900,
               fontFeatures: const [FontFeature.tabularFigures()])),
           if (order.status == 0) ...[

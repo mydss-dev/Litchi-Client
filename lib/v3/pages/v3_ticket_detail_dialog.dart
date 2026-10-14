@@ -223,6 +223,8 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
             SizedBox(height: 48, child: Row(children: [
               Expanded(child: TextField(controller: _reply,
                 enabled: _ticket != null && !_closing, maxLines: 1,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _send(),
                 decoration: InputDecoration(hintText: v3Copy(context,
                   zh: '输入回复…', en: 'Write a reply…', tw: '輸入回覆…')))),
               const SizedBox(width: 10),

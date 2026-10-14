@@ -6,6 +6,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
 import '../../shared/models/app_models.dart';
 import '../commerce/v3_order_dialog.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
@@ -50,6 +51,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
       final twoColumns = contentWidth >= 600;
       final cardWidth = twoColumns ? (contentWidth - spacing) / 2 : contentWidth;
       return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: V3Layout.pageInsets,
         child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(title: _tr(context, '选择套餐', 'Choose a plan', '選擇方案')),
@@ -59,7 +61,36 @@ class _V3ShopPageState extends State<V3ShopPage> {
           _CategoryDeck(selected: _category,
             onChanged: (value) => setState(() => _category = value)),
           const SizedBox(height: 14),
-          if (plans.isEmpty)
+          if (controller.isInitialLoading)
+            // First-load placeholders in the shape of plan cards, so the
+            // loaded grid hands in without an empty-state flash (the tickets
+            // page's loading-space rule).
+            ...[
+              if (twoColumns)
+                Row(children: [
+                  for (var i = 0; i < 2; i++) ...[
+                    if (i > 0) const SizedBox(width: spacing),
+                    const Expanded(child: _PlanCardSkeleton()),
+                  ],
+                ])
+              else
+                Wrap(spacing: spacing, runSpacing: spacing, children: [
+                  for (var i = 0; i < 2; i++)
+                    SizedBox(width: cardWidth,
+                      child: const _PlanCardSkeleton()),
+                ]),
+            ]
+          else if (controller.dataLoadError != null && plans.isEmpty)
+            // Failure is not emptiness: name the error and offer the retry.
+            V3EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: _tr(context, '套餐加载失败',
+                  'Could not load plans', '方案載入失敗'),
+              subtitle: controller.dataLoadError!,
+              actionLabel: _tr(context, '重试', 'Retry', '重試'),
+              onAction: controller.refreshData,
+            )
+          else if (plans.isEmpty)
             // Shared empty-state voice (icon tile, one muted line, one step).
             V3EmptyState(
               icon: Icons.inventory_2_rounded,
@@ -138,7 +169,10 @@ class _CategoryDeck extends StatelessWidget {
           borderRadius: BorderRadius.circular(V3Radius.control),
           onTap: () => onChanged(item.$1),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
+            duration: v3ReducedMotion(context)
+                ? Duration.zero
+                : V3Motion.fast,
+            curve: V3Motion.ease,
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: selected == item.$1 ? p.surface : Colors.transparent,
@@ -173,7 +207,7 @@ class _CurrentPlanBadge extends StatelessWidget {
           '剩餘 ${controller.traffic.remainGb.toStringAsFixed(1)} GB'),
       plan.expiry,
     ];
-    return V3Panel(padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+    return V3Panel(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
         Icon(plan.usable ? Icons.verified_rounded : Icons.info_outline_rounded,
           size: 17, color: plan.usable ? p.successInk : p.inkMuted),
@@ -191,6 +225,45 @@ class _CurrentPlanBadge extends StatelessWidget {
           ])),
       ]),
     );
+  }
+}
+
+/// First-load placeholder in the shape of a plan card, so the loaded grid
+/// hands in without the empty state flashing first (the tickets page's
+/// loading-space rule).
+class _PlanCardSkeleton extends StatelessWidget {
+  const _PlanCardSkeleton();
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return V3Panel(padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const FractionallySizedBox(widthFactor: .62,
+            alignment: Alignment.centerLeft,
+            child: V3SkeletonBlock(height: 14)),
+        const SizedBox(height: 9),
+        const FractionallySizedBox(widthFactor: .4,
+            alignment: Alignment.centerLeft,
+            child: V3SkeletonBlock(height: 9)),
+        const SizedBox(height: 18),
+        const FractionallySizedBox(widthFactor: .45,
+            alignment: Alignment.centerLeft,
+            child: V3SkeletonBlock(height: 22)),
+        const SizedBox(height: 15),
+        for (final factor in const [.8, .72, .5]) Padding(
+          padding: const EdgeInsets.only(bottom: 9),
+          child: FractionallySizedBox(widthFactor: factor,
+            alignment: Alignment.centerLeft,
+            child: const V3SkeletonBlock(height: 12))),
+        Divider(color: p.line, height: 1),
+        const SizedBox(height: 11),
+        const FractionallySizedBox(widthFactor: .3,
+            alignment: Alignment.centerLeft,
+            child: V3SkeletonBlock(height: 18)),
+        const SizedBox(height: 12),
+        const SizedBox(width: double.infinity, height: 44,
+          child: V3SkeletonBlock(height: 44, radius: V3Radius.field)),
+      ]));
   }
 }
 
@@ -212,7 +285,7 @@ class _PlanCard extends StatelessWidget {
       Row(children: [
         Expanded(child: Text(plan.title, maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: p.ink, fontSize: 17,
+          style: TextStyle(color: p.ink, fontSize: 16,
             fontWeight: FontWeight.w800))),
         if (plan.featured || plan.hot)
           V3StatusBadge(label: plan.featured
@@ -227,7 +300,7 @@ class _PlanCard extends StatelessWidget {
       Text(plan.capacity.isEmpty
           ? _tr(context, '流量未标注', 'Traffic not specified', '未標示流量')
           : plan.capacity,
-        style: TextStyle(color: p.ink, fontSize: 29, fontWeight: FontWeight.w900,
+        style: TextStyle(color: p.ink, fontSize: 28, fontWeight: FontWeight.w900,
           fontFeatures: const [FontFeature.tabularFigures()])),
       const SizedBox(height: 12),
       // No divider here: title → capacity → features already read as one
@@ -249,7 +322,7 @@ class _PlanCard extends StatelessWidget {
           child: TextButton(
             onPressed: () => _showPlanDetails(context, plan),
             style: TextButton.styleFrom(padding: EdgeInsets.zero,
-              minimumSize: const Size(0, 30)),
+              minimumSize: const Size(0, 32)),
             child: Text(plan.features.length > features.length
                 ? _tr(context, '查看完整说明', 'Full description', '查看完整說明')
                 : _tr(context, '套餐详情', 'Plan details', '方案詳情'),

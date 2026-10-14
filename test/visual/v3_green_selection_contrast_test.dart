@@ -46,7 +46,12 @@ void main() {
       final unselected = <WidgetState>{};
       expect(style.backgroundColor!.resolve(selected), p.lycheeSoft);
       expect(style.foregroundColor!.resolve(selected), p.lycheeInk);
-      expect(style.side!.resolve(selected)!.color, p.lychee);
+      // Selection reads through the pink fill and lycheeInk foreground, not
+      // the border: the side stays the quiet hairline in both states (round-2
+      // audit — a pink group outline disagreed with the hand-drawn hairline
+      // pickers on the traffic and shop pages).
+      expect(style.side!.resolve(selected)!.color, p.hairline);
+      expect(style.side!.resolve(unselected)!.color, p.hairline);
       expect(style.backgroundColor!.resolve(unselected), p.surfaceRaised);
       expect(style.foregroundColor!.resolve(unselected), p.ink);
       expect(_contrast(p.lycheeInk, p.lycheeSoft),

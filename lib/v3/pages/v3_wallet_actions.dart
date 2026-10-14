@@ -21,7 +21,12 @@ Future<void> showV3RechargeDialog(BuildContext context) {
       onViewOrders: () => openV3Page(context, AppPage.orders)));
 }
 
-Future<void> showV3TransferDialog(BuildContext context) async {
+/// [setBusy] marks the caller's wallet panel busy across the API await —
+/// the window after every dialog has closed, when the entry buttons are
+/// reachable again. The dialog phase is user input, not a pending money
+/// movement, and a dialog gates its own screen behind a modal barrier.
+Future<void> showV3TransferDialog(BuildContext context,
+    {void Function(bool busy)? setBusy}) async {
   final controller = AppScope.read(context);
   if (controller.withdrawable <= 0) {
     _toast(context, v3Copy(context, zh: '当前没有可转入余额的佣金',
@@ -59,13 +64,21 @@ Future<void> showV3TransferDialog(BuildContext context) async {
     confirmLabel: v3Copy(context, zh: '确认转入',
       en: 'Transfer', tw: '確認轉入'));
   if (!confirmed || !context.mounted) return;
-  final error = await controller.transferCommissionToBalance(amount);
-  if (!context.mounted) return;
-  _toast(context, error ?? success,
-    type: error == null ? V3ToastType.success : V3ToastType.error);
+  setBusy?.call(true);
+  try {
+    final error = await controller.transferCommissionToBalance(amount);
+    if (!context.mounted) return;
+    _toast(context, error ?? success,
+      type: error == null ? V3ToastType.success : V3ToastType.error);
+  } finally {
+    setBusy?.call(false);
+  }
 }
 
-Future<void> showV3WithdrawDialog(BuildContext context) async {
+/// [setBusy] mirrors [showV3TransferDialog]: the panel spins its entry only
+/// across the API await, never across the dialogs.
+Future<void> showV3WithdrawDialog(BuildContext context,
+    {void Function(bool busy)? setBusy}) async {
   final controller = AppScope.read(context);
   if (!controller.withdrawEnabled) {
     _toast(context, v3Copy(context, zh: '当前账户暂未开放佣金提现',
@@ -105,11 +118,16 @@ Future<void> showV3WithdrawDialog(BuildContext context) async {
     confirmLabel: v3Copy(context, zh: '提交提现',
       en: 'Submit withdrawal', tw: '提交提領'));
   if (!confirmed || !context.mounted) return;
-  final error = await controller.withdrawCommission(
-    amount: result.amount, account: result.account, method: result.method);
-  if (!context.mounted) return;
-  _toast(context, error ?? success,
-    type: error == null ? V3ToastType.success : V3ToastType.error);
+  setBusy?.call(true);
+  try {
+    final error = await controller.withdrawCommission(
+      amount: result.amount, account: result.account, method: result.method);
+    if (!context.mounted) return;
+    _toast(context, error ?? success,
+      type: error == null ? V3ToastType.success : V3ToastType.error);
+  } finally {
+    setBusy?.call(false);
+  }
 }
 
 void _toast(BuildContext context, String message,
@@ -391,11 +409,13 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
                 zh: '提现方式', en: 'Withdrawal method', tw: '提領方式'))),
             const SizedBox(height: 12),
             TextField(controller: _accountController,
+              textInputAction: TextInputAction.next,
               decoration: InputDecoration(labelText: v3Copy(context,
                 zh: '收款账号', en: 'Payout account', tw: '收款帳號'))),
             const SizedBox(height: 12),
-            TextField(controller: _amountController,
+            TextField(controller: _amountController, autofocus: true,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onSubmitted: (_) => _submit(),
               decoration: InputDecoration(labelText: v3Copy(context,
                   zh: '提现金额', en: 'Withdrawal amount', tw: '提領金額'),
                 prefixText: '${widget.currencySymbol} ',

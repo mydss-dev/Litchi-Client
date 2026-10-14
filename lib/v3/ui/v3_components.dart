@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:country_flags/country_flags.dart';
 
@@ -30,7 +31,7 @@ class V3NodeFlag extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(V3Radius.glyph),
         border: Border.all(color: V3Palette.of(context).line, width: 0.5),
       ),
       child: CountryFlag.fromCountryCode(
@@ -38,7 +39,7 @@ class V3NodeFlag extends StatelessWidget {
         theme: ImageTheme(
           width: width,
           height: height,
-          shape: const RoundedRectangle(3),
+          shape: const RoundedRectangle(V3Radius.glyph),
         ),
       ),
     );
@@ -113,7 +114,7 @@ class V3SkeletonBlock extends StatelessWidget {
     super.key,
     this.width,
     required this.height,
-    this.radius = 6,
+    this.radius = V3Radius.control,
   });
 
   final double? width;
@@ -521,7 +522,7 @@ class V3RollingMoney extends StatelessWidget {
       // A begin of 0 only drives the first sweep; retargets animate from the
       // current value, never from zero again.
       tween: Tween(begin: 0, end: value),
-      duration: const Duration(milliseconds: 600),
+      duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.slow,
       curve: Curves.easeOutCubic,
       // scaleDown, not ellipsis: a truncated amount is a wrong amount. Where
       // the string fits it renders 1:1; in a narrow tile the whole value
@@ -616,37 +617,69 @@ class V3Switch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    // Touch carries the 48px target floor (Material 3 and Apple HIG agree):
+    // the track keeps its 52x30 silhouette and the extra height wraps around
+    // it, the way Material's own Switch sizes its hit area.
+    final touch = defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+    final VoidCallback? toggle =
+        onChanged == null ? null : () => onChanged!(!value);
+    final knob = AnimatedAlign(
+      duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.fast,
+      curve: V3Motion.ease,
+      alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          color: value ? p.onLychee : p.inkMuted,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+    final track = AnimatedContainer(
+      duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.fast,
+      width: 52,
+      height: 30,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: value ? p.lychee : p.surfaceRaised,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      // V3Pressable rides inside the track so the press ink lands on the
+      // track itself instead of on a Material beneath its opaque fill. On
+      // touch the layer lifts above the track to own the full target --
+      // beneath the opaque fill its ink would never show.
+      child: touch
+          ? knob
+          : V3Pressable(
+              onTap: toggle,
+              borderRadius: BorderRadius.circular(99),
+              child: knob,
+            ),
+    );
     return Semantics(
       button: true,
       toggled: value,
-      // V3Pressable rides inside the track so the press ink lands on the
-      // track itself instead of on a Material beneath its opaque fill.
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        width: 52,
-        height: 30,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: value ? p.lychee : p.surfaceRaised,
-          borderRadius: BorderRadius.circular(99),
-        ),
-        child: V3Pressable(
-          onTap: onChanged == null ? null : () => onChanged!(!value),
-          borderRadius: BorderRadius.circular(99),
-          child: AnimatedAlign(
-            duration: const Duration(milliseconds: 160),
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: value ? p.onLychee : p.inkMuted,
-                shape: BoxShape.circle,
+      child: touch
+          ? SizedBox(
+              width: 52,
+              height: 48,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  track,
+                  Positioned.fill(
+                    child: V3Pressable(
+                      onTap: toggle,
+                      borderRadius: BorderRadius.circular(99),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-        ),
-      ),
+            )
+          : track,
     );
   }
 }

@@ -6,6 +6,7 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/models/app_models.dart';
 import '../../shared/services/url_opener.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
 import 'v3_locale_copy.dart';
@@ -43,6 +44,13 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
   void initState() {
     super.initState();
     _notices = widget.controller.notices.take(_maxPages).toList();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // v3ReducedMotion reads MediaQuery, which cannot be depended on during
+    // initState — the first timer sync starts here instead.
     _syncTimer();
   }
 
@@ -64,7 +72,9 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
   void _syncTimer() {
     _timer?.cancel();
     _timer = null;
-    if (_pageCount > 1) {
+    // Reduced motion means no 6s auto-advance at all; hovering pauses the
+    // timer and leaving resumes through this same sync.
+    if (_pageCount > 1 && !v3ReducedMotion(context)) {
       _timer = Timer.periodic(_interval, (_) => _go(1));
     }
   }
@@ -73,11 +83,15 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
     if (_pageCount < 2) return;
     final target = (_index + delta + _pageCount) % _pageCount;
     if (_pages.hasClients) {
-      await _pages.animateToPage(
-        target,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-      );
+      if (v3ReducedMotion(context)) {
+        _pages.jumpToPage(target);
+      } else {
+        await _pages.animateToPage(
+          target,
+          duration: V3Motion.medium,
+          curve: V3Motion.ease,
+        );
+      }
     }
     if (!mounted) return;
     setState(() => _index = target);
@@ -101,51 +115,57 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
   Widget build(BuildContext context) {
     if (_pageCount == 0) return const SizedBox.shrink();
     final p = V3Palette.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(V3Radius.card),
-        border: Border.all(color: p.hairline),
-        boxShadow: p.shadows,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(V3Radius.card),
-        child: SizedBox(
-          height: 148,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: PageView.builder(
-                  itemCount: _pageCount,
-                  controller: _pages,
-                  onPageChanged: (i) => setState(() => _index = i),
-                  itemBuilder: (context, index) {
-                    // The update prompt outranks announcements: it owns
-                    // page 0; notices shift one page back.
-                    if (index < _updateOffset) {
-                      return _NoticeUpdatePage(update: _update!);
-                    }
-                    final noticeIndex = index - _updateOffset;
-                    return _NoticeImagePage(
-                      notice: _notices[noticeIndex],
-                      onTap: () => _open(noticeIndex),
-                    );
-                  },
+    // Hovering pauses the 6s auto-advance so the page under the pointer
+    // stays put; leaving resumes it. Reduced motion never starts a timer.
+    return MouseRegion(
+      onEnter: (_) => _timer?.cancel(),
+      onExit: (_) => _syncTimer(),
+      child: Container(
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(V3Radius.card),
+          border: Border.all(color: p.hairline),
+          boxShadow: p.shadows,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(V3Radius.card),
+          child: SizedBox(
+            height: 148,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: PageView.builder(
+                    itemCount: _pageCount,
+                    controller: _pages,
+                    onPageChanged: (i) => setState(() => _index = i),
+                    itemBuilder: (context, index) {
+                      // The update prompt outranks announcements: it owns
+                      // page 0; notices shift one page back.
+                      if (index < _updateOffset) {
+                        return _NoticeUpdatePage(update: _update!);
+                      }
+                      final noticeIndex = index - _updateOffset;
+                      return _NoticeImagePage(
+                        notice: _notices[noticeIndex],
+                        onTap: () => _open(noticeIndex),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              if (_pageCount > 1) ...[
-                _NoticeCarouselArrow(
-                  icon: Icons.chevron_left_rounded,
-                  onTap: () => _go(-1),
-                  alignLeft: true,
-                ),
-                _NoticeCarouselArrow(
-                  icon: Icons.chevron_right_rounded,
-                  onTap: () => _go(1),
-                  alignLeft: false,
-                ),
+                if (_pageCount > 1) ...[
+                  _NoticeCarouselArrow(
+                    icon: Icons.chevron_left_rounded,
+                    onTap: () => _go(-1),
+                    alignLeft: true,
+                  ),
+                  _NoticeCarouselArrow(
+                    icon: Icons.chevron_right_rounded,
+                    onTap: () => _go(1),
+                    alignLeft: false,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -194,8 +214,11 @@ class _NoticeImagePage extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 colors: [
                   Colors.transparent,
-                  Colors.black.withValues(alpha: .55),
+                  Colors.black.withValues(alpha: .78),
                 ],
+                // Deepens only in the title zone so the photo above stays
+                // bright, and the white title still clears 4.5:1.
+                stops: const [0.35, 1.0],
               ),
             ),
           ),
@@ -323,15 +346,24 @@ class _NoticeCarouselArrow extends StatelessWidget {
       left: alignLeft ? 6 : null,
       right: alignLeft ? null : 6,
       child: Center(
-        child: Material(
-          color: Colors.black.withValues(alpha: .30),
-          shape: const CircleBorder(),
-          child: InkWell(
-            onTap: onTap,
-            customBorder: const CircleBorder(),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(icon, color: Colors.white, size: 20),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Tooltip(
+            message: alignLeft
+                ? v3Copy(context, zh: '上一条', en: 'Previous', tw: '上一則')
+                : v3Copy(context, zh: '下一条', en: 'Next', tw: '下一則'),
+            child: Material(
+              color: Colors.black.withValues(alpha: .55),
+              shape: CircleBorder(
+                side: BorderSide(color: Colors.white.withValues(alpha: .2))),
+              child: InkWell(
+                onTap: onTap,
+                customBorder: const CircleBorder(),
+                child: Center(
+                  child: Icon(icon, color: Colors.white, size: 20),
+                ),
+              ),
             ),
           ),
         ),

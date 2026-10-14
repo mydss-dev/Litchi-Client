@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import 'v3_empty_state.dart';
@@ -170,7 +171,25 @@ class _V3NodePickerState extends State<V3NodePicker> {
                 ),
         ),
         const SizedBox(height: 12),
-        if (nodes.isEmpty)
+        if (controller.isInitialLoading)
+          // Same loading rule as the nodes overview: row skeletons, not a
+          // false 'no nodes' verdict while the first load runs.
+          for (var i = 0; i < 3; i++) const V3NodeSkeletonRow()
+        else if (controller.dataLoadError != null && controller.nodes.isEmpty)
+          // Failure is not emptiness: name the error and offer the retry.
+          V3EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: v3Copy(
+              context,
+              zh: '节点加载失败',
+              en: 'Could not load nodes',
+              tw: '節點載入失敗',
+            ),
+            subtitle: controller.dataLoadError!,
+            actionLabel: v3Copy(context, zh: '重试', en: 'Retry', tw: '重試'),
+            onAction: controller.refreshData,
+          )
+        else if (nodes.isEmpty)
           V3EmptyState(
             icon: controller.nodes.isEmpty
                 ? Icons.public_off_rounded
@@ -251,7 +270,10 @@ class V3AutoRouteRow extends StatelessWidget {
     final p = V3Palette.of(context);
     final active = controller.autoSelected;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
+      duration: v3ReducedMotion(context)
+          ? Duration.zero
+          : V3Motion.fast,
+      curve: V3Motion.ease,
       decoration: BoxDecoration(
         color: active ? p.lycheeSoft : p.surfaceRaised,
         borderRadius: BorderRadius.circular(V3Radius.card),
@@ -352,7 +374,10 @@ class V3NodeRow extends StatelessWidget {
         defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
+      duration: v3ReducedMotion(context)
+          ? Duration.zero
+          : V3Motion.fast,
+      curve: V3Motion.ease,
       decoration: BoxDecoration(
         color: selected ? p.lycheeSoft : p.surfaceRaised,
         borderRadius: BorderRadius.circular(V3Radius.card),
@@ -491,6 +516,56 @@ class V3NodeRow extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Loading placeholder in the shape of a node row, so the loaded list hands
+/// in without the rows snapping in from an empty page (the tickets page's
+/// loading-space rule). Shared by the nodes overview and the picker sheet.
+class V3NodeSkeletonRow extends StatelessWidget {
+  const V3NodeSkeletonRow({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        height: 62,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: p.surfaceRaised,
+          borderRadius: BorderRadius.circular(V3Radius.card),
+        ),
+        child: const Row(
+          children: [
+            V3SkeletonBlock(width: 38, height: 38, radius: V3Radius.control),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FractionallySizedBox(
+                    widthFactor: .55,
+                    alignment: Alignment.centerLeft,
+                    child: V3SkeletonBlock(height: 12),
+                  ),
+                  SizedBox(height: 7),
+                  FractionallySizedBox(
+                    widthFactor: .35,
+                    alignment: Alignment.centerLeft,
+                    child: V3SkeletonBlock(height: 9),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 8),
+            V3SkeletonBlock(width: 52, height: 20, radius: V3Radius.control),
+          ],
         ),
       ),
     );
