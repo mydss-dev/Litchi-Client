@@ -104,7 +104,7 @@ const List<V3NavItem> kMobilePrimary = [
   ),
   V3NavItem(
     page: AppPage.shop,
-    icon: Icons.shopping_bag_outlined,
+    icon: Icons.shopping_bag_rounded,
     placement: V3NavPlacement.mobilePrimary,
   ),
   V3NavItem(
@@ -126,7 +126,7 @@ const List<V3NavItem> kMobileMore = [
   // order, so orders leads here too.
   V3NavItem(
     page: AppPage.orders,
-    icon: Icons.receipt_long_outlined,
+    icon: Icons.receipt_long_rounded,
     placement: V3NavPlacement.mobileMore,
   ),
   // Compact has no window bar, so the redemption form lives here instead of
@@ -148,7 +148,7 @@ const List<V3NavItem> kMobileMore = [
   ),
   V3NavItem(
     page: AppPage.tickets,
-    icon: Icons.forum_outlined,
+    icon: Icons.forum_rounded,
     placement: V3NavPlacement.mobileMore,
   ),
   V3NavItem(
@@ -176,14 +176,14 @@ const V3NavItem kRailNodes = V3NavItem(
 );
 const V3NavItem kRailShop = V3NavItem(
   page: AppPage.shop,
-  icon: Icons.shopping_bag_outlined,
+  icon: Icons.shopping_bag_rounded,
   placement: V3NavPlacement.desktopRail,
 );
 // Adjacent to shop: buy a plan, then verify the order without moving to
 // another IA region. The rail entry is feature-gated like every other item.
 const V3NavItem kRailOrders = V3NavItem(
   page: AppPage.orders,
-  icon: Icons.receipt_long_outlined,
+  icon: Icons.receipt_long_rounded,
   placement: V3NavPlacement.desktopRail,
 );
 const V3NavItem kRailTraffic = V3NavItem(
@@ -198,7 +198,7 @@ const V3NavItem kRailInvite = V3NavItem(
 );
 const V3NavItem kRailTickets = V3NavItem(
   page: AppPage.tickets,
-  icon: Icons.forum_outlined,
+  icon: Icons.forum_rounded,
   placement: V3NavPlacement.desktopRail,
 );
 const V3NavItem kRailSettings = V3NavItem(

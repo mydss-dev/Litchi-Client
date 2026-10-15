@@ -7,6 +7,7 @@ import '../../shared/services/app_error_message_service.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_empty_state.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_components.dart';
@@ -117,7 +118,9 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
     return Dialog(backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(22),
       child: Container(key: const ValueKey('v3-ticket-dialog-frame'),
-        width: 680, height: height, padding: const EdgeInsets.all(24),
+        width: 680, height: height,
+        // Dialog bodies share the one dialogPadding tier (N03).
+        padding: const EdgeInsets.all(V3Layout.dialogPadding),
         decoration: BoxDecoration(color: p.surface,
           borderRadius: BorderRadius.circular(V3Radius.panel)),
         child: Column(children: [

@@ -105,8 +105,16 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
       // its own failures; the outcome surfaces via dataLoadError (N25).
       if (!mounted) return;
       _code.clear();
-      await controller.refreshData();
-      final refreshFailed = controller.dataLoadError != null;
+      // Refresh failure — thrown or surfaced through dataLoadError — must
+      // never fail the redemption itself: the code is already spent, and a
+      // failure toast here invites a duplicate submission of a one-use code.
+      var refreshFailed = true;
+      try {
+        await controller.refreshData();
+        refreshFailed = controller.dataLoadError != null;
+      } catch (_) {
+        refreshFailed = true;
+      }
       if (!mounted) return;
       setState(() {
         _success = refreshFailed

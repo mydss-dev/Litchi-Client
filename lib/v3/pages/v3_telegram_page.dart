@@ -56,7 +56,7 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = _clean(error);
+        _error = v3UserFacingError(context, error);
       });
     } finally {
       _botLoadInFlight = false;
@@ -74,7 +74,7 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
       await Clipboard.setData(ClipboardData(text: '/bind $subscribeUrl'));
       if (mounted) setState(() => _notice = copied);
     } catch (error) {
-      if (mounted) setState(() => _error = _clean(error));
+      if (mounted) setState(() => _error = v3UserFacingError(context, error));
     } finally {
       if (mounted) setState(() => _working = false);
     }
@@ -130,15 +130,11 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
       await controller.refreshData();
       if (mounted) setState(() => _notice = success);
     } catch (error) {
-      if (mounted) setState(() => _error = _clean(error));
+      if (mounted) setState(() => _error = v3UserFacingError(context, error));
     } finally {
       if (mounted) setState(() => _working = false);
     }
   }
-
-  static String _clean(Object error) => error.toString()
-      .replaceFirst('ApiException: ', '')
-      .replaceFirst('Exception: ', '');
 
   @override
   Widget build(BuildContext context) {

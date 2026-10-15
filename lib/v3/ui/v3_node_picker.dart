@@ -269,7 +269,12 @@ class V3AutoRouteRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final active = controller.autoSelected;
-    return AnimatedContainer(
+    // Screen readers cannot read the selection from the tint alone: the
+    // active route announces as selected (same rule as V3NodeRow below).
+    return Semantics(
+      container: true,
+      selected: active,
+      child: AnimatedContainer(
       duration: v3ReducedMotion(context)
           ? Duration.zero
           : V3Motion.fast,
@@ -345,6 +350,7 @@ class V3AutoRouteRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

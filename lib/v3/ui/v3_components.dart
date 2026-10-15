@@ -763,7 +763,13 @@ class V3NavRow extends StatelessWidget {
     // a bare InkWell's hover/press ink lands on the root Material underneath
     // it and never shows. The pressable paints its own transparent Material
     // above the fill, keeping both washes visible.
-    return V3Pressable(
+    //
+    // Screen readers cannot read the selection from the tint alone: the
+    // active row announces as selected, mirroring the rail items (F10).
+    return Semantics(
+      container: true,
+      selected: selected,
+      child: V3Pressable(
       borderRadius: BorderRadius.circular(V3Radius.card),
       onTap: onTap,
       child: Container(
@@ -821,6 +827,7 @@ class V3NavRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

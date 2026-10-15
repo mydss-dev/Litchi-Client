@@ -342,7 +342,7 @@ class _InviteSkeleton extends StatelessWidget {
         // Hero panel with the stage card's silhouette — the shape every
         // loaded page shares, so the swap is a same-size hand-off.
         Container(
-          padding: const EdgeInsets.all(22),
+          padding: const EdgeInsets.all(V3Layout.panelPadding),
           decoration: BoxDecoration(
             color: p.hero,
             borderRadius: BorderRadius.circular(V3Radius.panel),
@@ -533,7 +533,7 @@ class _InviteHero extends StatelessWidget {
     // header, so the panel is purely functional now: stage first, then the
     // action rows.
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(V3Layout.panelPadding),
       decoration: BoxDecoration(
         color: p.hero,
         borderRadius: BorderRadius.circular(V3Radius.panel),
@@ -784,7 +784,9 @@ class _InviteStageCard extends StatelessWidget {
       // Same fixed height as the create card, so paging between codes and
       // the create card never resizes the panel mid-hover.
       height: 172,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+      // The panel tier, not a hand-written 22: the stage rides inside the
+      // hero container and shares its padding rhythm (N22).
+      padding: const EdgeInsets.all(V3Layout.panelPadding),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,

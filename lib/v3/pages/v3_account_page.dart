@@ -74,13 +74,16 @@ class _V3AccountPageState extends State<V3AccountPage> {
       );
     } catch (error) {
       if (mounted) {
+        // The raw exception must not leak into the toast: the shared mapping
+        // unwraps and localizes the failure (N13).
+        final detail = v3UserFacingError(context, error);
         V3Toast.show(
           context,
           v3Copy(
             context,
-            zh: '更新账户偏好失败：$error',
-            en: 'Could not update account preferences: $error',
-            tw: '更新帳戶偏好失敗：$error',
+            zh: '更新账户偏好失败：$detail',
+            en: 'Could not update account preferences: $detail',
+            tw: '更新帳戶偏好失敗：$detail',
           ),
           type: V3ToastType.error,
         );
@@ -887,9 +890,11 @@ class _PasswordDialogState extends State<_PasswordDialog> {
     } catch (error) {
       if (mounted) {
         // Async result errors are transient toasts, same voice as the success
-        // path; only field validation stays inline (M3).
+        // path; only field validation stays inline (M3). The wrapper type is
+        // unwrapped and the failure localized by the shared mapping (N13).
         final overlay = Overlay.of(context, rootOverlay: true);
-        V3Toast.showInOverlay(overlay, '$error', type: V3ToastType.error);
+        V3Toast.showInOverlay(overlay, v3UserFacingError(context, error),
+          type: V3ToastType.error);
         setState(() => _busy = false);
       }
     }

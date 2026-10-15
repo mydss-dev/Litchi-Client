@@ -184,6 +184,12 @@ void main() {
 
   // The shop's deleted copy showed '$error' verbatim, which for anything that
   // is not an ApiException leaks the wrapper class into the user's face.
+  // Round-3 N13 then routed the dialog through the shared l10n mapping: the
+  // raw exception unwraps to its message first ("Exception: 连接超时" →
+  // "连接超时"), the timeout table matches, and the dialog shows the
+  // localized copy ("连接超时，请检查网络后重试" — zh, this harness's
+  // fallback locale). The contract this test guards — no wrapper type in the
+  // dialog — is the second assertion and still holds.
   testWidgets('unwraps non-API errors instead of showing the wrapper type', (
     tester,
   ) async {
@@ -193,7 +199,7 @@ void main() {
     );
     await _pumpFlow(tester, api);
 
-    expect(find.text('连接超时'), findsOneWidget);
+    expect(find.text('连接超时，请检查网络后重试'), findsOneWidget);
     expect(find.textContaining('Exception'), findsNothing);
   });
 

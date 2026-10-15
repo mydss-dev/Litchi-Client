@@ -95,7 +95,7 @@ class _NoPlanDashboardPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inventory_2_outlined, size: 34, color: p.inkMuted),
+            Icon(Icons.inventory_2_rounded, size: 34, color: p.inkMuted),
             const SizedBox(height: 12),
             Text(
               v3Copy(
@@ -1683,7 +1683,7 @@ class _PlanSummary extends StatelessWidget {
                   color: p.surfaceRaised,
                   borderRadius: BorderRadius.circular(V3Radius.field),
                 ),
-                child: Icon(Icons.diamond_outlined, color: p.citrusInk, size: 21),
+                child: Icon(Icons.diamond_rounded, color: p.citrusInk, size: 21),
               ),
               const SizedBox(width: 10),
               Expanded(

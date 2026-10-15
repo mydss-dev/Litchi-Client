@@ -12,6 +12,7 @@ import '../../shared/services/url_opener.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
+import 'v3_layout.dart';
 import 'v3_locale_copy.dart';
 import 'v3_toast.dart';
 
@@ -69,6 +70,13 @@ class _V3NoticeBarState extends State<V3NoticeBar>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS);
   static bool get _canOpenReleasePage =>
       !kIsWeb && (Platform.isAndroid || Platform.isLinux);
+
+  /// The lane's slim pager stays mouse-first 32px on desktop; touch platforms
+  /// take the 44px target (N19) — the same rule the reader dialog's pager
+  /// follows with its explicit 44.
+  static bool get _isTouchNavPlatform => !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
   double get _downloadProgress =>
       _total > 0 ? (_received / _total).clamp(0.0, 1.0) : 0;
 
@@ -211,8 +219,9 @@ class _V3NoticeBarState extends State<V3NoticeBar>
     } catch (error) {
       if (!mounted) return;
       setState(() { _downloading = false; _received = 0; _total = -1; });
-      _notify(overlay, error.toString()
-        .replaceFirst('Exception: ', '').replaceFirst('StateError: ', ''),
+      // Same shared mapping as every other failure surface: a timeout reads
+      // as a timeout, not as "Exception: ..." (N13).
+      _notify(overlay, v3UserFacingError(context, error),
         type: V3ToastType.error);
     }
   }
@@ -348,6 +357,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                     const SizedBox(width: 10),
                     _NavButton(icon: Icons.chevron_left_rounded,
                       tooltip: v3Copy(context, zh: '上一条', en: 'Previous', tw: '上一則'),
+                      size: _isTouchNavPlatform ? 44 : 32,
                       onPressed: () => _goTo(safeIndex - 1)),
                     SizedBox(width: 42, child: Text(
                       '${safeIndex + 1} / $_entryCount',
@@ -356,6 +366,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                         fontWeight: FontWeight.w600))),
                     _NavButton(icon: Icons.chevron_right_rounded,
                       tooltip: v3Copy(context, zh: '下一条', en: 'Next', tw: '下一則'),
+                      size: _isTouchNavPlatform ? 44 : 32,
                       onPressed: () => _goTo(safeIndex + 1)),
                   ],
                   if (isUpdatePage) ...[
@@ -416,8 +427,9 @@ class _NavButton extends StatelessWidget {
   final String tooltip;
   final VoidCallback? onPressed;
 
-  /// The lane keeps its slim 32px pager (mouse-first, hidden under 520dp);
-  /// the reader dialog's pager meets the 44px touch target, matching the
+  /// The lane keeps its slim 32px pager on desktop (mouse-first, hidden
+  /// under 520dp) and passes 44 on touch platforms (N19); the reader
+  /// dialog's pager meets the 44px touch target outright, matching the
   /// carousel's fixed arrows.
   final double size;
   final double iconSize;
@@ -496,7 +508,8 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
           border: Border.all(color: p.hairline),
           boxShadow: p.shadows),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Padding(padding: const EdgeInsets.fromLTRB(22, 18, 12, 10),
+          Padding(padding: const EdgeInsets.fromLTRB(
+              V3Layout.dialogPadding, 18, 12, 10),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (widget.mustRead) ...[
@@ -523,7 +536,8 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                   color: p.inkMuted),
               ])),
           Flexible(child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
+            padding: const EdgeInsets.fromLTRB(
+              V3Layout.dialogPadding, 0, V3Layout.dialogPadding, 4),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(notice.dateDisplay, style: TextStyle(color: p.inkMuted,
@@ -548,7 +562,8 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                   tw: '（本則公告沒有正文）') : body,
                   style: TextStyle(color: p.ink, fontSize: 13, height: 1.7)),
               ]))),
-          Padding(padding: const EdgeInsets.fromLTRB(22, 14, 22, 18),
+          Padding(padding: const EdgeInsets.fromLTRB(
+              V3Layout.dialogPadding, 14, V3Layout.dialogPadding, 18),
             child: Row(children: [
               if (multiple) ...[
                 _NavButton(icon: Icons.chevron_left_rounded,

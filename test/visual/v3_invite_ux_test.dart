@@ -200,8 +200,12 @@ void main() {
     // the whole panel and make it jump between pages.
     expect(find.byKey(const ValueKey('v3-invite-copy-link')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('v3-invite-create')));
-    // Bounded pumps: pumpAndSettle would consume the floating toast entire
-    // lifetime and remove it before its content could be asserted.
+    // Round-3 gates the create behind the shared confirm dialog: settle it
+    // open and accept first. The pumps after the accept stay bounded —
+    // pumpAndSettle would consume the floating toast's entire lifetime and
+    // remove it before its content could be asserted.
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '新建邀请码'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('CODE-B'), findsOneWidget);
@@ -219,15 +223,21 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('v3-invite-next')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('v3-invite-create')));
-    // Bounded pumps: pumpAndSettle would consume the floating toast entire
-    // lifetime and remove it before its content could be asserted.
+    // Round-3 gates the create behind the shared confirm dialog: settle it
+    // open and accept first. The pumps after the accept stay bounded —
+    // pumpAndSettle would consume the floating toast's entire lifetime and
+    // remove it before its content could be asserted.
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '新建邀请码'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('创建权限不足'), findsOneWidget);
     expect(find.text('邀请码已创建'), findsNothing);
     expect(find.text('CODE-A'), findsOneWidget);
-    // Flush the floating toast timer before the tree is disposed.
-    await tester.pump(const Duration(seconds: 3));
+    // Flush the floating toast timer before the tree is disposed. The error
+    // toast tier lives 4s (round-3 toast durations) — 3s used to leak it and
+    // stall every test after this one.
+    await tester.pump(const Duration(seconds: 4));
   });
 
   testWidgets('create timeout releases the spinner with a retryable toast', (tester) async {
@@ -237,6 +247,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('v3-invite-next')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('v3-invite-create')));
+    // Round-3 gates the create behind the shared confirm dialog: settle it
+    // open and accept, then the spinner appears while the request runs.
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '新建邀请码'));
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     // The 20s page cap fires while the hanging request is still pending;
@@ -245,8 +259,9 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.text('CODE-A'), findsOneWidget);
     expect(find.text('创建请求超时，请稍后刷新查看是否成功'), findsOneWidget);
-    // Flush the floating toast timer before the tree is disposed.
-    await tester.pump(const Duration(seconds: 3));
+    // Flush the floating toast timer before the tree is disposed; the error
+    // tier lives 4s.
+    await tester.pump(const Duration(seconds: 4));
   });
 
   for (final mode in [ThemeMode.light, ThemeMode.dark]) {

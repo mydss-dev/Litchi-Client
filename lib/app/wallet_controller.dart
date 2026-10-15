@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../shared/models/api_models.dart';
+import '../shared/services/commission_validation_service.dart';
 import '../shared/services/panel_api.dart';
 
 /// Owns the wallet / commission domain: balances, withdraw config, invite
@@ -91,9 +92,13 @@ class WalletController extends ChangeNotifier {
 
   Future<String?> transferCommissionToBalance(double amount) async {
     if (_busy) return '操作仍在处理中，请稍候';
-    if (_withdrawable <= 0) return '暂无可划转佣金';
-    if (amount <= 0) return '请输入划转金额';
-    if (amount > _withdrawable) return '划转金额不能超过可提现佣金';
+    // One validation voice for every wallet entry point (N08): the UI-side
+    // precheck and the controller agree because they share the service.
+    final invalid = CommissionValidationService.validateTransfer(
+      amount: amount,
+      withdrawable: _withdrawable,
+    );
+    if (invalid != null) return invalid;
     _busy = true;
     notifyListeners();
     try {
@@ -114,18 +119,18 @@ class WalletController extends ChangeNotifier {
     required String method,
   }) async {
     if (_busy) return '操作仍在处理中，请稍候';
-    if (amount <= 0) return '请输入提现金额';
-    if (!withdrawEnabled) return '提现暂未开放';
-    if (amount > _withdrawable) return '提现金额不能超过可提现佣金';
-    if (_minWithdrawAmount > 0 && amount < _minWithdrawAmount) {
-      return '最低提现金额为 $_currencySymbol${_minWithdrawAmount.toStringAsFixed(2)}';
-    }
-    if (account.trim().isEmpty) return '请输入提现账户';
-    if (method.trim().isEmpty) return '请输入提现方式';
-    if (_withdrawMethods.isNotEmpty &&
-        !_withdrawMethods.contains(method.trim())) {
-      return '请选择可用的提现方式';
-    }
+    // Same shared validation voice as the transfer path (N08).
+    final invalid = CommissionValidationService.validateWithdraw(
+      amount: amount,
+      withdrawable: _withdrawable,
+      withdrawEnabled: withdrawEnabled,
+      minWithdrawAmount: _minWithdrawAmount,
+      currencySymbol: _currencySymbol,
+      account: account,
+      method: method,
+      withdrawMethods: _withdrawMethods,
+    );
+    if (invalid != null) return invalid;
     _busy = true;
     notifyListeners();
     try {
