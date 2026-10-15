@@ -897,22 +897,69 @@ Widget v3PopTransition(
   Widget child,
 ) {
   if (v3ReducedMotion(context)) return child;
-  final curved = CurvedAnimation(
-    parent: animation,
-    curve: V3Motion.spring,
-    reverseCurve: V3Motion.ease.flipped,
-  );
-  return FadeTransition(
-    opacity: curved,
-    child: SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, -0.035),
-        end: Offset.zero,
-      ).animate(curved),
-      child: ScaleTransition(
-        scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
-        child: child,
+  return _V3PopTransition(animation: animation, child: child);
+}
+
+/// The transition builder re-runs on every animation tick, so the curve used
+/// to be rebuilt per frame -- each [CurvedAnimation] pinning a listener on
+/// the route's animation that nothing ever removed (the round-3 audit's F05,
+/// second site). The widget owns one curve for the route's lifetime and
+/// disposes it when the route's element goes away.
+class _V3PopTransition extends StatefulWidget {
+  const _V3PopTransition({required this.animation, required this.child});
+
+  final Animation<double> animation;
+  final Widget child;
+
+  @override
+  State<_V3PopTransition> createState() => _V3PopTransitionState();
+}
+
+class _V3PopTransitionState extends State<_V3PopTransition> {
+  CurvedAnimation? _curved;
+
+  @override
+  void initState() {
+    super.initState();
+    _attach();
+  }
+
+  @override
+  void didUpdateWidget(_V3PopTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animation != oldWidget.animation) _attach();
+  }
+
+  void _attach() {
+    _curved?.dispose();
+    _curved = CurvedAnimation(
+      parent: widget.animation,
+      curve: V3Motion.spring,
+      reverseCurve: V3Motion.ease.flipped,
+    );
+  }
+
+  @override
+  void dispose() {
+    _curved?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final curved = _curved!;
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, -0.035),
+          end: Offset.zero,
+        ).animate(curved),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
+          child: widget.child,
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

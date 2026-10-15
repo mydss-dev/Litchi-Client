@@ -2,25 +2,47 @@
 // A subscription URL is plan evidence, not proof that it is active.
 import 'app_controller.dart';
 
+/// Machine-readable plan status for V3 UI: switch on this, not on the
+/// Chinese display strings, so copy tweaks cannot silently break status
+/// coloring and labels (round-3 audit N14).
+enum PlanStatus {
+  normal,
+  pendingSync,
+  expired,
+  banned,
+  quotaExhausted,
+  notSubscribed,
+}
+
+/// Machine-readable expiry representation for V3 UI: a timestamp/date is a
+/// hard date, 永久 is permanent, anything else means the panel has not told
+/// us yet.
+enum PlanExpiryKind { date, permanent, pendingSync, none }
+
 class PlanPresentation {
   const PlanPresentation({
     required this.name,
-    required this.status,
-    required this.expiry,
     required this.usable,
+    required this.statusKind,
+    required this.expiryKind,
+    required this.expiryDate,
   });
 
   final String name;
-  final String status;
-  final String expiry;
   final bool usable;
 
-  // 「正常」 is the normal state — repeating it on the rail chip and its
-  // tooltip is noise. Degraded states (到期/封禁/流量已用尽…) still
-  // append so the chip keeps its warning.
-  String get shortLabel => name == '暂无套餐' || status == '正常'
-      ? name
-      : '$name · $status';
+  /// Machine-readable plan status for V3 UI: switch on this, never on a
+  /// display string, so copy tweaks cannot silently break status coloring and
+  /// labels (round-3 audit N14). Localized labels/colors come from
+  /// lib/v3/ui/v3_plan_labels.dart.
+  final PlanStatus statusKind;
+
+  /// Machine-readable expiry representation for V3 UI.
+  final PlanExpiryKind expiryKind;
+
+  /// The parsed expiry instant when [expiryKind] is [PlanExpiryKind.date],
+  /// null otherwise.
+  final DateTime? expiryDate;
 
   /// Never let a cached label or a synthetic account status hide the actual
   /// title associated with the current plan ID. A mismatched user plan ID is
@@ -138,9 +160,10 @@ class PlanPresentation {
     if (!hasPlan) {
       return const PlanPresentation(
         name: '暂无套餐',
-        status: '未开通',
-        expiry: '尚未开通套餐',
         usable: false,
+        statusKind: PlanStatus.notSubscribed,
+        expiryKind: PlanExpiryKind.none,
+        expiryDate: null,
       );
     }
 
@@ -155,33 +178,61 @@ class PlanPresentation {
     // timestamp gives the exact expiry instant.
     final expiryInstant = timestampDate ??
         (parsed == null ? null : DateTime(parsed.year, parsed.month, parsed.day + 1));
-    final timestampLabel = timestampDate == null
-        ? null
-        : '${timestampDate.year}-${timestampDate.month.toString().padLeft(2, '0')}-${timestampDate.day.toString().padLeft(2, '0')}';
-    final expiry = timestampLabel != null
-        ? '到期 $timestampLabel'
-        : rawExpiry == '永久'
-            ? '永久有效'
-            : dateOnly && parsed != null
-                ? '到期 $rawExpiry'
-                : '有效期待同步';
+
+    // Machine-readable kinds only — localized display strings are assembled
+    // by lib/v3/ui/v3_plan_labels.dart from these (round-3 audit N14).
+    final PlanExpiryKind expiryKind =
+        timestampDate != null || (dateOnly && parsed != null)
+            ? PlanExpiryKind.date
+            : rawExpiry == '永久'
+                ? PlanExpiryKind.permanent
+                : PlanExpiryKind.pendingSync;
+    final PlanStatus statusKind = subscribeStatus == 2
+        ? PlanStatus.banned
+        : subscribeStatus == 1 ||
+                (expiryInstant != null && !effectiveNow.isBefore(expiryInstant))
+            ? PlanStatus.expired
+            : quotaGb > 0 && remainingGb <= 0
+                ? PlanStatus.quotaExhausted
+                : (expiryInstant != null || rawExpiry == '永久')
+                    ? PlanStatus.normal
+                    : PlanStatus.pendingSync;
 
     if (subscribeStatus == 2) {
-      return PlanPresentation(name: name, status: '封禁', expiry: expiry, usable: false);
+      return PlanPresentation(
+        name: name,
+        usable: false,
+        statusKind: PlanStatus.banned,
+        expiryKind: expiryKind,
+        expiryDate: expiryInstant,
+      );
     }
     if (subscribeStatus == 1 ||
         (expiryInstant != null && !effectiveNow.isBefore(expiryInstant))) {
-      return PlanPresentation(name: name, status: '到期', expiry: expiry, usable: false);
+      return PlanPresentation(
+        name: name,
+        usable: false,
+        statusKind: PlanStatus.expired,
+        expiryKind: expiryKind,
+        expiryDate: expiryInstant,
+      );
     }
     if (quotaGb > 0 && remainingGb <= 0) {
-      return PlanPresentation(name: name, status: '流量已用尽', expiry: expiry, usable: false);
+      return PlanPresentation(
+        name: name,
+        usable: false,
+        statusKind: PlanStatus.quotaExhausted,
+        expiryKind: expiryKind,
+        expiryDate: expiryInstant,
+      );
     }
     final validityKnown = expiryInstant != null || rawExpiry == '永久';
     return PlanPresentation(
       name: name,
-      status: validityKnown ? '正常' : '状态待同步',
-      expiry: expiry,
       usable: validityKnown,
+      statusKind: statusKind,
+      expiryKind: expiryKind,
+      expiryDate: expiryInstant,
     );
   }
 }

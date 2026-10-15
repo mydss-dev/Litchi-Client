@@ -6,7 +6,6 @@ import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../../shared/services/api_client.dart';
 import '../commerce/v3_payment_flow.dart';
-import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
@@ -42,6 +41,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
   static const _pageSize = 10;
   bool _initialized = false;
   bool _loading = true;
+  bool _loadInFlight = false;
   String? _error;
   String? _busyTradeNo;
   List<RemoteOrder> _orders = const [];
@@ -59,6 +59,10 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
   void refresh() => unawaited(_load());
 
   Future<void> _load() async {
+    // Single-flight: rapid refresh taps must not fire concurrent fetches whose
+    // completion order is nondeterministic (round-3 audit F23).
+    if (_loadInFlight) return;
+    _loadInFlight = true;
     if (mounted) {
       setState(() { _loading = true; _error = null; });
     }
@@ -72,8 +76,10 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         // Setup stage: a neutral empty ledger, not a failure to retry.
         setState(() { _orders = const []; _loading = false; });
       } else {
-        setState(() { _loading = false; _error = v3ErrorMessage(error); });
+        setState(() { _loading = false; _error = v3UserFacingError(context, error); });
       }
+    } finally {
+      _loadInFlight = false;
     }
   }
 
@@ -94,20 +100,28 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
 
   Future<void> _cancel(RemoteOrder order) async {
     if (_busyTradeNo != null) return;
-    final confirmed = await showGeneralDialog<bool>(context: context,
-      transitionBuilder: v3PopTransition,
-      transitionDuration: V3Motion.medium,
-      barrierDismissible: true,
-      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: Colors.black.withValues(alpha: .48),
-      pageBuilder: (context, _, _) => _CancelOrderDialog(order: order));
-    if (confirmed != true || !mounted) return;
+    // The shared destructive guard: identical geometry and danger styling to
+    // every other confirm, with "keep order" spelled out so it cannot read as
+    // dismissing the dialog (round-3 audit F16).
+    final confirmed = await showV3ConfirmDialog(context,
+      title: v3Copy(context, zh: '取消这个订单？',
+        en: 'Cancel this order?', tw: '取消這筆訂單？'),
+      body: v3Copy(context,
+        zh: '订单 ${order.tradeNo} 将被取消。取消后如果还需要该套餐，需要重新创建订单。',
+        en: 'Order ${order.tradeNo} will be cancelled. Create another order if you still want the plan.',
+        tw: '訂單 ${order.tradeNo} 將被取消。如仍需此方案，請重新建立訂單。'),
+      confirmLabel: v3Copy(context, zh: '取消订单',
+        en: 'Cancel order', tw: '取消訂單'),
+      destructive: true,
+      cancelLabel: v3Copy(context, zh: '保留订单',
+        en: 'Keep order', tw: '保留訂單'));
+    if (!confirmed || !mounted) return;
     setState(() => _busyTradeNo = order.tradeNo);
     try {
       await AppScope.read(context).api.cancelOrder(order.tradeNo);
       if (mounted) await _load();
     } catch (error) {
-      if (mounted) _toast(v3ErrorMessage(error));
+      if (mounted) _toast(v3UserFacingError(context, error));
     } finally {
       if (mounted) setState(() => _busyTradeNo = null);
     }
@@ -355,7 +369,7 @@ class _OrderRow extends StatelessWidget {
           const SizedBox(height: 7),
           Text('${order.tradeNo} · ${order.dateDisplay}',
             maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: p.inkMuted, fontSize: 10,
+            style: TextStyle(color: p.inkMuted, fontSize: 11,
               fontFeatures: const [FontFeature.tabularFigures()])),
           const SizedBox(height: 8),
           Text(order.amountDisplay(currencySymbol),
@@ -403,7 +417,7 @@ class _OrderRow extends StatelessWidget {
             const SizedBox(height: 4),
             Text('${order.tradeNo} · ${order.dateDisplay}',
               maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: p.inkMuted, fontSize: 10,
+              style: TextStyle(color: p.inkMuted, fontSize: 11,
                 fontFeatures: const [FontFeature.tabularFigures()])),
           ])),
         const SizedBox(width: 12),
@@ -453,32 +467,6 @@ class _OrderRow extends StatelessWidget {
           ],
         ],
       ]));
-  }
-}
-
-class _CancelOrderDialog extends StatelessWidget {
-  const _CancelOrderDialog({required this.order});
-  final RemoteOrder order;
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return AlertDialog(backgroundColor: p.surface,
-      title: Text(v3Copy(context, zh: '取消这个订单？',
-        en: 'Cancel this order?', tw: '取消這筆訂單？')),
-      content: Text(v3Copy(context,
-        zh: '订单 ${order.tradeNo} 将被取消。取消后如果还需要该套餐，需要重新创建订单。',
-        en: 'Order ${order.tradeNo} will be cancelled. Create another order if you still want the plan.',
-        tw: '訂單 ${order.tradeNo} 將被取消。如仍需此方案，請重新建立訂單。')),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false),
-          child: Text(v3Copy(context, zh: '保留订单',
-            en: 'Keep order', tw: '保留訂單'))),
-        FilledButton(style: FilledButton.styleFrom(backgroundColor: p.danger,
-            foregroundColor: p.onDanger),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(v3Copy(context, zh: '确认取消',
-            en: 'Confirm cancellation', tw: '確認取消'))),
-      ]);
   }
 }
 

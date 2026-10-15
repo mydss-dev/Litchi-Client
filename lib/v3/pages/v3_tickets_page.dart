@@ -225,7 +225,7 @@ class _TicketRow extends StatelessWidget {
     if (!wide) {
       return V3Pressable(borderRadius: BorderRadius.circular(V3Radius.card), onTap: onTap,
         hoverTint: p.ink.withValues(alpha: 0.08),
-        child: SizedBox(height: 102,
+        child: SizedBox(height: kV3TicketRowHeight,
           child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Column(mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -251,7 +251,7 @@ class _TicketRow extends StatelessWidget {
                   Expanded(child: Text('#${ticket.id} · ${ticket.dateDisplay}',
                     maxLines: 1, overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.end,
-                    style: TextStyle(color: p.inkMuted, fontSize: 10,
+                    style: TextStyle(color: p.inkMuted, fontSize: 11,
                       fontFeatures: const [FontFeature.tabularFigures()]))),
                 ]),
               ]))));
@@ -278,7 +278,7 @@ class _TicketRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text('#${ticket.id} · ${ticket.dateDisplay}', maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 10,
+                  style: TextStyle(color: p.inkMuted, fontSize: 11,
                     fontFeatures: const [FontFeature.tabularFigures()])),
               ])),
             const SizedBox(width: 12),
@@ -346,7 +346,7 @@ class _NewTicketDialogState extends State<_NewTicketDialog> {
       }
       // Async result errors are transient toasts; only field validation
       // stays inline (M3).
-      V3Toast.showInOverlay(overlay, v3ErrorMessage(error),
+      V3Toast.showInOverlay(overlay, v3UserFacingError(context, error),
         type: V3ToastType.error);
       setState(() => _submitting = false);
     }

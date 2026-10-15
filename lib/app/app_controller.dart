@@ -302,6 +302,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   bool get hasAccountSummary => _hasAccountSummary;
   bool get hasConfirmedNoPlan => _confirmedNoPlan && !hasPlan;
   String get currencySymbol => _wallet.currencySymbol;
+  bool get walletBusy => _wallet.walletBusy;
   String? get startupMessage => _startupMessage;
   void clearStartupMessage() => _startupMessage = null;
   PanelApi get api => _api;
@@ -313,6 +314,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   String? get ticketsError => _ticketsError;
   List<NoticeModel> get notices => _notices.notices;
   bool get noticesLoading => _notices.isLoading;
+  String? get noticesError => _noticesError;
   bool get hasUnreadNotice => _notices.hasUnreadNotice;
   List<NoticeModel> get pendingNoticePopups => _notices.pendingPopups;
 
@@ -834,6 +836,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _ticketsLoaded = false;
     _ticketsLoading = false;
     _ticketsError = null;
+    _noticesError = null;
     await NodeCacheService.clear();
     await NoticeCacheService.clear();
     await _accountSummarySave;
@@ -869,6 +872,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _ticketsLoaded = false;
       _ticketsLoading = false;
       _ticketsError = null;
+      _noticesError = null;
       await NodeCacheService.clear();
       await _accountSummarySave;
       await AccountSummaryCache.clear();
@@ -939,19 +943,34 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       final notices = await _api.getNotices();
       if (!_isSessionCurrent(sessionEpoch)) return;
       _notices.setNotices(notices);
+      _noticesError = null;
       unawaited(_notices.saveCache());
     } catch (e) {
       if (e is! ApiNotConfiguredException) {
         SecureLogger.warn('AppController notices load failed', e);
       }
+      _noticesError = e.toString()
+          .replaceFirst('ApiException: ', '')
+          .replaceFirst('Exception: ', '');
       _notices.setLoading(false);
     }
   }
 
   void cacheAccountDetails(RemoteUser user) => _account.setRemoteUser(user);
 
+  /// Single-flight for the full data refresh: pull-to-refresh, header buttons
+  /// and onPaid callbacks all funnel here. Overlapping runs would burst the
+  /// same ~10 endpoints twice, let a slow stale response overwrite a fresh
+  /// one, and erase the first run's error banner mid-flight (round-3 audit).
+  bool _dataRefreshInFlight = false;
+  String? _noticesError;
+
+  /// Surfaced so the notice lane can distinguish "no notices" from "the
+  /// notices request failed" instead of silently disappearing (round-3 audit).
   Future<void> refreshData() async {
+    if (_dataRefreshInFlight) return;
     final sessionEpoch = _sessionEpoch;
+    _dataRefreshInFlight = true;
     _dataLoadError = null;
     notifyListeners();
     try {
@@ -975,6 +994,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       } else {
         _dataLoadError = SessionFailurePolicy.syncError(e);
       }
+    } finally {
+      _dataRefreshInFlight = false;
     }
     notifyListeners();
   }

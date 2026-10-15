@@ -40,9 +40,9 @@ void main() {
     addTearDown(controller.disposeVisual);
     final plan = PlanPresentation.fromController(controller);
     expect(plan.name, 'Real backend plan');
-    // The active plan's short label is the bare resolved name — the catalog
-    // title won over the cached and remote titles.
-    expect(plan.shortLabel, 'Real backend plan');
+    // The fixture describes an active plan, so the V3 short label renders
+    // this bare name (v3PlanShortLabel) without a status suffix.
+    expect(plan.statusKind, PlanStatus.normal);
   });
 
   test('a synthetic expired label cannot replace a real API plan name', () {

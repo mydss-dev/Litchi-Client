@@ -225,12 +225,62 @@ class _V3NoticeBarState extends State<V3NoticeBar>
     V3Toast.showInOverlay(overlay, message, type: type);
   }
 
+  /// The compact failure lane: same visual language as the notice lane
+  /// (icon tile, one-line message, action button) so the dashboard keeps its
+  /// silhouette when fetches fail. The message is quiet on purpose — the
+  /// lane is announcements, not connection state — and the retry rides the
+  /// pink link role.
+  Widget _buildErrorLane(V3Palette p) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
+          decoration: BoxDecoration(
+            color: p.surfaceRaised,
+            borderRadius: BorderRadius.circular(V3Radius.card),
+            border: Border.all(color: p.hairline)),
+          child: Row(children: [
+            Container(width: 28, height: 28, alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: p.ink.withValues(alpha: .06),
+                borderRadius: BorderRadius.circular(V3Radius.control)),
+              child: Icon(Icons.cloud_off_rounded, size: 15,
+                color: p.inkMuted)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(
+              v3Copy(context,
+                zh: '公告加载失败',
+                en: 'Notices failed to load',
+                tw: '公告載入失敗'),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.inkMuted, fontSize: 12))),
+            TextButton(
+              onPressed: () => unawaited(widget.controller.refreshData()),
+              style: TextButton.styleFrom(foregroundColor: p.lycheeInk,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: const TextStyle(fontSize: 12,
+                  fontWeight: FontWeight.w700)),
+              child: Text(v3Copy(context,
+                zh: '重试', en: 'Retry', tw: '重試'))),
+          ]))));
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final notices = _notices;
     final update = _update;
-    if (notices.isEmpty && update == null) return const SizedBox.shrink();
+    if (notices.isEmpty && update == null) {
+      // A failed fetch used to vanish silently — the lane showed nothing,
+      // which read as "no news" exactly when the opposite was true. Surface
+      // the failure on the same lane with a one-tap retry.
+      if (widget.controller.noticesError != null) return _buildErrorLane(p);
+      return const SizedBox.shrink();
+    }
     final safeIndex = _index.clamp(0, _entryCount - 1);
     final isUpdatePage = update != null && safeIndex < _updateOffset;
     final noticeIndex = safeIndex - _updateOffset;
@@ -349,7 +399,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                   ClipRRect(borderRadius: BorderRadius.circular(2),
                     child: LinearProgressIndicator(
                       value: _total > 0 ? _downloadProgress : null,
-                      minHeight: 3, color: p.successInk,
+                      minHeight: 3, color: p.success,
                       backgroundColor: p.ink.withValues(alpha: .08))),
                 ],
               ]))),
@@ -361,19 +411,25 @@ class _V3NoticeBarState extends State<V3NoticeBar>
 
 class _NavButton extends StatelessWidget {
   const _NavButton({required this.icon, required this.tooltip,
-    required this.onPressed});
+    required this.onPressed, this.size = 32, this.iconSize = 15});
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
+
+  /// The lane keeps its slim 32px pager (mouse-first, hidden under 520dp);
+  /// the reader dialog's pager meets the 44px touch target, matching the
+  /// carousel's fixed arrows.
+  final double size;
+  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return IconButton(
       tooltip: tooltip, onPressed: onPressed, icon: Icon(icon),
-      iconSize: 15, padding: EdgeInsets.zero,
+      iconSize: iconSize, padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      constraints: BoxConstraints(minWidth: size, minHeight: size),
       style: IconButton.styleFrom(foregroundColor: p.ink,
         backgroundColor: p.surfaceRaised, side: BorderSide(color: p.line),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.control))));
@@ -457,7 +513,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                     ? v3Copy(context, zh: '公告', en: 'Notice', tw: '公告')
                     : notice.title,
                     maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.ink, fontSize: 17,
+                    style: TextStyle(color: p.ink, fontSize: 16,
                       fontWeight: FontWeight.w800, height: 1.3,
                       letterSpacing: -.2)))),
                 if (!widget.mustRead) IconButton(
@@ -498,6 +554,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                 _NavButton(icon: Icons.chevron_left_rounded,
                   tooltip: v3Copy(context, zh: '上一条公告',
                     en: 'Previous notice', tw: '上一則公告'),
+                  size: 44, iconSize: 20,
                   onPressed: _index > 0
                     ? () => setState(() => _index--) : null),
                 SizedBox(width: 46, child: Text(
@@ -508,6 +565,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                 _NavButton(icon: Icons.chevron_right_rounded,
                   tooltip: v3Copy(context, zh: '下一条公告',
                     en: 'Next notice', tw: '下一則公告'),
+                  size: 44, iconSize: 20,
                   onPressed: _index < widget.notices.length - 1
                     ? () => setState(() => _index++) : null),
               ],

@@ -3,13 +3,16 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
 /// Short-lived feedback for user actions, not server announcements.
 ///
 /// Successful actions confirm with the semantic green (the brand pink stays
 /// reserved for CTA/selected/link); errors and warnings retain their distinct
-/// icons and semantic colors, and info reads as a quiet grey.
+/// icons and semantic colors, and info reads as a quiet grey. A toast can be
+/// tapped away at any time, and errors linger longer (M3 snackbar guidance:
+/// leave time to read) before auto-dismissing.
 enum V3ToastType { success, error, warning, info }
 
 class V3Toast {
@@ -17,13 +20,21 @@ class V3Toast {
 
   static OverlayEntry? _current;
   static Timer? _timer;
+
+  /// Auto-dismiss window for success/info/warning toasts.
   static const defaultDuration = Duration(milliseconds: 2500);
+
+  /// Errors read longer before auto-dismissing (M3 snackbar guidance).
+  static const errorDuration = Duration(milliseconds: 4000);
+
+  /// Sentinel duration meaning "pick the window from [V3ToastType]".
+  static const _autoDuration = Duration.zero;
 
   static void show(
     BuildContext context,
     String message, {
     V3ToastType type = V3ToastType.info,
-    Duration duration = defaultDuration,
+    Duration duration = _autoDuration,
   }) {
     showInOverlay(
       Overlay.of(context, rootOverlay: true),
@@ -39,20 +50,28 @@ class V3Toast {
     OverlayState overlay,
     String message, {
     V3ToastType type = V3ToastType.info,
-    Duration duration = defaultDuration,
+    Duration duration = _autoDuration,
   }) {
     _clear();
+    final effective = duration == _autoDuration ? _durationFor(type) : duration;
     final entry = OverlayEntry(
       builder: (_) => _V3ToastView(
         message: message,
         type: type,
-        duration: duration,
+        duration: effective,
       ),
     );
     _current = entry;
     overlay.insert(entry);
-    _timer = Timer(duration, _clear);
+    _timer = Timer(effective, _clear);
   }
+
+  static Duration _durationFor(V3ToastType type) =>
+      type == V3ToastType.error ? errorDuration : defaultDuration;
+
+  /// Removes the visible toast immediately; the auto-dismiss timer dies with
+  /// it. The view's tap-to-dismiss lands here too.
+  static void dismiss() => _clear();
 
   static void _clear() {
     _timer?.cancel();
@@ -91,7 +110,7 @@ class _V3ToastViewState extends State<_V3ToastView>
     super.initState();
     _entryController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 220),
+      duration: V3Motion.fast,
     );
     _fade = CurvedAnimation(
       parent: _entryController,
@@ -129,80 +148,86 @@ class _V3ToastViewState extends State<_V3ToastView>
     final platform = Theme.of(context).platform;
     final mobile = !kIsWeb &&
         (platform == TargetPlatform.android || platform == TargetPlatform.iOS);
+    // One semantics node: the container carries the label so the message is
+    // announced exactly once, and the tap-to-dismiss gesture merges into it
+    // as a tap action. The visible Text is excluded so it never doubles the
+    // announcement.
     final card = Semantics(
+      container: true,
       liveRegion: true,
       label: widget.message,
-      child: Material(
-        color: Colors.transparent,
-        child: IntrinsicWidth(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 160, maxWidth: 360),
-            child: Container(
-              decoration: BoxDecoration(
-                color: p.surface,
-                borderRadius: BorderRadius.circular(V3Radius.field),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: .16),
-                    blurRadius: 20,
-                    offset: const Offset(0, 7),
-                  ),
-                ],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: accent.withValues(alpha: .12),
-                            borderRadius: BorderRadius.circular(V3Radius.control),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: V3Toast.dismiss,
+        child: Material(
+          color: Colors.transparent,
+          child: IntrinsicWidth(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 160, maxWidth: 360),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: p.surface,
+                  borderRadius: BorderRadius.circular(V3Radius.field),
+                  boxShadow: p.shadows,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: .12),
+                              borderRadius:
+                                  BorderRadius.circular(V3Radius.control),
+                            ),
+                            child: Icon(icon, size: 16, color: accent),
                           ),
-                          child: Icon(icon, size: 16, color: accent),
-                        ),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            widget.message,
-                            style: TextStyle(
-                              color: p.ink,
-                              fontSize: 13,
-                              height: 1.4,
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: ExcludeSemantics(
+                              child: Text(
+                                widget.message,
+                                style: TextStyle(
+                                  color: p.ink,
+                                  fontSize: 13,
+                                  height: 1.4,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  AnimatedBuilder(
-                    animation: _progressController,
-                    builder: (context, _) => LinearProgressIndicator(
-                      value: _progressController.value,
-                      minHeight: 3,
-                      backgroundColor: Colors.transparent,
-                      color: accent,
+                    AnimatedBuilder(
+                      animation: _progressController,
+                      builder: (context, _) => LinearProgressIndicator(
+                        value: _progressController.value,
+                        minHeight: 3,
+                        backgroundColor: Colors.transparent,
+                        color: accent,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
     );
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final reduceMotion = v3ReducedMotion(context);
     return Align(
       alignment: Alignment.topCenter,
       child: SafeArea(
@@ -220,11 +245,3 @@ class _V3ToastViewState extends State<_V3ToastView>
     );
   }
 }
-
-/// Backend exceptions arrive as `ApiException: ...`/`Exception: ...` strings;
-/// strip the wrappers so toast and inline error surfaces show the backend
-/// message alone. ApiException keeps its name so support tickets stay
-/// greppable.
-String v3ErrorMessage(Object error) => error.toString()
-    .replaceFirst('ApiException: ', '')
-    .replaceFirst('Exception: ', '');

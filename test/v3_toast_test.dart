@@ -73,7 +73,7 @@ void main() {
       V3Palette.dark.danger,
     );
 
-    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pump(V3Toast.errorDuration);
     await tester.pump();
     expect(find.text('第二次'), findsNothing);
   });

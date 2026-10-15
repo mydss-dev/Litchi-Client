@@ -24,8 +24,7 @@ class WalletController extends ChangeNotifier {
   String _currencySymbol = '¥';
 
   /// Set while a transfer / withdraw API call is in flight. Repeat calls
-  /// return early instead of double-spending against the stale balance, and
-  /// the wallet page disables its entry buttons while it is up.
+  /// return early instead of double-spending against the stale balance.
   bool _busy = false;
 
   List<RemoteInviteRecord> get inviteRecords => _inviteRecords;

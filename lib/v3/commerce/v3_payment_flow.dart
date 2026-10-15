@@ -9,8 +9,8 @@ import '../../shared/services/url_opener.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
-import '../ui/v3_toast.dart';
 
 /// The one payment dialog. Every entry point that can take money — a plan
 /// purchase, a wallet top-up, an unpaid order — goes through here.
@@ -158,7 +158,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = v3ErrorMessage(error);
+        _error = v3UserFacingError(context, error);
       });
     }
   }
@@ -193,7 +193,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
       if (!mounted) return;
       setState(() {
         _checkingOut = false;
-        _error = v3ErrorMessage(error);
+        _error = v3UserFacingError(context, error);
       });
     }
   }
@@ -219,7 +219,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
         );
       }
     } catch (error) {
-      if (mounted) setState(() => _error = v3ErrorMessage(error));
+      if (mounted) setState(() => _error = v3UserFacingError(context, error));
     } finally {
       if (mounted) setState(() => _checkingStatus = false);
     }
@@ -242,7 +242,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
       child: Container(
         width: 520,
         constraints: const BoxConstraints(maxHeight: 680),
-        padding: const EdgeInsets.all(26),
+        padding: const EdgeInsets.all(V3Layout.dialogPadding),
         decoration: BoxDecoration(
           color: p.surface,
           borderRadius: BorderRadius.circular(V3Radius.panel),
@@ -498,7 +498,14 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                 onPressed: _paymentUrl == null
                     ? (_loadFailed
                           ? () {
-                              setState(() => _error = null);
+                              // Retry is a real load, not an instant flip
+                              // back to the CTA: the spinner branch shows
+                              // until _load settles, so the button cannot be
+                              // double-tapped and failure re-arms the retry.
+                              setState(() {
+                                _error = null;
+                                _loading = true;
+                              });
                               unawaited(_load());
                             }
                           : (_checkingOut ? null : _checkout))

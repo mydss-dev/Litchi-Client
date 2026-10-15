@@ -8,7 +8,19 @@ import 'package:litchi_client/shared/services/connectivity_check_service.dart';
 import 'package:litchi_client/shared/services/panel_api.dart';
 
 class VisualV3Controller extends AppController {
-  VisualV3Controller(this.visualPage) {
+  /// Three-state knobs (round-3 audit N11): the goldens keep every knob on
+  /// its loaded default, while the state-chain tests open a surface on a
+  /// skeleton or a named failure instead. `initialLoading`/`loadError` drive
+  /// the shared shop/nodes/node-picker chain, the ticket pair drives the
+  /// tickets page's own loaded/error state, and the two counters record which
+  /// refresh a retry tap actually reached.
+  VisualV3Controller(
+    this.visualPage, {
+    this.initialLoading = false,
+    this.loadError,
+    this.ticketsLoaded = true,
+    this.ticketsError,
+  }) {
     // The dashboard strip auto-probes as soon as it mounts connected. Give
     // every visual fixture a deterministic override so tests never touch the
     // real network; a test can still install its own afterwards.
@@ -16,6 +28,24 @@ class VisualV3Controller extends AppController {
   }
 
   final AppPage visualPage;
+
+  /// Opens a page on its skeleton branch ([AppController.isInitialLoading]).
+  final bool initialLoading;
+
+  /// Opens a page on its failure branch ([AppController.dataLoadError]).
+  final String? loadError;
+
+  /// Tickets-page knobs; their implicit getters keep overriding the
+  /// controller's `ticketsLoaded` / `ticketsError`.
+  @override
+  final bool ticketsLoaded;
+  @override
+  final String? ticketsError;
+
+  /// Records which refresh a retry tap actually reached.
+  int refreshDataCalls = 0;
+  int refreshTicketsCalls = 0;
+
   final _VisualPanelApi _visualApi = _VisualPanelApi();
   final ValueNotifier<int> _up = ValueNotifier<int>(3 * 1024 * 1024);
   final ValueNotifier<int> _down = ValueNotifier<int>(12 * 1024 * 1024);
@@ -175,9 +205,12 @@ class VisualV3Controller extends AppController {
   // The real method fans out to every panel service; in a widget test that
   // would be a network call. Nothing the visual fixtures render depends on the
   // refreshed data, so the flows that await it (gift-card redeem, Telegram
-  // bind/unbind) complete deterministically instead.
+  // bind/unbind) complete deterministically instead. The counter lets a
+  // state-chain test tell a retry tap apart from the initial load.
   @override
-  Future<void> refreshData() async {}
+  Future<void> refreshData() async {
+    refreshDataCalls++;
+  }
   @override
   TrafficModel get traffic => _traffic;
   @override
@@ -250,7 +283,9 @@ class VisualV3Controller extends AppController {
   @override
   bool get hasAccountSummary => true;
   @override
-  bool get isInitialLoading => false;
+  bool get isInitialLoading => initialLoading;
+  @override
+  String? get dataLoadError => loadError;
   @override
   double get todayTrafficGb => 2.48;
   @override
@@ -320,15 +355,16 @@ class VisualV3Controller extends AppController {
   List<String> get withdrawMethods => const ['支付宝', 'USDT'];
   @override
   double get minWithdrawAmount => 20;
-  // Tickets render as real rows in goldens: the list and its loaded flag are
-  // overridden, and the mount-time refresh is a no-op so the fixture state is
-  // fully synchronous.
+  // Tickets render as real rows in goldens: the list is overridden, the
+  // loaded/error flags come from the knob fields (their implicit getters keep
+  // overriding the controller), and the mount-time refresh only counts its
+  // calls so the fixture state stays fully synchronous.
   @override
   List<TicketModel> get tickets => _tickets;
   @override
-  bool get ticketsLoaded => true;
-  @override
-  Future<void> refreshTickets() async {}
+  Future<void> refreshTickets() async {
+    refreshTicketsCalls++;
+  }
 
   static const _tickets = <TicketModel>[
     TicketModel(

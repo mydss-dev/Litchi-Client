@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
+import '../../shared/services/app_error_message_service.dart';
 
 /// The application supplies localization delegates. Some standalone widget
 /// previews omit them, so those previews use the same Simplified Chinese
@@ -24,3 +25,9 @@ String v3Copy(BuildContext context, {
   if (locale.toLowerCase().contains('tw')) return tw;
   return zh;
 }
+
+/// Normalize any thrown error into the shared user-facing message: the same
+/// mapping the rest of the app uses, so a V3 surface can never show a raw
+/// exception string (round-3 audit N13).
+String v3UserFacingError(BuildContext context, Object error) =>
+    AppErrorMessageService.userFacing(error, v3Localizations(context));

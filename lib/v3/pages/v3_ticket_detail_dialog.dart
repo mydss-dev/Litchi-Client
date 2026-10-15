@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../shared/models/api_models.dart';
+import '../../shared/services/app_error_message_service.dart';
 import '../../shared/services/panel_api.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_empty_state.dart';
@@ -45,15 +46,18 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
       setState(() { _ticket = ticket; _loading = false; _error = null; });
     } catch (error) {
       if (!mounted) return;
-      setState(() { _loading = false; _error = v3ErrorMessage(error); });
+      setState(() { _loading = false; _error = v3UserFacingError(context, error); });
     }
   }
 
   Future<void> _send() async {
     final text = _reply.text.trim();
     if (text.isEmpty || _sending || _closing) return;
-    // Captured before the await so the toast outlives the dialog route.
+    // Captured before the await so the toast outlives the dialog route; the
+    // localization is captured with it so the shared user-facing mapping does
+    // not depend on a context a dismissal may have left defunct.
     final overlay = Overlay.of(context, rootOverlay: true);
+    final l10n = v3Localizations(context);
     setState(() => _sending = true);
     try {
       await widget.api.replyTicket(ticketId: widget.summary.id, message: text);
@@ -63,7 +67,8 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
     } catch (error) {
       // Async result errors are transient toasts; only field validation stays
       // inline (M3). _error is reserved for the initial load.
-      V3Toast.showInOverlay(overlay, v3ErrorMessage(error),
+      V3Toast.showInOverlay(overlay,
+        AppErrorMessageService.userFacing(error, l10n),
         type: V3ToastType.error);
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -86,13 +91,15 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
       destructive: true);
     if (!confirmed || !mounted) return;
     final overlay = Overlay.of(context, rootOverlay: true);
+    final l10n = v3Localizations(context);
     setState(() => _closing = true);
     try {
       await widget.api.closeTicket(widget.summary.id);
       await _load();
       await widget.onChanged();
     } catch (error) {
-      V3Toast.showInOverlay(overlay, v3ErrorMessage(error),
+      V3Toast.showInOverlay(overlay,
+        AppErrorMessageService.userFacing(error, l10n),
         type: V3ToastType.error);
     } finally {
       if (mounted) setState(() => _closing = false);

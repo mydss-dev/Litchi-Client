@@ -7,7 +7,6 @@ import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
-import '../ui/v3_toast.dart';
 import 'v3_payment_flow.dart';
 
 /// The one order-confirm dialog, shared by the shop (buy a plan) and the
@@ -115,7 +114,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
         }
       });
     } catch (error) {
-      if (mounted) setState(() => _error = v3ErrorMessage(error));
+      if (mounted) setState(() => _error = v3UserFacingError(context, error));
     } finally {
       if (mounted) setState(() => _checkingCoupon = false);
     }
@@ -143,7 +142,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
         onViewOrders: widget.onViewOrders,
       );
     } catch (error) {
-      if (mounted) setState(() { _error = v3ErrorMessage(error); _submitting = false; });
+      if (mounted) setState(() { _error = v3UserFacingError(context, error); _submitting = false; });
     }
   }
 
@@ -158,10 +157,15 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
         .clamp(0.0, 520.0).toDouble();
     final availableWidth = (media.size.width - 24)
         .clamp(0.0, 440.0).toDouble();
-    return Dialog(
+    // While order creation is in flight the dialog is not dismissible: a
+    // silent close (barrier tap, ESC) would orphan the created order.
+    // PopScope covers the dismissible barrier and ESC; the close button is
+    // disabled for the same window below, and the success-path pop below is
+    // a direct Navigator.pop, which bypasses PopScope by design.
+    return PopScope(canPop: !_submitting, child: Dialog(
       backgroundColor: p.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.card)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.panel)),
       child: SizedBox(
         key: kV3PurchaseDialogBodyKey,
         width: availableWidth,
@@ -283,7 +287,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
           ]),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -343,7 +347,7 @@ class _AmountRow extends StatelessWidget {
       const SizedBox(width: 10),
       Expanded(child: Text(value, textAlign: TextAlign.end, maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: p.ink, fontSize: strong ? 21 : 12,
+        style: TextStyle(color: p.ink, fontSize: strong ? 22 : 12,
           fontWeight: strong ? FontWeight.w900 : FontWeight.w700))),
     ]);
   }

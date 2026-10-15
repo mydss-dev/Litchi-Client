@@ -9,6 +9,7 @@ import '../../shared/services/registration_email_policy.dart';
 import '../../shared/services/secure_logger.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_dropdown.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_toast.dart';
 
@@ -96,7 +97,7 @@ class _AuthBrandPanel extends StatelessWidget {
                   zh: '选择线路、查看流量、确认连接状态，都在一个界面里完成。',
                   en: 'Choose a route, check usage and see connection status in one place.',
                   tw: '選擇線路、查看流量、確認連線狀態，都能在同一介面完成。'),
-                  style: TextStyle(color: p.ink.withValues(alpha: .62),
+                  style: TextStyle(color: p.inkMuted,
                     fontSize: 13, height: 1.55)),
               ]))),
         Positioned(right: -34, bottom: -46,
@@ -187,7 +188,7 @@ class _LoginFormState extends State<_LoginForm> {
           }
         });
     } catch (error) {
-      if (mounted) setState(() => _error = _authError(error));
+      if (mounted) setState(() => _error = v3UserFacingError(context, error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -369,7 +370,7 @@ class _RegisterFormState extends State<_RegisterForm> {
         _startCooldown();
       }
     } catch (error) {
-      if (mounted) setState(() => _error = _authError(error));
+      if (mounted) setState(() => _error = v3UserFacingError(context, error));
     } finally {
       if (mounted) setState(() => _sendingCode = false);
     }
@@ -435,7 +436,7 @@ class _RegisterFormState extends State<_RegisterForm> {
         emailCode: config.emailVerifyRequired && emailCode.isNotEmpty
             ? emailCode : null);
     } catch (error) {
-      if (mounted) setState(() => _error = _authError(error));
+      if (mounted) setState(() => _error = v3UserFacingError(context, error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -477,20 +478,25 @@ class _RegisterFormState extends State<_RegisterForm> {
                 style: TextStyle(color: p.inkMuted, fontSize: 11,
                   fontWeight: FontWeight.w800, letterSpacing: 1.5)),
               const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(color: p.surfaceRaised,
-                  borderRadius: BorderRadius.circular(V3Radius.field),
-                  border: Border.all(color: p.hairline)),
-                child: DropdownButtonHideUnderline(child: DropdownButton<String>(
-                  isExpanded: true,
-                  value: selectedDomain,
-                  items: domains.map((domain) => DropdownMenuItem<String>(
-                    value: domain, child: Text(domain,
-                      maxLines: 1, overflow: TextOverflow.ellipsis))).toList(),
-                  onChanged: _codeSent ? null : (value) {
-                    if (value != null) setState(() => _selectedDomain = value);
-                  },
-                ))),
+              LayoutBuilder(builder: (context, box) {
+                // The V3 trigger draws its own field chrome; `_codeSent` locks
+                // the choice the same way the old `onChanged: null` did — no
+                // pointer and no keyboard (Tab/Enter) reach, at reduced ink.
+                return ExcludeFocus(
+                  excluding: _codeSent,
+                  child: IgnorePointer(
+                    ignoring: _codeSent,
+                    child: Opacity(
+                      opacity: _codeSent ? 0.55 : 1,
+                      child: V3Dropdown<String>(
+                        value: selectedDomain,
+                        items: domains,
+                        label: (value) => value,
+                        onChanged: (value) =>
+                            setState(() => _selectedDomain = value),
+                        width: box.maxWidth,
+                      ))));
+              }),
             ])),
         ])
       else
@@ -651,7 +657,7 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
       }
     } catch (error) {
       if (mounted) {
-        setState(() => _error = _authError(error));
+        setState(() => _error = v3UserFacingError(context, error));
       }
     } finally {
       if (mounted) setState(() => _sendingCode = false);
@@ -688,7 +694,7 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
       AppScope.read(context).goToAuthScreen(AuthScreen.login);
       V3Toast.showInOverlay(overlay, message, type: V3ToastType.success);
     } catch (error) {
-      if (mounted) setState(() => _error = _authError(error));
+      if (mounted) setState(() => _error = v3UserFacingError(context, error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -783,12 +789,15 @@ class _RememberToggle extends StatelessWidget {
       child: Padding(padding: const EdgeInsets.symmetric(
           vertical: 12, horizontal: 2),
         child: Row(children: [
+          // One Tab stop for the whole toggle: the row InkWell below owns
+          // focus and Enter/Space activation; the checkbox stays pointer-only
+          // so keyboard users do not stop twice for one control.
           SizedBox(width: 18, height: 18,
-            child: Checkbox(value: value,
+            child: ExcludeFocus(child: Checkbox(value: value,
               onChanged: (next) => onChanged(next ?? false),
               activeColor: p.lychee, side: BorderSide(color: p.line),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact)),
+              visualDensity: VisualDensity.compact))),
           const SizedBox(width: 8),
           Text(v3Copy(context, zh: '记住账号密码',
             en: 'Remember credentials', tw: '記住帳號密碼'),
@@ -846,7 +855,13 @@ class _V3Field extends StatelessWidget {
       TextField(controller: controller, keyboardType: keyboardType,
         textInputAction: textInputAction,
         obscureText: obscureText, onSubmitted: onSubmitted, enabled: enabled,
-        decoration: InputDecoration(hintText: hint, suffixIcon: trailing,
+        decoration: InputDecoration(
+          // The small label above is a visual sibling; feeding it to the
+          // decorator (never floating, hint keeps the resting look) merges it
+          // into the field's semantics so screen readers announce it.
+          labelText: label,
+          floatingLabelBehavior: FloatingLabelBehavior.never,
+          hintText: hint, suffixIcon: trailing,
           filled: true, fillColor: p.surface,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(V3Radius.field),
@@ -858,7 +873,3 @@ class _V3Field extends StatelessWidget {
     ]);
   }
 }
-
-String _authError(Object error) => error.toString()
-    .replaceFirst('ApiException: ', '')
-    .replaceFirst('Exception: ', '');

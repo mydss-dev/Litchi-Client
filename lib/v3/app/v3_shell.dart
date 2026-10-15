@@ -29,6 +29,7 @@ import '../ui/v3_notice_bar.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_plan_labels.dart';
 import '../ui/v3_sheet.dart';
 import 'v3_nav.dart';
 
@@ -349,6 +350,11 @@ class _DesktopRail extends StatelessWidget {
     }
     final user = controller.user;
     final plan = PlanPresentation.fromController(controller);
+    // Round-3 audit N14: the chip line and its tooltip read the
+    // machine-readable kinds through the localized helpers instead of the
+    // legacy Chinese display fields, so the rail stays correct in en/tw.
+    final planChip = v3PlanShortLabel(context, plan);
+    final planExpiry = v3PlanExpiryLabel(context, plan);
     return Container(
       width: 176,
       // macOS traffic lights float over the top-left corner; the rail drops
@@ -435,9 +441,17 @@ class _DesktopRail extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Tooltip(
-                            message: '${plan.shortLabel} · ${plan.expiry}',
+                            // Round-3 audit N14: composed through v3Copy so
+                            // the joiner stays a copy decision, and the two
+                            // halves come from the kind-based helpers above.
+                            message: v3Copy(
+                              context,
+                              zh: '$planChip · $planExpiry',
+                              en: '$planChip · $planExpiry',
+                              tw: '$planChip · $planExpiry',
+                            ),
                             child: Text(
-                              plan.shortLabel,
+                              planChip,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -614,31 +628,42 @@ class _RailItem extends StatelessWidget {
           final textColor = Color.lerp(p.inkMuted, p.ink, t)!;
           // V3Pressable keeps the press ink above the shared selection pill
           // instead of losing it under the rail's opaque hero.
-          return SizedBox(
-            height: 44,
-            child: V3Pressable(
-              borderRadius: BorderRadius.circular(V3Radius.field),
-              hoverTint: p.ink.withValues(alpha: 0.08),
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  children: [
-                    Icon(item.icon, color: iconColor, size: 19),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item.localizedLabel(context),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+          // Round-3 audit F10: the selected flag is what announces the
+          // current page to assistive tech — color alone carries nothing
+          // (the mobile NavigationBar already reports it). The wrapper is a
+          // semantics boundary; the tap action still comes from the inner
+          // InkWell's merged node, so it does not repeat onTap — duplicated
+          // handlers fire twice per assistive-tech activation.
+          return Semantics(
+            container: true,
+            button: true,
+            selected: selected,
+            child: SizedBox(
+              height: 44,
+              child: V3Pressable(
+                borderRadius: BorderRadius.circular(V3Radius.field),
+                hoverTint: p.ink.withValues(alpha: 0.08),
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    children: [
+                      Icon(item.icon, color: iconColor, size: 19),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          item.localizedLabel(context),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

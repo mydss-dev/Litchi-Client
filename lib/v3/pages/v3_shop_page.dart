@@ -11,6 +11,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
+import '../ui/v3_plan_labels.dart';
 import '../ui/v3_sheet.dart';
 
 // The checkout body key now lives with the shared order dialog; re-export it so
@@ -80,8 +81,10 @@ class _V3ShopPageState extends State<V3ShopPage> {
                       child: const _PlanCardSkeleton()),
                 ]),
             ]
-          else if (controller.dataLoadError != null && plans.isEmpty)
+          else if (controller.dataLoadError != null && controller.plans.isEmpty)
             // Failure is not emptiness: name the error and offer the retry.
+            // Judged on the unfiltered list, so an empty category under no
+            // global failure stays with the category empty state below.
             V3EmptyState(
               icon: Icons.error_outline_rounded,
               title: _tr(context, '套餐加载失败',
@@ -205,16 +208,17 @@ class _CurrentPlanBadge extends StatelessWidget {
           '剩余 ${controller.traffic.remainGb.toStringAsFixed(1)} GB',
           '${controller.traffic.remainGb.toStringAsFixed(1)} GB remaining',
           '剩餘 ${controller.traffic.remainGb.toStringAsFixed(1)} GB'),
-      plan.expiry,
+      v3PlanExpiryLabel(context, plan),
     ];
     return V3Panel(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
-        Icon(plan.usable ? Icons.verified_rounded : Icons.info_outline_rounded,
-          size: 17, color: plan.usable ? p.successInk : p.inkMuted),
+        Icon(plan.statusKind == PlanStatus.normal
+            ? Icons.verified_rounded : Icons.info_outline_rounded,
+          size: 17, color: v3PlanStatusColor(p, plan.statusKind)),
         const SizedBox(width: 9),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(plan.shortLabel, maxLines: 1,
+            Text(v3PlanShortLabel(context, plan), maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: p.ink, fontSize: 12,
                 fontWeight: FontWeight.w700)),
@@ -339,7 +343,7 @@ class _PlanCard extends StatelessWidget {
               ? _tr(context, '价格未配置', 'Price unavailable', '價格未設定')
               : '$currencySymbol${price.toStringAsFixed(2)}',
             maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: p.ink, fontSize: price == null ? 14 : 24,
+            style: TextStyle(color: p.ink, fontSize: price == null ? 14 : 22,
               fontWeight: FontWeight.w900,
               fontFeatures: const [FontFeature.tabularFigures()]))),
           Text(plan.category == PlanCategory.recurring

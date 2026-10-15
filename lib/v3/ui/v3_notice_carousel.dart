@@ -25,13 +25,26 @@ class V3NoticeCarousel extends StatefulWidget {
   State<V3NoticeCarousel> createState() => _V3NoticeCarouselState();
 }
 
-class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
+class _V3NoticeCarouselState extends State<V3NoticeCarousel>
+    with SingleTickerProviderStateMixin {
   // Cap the carousel so a chatty feed cannot bury the connect card; the
   // reader dialog still reaches every notice.
   static const _maxPages = 6;
   static const _interval = Duration(seconds: 6);
   final PageController _pages = PageController();
-  Timer? _timer;
+
+  /// The auto-advance clock. A vsync'd controller, not Timer.periodic:
+  /// TickerMode mutes the ticker while the carousel's page sits hidden in
+  /// the shell's Offstage stack (the round-3 audit's F25 — the timer kept
+  /// spinning behind hidden pages), and mute/resume is framework-free work
+  /// the provider mixin already does.
+  late final AnimationController _clock =
+      AnimationController(vsync: this, duration: _interval)
+        ..addStatusListener((status) {
+          if (status == AnimationStatus.completed) unawaited(_go(1));
+        });
+  bool _hovering = false;
+  bool _reading = false;
   int _index = 0;
   List<NoticeModel> _notices = const [];
 
@@ -50,8 +63,8 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     // v3ReducedMotion reads MediaQuery, which cannot be depended on during
-    // initState — the first timer sync starts here instead.
-    _syncTimer();
+    // initState — the first playback sync starts here instead.
+    _syncPlayback();
   }
 
   @override
@@ -59,24 +72,27 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
     super.didUpdateWidget(oldWidget);
     _notices = widget.controller.notices.take(_maxPages).toList();
     _index = _pageCount == 0 ? 0 : _index.clamp(0, _pageCount - 1);
-    _syncTimer();
+    _syncPlayback();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _clock.dispose();
     _pages.dispose();
     super.dispose();
   }
 
-  void _syncTimer() {
-    _timer?.cancel();
-    _timer = null;
-    // Reduced motion means no 6s auto-advance at all; hovering pauses the
-    // timer and leaving resumes through this same sync.
-    if (_pageCount > 1 && !v3ReducedMotion(context)) {
-      _timer = Timer.periodic(_interval, (_) => _go(1));
+  void _syncPlayback() {
+    // Reduced motion means no 6s auto-advance at all; hovering and the open
+    // reader pause the clock, and leaving restarts a fresh window through
+    // this same sync. Every sync that reaches the bottom starts the window
+    // over — the old timer was rebuilt fresh at each of these points too.
+    if (_pageCount < 2 || _hovering || _reading || v3ReducedMotion(context)) {
+      _clock.stop();
+      if (_pageCount < 2) _clock.value = 0;
+      return;
     }
+    _clock.forward(from: 0);
   }
 
   Future<void> _go(int delta) async {
@@ -95,20 +111,23 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
     }
     if (!mounted) return;
     setState(() => _index = target);
-    _syncTimer();
+    _syncPlayback();
   }
 
   Future<void> _open(int index) async {
     if (index >= _notices.length) return;
-    _timer?.cancel();
+    // The open reader pauses the clock; the timer version cancelled it.
+    _reading = true;
+    _syncPlayback();
     await V3NoticeDialog.showReader(
       context,
       notices: _notices,
       initialIndex: index,
     );
     if (!mounted) return;
+    _reading = false;
     _index = _index.clamp(0, _pageCount - 1);
-    _syncTimer();
+    _syncPlayback();
   }
 
   @override
@@ -116,10 +135,18 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel> {
     if (_pageCount == 0) return const SizedBox.shrink();
     final p = V3Palette.of(context);
     // Hovering pauses the 6s auto-advance so the page under the pointer
-    // stays put; leaving resumes it. Reduced motion never starts a timer.
+    // stays put; leaving restarts the window. The flag (N16) keeps the
+    // arrow-tap and reader-close syncs from re-arming the clock under the
+    // pointer — the old code rebuilt the timer unconditionally there.
     return MouseRegion(
-      onEnter: (_) => _timer?.cancel(),
-      onExit: (_) => _syncTimer(),
+      onEnter: (_) {
+        _hovering = true;
+        _syncPlayback();
+      },
+      onExit: (_) {
+        _hovering = false;
+        _syncPlayback();
+      },
       child: Container(
         decoration: BoxDecoration(
           color: p.surface,

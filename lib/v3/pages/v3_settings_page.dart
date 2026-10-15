@@ -262,7 +262,10 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     if (desktopTools) _SettingRow(
-                      icon: Icons.shield_outlined,
+                      // Round-3 audit F37: one icon family per surface —
+                      // every content glyph here is rounded; the outlined
+                      // variant mixed families inside the same panel.
+                      icon: Icons.shield_rounded,
                       title: l.connectionProtection,
                       description: _hint(l,
                         zh: '节点意外断开时暂停联网，防止流量绕过代理直接暴露；重新连接后自动恢复。',
@@ -452,7 +455,7 @@ class _RecoveryPanel extends StatelessWidget {
           width: 42, height: 42,
           decoration: BoxDecoration(color: p.citrus,
             borderRadius: BorderRadius.circular(V3Radius.field)),
-          child: Icon(Icons.build_circle_outlined, color: p.night, size: 21),
+          child: Icon(Icons.build_circle_rounded, color: p.night, size: 21),
         ),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,

@@ -20,6 +20,7 @@ import '../ui/v3_node_tags.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_notice_bar.dart';
 import '../ui/v3_notice_carousel.dart';
+import '../ui/v3_plan_labels.dart';
 
 /// One connection page: the desktop rail must never add a second Home route.
 class V3DashboardPage extends StatelessWidget {
@@ -557,7 +558,7 @@ class _ConnectIntroContentState extends State<_ConnectIntroContent> {
                         _ConnectionDuration(controller: widget.controller),
                         const SizedBox(height: 5),
                         AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
+                          duration: V3Motion.fast,
                           switchInCurve: Curves.easeOut,
                           switchOutCurve: Curves.easeIn,
                           transitionBuilder: (child, animation) =>
@@ -779,6 +780,8 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
   // resting orb carries zero active tickers.
   late final AnimationController _pulse = AnimationController(
     vsync: this,
+    // Bespoke 1400ms: a resting ambience breath, slower than any V3Motion
+    // token so it reads as the orb being alive, never as a transition.
     duration: const Duration(milliseconds: 1400),
   );
   late final Animation<double> _breathe = CurvedAnimation(
@@ -788,6 +791,8 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
   // One-shot success ripple (busy → connected).
   late final AnimationController _ripple = AnimationController(
     vsync: this,
+    // Bespoke 450ms: a one-shot celebration bloom between fast and slow —
+    // long enough to read, short enough not to lag the state swap.
     duration: const Duration(milliseconds: 450),
   );
   late final Animation<double> _rippleEase = CurvedAnimation(
@@ -797,7 +802,7 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
   // One-shot error shake.
   late final AnimationController _shake = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 320),
+    duration: V3Motion.medium,
   );
 
   @override
@@ -862,11 +867,35 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
         : connected
         ? v3Copy(context, zh: '断开连接', en: 'Disconnect', tw: '中斷連線')
         : v3Copy(context, zh: '连接', en: 'Connect', tw: '連線');
+    // The orb is the page's primary control: assistive tech must fire exactly
+    // what a tap fires. ExcludeSemantics below prunes the InkWell's own
+    // semantics, so the tap action has to live on this outer node.
+    Future<void> runToggle() async {
+      // Failure remains a persistent alert with a retry action.
+      final error = await controller.toggleConnection();
+      if (error == null &&
+          context.mounted &&
+          controller.connectionStatus == ConnectionStatus.connected) {
+        V3Toast.show(
+          context,
+          v3Copy(
+            context,
+            zh: '连接成功',
+            en: 'Connected',
+            tw: '連線成功',
+          ),
+          type: V3ToastType.success,
+        );
+      }
+    }
+
     return Semantics(
       key: kConnectOrbKey,
+      container: true,
       button: true,
       enabled: !locked,
       label: label,
+      onTap: locked ? null : runToggle,
       child: ExcludeSemantics(
         child: SizedBox(
           width: 86,
@@ -912,7 +941,7 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
                 },
                 child: TweenAnimationBuilder<Color?>(
                   tween: ColorTween(end: orbColor),
-                  duration: const Duration(milliseconds: 180),
+                  duration: V3Motion.fast,
                   curve: Curves.easeOut,
                   builder: (context, color, _) => SizedBox(
                     width: 86,
@@ -922,28 +951,7 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
                       shape: const CircleBorder(),
                       child: InkWell(
                         customBorder: const CircleBorder(),
-                        onTap: locked
-                            ? null
-                            : () async {
-                                // Failure remains a persistent alert with a retry action.
-                                final error = await controller
-                                    .toggleConnection();
-                                if (error == null &&
-                                    context.mounted &&
-                                    controller.connectionStatus ==
-                                        ConnectionStatus.connected) {
-                                  V3Toast.show(
-                                    context,
-                                    v3Copy(
-                                      context,
-                                      zh: '连接成功',
-                                      en: 'Connected',
-                                      tw: '連線成功',
-                                    ),
-                                    type: V3ToastType.success,
-                                  );
-                                }
-                              },
+                        onTap: locked ? null : runToggle,
                         child: Center(
                           child: AnimatedSwitcher(
                             duration: V3Motion.fast,
@@ -1354,41 +1362,53 @@ class _ModeSegment<T> extends StatelessWidget {
             children: [
               for (final value in values)
                 Expanded(
-                  // V3Pressable rides above the thumb so the press ink lands
-                  // on the option surface instead of on a Material beneath the
-                  // card fill. The padding lives inside it so the ink still
-                  // covers the full option rect.
-                  child: V3Pressable(
-                    key: optionKey == null
-                        ? null
-                        : ValueKey<String>(optionKey!(value)),
+                  // Assistive tech: each option is its own button node with a
+                  // selected flag inside a mutually exclusive group - the
+                  // same contract SegmentedButton/NavigationDestination
+                  // publish. V3Pressable rides above the thumb so the press
+                  // ink lands on the option surface instead of on a Material
+                  // beneath the card fill. The padding lives inside it so
+                  // the ink still covers the full option rect.
+                  child: Semantics(
+                    container: true,
+                    button: true,
+                    selected: value == selected,
+                    inMutuallyExclusiveGroup: true,
                     onTap: busy || value == selected
                         ? null
                         : () => onSelect(value),
-                    borderRadius: BorderRadius.circular(V3Radius.control),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      child: SizedBox(
-                        width: double.infinity,
-                        // The ink swap animates with the travelling pill; a
-                        // bare TextStyle color would snap while the pill glides.
-                        child: TweenAnimationBuilder<Color?>(
-                          tween: ColorTween(
-                            end: value == selected ? p.lycheeInk : p.inkMuted,
-                          ),
-                          duration: V3Motion.fast,
-                          curve: V3Motion.ease,
-                          builder: (context, color, _) => Text(
-                            label(context, value),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 11,
-                              fontWeight: selected == value
-                                  ? FontWeight.w800
-                                  : FontWeight.w700,
+                    child: V3Pressable(
+                      key: optionKey == null
+                          ? null
+                          : ValueKey<String>(optionKey!(value)),
+                      onTap: busy || value == selected
+                          ? null
+                          : () => onSelect(value),
+                      borderRadius: BorderRadius.circular(V3Radius.control),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        child: SizedBox(
+                          width: double.infinity,
+                          // The ink swap animates with the travelling pill; a
+                          // bare TextStyle color would snap while the pill glides.
+                          child: TweenAnimationBuilder<Color?>(
+                            tween: ColorTween(
+                              end: value == selected ? p.lycheeInk : p.inkMuted,
+                            ),
+                            duration: V3Motion.fast,
+                            curve: V3Motion.ease,
+                            builder: (context, color, _) => Text(
+                              label(context, value),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: color,
+                                fontSize: 11,
+                                fontWeight: selected == value
+                                    ? FontWeight.w800
+                                    : FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
@@ -1684,11 +1704,13 @@ class _PlanSummary extends StatelessWidget {
                     Text(
                       // An active plan needs no status word - the green
                       // countdown already says it. Abnormal states earn the
-                      // suffix, except 到期: the expiry label already opens
-                      // with that word.
-                      plan.usable || plan.status == '到期'
-                          ? plan.expiry
-                          : '${plan.expiry} · ${plan.status}',
+                      // suffix, except expiry: the expiry label already opens
+                      // with that word. Kinds + localized labels, never the
+                      // legacy Chinese display strings (round-3 audit N14).
+                      plan.statusKind == PlanStatus.normal ||
+                              plan.statusKind == PlanStatus.expired
+                          ? v3PlanExpiryLabel(context, plan)
+                          : '${v3PlanExpiryLabel(context, plan)} · ${v3PlanStatusLabel(context, plan.statusKind)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -1711,6 +1733,8 @@ class _PlanSummary extends StatelessWidget {
                 tween: Tween(begin: 0, end: ratio),
                 duration: v3ReducedMotion(context)
                     ? Duration.zero
+                    // Bespoke 700ms: a full-track gauge sweep needs more
+                    // runway than V3Motion.slow or it reads as a blink.
                     : const Duration(milliseconds: 700),
                 curve: Curves.easeOutCubic,
                 builder: (context, swept, _) => LinearProgressIndicator(

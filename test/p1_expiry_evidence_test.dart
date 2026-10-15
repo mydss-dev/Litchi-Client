@@ -35,8 +35,8 @@ void main() {
       remainingGb: 100,
       now: DateTime(2026, 9, 19),
     );
-    expect(display.expiry, '永久有效');
-    expect(display.status, '正常');
+    expect(display.expiryKind, PlanExpiryKind.permanent);
+    expect(display.statusKind, PlanStatus.normal);
     expect(display.usable, isTrue);
   });
 

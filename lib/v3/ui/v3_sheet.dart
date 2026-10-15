@@ -24,6 +24,11 @@ Future<bool> showV3ConfirmDialog(
   required String body,
   required String confirmLabel,
   bool destructive = false,
+
+  /// Override for flows whose keep-action needs its own wording (e.g.
+  /// cancelling an order keeps it with "保留订单" — "取消" there reads as
+  /// dismissing the dialog). Null falls back to the shared default.
+  String? cancelLabel,
 }) async {
   final accepted = await showGeneralDialog<bool>(
     context: context,
@@ -45,7 +50,7 @@ Future<bool> showV3ConfirmDialog(
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(v3Copy(dialogContext,
+            child: Text(cancelLabel ?? v3Copy(dialogContext,
               zh: '取消', en: 'Cancel', tw: '取消'))),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -70,13 +75,22 @@ Future<T?> showV3Sheet<T>(
   final size = MediaQuery.sizeOf(context);
   final compact = size.width < kV3CompactBreakpoint;
 
-  Widget content(BuildContext ctx) {
+  Widget content(BuildContext ctx, {required bool keyboardAware}) {
+    // The compact drawer must rise above the on-screen keyboard: the
+    // keyboard's view inset rides into the scroll padding, so the form's
+    // tail (the gift-card CTA) stays reachable instead of hiding behind the
+    // keys. Desktop dialogs get no inset — viewInsets are zero there.
+    final keyboardInset =
+        keyboardAware ? MediaQuery.viewInsetsOf(ctx).bottom : 0.0;
     return Column(mainAxisSize: MainAxisSize.min, children: [
       V3SheetHeader(title: title, trailing: trailing),
       Flexible(child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(22, 2, 22,
-          22 + MediaQuery.paddingOf(ctx).bottom),
+        padding: EdgeInsets.fromLTRB(
+          V3Layout.dialogPadding, 2, V3Layout.dialogPadding,
+          V3Layout.dialogPadding +
+              MediaQuery.paddingOf(ctx).bottom +
+              keyboardInset),
         child: Builder(builder: builder))),
     ]);
   }
@@ -90,7 +104,7 @@ Future<T?> showV3Sheet<T>(
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(V3Radius.panel))),
       constraints: BoxConstraints(maxHeight: size.height * .9),
-      builder: content);
+      builder: (ctx) => content(ctx, keyboardAware: true));
   }
 
   return showGeneralDialog<T>(context: context,
@@ -110,7 +124,7 @@ Future<T?> showV3Sheet<T>(
             borderRadius: BorderRadius.circular(V3Radius.panel),
             border: Border.all(color: p.hairline),
             boxShadow: p.shadows),
-          child: content(ctx)));
+          child: content(ctx, keyboardAware: false)));
     });
 }
 
@@ -122,8 +136,8 @@ class V3SheetHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Padding(padding: const EdgeInsets.fromLTRB(22, 16, 10, 4),
-      child: Row(children: [
+    return Padding(padding: const EdgeInsets.fromLTRB(V3Layout.dialogPadding,
+        16, 10, 4), child: Row(children: [
         Expanded(child: Text(title, maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: p.ink, fontSize: 18,

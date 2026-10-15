@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
@@ -12,7 +11,6 @@ import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
-import '../ui/v3_toast.dart';
 
 /// Supported chart periods are the same on desktop and mobile.
 const List<int> kV3TrafficPeriods = [7, 15, 30];
@@ -91,6 +89,65 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
       );
     }
 
+    // Three-state chain, the round-2 standard the nodes and shop pages use:
+    // named failure -> block skeleton -> data. Zeros never stand in for a
+    // value that has not loaded, and a failed load is never silent.
+    if (controller.dataLoadError != null && !controller.hasAccountSummary) {
+      // Failure is not emptiness: name the error and offer the retry.
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: V3Layout.pageInsets,
+        child: V3WaveColumn(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            V3PageHeader(
+              title: v3Copy(
+                context,
+                zh: '流量用量',
+                en: 'Traffic usage',
+                tw: '流量用量',
+              ),
+            ),
+            V3EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: v3Copy(
+                context,
+                zh: '流量加载失败',
+                en: 'Could not load traffic',
+                tw: '流量載入失敗',
+              ),
+              subtitle: controller.dataLoadError!,
+              actionLabel: v3Copy(context, zh: '重试', en: 'Retry', tw: '重試'),
+              onAction: () => controller.refreshData(),
+            ),
+          ],
+        ),
+      );
+    }
+    if (controller.isInitialLoading || !controller.hasAccountSummary) {
+      // First load, or a retry still fetching the first data: block
+      // placeholders in the page's own shape instead of a 0.0 GB flash.
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: V3Layout.pageInsets,
+        child: V3WaveColumn(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            V3PageHeader(
+              title: v3Copy(
+                context,
+                zh: '流量用量',
+                en: 'Traffic usage',
+                tw: '流量用量',
+              ),
+            ),
+            const SizedBox(height: 18),
+            const _TrafficSkeleton(),
+          ],
+        ),
+      );
+    }
+
     final series = TrafficHistorySeries.build(
       windowDays: _days,
       trafficUsage: controller.trafficUsage,
@@ -111,18 +168,27 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
         children: [
           V3PageHeader(
             title: v3Copy(context, zh: '流量用量', en: 'Traffic usage', tw: '流量用量'),
-            trailing: IconButton(
+            trailing: _RefreshIconButton(
               tooltip: v3Copy(
                 context,
                 zh: '刷新流量',
                 en: 'Refresh traffic',
                 tw: '重新整理流量',
               ),
-              onPressed: controller.refreshData,
-              icon: const Icon(Icons.refresh_rounded),
+              onRefresh: controller.refreshData,
             ),
           ),
           const SizedBox(height: 18),
+          if (controller.dataLoadError != null) ...[
+            // The refresh failed while data is on screen: this strip keeps the
+            // failure visible instead of letting the standing numbers read as
+            // fresh (round-3 audit F12; the dashboard warning tile's voice).
+            _DataErrorRow(
+              message: controller.dataLoadError!,
+              onRetry: controller.refreshData,
+            ),
+            const SizedBox(height: 12),
+          ],
           _QuotaPanel(controller: controller, usedRatio: usedRatio),
           const SizedBox(height: 12),
           _TimingGrid(controller: controller),
@@ -220,7 +286,9 @@ class _QuotaPanel extends StatelessWidget {
                 value: swept,
                 minHeight: 7,
                 backgroundColor: p.ink.withValues(alpha: .1),
-                valueColor: AlwaysStoppedAnimation<Color>(p.lycheeInk),
+                // Data progress is a measured value: green, never brand pink
+                // (the dashboard gauge is the reference standard).
+                valueColor: AlwaysStoppedAnimation<Color>(p.success),
               ),
             ),
           ),
@@ -730,7 +798,7 @@ class _TrendPanelView extends StatelessWidget {
   }
 }
 
-class _UsageBar extends StatelessWidget {
+class _UsageBar extends StatefulWidget {
   const _UsageBar({
     required this.point,
     required this.maxGb,
@@ -747,63 +815,68 @@ class _UsageBar extends StatelessWidget {
   final _DayDetails details;
 
   @override
+  State<_UsageBar> createState() => _UsageBarState();
+}
+
+class _UsageBarState extends State<_UsageBar> {
+  // Keyboard focus must surface the bar's readout, and this SDK's tooltip no
+  // longer shows on focus by itself: gaining focus pins the tooltip open via
+  // ensureTooltipVisible; losing focus dismisses it again.
+  final GlobalKey<TooltipState> _tooltipKey = GlobalKey<TooltipState>();
+
+  @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final gb = point.gb;
-    final ratio = gb == null || maxGb <= 0
+    final gb = widget.point.gb;
+    final ratio = gb == null || widget.maxGb <= 0
         ? 0.0
-        : (gb / maxGb).clamp(0.0, 1.0).toDouble();
-    final isToday = _isToday(point.date);
-    final label = compact
-        ? '${point.date.day}'
-        : '${point.date.month}/${point.date.day}';
+        : (gb / widget.maxGb).clamp(0.0, 1.0).toDouble();
+    final isToday = _isToday(widget.point.date);
+    final label = widget.compact
+        ? '${widget.point.date.day}'
+        : '${widget.point.date.month}/${widget.point.date.day}';
     final value = gb == null
         ? v3Copy(context, zh: '暂无记录', en: 'No record', tw: '暫無紀錄')
         : '${gb.toStringAsFixed(2)} GB';
-    final detailsText = details.upload == null || details.download == null
+    final detailsText = widget.details.upload == null ||
+            widget.details.download == null
         ? ''
         : v3Copy(
             context,
-            zh: '\n上传 ${details.upload!.toStringAsFixed(2)} GB · 下载 ${details.download!.toStringAsFixed(2)} GB',
-            en: '\nUpload ${details.upload!.toStringAsFixed(2)} GB · Download ${details.download!.toStringAsFixed(2)} GB',
-            tw: '\n上傳 ${details.upload!.toStringAsFixed(2)} GB · 下載 ${details.download!.toStringAsFixed(2)} GB',
+            zh: '\n上传 ${widget.details.upload!.toStringAsFixed(2)} GB · 下载 ${widget.details.download!.toStringAsFixed(2)} GB',
+            en: '\nUpload ${widget.details.upload!.toStringAsFixed(2)} GB · Download ${widget.details.download!.toStringAsFixed(2)} GB',
+            tw: '\n上傳 ${widget.details.upload!.toStringAsFixed(2)} GB · 下載 ${widget.details.download!.toStringAsFixed(2)} GB',
           );
     // 7-day view: the daily amount rides on top of each bar so the chart
     // reads at a glance without hovering. 15/30-day views stay caption-free;
     // the tooltip carries the numbers there.
-    final caption = gb == null || !showValue
+    final caption = gb == null || !widget.showValue
         ? null
         : '${gb >= 10 ? gb.toStringAsFixed(0) : gb.toStringAsFixed(1)}G';
-    final message = '${_dayLabel(point.date)}\n$value$detailsText';
+    final message = '${_dayLabel(widget.point.date)}\n$value$detailsText';
     return Tooltip(
+      key: _tooltipKey,
       message: message,
+      triggerMode: TooltipTriggerMode.tap,
+      waitDuration: const Duration(milliseconds: 400),
+      showDuration: const Duration(milliseconds: 2500),
+      enableFeedback: false,
       child: Semantics(
-        label: '${_dayLabel(point.date)}，$value',
-        // Touch has no hover, so compact 15/30-day bars never reveal their
-        // numbers through the tooltip; a tap opens the same readout as a
-        // toast instead of leaving a day's amount invisible on mobile.
-        // Desktop reaches the same readout from hover or keyboard focus
-        // (Enter/Space); touch suppresses those callbacks, keeping the tap.
+        label: '${_dayLabel(widget.point.date)}，$value',
+        // Hover waits out the 400ms intent delay, so sweeping bars cannot
+        // strobe anything (the old toast did); a tap shows the readout on
+        // touch; keyboard focus pins it — this SDK's tooltip does not surface
+        // on focus by itself, so focus gained calls ensureTooltipVisible and
+        // focus lost dismisses it again.
         child: FocusableActionDetector(
-          onShowHoverHighlight: (hovering) {
-            if (hovering) V3Toast.show(context, message);
+          onFocusChange: (focused) {
+            if (focused) {
+              _tooltipKey.currentState?.ensureTooltipVisible();
+            } else {
+              RawTooltip.dismissAllToolTips();
+            }
           },
-          onShowFocusHighlight: (focused) {
-            if (focused) V3Toast.show(context, message);
-          },
-          shortcuts: const <ShortcutActivator, Intent>{
-            SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-            SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
-          },
-          actions: <Type, Action<Intent>>{
-            ActivateIntent: CallbackAction<ActivateIntent>(
-              onInvoke: (_) => V3Toast.show(context, message),
-            ),
-          },
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => V3Toast.show(context, message),
-            child: SizedBox(
+          child: SizedBox(
               height: 140,
               width: double.infinity,
               child: Column(
@@ -828,7 +901,7 @@ class _UsageBar extends StatelessWidget {
                   Container(
                     width: double.infinity,
                     height: gb == null ? 4 : 6 + 90 * ratio,
-                    constraints: BoxConstraints(maxWidth: compact ? 22 : 34),
+                    constraints: BoxConstraints(maxWidth: widget.compact ? 22 : 34),
                     decoration: BoxDecoration(
                       color: gb == null
                           ? p.line
@@ -846,7 +919,7 @@ class _UsageBar extends StatelessWidget {
                   const SizedBox(height: 8),
                   SizedBox(
                     height: 16,
-                    child: showLabel
+                    child: widget.showLabel
                         ? Text(
                             label,
                             maxLines: 1,
@@ -863,7 +936,6 @@ class _UsageBar extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -936,4 +1008,276 @@ String _v3YesterdayComparison(
     en: 'Vs yesterday $percent',
     tw: '較昨日 $percent',
   );
+}
+
+/// Header refresh with in-flight feedback (round-3 audit F32): while the
+/// refresh runs the icon spins (18px) and the button stands down, so a slow
+/// refresh no longer reads as nothing happened. Local state only — the
+/// controller stays the source of truth (refreshData is single-flight and
+/// reports failure through dataLoadError).
+class _RefreshIconButton extends StatefulWidget {
+  const _RefreshIconButton({required this.tooltip, required this.onRefresh});
+
+  final String tooltip;
+  final Future<void> Function() onRefresh;
+
+  @override
+  State<_RefreshIconButton> createState() => _RefreshIconButtonState();
+}
+
+class _RefreshIconButtonState extends State<_RefreshIconButton> {
+  bool _busy = false;
+
+  Future<void> _run() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await widget.onRefresh();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return IconButton(
+      tooltip: widget.tooltip,
+      onPressed: _busy ? null : _run,
+      icon: _busy
+          ? SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: p.inkMuted,
+              ),
+            )
+          : const Icon(Icons.refresh_rounded),
+    );
+  }
+}
+
+/// The refresh failed while data is on screen: a quiet warning strip above
+/// the panels names the failure and offers the retry, so a refresh never
+/// fails silently (round-3 audit F12). The dashboard's data-warning tile is
+/// the voice reference.
+class _DataErrorRow extends StatelessWidget {
+  const _DataErrorRow({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: p.warning.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(V3Radius.field),
+        border: Border.all(color: p.warning.withValues(alpha: .28)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 18, color: p.warning),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.warningInk, fontSize: 12, height: 1.4),
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: onRetry,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 32),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              foregroundColor: p.warningInk,
+              side: BorderSide(color: p.warning.withValues(alpha: .4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(V3Radius.control),
+              ),
+            ),
+            child: Text(
+              v3Copy(context, zh: '重试', en: 'Retry', tw: '重試'),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// First-load placeholders in the shape of the page's three panels, so the
+/// real values hand in without a 0.0 GB flash (round-3 audit F12; the nodes
+/// page's loading-space rule). Static blocks — no motion to gate.
+class _TrafficSkeleton extends StatelessWidget {
+  const _TrafficSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    Widget panel({
+      Color? color,
+      EdgeInsets padding = const EdgeInsets.all(20),
+      required Widget child,
+    }) => Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color ?? p.surface,
+        borderRadius: BorderRadius.circular(V3Radius.panel),
+        border: Border.all(color: p.hairline),
+        boxShadow: p.shadows,
+      ),
+      child: child,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Quota hero: label row, big figure, gauge, bottom values.
+        panel(
+          color: p.hero,
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: V3SkeletonBlock(height: 11)),
+                  SizedBox(width: 12),
+                  V3SkeletonBlock(width: 44, height: 11),
+                ],
+              ),
+              SizedBox(height: 16),
+              V3SkeletonBlock(width: 132, height: 34),
+              SizedBox(height: 16),
+              // The gauge placeholder sits at the loaded bar's exact height.
+              V3SkeletonBlock(height: 7),
+              SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: V3SkeletonBlock(height: 11)),
+                  SizedBox(width: 12),
+                  Expanded(child: V3SkeletonBlock(height: 11)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Stat-tile band: the same 2/3-column grid the loaded band uses.
+        LayoutBuilder(
+          builder: (context, box) {
+            final cols = box.maxWidth >= V3Layout.paneCompact ? 3 : 2;
+            return Column(
+              children: [
+                for (var i = 0; i < 6; i += cols) ...[
+                  if (i > 0) const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      for (var j = i; j < (i + cols).clamp(0, 6); j++) ...[
+                        if (j > i) const SizedBox(width: 12),
+                        const Expanded(child: _StatTileSkeleton()),
+                      ],
+                    ],
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        // Trend panel: title + range control, totals line, bar placeholders.
+        panel(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Expanded(child: V3SkeletonBlock(height: 13)),
+                  SizedBox(width: 12),
+                  V3SkeletonBlock(
+                    width: 150,
+                    height: 30,
+                    radius: V3Radius.control,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const V3SkeletonBlock(width: 110, height: 18),
+              const SizedBox(height: 18),
+              SizedBox(
+                height: 118,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (final h in const [86, 52, 98, 40, 74, 104, 30])
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: V3SkeletonBlock(width: 22, height: h.toDouble()),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One placeholder stat tile, in the shape of [V3StatTile].
+class _StatTileSkeleton extends StatelessWidget {
+  const _StatTileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        border: Border.all(color: p.hairline),
+        boxShadow: p.shadows,
+      ),
+      child: const Row(
+        children: [
+          V3SkeletonBlock(width: 30, height: 30, radius: V3Radius.control),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FractionallySizedBox(
+                  widthFactor: .6,
+                  alignment: Alignment.centerLeft,
+                  child: V3SkeletonBlock(height: 11),
+                ),
+                SizedBox(height: 6),
+                FractionallySizedBox(
+                  widthFactor: .4,
+                  alignment: Alignment.centerLeft,
+                  child: V3SkeletonBlock(height: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

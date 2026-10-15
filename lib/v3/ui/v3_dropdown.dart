@@ -76,6 +76,47 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
   // field paints for.
   bool _focused = false;
 
+  // One focus handle per menu item, kept across rebuilds: the keyboard path
+  // parks focus on an entry right after opening the menu (pointer taps never
+  // do), and once focus is inside an item the framework's own menu traversal
+  // shortcuts take over — arrows cycle, Escape closes, and when the overlay
+  // unmounts focus falls back to the previously focused trigger.
+  List<FocusNode> _itemNodes = <FocusNode>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _syncItemNodes();
+  }
+
+  @override
+  void didUpdateWidget(V3Dropdown<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncItemNodes();
+  }
+
+  // The nodes are pure focus handles (no per-item state), so they only need to
+  // track the item count; relabeled or reordered entries reuse them.
+  void _syncItemNodes() {
+    final int count = widget.items.length;
+    if (_itemNodes.length == count) return;
+    for (final node in _itemNodes) {
+      node.dispose();
+    }
+    _itemNodes = List<FocusNode>.generate(
+      count,
+      (int index) => FocusNode(debugLabel: 'V3Dropdown.menuItem#$index'),
+    );
+  }
+
+  @override
+  void dispose() {
+    for (final node in _itemNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
   void _toggle() {
     if (_status == AnimationStatus.reverse) return;
     if (_controller.isOpen) {
@@ -83,6 +124,30 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
       return;
     }
     _controller.open();
+  }
+
+  // Keyboard open: arrow down starts at the selected entry when there is one
+  // (the APG combobox start point), falling back to the first entry for down
+  // and the last for up. The overlay mounts a frame after [MenuController.open]
+  // fires, but a requestFocus on a not-yet-attached node is deferred by the
+  // framework until the node enters the tree, so no post-frame dance is needed.
+  void _openAndFocusItem({required bool fallbackToFirst}) {
+    if (_status == AnimationStatus.reverse) return;
+    if (_itemNodes.isEmpty) return;
+    if (!_controller.isOpen) _controller.open();
+    final int selectedIndex = widget.items.indexOf(widget.value);
+    final FocusNode node =
+        selectedIndex >= 0 && selectedIndex < _itemNodes.length
+            ? _itemNodes[selectedIndex]
+            : (fallbackToFirst ? _itemNodes.first : _itemNodes.last);
+    node.requestFocus();
+  }
+
+  // Shared by the pointer tap, the semantics tap action and the ink well: a
+  // selection always closes the menu before handing the value back.
+  void _select(T item) {
+    _controller.close();
+    widget.onChanged(item);
   }
 
   @override
@@ -160,24 +225,45 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
         // The trigger is focusable and keyboard-activatable: Tab reaches it,
         // Enter/Space reuse the pointer's [_toggle], and the framework's own
         // hover/focus-highlight callbacks (no-op in touch mode) drive the
-        // field's states instead of a hand-rolled MouseRegion.
+        // field's states. A MouseRegion supplies only the pointer cursor —
+        // hover paint stays with the framework callbacks.
+        //
+        // Arrow keys open the menu straight onto an entry, so keyboard users
+        // are never stranded on the trigger; from there the framework's own
+        // menu traversal shortcuts cycle arrows and close on Escape, and the
+        // overlay unmount hands focus back to the trigger. Escape is also
+        // mapped on the trigger itself for a menu opened by pointer, where
+        // focus never moved into the overlay — the action is disabled while
+        // the menu is closed, so the key still bubbles to enclosing dialogs.
         onShowHoverHighlight: (value) => setState(() => _hovered = value),
         onShowFocusHighlight: (value) => setState(() => _focused = value),
         shortcuts: const <ShortcutActivator, Intent>{
           SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
           SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
           SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+          SingleActivator(LogicalKeyboardKey.arrowDown):
+              _MenuArrowIntent(fallbackToFirst: true),
+          SingleActivator(LogicalKeyboardKey.arrowUp):
+              _MenuArrowIntent(fallbackToFirst: false),
+          SingleActivator(LogicalKeyboardKey.escape): DismissIntent(),
         },
         actions: <Type, Action<Intent>>{
           ActivateIntent:
               CallbackAction<ActivateIntent>(onInvoke: (_) => _toggle()),
+          _MenuArrowIntent: CallbackAction<_MenuArrowIntent>(
+              onInvoke: (intent) =>
+                  _openAndFocusItem(fallbackToFirst: intent.fallbackToFirst)),
+          DismissIntent: _CloseMenuAction(_controller),
         },
-        child: GestureDetector(
-          onTap: _toggle,
-          child: Semantics(
-            button: true,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
             onTap: _toggle,
-            child: child,
+            child: Semantics(
+              button: true,
+              onTap: _toggle,
+              child: child,
+            ),
           ),
         ),
       ),
@@ -196,15 +282,13 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
 
   /// The menu panel: V3's floating-surface recipe (raised fill, hairline
   /// outline, soft contact shadows), 6px breathing room, and items whose hover
-  /// highlight is an inset rounded pill. The entrance is a 180ms fade with a
-  /// 4px drop into place — settled, not popped — and reduced-motion settings
-  /// land on the final state directly.
+  /// highlight is an inset rounded pill. The entrance is a [V3Motion.fast]
+  /// fade with a 4px drop into place — settled, not popped — and reduced-motion
+  /// settings land on the final state directly.
   Widget _menuSurface(V3Palette p, double fontSize, double? itemWidth) {
     final entrance = TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: v3ReducedMotion(context)
-          ? Duration.zero
-          : const Duration(milliseconds: 180),
+      duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.fast,
       curve: V3Motion.ease,
       builder: (context, t, child) => Opacity(
         opacity: t,
@@ -226,34 +310,38 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final item in widget.items)
+            for (final (index, item) in widget.items.indexed)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: SizedBox(
                   height: widget.dense ? 36 : 40,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(V3Radius.control),
-                    onTap: () {
-                      _controller.close();
-                      widget.onChanged(item);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _text(
-                            widget.label(item),
-                            item == widget.value ? p.lycheeInk : p.ink,
-                            fontSize,
-                            item == widget.value
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
-                          if (item == widget.value)
-                            Icon(Icons.check_rounded,
-                                size: 16, color: p.lycheeInk),
-                        ],
+                  child: Semantics(
+                    container: true,
+                    button: true,
+                    selected: item == widget.value,
+                    onTap: () => _select(item),
+                    child: InkWell(
+                      focusNode: _itemNodes[index],
+                      borderRadius: BorderRadius.circular(V3Radius.control),
+                      onTap: () => _select(item),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _text(
+                              widget.label(item),
+                              item == widget.value ? p.lycheeInk : p.ink,
+                              fontSize,
+                              item == widget.value
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                            if (item == widget.value)
+                              Icon(Icons.check_rounded,
+                                  size: 16, color: p.lycheeInk),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -271,4 +359,29 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: color, fontSize: size, fontWeight: weight));
+}
+
+/// Arrow-key intent for the dropdown trigger: opens the menu and parks focus
+/// on an entry so the framework's menu traversal takes over from there.
+class _MenuArrowIntent extends Intent {
+  const _MenuArrowIntent({required this.fallbackToFirst});
+
+  /// Where to start when no entry matches the current value: down wants the
+  /// first entry, up the last.
+  final bool fallbackToFirst;
+}
+
+/// Escape on the trigger while the menu is open — the fallback for a pointer
+/// open, where focus never moved into the overlay. Disabled while the menu is
+/// closed so the key bubbles to whatever else handles Escape above us.
+class _CloseMenuAction extends Action<DismissIntent> {
+  _CloseMenuAction(this._controller);
+
+  final MenuController _controller;
+
+  @override
+  bool get isActionEnabled => _controller.isOpen;
+
+  @override
+  void invoke(DismissIntent intent) => _controller.close();
 }

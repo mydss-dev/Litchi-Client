@@ -29,6 +29,7 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
   String? _notice;
   bool _loading = true;
   bool _working = false;
+  bool _botLoadInFlight = false;
 
   bool get _bound => AppScope.read(context).accountDetails?.telegramId != null;
 
@@ -39,6 +40,11 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
   }
 
   Future<void> _loadBot() async {
+    // Single-flight: the init lookup and a retry tap must not stack a second
+    // concurrent lookup while one is running.
+    if (_botLoadInFlight) return;
+    _botLoadInFlight = true;
+    if (mounted) setState(() { _loading = true; _error = null; });
     try {
       final username = await AppScope.read(context).api.getTelegramBotUsername();
       if (!mounted) return;
@@ -52,6 +58,8 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
         _loading = false;
         _error = _clean(error);
       });
+    } finally {
+      _botLoadInFlight = false;
     }
   }
 
@@ -85,15 +93,19 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
 
   Future<void> _refreshStatus() async {
     if (_working) return;
+    final controller = AppScope.read(context);
     setState(() { _working = true; _error = null; });
-    try {
-      await AppScope.read(context).refreshData();
-      if (mounted) setState(() {});
-    } catch (error) {
-      if (mounted) setState(() => _error = _clean(error));
-    } finally {
-      if (mounted) setState(() => _working = false);
-    }
+    // A failed bot lookup leaves "open Telegram" disabled with no other way
+    // back; re-resolve it here so the refresh path doubles as a retry (F30).
+    if (_botUsername.isEmpty) await _loadBot();
+    // refreshData is single-flight and swallows its own failures; the outcome
+    // surfaces via dataLoadError, never as a thrown exception.
+    await controller.refreshData();
+    if (!mounted) return;
+    setState(() {
+      _working = false;
+      if (controller.dataLoadError != null) _error = controller.dataLoadError;
+    });
   }
 
   Future<void> _unbind() async {
@@ -107,7 +119,8 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
         en: 'You will stop receiving account alerts until you link again.',
         tw: '解綁後將不再接收帳戶通知，重新綁定後恢復。'),
       confirmLabel: v3Copy(context, zh: '解除绑定',
-        en: 'Unlink', tw: '解除綁定'));
+        en: 'Unlink', tw: '解除綁定'),
+      destructive: true);
     if (!confirmed || !mounted) return;
     final success = v3Copy(context, zh: 'Telegram 已解绑',
       en: 'Telegram unlinked', tw: 'Telegram 已解除綁定');
@@ -183,6 +196,16 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
           tw: '複製綁定指令，開啟機器人後貼上並傳送。訂閱網址不會顯示在此處。'),
           style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 16),
+        // The bot lookup can fail (offline, panel hiccup); without a retry the
+        // "open Telegram" action used to stay disabled forever (F30).
+        if (!_loading && _botUsername.isEmpty) ...[
+          TextButton.icon(
+            onPressed: _working ? null : _loadBot,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: Text(v3Copy(context, zh: '重试读取机器人',
+              en: 'Retry bot lookup', tw: '重試讀取機器人'))),
+          const SizedBox(height: 4),
+        ],
         V3ActionButton(label: v3Copy(context, zh: '复制绑定命令',
           en: 'Copy bind command', tw: '複製綁定指令'),
           icon: Icons.content_copy_rounded, busy: _working,

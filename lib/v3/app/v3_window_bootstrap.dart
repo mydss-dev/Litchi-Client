@@ -23,6 +23,12 @@ class _V3WindowBootstrapState extends State<V3WindowBootstrap>
   bool _synced = false;
   bool _maximized = false;
   Timer? _boundsSaveDebounce;
+  // F34: last frame this state actually wrote to prefs; the reconciliation
+  // poll compares against it so an unchanged frame is never re-written.
+  Rect? _lastSavedBounds;
+  // F34: reconciliation poll, running only while the window is focused.
+  Timer? _boundsPollTimer;
+  static const Duration _boundsPollInterval = Duration(milliseconds: 600);
 
   bool get _desktop =>
       !kIsWeb &&
@@ -43,6 +49,7 @@ class _V3WindowBootstrapState extends State<V3WindowBootstrap>
   void dispose() {
     if (_desktop) windowManager.removeListener(this);
     _boundsSaveDebounce?.cancel();
+    _stopBoundsPoll();
     super.dispose();
   }
 
@@ -61,6 +68,11 @@ class _V3WindowBootstrapState extends State<V3WindowBootstrap>
       // position come from the WindowOptions and the restored bounds in
       // main.dart; re-asserting them here would fight the user's own resize.
       await windowManager.setMinimumSize(const Size(900, 700));
+      // The launch focus lands before this widget exists, so its focus event
+      // is never delivered to this listener; start the reconciliation poll
+      // here when the window is already focused. In widget tests
+      // window_manager is absent and this throws before any timer exists.
+      if (await windowManager.isFocused()) _startBoundsPoll();
     } catch (_) {
       // window_manager can be absent in widget tests.
     }
@@ -82,6 +94,36 @@ class _V3WindowBootstrapState extends State<V3WindowBootstrap>
   @override
   void onWindowUnmaximize() => _maximized = false;
 
+  // F34: keyboard Snap (Win+arrow) and other programmatic moves resize the
+  // window through WM_SIZE only. window_manager emits onWindowMove /
+  // onWindowResize from WM_MOVING / WM_SIZING, which the OS sends solely
+  // inside the interactive mouse-drag loop, so snapped frames never fire the
+  // event-driven saves above and were silently forgotten. Reconcile with a
+  // low-frequency poll that runs while the window is focused: each tick
+  // compares the live frame with the last saved one and writes only real
+  // changes. Moves made while unfocused (display reconfiguration) surface in
+  // the immediate check on the next focus.
+  @override
+  void onWindowFocus() => _startBoundsPoll();
+
+  @override
+  void onWindowBlur() => _stopBoundsPoll();
+
+  void _startBoundsPoll() {
+    if (!_desktop) return;
+    _boundsPollTimer ??= Timer.periodic(
+      _boundsPollInterval,
+      (_) => unawaited(_saveBounds()),
+    );
+    // Check now, not one interval in.
+    unawaited(_saveBounds());
+  }
+
+  void _stopBoundsPoll() {
+    _boundsPollTimer?.cancel();
+    _boundsPollTimer = null;
+  }
+
   void _scheduleBoundsSave() {
     if (!_desktop || _maximized) return;
     _boundsSaveDebounce?.cancel();
@@ -91,7 +133,24 @@ class _V3WindowBootstrapState extends State<V3WindowBootstrap>
   Future<void> _saveBounds() async {
     try {
       if (await windowManager.isMaximized()) return;
+      // A minimized window reports a phantom frame (around -32000 on
+      // Windows); the poll could tick inside the focus-loss gap, so skip it
+      // here rather than trusting the blur event to have stopped the poll.
+      if (await windowManager.isMinimized()) return;
       final bounds = await windowManager.getBounds();
+      // The poll re-reads the same frame every tick; persist only real
+      // changes. The first check always writes once, establishing the
+      // baseline (and healing a stale or now-off-screen entry from an older
+      // session).
+      final last = _lastSavedBounds;
+      if (last != null &&
+          last.left == bounds.left &&
+          last.top == bounds.top &&
+          last.width == bounds.width &&
+          last.height == bounds.height) {
+        return;
+      }
+      _lastSavedBounds = bounds;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
         kV3WindowBoundsPref,

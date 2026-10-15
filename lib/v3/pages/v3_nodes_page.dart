@@ -479,21 +479,29 @@ class _V3NodesPageState extends State<V3NodesPage> {
       else ...[
         // The auto route is not a measurable node: in selection mode it
         // stands down instead of pretending to join the batch.
-        V3AutoRouteRow(
-          controller: controller,
-          busy: _pending == 'auto',
-          onTap: _selecting || _pending != null || controller.autoSelected
-              ? null
-              : () => _select(
-                  'auto',
-                  controller.selectAuto,
-                  v3Copy(
-                    context,
-                    zh: '已选择自动节点，请在连接页确认连接状态。',
-                    en: 'Automatic node selected. Confirm your connection on the connection page.',
-                    tw: '已選擇自動節點，請至連線頁確認連線狀態。',
+        // Screen readers cannot read the active route from the tint alone:
+        // the auto row announces as selected, and as a button while tapping
+        // it can switch (mirrors V3AutoRouteRow's own `active` flag).
+        Semantics(
+          container: true,
+          selected: controller.autoSelected,
+          button: !(_selecting || _pending != null || controller.autoSelected),
+          child: V3AutoRouteRow(
+            controller: controller,
+            busy: _pending == 'auto',
+            onTap: _selecting || _pending != null || controller.autoSelected
+                ? null
+                : () => _select(
+                    'auto',
+                    controller.selectAuto,
+                    v3Copy(
+                      context,
+                      zh: '已选择自动节点，请在连接页确认连接状态。',
+                      en: 'Automatic node selected. Confirm your connection on the connection page.',
+                      tw: '已選擇自動節點，請至連線頁確認連線狀態。',
+                    ),
                   ),
-                ),
+          ),
         ),
         const SizedBox(height: 8),
         if (nodes.isEmpty)
@@ -548,25 +556,37 @@ class _V3NodesPageState extends State<V3NodesPage> {
                         onTap: null,
                       ),
                     )
-                  : V3NodeRow(
-                      node: node,
-                      controller: controller,
-                      busy: _pending == node.id,
-                      onTap:
-                          _pending != null ||
-                              (!controller.autoSelected &&
-                                  controller.currentNode.id == node.id)
-                          ? null
-                          : () => _select(
-                              node.id,
-                              () => controller.setCurrentNode(node),
-                              v3Copy(
-                                context,
-                                zh: '已选择 ${node.name}，请在连接页确认连接状态。',
-                                en: '${node.name} selected. Confirm your connection on the connection page.',
-                                tw: '已選擇 ${node.name}，請至連線頁確認連線狀態。',
+                  : Semantics(
+                      // Same color-only problem: expose the active node as
+                      // the selected option and a tappable row as a button.
+                      // Both mirror V3NodeRow's own `selected` tint logic and
+                      // this onTap guard.
+                      container: true,
+                      selected: !controller.autoSelected &&
+                          controller.currentNode.id == node.id,
+                      button: !(_pending != null ||
+                          (!controller.autoSelected &&
+                              controller.currentNode.id == node.id)),
+                      child: V3NodeRow(
+                        node: node,
+                        controller: controller,
+                        busy: _pending == node.id,
+                        onTap:
+                            _pending != null ||
+                                (!controller.autoSelected &&
+                                    controller.currentNode.id == node.id)
+                            ? null
+                            : () => _select(
+                                node.id,
+                                () => controller.setCurrentNode(node),
+                                v3Copy(
+                                  context,
+                                  zh: '已选择 ${node.name}，请在连接页确认连接状态。',
+                                  en: '${node.name} selected. Confirm your connection on the connection page.',
+                                  tw: '已選擇 ${node.name}，請至連線頁確認連線狀態。',
+                                ),
                               ),
-                            ),
+                      ),
                     ),
             ),
       ],
@@ -629,7 +649,7 @@ class _SelectionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return V3Pressable(
+    final row = V3Pressable(
       borderRadius: BorderRadius.circular(V3Radius.card),
       hoverTint: p.ink.withValues(alpha: 0.08),
       onTap: onTap,
@@ -662,6 +682,10 @@ class _SelectionRow extends StatelessWidget {
         ),
       ),
     );
+    // The check circle is color-only: announce the row's checked state as one
+    // merged node with the node name and the tap action, so a screen reader
+    // hears the toggle instead of having to infer it from the fill color.
+    return Semantics(container: true, checked: selected, child: row);
   }
 }
 

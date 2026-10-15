@@ -165,7 +165,9 @@ void main() {
     expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
-    await tester.pump(const Duration(milliseconds: 2600));
+    // Expire the failure toast's timer so teardown has none pending; failure
+    // toasts outlive success toasts (M3 snackbar guidance).
+    await tester.pump(V3Toast.errorDuration);
   });
 
   testWidgets(
@@ -220,7 +222,8 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(controller.networkChanges, 1);
       // Expire the toast's auto-dismiss timer so teardown has none pending.
-      await tester.pump(V3Toast.defaultDuration);
+      // Failure toasts outlive success toasts (M3 snackbar guidance).
+      await tester.pump(V3Toast.errorDuration);
       await tester.pump(const Duration(milliseconds: 300));
     } finally {
       debugDefaultTargetPlatformOverride = null;

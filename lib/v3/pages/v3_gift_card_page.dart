@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
-import '../../shared/services/app_error_message_service.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_layout.dart';
+import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 
 AppLocalizations _copy(BuildContext context) =>
@@ -93,22 +94,19 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
         await controller.api.redeemGiftCard(code);
       } catch (error) {
         if (mounted) {
-          setState(() => _error = AppErrorMessageService.userFacing(error, _copy(context)));
+          setState(() => _error = v3UserFacingError(context, error));
         }
         return;
       }
 
       // Redemption succeeded. Refresh is a separate, best-effort operation:
       // a network failure here must never be shown as a failed redemption or
-      // invite a duplicate submission of a one-use code.
+      // invite a duplicate submission of a one-use code. refreshData swallows
+      // its own failures; the outcome surfaces via dataLoadError (N25).
       if (!mounted) return;
       _code.clear();
-      var refreshFailed = false;
-      try {
-        await controller.refreshData();
-      } catch (_) {
-        refreshFailed = true;
-      }
+      await controller.refreshData();
+      final refreshFailed = controller.dataLoadError != null;
       if (!mounted) return;
       setState(() {
         _success = refreshFailed
@@ -135,7 +133,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
         const SizedBox(height: 18),
         V3Panel(
           tone: V3PanelTone.hero,
-          padding: const EdgeInsets.all(22),
+          padding: const EdgeInsets.all(V3Layout.panelPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

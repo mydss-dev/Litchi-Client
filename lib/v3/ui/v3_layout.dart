@@ -14,7 +14,10 @@ abstract final class V3Layout {
   /// sheet bodies. One value per pattern — the round-2 audit found the same
   /// roles drifting across eight hand-written paddings (14/15/16/18/20/22/24/26).
   static const double cardPadding = 14;
-  static const double panelPadding = 18;
+
+  /// Matches [V3Panel]'s default padding — a token the panels drift from the
+  /// moment it stops matching.
+  static const double panelPadding = 20;
   static const double dialogPadding = 24;
   static const EdgeInsets pageInsets = EdgeInsets.fromLTRB(18, 18, 18, 28);
 
@@ -94,7 +97,7 @@ class V3PageEntrance extends InheritedWidget {
 /// spring-loaded views stage content. Outside a page entrance (dialogs,
 /// fallback sheets, tests that mount a page bare) and under reduced motion
 /// it is a passthrough.
-class V3Entrance extends StatelessWidget {
+class V3Entrance extends StatefulWidget {
   const V3Entrance({super.key, required this.index, required this.child});
 
   final int index;
@@ -122,19 +125,71 @@ class V3Entrance extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (v3ReducedMotion(context)) return child;
+  State<V3Entrance> createState() => _V3EntranceState();
+}
+
+class _V3EntranceState extends State<V3Entrance> {
+  /// One curve per card, created once and disposed with the card: the parent
+  /// (the page's shell-owned clock) and the stagger interval are stable for a
+  /// card's lifetime, so nothing re-registers on the clock's listener list.
+  /// The round-3 audit caught the previous build-time construction piling a
+  /// fresh never-disposed [CurvedAnimation] onto the shell controller on
+  /// every page rebuild.
+  CurvedAnimation? _anim;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(V3Entrance oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The interval window follows the stagger index; the parent clock does
+    // not change with the widget instance.
+    if (oldWidget.index != widget.index) _sync(force: true);
+  }
+
+  void _sync({bool force = false}) {
     final scope = context.dependOnInheritedWidgetOfExactType<V3PageEntrance>();
-    if (scope == null) return child;
-    final startMs = (index * _stepMs).clamp(0, _totalMs - _riseMs);
-    final anim = CurvedAnimation(
-      parent: scope.animation,
+    final parent = scope?.animation;
+    if (parent == null || v3ReducedMotion(context)) {
+      _disposeAnim();
+      return;
+    }
+    final existing = _anim;
+    if (!force && existing != null && identical(existing.parent, parent)) {
+      return;
+    }
+    _disposeAnim();
+    final startMs = (widget.index * V3Entrance._stepMs)
+        .clamp(0, V3Entrance._totalMs - V3Entrance._riseMs);
+    _anim = CurvedAnimation(
+      parent: parent,
       curve: Interval(
-        startMs / _totalMs,
-        (startMs + _riseMs) / _totalMs,
+        startMs / V3Entrance._totalMs,
+        (startMs + V3Entrance._riseMs) / V3Entrance._totalMs,
         curve: V3Motion.spring,
       ),
     );
+  }
+
+  void _disposeAnim() {
+    _anim?.dispose();
+    _anim = null;
+  }
+
+  @override
+  void dispose() {
+    _disposeAnim();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final anim = _anim;
+    if (anim == null) return widget.child;
     // 0.02 of the pane is DLSS5's 14px card lift, scaled; opacity rides the
     // same interval so the two stay in phase. Interval's endpoint shortcut
     // returns exactly 1.0 at rest, so settled pixels are identical.
@@ -145,7 +200,7 @@ class V3Entrance extends StatelessWidget {
           begin: const Offset(0, 0.02),
           end: Offset.zero,
         ).animate(anim),
-        child: child,
+        child: widget.child,
       ),
     );
   }

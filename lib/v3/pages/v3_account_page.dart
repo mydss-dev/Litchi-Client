@@ -12,6 +12,7 @@ import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_logout_confirmation.dart';
+import '../ui/v3_plan_labels.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
 import 'v3_telegram_page.dart';
@@ -29,6 +30,21 @@ class V3AccountPage extends StatefulWidget {
 
 class _V3AccountPageState extends State<V3AccountPage> {
   bool _updatingPreferences = false;
+  bool _refreshing = false;
+
+  /// Header refresh with in-flight feedback: the icon becomes an 18px
+  /// spinner and the button disables until the await settles. refreshData
+  /// is single-flight and swallows failures internally; the dataLoadError
+  /// strip at the bottom reports them.
+  Future<void> _refresh() async {
+    if (_refreshing) return;
+    setState(() => _refreshing = true);
+    try {
+      await AppScope.read(context).refreshData();
+    } finally {
+      if (mounted) setState(() => _refreshing = false);
+    }
+  }
 
   Future<void> _updatePreferences({
     bool? remindExpire,
@@ -98,8 +114,14 @@ class _V3AccountPageState extends State<V3AccountPage> {
                 en: 'Refresh account',
                 tw: '重新整理帳戶資料',
               ),
-              onPressed: controller.refreshData,
-              icon: const Icon(Icons.refresh_rounded),
+              onPressed: _refreshing ? null : _refresh,
+              icon: _refreshing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded),
             ),
           ),
           const SizedBox(height: 18),
@@ -219,7 +241,7 @@ class _AccountSummaryPanel extends StatelessWidget {
                   letter,
                   style: TextStyle(
                     color: p.onLychee,
-                    fontSize: 19,
+                    fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -257,13 +279,8 @@ class _AccountSummaryPanel extends StatelessWidget {
               // The badge speaks account standing: green while normal, amber
               // when the plan needs renewal or traffic, red on ban.
               V3StatusBadge(
-                label: plan.status,
-                color: switch (plan.status) {
-                  '正常' => p.success,
-                  '封禁' => p.danger,
-                  '到期' || '流量已用尽' => p.warning,
-                  _ => p.inkMuted,
-                },
+                label: v3PlanStatusLabel(context, plan.statusKind),
+                color: v3PlanStatusColor(p, plan.statusKind),
                 compact: true,
               ),
             ],
@@ -294,7 +311,7 @@ class _AccountSummaryPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      plan.shortLabel,
+                      v3PlanShortLabel(context, plan),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -306,7 +323,7 @@ class _AccountSummaryPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      plan.expiry,
+                      v3PlanExpiryLabel(context, plan),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -354,28 +371,15 @@ class _AccountSummaryPanel extends StatelessWidget {
   }
 }
 
-/// Which wallet entry currently has its dialog flow (and awaited API call)
-/// in flight; its button spins while the siblings disable, so a second
-/// money movement cannot start against a stale balance.
-enum _WalletFlow { withdraw, transfer }
-
-class _WalletPanel extends StatefulWidget {
+/// Wallet balance and its three entries. Busy is controller-owned:
+/// walletBusy rides only each transfer/withdraw API await (the dialog
+/// phase stays interactive — that phase is input, not a pending money
+/// movement, and the recharge dialog owns its own CTA spinner
+/// underneath); the wallet controller raises it and notifies, so this
+/// panel rebuilds via AppScope and both money buttons spin and disable
+/// together instead of tracking private per-button state.
+class _WalletPanel extends StatelessWidget {
   const _WalletPanel();
-  @override
-  State<_WalletPanel> createState() => _WalletPanelState();
-}
-
-class _WalletPanelState extends State<_WalletPanel> {
-  _WalletFlow? _inFlight;
-
-  /// Busy rides only the API await — the window after every wallet dialog
-  /// has closed and the entry buttons are reachable again. Wrapping the
-  /// dialog phase would spin the entry for as long as the user keeps the
-  /// dialog open, and that phase is input, not a pending money movement;
-  /// the recharge dialog owns its own CTA spinner underneath.
-  void _markFlow(_WalletFlow? flow) {
-    if (mounted) setState(() => _inFlight = flow);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -449,10 +453,8 @@ class _WalletPanelState extends State<_WalletPanel> {
                 child: _WalletActionButton(
                   icon: Icons.account_balance_rounded,
                   label: v3Copy(context, zh: '提现', en: 'Withdraw', tw: '提領'),
-                  busy: _inFlight == _WalletFlow.withdraw,
-                  onTap: () => showV3WithdrawDialog(context,
-                      setBusy: (busy) =>
-                          _markFlow(busy ? _WalletFlow.withdraw : null)),
+                  busy: controller.walletBusy,
+                  onTap: () => showV3WithdrawDialog(context),
                 ),
               ),
               const SizedBox(width: 10),
@@ -460,10 +462,8 @@ class _WalletPanelState extends State<_WalletPanel> {
                 child: _WalletActionButton(
                   icon: Icons.swap_horiz_rounded,
                   label: v3Copy(context, zh: '划转', en: 'Transfer', tw: '轉帳'),
-                  busy: _inFlight == _WalletFlow.transfer,
-                  onTap: () => showV3TransferDialog(context,
-                      setBusy: (busy) =>
-                          _markFlow(busy ? _WalletFlow.transfer : null)),
+                  busy: controller.walletBusy,
+                  onTap: () => showV3TransferDialog(context),
                 ),
               ),
             ],

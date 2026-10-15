@@ -12,6 +12,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
 
 class V3InvitePage extends StatefulWidget {
@@ -24,6 +25,10 @@ class _V3InvitePageState extends State<V3InvitePage> {
   int _selected = 0;
   String? _selectedIdentity;
   bool _creating = false;
+  // The header refresh's own in-flight signal: a local Future, not a new
+  // controller API. While it runs the button spins, ignores taps, and the
+  // body holds skeleton rows instead of flashing the empty state.
+  Future<void>? _refreshing;
 
   List<InviteCodeModel> _codes(AppController controller) {
     if (controller.inviteCodes.isNotEmpty) return controller.inviteCodes;
@@ -99,8 +104,50 @@ class _V3InvitePageState extends State<V3InvitePage> {
     }
   }
 
+  // The header refresh's in-flight tracking is a local Future: while it runs
+  // the button spins and ignores taps, and the body holds skeleton rows
+  // instead of flashing the empty state. refreshData() is single-flight and
+  // swallows its own errors, so this Future always completes; failures
+  // surface through controller.dataLoadError, which build() reads directly.
+  void _startRefresh(AppController controller) {
+    if (_refreshing != null) return;
+    final future = controller.refreshData();
+    setState(() => _refreshing = future);
+    unawaited(
+      future.whenComplete(() {
+        if (mounted) setState(() => _refreshing = null);
+      }),
+    );
+  }
+
   Future<void> _createCode() async {
     if (_creating) return;
+    // The dashed create card is the page's biggest tap target, and a create
+    // is real server state (surplus codes the user cannot delete). A confirm
+    // step keeps an accidental tap — or a tap on a card still on screen
+    // mid-reload — from silently firing the request.
+    final confirmed = await showV3ConfirmDialog(
+      context,
+      title: v3Copy(
+        context,
+        zh: '新建邀请码',
+        en: 'New invite code',
+        tw: '建立邀請碼',
+      ),
+      body: v3Copy(
+        context,
+        zh: '将向服务器申请一个新的邀请码，是否继续？',
+        en: 'A new invite code will be requested from the server. Continue?',
+        tw: '將向伺服器申請一個新的邀請碼，是否繼續？',
+      ),
+      confirmLabel: v3Copy(
+        context,
+        zh: '新建邀请码',
+        en: 'Create code',
+        tw: '建立邀請碼',
+      ),
+    );
+    if (!confirmed || !mounted) return;
     final controller = AppScope.read(context);
     final before = _codes(controller).map(_identity).toSet();
     final created = v3Copy(
@@ -226,21 +273,205 @@ class _V3InvitePageState extends State<V3InvitePage> {
                 en: 'Refresh invitations',
                 tw: '重新整理邀請資料',
               ),
-              onPressed: controller.refreshData,
-              icon: const Icon(Icons.refresh_rounded),
+              onPressed:
+                  _refreshing != null ? null : () => _startRefresh(controller),
+              icon: _refreshing != null
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_rounded),
             ),
           ),
           const SizedBox(height: 18),
-          // Full-width hero, then stats, then the ledger. Splitting hero
-          // beside stats starves the code stage and cramps the link bar and
-          // share row.
-          hero,
-          const SizedBox(height: 16),
-          _InviteStats(controller: controller),
-          const SizedBox(height: 16),
-          _ReferralLedger(controller: controller),
+          if (controller.isInitialLoading ||
+              (_refreshing != null && codes.isEmpty))
+            // First load (or a retry while nothing is on screen yet): skeleton
+            // rows in the shape of the page's three bands, so neither the
+            // all-zero stats nor the "no records" empty state flashes as fake
+            // data — and no create card sits under the cursor mid-load.
+            const _InviteSkeleton()
+          else if (controller.dataLoadError != null && codes.isEmpty)
+            // Failure is not emptiness: name the error and offer the retry.
+            V3EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: v3Copy(
+                context,
+                zh: '邀请数据加载失败',
+                en: 'Invite data could not load',
+                tw: '邀請資料載入失敗',
+              ),
+              subtitle: controller.dataLoadError!,
+              actionLabel: v3Copy(
+                context,
+                zh: '重试',
+                en: 'Retry',
+                tw: '重試',
+              ),
+              onAction: () => _startRefresh(controller),
+            )
+          else ...[
+            // Full-width hero, normal content. Splitting hero beside stats
+            // starves the code stage and cramps the link bar and share row.
+            hero,
+            const SizedBox(height: 16),
+            _InviteStats(controller: controller),
+            const SizedBox(height: 16),
+            _ReferralLedger(controller: controller),
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// First-load placeholder in the shape of the page's three bands — hero
+/// stage, KPI strip, ledger rows — so the loaded layout hands in without
+/// the all-zero stats or the "no records" empty state flashing as fake
+/// data (the tickets page's loading-space rule).
+class _InviteSkeleton extends StatelessWidget {
+  const _InviteSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Hero panel with the stage card's silhouette — the shape every
+        // loaded page shares, so the swap is a same-size hand-off.
+        Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: p.hero,
+            borderRadius: BorderRadius.circular(V3Radius.panel),
+            border: Border.all(color: p.hairline),
+            boxShadow: p.shadows,
+          ),
+          child: const SizedBox(
+            width: double.infinity,
+            height: 172,
+            child: V3SkeletonBlock(height: 172, radius: V3Radius.field),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // KPI band: icon tile, label line, value line per cell.
+        V3Panel(
+          padding: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                for (var i = 0; i < 3; i++) ...[
+                  if (i > 0) const SizedBox(width: 16),
+                  const Expanded(child: _SkeletonStatCell()),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Ledger panel: overline, then rows in the record-row silhouette.
+        V3Panel(
+          padding: const EdgeInsets.all(20),
+          radius: V3Radius.panel,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const FractionallySizedBox(
+                widthFactor: .3,
+                alignment: Alignment.centerLeft,
+                child: V3SkeletonBlock(height: 11),
+              ),
+              const SizedBox(height: 12),
+              for (var i = 0; i < 3; i++) ...[
+                if (i > 0) const SizedBox(height: 10),
+                const _SkeletonRecordRow(),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One KPI skeleton cell: icon tile, label line, value line.
+class _SkeletonStatCell extends StatelessWidget {
+  const _SkeletonStatCell();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        V3SkeletonBlock(width: 30, height: 30, radius: V3Radius.control),
+        SizedBox(width: 10),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FractionallySizedBox(
+                widthFactor: .82,
+                alignment: Alignment.centerLeft,
+                child: V3SkeletonBlock(height: 11),
+              ),
+              SizedBox(height: 4),
+              FractionallySizedBox(
+                widthFactor: .55,
+                alignment: Alignment.centerLeft,
+                child: V3SkeletonBlock(height: 18),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One ledger skeleton row in the record-row silhouette: avatar tile, two
+/// text lines, two right-aligned figures.
+class _SkeletonRecordRow extends StatelessWidget {
+  const _SkeletonRecordRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        V3SkeletonBlock(width: 36, height: 36, radius: V3Radius.field),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FractionallySizedBox(
+                widthFactor: .38,
+                alignment: Alignment.centerLeft,
+                child: V3SkeletonBlock(height: 11),
+              ),
+              SizedBox(height: 3),
+              FractionallySizedBox(
+                widthFactor: .26,
+                alignment: Alignment.centerLeft,
+                child: V3SkeletonBlock(height: 10),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: 8),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            V3SkeletonBlock(width: 44, height: 11),
+            SizedBox(height: 3),
+            V3SkeletonBlock(width: 30, height: 10),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -620,7 +851,7 @@ class _InviteStageCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: hasCode ? p.ink : p.inkMuted,
-              fontSize: hasCode ? 28 : 15,
+              fontSize: hasCode ? 28 : 14,
               height: 1.2,
               fontWeight: hasCode ? FontWeight.w900 : FontWeight.w600,
               letterSpacing: hasCode ? .8 : 0,
@@ -1153,7 +1384,7 @@ class _ReferralLedger extends StatelessWidget {
                           const SizedBox(height: 3),
                           Text(
                             record.dateDisplay,
-                            style: TextStyle(color: p.inkMuted, fontSize: 10),
+                            style: TextStyle(color: p.inkMuted, fontSize: 11),
                           ),
                         ],
                       ),
@@ -1174,7 +1405,7 @@ class _ReferralLedger extends StatelessWidget {
                         const SizedBox(height: 3),
                         Text(
                           record.amountDisplay(controller.currencySymbol),
-                          style: TextStyle(color: p.inkMuted, fontSize: 10,
+                          style: TextStyle(color: p.inkMuted, fontSize: 11,
                             fontFeatures: const [FontFeature.tabularFigures()]),
                         ),
                       ],

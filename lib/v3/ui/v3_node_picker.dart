@@ -373,7 +373,13 @@ class V3NodeRow extends StatelessWidget {
     final showTrailingChevron =
         defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS;
-    return AnimatedContainer(
+    // Screen readers cannot read the selection from the tint alone: the
+    // active node announces as selected (mirrors V3NodeRow's own `selected`
+    // tint logic on the nodes page).
+    return Semantics(
+      container: true,
+      selected: selected,
+      child: AnimatedContainer(
       duration: v3ReducedMotion(context)
           ? Duration.zero
           : V3Motion.fast,
@@ -517,6 +523,7 @@ class V3NodeRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

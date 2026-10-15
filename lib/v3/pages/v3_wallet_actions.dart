@@ -5,6 +5,8 @@ import '../commerce/v3_payment_flow.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
+import '../ui/v3_dropdown.dart';
+import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
@@ -25,6 +27,10 @@ Future<void> showV3RechargeDialog(BuildContext context) {
 /// the window after every dialog has closed, when the entry buttons are
 /// reachable again. The dialog phase is user input, not a pending money
 /// movement, and a dialog gates its own screen behind a modal barrier.
+///
+/// Deprecated (round-3 N02): panels now spin their entry buttons from the
+/// controller's walletBusy flag instead. The callback stays only until the
+/// remaining call sites stop passing it — do not add new callers.
 Future<void> showV3TransferDialog(BuildContext context,
     {void Function(bool busy)? setBusy}) async {
   final controller = AppScope.read(context);
@@ -76,7 +82,8 @@ Future<void> showV3TransferDialog(BuildContext context,
 }
 
 /// [setBusy] mirrors [showV3TransferDialog]: the panel spins its entry only
-/// across the API await, never across the dialogs.
+/// across the API await, never across the dialogs. Deprecated the same way —
+/// prefer the controller's walletBusy flag (round-3 N02).
 Future<void> showV3WithdrawDialog(BuildContext context,
     {void Function(bool busy)? setBusy}) async {
   final controller = AppScope.read(context);
@@ -174,7 +181,11 @@ class _RechargeDialogState extends State<_RechargeDialog> {
           widget.onViewOrders();
         });
       if (!mounted) return;
-      await controller.refreshData();
+      // A settled payment already refreshed the wallet through onPaid above;
+      // running the same full refresh again here fires every wallet endpoint
+      // twice back to back (round-3 F24). Only an abandoned flow — the user
+      // closed the payment panel without paying — still needs the catch-up.
+      if (!paid) await controller.refreshData();
       if (mounted && paid) {
         // The order is settled; close the recharge dialog so a second
         // submission cannot create a duplicate order.
@@ -182,8 +193,13 @@ class _RechargeDialogState extends State<_RechargeDialog> {
       }
     } catch (error) {
       // Async result errors are transient toasts; only field validation
-      // stays inline (M3).
-      V3Toast.showInOverlay(overlay, v3ErrorMessage(error), type: V3ToastType.error);
+      // stays inline (M3). v3UserFacingError resolves l10n through a live
+      // context, and every throw path here (the order submission; refresh
+      // is swallow-all now) happens while the dialog is still mounted.
+      if (mounted) {
+        V3Toast.showInOverlay(overlay, v3UserFacingError(context, error),
+          type: V3ToastType.error);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -193,12 +209,17 @@ class _RechargeDialogState extends State<_RechargeDialog> {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final symbol = AppScope.of(context).currencySymbol;
-    return Dialog(backgroundColor: Colors.transparent,
+    // While the order/payment is in flight the dialog is not dismissible: a
+    // silent close (barrier tap, ESC) would orphan the created order.
+    // PopScope covers the barrier and ESC; the close button is disabled for
+    // the same window below, and the success-path pops are direct
+    // Navigator.pop calls, which bypass PopScope by design.
+    return PopScope(canPop: !_busy, child: Dialog(backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(24),
       child: Container(width: 420,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.85),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(V3Layout.dialogPadding),
         decoration: BoxDecoration(color: p.surface,
           borderRadius: BorderRadius.circular(V3Radius.panel)),
         child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
@@ -209,7 +230,9 @@ class _RechargeDialogState extends State<_RechargeDialog> {
                 style: Theme.of(context).textTheme.headlineMedium)),
               IconButton(tooltip: v3Copy(context, zh: '关闭',
                   en: 'Close', tw: '關閉'),
-                onPressed: () => Navigator.of(context).pop(),
+                // Busy-window parity with PopScope: a disabled close is the
+                // visible half of the not-dismissible contract.
+                onPressed: _busy ? null : () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close_rounded)),
             ]),
             const SizedBox(height: 6),
@@ -247,7 +270,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
                     : const Icon(Icons.add_card_rounded, size: 18),
                 label: Text(v3Copy(context, zh: '去支付',
                   en: 'Continue to payment', tw: '前往付款')))),
-          ]))));
+          ])))));
   }
 }
 
@@ -287,7 +310,7 @@ class _AmountDialogState extends State<_AmountDialog> {
       child: Container(width: 400,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.85),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(V3Layout.dialogPadding),
         decoration: BoxDecoration(color: p.surface,
           borderRadius: BorderRadius.circular(V3Radius.panel)),
         child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
@@ -385,7 +408,7 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
       child: Container(width: 430,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.85),
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(V3Layout.dialogPadding),
         decoration: BoxDecoration(color: p.surface,
           borderRadius: BorderRadius.circular(V3Radius.panel)),
         child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min,
@@ -400,20 +423,27 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
                 icon: const Icon(Icons.close_rounded)),
             ]),
             const SizedBox(height: 18),
-            DropdownButtonFormField<String>(initialValue: _method,
-              items: widget.methods.map((method) =>
-                DropdownMenuItem(value: method, child: Text(method)))
-                .toList(growable: false),
+            Text(v3Copy(context, zh: '提现方式',
+                en: 'WITHDRAWAL METHOD', tw: '提領方式'),
+              style: TextStyle(color: p.inkMuted, fontSize: 11,
+                fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+            const SizedBox(height: 8),
+            V3Dropdown<String>(
+              value: _method ?? '',
+              items: widget.methods,
+              label: (method) => method,
               onChanged: (value) => setState(() => _method = value),
-              decoration: InputDecoration(labelText: v3Copy(context,
-                zh: '提现方式', en: 'Withdrawal method', tw: '提領方式'))),
+              width: double.infinity),
             const SizedBox(height: 12),
-            TextField(controller: _accountController,
+            // Autofocus lands on the first text input (round-3 F26): the
+            // keyboard opens on the account field instead of the amount at
+            // the bottom, and Tab/Enter walk forward to amount and submit.
+            TextField(controller: _accountController, autofocus: true,
               textInputAction: TextInputAction.next,
               decoration: InputDecoration(labelText: v3Copy(context,
                 zh: '收款账号', en: 'Payout account', tw: '收款帳號'))),
             const SizedBox(height: 12),
-            TextField(controller: _amountController, autofocus: true,
+            TextField(controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onSubmitted: (_) => _submit(),
               decoration: InputDecoration(labelText: v3Copy(context,
