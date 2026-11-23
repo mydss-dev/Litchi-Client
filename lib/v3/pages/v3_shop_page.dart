@@ -55,12 +55,21 @@ class _V3ShopPageState extends State<V3ShopPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: V3Layout.pageInsets,
         child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          V3PageHeader(title: _tr(context, '选择套餐', 'Choose a plan', '選擇方案')),
+          V3PageHeader(title: _tr(context, '套餐', 'Plans', '套餐')),
           const SizedBox(height: 18),
-          _CurrentPlanBadge(controller: controller),
-          const SizedBox(height: 14),
+          // The segment rides as its own row directly under the title (the
+          // traffic page's period-seg pattern) instead of reading as part of
+          // the header zone.
           _CategoryDeck(selected: _category,
             onChanged: (value) => setState(() => _category = value)),
+          const SizedBox(height: 14),
+          _CurrentPlanBadge(controller: controller),
+          const SizedBox(height: 14),
+          // Redemption entry (§13.3): gift cards fold into the shop strip
+          // instead of a second-level page on compact. The strip notes the
+          // condition (no active plan required) and opens the redemption
+          // sheet that already exists.
+          _RedeemStrip(controller: controller),
           const SizedBox(height: 14),
           if (controller.isInitialLoading)
             // First-load placeholders in the shape of plan cards, so the
@@ -187,6 +196,74 @@ class _CategoryDeck extends StatelessWidget {
                 fontSize: 12, fontWeight: FontWeight.w700)),
           ),
         )),
+      ]),
+    );
+  }
+}
+
+/// Redemption entry folded into the shop (§13.3): a quiet strip that names
+/// the condition and opens the existing redemption sheet.
+class _RedeemStrip extends StatelessWidget {
+  const _RedeemStrip({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return V3Panel(
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      child: Row(children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: p.surfaceRaised,
+            borderRadius: BorderRadius.circular(V3Radius.control),
+          ),
+          child: Icon(Icons.redeem_rounded, size: 18, color: p.inkMuted),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _tr(context, '有兑换卡？立即兑换', 'Have a gift card?',
+                    '有兌換卡？立即兌換'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _tr(context, '仅限当前无套餐账户使用',
+                    'Available for accounts without an active plan',
+                    '僅限目前無套餐帳戶使用'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: p.inkMuted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(
+          onPressed: () => openV3Page(context, AppPage.giftCard),
+          style: FilledButton.styleFrom(
+            backgroundColor: p.lychee,
+            foregroundColor: p.onLychee,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            minimumSize: const Size(0, 36),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(V3Radius.field),
+            ),
+          ),
+          child: Text(_tr(context, '立即兑换', 'Redeem', '立即兌換')),
+        ),
       ]),
     );
   }

@@ -329,14 +329,14 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _text(
+                            Flexible(child: _text(
                               widget.label(item),
                               item == widget.value ? p.lycheeInk : p.ink,
                               fontSize,
                               item == widget.value
                                   ? FontWeight.w700
                                   : FontWeight.w500,
-                            ),
+                            )),
                             if (item == widget.value)
                               Icon(Icons.check_rounded,
                                   size: 16, color: p.lycheeInk),

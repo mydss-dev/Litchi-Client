@@ -262,9 +262,23 @@ class _V3InvitePageState extends State<V3InvitePage> {
           V3PageHeader(
             title: v3Copy(
               context,
-              zh: '邀请好友',
-              en: 'Invite friends',
-              tw: '邀請好友',
+              zh: '邀请',
+              en: 'Invite',
+              tw: '邀請',
+            ),
+            // The scope line carries the live commission rate; the ledger's
+            // footnote below spells out the whole 口径.
+            subtitle: v3Copy(
+              context,
+              zh:
+                  '佣金比例 ${controller.commissionRate.toStringAsFixed(0)}% · '
+                  '好友消费自动计入',
+              en:
+                  'Commission rate ${controller.commissionRate.toStringAsFixed(0)}% · '
+                  "Friends' spending counts automatically",
+              tw:
+                  '佣金比例 ${controller.commissionRate.toStringAsFixed(0)}% · '
+                  '好友消費自動計入',
             ),
             trailing: IconButton(
               tooltip: v3Copy(
@@ -1100,182 +1114,89 @@ class _InviteStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final symbol = controller.currencySymbol;
-    final entries = [
-      (
+    // The four canonical metric tiles, same 1×4/2×2 rhythm as the traffic
+    // band. The user ruling: the fourth figure is the withdrawable balance
+    // (the ratio already lives in the page subtitle).
+    final tiles = [
+      V3StatTile(
+        icon: Icons.person_rounded,
         label: v3Copy(context, zh: '邀请人数', en: 'Friends invited', tw: '邀請人數'),
-        value: '${controller.invitedCount}',
-        suffix: v3Copy(context, zh: '人', en: ' people', tw: '人'),
-        positive: false,
-        amount: null,
-        icon: Icons.group_add_rounded,
-        accent: p.lychee,
-      ),
-      (
-        label: v3Copy(context, zh: '返佣比例', en: 'Commission rate', tw: '返佣比例'),
-        value: controller.commissionRate.toStringAsFixed(0),
-        suffix: '%',
-        positive: false,
-        amount: null,
-        icon: Icons.percent_rounded,
-        accent: p.aquaInk,
-      ),
-      (
-        label: v3Copy(context, zh: '累计佣金', en: 'Total commission', tw: '累計佣金'),
-        value: '',
-        suffix: '',
-        positive: false,
-        amount: controller.earnedCommission,
-        icon: Icons.payments_rounded,
-        accent: p.aquaInk,
-      ),
-      (
-        label: v3Copy(
+        value: v3Copy(
           context,
-          zh: '待确认佣金',
-          en: 'Pending commission',
-          tw: '待確認佣金',
+          zh: '${controller.invitedCount} 人',
+          en: '${controller.invitedCount}',
+          tw: '${controller.invitedCount} 人',
         ),
-        value: '',
-        suffix: '',
-        positive: false,
-        amount: controller.pendingCommission,
-        icon: Icons.schedule_rounded,
-        accent: p.warning,
+        accent: p.lycheeInk,
       ),
-      // Withdrawable balance is the one number the user can act on — green
-      // marks it as money in hand, not just a counter, and it leads the band
-      // by a step in size.
-      (
-        label: v3Copy(context, zh: '可提现佣金', en: 'Withdrawable', tw: '可提領佣金'),
-        value: '',
-        suffix: '',
-        positive: controller.withdrawable > 0,
-        amount: controller.withdrawable,
-        icon: Icons.account_balance_wallet_rounded,
-        accent: p.success,
+      V3StatTile(
+        icon: Icons.auto_awesome_rounded,
+        label: v3Copy(context, zh: '累计佣金', en: 'Total commission', tw: '累計佣金'),
+        valueWidget: V3RollingMoney(
+          value: controller.earnedCommission,
+          symbol: symbol,
+          style: TextStyle(
+            color: p.ink,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        accent: p.successInk,
+      ),
+      V3StatTile(
+        icon: Icons.storage_rounded,
+        label: v3Copy(context, zh: '待结算佣金', en: 'Settling commission', tw: '待結算佣金'),
+        valueWidget: V3RollingMoney(
+          value: controller.pendingCommission,
+          symbol: symbol,
+          style: TextStyle(
+            color: p.ink,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        accent: p.warningInk,
+      ),
+      V3StatTile(
+        icon: Icons.link_rounded,
+        label: v3Copy(context, zh: '可提现余额', en: 'Withdrawable', tw: '可提現餘額'),
+        valueWidget: V3RollingMoney(
+          value: controller.withdrawable,
+          symbol: symbol,
+          style: TextStyle(
+            color: p.ink,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        accent: p.aquaInk,
       ),
     ];
-
-    // One quiet band instead of five floating cards: a single panel whose
-    // cells are divided by 1px hairlines (the Stripe/Ant-Pro KPI-strip
-    // structure), with the traffic page's colored icon-tile DNA so the stats
-    // read as the same family. The compact pane stacks the same cells as a
-    // 2-column grid inside the same panel.
-    Widget cell(entry) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: entry.accent.withValues(alpha: .11),
-                  borderRadius: BorderRadius.circular(V3Radius.control),
-                ),
-                child: Icon(entry.icon, color: entry.accent, size: 16),
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Scale the label to fit instead of ellipsizing: the
-                    // full name still reads at the 900x700 floor and the
-                    // KPI band keeps its single-line cell rhythm.
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        entry.label,
-                        maxLines: 1,
-                        style: TextStyle(color: p.inkMuted, fontSize: 11),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Flexible(
-                          child: entry.amount != null
-                              ? V3RollingMoney(
-                                  value: entry.amount!,
-                                  symbol: symbol,
-                                  style: TextStyle(
-                                    color: entry.positive
-                                        ? p.successInk
-                                        : p.ink,
-                                    fontSize: entry.positive ? 18 : 16,
-                                    fontWeight: FontWeight.w900,
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures()
-                                    ],
-                                  ),
-                                )
-                              : Text(
-                                  entry.value,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: entry.positive
-                                        ? p.successInk
-                                        : p.ink,
-                                    fontSize: entry.positive ? 18 : 16,
-                                    fontWeight: FontWeight.w900,
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures()
-                                    ],
-                                  ),
-                                ),
-                        ),
-                        if (entry.suffix.isNotEmpty) ...[
-                          const SizedBox(width: 3),
-                          Text(
-                            entry.suffix,
-                            style: TextStyle(color: p.inkMuted, fontSize: 11),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-
-    Widget hairline({required bool vertical}) => Container(
-          width: vertical ? 1 : double.infinity,
-          height: vertical ? 32 : 1,
-          color: p.line,
-        );
-
     return LayoutBuilder(
       builder: (context, box) {
         final wide = box.maxWidth >= V3Layout.paneCompact;
-        return V3Panel(
-          padding: EdgeInsets.zero,
-          child: wide
-              ? Row(children: [
-                  for (var i = 0; i < entries.length; i++) ...[
-                    if (i > 0) hairline(vertical: true),
-                    Expanded(child: cell(entries[i])),
+        final cols = wide ? 4 : 2;
+        return Column(
+          children: [
+            for (var i = 0; i < tiles.length; i += cols) ...[
+              if (i > 0) const SizedBox(height: 12),
+              Row(
+                children: [
+                  for (
+                    var j = i;
+                    j < (i + cols).clamp(0, tiles.length);
+                    j++
+                  ) ...[
+                    if (j > i) SizedBox(width: wide ? 12 : 10),
+                    Expanded(child: tiles[j]),
                   ],
-                ])
-              // Compact: the same cells pair up into a 2-column grid inside
-              // the one panel, separated by horizontal hairlines.
-              : Column(children: [
-                  for (var r = 0; r < entries.length; r += 2) ...[
-                    if (r > 0) hairline(vertical: false),
-                    Row(children: [
-                      Expanded(child: cell(entries[r])),
-                      if (r + 1 < entries.length)
-                        Expanded(child: cell(entries[r + 1]))
-                      else
-                        const Spacer(),
-                    ]),
-                  ],
-                ]),
+                ],
+              ),
+            ],
+          ],
         );
       },
     );
@@ -1415,8 +1336,42 @@ class _ReferralLedger extends StatelessWidget {
                   ],
                 ),
               ),
+          // The accounting 口径 in one line: where the total sits between
+          // settled and withdrawing, and what unblocks a withdrawal. The
+          // withdraw action itself lives in the wallet, not here.
+          const SizedBox(height: 12),
+          Text(
+            v3Copy(
+              context,
+              zh:
+                  '累计佣金 ${_money(controller.earnedCommission)} = '
+                  '可提现 ${_money(controller.withdrawable)} + '
+                  '待结算 ${_money(controller.pendingCommission)} · '
+                  '满 ${_money(controller.minWithdrawAmount)} 可申请提现',
+              en:
+                  'Total ${_money(controller.earnedCommission)} = '
+                  'withdrawable ${_money(controller.withdrawable)} + '
+                  'settling ${_money(controller.pendingCommission)} · '
+                  'withdrawals open at ${_money(controller.minWithdrawAmount)}',
+              tw:
+                  '累計佣金 ${_money(controller.earnedCommission)} = '
+                  '可提領 ${_money(controller.withdrawable)} + '
+                  '待結算 ${_money(controller.pendingCommission)} · '
+                  '滿 ${_money(controller.minWithdrawAmount)} 可申請提領',
+            ),
+            style: TextStyle(
+              color: p.inkMuted,
+              fontSize: 11,
+              height: 1.5,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
         ],
       ),
     );
   }
+
+  /// Money in the wallet's own symbol+2dp voice, shared by the note above.
+  String _money(double value) =>
+      '${controller.currencySymbol}${value.toStringAsFixed(2)}';
 }

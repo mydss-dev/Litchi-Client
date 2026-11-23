@@ -9,9 +9,9 @@ import 'v3_visual_fixture.dart';
 
 void main() {
   for (final (locale, heading, buyLabel, checkoutLabel) in [
-    (const Locale('en'), 'Choose a plan', 'Choose plan',
+    (const Locale('en'), 'Plans', 'Choose plan',
         'Confirm and create order'),
-    (const Locale('zh', 'TW'), '選擇方案', '選擇方案', '確認並建立訂單'),
+    (const Locale('zh', 'TW'), '套餐', '選擇方案', '確認並建立訂單'),
   ]) {
     testWidgets('${locale.toLanguageTag()} shop and checkout use chosen locale',
         (tester) async {

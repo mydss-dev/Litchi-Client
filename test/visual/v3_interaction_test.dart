@@ -11,6 +11,7 @@ import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/pages/v3_nodes_page.dart';
 import 'package:litchi_client/v3/pages/v3_settings_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
+import 'package:litchi_client/v3/ui/v3_nav_island.dart';
 import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 import 'package:litchi_client/v3/ui/v3_toast.dart';
 
@@ -20,7 +21,7 @@ class _InteractiveController extends VisualV3Controller {
   _InteractiveController(super.page);
   AppPage? destination;
   int selections = 0;
-  int networkChanges = 0;
+  int dnsChanges = 0;
   Completer<String?> result = Completer<String?>();
 
   /// Stands in for a connection change being in flight.
@@ -39,8 +40,8 @@ class _InteractiveController extends VisualV3Controller {
   }
 
   @override
-  Future<String?> setNetworkMode(NetworkMode mode) {
-    networkChanges++;
+  Future<String?> setDnsMode(DnsMode mode) {
+    dnsChanges++;
     return result.future;
   }
 }
@@ -196,21 +197,27 @@ void main() {
     },
   );
 
-  testWidgets('Network settings await result and display errors', (
-    tester,
-  ) async {
+  testWidgets('Proxy mode is a read-only mirror row; DNS applies with feedback',
+    (tester) async {
     // The system-proxy option is desktop-only. Test it as Windows.
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     try {
       final controller = _InteractiveController(AppPage.settings);
       await _pump(tester, controller, const V3SettingsPage());
-      // The connection method is a V3Dropdown (commit 3ec2a0a): open its menu
-      // and pick the other mode. While the change applies, the row's control
-      // dims under a spinner; no banner text and no page-wide progress bar
-      // shift the sections down.
-      await tester.tap(find.byKey(const ValueKey('v3-network-mode-select')));
+      // The Connect page's segments are the only proxy-mode control
+      // (established ruling): the settings row is a read-only mirror that
+      // names the current mode and where switching happens — no dropdown,
+      // no second control to drift.
+      expect(find.byKey(const ValueKey('v3-network-mode-select')), findsNothing);
+      expect(find.text('代理模式'), findsOneWidget);
+      expect(find.text('TUN 模式'), findsOneWidget);
+      expect(find.text('在连接页切换'), findsOneWidget);
+      // DNS is still a live control: opening its menu and picking another
+      // resolver dims the row's control under a spinner; no banner text and
+      // no page-wide progress bar shift the sections down.
+      await tester.tap(find.byKey(const ValueKey('v3-dns-select')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('系统代理'));
+      await tester.tap(find.text('Google'));
       await tester.pump();
       expect(find.text('正在应用设置，请稍候…'), findsNothing);
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -220,7 +227,7 @@ void main() {
       // of V3 (M3 snackbar guidance) instead of a permanent inline line.
       expect(find.textContaining('核心未响应'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
-      expect(controller.networkChanges, 1);
+      expect(controller.dnsChanges, 1);
       // Expire the toast's auto-dismiss timer so teardown has none pending.
       // Failure toasts outlive success toasts (M3 snackbar guidance).
       await tester.pump(V3Toast.errorDuration);
@@ -230,15 +237,15 @@ void main() {
     }
   });
 
-  // Compact IA: orders, traffic, invite and settings lead through 更多 —
-  // the account tab holds no overflow rows of its own.
-  // Expected indexes are read off the nav model rather than hardcoded, so a tab
-  // added or removed later cannot leave a stale number behind.
+  // Compact IA (§13.3): 更多 is retired — the bottom bar is four tabs
+  // (连接 / 节点 / 套餐 / 我的) and every overflow page highlights 我的.
+  // Expected indexes are read off the nav model rather than hardcoded, so a
+  // tab added or removed later cannot leave a stale number behind.
   for (final (page, tab) in [
-    (AppPage.orders, AppPage.more),
-    (AppPage.traffic, AppPage.more),
-    (AppPage.invite, AppPage.more),
-    (AppPage.settings, AppPage.more),
+    (AppPage.orders, AppPage.account),
+    (AppPage.traffic, AppPage.account),
+    (AppPage.invite, AppPage.account),
+    (AppPage.settings, AppPage.account),
   ]) {
     testWidgets('Compact navigation places $page under ${tab.name}', (
       tester,
@@ -254,7 +261,7 @@ void main() {
           .indexWhere((item) => item.page == tab);
       expect(expected, isNonNegative, reason: '${tab.name} must be a tab');
       expect(
-        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        tester.widget<V3NavIsland>(find.byType(V3NavIsland)).selectedIndex,
         expected,
       );
       expect(tester.takeException(), isNull);

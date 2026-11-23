@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
+import '../app/v3_nav.dart';
 import '../../config/app_config.dart';
 import '../commerce/v3_order_dialog.dart';
 import '../theme/v3_motion.dart';
@@ -20,6 +22,19 @@ import 'v3_wallet_actions.dart';
 
 /// Account layout: identity/plan hero, wallet, then preferences and security
 /// — all directly visible. Do not turn the account into a collapsed menu.
+///
+/// Compact surfaces are the exception (§13.3): 我的 is the phone workspace's
+/// data center, so the five overflow surfaces (订单 / 用量 / 工单 / 邀请 /
+/// 设置) reappear as one quiet long-row list. Desktop keeps none of them —
+/// the rail owns navigation there (§13.4).
+
+/// Compact targets get the hub rows; desktop keeps the rail-only account.
+bool get _usesCompactAccountHub =>
+    !kIsWeb &&
+    switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
 /// Telegram binding is a bottom action; redemption lives in the window bar
 /// (desktop) or the compact 更多 list (mobile).
 class V3AccountPage extends StatefulWidget {
@@ -109,7 +124,13 @@ class _V3AccountPageState extends State<V3AccountPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            title: v3Copy(context, zh: '我的账户', en: 'My account', tw: '我的帳戶'),
+            title: v3Copy(context, zh: '我的', en: 'Account', tw: '我的'),
+            subtitle: v3Copy(
+              context,
+              zh: '账户信息 · 偏好 · 安全',
+              en: 'Account · Preferences · Security',
+              tw: '帳戶資訊 · 偏好 · 安全',
+            ),
             trailing: IconButton(
               tooltip: v3Copy(
                 context,
@@ -134,6 +155,10 @@ class _V3AccountPageState extends State<V3AccountPage> {
               controller.withdrawable > 0) ...[
             const SizedBox(height: 16),
             const _WalletPanel(),
+          ],
+          if (_usesCompactAccountHub) ...[
+            const SizedBox(height: 16),
+            _AccountHubRows(controller: controller),
           ],
           if (controller.hasPlan) ...[
             const SizedBox(height: 16),
@@ -317,10 +342,13 @@ class _AccountSummaryPanel extends StatelessWidget {
                       v3PlanShortLabel(context, plan),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
+                      // The account page's figures share one 16px voice —
+                      // plan value and wallet money alike (desktop flat-branch
+                      // ruling: no hero-scale numbers on this page).
                       style: TextStyle(
                         color: p.ink,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
@@ -381,6 +409,108 @@ class _AccountSummaryPanel extends StatelessWidget {
 /// underneath); the wallet controller raises it and notifies, so this
 /// panel rebuilds via AppScope and both money buttons spin and disable
 /// together instead of tracking private per-button state.
+/// Compact account hub (§13.3): the five overflow surfaces read as one
+/// quiet long-row list — circular icon seat, label, chevron, hairline
+/// dividers. Content lives on its own pages; this is navigation, not a
+/// second copy of the data.
+class _AccountHubRows extends StatelessWidget {
+  const _AccountHubRows({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final rows = <(IconData, String, AppPage)>[
+      (
+        Icons.receipt_long_rounded,
+        v3Copy(context, zh: '订单', en: 'Orders', tw: '訂單'),
+        AppPage.orders,
+      ),
+      (
+        Icons.insights_rounded,
+        v3Copy(context, zh: '用量', en: 'Usage', tw: '用量'),
+        AppPage.traffic,
+      ),
+      (
+        Icons.forum_rounded,
+        v3Copy(context, zh: '工单', en: 'Support', tw: '工單'),
+        AppPage.tickets,
+      ),
+      (
+        Icons.auto_awesome_rounded,
+        v3Copy(context, zh: '邀请', en: 'Invite', tw: '邀請'),
+        AppPage.invite,
+      ),
+      (
+        Icons.tune_rounded,
+        v3Copy(context, zh: '设置', en: 'Settings', tw: '設定'),
+        AppPage.settings,
+      ),
+    ];
+    return V3Panel(
+      padding: EdgeInsets.zero,
+      child: Column(children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) Divider(color: p.line, height: 1),
+          _AccountHubRow(
+            key: hubRowKey(rows[i].$3),
+            icon: rows[i].$1,
+            label: rows[i].$2,
+            onTap: () => openV3Page(context, rows[i].$3),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+class _AccountHubRow extends StatelessWidget {
+  const _AccountHubRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return V3Pressable(
+      onTap: onTap,
+      hoverTint: p.ink.withValues(alpha: 0.04),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: p.surfaceRaised,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 20, color: p.inkMuted),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: p.ink,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              )),
+          ),
+          Icon(Icons.chevron_right_rounded, size: 20, color: p.inkMuted),
+        ]),
+      ),
+    );
+  }
+}
+
 class _WalletPanel extends StatelessWidget {
   const _WalletPanel();
 
@@ -399,7 +529,7 @@ class _WalletPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            v3Copy(context, zh: '钱包', en: 'WALLET', tw: '錢包'),
+            v3Copy(context, zh: '我的钱包', en: 'WALLET', tw: '我的錢包'),
             style: TextStyle(
               color: p.inkMuted,
               fontSize: 11,
@@ -408,6 +538,8 @@ class _WalletPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          // Three equal columns (owner ruling): balance / withdrawable /
+          // lifetime commission — symmetric, no hero-plus-footnotes.
           Row(
             children: [
               Expanded(
@@ -423,17 +555,31 @@ class _WalletPanel extends StatelessWidget {
                 ),
               ),
               Container(width: 1, height: 46, color: p.line),
-              const SizedBox(width: 22),
+              const SizedBox(width: 18),
               Expanded(
                 child: _MoneyStat(
                   label: v3Copy(
                     context,
-                    zh: '可提现佣金',
-                    en: 'Available commission',
-                    tw: '可提領佣金',
+                    zh: '可提现',
+                    en: 'Withdrawable',
+                    tw: '可提領',
                   ),
                   symbol: symbol,
                   amount: controller.withdrawable,
+                ),
+              ),
+              Container(width: 1, height: 46, color: p.line),
+              const SizedBox(width: 18),
+              Expanded(
+                child: _MoneyStat(
+                  label: v3Copy(
+                    context,
+                    zh: '累计佣金',
+                    en: 'Total commission',
+                    tw: '累計佣金',
+                  ),
+                  symbol: symbol,
+                  amount: controller.earnedCommission,
                 ),
               ),
             ],
@@ -506,8 +652,8 @@ class _MoneyStat extends StatelessWidget {
           symbol: symbol,
           style: TextStyle(
             color: p.ink,
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),

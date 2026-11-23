@@ -212,6 +212,12 @@ class V3MetricTile extends StatelessWidget {
 /// (traffic's timing figures, invite's commission figures). The shell is
 /// shared; the figure is caller-supplied so a plain count and a rolling-money
 /// figure both fit without a style switch.
+///
+/// The content is the canonical `.metric` cell: the semantic-colored icon
+/// inline before the muted label, and one 20/w700 tabular ink figure under it
+/// — the dashboard gauge's voice, so every stat band in the app reads as one
+/// family. Page-local value-size overrides are gone; the accent colour is the
+/// only per-tile knob.
 class V3StatTile extends StatelessWidget {
   const V3StatTile({
     super.key,
@@ -224,15 +230,20 @@ class V3StatTile extends StatelessWidget {
 
   final String label;
 
-  /// Plain figure rendered in the band's compact voice (12/w800 tabular).
-  /// Ignored when [valueWidget] is provided.
+  /// Plain figure rendered in the band's canonical voice (20/w700 tabular
+  /// ink). Ignored when [valueWidget] is provided.
   final String value;
 
   /// Custom figure content (rolling money, a suffix, a larger size) that
-  /// replaces the plain [value] text.
+  /// replaces the plain [value] text. Callers style it 20/w700 tabular ink
+  /// to stay in the family.
   final Widget? valueWidget;
 
   final IconData? icon;
+
+  /// Semantic colour of the inline glyph. Use a text-safe ink variant
+  /// (`successInk`, `warningInk`, ...) — the icon is no longer buffered by a
+  /// wash tile, so a base fill could miss contrast on light surfaces.
   final Color? accent;
 
   @override
@@ -247,57 +258,57 @@ class V3StatTile extends StatelessWidget {
         border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: .11),
-                borderRadius: BorderRadius.circular(V3Radius.control),
-              ),
-              child: Icon(icon, color: accentColor, size: 16),
-            ),
-            const SizedBox(width: 10),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, color: accentColor, size: 15),
+                const SizedBox(width: 5),
+              ],
+              Flexible(
+                child: Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 11),
+                  style: TextStyle(
+                    color: p.inkMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                valueWidget ??
-                    Text(
-                      value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: p.ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-              ],
-            ),
+              ),
+            ],
           ),
+          const SizedBox(height: 6),
+          valueWidget ??
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
         ],
       ),
     );
   }
 }
 
-/// The one quiet page header, Fluent-style: a single row with the title and
-/// the page's primary actions. No kicker, no stacked description — the nav
-/// already says where you are, and a subtitle earns its place only when it
-/// carries live data (e.g. the node count), rendered inline beside the title.
+/// The one quiet page header: a 28px w700 (-0.2 tracking) title with a 13px
+/// muted subtitle riding beside it — the secondary pages' shared head voice.
+/// No kicker, no stacked description — the nav already says where you are,
+/// and a subtitle earns its place only when it carries real content
+/// (a scope line like 外观 · 代理 · 网络 · 关于 or live data), rendered
+/// inline beside the title.
 class V3PageHeader extends StatelessWidget {
   const V3PageHeader({
     super.key,
@@ -315,6 +326,7 @@ class V3PageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -326,7 +338,16 @@ class V3PageHeader extends StatelessWidget {
                 child: Text(title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.displayMedium),
+                  // 28/w700/-0.2 is the secondary-page head spec (design
+                  // tokens): the theme's displayMedium is close but heavier,
+                  // so the head owns its exact voice instead of a theme alias.
+                  style: TextStyle(
+                    color: p.ink,
+                    fontSize: 28,
+                    height: 1.05,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  )),
               ),
               if (subtitle != null) ...[
                 const SizedBox(width: 10),
@@ -337,7 +358,11 @@ class V3PageHeader extends StatelessWidget {
                       subtitle!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: TextStyle(
+                        color: p.inkMuted,
+                        fontSize: 13,
+                        letterSpacing: -0.2,
+                      ),
                     ),
                   ),
                 ),

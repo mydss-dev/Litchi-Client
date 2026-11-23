@@ -22,7 +22,8 @@ class V3OrdersPage extends StatefulWidget {
   static Future<void> show(BuildContext context) {
     final key = GlobalKey<_V3OrdersPageState>();
     return showV3Sheet<void>(context,
-      title: v3Copy(context, zh: '订单记录', en: 'Order history', tw: '訂單紀錄'),
+      // Two-character page title per the secondary-page ruling.
+      title: v3Copy(context, zh: '订单', en: 'Orders', tw: '訂單'),
       trailing: IconButton(
         tooltip: v3Copy(context, zh: '刷新订单',
           en: 'Refresh orders', tw: '重新整理訂單'),
@@ -198,76 +199,80 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
             ],
           ]),
         const SizedBox(height: 16),
-        Container(width: double.infinity, padding: const EdgeInsets.all(18),
+        // Stacked long cards (Elegant reference): every order is its own
+        // rounded surface with generous padding, not a divided list inside
+        // one panel.
+        Container(width: double.infinity, padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(color: p.surface,
-            borderRadius: BorderRadius.circular(V3Radius.panel),
+            borderRadius: BorderRadius.circular(V3Radius.card),
             boxShadow: p.shadows),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SingleChildScrollView(scrollDirection: Axis.horizontal,
-              child: SegmentedButton<int>(
-                segments: [
-                  ButtonSegment(value: 0, label: Text(v3Copy(context,
-                    zh: '全部', en: 'All', tw: '全部'))),
-                  ButtonSegment(value: 1, label: Text(v3Copy(context,
-                    zh: '待处理', en: 'Pending', tw: '待處理'))),
-                  ButtonSegment(value: 2, label: Text(v3Copy(context,
-                    zh: '已完成', en: 'Completed', tw: '已完成'))),
-                  ButtonSegment(value: 3, label: Text(v3Copy(context,
-                    zh: '已取消', en: 'Cancelled', tw: '已取消'))),
-                ],
-                selected: {_filter}, showSelectedIcon: false,
-                onSelectionChanged: (value) => setState(() {
-                  _filter = value.first;
-                  _limit = _pageSize;
-                }))),
-            const SizedBox(height: 16),
-            if (_loading)
-              const _OrdersSkeleton()
-            else if (_error != null)
-              V3EmptyState(icon: Icons.error_outline_rounded,
-                title: v3Copy(context, zh: '订单加载失败',
-                  en: 'Could not load orders', tw: '訂單載入失敗'),
-                subtitle: _error!,
-                actionLabel: v3Copy(context, zh: '重试',
-                  en: 'Retry', tw: '重試'), onAction: _load)
-            else if (visible.isEmpty)
-              V3EmptyState(icon: Icons.receipt_long_rounded,
-                title: v3Copy(context, zh: '这里还没有订单',
-                  en: 'No orders here yet', tw: '這裡尚無訂單'),
-                subtitle: _filter == 0
-                  ? v3Copy(context, zh: '购买套餐后，订单会出现在这里。',
-                      en: 'Your orders appear here after you buy a plan.',
-                      tw: '購買方案後，訂單會顯示在這裡。')
-                  : v3Copy(context, zh: '当前筛选条件下没有记录。',
-                      en: 'No orders match this filter.', tw: '目前篩選條件下沒有紀錄。'),
-                actionLabel: _filter == 0 ? v3Copy(context, zh: '去购买套餐',
-                  en: 'Buy a plan', tw: '前往購買方案') : null,
-                onAction: _filter == 0 ? () {
-                  closeV3Sheet(context);
-                  controller.goToPage(AppPage.shop);
-                } : null)
-            else ...[
-              for (var i = 0; i < shown.length; i++) ...[
-                _OrderRow(order: shown[i],
-                  currencySymbol: controller.currencySymbol,
-                  wide: constraints.maxWidth >= V3Layout.paneCompact,
-                  busy: _busyTradeNo == shown[i].tradeNo,
-                  onPay: () => _pay(shown[i]),
-                  onCancel: () => _cancel(shown[i])),
-                if (i != shown.length - 1) Divider(color: p.line, height: 1),
+          child: SingleChildScrollView(scrollDirection: Axis.horizontal,
+            child: SegmentedButton<int>(
+              segments: [
+                ButtonSegment(value: 0, label: Text(v3Copy(context,
+                  zh: '全部', en: 'All', tw: '全部'))),
+                ButtonSegment(value: 1, label: Text(v3Copy(context,
+                  zh: '待处理', en: 'Pending', tw: '待處理'))),
+                ButtonSegment(value: 2, label: Text(v3Copy(context,
+                  zh: '已完成', en: 'Completed', tw: '已完成'))),
+                ButtonSegment(value: 3, label: Text(v3Copy(context,
+                  zh: '已取消', en: 'Cancelled', tw: '已取消'))),
               ],
-              if (visible.length > shown.length) ...[
-                const SizedBox(height: 4),
-                Center(child: TextButton(
-                  onPressed: () => setState(() => _limit += _pageSize),
-                  child: Text(v3Copy(context,
-                    zh: '显示更多订单（剩余 ${visible.length - shown.length} 条）',
-                    en: 'Show more (${visible.length - shown.length} remaining)',
-                    tw: '顯示更多訂單（剩餘 ${visible.length - shown.length} 筆）')))),
-              ],
-            ],
-          ]),
-        ),
+              selected: {_filter}, showSelectedIcon: false,
+              onSelectionChanged: (value) => setState(() {
+                _filter = value.first;
+                _limit = _pageSize;
+              })))),
+        const SizedBox(height: 12),
+        if (_loading)
+          const _OrdersSkeleton()
+        else if (_error != null)
+          V3EmptyState(icon: Icons.error_outline_rounded,
+            title: v3Copy(context, zh: '订单加载失败',
+              en: 'Could not load orders', tw: '訂單載入失敗'),
+            subtitle: _error!,
+            actionLabel: v3Copy(context, zh: '重试',
+              en: 'Retry', tw: '重試'), onAction: _load)
+        else if (visible.isEmpty)
+          V3EmptyState(icon: Icons.receipt_long_rounded,
+            title: v3Copy(context, zh: '这里还没有订单',
+              en: 'No orders here yet', tw: '這裡尚無訂單'),
+            subtitle: _filter == 0
+              ? v3Copy(context, zh: '购买套餐后，订单会出现在这里。',
+                  en: 'Your orders appear here after you buy a plan.',
+                  tw: '購買方案後，訂單會顯示在這裡。')
+              : v3Copy(context, zh: '当前筛选条件下没有记录。',
+                  en: 'No orders match this filter.', tw: '目前篩選條件下沒有紀錄。'),
+            actionLabel: _filter == 0 ? v3Copy(context, zh: '去购买套餐',
+              en: 'Buy a plan', tw: '前往購買方案') : null,
+            onAction: _filter == 0 ? () {
+              closeV3Sheet(context);
+              controller.goToPage(AppPage.shop);
+            } : null)
+        else ...[
+          for (var i = 0; i < shown.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            Container(width: double.infinity, padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: p.surface,
+                borderRadius: BorderRadius.circular(V3Radius.card),
+                boxShadow: p.shadows),
+              child: _OrderRow(order: shown[i],
+                currencySymbol: controller.currencySymbol,
+                wide: constraints.maxWidth >= V3Layout.paneCompact,
+                busy: _busyTradeNo == shown[i].tradeNo,
+                onPay: () => _pay(shown[i]),
+                onCancel: () => _cancel(shown[i]))),
+          ],
+          if (visible.length > shown.length) ...[
+            const SizedBox(height: 8),
+            Center(child: TextButton(
+              onPressed: () => setState(() => _limit += _pageSize),
+              child: Text(v3Copy(context,
+                zh: '显示更多订单（剩余 ${visible.length - shown.length} 条）',
+                en: 'Show more (${visible.length - shown.length} remaining)',
+                tw: '顯示更多訂單（剩餘 ${visible.length - shown.length} 筆）')))),
+          ],
+        ],
       ]);
     });
   }
@@ -354,7 +359,7 @@ class _OrderRow extends StatelessWidget {
     final title = order.planName?.trim().isNotEmpty == true
         ? order.planName!.trim() : order.periodLabel;
     if (!wide) {
-      return Padding(padding: const EdgeInsets.symmetric(vertical: 15),
+      return Padding(padding: EdgeInsets.zero,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(child: Text(title, maxLines: 2,
@@ -400,7 +405,7 @@ class _OrderRow extends StatelessWidget {
     // status | inline actions. Pending-order actions are visible buttons
     // instead of the compact row's overflow menu, so desktop users see what
     // an unpaid order can do without an extra click.
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 15),
+    return Padding(padding: EdgeInsets.zero,
       child: Row(children: [
         Container(width: 44, height: 44,
           decoration: BoxDecoration(

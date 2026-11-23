@@ -249,20 +249,51 @@ class _LoginFormState extends State<_LoginForm> {
             : v3Copy(context, zh: '进入 Litchi',
               en: 'Sign in to Litchi', tw: '進入 Litchi')))),
       const SizedBox(height: 18),
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(v3Copy(context, zh: '还没有账户？',
-          en: 'No account?', tw: '還沒有帳戶？'),
-          style: TextStyle(color: p.inkMuted, fontSize: 11)),
-        if (registerOpen)
-          _InlineTextButton(label: v3Copy(context, zh: '注册',
-            en: 'Register', tw: '註冊'), accent: true,
-            onPressed: () => controller.goToAuthScreen(AuthScreen.register))
-        else Text(v3Copy(context, zh: ' 暂未开放注册',
-          en: ' Registration is closed', tw: ' 暫未開放註冊'),
-          style: TextStyle(color: p.inkMuted, fontSize: 11)),
-      ]),
+      // Mobile footer gains the forgotten-password entry next to the register
+      // hand-off; desktop already surfaces it beside the remember toggle, so
+      // the desktop footer stays untouched (端分治: no desktop backport).
+      if (_isTouchPlatform)
+        Wrap(spacing: 2, runSpacing: 0,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          alignment: WrapAlignment.center,
+          children: [
+            Text(v3Copy(context, zh: '还没有账户？',
+              en: 'No account?', tw: '還沒有帳戶？'),
+              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+            if (registerOpen)
+              _InlineTextButton(label: v3Copy(context, zh: '注册',
+                en: 'Register', tw: '註冊'), accent: true,
+                onPressed: () =>
+                    controller.goToAuthScreen(AuthScreen.register))
+            else Text(v3Copy(context, zh: ' 暂未开放注册',
+              en: ' Registration is closed', tw: ' 暫未開放註冊'),
+              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+            Text(v3Copy(context, zh: ' · ', en: '  ·  ', tw: ' · '),
+              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+            _InlineTextButton(label: v3Copy(context, zh: '忘记密码',
+              en: 'Forgot password', tw: '忘記密碼'),
+              onPressed: () =>
+                  controller.goToAuthScreen(AuthScreen.forgotPassword)),
+          ])
+      else
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(v3Copy(context, zh: '还没有账户？',
+            en: 'No account?', tw: '還沒有帳戶？'),
+            style: TextStyle(color: p.inkMuted, fontSize: 11)),
+          if (registerOpen)
+            _InlineTextButton(label: v3Copy(context, zh: '注册',
+              en: 'Register', tw: '註冊'), accent: true,
+              onPressed: () => controller.goToAuthScreen(AuthScreen.register))
+          else Text(v3Copy(context, zh: ' 暂未开放注册',
+            en: ' Registration is closed', tw: ' 暫未開放註冊'),
+            style: TextStyle(color: p.inkMuted, fontSize: 11)),
+        ]),
     ]);
   }
+
+  static bool get _isTouchPlatform =>
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
 }
 
 class _RegisterForm extends StatefulWidget {

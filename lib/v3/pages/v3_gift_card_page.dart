@@ -52,7 +52,9 @@ class V3GiftCardPage extends StatefulWidget {
 
   static Future<void> show(BuildContext context) => showV3Sheet<void>(
     context,
-    title: _copy(context).giftCardTitle,
+    // Two-character page title per the secondary-page ruling (the sheet
+    // header has no subtitle slot; the intro line below carries the copy).
+    title: v3Copy(context, zh: '兑换', en: 'Redeem', tw: '兌換'),
     builder: (_) => const V3GiftCardPage(),
   );
 

@@ -59,7 +59,9 @@ void main() {
         ),
       );
       await tester.pump();
-      final heading = find.text('支持工单');
+      // 支持工单 -> 工单: two-character page title per the secondary-page
+      // ruling (V3 redesign plan, task list item 2).
+      final heading = find.text('工单');
       final before = tester.getTopLeft(heading);
       controller.finishLoading();
       await tester.pump();

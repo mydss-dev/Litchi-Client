@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/utils/traffic_summary_text.dart';
-import '../../shared/utils/traffic_metrics.dart';
 import '../../shared/services/traffic_history_series.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
@@ -103,9 +101,9 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
             V3PageHeader(
               title: v3Copy(
                 context,
-                zh: '流量用量',
-                en: 'Traffic usage',
-                tw: '流量用量',
+                zh: '用量',
+                en: 'Usage',
+                tw: '用量',
               ),
             ),
             V3EmptyState(
@@ -136,9 +134,9 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
             V3PageHeader(
               title: v3Copy(
                 context,
-                zh: '流量用量',
-                en: 'Traffic usage',
-                tw: '流量用量',
+                zh: '用量',
+                en: 'Usage',
+                tw: '用量',
               ),
             ),
             const SizedBox(height: 18),
@@ -167,7 +165,21 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
-            title: v3Copy(context, zh: '流量用量', en: 'Traffic usage', tw: '流量用量'),
+            title: v3Copy(context, zh: '用量', en: 'Usage', tw: '用量'),
+            // The scope line carries the month's live quota, the same numbers
+            // the quota panel holds below.
+            subtitle: v3Copy(
+              context,
+              zh:
+                  '本月 ${traffic.usedGb.toStringAsFixed(1)} GB / '
+                  '${_totalGbLabel(traffic.totalGb)} GB 用量走势',
+              en:
+                  'This month ${traffic.usedGb.toStringAsFixed(1)} GB / '
+                  '${_totalGbLabel(traffic.totalGb)} GB usage trend',
+              tw:
+                  '本月 ${traffic.usedGb.toStringAsFixed(1)} GB / '
+                  '${_totalGbLabel(traffic.totalGb)} GB 用量走勢',
+            ),
             trailing: _RefreshIconButton(
               tooltip: v3Copy(
                 context,
@@ -355,9 +367,10 @@ class _QuotaValue extends StatelessWidget {
   }
 }
 
-/// The stat-tile band, kept as separate cards on the canvas. Wide panes lay
-/// it out 3x2, narrow ones 2x3; each tile keeps its accent so the band is
-/// the page's color stripe.
+/// The stat-tile band: the four canonical metric tiles, laid out 1×4 on a wide
+/// pane and 2×2 on a phone (row gap 12 / column gap 10). Tile copy, icons and
+/// accents follow the design ruling: 今日用量 down/green, 在线设备 link/aqua,
+/// 本月已用 db/amber, 剩余流量 chart/green.
 class _TimingGrid extends StatelessWidget {
   const _TimingGrid({required this.controller});
   final AppController controller;
@@ -365,80 +378,56 @@ class _TimingGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final resetDays = _daysUntilReset(controller.resetDay);
-    final expiry = subscriptionExpiryDisplay(
-      expiredAt: controller.expiredAt,
-      expiryText: controller.user.expiry,
-    );
-    final days = expiry.days;
-    final tiles = <Widget>[
+    final traffic = controller.traffic;
+    // Whole-gigabyte quota labels read without a trailing .0 (512 GB); the
+    // same helper the page-head subtitle uses keeps the two in agreement.
+    final usedLabel = '${traffic.usedGb.toStringAsFixed(1)} GB';
+    final remainLabel = '${traffic.remainGb.toStringAsFixed(1)} GB';
+    final devices = controller.aliveIp == null
+        ? '--'
+        : controller.deviceLimit == null
+        ? v3Copy(
+            context,
+            zh: '${controller.aliveIp} 台',
+            en: '${controller.aliveIp} devices',
+            tw: '${controller.aliveIp} 台',
+          )
+        : v3Copy(
+            context,
+            zh: '${controller.aliveIp} / ${controller.deviceLimit} 台',
+            en: '${controller.aliveIp} / ${controller.deviceLimit} devices',
+            tw: '${controller.aliveIp} / ${controller.deviceLimit} 台',
+          );
+    final tiles = [
       V3StatTile(
-        icon: Icons.today_rounded,
-        label: v3Copy(context, zh: '今日已用', en: 'Used today', tw: '今日已用'),
+        icon: Icons.arrow_downward_rounded,
+        label: v3Copy(context, zh: '今日用量', en: 'Used today', tw: '今日用量'),
         value: '${controller.todayTrafficGb.toStringAsFixed(2)} GB',
-        accent: p.lychee,
+        accent: p.successInk,
       ),
       V3StatTile(
-        icon: Icons.compare_arrows_rounded,
-        label: v3Copy(context, zh: '昨日对比', en: 'Vs. yesterday', tw: '昨日對比'),
-        value: _v3YesterdayComparison(
-          context,
-          controller.trafficUsage,
-          controller.todayTrafficGb,
-        ),
-        accent: p.aquaInk,
-      ),
-      V3StatTile(
-        icon: Icons.event_available_rounded,
-        label: v3Copy(context, zh: '套餐有效期', en: 'Plan expires', tw: '方案有效期'),
-        value: controller.planExpiryLabel,
-        accent: p.aquaInk,
-      ),
-      if (days != null)
-        V3StatTile(
-          icon: Icons.hourglass_bottom_rounded,
-          label: v3Copy(context, zh: '距离到期', en: 'Time remaining', tw: '距離到期'),
-          value: days < 0
-              ? v3Copy(context, zh: '已过期', en: 'Expired', tw: '已過期')
-              : days == 0
-              ? v3Copy(context, zh: '今天到期', en: 'Expires today', tw: '今天到期')
-              : v3Copy(context, zh: '$days 天', en: '$days days', tw: '$days 天'),
-          accent: days <= 0 ? p.warning : p.aquaInk,
-        ),
-      V3StatTile(
-        icon: Icons.restart_alt_rounded,
-        label: v3Copy(context, zh: '流量重置', en: 'Data resets', tw: '流量重置'),
-        value: controller.resetDay == null
-            ? v3Copy(context, zh: '未提供', en: 'Unavailable', tw: '未提供')
-            : resetDays == null
-            ? v3Copy(
-                context,
-                zh: '每月 ${controller.resetDay} 日',
-                en: 'Day ${controller.resetDay} monthly',
-                tw: '每月 ${controller.resetDay} 日',
-              )
-            : v3Copy(
-                context,
-                zh: '$resetDays 天后',
-                en: 'In $resetDays days',
-                tw: '$resetDays 天後',
-              ),
-        accent: p.success,
-      ),
-      V3StatTile(
-        icon: Icons.devices_rounded,
+        icon: Icons.link_rounded,
         label: v3Copy(context, zh: '在线设备', en: 'Online devices', tw: '線上裝置'),
-        value: controller.aliveIp == null
-            ? '--'
-            : controller.deviceLimit == null
-            ? '${controller.aliveIp}'
-            : '${controller.aliveIp} / ${controller.deviceLimit}',
-        accent: p.warning,
+        value: devices,
+        accent: p.aquaInk,
+      ),
+      V3StatTile(
+        icon: Icons.storage_rounded,
+        label: v3Copy(context, zh: '本月已用', en: 'Used this month', tw: '本月已用'),
+        value: usedLabel,
+        accent: p.warningInk,
+      ),
+      V3StatTile(
+        icon: Icons.bar_chart_rounded,
+        label: v3Copy(context, zh: '剩余流量', en: 'Remaining data', tw: '剩餘流量'),
+        value: remainLabel,
+        accent: p.successInk,
       ),
     ];
     return LayoutBuilder(
       builder: (context, box) {
-        final cols = box.maxWidth >= V3Layout.paneCompact ? 3 : 2;
+        final wide = box.maxWidth >= V3Layout.paneCompact;
+        final cols = wide ? 4 : 2;
         return Column(
           children: [
             for (var i = 0; i < tiles.length; i += cols) ...[
@@ -450,7 +439,7 @@ class _TimingGrid extends StatelessWidget {
                     j < (i + cols).clamp(0, tiles.length);
                     j++
                   ) ...[
-                    if (j > i) const SizedBox(width: 12),
+                    if (j > i) SizedBox(width: wide ? 12 : 10),
                     Expanded(child: tiles[j]),
                   ],
                 ],
@@ -562,7 +551,7 @@ class _TrendPanelView extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  v3Copy(context, zh: '流量趋势', en: 'Usage trend', tw: '流量趨勢'),
+                  v3Copy(context, zh: '用量走势', en: 'Usage trend', tw: '用量走勢'),
                   style: TextStyle(
                     color: p.ink,
                     fontSize: 13,
@@ -847,12 +836,12 @@ class _UsageBarState extends State<_UsageBar> {
             en: '\nUpload ${widget.details.upload!.toStringAsFixed(2)} GB · Download ${widget.details.download!.toStringAsFixed(2)} GB',
             tw: '\n上傳 ${widget.details.upload!.toStringAsFixed(2)} GB · 下載 ${widget.details.download!.toStringAsFixed(2)} GB',
           );
-    // 7-day view: the daily amount rides on top of each bar so the chart
-    // reads at a glance without hovering. 15/30-day views stay caption-free;
-    // the tooltip carries the numbers there.
+    // 7-day view: the daily amount rides on top of each bar, unit included,
+    // so the chart reads at a glance without hovering. 15/30-day views stay
+    // caption-free; the tooltip carries the numbers there.
     final caption = gb == null || !widget.showValue
         ? null
-        : '${gb >= 10 ? gb.toStringAsFixed(0) : gb.toStringAsFixed(1)}G';
+        : '${gb >= 10 ? gb.toStringAsFixed(0) : gb.toStringAsFixed(1)} GB';
     final message = '${_dayLabel(widget.point.date)}\n$value$detailsText';
     return Tooltip(
       key: _tooltipKey,
@@ -948,67 +937,10 @@ bool _isToday(DateTime date) {
       date.day == now.day;
 }
 
-int? _daysUntilReset(int? resetDay) {
-  if (resetDay == null || resetDay < 1 || resetDay > 31) return null;
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  DateTime targetFor(int year, int month) {
-    final nextMonth = month == 12
-        ? DateTime(year + 1, 1, 1)
-        : DateTime(year, month + 1, 1);
-    final lastDay = nextMonth.subtract(const Duration(days: 1)).day;
-    return DateTime(year, month, resetDay > lastDay ? lastDay : resetDay);
-  }
-
-  var target = targetFor(today.year, today.month);
-  if (target.isBefore(today)) {
-    final next = DateTime(today.year, today.month + 1, 1);
-    target = targetFor(next.year, next.month);
-  }
-  return target.difference(today).inDays;
-}
-
-/// V3 copy must also render in isolated widget previews without ARB delegates.
-String _v3YesterdayComparison(
-  BuildContext context,
-  List<TrafficUsagePoint> usage,
-  double today,
-) {
-  final yesterday = DateTime.now().subtract(const Duration(days: 1));
-  final hasRecord = usage.any(
-    (point) =>
-        point.date.year == yesterday.year &&
-        point.date.month == yesterday.month &&
-        point.date.day == yesterday.day,
-  );
-  if (!hasRecord) {
-    return v3Copy(
-      context,
-      zh: '昨日暂无记录',
-      en: 'No data for yesterday',
-      tw: '昨日暫無紀錄',
-    );
-  }
-  final previous = trafficForDay(usage, yesterday);
-  final change = relativeChangePercent(current: today, previous: previous);
-  if (change == null) {
-    final total = previous.toStringAsFixed(2);
-    return v3Copy(
-      context,
-      zh: '昨日 $total GB',
-      en: 'Yesterday $total GB',
-      tw: '昨日 $total GB',
-    );
-  }
-  final rounded = change.abs() < 0.5 ? 0 : change.round();
-  final percent = rounded > 0 ? '+$rounded%' : '$rounded%';
-  return v3Copy(
-    context,
-    zh: '较昨日 $percent',
-    en: 'Vs yesterday $percent',
-    tw: '較昨日 $percent',
-  );
-}
+/// Whole gigabytes read as whole numbers (512 GB, not 512.0 GB); fractional
+/// quotas keep one decimal.
+String _totalGbLabel(double gb) =>
+    gb == gb.roundToDouble() ? gb.toStringAsFixed(0) : gb.toStringAsFixed(1);
 
 /// Header refresh with in-flight feedback (round-3 audit F32): while the
 /// refresh runs the icon spins (18px) and the button stands down, so a slow
@@ -1173,18 +1105,19 @@ class _TrafficSkeleton extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        // Stat-tile band: the same 2/3-column grid the loaded band uses.
+        // Stat-tile band: the same 1×4/2×2 grid the loaded band uses.
         LayoutBuilder(
           builder: (context, box) {
-            final cols = box.maxWidth >= V3Layout.paneCompact ? 3 : 2;
+            final wide = box.maxWidth >= V3Layout.paneCompact;
+            final cols = wide ? 4 : 2;
             return Column(
               children: [
-                for (var i = 0; i < 6; i += cols) ...[
+                for (var i = 0; i < 4; i += cols) ...[
                   if (i > 0) const SizedBox(height: 12),
                   Row(
                     children: [
-                      for (var j = i; j < (i + cols).clamp(0, 6); j++) ...[
-                        if (j > i) const SizedBox(width: 12),
+                      for (var j = i; j < (i + cols).clamp(0, 4); j++) ...[
+                        if (j > i) SizedBox(width: wide ? 12 : 10),
                         const Expanded(child: _StatTileSkeleton()),
                       ],
                     ],
@@ -1253,29 +1186,19 @@ class _StatTileSkeleton extends StatelessWidget {
         border: Border.all(color: p.hairline),
         boxShadow: p.shadows,
       ),
-      child: const Row(
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          V3SkeletonBlock(width: 30, height: 30, radius: V3Radius.control),
-          SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FractionallySizedBox(
-                  widthFactor: .6,
-                  alignment: Alignment.centerLeft,
-                  child: V3SkeletonBlock(height: 11),
-                ),
-                SizedBox(height: 6),
-                FractionallySizedBox(
-                  widthFactor: .4,
-                  alignment: Alignment.centerLeft,
-                  child: V3SkeletonBlock(height: 12),
-                ),
-              ],
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              V3SkeletonBlock(width: 15, height: 15, radius: V3Radius.glyph),
+              SizedBox(width: 5),
+              V3SkeletonBlock(width: 56, height: 11),
+            ],
           ),
+          SizedBox(height: 8),
+          V3SkeletonBlock(width: 84, height: 20),
         ],
       ),
     );

@@ -84,8 +84,12 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
           // a minHeight box here pushed the heading 35dp below every other
           // page's first line.
           V3PageHeader(
-            title: v3Copy(context, zh: '支持工单',
-              en: 'Support tickets', tw: '支援工單'),
+            title: v3Copy(context, zh: '工单',
+              en: 'Tickets', tw: '工單'),
+            subtitle: v3Copy(context,
+              zh: '平均响应 < 2 小时',
+              en: 'Average response < 2 hours',
+              tw: '平均回應 < 2 小時'),
             trailing: Row(mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end, children: [
                 if (!compact)
@@ -118,43 +122,58 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
               value: '$closedCount', accent: p.success, loading: skeleton)),
           ]),
           const SizedBox(height: 16),
-          Container(width: double.infinity, padding: const EdgeInsets.all(18),
-            constraints: const BoxConstraints(minHeight: kV3TicketListMinHeight + 36),
-            decoration: BoxDecoration(color: p.surface,
-              borderRadius: BorderRadius.circular(V3Radius.panel),
-              boxShadow: p.shadows),
-            child: skeleton
-              ? const _TicketsSkeleton()
-              : error != null
-                ? V3EmptyState(icon: Icons.error_outline_rounded,
-                    title: v3Copy(context, zh: '工单加载失败',
-                      en: 'Could not load tickets', tw: '工單載入失敗'),
-                    subtitle: error,
-                    actionLabel: v3Copy(context, zh: '重试', en: 'Retry', tw: '重試'),
-                    onAction: controller.refreshTickets)
-                : tickets.isEmpty
-                  ? V3EmptyState(icon: Icons.support_agent_rounded,
-                      title: v3Copy(context, zh: '还没有工单',
-                        en: 'No tickets yet', tw: '尚無工單'),
-                      subtitle: v3Copy(context,
-                        zh: '遇到问题时，可以直接从这里联系支持。',
-                        en: 'Contact support here whenever you need help.',
-                        tw: '遇到問題時，可直接在此聯絡支援。'),
-                      actionLabel: v3Copy(context, zh: '创建第一张工单',
-                        en: 'Create your first ticket', tw: '建立第一張工單'),
-                      onAction: _newTicket)
-                  : Column(children: [
-                      for (var i = 0; i < tickets.length; i++) ...[
-                        _TicketRow(ticket: tickets[i],
-                          wide: constraints.maxWidth >= V3Layout.paneCompact,
-                          onTap: () => _openTicket(tickets[i])),
-                        if (i != tickets.length - 1)
-                          Divider(color: p.line, height: 1),
-                      ],
-                    ])),
+          // Stacked long cards (Elegant reference): each ticket is its own
+          // rounded surface, mirroring the orders list anatomy.
+          if (skeleton)
+            const _TicketsSkeleton()
+          else if (error != null)
+            _TicketStateCard(child: V3EmptyState(icon: Icons.error_outline_rounded,
+              title: v3Copy(context, zh: '工单加载失败',
+                en: 'Could not load tickets', tw: '工單載入失敗'),
+              subtitle: error,
+              actionLabel: v3Copy(context, zh: '重试', en: 'Retry', tw: '重試'),
+              onAction: controller.refreshTickets))
+          else if (tickets.isEmpty)
+            _TicketStateCard(child: V3EmptyState(icon: Icons.support_agent_rounded,
+              title: v3Copy(context, zh: '还没有工单',
+                en: 'No tickets yet', tw: '尚無工單'),
+              subtitle: v3Copy(context,
+                zh: '遇到问题时，可以直接从这里联系支持。',
+                en: 'Contact support here whenever you need help.',
+                tw: '遇到問題時，可直接在此聯絡支援。'),
+              actionLabel: v3Copy(context, zh: '创建第一张工单',
+                en: 'Create your first ticket', tw: '建立第一張工單'),
+              onAction: _newTicket))
+          else
+            for (var i = 0; i < tickets.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              Container(width: double.infinity, padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: p.surface,
+                  borderRadius: BorderRadius.circular(V3Radius.card),
+                  boxShadow: p.shadows),
+                child: _TicketRow(ticket: tickets[i],
+                  wide: constraints.maxWidth >= V3Layout.paneCompact,
+                  onTap: () => _openTicket(tickets[i]))),
+            ],
         ]),
       );
     });
+  }
+}
+
+/// One rounded surface for the list's empty / error states.
+class _TicketStateCard extends StatelessWidget {
+  const _TicketStateCard({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(width: double.infinity, padding: const EdgeInsets.all(18),
+      constraints: const BoxConstraints(minHeight: kV3TicketListMinHeight),
+      decoration: BoxDecoration(color: p.surface,
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        boxShadow: p.shadows),
+      child: child);
   }
 }
 
@@ -165,9 +184,12 @@ class _TicketsSkeleton extends StatelessWidget {
     final p = V3Palette.of(context);
     return Column(children: [
       for (var i = 0; i < kV3TicketSkeletonCount; i++) ...[
-        const _TicketSkeletonRow(),
-        if (i != kV3TicketSkeletonCount - 1)
-          Divider(color: p.line, height: 1),
+        if (i > 0) const SizedBox(height: 12),
+        Container(width: double.infinity, padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: p.surface,
+            borderRadius: BorderRadius.circular(V3Radius.card),
+            boxShadow: p.shadows),
+          child: const _TicketSkeletonRow()),
       ],
     ]);
   }
@@ -177,24 +199,23 @@ class _TicketSkeletonRow extends StatelessWidget {
   const _TicketSkeletonRow();
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(height: kV3TicketRowHeight,
-      child: Padding(padding: EdgeInsets.symmetric(horizontal: 4),
-        child: Row(children: [
-          V3SkeletonBlock(width: 44, height: 44, radius: V3Radius.field),
-          SizedBox(width: 13),
-          Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
-              FractionallySizedBox(widthFactor: .72,
-                alignment: Alignment.centerLeft,
-                child: V3SkeletonBlock(height: 12)),
-              SizedBox(height: 7),
-              FractionallySizedBox(widthFactor: .45,
-                alignment: Alignment.centerLeft,
-                child: V3SkeletonBlock(height: 9)),
-            ])),
-          SizedBox(width: 12),
-          V3SkeletonBlock(width: 44, height: 20, radius: V3Radius.control),
-        ])));
+    return const Padding(padding: EdgeInsets.zero,
+      child: Row(children: [
+        V3SkeletonBlock(width: 44, height: 44, radius: V3Radius.field),
+        SizedBox(width: 13),
+        Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start, children: [
+            FractionallySizedBox(widthFactor: .72,
+              alignment: Alignment.centerLeft,
+              child: V3SkeletonBlock(height: 12)),
+            SizedBox(height: 7),
+            FractionallySizedBox(widthFactor: .45,
+              alignment: Alignment.centerLeft,
+              child: V3SkeletonBlock(height: 9)),
+          ])),
+        SizedBox(width: 12),
+        V3SkeletonBlock(width: 44, height: 20, radius: V3Radius.control),
+      ]));
   }
 }
 
@@ -204,6 +225,23 @@ class _TicketRow extends StatelessWidget {
   final TicketModel ticket;
   final bool wide;
   final VoidCallback onTap;
+  /// The status chip. Open tickets lead with the amber clock — shape codes
+  /// the state before colour does; closed tickets keep the plain text mark.
+  Widget _status(BuildContext context, TicketModel ticket, Color statusColor) {
+    final label = v3Copy(context, zh: ticket.statusLabel,
+      en: ticket.isOpen ? 'Open' : 'Closed',
+      tw: ticket.isOpen ? '處理中' : '已關閉');
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (ticket.isOpen) ...[
+        Icon(Icons.schedule_rounded, size: 12, color: statusColor),
+        const SizedBox(width: 4),
+      ],
+      Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: statusColor, fontSize: 11,
+          fontWeight: FontWeight.w800))),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
@@ -225,8 +263,7 @@ class _TicketRow extends StatelessWidget {
     if (!wide) {
       return V3Pressable(borderRadius: BorderRadius.circular(V3Radius.card), onTap: onTap,
         hoverTint: p.ink.withValues(alpha: 0.08),
-        child: SizedBox(height: kV3TicketRowHeight,
-          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Padding(padding: EdgeInsets.zero,
             child: Column(mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -237,11 +274,7 @@ class _TicketRow extends StatelessWidget {
                     style: TextStyle(color: p.ink, fontSize: 13,
                       fontWeight: FontWeight.w800))),
                   const SizedBox(width: 9),
-                  Text(v3Copy(context, zh: ticket.statusLabel,
-                    en: ticket.isOpen ? 'Open' : 'Closed',
-                    tw: ticket.isOpen ? '處理中' : '已關閉'),
-                    style: TextStyle(color: statusColor, fontSize: 11,
-                      fontWeight: FontWeight.w800)),
+                  _status(context, ticket, statusColor),
                 ]),
                 const SizedBox(height: 9),
                 Row(children: [
@@ -254,12 +287,11 @@ class _TicketRow extends StatelessWidget {
                     style: TextStyle(color: p.inkMuted, fontSize: 11,
                       fontFeatures: const [FontFeature.tabularFigures()]))),
                 ]),
-              ]))));
+              ])));
     }
     return V3Pressable(borderRadius: BorderRadius.circular(V3Radius.card), onTap: onTap,
       hoverTint: p.ink.withValues(alpha: 0.08),
-      child: SizedBox(height: kV3TicketRowHeight,
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Padding(padding: EdgeInsets.zero,
           child: Row(children: [
             Container(width: 44, height: 44,
               decoration: BoxDecoration(color: statusColor.withValues(alpha: .1),
@@ -288,14 +320,10 @@ class _TicketRow extends StatelessWidget {
               child: Text(levelLabel, style: TextStyle(color: levelColor,
                 fontSize: 11, fontWeight: FontWeight.w800))),
             const SizedBox(width: 9),
-            Text(v3Copy(context, zh: ticket.statusLabel,
-                en: ticket.isOpen ? 'Open' : 'Closed',
-                tw: ticket.isOpen ? '處理中' : '已關閉'),
-              style: TextStyle(color: statusColor, fontSize: 11,
-                fontWeight: FontWeight.w800)),
+            _status(context, ticket, statusColor),
             const SizedBox(width: 5),
             Icon(Icons.chevron_right_rounded, color: p.inkMuted, size: 18),
-          ]))));
+          ])));
   }
 }
 

@@ -1,12 +1,11 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../app/app_controller.dart';
-import '../../app/plan_presentation.dart';
-import '../../config/app_config.dart';
 import '../../l10n/app_locale_preference.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
@@ -29,7 +28,7 @@ import '../ui/v3_notice_bar.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
-import '../ui/v3_plan_labels.dart';
+import '../ui/v3_nav_island.dart';
 import '../ui/v3_sheet.dart';
 import 'v3_nav.dart';
 
@@ -141,6 +140,12 @@ class _V3WorkspaceState extends State<_V3Workspace> {
   // per-tab state survive tab switches. Appending keeps element order stable.
   final List<AppPage> _visited = [];
 
+  /// Reaches the first-run rail label peek from the rail's hover hook: a mouse
+  /// move that reaches the rail is intent, and that dismisses the peek (the
+  /// approved mockup's rail-mousemove rule; the panel's own Listener covers
+  /// pointer-down, keyboard and wheel at the document level).
+  final GlobalKey<V3RailPeekState> _peekKey = GlobalKey();
+
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
@@ -186,32 +191,49 @@ class _V3WorkspaceState extends State<_V3Workspace> {
               : stack;
           return Scaffold(
             backgroundColor: p.canvas,
+            // The island floats: the body extends behind the bottom bar so
+            // page content scrolls under it (§12.1#11). Pages keep their own
+            // bottom insets; the injected MediaQuery bottom padding still
+            // lets overlays (toasts) clear the island.
+            extendBody: true,
             body: mobilePage,
-            bottomNavigationBar: _MobileNavigation(controller: controller),
+            bottomNavigationBar: V3NavIsland(controller: controller),
           );
         }
-        // 12 + 176 + 12 = 200dp for the entire desktop rail, not 200dp
+        // 12 + 68 + 12 = 92dp for the entire desktop rail, not 92dp
         // plus margins. Keep the content's canvas black in dark mode.
         return ColoredBox(
           color: p.canvas,
-          child: Row(
-            children: [
-              _DesktopRail(controller: controller),
-              Expanded(
-                child: Padding(
-                  // Content starts below the floating title strip, so page
-                  // header actions never share a line with the window
-                  // controls — the strip itself stays transparent canvas.
-                  padding: const EdgeInsets.fromLTRB(
-                    0,
-                    _kTitleOverlayHeight,
-                    12,
-                    12,
-                  ),
-                  child: stack,
+          child: V3RailPeek(
+            // The panel anchors to the rail's nav items: rail top margin
+            // (macOS drops under the traffic lights) + padding 10 + brand 36
+            // + gap 14 = 60 into the rail, and 12 + 68 + 8 = 88 across.
+            top: (_usesNativeWindowControls ? 40 : 12) + 60,
+            left: 12 + 68 + 8,
+            child: Row(
+              children: [
+                MouseRegion(
+                  // Moving toward the nav is intent: rail hover dismisses a
+                  // pending or shown peek (the mockup's rail-mousemove rule).
+                  onHover: (_) => _peekKey.currentState?.onInteraction(),
+                  child: _DesktopRail(controller: controller),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: Padding(
+                    // Content starts below the floating title strip, so page
+                    // header actions never share a line with the window
+                    // controls — the strip itself stays transparent canvas.
+                    padding: const EdgeInsets.fromLTRB(
+                      0,
+                      _kTitleOverlayHeight,
+                      12,
+                      12,
+                    ),
+                    child: stack,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -349,14 +371,8 @@ class _DesktopRail extends StatelessWidget {
       );
     }
     final user = controller.user;
-    final plan = PlanPresentation.fromController(controller);
-    // Round-3 audit N14: the chip line and its tooltip read the
-    // machine-readable kinds through the localized helpers instead of the
-    // legacy Chinese display fields, so the rail stays correct in en/tw.
-    final planChip = v3PlanShortLabel(context, plan);
-    final planExpiry = v3PlanExpiryLabel(context, plan);
     return Container(
-      width: 176,
+      width: 68,
       // macOS traffic lights float over the top-left corner; the rail drops
       // under them. Windows draws nothing native, so the rail rides high —
       // its brand mark becomes the window's top-left anchor.
@@ -366,128 +382,81 @@ class _DesktopRail extends StatelessWidget {
         12,
         12,
       ),
-      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
-      decoration: BoxDecoration(
-        color: p.hero,
-        borderRadius: BorderRadius.circular(V3Radius.card),
-        border: Border.all(color: p.hairline),
-        boxShadow: p.shadows,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(2, 0, 2, 26),
-            child: V3BrandMark(boxSize: 34),
-          ),
-          // The items sit in a Stack so the shared selection pill can
-          // slide underneath them (see _RailPill) -- one indicator for the
-          // whole rail, DLSS5's dock-glow. The rail's build loop above owns
-          // the item order and the pill's offsets.
-          Stack(
-            children: [
-              _RailPill(selectedTop: selectedTop),
-              Column(children: railChildren),
-            ],
-          ),
-          const Spacer(),
-          // The account card is the rail's only bottom-anchored element;
-          // Settings is a peer destination and lives in the flat list above.
-          Container(
-            key: kAccountCardKey,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(V3Radius.panel),
+        child: BackdropFilter(
+          // §1.4's light glass: one static blur behind the glass fill — no
+          // animation, so there is no per-frame re-blur to pay for.
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            // (68 - 44) / 2 = 12 on each side keeps every 44dp tile dead
+            // centre; 10 top/bottom matches the mockup's rail padding, and
+            // 10 + 36 + 14 = 60 puts the first tile exactly where V3RailPeek
+            // anchors its rows.
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             decoration: BoxDecoration(
-              color: p.surface,
-              borderRadius: BorderRadius.circular(V3Radius.card),
+              color: p.glass,
+              borderRadius: BorderRadius.circular(V3Radius.panel),
+              border: Border.all(color: p.glassBorder),
+              boxShadow: p.shadows,
             ),
-            child: V3Pressable(
-              hoverTint: p.ink.withValues(alpha: 0.08),
-              onTap: () => controller.goToPage(AppPage.account),
-              child: Padding(
-                padding: const EdgeInsets.all(9),
-                child: Row(
+            child: Column(
+              children: [
+                const _RailBrandMark(),
+                const SizedBox(height: 14),
+                // The items sit in a Stack so the shared selection pill can
+                // slide underneath them (see _RailPill) -- one indicator for
+                // the whole rail, DLSS5's dock-glow. The rail's build loop
+                // above owns the item order and the pill's offsets.
+                Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 17,
-                      backgroundColor: p.lychee,
-                      child: Text(
-                        user.avatarLetter.isEmpty ? '?' : user.avatarLetter,
-                        style: TextStyle(
-                          color: p.onLychee,
-                          fontWeight: FontWeight.w800,
+                    _RailPill(selectedTop: selectedTop),
+                    Column(children: railChildren),
+                  ],
+                ),
+                const Spacer(),
+                // The account avatar is the rail's only bottom-anchored
+                // element; Settings is a peer destination and lives in the
+                // flat list above.
+                Container(
+                  key: kAccountCardKey,
+                  child: Semantics(
+                    container: true,
+                    button: true,
+                    selected: controller.page == AppPage.account,
+                    label: user.name.isEmpty
+                        ? v3Copy(context, zh: '访客', en: 'Guest', tw: '訪客')
+                        : user.name,
+                    child: V3Pressable(
+                      borderRadius: BorderRadius.circular(V3Radius.field),
+                      hoverTint: p.ink.withValues(alpha: 0.08),
+                      onTap: () => controller.goToPage(AppPage.account),
+                      child: Tooltip(
+                        message: user.name.isEmpty
+                            ? v3Copy(context, zh: '访客', en: 'Guest', tw: '訪客')
+                            : user.name,
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: p.lychee,
+                          child: Text(
+                            user.avatarLetter.isEmpty ? '?' : user.avatarLetter,
+                            style: TextStyle(
+                              color: p.onLychee,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 7),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            user.name.isEmpty
-                                ? v3Copy(
-                                    context,
-                                    zh: '访客',
-                                    en: 'Guest',
-                                    tw: '訪客',
-                                  )
-                                : user.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: p.ink,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Tooltip(
-                            // Round-3 audit N14: composed through v3Copy so
-                            // the joiner stays a copy decision, and the two
-                            // halves come from the kind-based helpers above.
-                            message: v3Copy(
-                              context,
-                              zh: '$planChip · $planExpiry',
-                              en: '$planChip · $planExpiry',
-                              tw: '$planChip · $planExpiry',
-                            ),
-                            child: Text(
-                              planChip,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: plan.usable ? p.successInk : p.inkMuted,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: p.inkMuted,
-                      size: 16,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          // Rail footer, DLSS5-style: the core's liveness as a quiet dot +
-          // label, with the app version as the last word. Shares the account
-          // card's muted voice so it reads as chrome, not content; the dot
-          // follows the same liveness signal the connection card reports.
-          Row(
-            children: [
-              _CoreDot(
-                running: controller.coreProcessRunning,
-                color: p.successInk,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  v3Copy(
+                const SizedBox(height: 10),
+                // Rail footer: the core's liveness as a quiet dot. The 68dp
+                // rail has no room for the status text or the version number —
+                // both yield to a tooltip; the version already shows on the
+                // settings page (§2.1).
+                Tooltip(
+                  message: v3Copy(
                     context,
                     zh: controller.coreProcessRunning ? '核心运行中' : '核心已停止',
                     en: controller.coreProcessRunning
@@ -495,22 +464,42 @@ class _DesktopRail extends StatelessWidget {
                         : 'Core stopped',
                     tw: controller.coreProcessRunning ? '核心運行中' : '核心已停止',
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 11),
-                ),
-              ),
-              if (AppConfig.currentVersion.trim().isNotEmpty)
-                Text(
-                  AppConfig.currentVersion.trim(),
-                  style: TextStyle(
-                    color: p.inkMuted,
-                    fontSize: 11,
+                  child: _CoreDot(
+                    running: controller.coreProcessRunning,
+                    color: p.successInk,
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The rail's 36dp brand mark: icon only at 68dp — the wordmark needs a wider
+/// rail than the glass strip offers, so V3BrandMark's caption stays on the
+/// auth view and the boot screen.
+class _RailBrandMark extends StatelessWidget {
+  const _RailBrandMark();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return SizedBox(
+      width: 36,
+      height: 36,
+      child: Image.asset(
+        'assets/images/app_icon.png',
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => Container(
+          decoration: BoxDecoration(
+            color: p.citrus,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.blur_on_rounded, color: p.night, size: 24),
+        ),
       ),
     );
   }
@@ -603,7 +592,7 @@ class _CoreDotState extends State<_CoreDot>
   }
 }
 
-class _RailItem extends StatelessWidget {
+class _RailItem extends StatefulWidget {
   const _RailItem({
     super.key,
     required this.item,
@@ -615,54 +604,56 @@ class _RailItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_RailItem> createState() => _RailItemState();
+}
+
+class _RailItemState extends State<_RailItem> {
+  bool _hovering = false;
+
+  @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(end: selected ? 1 : 0),
-        duration: V3Motion.fast,
+        tween: Tween<double>(end: widget.selected ? 1 : 0),
+        duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.fast,
         curve: V3Motion.ease,
         builder: (context, t, _) {
-          final iconColor = Color.lerp(p.inkMuted, p.lycheeInk, t)!;
-          final textColor = Color.lerp(p.inkMuted, p.ink, t)!;
+          // Unselected rides inkMuted and lifts to ink on hover; selected
+          // lands on the palette-safe coral ink the shared lycheeSoft pill
+          // sits under.
+          final atRest = _hovering ? p.ink : p.inkMuted;
+          final iconColor = Color.lerp(atRest, p.lycheeInk, t)!;
           // V3Pressable keeps the press ink above the shared selection pill
-          // instead of losing it under the rail's opaque hero.
+          // instead of losing it under the rail's glass.
           // Round-3 audit F10: the selected flag is what announces the
-          // current page to assistive tech — color alone carries nothing
-          // (the mobile NavigationBar already reports it). The wrapper is a
-          // semantics boundary; the tap action still comes from the inner
-          // InkWell's merged node, so it does not repeat onTap — duplicated
-          // handlers fire twice per assistive-tech activation.
+          // current page to assistive tech — color alone carries nothing.
+          // The wrapper is a semantics boundary; the tap action still comes
+          // from the inner InkWell's merged node, so it does not repeat
+          // onTap — duplicated handlers fire twice per assistive-tech
+          // activation. The 68dp rail has no captions, so the label rides on
+          // the semantics node itself; the tooltip shows it to sighted users.
           return Semantics(
             container: true,
             button: true,
-            selected: selected,
-            child: SizedBox(
-              height: 44,
-              child: V3Pressable(
-                borderRadius: BorderRadius.circular(V3Radius.field),
-                hoverTint: p.ink.withValues(alpha: 0.08),
-                onTap: onTap,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Row(
-                    children: [
-                      Icon(item.icon, color: iconColor, size: 19),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          item.localizedLabel(context),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
+            selected: widget.selected,
+            label: widget.item.localizedLabel(context),
+            child: Tooltip(
+              message: widget.item.localizedLabel(context),
+              child: MouseRegion(
+                onEnter: (_) => setState(() => _hovering = true),
+                onExit: (_) => setState(() => _hovering = false),
+                child: V3Pressable(
+                  borderRadius: BorderRadius.circular(V3Radius.field),
+                  hoverTint: p.ink.withValues(alpha: 0.08),
+                  onTap: widget.onTap,
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: Icon(widget.item.icon, color: iconColor, size: 20),
+                    ),
                   ),
                 ),
               ),
@@ -670,32 +661,6 @@ class _RailItem extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-}
-
-class _MobileNavigation extends StatelessWidget {
-  const _MobileNavigation({required this.controller});
-  final AppController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final pages = enabledNavItems(kMobilePrimary);
-    return NavigationBar(
-      height: 72,
-      backgroundColor: p.surface,
-      indicatorColor: p.lycheeSoft,
-      selectedIndex: selectedPrimaryIndex(controller.page) ?? 0,
-      onDestinationSelected: (index) => controller.goToPage(pages[index].page),
-      destinations: [
-        for (final item in pages)
-          NavigationDestination(
-            icon: Icon(item.icon),
-            selectedIcon: Icon(item.icon, color: p.lycheeInk),
-            label: item.localizedLabel(context),
-          ),
-      ],
     );
   }
 }

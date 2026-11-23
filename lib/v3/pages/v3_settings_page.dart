@@ -103,6 +103,10 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
           V3PageHeader(
             title: v3Copy(context,
               zh: '设置中心', en: 'Settings', tw: '設定中心'),
+            subtitle: v3Copy(context,
+              zh: '外观 · 代理 · 网络 · 关于',
+              en: 'Appearance · Proxy · Network · About',
+              tw: '外觀 · 代理 · 網路 · 關於'),
           ),
           const SizedBox(height: 18),
           AbsorbPointer(
@@ -216,23 +220,24 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                 V3Panel(
                   padding: EdgeInsets.zero,
                   child: Column(children: [
-                    if (desktopTools) _SettingRow(
-                      icon: Icons.swap_horiz_rounded,
-                      title: l.connectionMethod,
-                      description: '${l.systemProxyDescription}; ${l.tunDescription}.',
-                      busy: _pending == 'networkMode',
-                      control: V3Dropdown<NetworkMode>(
-                        key: const ValueKey('v3-network-mode-select'),
-                        value: controller.networkMode,
-                        items: const [NetworkMode.system, NetworkMode.tun],
-                        label: (v) => v == NetworkMode.system ? l.systemProxy : l.tunMode,
-                        onChanged: (v) => _apply(
-                          'networkMode',
-                          () => controller.setNetworkMode(v),
-                          controller.coreProcessRunning
-                              ? l.networkModeReconnect : l.proxyModeNextConnection,
+                    // Read-only mirror row: the Connect page's segments own
+                    // proxy mode, so this row only names the current mode and
+                    // where switching happens — no second control to drift.
+                    _SettingRow(
+                      icon: Icons.shield_rounded,
+                      title: v3Copy(context,
+                        zh: '代理模式', en: 'Network mode', tw: '代理模式'),
+                      description: _hint(l,
+                        zh: '在连接页切换',
+                        en: 'Switch on the Connect page',
+                        tw: '在連線頁切換'),
+                      control: Text(
+                        currentNetwork,
+                        style: TextStyle(
+                          color: p.inkMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
-                        width: 168,
                       ),
                     ),
                     _SettingRow(

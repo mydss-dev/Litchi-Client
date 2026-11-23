@@ -35,6 +35,10 @@ class _AutoNamedFixture extends VisualV3Controller {
 }
 
 void main() {
+  // §13.3/§13.4 端分治: android left the merged card for the plan-A minimal
+  // connection section (asserted in its own test below), while the desktop
+  // keeps the three-surface workspace untouched - these geometry assertions
+  // hold for the desktop branch only.
   for (final size in [const Size(900, 700), const Size(390, 700)]) {
     testWidgets('dashboard cards stay balanced at ${size.width}x${size.height}',
         (tester) async {
@@ -149,11 +153,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('android merges connection, node and routing into one card',
+  testWidgets('android renders the plan-A minimal connection section',
       (tester) async {
-    // Android's VPN stack has no system-proxy alternative, so the single-
-    // option network selector disappears along with its group label, and the
-    // node row becomes tappable with a chevron instead of a switch button.
+    // §13.1/§13.3: the phone's connection surface is a page-level dot-map
+    // stage (no card shell), an independent node row card and a bare routing
+    // segment. The metrics card never existed on the phone (it is a desktop
+    // surface the mockup carried over) and the plan card left the connection
+    // page; the desktop workspace keeps both surfaces (端分治, §13.4) and is
+    // covered by the geometry tests above and the plan countdown test below.
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.binding.setSurfaceSize(const Size(390, 844));
@@ -167,12 +174,30 @@ void main() {
     ));
     await tester.pump();
 
+    // The stage replaces the merged card's orb section: same action-card key,
+    // now a shell-free 340dp hero carrying badge, orb, timer and caption.
+    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 340);
+    expect(find.text('保护中'), findsOneWidget);
+    expect(find.text('01:26:18'), findsOneWidget);
+    expect(find.text('断开连接'), findsOneWidget);
+    // Connected, so the timer's speed suffix shows (aqua up, green down)...
+    expect(find.text('↑ 3.0 MB/s'), findsOneWidget);
+    expect(find.text('↓ 12.0 MB/s'), findsOneWidget);
+    // ...and the metrics card the suffix replaces stays gone.
+    expect(find.text('下载速度'), findsNothing);
+    expect(find.text('上传速度'), findsNothing);
+    expect(find.text('本次流量'), findsNothing);
+    expect(find.text('活动连接'), findsNothing);
+    // The plan card has left the connection page on the phone.
+    expect(find.text('我的套餐'), findsNothing);
+
+    // The node row is its own card; the whole row opens the picker, and the
+    // routing segment is bare - no group labels, no switch button.
+    expect(find.text('切换节点'), findsNothing);
+    expect(find.text('路由模式'), findsNothing);
     expect(find.text('代理模式'), findsNothing);
     expect(find.text('系统代理'), findsNothing);
     expect(find.text('TUN 模式'), findsNothing);
-    expect(find.text('切换节点'), findsNothing);
-    // The merged card speaks for itself: no routing label either.
-    expect(find.text('路由模式'), findsNothing);
     expect(find.text('规则'), findsOneWidget);
     expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
 
