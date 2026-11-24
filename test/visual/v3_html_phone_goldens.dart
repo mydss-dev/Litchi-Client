@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
+import 'package:litchi_client/v3/ui/v3_nav_island.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
@@ -68,10 +69,27 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1000));
       await tester.pump();
       expect(tester.takeException(), isNull);
+      final secondary = page != AppPage.dashboard &&
+          page != AppPage.nodes &&
+          page != AppPage.shop &&
+          page != AppPage.account;
+      if (secondary) {
+        // Every subpage has a visible back affordance and no primary tab bar.
+        expect(find.byType(V3NavIsland), findsNothing);
+        expect(find.byTooltip('返回我的'), findsOneWidget);
+      } else {
+        expect(find.byType(V3NavIsland), findsOneWidget);
+      }
       await expectLater(
         find.byKey(const ValueKey('html-phone-capture')),
         matchesGoldenFile('html_goldens/$name.png'),
       );
+      if (secondary) {
+        await tester.binding.handlePopRoute();
+        await tester.pump();
+        expect(controller.page, AppPage.account,
+          reason: 'Android back must return to Account from $name');
+      }
     });
   }
 }
