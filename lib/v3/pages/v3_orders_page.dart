@@ -165,9 +165,8 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
     final shown = visible.take(_limit).toList(growable: false);
     final filters = [
       v3Copy(context, zh: '全部', en: 'All', tw: '全部'),
-      v3Copy(context, zh: '待处理', en: 'Pending', tw: '待處理'),
+      v3Copy(context, zh: '待支付', en: 'Pending', tw: '待付款'),
       v3Copy(context, zh: '已完成', en: 'Completed', tw: '已完成'),
-      v3Copy(context, zh: '已取消', en: 'Cancelled', tw: '已取消'),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       V3MobileSegmented(
