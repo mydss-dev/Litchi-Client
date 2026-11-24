@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,12 +12,12 @@ import '../app/v3_nav.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
-/// The mobile dock follows the phone reference: a 64dp frosted capsule,
-/// four equally spaced icon + label pairs and a *soft* selected glyph tint.
-/// No dark filled blocks or solid background panel beneath the floating dock.
-const double _kIslandHeight = 64;
-const double _kIslandFloat = 10;
-
+/// Native Cupertino tab bar, not a home-grown glass/pill simulation.
+/// This is a deliberate iOS-style design choice on Android as well so that
+/// Litchi has one stable visual/navigation contract across phone platforms.
+///
+/// The four primary destinations alone receive a tab; account subpages use
+/// the shared back-navigation component and do not render this dock.
 class V3NavIsland extends StatelessWidget {
   const V3NavIsland({super.key, required this.controller});
 
@@ -27,119 +28,36 @@ class V3NavIsland extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final items = enabledNavItems(kMobilePrimary);
+    if (items.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: _kIslandHeight + _kIslandFloat + bottomInset,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          12, 0, 12, _kIslandFloat + bottomInset),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: p.surface.withValues(alpha: .86),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: p.hairline),
-                boxShadow: [
-                  BoxShadow(
-                    color: p.ink.withValues(alpha: .07),
-                    offset: const Offset(0, 3),
-                    blurRadius: 16,
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: Row(
-                  children: [
-                    for (var i = 0; i < items.length; i++)
-                      Expanded(
-                        child: _IslandTab(
-                          controller: controller,
-                          item: items[i],
-                          selected: i == selectedIndex,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+    return CupertinoTabBar(
+      currentIndex: selectedIndex.clamp(0, items.length - 1),
+      onTap: (index) => controller.goToPage(items[index].page),
+      activeColor: p.lycheeInk,
+      inactiveColor: p.inkMuted,
+      backgroundColor: p.surface.withValues(alpha: .84),
+      border: Border(
+        top: BorderSide(color: p.hairline, width: .5),
+      ),
+      iconSize: 23,
+      items: [
+        for (final item in items)
+          BottomNavigationBarItem(
+            icon: Semantics(
+              key: ValueKey('v3-mobile-nav-${item.page.name}'),
+              label: item.localizedLabel(context),
+              child: Icon(switch (item.page) {
+                AppPage.dashboard => CupertinoIcons.circle_grid_cross,
+                AppPage.nodes => CupertinoIcons.dot_radiowaves_left_right,
+                AppPage.shop => CupertinoIcons.bag,
+                AppPage.account => CupertinoIcons.person_crop_circle,
+                _ => CupertinoIcons.circle,
+              }),
             ),
+            label: item.localizedLabel(context),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _IslandTab extends StatelessWidget {
-  const _IslandTab({
-    required this.controller,
-    required this.item,
-    required this.selected,
-  });
-
-  final AppController controller;
-  final V3NavItem item;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final label = item.localizedLabel(context);
-    final icon = switch (item.page) {
-      AppPage.dashboard => Icons.radar_outlined,
-      AppPage.nodes => Icons.hub_outlined,
-      AppPage.shop => Icons.shopping_bag_outlined,
-      AppPage.account => Icons.person_outline_rounded,
-      _ => item.icon,
-    };
-    final foreground = selected ? p.lycheeInk : p.inkMuted;
-
-    return Semantics(
-      key: ValueKey('v3-mobile-nav-${item.page.name}'),
-      button: true,
-      selected: selected,
-      label: label,
-      child: InkWell(
-        onTap: () => controller.goToPage(item.page),
-        child: SizedBox(
-          height: _kIslandHeight,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedContainer(
-                duration: v3ReducedMotion(context)
-                    ? Duration.zero : V3Motion.fast,
-                curve: V3Motion.ease,
-                constraints: const BoxConstraints(minWidth: 44),
-                height: 28,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? p.lycheeSoft : Colors.transparent,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Icon(icon, size: 20, color: foreground),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: foreground,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      ],
     );
   }
 }
