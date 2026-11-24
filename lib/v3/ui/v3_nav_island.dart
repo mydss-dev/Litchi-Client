@@ -11,101 +11,56 @@ import '../app/v3_nav.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
-/// Exact phone blueprint .p-bnav: inset 12, bottom 10, height 64,
-/// radius 32, four aligned icon-label tabs with a 44×28 active pill.
-const double _kIslandHeight = 64;
-const double _kIslandFloat = 10;
-
+/// Native Flutter Material 3 NavigationBar: real semantics, keyboard focus,
+/// tap targets and selection behavior, instead of a hand-built HTML capsule.
 class V3NavIsland extends StatelessWidget {
   const V3NavIsland({super.key, required this.controller});
   final AppController controller;
-  int get selectedIndex => selectedPrimaryIndex(controller.page) ?? 0;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final bottom = MediaQuery.paddingOf(context).bottom;
     final items = enabledNavItems(kMobilePrimary);
-    return SizedBox(
-      height: _kIslandHeight + _kIslandFloat + bottom,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(12, 0, 12, _kIslandFloat + bottom),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: p.surface,
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: p.hairline),
-            boxShadow: p.shadows,
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(32),
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Row(children: [
-                for (var i = 0; i < items.length; i++)
-                  Expanded(child: _HtmlNavTab(
-                    controller: controller,
-                    item: items[i],
-                    selected: i == selectedIndex,
-                  )),
-              ]),
-            ),
-          ),
+    if (items.isEmpty) return const SizedBox.shrink();
+    final selected = selectedPrimaryIndex(controller.page) ?? 0;
+    return SafeArea(
+      top: false,
+      child: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          backgroundColor: p.surface,
+          elevation: 0,
+          indicatorColor: p.lycheeSoft,
+          indicatorShape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+          iconTheme: WidgetStateProperty.resolveWith((states) =>
+            IconThemeData(
+              size: 22,
+              color: states.contains(WidgetState.selected)
+                  ? p.lycheeInk : p.inkMuted)),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) =>
+            TextStyle(
+              fontSize: 12,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.w700 : FontWeight.w500,
+              color: states.contains(WidgetState.selected)
+                  ? p.ink : p.inkMuted)),
         ),
-      ),
-    );
-  }
-}
-
-class _HtmlNavTab extends StatelessWidget {
-  const _HtmlNavTab({
-    required this.controller, required this.item, required this.selected,
-  });
-  final AppController controller;
-  final V3NavItem item;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final foreground = selected ? p.lycheeInk : p.inkMuted;
-    final label = item.localizedLabel(context);
-    final icon = switch (item.page) {
-      AppPage.dashboard => Icons.radar_outlined,
-      AppPage.nodes => Icons.hub_outlined,
-      AppPage.shop => Icons.shopping_bag_outlined,
-      AppPage.account => Icons.person_outline_rounded,
-      _ => item.icon,
-    };
-    return Semantics(
-      key: ValueKey('v3-mobile-nav-${item.page.name}'),
-      button: true,
-      selected: selected,
-      label: label,
-      child: InkWell(
-        onTap: () => controller.goToPage(item.page),
-        child: SizedBox(
-          height: 64,
-          child: Column(mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                height: 28,
-                constraints: const BoxConstraints(minWidth: 44),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: selected ? p.lycheeSoft : Colors.transparent,
-                  borderRadius: BorderRadius.circular(99)),
-                alignment: Alignment.center,
-                child: Icon(icon, size: 20, color: foreground),
+        child: NavigationBar(
+          key: const ValueKey('v3-material-navigation-bar'),
+          height: 70,
+          selectedIndex: selected.clamp(0, items.length - 1),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: [
+            for (final item in items)
+              NavigationDestination(
+                key: ValueKey('v3-mobile-nav-${item.page.name}'),
+                icon: Icon(item.icon),
+                selectedIcon: Icon(item.icon),
+                label: item.localizedLabel(context),
               ),
-              const SizedBox(height: 3),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: foreground, fontSize: 10,
-                  height: 1, fontWeight: FontWeight.w700)),
-            ],
-          ),
+          ],
+          onDestinationSelected: (index) =>
+              controller.goToPage(items[index].page),
         ),
       ),
     );
