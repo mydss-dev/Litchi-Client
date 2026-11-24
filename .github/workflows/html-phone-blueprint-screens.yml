@@ -1,0 +1,38 @@
+name: HTML Phone Blueprint Screenshots
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/v3/pages/v3_dashboard_page.dart'
+      - 'lib/v3/pages/v3_nodes_page.dart'
+      - 'lib/v3/ui/v3_html_phone_*.dart'
+      - 'test/visual/v3_html_phone_goldens.dart'
+      - '.github/workflows/html-phone-blueprint-screens.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          channel: stable
+      - name: Install Chinese font
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Render exact 390x844 Flutter phone screens
+        run: flutter test --update-goldens test/visual/v3_html_phone_goldens.dart
+      - name: Upload real Flutter PNGs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: litchi-html-phone-blueprint
+          path: test/visual/html_goldens/*.png
+          if-no-files-found: error

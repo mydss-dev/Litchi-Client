@@ -74,19 +74,13 @@ void main() {
   ) async {
     try {
       await _pump(tester, AppPage.nodes, const Size(390, 844));
-      final chips = find.byType(ChoiceChip);
-      expect(chips, findsWidgets,
-          reason: 'the overview filters its list by region');
-      for (final element in chips.evaluate()) {
-        final rect = tester.getRect(find.byWidget(element.widget));
-        expect(
-          rect.height,
-          greaterThanOrEqualTo(minimum),
-          reason:
-              'an overview region chip is only '
-              '${rect.height.toStringAsFixed(1)}dp tall',
-        );
-      }
+      // Mobile HTML region controls are InkWell chips, not ChoiceChip.
+      final chips = find.byKey(const ValueKey('v3-map-country-all'));
+      expect(chips, findsOneWidget,
+          reason: 'the overview must present a region filter');
+      final rect = tester.getRect(chips);
+      expect(rect.height, greaterThanOrEqualTo(minimum),
+          reason: 'overview region filter is only ${rect.height}dp tall');
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

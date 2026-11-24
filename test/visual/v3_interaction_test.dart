@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
-import 'package:litchi_client/v3/app/v3_nav.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/pages/v3_nodes_page.dart';
@@ -52,8 +51,14 @@ Future<void> _pump(
   Widget page, {
   Size size = const Size(900, 700),
 }) async {
-  await tester.binding.setSurfaceSize(size);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  // Flutter 3.50 needs the actual test view dimensions pinned, otherwise
+  // MediaQuery stays at its 800x600 default despite setSurfaceSize.
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = size;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
   addTearDown(controller.disposeVisual);
   // AppScope above MaterialApp, as in `LitchiApp`. A dialog is built by the
   // Navigator, so it sits beside `home` rather than under it and cannot see a
@@ -257,13 +262,13 @@ void main() {
         const V3Shell(),
         size: const Size(390, 844),
       );
-      final expected = enabledNavItems(kMobilePrimary)
-          .indexWhere((item) => item.page == tab);
-      expect(expected, isNonNegative, reason: '${tab.name} must be a tab');
-      expect(
-        tester.widget<V3NavIsland>(find.byType(V3NavIsland)).selectedIndex,
-        expected,
-      );
+      // All secondary pages are now true full-screen pages.
+      expect(find.byType(V3NavIsland), findsNothing);
+      final back = find.byKey(const ValueKey('v3-mobile-secondary-back'));
+      expect(back, findsOneWidget);
+      await tester.tap(back);
+      await tester.pump();
+      expect(controller.destination, AppPage.account);
       expect(tester.takeException(), isNull);
     });
   }

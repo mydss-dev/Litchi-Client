@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
+import '../../shared/models/app_models.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
+import '../ui/v3_html_phone_nodes.dart';
 import '../ui/v3_latency_tier.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
@@ -41,6 +44,9 @@ class _V3NodesPageState extends State<V3NodesPage> {
   // 'slow' | 'timeout' — the same region-aware scale the badges paint, so a
   // 快 filter and a green badge can never disagree.
   String? _tier;
+
+  // Mobile continent filter; favorites are intentionally not surfaced.
+  NodeRegion? _phoneRegion;
 
   @override
   void dispose() {
@@ -155,11 +161,48 @@ class _V3NodesPageState extends State<V3NodesPage> {
           : 10000;
       nodes.sort((a, b) => rank(a.latency).compareTo(rank(b.latency)));
     }
-    // Two scroll zones on desktop: the filters hold still while the node
-    // list scrolls under them, so a chip tap re-filters the rows already in
-    // view. One shared page scroll left only ~4 rows visible at the 900x700
-    // floor under ~310px of chrome, and every filter change needed a scroll
-    // back to the top. Phones keep the single page scroll.
+    // On phones the source of truth is the actual 390px HTML node blueprint.
+    // Keep the original desktop workspace below, with the same live
+    // controller for selection, search, latency tests and error feedback.
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      final phoneNodes = all.where((node) =>
+          (_phoneRegion == null || node.region == _phoneRegion) &&
+          (query.isEmpty ||
+              node.name.toLowerCase().contains(query) ||
+              node.englishName.toLowerCase().contains(query) ||
+              node.code.toLowerCase().contains(query) ||
+              node.tags.any((tag) => tag.toLowerCase().contains(query)))).toList();
+      return V3HtmlPhoneNodes(
+        controller: controller,
+        nodes: phoneNodes,
+        total: all.length,
+        regions: all.map((node) => node.region).toSet().length,
+        search: _queryCtrl,
+        onQuery: (value) => setState(() => _query = value),
+        region: _phoneRegion,
+        onRegion: (value) => setState(() => _phoneRegion = value),
+        onTest: () => _testLatencies(),
+        onTestNode: (id) => _testLatencies(ids: {id}),
+        onSelect: (node) => _select(
+          node.id,
+          () => controller.setCurrentNode(node),
+          v3Copy(context, zh: '已选择 ${node.name}',
+            en: '${node.name} selected',
+            tw: '已選擇 ${node.name}'),
+        ),
+        onSelectAuto: () => _select(
+          'auto', controller.selectAuto,
+          v3Copy(context, zh: '已切换至自动选择',
+            en: 'Automatic selection enabled',
+            tw: '已切換至自動選擇'),
+        ),
+        pendingId: _pending,
+      );
+    }
+
+    // Desktop retains the existing multi-select, detailed latency filters
+    // and fixed filter chrome.
     final filterChildren = <Widget>[
       V3PageHeader(
         title: v3Copy(context, zh: '节点概览', en: 'Node overview', tw: '節點概覽'),

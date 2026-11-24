@@ -129,7 +129,7 @@ void main() {
         // Sample inside the item, right of the label and clear of glyphs.
         final scale = width / 900;
         final point =
-            Offset(tester.getCenter(item).dx + 45, 0) * scale +
+            Offset(tester.getCenter(item).dx + 12, 0) * scale +
             Offset(0, tester.getCenter(item).dy * scale);
         final idleRgb = _sampleBlock(idle, width, point);
         final hoveredRgb = _sampleBlock(hovered, width, point);

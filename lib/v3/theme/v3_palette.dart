@@ -131,7 +131,7 @@ class V3Palette {
     warning: Color(0xFFBA771C),
     danger: Color(0xFFD5321F),
     lycheeInk: Color(0xFFB03A26),
-    successInk: Color(0xFF0B7440),
+    successInk: Color(0xFF096B38),
     warningInk: Color(0xFF8A5000),
     dangerInk: Color(0xFFA8281B),
     aquaInk: Color(0xFF0B6F6C),
@@ -149,14 +149,14 @@ class V3Palette {
 
   static const dark = V3Palette(
     // Neutral black staircase: hero < canvas < surface < surfaceRaised.
-    canvas: Color(0xFF0B0C0E),
-    surface: Color(0xFF15171A),
-    surfaceRaised: Color(0xFF1D2024),
-    hero: Color(0xFF050607),
+    canvas: Color(0xFF101217),
+    surface: Color(0xFF191C22),
+    surfaceRaised: Color(0xFF242830),
+    hero: Color(0xFF0F1116),
     night: Color(0xFF000000),
     ink: Color(0xFFF0F1F3),
     inkMuted: Color(0xFFA6ACB6),
-    line: Color(0xFF2A2D33),
+    line: Color(0xFF30343C),
     hairline: Color(0x14FFFFFF),
     cardGradient: [Color(0xFF1B1D20), Color(0xFF121417)],
     lychee: Color(0xFFFF8A72),
@@ -177,7 +177,7 @@ class V3Palette {
     shadows: [
       BoxShadow(color: Color(0x73000000), offset: Offset(0, 8), blurRadius: 32),
     ],
-    glass: Color(0xCC15171A),
+    glass: Color(0xCC191C22),
     glassBorder: Color(0x1FFFFFFF),
   );
 }

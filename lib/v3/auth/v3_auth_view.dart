@@ -43,15 +43,33 @@ class _V3AuthViewState extends State<V3AuthView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (!wide) ...[
-                        V3BrandMark(boxSize: 34, labelColor: p.ink),
-                        const SizedBox(height: 44),
+                        Center(child: Column(children: [
+                          V3BrandMark(boxSize: 64, labelColor: p.ink),
+                          const SizedBox(height: 10),
+                          Text(v3Copy(context, zh: '轻松连接，安心上网',
+                            en: 'A quieter way to connect',
+                            tw: '輕鬆連線，安心上網'),
+                            style: TextStyle(color: p.inkMuted, fontSize: 12)),
+                        ])),
+                        const SizedBox(height: 25),
                       ],
-                      switch (controller.authScreen) {
-                        AuthScreen.login => const _LoginForm(),
-                        AuthScreen.register => const _RegisterForm(),
-                        AuthScreen.forgotPassword => const _ForgotPasswordForm(),
-                        AuthScreen.changePassword => const _LoginForm(),
-                      },
+                      if (wide)
+                        switch (controller.authScreen) {
+                          AuthScreen.login => const _LoginForm(),
+                          AuthScreen.register => const _RegisterForm(),
+                          AuthScreen.forgotPassword => const _ForgotPasswordForm(),
+                          AuthScreen.changePassword => const _LoginForm(),
+                        }
+                      else
+                        V3Panel(
+                          padding: const EdgeInsets.all(16),
+                          child: switch (controller.authScreen) {
+                            AuthScreen.login => const _LoginForm(),
+                            AuthScreen.register => const _RegisterForm(),
+                            AuthScreen.forgotPassword => const _ForgotPasswordForm(),
+                            AuthScreen.changePassword => const _LoginForm(),
+                          },
+                        ),
                     ],
                   ),
                 ),

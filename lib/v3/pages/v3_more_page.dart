@@ -31,6 +31,7 @@ class V3MorePage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
+            backPage: AppPage.account,
             title: english ? 'More services' : traditional ? '更多服務' : '更多服务',
           ),
           const SizedBox(height: 18),
@@ -56,7 +57,9 @@ class V3MorePage extends StatelessWidget {
                   title:
                       english ? 'All features' : traditional ? '全部功能' : '全部功能',
                   children: [
-                    for (final item in items)
+                    for (final item in items.where((item) =>
+                        item.page != AppPage.giftCard ||
+                        controller.hasConfirmedNoPlan))
                       V3NavRow(
                         key: moreRowKey(item.page),
                         icon: item.icon,

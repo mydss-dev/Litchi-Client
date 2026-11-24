@@ -7,6 +7,7 @@ import 'package:litchi_client/shared/models/api_models.dart';
 import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_notice_carousel.dart';
+import 'package:litchi_client/v3/ui/v3_html_phone_notice.dart';
 
 import 'v3_visual_fixture.dart';
 
@@ -92,7 +93,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(V3NoticeCarousel), findsOneWidget);
+      expect(find.byType(V3HtmlPhoneNotice), findsOneWidget);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

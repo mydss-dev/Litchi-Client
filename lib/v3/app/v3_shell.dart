@@ -189,23 +189,35 @@ class _V3WorkspaceState extends State<_V3Workspace> {
                   child: stack,
                 )
               : stack;
-          return Scaffold(
+          // Primary tabs are roots. Every secondary account destination is
+          // a full-screen page with a shared visible back control, and the
+          // Android system back button returns to Account as well.
+          final secondary = current != AppPage.dashboard &&
+              current != AppPage.nodes &&
+              current != AppPage.shop &&
+              current != AppPage.account;
+          return PopScope(
+            canPop: !secondary,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop && secondary) {
+                controller.goToPage(
+                  current == AppPage.giftCard ? AppPage.shop : AppPage.account);
+              }
+            },
+            child: Scaffold(
             backgroundColor: p.canvas,
             // Extend the page *under* the floating dock. Reserving a solid
             // bottomNavigationBar strip painted an oversized canvas block
             // behind the capsule on Android, unlike the reference design.
             // Scaffold injects bottom padding for scrollable content.
-            extendBody: true,
+            extendBody: false,
             body: mobilePage,
             // Four destinations own the bottom bar. Every account
             // subpage has a page-level back affordance instead.
-            bottomNavigationBar: switch (current) {
-              AppPage.dashboard ||
-              AppPage.nodes ||
-              AppPage.shop ||
-              AppPage.account => V3NavIsland(controller: controller),
-              _ => null,
-            },
+            bottomNavigationBar: secondary
+                ? null
+                : V3NavIsland(controller: controller),
+          ),
           );
         }
         // 12 + 68 + 12 = 92dp for the entire desktop rail, not 92dp
@@ -346,6 +358,7 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.more => const V3MorePage(),
     AppPage.giftCard => V3SheetPageFallback(
       title: v3Copy(context, zh: '礼品卡兑换', en: 'Gift card', tw: '禮品卡兌換'),
+      backPage: AppPage.shop,
       child: const V3GiftCardPage(),
     ),
   };
@@ -787,7 +800,9 @@ class _DesktopTitleOverlayState extends State<_DesktopTitleOverlay>
     // Redemption stays a window-level shortcut; the key keeps the reachability
     // contract able to hold it from the strip.
     final giftEntry =
-        isPageEnabled(AppPage.giftCard) && controller.isAuthenticated;
+        isPageEnabled(AppPage.giftCard) &&
+        controller.isAuthenticated &&
+        controller.hasConfirmedNoPlan;
     // The gift button sits OUTSIDE the drag surface: a double-tap recognizer
     // on its ancestor enters the gesture arena and delays or swallows the
     // button's single tap.
