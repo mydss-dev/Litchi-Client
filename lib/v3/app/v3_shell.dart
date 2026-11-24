@@ -189,7 +189,21 @@ class _V3WorkspaceState extends State<_V3Workspace> {
                   child: stack,
                 )
               : stack;
-          return Scaffold(
+          // Primary tabs are roots. Every secondary account destination is
+          // a full-screen page with a shared visible back control, and the
+          // Android system back button returns to Account as well.
+          final secondary = current != AppPage.dashboard &&
+              current != AppPage.nodes &&
+              current != AppPage.shop &&
+              current != AppPage.account;
+          return PopScope(
+            canPop: !secondary,
+            onPopInvokedWithResult: (didPop, result) {
+              if (!didPop && secondary) {
+                controller.goToPage(AppPage.account);
+              }
+            },
+            child: Scaffold(
             backgroundColor: p.canvas,
             // Extend the page *under* the floating dock. Reserving a solid
             // bottomNavigationBar strip painted an oversized canvas block
@@ -199,13 +213,10 @@ class _V3WorkspaceState extends State<_V3Workspace> {
             body: mobilePage,
             // Four destinations own the bottom bar. Every account
             // subpage has a page-level back affordance instead.
-            bottomNavigationBar: switch (current) {
-              AppPage.dashboard ||
-              AppPage.nodes ||
-              AppPage.shop ||
-              AppPage.account => V3NavIsland(controller: controller),
-              _ => null,
-            },
+            bottomNavigationBar: secondary
+                ? null
+                : V3NavIsland(controller: controller),
+          ),
           );
         }
         // 12 + 68 + 12 = 92dp for the entire desktop rail, not 92dp
