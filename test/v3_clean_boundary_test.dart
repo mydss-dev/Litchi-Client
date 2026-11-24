@@ -76,13 +76,17 @@ void main() {
     ], reason: 'only the shared payment flow may present the payment dialog');
   });
 
-  test('repository instruction keeps clean V3 rule first', () {
-    final source = File('AGENTS.md').readAsStringSync();
-    final ruleIndex = source.indexOf(
-      'NON-NEGOTIABLE: DO NOT REUSE OR MIX LEGACY UI',
-    );
-    final architectureIndex = source.indexOf('V3 Architecture Boundary');
-    expect(ruleIndex, greaterThanOrEqualTo(0));
-    expect(architectureIndex, greaterThan(ruleIndex));
+  test('approved UI V1 contract supersedes obsolete V3 agent instructions', () {
+    // The old AGENTS.md was intentionally removed: it required a blank-slate
+    // visual redesign and direct-main work, contrary to the approved UI V1.
+    expect(File('AGENTS.md').existsSync(), isFalse);
+
+    final spec = File('docs/LITCHI_DESIGN_SYSTEM_V1.md');
+    expect(spec.existsSync(), isTrue);
+    final source = spec.readAsStringSync();
+    expect(source.contains('# Litchi UI Design System V1.0'), isTrue);
+    expect(source.contains('Crystal Navigation Bar'), isTrue);
+    expect(source.contains('CupertinoListSection.insetGrouped'), isTrue);
+    expect(source.contains('Forui'), isTrue);
   });
 }
