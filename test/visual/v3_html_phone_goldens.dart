@@ -61,10 +61,14 @@ void main() {
     testWidgets('HTML faithful Android phone $name screenshot',
         (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      await tester.binding.setSurfaceSize(const Size(390, 844));
+      // Pin the physical viewport and pixel ratio together. setSurfaceSize
+      // alone leaves Flutter test's default 800x600 logical window unchanged.
+      tester.view.devicePixelRatio = 3;
+      tester.view.physicalSize = const Size(1170, 2532);
       addTearDown(() {
         debugDefaultTargetPlatformOverride = null;
-        tester.binding.setSurfaceSize(null);
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
       });
       final controller = _NavigableVisualController(page);
       addTearDown(controller.disposeVisual);
