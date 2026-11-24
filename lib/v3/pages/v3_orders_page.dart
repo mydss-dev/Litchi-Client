@@ -533,11 +533,20 @@ class _MobileOrderDetail extends StatefulWidget {
 class _MobileOrderDetailState extends State<_MobileOrderDetail> {
   late Future<RemoteOrderPaymentDetail> _details;
   bool _busy = false;
+  int? _latestStatus;
+
+  Future<RemoteOrderPaymentDetail> _loadDetail() async {
+    final detail = await widget.loadDetails();
+    if (mounted && _latestStatus != detail.status) {
+      setState(() => _latestStatus = detail.status);
+    }
+    return detail;
+  }
 
   @override
   void initState() {
     super.initState();
-    _details = widget.loadDetails();
+    _details = _loadDetail();
   }
 
   Future<void> _execute(Future<void> Function() action) async {
@@ -545,7 +554,7 @@ class _MobileOrderDetailState extends State<_MobileOrderDetail> {
     setState(() => _busy = true);
     try {
       await action();
-      if (mounted) setState(() => _details = widget.loadDetails());
+      if (mounted) setState(() => _details = _loadDetail());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -573,6 +582,14 @@ class _MobileOrderDetailState extends State<_MobileOrderDetail> {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final order = widget.order;
+    final displayOrder = RemoteOrder(
+      tradeNo: order.tradeNo,
+      planName: order.planName,
+      period: order.period,
+      totalAmount: order.totalAmount,
+      status: _latestStatus ?? order.status,
+      createdAt: order.createdAt,
+    );
     final title = order.planName?.trim().isNotEmpty == true
         ? order.planName!.trim() : order.periodLabel;
     return Scaffold(
@@ -607,8 +624,8 @@ class _MobileOrderDetailState extends State<_MobileOrderDetail> {
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_statusLabel(context, order), style: TextStyle(
-                      color: order.status == 3 || order.status == 4
+                    Text(_statusLabel(context, displayOrder), style: TextStyle(
+                      color: displayOrder.status == 3 || displayOrder.status == 4
                           ? p.successInk : p.inkMuted,
                       fontSize: 13, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 10),
@@ -712,7 +729,7 @@ class _MobileOrderDetailState extends State<_MobileOrderDetail> {
                   );
                 },
               ),
-              if (order.status == 0) ...[
+              if (displayOrder.status == 0) ...[
                 const SizedBox(height: 22),
                 Row(children: [
                   Expanded(child: OutlinedButton(
