@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/preview/litchi_cupertino_preview.dart';
 
 void main() {
-  testWidgets('export full Cupertino suite screenshots', (tester) async {
+  // Font loading needs real async before testWidgets enters fake async.
+  setUpAll(() async {
     // Flutter widget tests otherwise draw Ahem block glyphs, not actual text.
     // Use the CI runner's open-source Noto face for a legible visual review.
     final noto = File('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc');
@@ -22,7 +23,9 @@ void main() {
     final iconLoader = FontLoader('packages/cupertino_icons/CupertinoIcons')
       ..addFont(Future.value(iconData));
     await iconLoader.load();
+  });
 
+  testWidgets('export full Cupertino suite screenshots', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
