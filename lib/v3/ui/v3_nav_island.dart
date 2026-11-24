@@ -23,9 +23,7 @@ class V3NavIsland extends StatelessWidget {
     final items = enabledNavItems(kMobilePrimary);
     if (items.isEmpty) return const SizedBox.shrink();
     final selected = selectedPrimaryIndex(controller.page) ?? 0;
-    return SafeArea(
-      top: false,
-      child: NavigationBarTheme(
+    return NavigationBarTheme(
         data: NavigationBarThemeData(
           backgroundColor: p.surface,
           elevation: 0,
@@ -62,7 +60,6 @@ class V3NavIsland extends StatelessWidget {
           onDestinationSelected: (index) =>
               controller.goToPage(items[index].page),
         ),
-      ),
     );
   }
 }
