@@ -191,7 +191,8 @@ class _V3NodesPageState extends State<V3NodesPage> {
     // On phones the source of truth is the actual 390px HTML node blueprint.
     // Keep the original desktop workspace below, with the same live
     // controller for selection, search, latency tests and error feedback.
-    if (MediaQuery.sizeOf(context).width < V3Layout.paneCompact) {
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
       final phoneNodes = all.where((node) =>
           (_phoneRegion == null || node.region == _phoneRegion) &&
           (query.isEmpty ||
