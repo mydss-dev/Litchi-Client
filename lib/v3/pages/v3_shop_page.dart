@@ -37,6 +37,7 @@ class V3ShopPage extends StatefulWidget {
 
 class _V3ShopPageState extends State<V3ShopPage> {
   PlanCategory? _category;
+  BillingCycle _phoneCycle = BillingCycle.monthly;
 
   @override
   Widget build(BuildContext context) {
@@ -46,24 +47,39 @@ class _V3ShopPageState extends State<V3ShopPage> {
     return LayoutBuilder(builder: (context, constraints) {
       // Horizontal gutters follow the shared page insets so the card-width
       // math matches what the scroll view actually applies.
-      const padding = V3Layout.pageGutter;
+      final phone = constraints.maxWidth < V3Layout.paneCompact;
+      final padding = phone ? 12.0 : V3Layout.pageGutter;
       const spacing = 12.0;
       final contentWidth = constraints.maxWidth - padding * 2;
       final twoColumns = contentWidth >= 600;
       final cardWidth = twoColumns ? (contentWidth - spacing) / 2 : contentWidth;
       return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: V3Layout.pageInsets,
+        padding: phone
+            ? const EdgeInsets.fromLTRB(12, 12, 12, 112)
+            : V3Layout.pageInsets,
         child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          V3PageHeader(title: _tr(context, '套餐', 'Plans', '套餐')),
+          V3PageHeader(
+            title: _tr(context, '套餐', 'Plans', '套餐'),
+            subtitle: _tr(context,
+                '${controller.plans.length} 个可用套餐',
+                '${controller.plans.length} available plans',
+                '${controller.plans.length} 個可用套餐')),
           const SizedBox(height: 18),
           // The segment rides as its own row directly under the title (the
           // traffic page's period-seg pattern) instead of reading as part of
           // the header zone.
-          _CategoryDeck(selected: _category,
-            onChanged: (value) => setState(() => _category = value)),
-          const SizedBox(height: 14),
-          _CurrentPlanBadge(controller: controller),
+          if (phone)
+            _PhoneBillingDeck(
+              selected: _phoneCycle,
+              onChanged: (cycle) => setState(() => _phoneCycle = cycle))
+          else
+            _CategoryDeck(selected: _category,
+              onChanged: (value) => setState(() => _category = value)),
+          if (!phone) ...[
+            const SizedBox(height: 14),
+            _CurrentPlanBadge(controller: controller),
+          ],
           const SizedBox(height: 14),
           // Redemption entry (§13.3): gift cards fold into the shop strip
           // instead of a second-level page on compact. The strip notes the
@@ -139,7 +155,10 @@ class _V3ShopPageState extends State<V3ShopPage> {
               child: _PlanCard(plan: plan,
                 currencySymbol: controller.currencySymbol,
                 desktop: twoColumns,
-                onBuy: () => _openOrder(controller, plan, v3DefaultCycle(plan)))),
+                chosenCycle: phone ? _phoneCycle : null,
+                onBuy: () => _openOrder(controller, plan,
+                  phone && plan.category == PlanCategory.recurring
+                      ? _phoneCycle : v3DefaultCycle(plan)))),
           ]),
         ]),
       );
@@ -156,6 +175,47 @@ class _V3ShopPageState extends State<V3ShopPage> {
     onPaid: controller.refreshData,
     onViewOrders: () => openV3Page(context, AppPage.orders),
   );
+}
+
+
+class _PhoneBillingDeck extends StatelessWidget {
+  const _PhoneBillingDeck({
+    required this.selected,
+    required this.onChanged,
+  });
+  final BillingCycle selected;
+  final ValueChanged<BillingCycle> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final cycles = <(BillingCycle, String)>[
+      (BillingCycle.monthly, _tr(context, '月付', 'Monthly', '月付')),
+      (BillingCycle.quarterly, _tr(context, '季付', 'Quarterly', '季付')),
+      (BillingCycle.yearly, _tr(context, '年付', 'Yearly', '年付')),
+    ];
+    return Container(
+      width: 254, height: 42,
+      decoration: BoxDecoration(color: p.surfaceRaised,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: p.hairline)),
+      padding: const EdgeInsets.all(4),
+      child: Row(children: [
+        for (final (cycle, label) in cycles)
+          Expanded(child: Material(
+            color: selected == cycle ? p.lycheeSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => onChanged(cycle),
+              child: Center(child: Text(label,
+                style: TextStyle(fontSize: 12,
+                  color: selected == cycle ? p.lycheeInk : p.inkMuted,
+                  fontWeight: FontWeight.w700))))),
+          ),
+      ]),
+    );
+  }
 }
 
 class _CategoryDeck extends StatelessWidget {
@@ -350,17 +410,25 @@ class _PlanCardSkeleton extends StatelessWidget {
 
 class _PlanCard extends StatelessWidget {
   const _PlanCard({required this.plan, required this.currencySymbol,
-    required this.desktop, required this.onBuy});
+    required this.desktop, required this.onBuy, this.chosenCycle});
   final PlanModel plan;
   final String currencySymbol;
   final bool desktop;
+  final BillingCycle? chosenCycle;
   final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final cycle = v3DefaultCycle(plan);
+    final cycle = plan.category == PlanCategory.recurring
+        ? (chosenCycle ?? v3DefaultCycle(plan))
+        : v3DefaultCycle(plan);
     final price = v3PlanPrice(plan, cycle);
+    if (!desktop) {
+      return _HtmlPhonePlanCard(
+        plan: plan, currencySymbol: currencySymbol,
+        cycle: cycle, price: price, onBuy: onBuy);
+    }
     final features = plan.features.take(3).toList(growable: false);
     final info = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
@@ -450,6 +518,105 @@ class _PlanCard extends StatelessWidget {
               purchase])
         : Column(crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [info, const SizedBox(height: 14), purchase]));
+  }
+}
+
+
+class _HtmlPhonePlanCard extends StatelessWidget {
+  const _HtmlPhonePlanCard({
+    required this.plan, required this.currencySymbol,
+    required this.cycle, required this.price, required this.onBuy,
+  });
+  final PlanModel plan;
+  final String currencySymbol;
+  final BillingCycle cycle;
+  final double? price;
+  final VoidCallback onBuy;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final features = plan.features.take(3).toList(growable: false);
+    final featured = plan.featured || plan.hot;
+    final isRecurring = plan.category == PlanCategory.recurring;
+    return V3Panel(padding: const EdgeInsets.all(17),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(plan.title,
+          maxLines: 2, overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: p.ink,
+            fontSize: 16, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Row(children: [
+          if (featured)
+            V3StatusBadge(label: plan.featured
+              ? _tr(context, '推荐', 'Recommended', '推薦')
+              : _tr(context, '热门', 'Popular', '熱門'),
+              compact: true, color: p.lychee),
+          if (featured) const SizedBox(width: 8),
+          Text(plan.capacity,
+            style: TextStyle(color: p.inkMuted,
+              fontSize: 11, fontWeight: FontWeight.w600)),
+        ]),
+        const SizedBox(height: 14),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(price == null
+              ? _tr(context, '不可购买', 'Unavailable', '無法購買')
+              : '$currencySymbol${price.toStringAsFixed(2)}',
+            style: TextStyle(color: p.ink, fontSize: 28,
+              fontWeight: FontWeight.w900,
+              fontFeatures: const [FontFeature.tabularFigures()])),
+          const SizedBox(width: 7),
+          Padding(padding: const EdgeInsets.only(bottom: 4),
+            child: Text(isRecurring ? '/${v3CycleLabel(context, cycle)}'
+              : _tr(context, '/一次性', '/one time', '/一次性'),
+              style: TextStyle(color: p.inkMuted, fontSize: 11))),
+        ]),
+        if (plan.deviceLimit != null) ...[
+          const SizedBox(height: 5),
+          Text(_tr(context, '${plan.deviceLimit} 台设备',
+            '${plan.deviceLimit} devices',
+            '${plan.deviceLimit} 台設備'),
+            style: TextStyle(color: p.inkMuted, fontSize: 12)),
+        ],
+        const SizedBox(height: 15),
+        if (features.isEmpty)
+          Text(_tr(context, '暂无套餐说明',
+              'No details available', '尚無方案說明'),
+            style: TextStyle(color: p.inkMuted, fontSize: 12))
+        else
+          for (final feature in features)
+            Padding(padding: const EdgeInsets.only(bottom: 8),
+              child: Row(children: [
+                Icon(Icons.check_rounded,
+                  color: p.successInk, size: 15),
+                const SizedBox(width: 7),
+                Expanded(child: Text(feature, maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.inkMuted, fontSize: 12))),
+              ])),
+        const SizedBox(height: 13),
+        SizedBox(width: double.infinity, height: 42,
+          child: FilledButton(
+            onPressed: plan.soldOut || price == null ? null : onBuy,
+            style: FilledButton.styleFrom(
+              backgroundColor: featured ? p.lychee : p.surfaceRaised,
+              foregroundColor: featured ? p.onLychee : p.ink,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(13))),
+            child: Text(plan.soldOut
+              ? _tr(context, '已售罄', 'Sold out', '已售罄')
+              : _tr(context, '选择此套餐', 'Choose plan', '選擇此方案')))),
+        Align(alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => _showPlanDetails(context, plan),
+            style: TextButton.styleFrom(
+              foregroundColor: p.inkMuted,
+              padding: EdgeInsets.zero),
+            child: Text(_tr(context, '查看套餐说明',
+              'View details', '查看方案說明'),
+              style: const TextStyle(fontSize: 11)))),
+      ]),
+    );
   }
 }
 
