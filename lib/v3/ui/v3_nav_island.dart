@@ -48,7 +48,7 @@ class V3NavIsland extends StatelessWidget {
               key: ValueKey('v3-mobile-nav-${item.page.name}'),
               label: item.localizedLabel(context),
               child: Icon(switch (item.page) {
-                AppPage.dashboard => CupertinoIcons.circle_grid_cross,
+                AppPage.dashboard => CupertinoIcons.circle_grid_3x3,
                 AppPage.nodes => CupertinoIcons.dot_radiowaves_left_right,
                 AppPage.shop => CupertinoIcons.bag,
                 AppPage.account => CupertinoIcons.person_crop_circle,
