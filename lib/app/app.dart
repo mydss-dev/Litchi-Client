@@ -51,7 +51,13 @@ class _LitchiAppState extends State<LitchiApp> {
             debugShowCheckedModeBanner: false,
             theme: V3Theme.light(),
             darkTheme: V3Theme.dark(),
-            themeMode: _controller.themeMode,
+            // Opt-in visual acceptance for the canonical dark HTML sheet.
+            // Does not overwrite persisted theme settings or affect release
+            // builds unless explicitly passed at launch.
+            themeMode: const bool.fromEnvironment('ELEGANT_HTML_BLUEPRINT')
+                && (Platform.isAndroid || Platform.isIOS)
+                ? ThemeMode.dark
+                : _controller.themeMode,
             // MaterialApp already cross-fades palettes through its internal
             // AnimatedTheme; the linear default reads mechanical, so settle
             // the switch with the same ease every V3 surface uses.
