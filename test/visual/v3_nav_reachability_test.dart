@@ -35,8 +35,14 @@ class _NavController extends VisualV3Controller {
 
 Future<_NavController> _pumpShell(WidgetTester tester, Size size,
     {bool noPlan = false}) async {
-  await tester.binding.setSurfaceSize(size);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  // Flutter 3.50 needs the actual test view dimensions pinned, otherwise
+  // MediaQuery stays at its 800x600 default despite setSurfaceSize.
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = size;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
   final controller = _NavController(noPlan: noPlan);
   addTearDown(controller.disposeVisual);
   await tester.pumpWidget(AppScope(

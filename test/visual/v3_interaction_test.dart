@@ -51,8 +51,14 @@ Future<void> _pump(
   Widget page, {
   Size size = const Size(900, 700),
 }) async {
-  await tester.binding.setSurfaceSize(size);
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  // Flutter 3.50 needs the actual test view dimensions pinned, otherwise
+  // MediaQuery stays at its 800x600 default despite setSurfaceSize.
+  tester.view.devicePixelRatio = 1.0;
+  tester.view.physicalSize = size;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
   addTearDown(controller.disposeVisual);
   // AppScope above MaterialApp, as in `LitchiApp`. A dialog is built by the
   // Navigator, so it sits beside `home` rather than under it and cannot see a
