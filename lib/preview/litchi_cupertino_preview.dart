@@ -165,7 +165,7 @@ Widget _panel(Widget child, {EdgeInsets padding = const EdgeInsets.all(17)}) =>
       child: child,
     );
 
-Widget _divider() => const Container(height: .7, color: _T.line);
+Widget _divider() => Container(height: .7, color: _T.line);
 
 Widget _hint(String text) => Text(text, style: const TextStyle(
   color: _T.muted, fontSize: 12, height: 1.4));
