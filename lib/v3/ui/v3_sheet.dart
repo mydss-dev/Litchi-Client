@@ -178,23 +178,40 @@ class V3SheetPageFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < kV3CompactBreakpoint;
     final p = V3Palette.of(context);
+    if (compact && backPage != null) {
+      // A phone secondary page uses a true compact toolbar, not the desktop
+      // oversized page-header row plus a second refresh/action strip.
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(18, 9, 18, 25),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            height: 48,
+            child: Row(children: [
+              IconButton(
+                tooltip: v3Copy(context,
+                    zh: '返回我的', en: 'Back to account', tw: '返回我的'),
+                onPressed: () => AppScope.read(context).goToPage(backPage!),
+                icon: Icon(Icons.arrow_back_ios_new_rounded,
+                    size: 19, color: p.ink),
+              ),
+              const SizedBox(width: 3),
+              Expanded(child: Text(title, maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.ink, fontSize: 23,
+                      fontWeight: FontWeight.w700))),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          child,
+        ]),
+      );
+    }
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
       child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          if (compact && backPage != null) ...[
-            IconButton(
-              tooltip: v3Copy(context,
-                  zh: '返回我的', en: 'Back to account', tw: '返回我的'),
-              onPressed: () => AppScope.read(context).goToPage(backPage!),
-              icon: Icon(Icons.arrow_back_ios_new_rounded,
-                  size: 20, color: p.ink),
-            ),
-            const SizedBox(width: 2),
-          ],
-          Expanded(child: V3PageHeader(title: title, subtitle: subtitle)),
-        ]),
+        V3PageHeader(title: title, subtitle: subtitle),
         const SizedBox(height: 18),
         child,
       ]),
