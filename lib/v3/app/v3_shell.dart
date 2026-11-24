@@ -200,7 +200,8 @@ class _V3WorkspaceState extends State<_V3Workspace> {
             canPop: !secondary,
             onPopInvokedWithResult: (didPop, result) {
               if (!didPop && secondary) {
-                controller.goToPage(AppPage.account);
+                controller.goToPage(
+                  current == AppPage.giftCard ? AppPage.shop : AppPage.account);
               }
             },
             child: Scaffold(
@@ -357,6 +358,7 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.more => const V3MorePage(),
     AppPage.giftCard => V3SheetPageFallback(
       title: v3Copy(context, zh: '礼品卡兑换', en: 'Gift card', tw: '禮品卡兌換'),
+      backPage: AppPage.shop,
       child: const V3GiftCardPage(),
     ),
   };
