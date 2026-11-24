@@ -1,0 +1,40 @@
+name: One-time obsolete branch cleanup
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/prune-branches-once.yml'
+permissions:
+  contents: write
+jobs:
+  prune:
+    if: github.event.head_commit.message == 'chore: one-time prune stale branches'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete reviewed non-main refs only
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=(
+            'backup/pre-elegant-mobile-account-20261124'
+            'experiment/cupertino-mobile-foundation'
+            'experiment/elegant-dark-forui'
+            'experiment/html-faithful-phone'
+            'fix/p1-empty-success-data-20260919'
+            'fix/p2-accessibility-payment-description-20260919'
+            'fix/v3-recover-legacy-ux'
+            'fix/v3-remaining-ux-20260920'
+            'review/v3-four-rounds-20260920'
+          )
+          for branch in "${branches[@]}"; do
+            echo "Checking $branch"
+            if gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${branch}" >/dev/null 2>&1; then
+              gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${branch}"
+              echo "Deleted: $branch"
+            else
+              echo "Already absent: $branch"
+            fi
+          done
+          gh api "repos/${GITHUB_REPOSITORY}/branches?per_page=100" --jq '.[].name'
