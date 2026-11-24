@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -214,6 +215,205 @@ class _V3InvitePageState extends State<V3InvitePage> {
     }
   }
 
+
+  Widget _htmlPhoneInvite(BuildContext context, AppController controller,
+      String code, String link, int codeCount) {
+    final p = V3Palette.of(context);
+    final symbol = controller.currencySymbol;
+    final records = controller.inviteRecords;
+    final metrics = <(IconData, String, String, Color)>[
+      (Icons.person_outline_rounded,
+        v3Copy(context, zh: '已邀请好友', en: 'Invited', tw: '已邀請好友'),
+        '${controller.invitedCount}', p.lycheeInk),
+      (Icons.auto_awesome_rounded,
+        v3Copy(context, zh: '累计佣金', en: 'Commission', tw: '累計佣金'),
+        '$symbol${controller.earnedCommission.toStringAsFixed(2)}',
+        p.successInk),
+      (Icons.storage_outlined,
+        v3Copy(context, zh: '待结算佣金', en: 'Pending', tw: '待結算佣金'),
+        '$symbol${controller.pendingCommission.toStringAsFixed(2)}',
+        p.warningInk),
+      (Icons.link_rounded,
+        v3Copy(context, zh: '可提现余额', en: 'Withdrawable', tw: '可提領餘額'),
+        '$symbol${controller.withdrawable.toStringAsFixed(2)}',
+        p.aquaInk),
+    ];
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 110),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        V3PageHeader(
+          backPage: AppPage.account,
+          title: v3Copy(context, zh: '邀请', en: 'Invite', tw: '邀請'),
+          subtitle: v3Copy(context,
+            zh: '佣金比例 ${controller.commissionRate.toStringAsFixed(0)}% · 好友消费自动计入',
+            en: '${controller.commissionRate.toStringAsFixed(0)}% commission',
+            tw: '佣金比例 ${controller.commissionRate.toStringAsFixed(0)}%'),
+          trailing: IconButton(
+            tooltip: v3Copy(context, zh: '刷新邀请数据',
+              en: 'Refresh invite data', tw: '重新整理邀請資料'),
+            onPressed: _refreshing != null
+                ? null : () => _startRefresh(controller),
+            icon: Icon(Icons.refresh_rounded, size: 19, color: p.inkMuted)),
+        ),
+        const SizedBox(height: 14),
+        if (controller.isInitialLoading ||
+            (_refreshing != null && codeCount == 0))
+          const _InviteSkeleton()
+        else if (controller.dataLoadError != null && codeCount == 0)
+          V3EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: v3Copy(context, zh: '邀请数据加载失败',
+              en: 'Could not load invitations', tw: '邀請資料載入失敗'),
+            subtitle: controller.dataLoadError!,
+            actionLabel: v3Copy(context, zh: '重试',
+              en: 'Retry', tw: '重試'),
+            onAction: () => _startRefresh(controller))
+        else ...[
+          V3Panel(padding: const EdgeInsets.all(17),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(v3Copy(context, zh: '我的邀请码',
+                  en: 'MY INVITE CODE', tw: '我的邀請碼'),
+                  style: TextStyle(color: p.inkMuted,
+                    fontSize: 11, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 10),
+                if (code.isEmpty)
+                  Text(v3Copy(context, zh: '暂未创建邀请码',
+                    en: 'No invite code yet', tw: '尚未建立邀請碼'),
+                    style: TextStyle(color: p.inkMuted, fontSize: 14))
+                else
+                  Row(children: [
+                    Expanded(child: SelectableText(code,
+                      maxLines: 1,
+                      style: TextStyle(color: p.ink, fontSize: 23,
+                        fontWeight: FontWeight.w800))),
+                    OutlinedButton.icon(
+                      onPressed: () => _copy(code, v3Copy(context,
+                        zh: '邀请码已复制', en: 'Code copied', tw: '邀請碼已複製')),
+                      icon: const Icon(Icons.copy_rounded, size: 15),
+                      label: Text(v3Copy(context,
+                        zh: '复制邀请码', en: 'Copy code', tw: '複製邀請碼'),
+                        style: const TextStyle(fontSize: 11))),
+                  ]),
+                if (code.isEmpty) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _creating ? null : _createCode,
+                      child: Text(v3Copy(context, zh: '创建邀请码',
+                        en: 'Create code', tw: '建立邀請碼')))),
+                ],
+                if (link.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Divider(height: 1, color: p.line),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    Icon(Icons.link_rounded, color: p.inkMuted, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(link, maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: p.inkMuted, fontSize: 11))),
+                    IconButton(
+                      tooltip: v3Copy(context, zh: '复制链接',
+                        en: 'Copy link', tw: '複製連結'),
+                      onPressed: () => _copy(link, v3Copy(context,
+                        zh: '邀请链接已复制', en: 'Link copied',
+                        tw: '邀請連結已複製')),
+                      icon: Icon(Icons.copy_rounded,
+                        color: p.inkMuted, size: 17)),
+                  ]),
+                ],
+              ]),
+          ),
+          const SizedBox(height: 12),
+          V3Panel(padding: const EdgeInsets.all(15),
+            child: Column(children: [
+              for (var row = 0; row < 2; row++) ...[
+                if (row > 0) const SizedBox(height: 17),
+                Row(children: [
+                  for (var col = 0; col < 2; col++) ...[
+                    if (col > 0) const SizedBox(width: 12),
+                    Expanded(child: Builder(builder: (context) {
+                      final t = metrics[row * 2 + col];
+                      return Column(crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Icon(t.$1, color: t.$4, size: 16),
+                            const SizedBox(width: 6),
+                            Expanded(child: Text(t.$2, maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: p.inkMuted, fontSize: 11))),
+                          ]),
+                          const SizedBox(height: 7),
+                          Text(t.$3, maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: p.ink, fontSize: 16,
+                              fontWeight: FontWeight.w700)),
+                        ]);
+                    })),
+                  ],
+                ]),
+              ],
+            ]),
+          ),
+          const SizedBox(height: 12),
+          V3Panel(padding: const EdgeInsets.all(15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(v3Copy(context,
+                  zh: '佣金明细', en: 'Commissions', tw: '佣金明細'),
+                  style: TextStyle(color: p.inkMuted, fontSize: 11,
+                    fontWeight: FontWeight.w800)),
+                const SizedBox(height: 12),
+                if (records.isEmpty)
+                  Text(v3Copy(context, zh: '暂无返佣记录',
+                    en: 'No commission records', tw: '暫無返佣紀錄'),
+                    style: TextStyle(color: p.inkMuted, fontSize: 12))
+                else for (final record in records.take(8)) ...[
+                  Row(children: [
+                    CircleAvatar(radius: 16, backgroundColor: p.surfaceRaised,
+                      child: Icon(Icons.person_outline_rounded,
+                        size: 17, color: p.inkMuted)),
+                    const SizedBox(width: 10),
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(record.userName.isEmpty
+                            ? v3Copy(context, zh: '新用户',
+                                en: 'New user', tw: '新用戶')
+                            : record.userName,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: p.ink,
+                            fontSize: 12, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 3),
+                        Text(record.dateDisplay,
+                          style: TextStyle(color: p.inkMuted, fontSize: 11)),
+                      ],
+                    )),
+                    Text(record.commissionDisplay(symbol),
+                      style: TextStyle(color: p.successInk,
+                        fontSize: 12, fontWeight: FontWeight.w700)),
+                  ]),
+                  const SizedBox(height: 13),
+                ],
+                const SizedBox(height: 9),
+                Text(v3Copy(context,
+                  zh: '累计佣金 ${controller.earnedCommission.toStringAsFixed(2)} = 可提现 ${controller.withdrawable.toStringAsFixed(2)} + 待结算 ${controller.pendingCommission.toStringAsFixed(2)}',
+                  en: 'Total commission = withdrawable + pending',
+                  tw: '累計佣金 = 可提領 + 待結算'),
+                  style: TextStyle(color: p.inkMuted,
+                    height: 1.45, fontSize: 11)),
+              ]),
+          ),
+        ],
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
@@ -223,6 +423,12 @@ class _V3InvitePageState extends State<V3InvitePage> {
     // and share rows below keep their content while paging. Only the empty
     // state has nothing to show.
     final active = codes.isEmpty ? null : codes[index];
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      return _htmlPhoneInvite(
+        context, controller,
+        active?.code ?? '', active?.link ?? '', codes.length);
+    }
     final hero = _InviteHero(
       code: active?.code ?? '',
       link: active?.link ?? '',
