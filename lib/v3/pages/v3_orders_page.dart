@@ -139,8 +139,165 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
     _ => _orders,
   };
 
+
+  Future<void> _openOrder(RemoteOrder order) async {
+    final controller = AppScope.read(context);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => _MobileOrderDetail(
+          order: order,
+          currencySymbol: controller.currencySymbol,
+          loadDetails: () => controller.api.getOrderPaymentDetail(order.tradeNo),
+          onPay: () => _pay(order),
+          onCancel: () => _cancel(order),
+        ),
+      ),
+    );
+    if (mounted) await _load();
+  }
+
+  /// Mobile ledger matches the reference: segmented filter and one list card.
+  Widget _mobileBody(BuildContext context) {
+    final controller = AppScope.of(context);
+    final p = V3Palette.of(context);
+    final visible = _visibleOrders;
+    final shown = visible.take(_limit).toList(growable: false);
+    final filters = [
+      v3Copy(context, zh: '全部', en: 'All', tw: '全部'),
+      v3Copy(context, zh: '待处理', en: 'Pending', tw: '待處理'),
+      v3Copy(context, zh: '已完成', en: 'Completed', tw: '已完成'),
+      v3Copy(context, zh: '已取消', en: 'Cancelled', tw: '已取消'),
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(
+        height: 46,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: p.surfaceRaised,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Row(children: [
+          for (var i = 0; i < filters.length; i++)
+            Expanded(child: Semantics(
+              button: true,
+              selected: _filter == i,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(11),
+                onTap: () => setState(() {
+                  _filter = i;
+                  _limit = _pageSize;
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _filter == i ? p.surface : Colors.transparent,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Text(filters[i], maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _filter == i ? p.ink : p.inkMuted,
+                      fontSize: 12,
+                      fontWeight: _filter == i
+                          ? FontWeight.w700 : FontWeight.w500,
+                    )),
+                ),
+              ),
+            )),
+        ]),
+      ),
+      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(child: Text(
+          v3Copy(context, zh: '订单列表 · ${visible.length} 笔',
+              en: '${visible.length} orders',
+              tw: '訂單列表 · ${visible.length} 筆'),
+          style: TextStyle(color: p.inkMuted, fontSize: 12))),
+        IconButton(
+          tooltip: v3Copy(context, zh: '刷新订单',
+              en: 'Refresh orders', tw: '重新整理訂單'),
+          onPressed: _loading ? null : refresh,
+          icon: Icon(Icons.refresh_rounded, color: p.inkMuted, size: 19),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+        ),
+      ]),
+      const SizedBox(height: 5),
+      if (_loading)
+        const _OrdersSkeleton()
+      else if (_error != null)
+        V3EmptyState(
+          icon: Icons.error_outline_rounded,
+          title: v3Copy(context, zh: '订单加载失败',
+            en: 'Could not load orders', tw: '訂單載入失敗'),
+          subtitle: _error!,
+          actionLabel: v3Copy(context, zh: '重试',
+            en: 'Retry', tw: '重試'),
+          onAction: _load,
+        )
+      else if (visible.isEmpty)
+        V3EmptyState(
+          icon: Icons.receipt_long_outlined,
+          title: v3Copy(context, zh: '暂无订单',
+            en: 'No orders', tw: '暫無訂單'),
+          subtitle: _filter == 0
+              ? v3Copy(context,
+                  zh: '购买套餐后，订单会出现在这里。',
+                  en: 'Your orders appear here after a purchase.',
+                  tw: '購買方案後，訂單會顯示在這裡。')
+              : v3Copy(context,
+                  zh: '没有符合当前筛选条件的订单。',
+                  en: 'No orders match this filter.',
+                  tw: '沒有符合目前篩選條件的訂單。'),
+          actionLabel: _filter == 0
+              ? v3Copy(context, zh: '查看套餐',
+                  en: 'Browse plans', tw: '查看套餐')
+              : null,
+          onAction: _filter == 0
+              ? () => controller.goToPage(AppPage.shop) : null,
+        )
+      else
+        Container(
+          decoration: BoxDecoration(
+            color: p.surface,
+            borderRadius: BorderRadius.circular(19),
+            border: Border.all(color: p.hairline),
+          ),
+          child: Column(children: [
+            for (var i = 0; i < shown.length; i++) ...[
+              if (i > 0)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15),
+                  child: Divider(color: p.line, height: 1),
+                ),
+              _MobileOrderRow(
+                order: shown[i],
+                currencySymbol: controller.currencySymbol,
+                onTap: () => _openOrder(shown[i]),
+              ),
+            ],
+          ]),
+        ),
+      if (visible.length > shown.length) ...[
+        const SizedBox(height: 12),
+        Center(child: TextButton(
+          onPressed: () => setState(() => _limit += _pageSize),
+          child: Text(v3Copy(context,
+            zh: '加载更多（剩余 ${visible.length - shown.length} 笔）',
+            en: 'Load more (${visible.length - shown.length})',
+            tw: '載入更多（剩餘 ${visible.length - shown.length} 筆）')),
+        )),
+      ],
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // The reference design presents phone orders as one readable ledger.
+    // The desktop table keeps its existing summary and layout.
+    if (MediaQuery.sizeOf(context).width < 480) {
+      return _mobileBody(context);
+    }
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
     final visible = _visibleOrders;
@@ -282,6 +439,305 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         ],
       ]);
     });
+  }
+}
+
+
+/// The entire order row is the hit target; details are a real Android route,
+/// not a static card or an invisible chevron with no action.
+class _MobileOrderRow extends StatelessWidget {
+  const _MobileOrderRow({
+    required this.order,
+    required this.currencySymbol,
+    required this.onTap,
+  });
+
+  final RemoteOrder order;
+  final String currencySymbol;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final statusColor = switch (order.status) {
+      0 || 1 => p.warningInk,
+      3 || 4 => p.successInk,
+      _ => p.inkMuted,
+    };
+    final title = order.planName?.trim().isNotEmpty == true
+        ? order.planName!.trim() : order.periodLabel;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: ValueKey('v3-order-row-${order.tradeNo}'),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+          child: Row(children: [
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.ink, fontSize: 14,
+                    fontWeight: FontWeight.w700)),
+                const SizedBox(height: 5),
+                Text(order.tradeNo, maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.inkMuted, fontSize: 11,
+                    fontFeatures: const [FontFeature.tabularFigures()])),
+                const SizedBox(height: 8),
+                Text(_statusLabel(context, order),
+                  style: TextStyle(color: statusColor, fontSize: 11,
+                    fontWeight: FontWeight.w700)),
+              ],
+            )),
+            const SizedBox(width: 8),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(order.amountDisplay(currencySymbol),
+                style: TextStyle(color: p.ink, fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
+              const SizedBox(height: 5),
+              Text(order.dateDisplay,
+                style: TextStyle(color: p.inkMuted, fontSize: 11)),
+            ]),
+            const SizedBox(width: 5),
+            Icon(Icons.chevron_right_rounded, size: 17,
+              color: p.inkMuted),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileOrderDetail extends StatefulWidget {
+  const _MobileOrderDetail({
+    required this.order,
+    required this.currencySymbol,
+    required this.loadDetails,
+    required this.onPay,
+    required this.onCancel,
+  });
+
+  final RemoteOrder order;
+  final String currencySymbol;
+  final Future<RemoteOrderPaymentDetail> Function() loadDetails;
+  final Future<void> Function() onPay;
+  final Future<void> Function() onCancel;
+
+  @override
+  State<_MobileOrderDetail> createState() => _MobileOrderDetailState();
+}
+
+class _MobileOrderDetailState extends State<_MobileOrderDetail> {
+  late Future<RemoteOrderPaymentDetail> _details;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _details = widget.loadDetails();
+  }
+
+  Future<void> _execute(Future<void> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await action();
+      if (mounted) setState(() => _details = widget.loadDetails());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _field(BuildContext context, String title, String value) {
+    final p = V3Palette.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(width: 95,
+          child: Text(title, style: TextStyle(
+            fontSize: 12, color: p.inkMuted))),
+        Expanded(child: SelectableText(value,
+          style: TextStyle(color: p.ink, fontSize: 13,
+            fontWeight: FontWeight.w600))),
+      ]),
+    );
+  }
+
+  String _money(int cents) =>
+      '${widget.currencySymbol}${(cents / 100).toStringAsFixed(2)}';
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final order = widget.order;
+    final title = order.planName?.trim().isNotEmpty == true
+        ? order.planName!.trim() : order.periodLabel;
+    return Scaffold(
+      backgroundColor: p.canvas,
+      appBar: AppBar(
+        backgroundColor: p.canvas,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          tooltip: v3Copy(context, zh: '返回订单列表',
+            en: 'Back to orders', tw: '返回訂單列表'),
+          onPressed: () => Navigator.of(context).pop(),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: p.ink),
+        ),
+        title: Text(v3Copy(context, zh: '订单详情',
+          en: 'Order details', tw: '訂單詳情'),
+          style: TextStyle(color: p.ink, fontSize: 21,
+            fontWeight: FontWeight.w700)),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: p.surface,
+                  borderRadius: BorderRadius.circular(21),
+                  border: Border.all(color: p.hairline),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_statusLabel(context, order), style: TextStyle(
+                      color: order.status == 3 || order.status == 4
+                          ? p.successInk : p.inkMuted,
+                      fontSize: 13, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 10),
+                    Text(widget.order.amountDisplay(widget.currencySymbol),
+                      style: TextStyle(color: p.ink,
+                        fontSize: 30, fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()])),
+                    const SizedBox(height: 8),
+                    Text(title, style: TextStyle(
+                      color: p.inkMuted, fontSize: 13)),
+                  ]),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18, vertical: 5),
+                decoration: BoxDecoration(
+                  color: p.surface,
+                  borderRadius: BorderRadius.circular(21),
+                  border: Border.all(color: p.hairline),
+                ),
+                child: Column(children: [
+                  _field(context,
+                    v3Copy(context, zh: '订单编号',
+                      en: 'Order number', tw: '訂單編號'),
+                    order.tradeNo),
+                  Divider(color: p.line, height: 1),
+                  _field(context,
+                    v3Copy(context, zh: '套餐',
+                      en: 'Plan', tw: '方案'),
+                    title),
+                  Divider(color: p.line, height: 1),
+                  _field(context,
+                    v3Copy(context, zh: '购买周期',
+                      en: 'Billing period', tw: '購買週期'),
+                    order.periodLabel),
+                  Divider(color: p.line, height: 1),
+                  _field(context,
+                    v3Copy(context, zh: '创建日期',
+                      en: 'Created', tw: '建立日期'),
+                    order.dateDisplay),
+                  Divider(color: p.line, height: 1),
+                  _field(context,
+                    v3Copy(context, zh: '订单金额',
+                      en: 'Order total', tw: '訂單金額'),
+                    order.amountDisplay(widget.currencySymbol)),
+                ]),
+              ),
+              const SizedBox(height: 16),
+              FutureBuilder<RemoteOrderPaymentDetail>(
+                future: _details,
+                builder: (ctx, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return const Center(child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ));
+                  }
+                  if (!snap.hasData) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(v3Copy(context,
+                        zh: '支付明细暂时不可用，以上订单信息仍可查看。',
+                        en: 'Payment breakdown is unavailable.',
+                        tw: '付款明細暫時無法取得。'),
+                        style: TextStyle(color: p.inkMuted, fontSize: 12)),
+                    );
+                  }
+                  final d = snap.data!;
+                  final extra = <(String, int?)>[
+                    (v3Copy(context, zh: '优惠金额',
+                      en: 'Discount', tw: '優惠金額'), d.discountAmount),
+                    (v3Copy(context, zh: '套餐折抵',
+                      en: 'Subscription credit', tw: '方案折抵'),
+                      d.surplusAmount),
+                    (v3Copy(context, zh: '余额抵扣',
+                      en: 'Wallet balance', tw: '餘額抵扣'), d.balanceAmount),
+                    (v3Copy(context, zh: '退款金额',
+                      en: 'Refund', tw: '退款金額'), d.refundAmount),
+                    (v3Copy(context, zh: '支付手续费',
+                      en: 'Payment fee', tw: '付款手續費'),
+                      d.preHandlingAmount),
+                    (v3Copy(context, zh: '待支付金额',
+                      en: 'Amount due', tw: '待付款金額'), d.totalAmount),
+                  ].where((entry) => entry.$2 != null).toList();
+                  if (extra.isEmpty) return const SizedBox.shrink();
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: p.surface,
+                      borderRadius: BorderRadius.circular(21),
+                      border: Border.all(color: p.hairline),
+                    ),
+                    child: Column(children: [
+                      for (var i = 0; i < extra.length; i++) ...[
+                        if (i > 0) Divider(color: p.line, height: 1),
+                        _field(context, extra[i].$1, _money(extra[i].$2!)),
+                      ],
+                    ]),
+                  );
+                },
+              ),
+              if (order.status == 0) ...[
+                const SizedBox(height: 22),
+                Row(children: [
+                  Expanded(child: OutlinedButton(
+                    onPressed: _busy ? null
+                        : () => _execute(widget.onCancel),
+                    child: Text(v3Copy(context,
+                      zh: '取消订单', en: 'Cancel order', tw: '取消訂單')),
+                  )),
+                  const SizedBox(width: 10),
+                  Expanded(child: FilledButton(
+                    onPressed: _busy ? null
+                        : () => _execute(widget.onPay),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: p.lychee,
+                      foregroundColor: p.onLychee),
+                    child: Text(v3Copy(context,
+                      zh: '继续支付', en: 'Pay now', tw: '繼續付款')),
+                  )),
+                ]),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
