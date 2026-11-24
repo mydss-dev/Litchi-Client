@@ -1,3 +1,4 @@
+import 'package:crystal_navigation_bar/crystal_navigation_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,16 +79,25 @@ Future<void> _tap(WidgetTester tester, Finder target) async {
 }
 
 void main() {
-  testWidgets('Android original frosted primary navigation remains functional',
+  testWidgets('Android Crystal primary navigation and four routes remain functional',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, const Size(390, 844));
       expect(find.byType(V3NavIsland), findsOneWidget);
+      expect(find.byType(CrystalNavigationBar), findsOneWidget);
+      const destinations = [
+        AppPage.dashboard, AppPage.nodes, AppPage.shop, AppPage.account,
+      ];
       for (final page in [AppPage.nodes, AppPage.shop, AppPage.account,
           AppPage.dashboard]) {
-        await _tap(tester, find.byKey(ValueKey('v3-mobile-nav-'+page.name)));
+        final tabIndex = destinations.indexOf(page);
+        final tabs = find.descendant(
+          of: find.byType(CrystalNavigationBar),
+          matching: find.byType(InkWell),
+        );
+        await _tap(tester, tabs.at(tabIndex));
         expect(controller.page, page);
-        expect(find.byType(V3NavIsland), findsOneWidget);
+        expect(find.byType(CrystalNavigationBar), findsOneWidget);
       }
     });
   });
