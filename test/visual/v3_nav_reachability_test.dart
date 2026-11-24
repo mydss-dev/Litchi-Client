@@ -1,6 +1,8 @@
 import 'package:crystal_navigation_bar/crystal_navigation_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoListSection;
+import 'package:forui/forui.dart' show FCard, FAvatar;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
@@ -169,11 +171,16 @@ void main() {
           const ValueKey('v3-account-wallet-service'));
       final settings = find.byKey(hubRowKey(AppPage.settings));
       expect(find.text('账户服务'), findsOneWidget);
+      expect(find.byType(CupertinoListSection), findsOneWidget);
+      expect(find.byType(FCard), findsNWidgets(2));
+      expect(find.byType(FAvatar), findsOneWidget);
       expect(orders, findsOneWidget);
       expect(wallet, findsOneWidget);
       expect(settings, findsOneWidget);
       expect(tester.getRect(wallet).top,
-          greaterThan(tester.getRect(orders).top));
+          lessThan(tester.getRect(orders).top));
+      expect(find.text('工单支持'), findsOneWidget);
+      expect(find.text('帮助与工单'), findsNothing);
       expect(tester.getRect(settings).top,
           greaterThan(tester.getRect(wallet).top));
 

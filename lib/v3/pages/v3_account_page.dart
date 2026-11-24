@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoListSection, CupertinoListTile;
+import 'package:forui/forui.dart' show FCard, FCardStyle, FAvatar;
 
 import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
@@ -411,14 +413,14 @@ class _MobileAccountOverview extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _MobilePlanCard(controller: controller),
-        // Restore the original one-column account-services list. All
-        // service destinations, including wallet and app settings, live here.
+        // Apple-style grouped services, preserving the existing destinations
+        // and all feature gates. Wallet leads because it is the most frequent
+        // account action; neither page routing nor the main dock is changed.
         const SizedBox(height: 25),
         Padding(
           padding: const EdgeInsets.only(left: 1),
           child: Text(
-            v3Copy(context, zh: '账户服务',
-              en: 'YOUR SERVICES', tw: '帳戶服務'),
+            v3Copy(context, zh: '账户服务', en: 'YOUR SERVICES', tw: '帳戶服務'),
             style: TextStyle(
               color: p.inkMuted,
               fontSize: 11,
@@ -428,43 +430,18 @@ class _MobileAccountOverview extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        _MobileSurface(
-          padding: EdgeInsets.zero,
-          child: Column(children: [
-            _MobileAccountLink(
-              key: hubRowKey(AppPage.orders),
-              icon: Icons.receipt_long_outlined,
-              title: v3Copy(context, zh: '订单记录',
-                en: 'Orders', tw: '訂單紀錄'),
-              onTap: () => openV3Page(context, AppPage.orders),
-            ),
-            const _MobileHairline(),
-            _MobileAccountLink(
-              key: hubRowKey(AppPage.traffic),
-              icon: Icons.data_usage_outlined,
-              title: v3Copy(context, zh: '流量用量',
-                en: 'Data usage', tw: '流量用量'),
-              onTap: () => openV3Page(context, AppPage.traffic),
-            ),
-            const _MobileHairline(),
-            _MobileAccountLink(
-              key: hubRowKey(AppPage.tickets),
-              icon: Icons.chat_bubble_outline_rounded,
-              title: v3Copy(context, zh: '帮助与工单',
-                en: 'Help & support', tw: '幫助與工單'),
-              onTap: () => openV3Page(context, AppPage.tickets),
-            ),
-            const _MobileHairline(),
-            _MobileAccountLink(
-              key: hubRowKey(AppPage.invite),
-              icon: Icons.people_outline_rounded,
-              title: v3Copy(context, zh: '邀请好友',
-                en: 'Invite friends', tw: '邀請好友'),
-              onTap: () => openV3Page(context, AppPage.invite),
-            ),
-            if (walletVisible) ...[
-              const _MobileHairline(),
-              _MobileAccountLink(
+        CupertinoListSection.insetGrouped(
+          margin: EdgeInsets.zero,
+          backgroundColor: p.canvas,
+          separatorColor: p.line,
+          decoration: BoxDecoration(
+            color: p.surface,
+            borderRadius: BorderRadius.circular(V3Radius.card),
+            border: Border.all(color: p.line.withValues(alpha: .72)),
+          ),
+          children: [
+            if (walletVisible)
+              _MobileServiceTile(
                 key: const ValueKey('v3-account-wallet-service'),
                 icon: Icons.account_balance_wallet_outlined,
                 title: v3Copy(context, zh: '我的钱包',
@@ -473,16 +450,42 @@ class _MobileAccountOverview extends StatelessWidget {
                   MaterialPageRoute<void>(
                     builder: (_) => const _MobileWalletPage())),
               ),
-            ],
-            const _MobileHairline(),
-            _MobileAccountLink(
+            _MobileServiceTile(
+              key: hubRowKey(AppPage.orders),
+              icon: Icons.receipt_long_outlined,
+              title: v3Copy(context, zh: '订单记录',
+                en: 'Orders', tw: '訂單紀錄'),
+              onTap: () => openV3Page(context, AppPage.orders),
+            ),
+            _MobileServiceTile(
+              key: hubRowKey(AppPage.traffic),
+              icon: Icons.data_usage_outlined,
+              title: v3Copy(context, zh: '流量用量',
+                en: 'Data usage', tw: '流量用量'),
+              onTap: () => openV3Page(context, AppPage.traffic),
+            ),
+            _MobileServiceTile(
+              key: hubRowKey(AppPage.tickets),
+              icon: Icons.support_agent_outlined,
+              title: v3Copy(context, zh: '工单支持',
+                en: 'Ticket support', tw: '工單支援'),
+              onTap: () => openV3Page(context, AppPage.tickets),
+            ),
+            _MobileServiceTile(
+              key: hubRowKey(AppPage.invite),
+              icon: Icons.people_outline_rounded,
+              title: v3Copy(context, zh: '邀请好友',
+                en: 'Invite friends', tw: '邀請好友'),
+              onTap: () => openV3Page(context, AppPage.invite),
+            ),
+            _MobileServiceTile(
               key: hubRowKey(AppPage.settings),
               icon: Icons.tune_rounded,
               title: v3Copy(context, zh: '应用设置',
                 en: 'Settings', tw: '應用設定'),
               onTap: () => openV3Page(context, AppPage.settings),
             ),
-          ]),
+          ],
         ),
         if (controller.dataLoadError != null) ...[
           const SizedBox(height: 12),
@@ -539,6 +542,66 @@ class _MobileSurface extends StatelessWidget {
 
 
 
+/// Account-only Apple-style service rows. Do not change the rows used by
+/// manage-account sheets or any desktop navigation.
+class _MobileServiceTile extends StatelessWidget {
+  const _MobileServiceTile({
+    super.key, required this.icon, required this.title, required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return CupertinoListTile.notched(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+      leading: Icon(icon, size: 20, color: p.inkMuted),
+      leadingSize: 24,
+      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: p.ink, fontSize: 15,
+            fontWeight: FontWeight.w600)),
+      trailing: Icon(Icons.chevron_right_rounded,
+        size: 18, color: p.inkMuted.withValues(alpha: .65)),
+      onTap: onTap,
+    );
+  }
+}
+
+/// Use Forui's card implementation only for the two account overview cards.
+/// Their existing dimensions and controller behavior stay unchanged.
+class _ForuiAccountCard extends StatelessWidget {
+  const _ForuiAccountCard({required this.child, required this.padding});
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return FCard(
+      style: FCardStyle(
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(V3Radius.card),
+          border: Border.all(color: p.line.withValues(alpha: .72)),
+        ),
+        titleTextStyle: TextStyle(color: p.ink,
+          fontSize: 16, fontWeight: FontWeight.w600),
+        subtitleTextStyle: TextStyle(color: p.inkMuted,
+          fontSize: 13),
+        padding: padding,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(padding: padding, child: child),
+      ),
+    );
+  }
+}
+
 class _MobileIdentityCard extends StatelessWidget {
   const _MobileIdentityCard({
     required this.controller,
@@ -554,12 +617,13 @@ class _MobileIdentityCard extends StatelessWidget {
     final letter = user.avatarLetter.trim().isEmpty
         ? 'L' : user.avatarLetter.trim().substring(0, 1).toUpperCase();
 
-    return _MobileSurface(
+    return _ForuiAccountCard(
       padding: const EdgeInsets.all(14),
       child: Row(children: [
-        CircleAvatar(radius: 21, backgroundColor: p.lychee,
+        FAvatar.raw(size: 42,
+          style: .delta(backgroundColor: p.lycheeSoft),
           child: Text(letter, style: TextStyle(
-            color: p.onLychee, fontWeight: FontWeight.w700, fontSize: 17))),
+            color: p.lycheeInk, fontWeight: FontWeight.w700, fontSize: 17))),
         const SizedBox(width: 10),
         Expanded(child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -610,7 +674,7 @@ class _MobilePlanCard extends StatelessWidget {
         ? '—'
         : v3Copy(context, zh: '${remaining.inDays} 天',
             en: '${remaining.inDays} days', tw: '${remaining.inDays} 天');
-    return _MobileSurface(
+    return _ForuiAccountCard(
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 11),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
