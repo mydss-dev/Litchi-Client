@@ -54,9 +54,17 @@ class _V3NodesPageState extends State<V3NodesPage> {
   @override
   void initState() {
     super.initState();
-    SettingsService.loadFavorites().then((favorites) {
+    _loadPhoneFavorites();
+  }
+
+  Future<void> _loadPhoneFavorites() async {
+    try {
+      final favorites = await SettingsService.loadFavorites();
       if (mounted) setState(() => _phoneFavorites.addAll(favorites));
-    });
+    } catch (_) {
+      // Favorites are optional UI state. A missing preferences host (widget
+      // tests or an unavailable platform plugin) must not crash the node view.
+    }
   }
 
   void _togglePhoneFavorite(NodeModel node) {
