@@ -101,6 +101,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
+              backPage: AppPage.account,
             title: v3Copy(context,
               zh: '设置中心', en: 'Settings', tw: '設定中心'),
             subtitle: v3Copy(context,
