@@ -27,8 +27,6 @@ class V3HtmlPhoneNodes extends StatelessWidget {
     required this.onSelect,
     required this.onSelectAuto,
     required this.pendingId,
-    required this.isFavorite,
-    required this.onFavorite,
   });
 
   final AppController controller;
@@ -44,8 +42,6 @@ class V3HtmlPhoneNodes extends StatelessWidget {
   final ValueChanged<NodeModel> onSelect;
   final VoidCallback onSelectAuto;
   final String? pendingId;
-  final bool Function(NodeModel) isFavorite;
-  final ValueChanged<NodeModel> onFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +71,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
           SizedBox(height: 36, child: OutlinedButton.icon(
             key: const Key('v3-overview-speed-test'),
             onPressed: controller.isLatencyTesting ? null : onTest,
-            icon: const Icon(Icons.arrow_upward_rounded, size: 15),
+            icon: const Icon(Icons.bolt_rounded, size: 17),
             label: Text(v3Copy(context, zh: '全部测速',
               en: 'Test all', tw: '全部測速')),
             style: OutlinedButton.styleFrom(
@@ -148,11 +144,9 @@ class V3HtmlPhoneNodes extends StatelessWidget {
                   node: node,
                   selected: !controller.autoSelected &&
                     controller.currentNode.id == node.id,
-                  favorite: isFavorite(node),
                   blocked: pendingId != null,
                   pending: pendingId == node.id,
                   onTap: () => onSelect(node),
-                  onFavorite: () => onFavorite(node),
                   onTest: () => onTestNode(node.id)),
           ]),
         ),
@@ -203,18 +197,16 @@ class _RegionChip extends StatelessWidget {
 
 class _HtmlNodeRow extends StatelessWidget {
   const _HtmlNodeRow({
-    required this.node, required this.selected, required this.favorite,
+    required this.node, required this.selected,
     required this.blocked, required this.pending, required this.onTap,
-    required this.onFavorite, required this.onTest,
+    required this.onTest,
   });
 
   final NodeModel node;
   final bool selected;
-  final bool favorite;
   final bool blocked;
   final bool pending;
   final VoidCallback onTap;
-  final VoidCallback onFavorite;
   final VoidCallback onTest;
 
   @override
@@ -277,28 +269,31 @@ class _HtmlNodeRow extends StatelessWidget {
                 ],
               )),
               const SizedBox(width: 5),
-              V3LatencyBadge(region: node.region, latency: node.latency),
-              IconButton(
-                tooltip: favorite ? '取消收藏' : '收藏节点',
-                onPressed: onFavorite,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 36),
-                icon: Icon(favorite ? Icons.star_rounded : Icons.star_border_rounded,
-                  size: 18, color: favorite ? p.lycheeInk : p.inkMuted),
-              ),
-              SizedBox(width: 34, height: 34,
-                child: OutlinedButton(
+              // A single per-node latency affordance: lightning before a
+              // valid measurement, milliseconds after it. No favorite star,
+              // duplicate speed-test button, or timeout label.
+              SizedBox(
+                width: 65, height: 42,
+                child: TextButton(
+                  key: ValueKey('v3-node-latency-${node.id}'),
                   onPressed: blocked ? null : onTest,
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: p.surfaceRaised,
-                    shape: const CircleBorder(),
-                    side: BorderSide(color: p.hairline),
-                    padding: EdgeInsets.zero),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    foregroundColor: p.inkMuted,
+                    minimumSize: const Size(48, 42)),
                   child: pending
-                      ? const CircularProgressIndicator(strokeWidth: 2)
-                      : Icon(Icons.arrow_upward_rounded,
-                        size: 16, color: p.inkMuted),
-                )),
+                    ? const SizedBox(width: 17, height: 17,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : node.latency > 0 && node.latency < 9999
+                      ? Text('${node.latency} ms',
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700,
+                            color: p.inkMuted))
+                      : Icon(Icons.bolt_rounded,
+                          size: 20, color: p.inkMuted),
+                ),
+              ),
             ]),
           ),
         ),
