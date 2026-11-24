@@ -96,7 +96,10 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
         ? l.systemProxy : l.tunMode;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: V3Layout.pageInsets,
+      padding: (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              : V3Layout.pageInsets,
       child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
