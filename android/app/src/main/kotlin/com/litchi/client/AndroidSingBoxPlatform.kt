@@ -88,7 +88,11 @@ internal class AndroidSingBoxPlatform(private val context: Context) : PlatformIn
                 mtu = runCatching { systemInterface.mtu }.getOrDefault(1500)
                 addresses = StringArray(
                     systemInterface.interfaceAddresses.map {
-                        "${it.address.hostAddress}/${it.networkPrefixLength}"
+                        // Inet6Address.hostAddress can include a scope (e.g. %wlan0).
+                        // libbox parses these strings as IP prefixes, which cannot
+                        // contain an IPv6 zone identifier.
+                        val host = it.address.hostAddress.substringBefore('%')
+                        "$host/${it.networkPrefixLength}"
                     }.iterator(),
                 )
                 dnsServer = StringArray(
