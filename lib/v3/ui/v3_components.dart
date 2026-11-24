@@ -318,18 +318,20 @@ class V3PageHeader extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.backPage,
+    this.onBack,
   });
 
   final String title;
   final String? subtitle;
   final Widget? trailing;
   final AppPage? backPage;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final mobile = MediaQuery.sizeOf(context).width < 760;
-    final canGoBack = mobile && backPage != null;
+    final canGoBack = mobile && (backPage != null || onBack != null);
 
     if (canGoBack) {
       return Row(
@@ -344,7 +346,7 @@ class V3PageHeader extends StatelessWidget {
               padding: EdgeInsets.zero,
               icon: Icon(Icons.arrow_back_ios_new_rounded,
                 size: 19, color: p.ink),
-              onPressed: () => AppScope.read(context).goToPage(backPage!),
+              onPressed: onBack ?? () => AppScope.read(context).goToPage(backPage!),
             ),
           ),
           const SizedBox(width: 5),
@@ -357,11 +359,11 @@ class V3PageHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: p.ink, fontSize: 24, height: 1.12,
+                    color: p.ink, fontSize: 21, height: 1.12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -.3,
                   )),
-                if (subtitle != null) ...[
+                if (subtitle != null && !mobile) ...[
                   const SizedBox(height: 4),
                   Text(subtitle!,
                     maxLines: 1,
