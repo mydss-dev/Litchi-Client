@@ -260,6 +260,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
+              backPage: AppPage.account,
             title: v3Copy(
               context,
               zh: '邀请',
