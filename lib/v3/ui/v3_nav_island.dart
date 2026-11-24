@@ -11,9 +11,12 @@ import '../app/v3_nav.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
-/// Fixed-height, safe-area-aware phone navigation. The selected destination
-/// uses a single dark capsule; secondary tabs stay quiet and readable.
-const double _kIslandHeight = 68;
+/// Compact Android/iOS navigation. The whole bar floats gently above the
+/// gesture area; all four tabs retain identical icon + label alignment.
+/// Only the selected icon receives a small dark background, never the entire
+/// tab width or the label.
+const double _kIslandHeight = 64;
+const double _kIslandFloat = 9;
 
 class V3NavIsland extends StatelessWidget {
   const V3NavIsland({super.key, required this.controller});
@@ -27,22 +30,43 @@ class V3NavIsland extends StatelessWidget {
     final p = V3Palette.of(context);
     final inset = MediaQuery.paddingOf(context).bottom;
     final items = enabledNavItems(kMobilePrimary);
-    return Container(
-      height: _kIslandHeight + inset,
-      padding: EdgeInsets.fromLTRB(15, 7, 15, 8 + inset),
-      decoration: BoxDecoration(
-        color: p.surface,
-        border: Border(top: BorderSide(
-          color: p.line.withValues(alpha: .7))),
+
+    return SizedBox(
+      height: _kIslandHeight + _kIslandFloat + inset,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, _kIslandFloat + inset),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: p.surface,
+            borderRadius: BorderRadius.circular(27),
+            border: Border.all(color: p.hairline),
+            boxShadow: [
+              BoxShadow(
+                color: p.ink.withValues(alpha: .06),
+                blurRadius: 18,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(27),
+            clipBehavior: Clip.antiAlias,
+            child: Row(
+              children: [
+                for (var i = 0; i < items.length; i++)
+                  Expanded(
+                    child: _IslandTab(
+                      controller: controller,
+                      item: items[i],
+                      selected: i == selectedIndex,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
-      child: Row(children: [
-        for (var i = 0; i < items.length; i++)
-          Expanded(child: _IslandTab(
-            controller: controller,
-            item: items[i],
-            selected: i == selectedIndex,
-          )),
-      ]),
     );
   }
 }
@@ -62,63 +86,57 @@ class _IslandTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final label = item.localizedLabel(context);
-    final foreground = selected ? p.surface : p.inkMuted;
+    final icon = switch (item.page) {
+      AppPage.dashboard => Icons.radar_outlined,
+      AppPage.nodes => Icons.hub_outlined,
+      AppPage.shop => Icons.shopping_bag_outlined,
+      AppPage.account => Icons.person_outline_rounded,
+      _ => item.icon,
+    };
+
     return Semantics(
       key: ValueKey('v3-mobile-nav-${item.page.name}'),
       button: true,
       selected: selected,
       label: label,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-          child: InkWell(
-            onTap: () => controller.goToPage(item.page),
-            borderRadius: BorderRadius.circular(18),
-            child: AnimatedContainer(
-              duration: v3ReducedMotion(context)
-                  ? Duration.zero : V3Motion.fast,
-              curve: V3Motion.ease,
-              height: 49,
-              decoration: BoxDecoration(
-                color: selected ? p.ink : Colors.transparent,
-                borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: () => controller.goToPage(item.page),
+        child: SizedBox(
+          height: _kIslandHeight,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: v3ReducedMotion(context)
+                    ? Duration.zero
+                    : V3Motion.fast,
+                curve: V3Motion.ease,
+                width: 44,
+                height: 29,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? p.ink : Colors.transparent,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Icon(
+                  icon,
+                  size: 19,
+                  color: selected ? p.surface : p.inkMuted,
+                ),
               ),
-              child: Center(
-                child: selected
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(item.icon, size: 19, color: foreground),
-                          const SizedBox(width: 5),
-                          Flexible(child: Text(label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: foreground,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ))),
-                        ],
-                      )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(item.icon, size: 20, color: foreground),
-                          const SizedBox(height: 4),
-                          Text(label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: foreground,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            )),
-                        ],
-                      ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? p.ink : p.inkMuted,
+                  fontSize: 10.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  height: 1,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
