@@ -8,7 +8,7 @@ permissions:
   contents: write
 jobs:
   prune:
-    if: github.event.head_commit.message == 'chore: one-time prune stale branches'
+    if: "github.event.head_commit.message == 'chore: one-time prune stale branches'"
     runs-on: ubuntu-latest
     steps:
       - name: Delete reviewed non-main refs only
