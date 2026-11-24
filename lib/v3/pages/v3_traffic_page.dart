@@ -49,41 +49,33 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     if (controller.hasConfirmedNoPlan && !controller.isInitialLoading) {
-      return LayoutBuilder(
-        builder: (context, viewport) => SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: viewport.maxHeight.isFinite ? viewport.maxHeight : 0,
-            ),
-            child: Center(
-              // The shared empty-state voice (icon tile, one muted line, one
-              // step out) instead of a private hand-rolled panel.
-              child: V3EmptyState(
-                icon: Icons.data_usage_rounded,
-                title: v3Copy(
-                  context,
-                  zh: '还没有可统计的套餐',
-                  en: 'No plan with usage data',
-                  tw: '尚無可統計的方案',
-                ),
-                subtitle: v3Copy(
-                  context,
-                  zh: '选择一个套餐开始使用，用量会统计在这里。',
-                  en: 'Pick a plan to get started; your usage shows up here.',
-                  tw: '選擇一個方案開始使用，用量會統計在這裡。',
-                ),
-                actionLabel: v3Copy(
-                  context,
-                  zh: '去选择套餐',
-                  en: 'Choose a plan',
-                  tw: '前往選擇方案',
-                ),
-                onAction: () => controller.goToPage(AppPage.shop),
-              ),
-            ),
+      // Keep the back affordance even when the account has no active plan.
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: V3Layout.pageInsets,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          V3PageHeader(
+            backPage: AppPage.account,
+            title: v3Copy(context, zh: '用量', en: 'Usage', tw: '用量'),
           ),
-        ),
+          const SizedBox(height: 36),
+          V3EmptyState(
+            icon: Icons.data_usage_rounded,
+            title: v3Copy(context,
+              zh: '还没有可统计的套餐',
+              en: 'No plan with usage data',
+              tw: '尚無可統計的方案'),
+            subtitle: v3Copy(context,
+              zh: '选择一个套餐开始使用，用量会统计在这里。',
+              en: 'Pick a plan to get started; your usage shows up here.',
+              tw: '選擇一個方案開始使用，用量會統計在這裡。'),
+            actionLabel: v3Copy(context,
+              zh: '去选择套餐',
+              en: 'Choose a plan',
+              tw: '前往選擇方案'),
+            onAction: () => controller.goToPage(AppPage.shop),
+          ),
+        ]),
       );
     }
 
