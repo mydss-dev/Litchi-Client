@@ -11,6 +11,22 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
 
+class _NavigableVisualController extends VisualV3Controller {
+  _NavigableVisualController(AppPage initial)
+      : _current = initial, super(initial);
+
+  AppPage _current;
+  @override
+  AppPage get page => _current;
+
+  @override
+  void goToPage(AppPage next) {
+    _current = next;
+    notifyListeners();
+  }
+}
+
+
 void main() {
   setUpAll(() async {
     final file = File('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc');
@@ -49,7 +65,7 @@ void main() {
         debugDefaultTargetPlatformOverride = null;
         tester.binding.setSurfaceSize(null);
       });
-      final controller = VisualV3Controller(page);
+      final controller = _NavigableVisualController(page);
       addTearDown(controller.disposeVisual);
       await tester.pumpWidget(RepaintBoundary(
         key: const ValueKey('html-phone-capture'),
@@ -76,7 +92,7 @@ void main() {
       if (secondary) {
         // Every subpage has a visible back affordance and no primary tab bar.
         expect(find.byType(V3NavIsland), findsNothing);
-        expect(find.byTooltip('返回我的'), findsOneWidget);
+        expect(find.byKey(const ValueKey('v3-mobile-secondary-back')), findsOneWidget);
       } else {
         expect(find.byType(V3NavIsland), findsOneWidget);
       }
