@@ -85,8 +85,11 @@ class _V3ShopPageState extends State<V3ShopPage> {
           // instead of a second-level page on compact. The strip notes the
           // condition (no active plan required) and opens the redemption
           // sheet that already exists.
-          _RedeemStrip(controller: controller),
-          const SizedBox(height: 14),
+          if (controller.hasConfirmedNoPlan &&
+              isPageEnabled(AppPage.giftCard)) ...[
+            _RedeemStrip(controller: controller),
+            const SizedBox(height: 14),
+          ],
           if (controller.isInitialLoading)
             // First-load placeholders in the shape of plan cards, so the
             // loaded grid hands in without an empty-state flash (the tickets
