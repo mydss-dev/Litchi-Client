@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
@@ -63,10 +64,108 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
     if (created == true && mounted) await controller.refreshTickets();
   }
 
+  Widget _phoneTickets(BuildContext context, AppController controller) {
+    final p = V3Palette.of(context);
+    final tickets = controller.tickets;
+    final error = controller.ticketsError;
+    final skeleton = !controller.ticketsLoaded && error == null;
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 110),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        V3PageHeader(
+          backPage: AppPage.account,
+          title: v3Copy(context, zh: '工单', en: 'Tickets', tw: '工單'),
+          subtitle: v3Copy(context,
+            zh: '平均响应 < 2 小时',
+            en: 'Average response < 2 hours',
+            tw: '平均回應 < 2 小時'),
+          trailing: IconButton(
+            tooltip: v3Copy(context, zh: '刷新工单',
+              en: 'Refresh tickets', tw: '重新整理工單'),
+            onPressed: controller.ticketsLoading
+                ? null : controller.refreshTickets,
+            icon: Icon(Icons.refresh_rounded, color: p.inkMuted, size: 18)),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(width: double.infinity, height: 42,
+          child: FilledButton.icon(
+            onPressed: _newTicket,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text(v3Copy(context, zh: '新建工单',
+              en: 'New ticket', tw: '新增工單')))),
+        const SizedBox(height: 14),
+        if (skeleton) const _TicketsSkeleton()
+        else if (error != null)
+          V3EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: v3Copy(context, zh: '工单加载失败',
+              en: 'Could not load tickets', tw: '工單載入失敗'),
+            subtitle: error,
+            actionLabel: v3Copy(context, zh: '重试',
+              en: 'Retry', tw: '重試'),
+            onAction: controller.refreshTickets)
+        else if (tickets.isEmpty)
+          V3EmptyState(
+            icon: Icons.support_agent_rounded,
+            title: v3Copy(context, zh: '暂无工单',
+              en: 'No support tickets', tw: '暫無工單'),
+            subtitle: v3Copy(context, zh: '遇到问题时可在这里联系支持。',
+              en: 'Contact support when needed.',
+              tw: '遇到問題時可在這裡聯絡支援。'),
+            actionLabel: v3Copy(context, zh: '创建工单',
+              en: 'Create ticket', tw: '建立工單'),
+            onAction: _newTicket)
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: p.surface,
+              borderRadius: BorderRadius.circular(21),
+              border: Border.all(color: p.hairline)),
+            child: Column(children: [
+              for (var i = 0; i < tickets.length; i++) ...[
+                if (i > 0)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Divider(height: 1, color: p.line)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 13),
+                  child: _TicketRow(ticket: tickets[i],
+                    wide: false, onTap: () => _openTicket(tickets[i]))),
+              ],
+            ]),
+          ),
+        const SizedBox(height: 14),
+        if (tickets.isNotEmpty) Container(
+          decoration: BoxDecoration(
+            color: p.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: p.hairline)),
+          padding: const EdgeInsets.all(15),
+          child: Row(children: [
+            Icon(Icons.chat_bubble_outline_rounded,
+              size: 18, color: p.inkMuted),
+            const SizedBox(width: 10),
+            Expanded(child: Text(v3Copy(context,
+              zh: '遇到连接问题？新建工单，我们尽快处理。',
+              en: 'Connection issues? Open a ticket.',
+              tw: '遇到連線問題？建立工單，我們盡快處理。'),
+              style: TextStyle(color: p.inkMuted, fontSize: 12))),
+          ]),
+        ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
     final p = V3Palette.of(context);
+    if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
+      return _phoneTickets(context, controller);
+    }
     final tickets = controller.tickets;
     final openCount = tickets.where((ticket) => ticket.isOpen).length;
     final closedCount = tickets.length - openCount;
