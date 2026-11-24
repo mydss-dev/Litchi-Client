@@ -224,7 +224,7 @@ class _HtmlNodeRow extends StatelessWidget {
       color: selected ? p.lycheeSoft : Colors.transparent,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        key: ValueKey('v3-html-node-$node.id'),
+        key: ValueKey('v3-html-node-${node.id}'),
         borderRadius: BorderRadius.circular(16),
         onTap: blocked || selected ? null : onTap,
         child: ConstrainedBox(
