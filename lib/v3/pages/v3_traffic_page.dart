@@ -55,7 +55,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: (defaultTargetPlatform == TargetPlatform.android ||
               defaultTargetPlatform == TargetPlatform.iOS)
-              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 28)
               : V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
@@ -92,7 +92,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: (defaultTargetPlatform == TargetPlatform.android ||
               defaultTargetPlatform == TargetPlatform.iOS)
-              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 28)
               : V3Layout.pageInsets,
         child: V3WaveColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +129,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: (defaultTargetPlatform == TargetPlatform.android ||
               defaultTargetPlatform == TargetPlatform.iOS)
-              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 28)
               : V3Layout.pageInsets,
         child: V3WaveColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,7 +166,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: (defaultTargetPlatform == TargetPlatform.android ||
               defaultTargetPlatform == TargetPlatform.iOS)
-              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 28)
               : V3Layout.pageInsets,
       child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
