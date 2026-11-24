@@ -99,6 +99,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             V3PageHeader(
+              backPage: AppPage.account,
               title: v3Copy(
                 context,
                 zh: '用量',
@@ -132,6 +133,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             V3PageHeader(
+              backPage: AppPage.account,
               title: v3Copy(
                 context,
                 zh: '用量',
@@ -165,6 +167,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
+              backPage: AppPage.account,
             title: v3Copy(context, zh: '用量', en: 'Usage', tw: '用量'),
             // The scope line carries the month's live quota, the same numbers
             // the quota panel holds below.
