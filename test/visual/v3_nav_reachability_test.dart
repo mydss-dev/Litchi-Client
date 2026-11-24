@@ -162,14 +162,15 @@ void main() {
             // is no longer a bottom-bar destination, so nothing to tap here.
             return;
           case AppPage.orders:
-            // §13.3: orders opens as a compact sheet from the 我的 hub row.
+            // Orders is a full page from the account hub, not a modal.
             await _tap(tester, _tab(_primaryLabel(AppPage.account)), 'account tab');
             await _tap(tester, find.byKey(hubRowKey(AppPage.orders)), 'orders hub');
             expect(find.byType(V3OrdersPage), findsOneWidget,
               reason: 'orders must open from the 我的 hub');
-            expect(controller.page, AppPage.account,
-              reason: 'orders is a sheet over 我的, not a page switch');
-            await _tap(tester, find.byTooltip('关闭'), 'orders sheet close');
+            expect(controller.page, AppPage.orders,
+              reason: 'orders must be a real full-screen page');
+            await _tap(tester, find.byTooltip('返回我的'), 'orders back');
+            expect(controller.page, AppPage.account);
             return;
           case AppPage.giftCard:
             // §13.3: redemption folds into the shop strip.
@@ -262,16 +263,16 @@ void main() {
         final controller = await _pumpShell(tester, _mobile);
         controller.goToPage(AppPage.account);
         await tester.pumpAndSettle();
-        expect(find.text('账户余额'), findsOneWidget);
+        expect(find.text('钱包余额'), findsOneWidget);
         expect(
           find.text('可提现'),
           findsOneWidget,
           reason: 'commission must be visible without opening a wallet sheet',
         );
         expect(
-          find.text('我的钱包'),
+          find.text('累计佣金'),
           findsOneWidget,
-          reason: 'the wallet is the inline section header, not a sheet',
+          reason: 'commission belongs to the inline wallet card',
         );
         const actionTitles = ['充值余额', '申请提现', '佣金转余额'];
         for (final (label, dialogTitle) in <(String, String)>[
@@ -320,18 +321,17 @@ void main() {
     },
   );
 
-  testWidgets('hub sheets close back onto 我的 and the shop strip onto 套餐',
+  testWidgets('orders page returns to 我的 and gift sheet returns to 套餐',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, _mobile);
-      // Orders: 我的 hub row opens the sheet; closing returns to 我的.
+      // Orders: 我的 hub row opens a page; back returns to 我的.
       controller.goToPage(AppPage.account);
       await tester.pumpAndSettle();
       await _tap(tester, find.byKey(hubRowKey(AppPage.orders)), 'orders hub');
       expect(find.byType(V3OrdersPage), findsOneWidget);
-      await _tap(tester, find.byTooltip('关闭'), 'orders sheet close');
-      expect(find.byType(V3OrdersPage), findsNothing,
-        reason: 'orders sheet did not close');
+      expect(controller.page, AppPage.orders);
+      await _tap(tester, find.byTooltip('返回我的'), 'orders back');
       expect(controller.page, AppPage.account);
       // Gift card: the shop strip opens the sheet; closing returns to 套餐.
       controller.goToPage(AppPage.shop);
