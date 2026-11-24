@@ -198,12 +198,37 @@ jobs:
           adb shell settings put system user_rotation 0 || true
       - name: Install and launch Litchi
         run: |
+          set -euo pipefail
+          evidence=build/emulator-smoke
+          mkdir -p "$evidence"
           adb logcat -c
+          # An installation failure must fail this gate, never be ignored.
           adb install -r build/app/outputs/flutter-apk/app-debug.apk
           adb shell monkey -p "$PACKAGE_ID" -c android.intent.category.LAUNCHER 1
           sleep 8
-          pid="$(adb shell pidof "$PACKAGE_ID" | tr -d '\r')"
-          test -n "$pid"
+          # On hosted emulators the ADB transport can briefly reset after
+          # launch. Bound each probe so "error: closed" cannot hang CI; still
+          # fail if the app is absent or the transport never recovers.
+          pid=""
+          for attempt in 1 2 3 4; do
+            echo "Litchi process probe $attempt/4"
+            if pid="$(timeout 15s adb shell pidof "$PACKAGE_ID" 2> "$evidence/pidof-stderr.txt" | tr -d '\r')" && [ -n "$pid" ]; then
+              break
+            fi
+            cat "$evidence/pidof-stderr.txt" || true
+            timeout 10s adb devices -l || true
+            if [ "$attempt" -lt 4 ]; then
+              sleep 3
+            fi
+          done
+          if [ -z "$pid" ]; then
+            echo '::error::Litchi process did not remain running or ADB transport failed after launch'
+            timeout 20s adb logcat -d -t 1000 > "$evidence/launch-logcat.txt" 2>&1 || true
+            timeout 10s adb devices -l > "$evidence/adb-after-launch.txt" 2>&1 || true
+            tail -n 100 "$evidence/launch-logcat.txt" || true
+            tail -n 100 "$evidence/emulator.log" || true
+            exit 1
+          fi
           echo "Litchi PID: $pid"
       - name: Capture host-level evidence
         run: |
