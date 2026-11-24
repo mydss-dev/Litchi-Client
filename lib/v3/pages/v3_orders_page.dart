@@ -170,7 +170,6 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
     ];
     return LayoutBuilder(builder: (context, constraints) {
       final compact = constraints.maxWidth < V3Layout.paneCompact;
-      final phone = constraints.maxWidth < 480;
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (!compact)
           Row(children: [
@@ -179,7 +178,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
               Expanded(child: metrics[i]),
             ],
           ])
-        else if (!phone)
+        else
           Column(children: [
             Row(children: [
               Expanded(child: metrics[0]), const SizedBox(width: 12),
@@ -190,13 +189,6 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
               Expanded(child: metrics[2]), const SizedBox(width: 12),
               Expanded(child: metrics[3]),
             ]),
-          ])
-        else
-          Column(children: [
-            for (var i = 0; i < metrics.length; i++) ...[
-              if (i > 0) const SizedBox(height: 10),
-              metrics[i],
-            ],
           ]),
         const SizedBox(height: 16),
         // Stacked long cards (Elegant reference): every order is its own
