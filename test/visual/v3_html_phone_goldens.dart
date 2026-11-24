@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/ui/v3_nav_island.dart';
+import 'package:litchi_client/v3/ui/v3_components.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
@@ -92,6 +93,13 @@ void main() {
       if (secondary) {
         // Every subpage has a visible back affordance and no primary tab bar.
         expect(find.byType(V3NavIsland), findsNothing);
+        final headers = find.byType(V3PageHeader, skipOffstage: false);
+        debugPrint('DEBUG $name headers=${headers.evaluate().length} root=${tester.view.physicalSize} ratio=${tester.view.devicePixelRatio}');
+        for (final element in headers.evaluate()) {
+          final h = element.widget as V3PageHeader;
+          debugPrint('DEBUG $name header: title=${h.title} back=${h.backPage} media=${MediaQuery.sizeOf(element)}');
+        }
+        debugPrint('DEBUG $name back all=${find.byKey(const ValueKey('v3-mobile-secondary-back'), skipOffstage: false).evaluate().length}');
         expect(find.byKey(const ValueKey('v3-mobile-secondary-back')), findsOneWidget);
       } else {
         expect(find.byType(V3NavIsland), findsOneWidget);
