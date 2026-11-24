@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,62 +10,46 @@ import '../app/v3_nav.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
-/// The mobile dock follows the phone reference: a 64dp frosted capsule,
-/// four equally spaced icon + label pairs and a *soft* selected glyph tint.
-/// No dark filled blocks or solid background panel beneath the floating dock.
+/// Exact phone blueprint .p-bnav: inset 12, bottom 10, height 64,
+/// radius 32, four aligned icon-label tabs with a 44×28 active pill.
 const double _kIslandHeight = 64;
 const double _kIslandFloat = 10;
 
 class V3NavIsland extends StatelessWidget {
   const V3NavIsland({super.key, required this.controller});
-
   final AppController controller;
-
   int get selectedIndex => selectedPrimaryIndex(controller.page) ?? 0;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final bottom = MediaQuery.paddingOf(context).bottom;
     final items = enabledNavItems(kMobilePrimary);
-
     return SizedBox(
-      height: _kIslandHeight + _kIslandFloat + bottomInset,
+      height: _kIslandHeight + _kIslandFloat + bottom,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          12, 0, 12, _kIslandFloat + bottomInset),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(32),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: p.surface.withValues(alpha: .86),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: p.hairline),
-                boxShadow: [
-                  BoxShadow(
-                    color: p.ink.withValues(alpha: .07),
-                    offset: const Offset(0, 3),
-                    blurRadius: 16,
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: Row(
-                  children: [
-                    for (var i = 0; i < items.length; i++)
-                      Expanded(
-                        child: _IslandTab(
-                          controller: controller,
-                          item: items[i],
-                          selected: i == selectedIndex,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+        padding: EdgeInsets.fromLTRB(12, 0, 12, _kIslandFloat + bottom),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: p.surface,
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: p.hairline),
+            boxShadow: p.shadows,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(32),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(children: [
+                for (var i = 0; i < items.length; i++)
+                  Expanded(child: _HtmlNavTab(
+                    controller: controller,
+                    item: items[i],
+                    selected: i == selectedIndex,
+                  )),
+              ]),
             ),
           ),
         ),
@@ -75,13 +58,10 @@ class V3NavIsland extends StatelessWidget {
   }
 }
 
-class _IslandTab extends StatelessWidget {
-  const _IslandTab({
-    required this.controller,
-    required this.item,
-    required this.selected,
+class _HtmlNavTab extends StatelessWidget {
+  const _HtmlNavTab({
+    required this.controller, required this.item, required this.selected,
   });
-
   final AppController controller;
   final V3NavItem item;
   final bool selected;
@@ -89,6 +69,7 @@ class _IslandTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    final foreground = selected ? p.lycheeInk : p.inkMuted;
     final label = item.localizedLabel(context);
     final icon = switch (item.page) {
       AppPage.dashboard => Icons.radar_outlined,
@@ -97,8 +78,6 @@ class _IslandTab extends StatelessWidget {
       AppPage.account => Icons.person_outline_rounded,
       _ => item.icon,
     };
-    final foreground = selected ? p.lycheeInk : p.inkMuted;
-
     return Semantics(
       key: ValueKey('v3-mobile-nav-${item.page.name}'),
       button: true,
@@ -107,35 +86,23 @@ class _IslandTab extends StatelessWidget {
       child: InkWell(
         onTap: () => controller.goToPage(item.page),
         child: SizedBox(
-          height: _kIslandHeight,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          height: 64,
+          child: Column(mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedContainer(
-                duration: v3ReducedMotion(context)
-                    ? Duration.zero : V3Motion.fast,
-                curve: V3Motion.ease,
-                constraints: const BoxConstraints(minWidth: 44),
+              Container(
                 height: 28,
-                alignment: Alignment.center,
+                constraints: const BoxConstraints(minWidth: 44),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   color: selected ? p.lycheeSoft : Colors.transparent,
-                  borderRadius: BorderRadius.circular(99),
-                ),
+                  borderRadius: BorderRadius.circular(99)),
+                alignment: Alignment.center,
                 child: Icon(icon, size: 20, color: foreground),
               ),
               const SizedBox(height: 3),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: foreground,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
-                ),
-              ),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: foreground, fontSize: 10,
+                  height: 1, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
