@@ -130,7 +130,7 @@ Widget _header(String title, {String? subtitle, Widget? trailing}) => Padding(
       children: [
         Text(title, style: const TextStyle(
           color: _T.ink, fontSize: 31,
-          fontWeight: FontWeight.w750, letterSpacing: -.8)),
+          fontWeight: FontWeight.w700, letterSpacing: -.8)),
         if (subtitle != null) ...[
           const SizedBox(height: 5),
           Text(subtitle, style: const TextStyle(
@@ -231,7 +231,7 @@ class _ConnectScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('防失联通知', style: TextStyle(
-                  color: _T.ink, fontSize: 13, fontWeight: FontWeight.w650)),
+                  color: _T.ink, fontSize: 13, fontWeight: FontWeight.w600)),
                 SizedBox(height: 3),
                 Text('查看最新公告与服务消息',
                   style: TextStyle(color: _T.muted, fontSize: 11)),
@@ -270,7 +270,7 @@ class _ConnectScreen extends StatelessWidget {
         const SizedBox(height: 17),
         Center(child: Text(connected ? '已连接' : '点击连接',
           style: const TextStyle(color: _T.ink,
-            fontSize: 25, fontWeight: FontWeight.w750))),
+            fontSize: 25, fontWeight: FontWeight.w700))),
         const SizedBox(height: 6),
         Center(child: _hint(
           connected ? '00:18:42  ·  连接已加密' : '一键开启安全连接')),
@@ -478,7 +478,7 @@ class _PlansScreenState extends State<_PlansScreen> {
               Row(children: [
                 Expanded(child: Text(p.$1, style: const TextStyle(
                   color: _T.ink, fontSize: 17,
-                  fontWeight: FontWeight.w750))),
+                  fontWeight: FontWeight.w700))),
                 if (p.$1 == 'Litchi Ultra')
                   _pill('推荐', green: true),
               ]),
@@ -488,14 +488,14 @@ class _PlansScreenState extends State<_PlansScreen> {
               const SizedBox(height: 21),
               Text(p.$2, style: const TextStyle(
                 color: _T.ink, fontSize: 26,
-                fontWeight: FontWeight.w750)),
+                fontWeight: FontWeight.w700)),
               const SizedBox(height: 3),
               _hint('包含高速节点 · 灵活切换'),
               const SizedBox(height: 19),
               Row(children: [
                 Text(p.$3, style: const TextStyle(
                   color: _T.ink, fontSize: 21,
-                  fontWeight: FontWeight.w750)),
+                  fontWeight: FontWeight.w700)),
                 const Spacer(),
                 SizedBox(width: 106, child: CupertinoButton.filled(
                   padding: const EdgeInsets.symmetric(vertical: 10),
@@ -534,7 +534,7 @@ class _AccountScreen extends StatelessWidget {
                 color: _T.coralSoft, shape: BoxShape.circle),
               child: const Text('L', style: TextStyle(
                 color: _T.coral, fontSize: 19,
-                fontWeight: FontWeight.w750)),
+                fontWeight: FontWeight.w700)),
             ),
             const SizedBox(width: 12),
             const Expanded(child: Column(
@@ -838,7 +838,7 @@ class _OrderDetail extends StatelessWidget {
         const SizedBox(height: 12),
         Text(order.amount, style: const TextStyle(
           color: _T.ink, fontSize: 31,
-          fontWeight: FontWeight.w750)),
+          fontWeight: FontWeight.w700)),
         const SizedBox(height: 6),
         _hint(order.name),
       ])),
@@ -912,7 +912,7 @@ class _UsagePage extends StatelessWidget {
         const SizedBox(height: 8),
         const Text('128.0 GB', style: TextStyle(
           color: _T.ink, fontSize: 32,
-          fontWeight: FontWeight.w750)),
+          fontWeight: FontWeight.w700)),
         const SizedBox(height: 22),
         ClipRRect(borderRadius: BorderRadius.circular(12),
           child: const LinearProgressIndicatorPreview(value: .5)),
@@ -1037,7 +1037,7 @@ class _InvitePage extends StatelessWidget {
         const SizedBox(height: 12),
         const Text('LITCHI26', style: TextStyle(
           color: _T.ink, fontSize: 29,
-          fontWeight: FontWeight.w750, letterSpacing: 1.5)),
+          fontWeight: FontWeight.w700, letterSpacing: 1.5)),
         const SizedBox(height: 14),
         _primaryButton('复制邀请码', () => _message(context,
           '演示邀请码', '正式版将复制你的真实邀请码。')),
@@ -1201,10 +1201,10 @@ class _LoginPreviewState extends State<_LoginPreview> {
         decoration: BoxDecoration(
           color: _T.coral, borderRadius: BorderRadius.circular(20)),
         child: const Text('L', style: TextStyle(
-          color: _T.card, fontSize: 31, fontWeight: FontWeight.w750)))),
+          color: _T.card, fontSize: 31, fontWeight: FontWeight.w700)))),
       const SizedBox(height: 25),
       const Center(child: Text('欢迎回来', style: TextStyle(
-        color: _T.ink, fontSize: 27, fontWeight: FontWeight.w750))),
+        color: _T.ink, fontSize: 27, fontWeight: FontWeight.w700))),
       const SizedBox(height: 7),
       Center(child: _hint('登录 Litchi，继续你的连接体验')),
       const SizedBox(height: 38),
