@@ -1,11 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../pages/v3_gift_card_page.dart';
-import '../pages/v3_orders_page.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
@@ -152,52 +150,55 @@ class V3SheetHeader extends StatelessWidget {
   }
 }
 
-/// Whether this build targets desktop, matching the shell's own target check.
-/// The hub-open decision is a navigation-model question — desktop gets a
-/// first-class workspace page — not a window-width question, so platform is
-/// the honest signal here.
-bool _v3DesktopTarget(BuildContext context) => !kIsWeb &&
-    switch (Theme.of(context).platform) {
-      TargetPlatform.windows ||
-      TargetPlatform.macOS ||
-      TargetPlatform.linux => true,
-      _ => false,
-    };
-
-/// Hub destinations. On desktop, orders is a first-class workspace page — the
-/// shell owns its [V3SheetPageFallback] — because a 560dp modal is a
-/// phone-shaped place to manage a ledger. Compact targets keep the sheet
-/// above the account page. The gift card stays a modal everywhere: it is a
-/// single form.
+/// Account destinations are genuine pages on phones and desktops.
+/// A gift-card redemption stays a short modal form.
 void openV3Page(BuildContext context, AppPage page) {
-  final Future<void> Function(BuildContext)? sheet = switch (page) {
-    AppPage.orders => _v3DesktopTarget(context) ? null : V3OrdersPage.show,
-    AppPage.giftCard => V3GiftCardPage.show,
-    _ => null,
-  };
-  if (sheet == null) {
-    AppScope.read(context).goToPage(page);
+  if (page == AppPage.giftCard) {
+    unawaited(V3GiftCardPage.show(context));
     return;
   }
-  unawaited(sheet(context));
+  AppScope.read(context).goToPage(page);
 }
 
 class V3SheetPageFallback extends StatelessWidget {
-  const V3SheetPageFallback({super.key, required this.title,
-    this.subtitle, required this.child});
+  const V3SheetPageFallback({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.child,
+    this.backPage,
+  });
+
   final String title;
   final String? subtitle;
   final Widget child;
+  final AppPage? backPage;
+
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < kV3CompactBreakpoint;
+    final p = V3Palette.of(context);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: V3Layout.pageInsets,
       child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        V3PageHeader(title: title, subtitle: subtitle),
+        Row(children: [
+          if (compact && backPage != null) ...[
+            IconButton(
+              tooltip: v3Copy(context,
+                  zh: '返回我的', en: 'Back to account', tw: '返回我的'),
+              onPressed: () => AppScope.read(context).goToPage(backPage!),
+              icon: Icon(Icons.arrow_back_ios_new_rounded,
+                  size: 20, color: p.ink),
+            ),
+            const SizedBox(width: 2),
+          ],
+          Expanded(child: V3PageHeader(title: title, subtitle: subtitle)),
+        ]),
         const SizedBox(height: 18),
         child,
-      ]));
+      ]),
+    );
   }
 }
 
