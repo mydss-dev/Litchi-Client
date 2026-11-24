@@ -26,8 +26,12 @@ class LitchiCupertinoPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const CupertinoApp(
+    return CupertinoApp(
       title: 'Litchi · Cupertino UI Preview',
+      builder: (context, child) => RepaintBoundary(
+        key: const ValueKey('cupertino-preview-capture'),
+        child: child ?? const SizedBox.shrink(),
+      ),
       debugShowCheckedModeBanner: false,
       theme: CupertinoThemeData(
         brightness: Brightness.light,
