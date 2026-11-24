@@ -561,8 +561,13 @@ class _MobileServiceTile extends StatelessWidget {
       leading: Icon(icon, size: 20, color: p.inkMuted),
       leadingSize: 24,
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: p.ink, fontSize: 15,
-            fontWeight: FontWeight.w600)),
+        style: TextStyle(
+          fontFamily: 'Segoe UI',
+          fontFamilyFallback: const ['Noto Sans CJK SC', 'Roboto'],
+          color: p.ink,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        )),
       trailing: Icon(Icons.chevron_right_rounded,
         size: 18, color: p.inkMuted.withValues(alpha: .65)),
       onTap: onTap,
@@ -623,6 +628,8 @@ class _MobileIdentityCard extends StatelessWidget {
         FAvatar.raw(size: 42,
           style: .delta(backgroundColor: p.lycheeSoft),
           child: Text(letter, style: TextStyle(
+            fontFamily: 'Segoe UI',
+            fontFamilyFallback: const ['Noto Sans CJK SC', 'Roboto'],
             color: p.lycheeInk, fontWeight: FontWeight.w700, fontSize: 17))),
         const SizedBox(width: 10),
         Expanded(child: Column(
