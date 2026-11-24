@@ -232,6 +232,33 @@ void main() {
     }
   });
 
+  testWidgets('mobile order rows open real details and return to ledger',
+      (tester) async {
+    await _onPlatform(TargetPlatform.android, () async {
+      final controller = await _pumpShell(tester, _mobile);
+      controller.goToPage(AppPage.account);
+      await tester.pumpAndSettle();
+      await _tap(tester, find.byKey(hubRowKey(AppPage.orders)),
+          'orders hub');
+      expect(controller.page, AppPage.orders);
+      expect(find.byType(V3NavIsland), findsNothing,
+          reason: 'secondary order history hides primary tab bar');
+
+      final first = find.byKey(
+        const ValueKey('v3-order-row-L202609160001'));
+      await _tap(tester, first, 'order row');
+      expect(find.text('订单详情'), findsOneWidget);
+      expect(find.text('订单编号'), findsOneWidget);
+      expect(find.text('优惠金额'), findsOneWidget,
+          reason: 'detail uses the real order-detail service');
+      await _tap(tester, find.byTooltip('返回订单列表'),
+          'order details back');
+      expect(controller.page, AppPage.orders);
+      expect(first, findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   testWidgets('overflow pages highlight the 我的 tab', (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, _mobile);
