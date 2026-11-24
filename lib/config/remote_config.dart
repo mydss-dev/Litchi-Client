@@ -129,7 +129,12 @@ abstract final class RemoteConfigService {
       request.headers.set('Accept', 'application/json');
 
       final response = await request.close().timeout(_timeout);
-      if (response.statusCode != 200) return;
+      if (response.statusCode != 200) {
+        SecureLogger.warn(
+          'RemoteConfig HTTP request failed with status ${response.statusCode}',
+        );
+        return;
+      }
 
       final body = await response
           .transform(const Utf8Decoder())
@@ -137,7 +142,12 @@ abstract final class RemoteConfigService {
           .timeout(_timeout);
 
       final config = await _parseTrustedConfig(body);
-      if (config == null) return;
+      if (config == null) {
+        SecureLogger.warn(
+          'RemoteConfig response rejected: invalid signature or payload',
+        );
+        return;
+      }
       final acceptedVersion = prefs.getInt(_versionKey) ?? 0;
       if (!RemoteConfigVersionPolicy.accepts(
         candidate: config['config_version'],
