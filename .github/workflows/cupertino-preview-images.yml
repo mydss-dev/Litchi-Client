@@ -20,6 +20,10 @@ jobs:
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
+      - name: Install open-source CJK font for screenshot renderer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-color-emoji
       - name: Resolve dependencies
         run: flutter pub get
       - name: Render real Flutter screens
