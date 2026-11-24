@@ -98,7 +98,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: (defaultTargetPlatform == TargetPlatform.android ||
               defaultTargetPlatform == TargetPlatform.iOS)
-              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 28)
               : V3Layout.pageInsets,
       child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
