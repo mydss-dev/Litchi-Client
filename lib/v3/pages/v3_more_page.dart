@@ -31,6 +31,7 @@ class V3MorePage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           V3PageHeader(
+            backPage: AppPage.account,
             title: english ? 'More services' : traditional ? '更多服務' : '更多服务',
           ),
           const SizedBox(height: 18),
