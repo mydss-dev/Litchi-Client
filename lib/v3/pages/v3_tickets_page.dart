@@ -84,6 +84,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
           // a minHeight box here pushed the heading 35dp below every other
           // page's first line.
           V3PageHeader(
+              backPage: AppPage.account,
             title: v3Copy(context, zh: '工单',
               en: 'Tickets', tw: '工單'),
             subtitle: v3Copy(context,
