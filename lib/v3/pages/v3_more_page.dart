@@ -57,7 +57,9 @@ class V3MorePage extends StatelessWidget {
                   title:
                       english ? 'All features' : traditional ? '全部功能' : '全部功能',
                   children: [
-                    for (final item in items)
+                    for (final item in items.where((item) =>
+                        item.page != AppPage.giftCard ||
+                        controller.hasConfirmedNoPlan))
                       V3NavRow(
                         key: moreRowKey(item.page),
                         icon: item.icon,
