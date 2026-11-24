@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:country_flags/country_flags.dart';
 
+import '../../app/app_controller.dart';
+import 'v3_locale_copy.dart';
+
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
@@ -303,30 +306,76 @@ class V3StatTile extends StatelessWidget {
   }
 }
 
-/// The one quiet page header: a 32px w800 (-0.2 tracking) title with a 14px
-/// muted subtitle riding beside it — the secondary pages' shared head voice.
-/// No kicker, no stacked description — the nav already says where you are,
-/// and a subtitle earns its place only when it carries real content
-/// (a scope line like 外观 · 代理 · 网络 · 关于 or live data), rendered
-/// inline beside the title.
+/// Shared page header for the Litchi mobile design system.
+///
+/// Primary tabs render a plain heading. Secondary pages use exactly the same
+/// toolbar with a 44dp back affordance, compact title and optional subtitle.
+/// The desktop rail owns navigation, so its page header stays unchanged.
 class V3PageHeader extends StatelessWidget {
   const V3PageHeader({
     super.key,
     required this.title,
     this.subtitle,
     this.trailing,
+    this.backPage,
   });
 
   final String title;
-
-  /// Short live-data note rendered beside the title; ellipsizes on narrow
-  /// windows rather than wrapping into a second row.
   final String? subtitle;
   final Widget? trailing;
+  final AppPage? backPage;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    final mobile = MediaQuery.sizeOf(context).width < 760;
+    final canGoBack = mobile && backPage != null;
+
+    if (canGoBack) {
+      return Row(
+        children: [
+          SizedBox(
+            width: 43,
+            height: 44,
+            child: IconButton(
+              key: const ValueKey('v3-mobile-secondary-back'),
+              tooltip: v3Copy(context,
+                zh: '返回我的', en: 'Back to account', tw: '返回我的'),
+              padding: EdgeInsets.zero,
+              icon: Icon(Icons.arrow_back_ios_new_rounded,
+                size: 19, color: p.ink),
+              onPressed: () => AppScope.read(context).goToPage(backPage!),
+            ),
+          ),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: p.ink, fontSize: 24, height: 1.12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -.3,
+                  )),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Text(subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: p.inkMuted, fontSize: 12)),
+                ],
+              ],
+            ),
+          ),
+          ?trailing,
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -338,14 +387,11 @@ class V3PageHeader extends StatelessWidget {
                 child: Text(title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  // 28/w700/-0.2 is the secondary-page head spec (design
-                  // tokens): the theme's displayMedium is close but heavier,
-                  // so the head owns its exact voice instead of a theme alias.
                   style: TextStyle(
                     color: p.ink,
-                    fontSize: 32,
+                    fontSize: mobile ? 28 : 32,
                     height: 1.05,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: mobile ? FontWeight.w700 : FontWeight.w800,
                     letterSpacing: -0.2,
                   )),
               ),
@@ -354,13 +400,12 @@ class V3PageHeader extends StatelessWidget {
                 Flexible(
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 3),
-                    child: Text(
-                      subtitle!,
+                    child: Text(subtitle!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: p.inkMuted,
-                        fontSize: 14,
+                        fontSize: mobile ? 12 : 14,
                         letterSpacing: -0.2,
                       ),
                     ),
