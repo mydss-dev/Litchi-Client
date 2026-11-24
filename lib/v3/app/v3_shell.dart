@@ -800,7 +800,9 @@ class _DesktopTitleOverlayState extends State<_DesktopTitleOverlay>
     // Redemption stays a window-level shortcut; the key keeps the reachability
     // contract able to hold it from the strip.
     final giftEntry =
-        isPageEnabled(AppPage.giftCard) && controller.isAuthenticated;
+        isPageEnabled(AppPage.giftCard) &&
+        controller.isAuthenticated &&
+        controller.hasConfirmedNoPlan;
     // The gift button sits OUTSIDE the drag surface: a double-tap recognizer
     // on its ancestor enters the gesture arena and delays or swallows the
     // button's single tap.
