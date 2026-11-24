@@ -171,6 +171,21 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
     return LayoutBuilder(builder: (context, constraints) {
       final compact = constraints.maxWidth < V3Layout.paneCompact;
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Full-page account navigation needs its own refresh affordance.
+        // The legacy sheet already has one in its header.
+        if (ModalRoute.of(context)?.isFirst ?? true) ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _loading ? null : refresh,
+              style: TextButton.styleFrom(foregroundColor: p.inkMuted),
+              icon: const Icon(Icons.refresh_rounded, size: 17),
+              label: Text(v3Copy(context,
+                zh: '刷新订单', en: 'Refresh', tw: '重新整理訂單')),
+            ),
+          ),
+          const SizedBox(height: 6),
+        ],
         if (!compact)
           Row(children: [
             for (var i = 0; i < metrics.length; i++) ...[
