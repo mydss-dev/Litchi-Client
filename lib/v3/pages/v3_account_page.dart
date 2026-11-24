@@ -350,28 +350,28 @@ class _MobileAccountOverview extends StatelessWidget {
                   title: v3Copy(context, zh: '订单记录', en: 'Orders', tw: '訂單紀錄'),
                   onTap: () => openV3Page(context, AppPage.orders),
                 ),
-                _MobileHairline(),
+                const _MobileHairline(),
                 _MobileAccountLink(
                   key: hubRowKey(AppPage.traffic),
                   icon: Icons.data_usage_outlined,
                   title: v3Copy(context, zh: '流量用量', en: 'Data usage', tw: '流量用量'),
                   onTap: () => openV3Page(context, AppPage.traffic),
                 ),
-                _MobileHairline(),
+                const _MobileHairline(),
                 _MobileAccountLink(
                   key: hubRowKey(AppPage.tickets),
                   icon: Icons.chat_bubble_outline_rounded,
                   title: v3Copy(context, zh: '帮助与工单', en: 'Help & support', tw: '幫助與工單'),
                   onTap: () => openV3Page(context, AppPage.tickets),
                 ),
-                _MobileHairline(),
+                const _MobileHairline(),
                 _MobileAccountLink(
                   key: hubRowKey(AppPage.invite),
                   icon: Icons.people_outline_rounded,
                   title: v3Copy(context, zh: '邀请好友', en: 'Invite friends', tw: '邀請好友'),
                   onTap: () => openV3Page(context, AppPage.invite),
                 ),
-                _MobileHairline(),
+                const _MobileHairline(),
                 _MobileAccountLink(
                   key: hubRowKey(AppPage.settings),
                   icon: Icons.tune_rounded,
@@ -397,7 +397,7 @@ class _MobileAccountOverview extends StatelessWidget {
                   value: controller.user.remindExpire,
                   onChanged: preferencesBusy ? null : onExpireChanged,
                 ),
-                _MobileHairline(indent: 0),
+                const _MobileHairline(indent: 0),
                 _MobilePreference(
                   title: v3Copy(context, zh: '流量提醒',
                       en: 'Data reminder', tw: '流量提醒'),
@@ -406,7 +406,7 @@ class _MobileAccountOverview extends StatelessWidget {
                   value: controller.user.remindTraffic,
                   onChanged: preferencesBusy ? null : onTrafficChanged,
                 ),
-                _MobileHairline(indent: 0),
+                const _MobileHairline(indent: 0),
                 _MobilePreference(
                   title: v3Copy(context, zh: '自动续费',
                       en: 'Auto-renewal', tw: '自動續費'),
@@ -431,7 +431,7 @@ class _MobileAccountOverview extends StatelessWidget {
                     en: 'Change password', tw: '修改密碼'),
                 onTap: onPassword,
               ),
-              _MobileHairline(),
+              const _MobileHairline(),
               _MobileAccountLink(
                 key: const ValueKey('v3-account-telegram'),
                 icon: Icons.send_outlined,
@@ -439,7 +439,7 @@ class _MobileAccountOverview extends StatelessWidget {
                     en: 'Telegram alerts', tw: 'Telegram 通知'),
                 onTap: onTelegram,
               ),
-              _MobileHairline(),
+              const _MobileHairline(),
               _MobileAccountLink(
                 icon: Icons.logout_rounded,
                 title: v3Copy(context, zh: '退出登录',
@@ -518,12 +518,9 @@ class _MobileIdentityCard extends StatelessWidget {
     final remaining = plan.expiryDate?.difference(DateTime.now());
     final remainingLabel = remaining != null && remaining > Duration.zero
         ? v3Copy(context,
-            zh: '剩余 ' + remaining.inDays.toString() + ' 天 ' +
-                (remaining.inHours % 24).toString() + ' 小时',
-            en: remaining.inDays.toString() + 'd ' +
-                (remaining.inHours % 24).toString() + 'h left',
-            tw: '剩餘 ' + remaining.inDays.toString() + ' 天 ' +
-                (remaining.inHours % 24).toString() + ' 小時')
+            zh: '剩余 ${remaining.inDays} 天 ${remaining.inHours % 24} 小时',
+            en: '${remaining.inDays}d ${remaining.inHours % 24}h left',
+            tw: '剩餘 ${remaining.inDays} 天 ${remaining.inHours % 24} 小時')
         : null;
     return _MobileSurface(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
@@ -638,13 +635,13 @@ class _MobileWalletCard extends StatelessWidget {
         Row(children: [
           Expanded(child: _MobileMiniMoney(
             title: v3Copy(context, zh: '可提现', en: 'Withdrawable', tw: '可提領'),
-            amount: symbol + controller.withdrawable.toStringAsFixed(2))),
+            amount: '$symbol${controller.withdrawable.toStringAsFixed(2)}')),
           const SizedBox(width: 14),
           Container(width: 1, height: 35, color: p.line),
           const SizedBox(width: 14),
           Expanded(child: _MobileMiniMoney(
             title: v3Copy(context, zh: '累计佣金', en: 'Commission', tw: '累計佣金'),
-            amount: symbol + controller.earnedCommission.toStringAsFixed(2))),
+            amount: '$symbol${controller.earnedCommission.toStringAsFixed(2)}')),
         ]),
         const SizedBox(height: 20),
         Row(children: [
@@ -824,7 +821,7 @@ class _MobilePreference extends StatelessWidget {
         Switch(
           value: value,
           onChanged: onChanged,
-          activeColor: p.surface,
+          activeThumbColor: p.surface,
           activeTrackColor: p.ink,
           inactiveTrackColor: p.line,
           inactiveThumbColor: p.surface,
