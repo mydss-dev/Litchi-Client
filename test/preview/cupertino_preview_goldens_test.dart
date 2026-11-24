@@ -14,9 +14,14 @@ void main() {
     final noto = File('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc');
     if (noto.existsSync()) {
       final typeface = await noto.readAsBytes();
-      final loader = FontLoader('.SF Pro Text')
-        ..addFont(Future.value(ByteData.sublistView(typeface)));
-      await loader.load();
+      // Cupertino uses the Text family for body and Display for tabs,
+      // navigation buttons and prominent controls. Load the same CJK face
+      // for both so screenshots do not show placeholder rectangles.
+      for (final family in <String>['.SF Pro Text', '.SF Pro Display']) {
+        final loader = FontLoader(family)
+          ..addFont(Future.value(ByteData.sublistView(typeface)));
+        await loader.load();
+      }
     }
     final iconData = await rootBundle.load(
       'packages/cupertino_icons/assets/CupertinoIcons.ttf');
