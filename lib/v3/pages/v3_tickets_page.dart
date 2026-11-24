@@ -71,7 +71,7 @@ class _V3TicketsPageState extends State<V3TicketsPage> {
     final skeleton = !controller.ticketsLoaded && error == null;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 110),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         V3PageHeader(
           backPage: AppPage.account,
