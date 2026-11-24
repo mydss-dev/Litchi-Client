@@ -207,10 +207,11 @@ void main() {
     expect(find.text('规则'), findsOneWidget);
     expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
 
-    // The whole node row opens the picker.
+    // Selecting the node card now routes to the Nodes tab instead
+    // of opening the old picker overlay. Navigation is covered in the
+    // shell reachability tests; this fixture has no mutable page routing.
     await tester.tap(find.text('日本 东京 · Premium'));
     await tester.pumpAndSettle();
-    expect(find.text('搜索节点'), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });

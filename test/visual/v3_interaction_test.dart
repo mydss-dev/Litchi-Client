@@ -257,13 +257,13 @@ void main() {
         const V3Shell(),
         size: const Size(390, 844),
       );
-      final expected = enabledNavItems(kMobilePrimary)
-          .indexWhere((item) => item.page == tab);
-      expect(expected, isNonNegative, reason: '${tab.name} must be a tab');
-      expect(
-        tester.widget<V3NavIsland>(find.byType(V3NavIsland)).selectedIndex,
-        expected,
-      );
+      // All secondary pages are now true full-screen pages.
+      expect(find.byType(V3NavIsland), findsNothing);
+      final back = find.byKey(const ValueKey('v3-mobile-secondary-back'));
+      expect(back, findsOneWidget);
+      await tester.tap(back);
+      await tester.pump();
+      expect(controller.destination, AppPage.account);
       expect(tester.takeException(), isNull);
     });
   }

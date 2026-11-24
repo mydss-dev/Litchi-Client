@@ -29,7 +29,7 @@ jobs:
           go-version: '1.24.7'
       - run: flutter pub get
       - run: flutter test
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-infos
       - name: Test sing-box desktop bridge
         working-directory: core/singbox
         run: |

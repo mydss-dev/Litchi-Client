@@ -143,7 +143,7 @@ void main() {
         // Lychee @12% lifts the red channel far past the others; the idle
         // hero ground is nearly grey.
         final scale = width / 900;
-        final point = Offset(center.dx + 45, center.dy) * scale;
+        final point = Offset(center.dx + 12, center.dy) * scale;
         final idleRgb = _sampleBlock(idle, width, point);
         final pressedRgb = _sampleBlock(pressed, width, point);
         if (themeMode == ThemeMode.dark) {

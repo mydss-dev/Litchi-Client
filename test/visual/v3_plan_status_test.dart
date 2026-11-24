@@ -54,7 +54,8 @@ class _PlanStateController extends VisualV3Controller {
 }
 
 void main() {
-  for (final page in [AppPage.dashboard, AppPage.shop, AppPage.account]) {
+  // Connection no longer hosts the account plan status card.
+  for (final page in [AppPage.shop, AppPage.account]) {
     for (final scenario in <({String label, bool evidence, String name, String expiry, int? status, int? expiryTimestamp, String expected})>[
       (label: 'no plan', evidence: false, name: '', expiry: '', status: null, expiryTimestamp: null, expected: '暂无套餐'),
       (label: 'unnamed', evidence: true, name: '', expiry: '2026-12-31', status: null, expiryTimestamp: null, expected: '套餐名称待同步'),
