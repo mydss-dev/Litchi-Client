@@ -442,6 +442,17 @@ class _VisualPanelApi extends PanelApi {
   @override
   Future<List<RemoteOrder>> fetchOrders() async => _orders;
   @override
+  Future<RemoteOrderPaymentDetail> getOrderPaymentDetail(String tradeNo) async =>
+      const RemoteOrderPaymentDetail(
+        totalAmount: 1280,
+        discountAmount: 0,
+        surplusAmount: 0,
+        balanceAmount: 0,
+        refundAmount: 0,
+        preHandlingAmount: 0,
+        status: 0,
+      );
+  @override
   Future<List<TicketModel>> getTickets() async => VisualV3Controller._tickets;
   @override
   Future<TicketModel> getTicketDetail(int ticketId) async =>
