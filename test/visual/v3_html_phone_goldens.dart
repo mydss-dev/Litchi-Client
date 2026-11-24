@@ -1,0 +1,62 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:litchi_client/app/app_controller.dart';
+import 'package:litchi_client/v3/app/v3_shell.dart';
+import 'package:litchi_client/v3/theme/v3_palette.dart';
+
+import 'v3_visual_fixture.dart';
+
+void main() {
+  setUpAll(() async {
+    final file = File('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc');
+    if (!file.existsSync()) return;
+    final data = ByteData.sublistView(await file.readAsBytes());
+    for (final family in <String>['Roboto', 'Noto Sans CJK SC']) {
+      final loader = FontLoader(family)..addFont(Future.value(data));
+      await loader.load();
+    }
+  });
+
+  for (final (page, name) in <(AppPage, String)>[
+    (AppPage.dashboard, '01_html_connect'),
+    (AppPage.nodes, '02_html_nodes'),
+  ]) {
+    testWidgets('HTML faithful Android phone $name screenshot',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+        tester.binding.setSurfaceSize(null);
+      });
+      final controller = VisualV3Controller(page);
+      addTearDown(controller.disposeVisual);
+      await tester.pumpWidget(RepaintBoundary(
+        key: const ValueKey('html-phone-capture'),
+        child: AppScope(
+          controller: controller,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            locale: const Locale('zh'),
+            theme: V3Theme.light(),
+            darkTheme: V3Theme.dark(),
+            themeMode: ThemeMode.dark,
+            home: const V3Shell(),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1000));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      await expectLater(
+        find.byKey(const ValueKey('html-phone-capture')),
+        matchesGoldenFile('html_goldens/$name.png'),
+      );
+    });
+  }
+}
