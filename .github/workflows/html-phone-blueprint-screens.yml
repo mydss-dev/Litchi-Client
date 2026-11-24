@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'lib/v3/pages/v3_dashboard_page.dart'
-      - 'lib/v3/pages/v3_account_page.dart'
       - 'lib/v3/pages/v3_nodes_page.dart'
       - 'lib/v3/ui/v3_html_phone_*.dart'
       - 'test/visual/v3_html_phone_goldens.dart'
