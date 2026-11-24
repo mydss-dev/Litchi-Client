@@ -6,7 +6,7 @@ import '../theme/v3_palette.dart';
 /// Shared dimensions for the new Dashboard and the other V3 pages.
 /// LayoutBuilder widths are local pane widths, not the overall window width.
 abstract final class V3Layout {
-  static const double pageGutter = 18;
+  static const double pageGutter = 20;
   static const double cardRadius = V3Radius.card;
   static const double cardGap = 12;
 
@@ -19,7 +19,7 @@ abstract final class V3Layout {
   /// moment it stops matching.
   static const double panelPadding = 20;
   static const double dialogPadding = 24;
-  static const EdgeInsets pageInsets = EdgeInsets.fromLTRB(18, 18, 18, 28);
+  static const EdgeInsets pageInsets = EdgeInsets.fromLTRB(20, 20, 20, 30);
 
   /// Breakpoint for page content measured against the page's own width —
   /// the window minus the 200dp desktop rail, not the window. At the 900x700

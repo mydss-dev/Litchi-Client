@@ -252,7 +252,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         else ...[
           for (var i = 0; i < shown.length; i++) ...[
             if (i > 0) const SizedBox(height: 12),
-            Container(width: double.infinity, padding: const EdgeInsets.all(16),
+            Container(width: double.infinity, padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(color: p.surface,
                 borderRadius: BorderRadius.circular(V3Radius.card),
                 boxShadow: p.shadows),

@@ -482,16 +482,16 @@ class _AccountHubRow extends StatelessWidget {
       onTap: onTap,
       hoverTint: p.ink.withValues(alpha: 0.04),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: p.surfaceRaised,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 20, color: p.inkMuted),
+            child: Icon(icon, size: 22, color: p.inkMuted),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -500,7 +500,7 @@ class _AccountHubRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: p.ink,
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
               )),
           ),
@@ -652,8 +652,8 @@ class _MoneyStat extends StatelessWidget {
           symbol: symbol,
           style: TextStyle(
             color: p.ink,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),

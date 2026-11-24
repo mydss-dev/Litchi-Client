@@ -251,7 +251,7 @@ class V3StatTile extends StatelessWidget {
     final p = V3Palette.of(context);
     final accentColor = accent ?? p.lycheeInk;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(V3Radius.card),
@@ -267,8 +267,8 @@ class V3StatTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, color: accentColor, size: 15),
-                const SizedBox(width: 5),
+                Icon(icon, color: accentColor, size: 16),
+                const SizedBox(width: 6),
               ],
               Flexible(
                 child: Text(
@@ -292,7 +292,7 @@ class V3StatTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: p.ink,
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
@@ -303,7 +303,7 @@ class V3StatTile extends StatelessWidget {
   }
 }
 
-/// The one quiet page header: a 28px w700 (-0.2 tracking) title with a 13px
+/// The one quiet page header: a 32px w800 (-0.2 tracking) title with a 14px
 /// muted subtitle riding beside it — the secondary pages' shared head voice.
 /// No kicker, no stacked description — the nav already says where you are,
 /// and a subtitle earns its place only when it carries real content
@@ -343,9 +343,9 @@ class V3PageHeader extends StatelessWidget {
                   // so the head owns its exact voice instead of a theme alias.
                   style: TextStyle(
                     color: p.ink,
-                    fontSize: 28,
+                    fontSize: 32,
                     height: 1.05,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: -0.2,
                   )),
               ),
@@ -360,7 +360,7 @@ class V3PageHeader extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: p.inkMuted,
-                        fontSize: 13,
+                        fontSize: 14,
                         letterSpacing: -0.2,
                       ),
                     ),
