@@ -210,7 +210,7 @@ class _V3WorkspaceState extends State<_V3Workspace> {
             // bottomNavigationBar strip painted an oversized canvas block
             // behind the capsule on Android, unlike the reference design.
             // Scaffold injects bottom padding for scrollable content.
-            extendBody: false,
+            extendBody: true,
             body: mobilePage,
             // Four destinations own the bottom bar. Every account
             // subpage has a page-level back affordance instead.

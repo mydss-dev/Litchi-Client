@@ -78,16 +78,16 @@ Future<void> _tap(WidgetTester tester, Finder target) async {
 }
 
 void main() {
-  testWidgets('Android primary navigation uses Material 3 and works',
+  testWidgets('Android original frosted primary navigation remains functional',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, const Size(390, 844));
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(V3NavIsland), findsOneWidget);
       for (final page in [AppPage.nodes, AppPage.shop, AppPage.account,
           AppPage.dashboard]) {
         await _tap(tester, find.byKey(ValueKey('v3-mobile-nav-'+page.name)));
         expect(controller.page, page);
-        expect(find.byType(NavigationBar), findsOneWidget);
+        expect(find.byType(V3NavIsland), findsOneWidget);
       }
     });
   });
