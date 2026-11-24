@@ -11,12 +11,11 @@ import '../app/v3_nav.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
-/// Compact Android/iOS navigation. The whole bar floats gently above the
-/// gesture area; all four tabs retain identical icon + label alignment.
-/// Only the selected icon receives a small dark background, never the entire
-/// tab width or the label.
+/// The mobile dock follows the phone reference: a 64dp frosted capsule,
+/// four equally spaced icon + label pairs and a *soft* selected glyph tint.
+/// No dark filled blocks or solid background panel beneath the floating dock.
 const double _kIslandHeight = 64;
-const double _kIslandFloat = 9;
+const double _kIslandFloat = 10;
 
 class V3NavIsland extends StatelessWidget {
   const V3NavIsland({super.key, required this.controller});
@@ -28,41 +27,46 @@ class V3NavIsland extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final inset = MediaQuery.paddingOf(context).bottom;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final items = enabledNavItems(kMobilePrimary);
 
     return SizedBox(
-      height: _kIslandHeight + _kIslandFloat + inset,
+      height: _kIslandHeight + _kIslandFloat + bottomInset,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 0, 16, _kIslandFloat + inset),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: p.surface,
-            borderRadius: BorderRadius.circular(27),
-            border: Border.all(color: p.hairline),
-            boxShadow: [
-              BoxShadow(
-                color: p.ink.withValues(alpha: .06),
-                blurRadius: 18,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(27),
-            clipBehavior: Clip.antiAlias,
-            child: Row(
-              children: [
-                for (var i = 0; i < items.length; i++)
-                  Expanded(
-                    child: _IslandTab(
-                      controller: controller,
-                      item: items[i],
-                      selected: i == selectedIndex,
-                    ),
+        padding: EdgeInsets.fromLTRB(
+          12, 0, 12, _kIslandFloat + bottomInset),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: p.surface.withValues(alpha: .86),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: p.hairline),
+                boxShadow: [
+                  BoxShadow(
+                    color: p.ink.withValues(alpha: .07),
+                    offset: const Offset(0, 3),
+                    blurRadius: 16,
                   ),
-              ],
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      Expanded(
+                        child: _IslandTab(
+                          controller: controller,
+                          item: items[i],
+                          selected: i == selectedIndex,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -93,6 +97,7 @@ class _IslandTab extends StatelessWidget {
       AppPage.account => Icons.person_outline_rounded,
       _ => item.icon,
     };
+    final foreground = selected ? p.lycheeInk : p.inkMuted;
 
     return Semantics(
       key: ValueKey('v3-mobile-nav-${item.page.name}'),
@@ -108,31 +113,26 @@ class _IslandTab extends StatelessWidget {
             children: [
               AnimatedContainer(
                 duration: v3ReducedMotion(context)
-                    ? Duration.zero
-                    : V3Motion.fast,
+                    ? Duration.zero : V3Motion.fast,
                 curve: V3Motion.ease,
-                width: 44,
-                height: 29,
+                constraints: const BoxConstraints(minWidth: 44),
+                height: 28,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: selected ? p.ink : Colors.transparent,
-                  borderRadius: BorderRadius.circular(15),
+                  color: selected ? p.lycheeSoft : Colors.transparent,
+                  borderRadius: BorderRadius.circular(99),
                 ),
-                child: Icon(
-                  icon,
-                  size: 19,
-                  color: selected ? p.surface : p.inkMuted,
-                ),
+                child: Icon(icon, size: 20, color: foreground),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: selected ? p.ink : p.inkMuted,
-                  fontSize: 10.5,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: foreground,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
                   height: 1,
                 ),
               ),
