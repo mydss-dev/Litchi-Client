@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoListSection, CupertinoListTile;
 import 'package:forui/forui.dart' show FCard, FCardStyle, FAvatar;
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
@@ -443,7 +444,7 @@ class _MobileAccountOverview extends StatelessWidget {
             if (walletVisible)
               _MobileServiceTile(
                 key: const ValueKey('v3-account-wallet-service'),
-                icon: Icons.account_balance_wallet_outlined,
+                icon: LucideIcons.wallet,
                 title: v3Copy(context, zh: '我的钱包',
                   en: 'Wallet', tw: '我的錢包'),
                 onTap: () => Navigator.of(context).push<void>(
@@ -452,35 +453,35 @@ class _MobileAccountOverview extends StatelessWidget {
               ),
             _MobileServiceTile(
               key: hubRowKey(AppPage.orders),
-              icon: Icons.receipt_long_outlined,
+              icon: LucideIcons.receipt,
               title: v3Copy(context, zh: '订单记录',
                 en: 'Orders', tw: '訂單紀錄'),
               onTap: () => openV3Page(context, AppPage.orders),
             ),
             _MobileServiceTile(
               key: hubRowKey(AppPage.traffic),
-              icon: Icons.data_usage_outlined,
+              icon: LucideIcons.activity,
               title: v3Copy(context, zh: '流量用量',
                 en: 'Data usage', tw: '流量用量'),
               onTap: () => openV3Page(context, AppPage.traffic),
             ),
             _MobileServiceTile(
               key: hubRowKey(AppPage.tickets),
-              icon: Icons.support_agent_outlined,
+              icon: LucideIcons.messageCircle,
               title: v3Copy(context, zh: '工单支持',
                 en: 'Ticket support', tw: '工單支援'),
               onTap: () => openV3Page(context, AppPage.tickets),
             ),
             _MobileServiceTile(
               key: hubRowKey(AppPage.invite),
-              icon: Icons.people_outline_rounded,
+              icon: LucideIcons.users,
               title: v3Copy(context, zh: '邀请好友',
                 en: 'Invite friends', tw: '邀請好友'),
               onTap: () => openV3Page(context, AppPage.invite),
             ),
             _MobileServiceTile(
               key: hubRowKey(AppPage.settings),
-              icon: Icons.tune_rounded,
+              icon: LucideIcons.settings,
               title: v3Copy(context, zh: '应用设置',
                 en: 'Settings', tw: '應用設定'),
               onTap: () => openV3Page(context, AppPage.settings),
@@ -568,7 +569,7 @@ class _MobileServiceTile extends StatelessWidget {
           fontSize: 15,
           fontWeight: FontWeight.w600,
         )),
-      trailing: Icon(Icons.chevron_right_rounded,
+      trailing: Icon(LucideIcons.chevronRight,
         size: 18, color: p.inkMuted.withValues(alpha: .65)),
       onTap: onTap,
     );
