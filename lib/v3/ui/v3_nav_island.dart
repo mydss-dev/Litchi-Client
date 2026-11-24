@@ -17,6 +17,9 @@ class V3NavIsland extends StatelessWidget {
   const V3NavIsland({super.key, required this.controller});
   final AppController controller;
 
+  /// Read-only compatibility for navigation tests and external consumers.
+  int get selectedIndex => selectedPrimaryIndex(controller.page) ?? 0;
+
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
