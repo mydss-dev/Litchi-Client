@@ -4,6 +4,8 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
+import 'v3_empty_state.dart';
+import 'v3_node_picker.dart';
 import 'v3_locale_copy.dart';
 import 'v3_node_tags.dart';
 
@@ -126,12 +128,17 @@ class V3HtmlPhoneNodes extends StatelessWidget {
             border: Border.all(color: p.hairline)),
           child: Column(children: [
             if (controller.isInitialLoading)
-              Padding(padding: const EdgeInsets.all(20),
-                child: CircularProgressIndicator(color: p.lychee))
+              for (var i = 0; i < 3; i++) const V3NodeSkeletonRow()
             else if (controller.dataLoadError != null && total == 0)
-              Padding(padding: const EdgeInsets.all(20),
-                child: Text(controller.dataLoadError!,
-                  style: TextStyle(color: p.inkMuted)))
+              V3EmptyState(
+                icon: Icons.error_outline_rounded,
+                title: v3Copy(context, zh: '节点同步失败',
+                  en: 'Could not load nodes', tw: '節點同步失敗'),
+                subtitle: controller.dataLoadError!,
+                actionLabel: v3Copy(context,
+                  zh: '重试', en: 'Retry', tw: '重試'),
+                onAction: controller.refreshData,
+              )
             else if (nodes.isEmpty)
               Padding(padding: const EdgeInsets.all(20),
                 child: Text(v3Copy(context, zh: '没有匹配的节点',
