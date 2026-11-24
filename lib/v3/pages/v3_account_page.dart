@@ -13,6 +13,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_mobile_components.dart';
 import '../ui/v3_logout_confirmation.dart';
 import '../ui/v3_plan_labels.dart';
 import '../ui/v3_sheet.dart';
@@ -256,6 +257,7 @@ void _openAccountPlan(BuildContext context, AppController controller) {
 /// Phone account layout. The desktop workspace retains its original panels.
 /// This page intentionally uses low-elevation surfaces and one calm type scale;
 /// money movement, preferences and security still call the existing handlers.
+
 class _MobileAccountOverview extends StatelessWidget {
   const _MobileAccountOverview({
     required this.controller,
@@ -281,187 +283,210 @@ class _MobileAccountOverview extends StatelessWidget {
   final VoidCallback onTelegram;
   final VoidCallback onLogout;
 
+  /// Transcribed from elegant_mockup.html account .ac-profile / .ac-wallet /
+  /// .ac-grid / .ac-group: a 12dp rhythm rather than the previous 57dp menu
+  /// stack. Every service tile is still wired to the existing controller.
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final walletVisible = AppConfig.panelFeatures.wallet ||
         controller.user.balance > 0 || controller.withdrawable > 0;
+    final remain = controller.traffic.remainGb;
+    final total = controller.traffic.totalGb;
+    final used = controller.traffic.usedGb;
+    final ticketsOpen = controller.tickets.where((t) => t.isOpen).length;
+    final symbol = controller.currencySymbol;
+    final recent = controller.hasAccountSummary
+        ? '${remain.toStringAsFixed(1)} GB' : '—';
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      v3Copy(context, zh: '我的', en: 'Account', tw: '我的'),
-                      style: TextStyle(
-                        color: p.ink,
-                        fontSize: 30,
-                        height: 1.12,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      v3Copy(context,
-                        zh: '账户与会员', en: 'Profile & membership',
-                        tw: '帳戶與會員'),
-                      style: TextStyle(color: p.inkMuted, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: v3Copy(context, zh: '刷新账户数据',
-                    en: 'Refresh account', tw: '重新整理帳戶資料'),
-                onPressed: refreshing ? null : onRefresh,
-                icon: refreshing
-                    ? const SizedBox(
-                        width: 18, height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : Icon(Icons.refresh_rounded, size: 21, color: p.inkMuted),
-              ),
-            ],
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 110),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        V3PageHeader(
+          title: v3Copy(context, zh: '我的', en: 'Account', tw: '我的'),
+          subtitle: v3Copy(context, zh: '账户信息 · 偏好 · 安全',
+              en: 'Account · Preferences · Security',
+              tw: '帳戶資訊 · 偏好 · 安全'),
+          trailing: IconButton(
+            tooltip: v3Copy(context, zh: '刷新账户数据',
+              en: 'Refresh account', tw: '重新整理帳戶資料'),
+            onPressed: refreshing ? null : onRefresh,
+            icon: refreshing
+                ? const SizedBox(width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(Icons.refresh_rounded, color: p.inkMuted, size: 19),
           ),
-          const SizedBox(height: 22),
-          _MobileIdentityCard(controller: controller),
-          if (walletVisible) ...[
-            const SizedBox(height: 14),
-            _MobileWalletCard(controller: controller),
-          ],
-          const SizedBox(height: 25),
-          _MobileSectionTitle(v3Copy(context,
-              zh: '账户服务', en: 'YOUR SERVICES', tw: '帳戶服務')),
-          const SizedBox(height: 10),
-          _MobileSurface(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                _MobileAccountLink(
-                  key: hubRowKey(AppPage.orders),
-                  icon: Icons.receipt_long_outlined,
-                  title: v3Copy(context, zh: '订单记录', en: 'Orders', tw: '訂單紀錄'),
-                  onTap: () => openV3Page(context, AppPage.orders),
-                ),
-                const _MobileHairline(),
-                _MobileAccountLink(
-                  key: hubRowKey(AppPage.traffic),
-                  icon: Icons.data_usage_outlined,
-                  title: v3Copy(context, zh: '流量用量', en: 'Data usage', tw: '流量用量'),
-                  onTap: () => openV3Page(context, AppPage.traffic),
-                ),
-                const _MobileHairline(),
-                _MobileAccountLink(
-                  key: hubRowKey(AppPage.tickets),
-                  icon: Icons.chat_bubble_outline_rounded,
-                  title: v3Copy(context, zh: '帮助与工单', en: 'Help & support', tw: '幫助與工單'),
-                  onTap: () => openV3Page(context, AppPage.tickets),
-                ),
-                const _MobileHairline(),
-                _MobileAccountLink(
-                  key: hubRowKey(AppPage.invite),
-                  icon: Icons.people_outline_rounded,
-                  title: v3Copy(context, zh: '邀请好友', en: 'Invite friends', tw: '邀請好友'),
-                  onTap: () => openV3Page(context, AppPage.invite),
-                ),
-                const _MobileHairline(),
-                _MobileAccountLink(
-                  key: hubRowKey(AppPage.settings),
-                  icon: Icons.tune_rounded,
-                  title: v3Copy(context, zh: '应用设置', en: 'Settings', tw: '應用設定'),
-                  onTap: () => openV3Page(context, AppPage.settings),
-                ),
-              ],
-            ),
-          ),
-          if (controller.hasPlan) ...[
-            const SizedBox(height: 25),
-            _MobileSectionTitle(v3Copy(context,
-                zh: '提醒设置', en: 'NOTIFICATIONS', tw: '提醒設定')),
-            const SizedBox(height: 10),
-            _MobileSurface(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(children: [
-                _MobilePreference(
-                  title: v3Copy(context, zh: '到期提醒',
-                      en: 'Expiry reminder', tw: '到期提醒'),
-                  subtitle: v3Copy(context, zh: '套餐即将到期时通知',
-                      en: 'Before your plan expires', tw: '方案即將到期時通知'),
-                  value: controller.user.remindExpire,
-                  onChanged: preferencesBusy ? null : onExpireChanged,
-                ),
-                const _MobileHairline(indent: 0),
-                _MobilePreference(
-                  title: v3Copy(context, zh: '流量提醒',
-                      en: 'Data reminder', tw: '流量提醒'),
-                  subtitle: v3Copy(context, zh: '流量不足时通知',
-                      en: 'When data is running low', tw: '流量不足時通知'),
-                  value: controller.user.remindTraffic,
-                  onChanged: preferencesBusy ? null : onTrafficChanged,
-                ),
-                const _MobileHairline(indent: 0),
-                _MobilePreference(
-                  title: v3Copy(context, zh: '自动续费',
-                      en: 'Auto-renewal', tw: '自動續費'),
-                  subtitle: v3Copy(context, zh: '符合条件时自动续费',
-                      en: 'Renew when eligible', tw: '符合條件時自動續費'),
-                  value: controller.user.autoRenewal,
-                  onChanged: preferencesBusy ? null : onAutoRenewalChanged,
-                ),
-              ]),
-            ),
-          ],
-          const SizedBox(height: 25),
-          _MobileSectionTitle(v3Copy(context,
-              zh: '账户安全', en: 'ACCOUNT SECURITY', tw: '帳戶安全')),
-          const SizedBox(height: 10),
-          _MobileSurface(
-            padding: EdgeInsets.zero,
-            child: Column(children: [
-              _MobileAccountLink(
-                icon: Icons.lock_outline_rounded,
-                title: v3Copy(context, zh: '修改密码',
-                    en: 'Change password', tw: '修改密碼'),
-                onTap: onPassword,
-              ),
-              const _MobileHairline(),
-              _MobileAccountLink(
-                key: const ValueKey('v3-account-telegram'),
-                icon: Icons.send_outlined,
-                title: v3Copy(context, zh: 'Telegram 通知',
-                    en: 'Telegram alerts', tw: 'Telegram 通知'),
-                onTap: onTelegram,
-              ),
-              const _MobileHairline(),
-              _MobileAccountLink(
-                icon: Icons.logout_rounded,
-                title: v3Copy(context, zh: '退出登录',
-                    en: 'Sign out', tw: '登出'),
-                danger: true,
-                onTap: onLogout,
-              ),
-            ]),
-          ),
-          if (controller.dataLoadError != null) ...[
-            const SizedBox(height: 16),
-            V3EmptyState(
-              icon: Icons.error_outline_rounded,
-              title: v3Copy(context, zh: '账户信息加载失败',
-                  en: 'Could not load account info', tw: '帳戶資訊載入失敗'),
-              subtitle: controller.dataLoadError!,
-              actionLabel: v3Copy(context, zh: '重试', en: 'Retry', tw: '重試'),
-              onAction: controller.refreshData,
-            ),
-          ],
+        ),
+        const SizedBox(height: 14),
+        _MobileIdentityCard(controller: controller),
+        if (walletVisible) ...[
+          const SizedBox(height: 12),
+          _MobileWalletCard(controller: controller),
         ],
-      ),
+        const SizedBox(height: 12),
+        _MobileSurface(
+          padding: const EdgeInsets.all(12),
+          child: Column(children: [
+            Row(children: [
+              Expanded(child: V3MobileHubTile(
+                key: hubRowKey(AppPage.orders),
+                icon: Icons.receipt_long_outlined,
+                title: v3Copy(context, zh: '订单', en: 'Orders', tw: '訂單'),
+                value: v3Copy(context, zh: '订单记录',
+                  en: 'Order history', tw: '訂單紀錄'),
+                subtitle: v3Copy(context, zh: '支付记录与详情',
+                  en: 'Payment history', tw: '付款紀錄與詳情'),
+                onTap: () => openV3Page(context, AppPage.orders),
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: V3MobileHubTile(
+                key: hubRowKey(AppPage.traffic),
+                icon: Icons.data_usage_outlined,
+                title: v3Copy(context, zh: '流量',
+                    en: 'Traffic', tw: '流量'),
+                value: recent,
+                subtitle: total > 0
+                    ? v3Copy(context,
+                        zh: '已用 ${used.toStringAsFixed(1)} GB',
+                        en: 'Used ${used.toStringAsFixed(1)} GB',
+                        tw: '已用 ${used.toStringAsFixed(1)} GB')
+                    : v3Copy(context, zh: '查看使用情况',
+                        en: 'View usage', tw: '查看用量'),
+                onTap: () => openV3Page(context, AppPage.traffic),
+                footer: total <= 0 ? null : ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: (used / total).clamp(0.0, 1.0),
+                    minHeight: 4,
+                    backgroundColor: p.line,
+                    valueColor: AlwaysStoppedAnimation(p.success),
+                  ),
+                ),
+              )),
+            ]),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(child: V3MobileHubTile(
+                key: hubRowKey(AppPage.tickets),
+                icon: Icons.chat_bubble_outline_rounded,
+                title: v3Copy(context, zh: '工单', en: 'Support', tw: '工單'),
+                value: controller.ticketsLoaded
+                    ? '$ticketsOpen' : '—',
+                subtitle: v3Copy(context, zh: '待处理工单',
+                    en: 'Open tickets', tw: '待處理工單'),
+                onTap: () => openV3Page(context, AppPage.tickets),
+              )),
+              const SizedBox(width: 10),
+              Expanded(child: V3MobileHubTile(
+                key: hubRowKey(AppPage.invite),
+                icon: Icons.people_outline_rounded,
+                title: v3Copy(context, zh: '邀请',
+                    en: 'Invite', tw: '邀請'),
+                value: '$symbol${controller.earnedCommission.toStringAsFixed(2)}',
+                subtitle: v3Copy(context, zh: '累计佣金',
+                    en: 'Commission', tw: '累計佣金'),
+                onTap: () => openV3Page(context, AppPage.invite),
+              )),
+            ]),
+          ]),
+        ),
+        const SizedBox(height: 12),
+        _MobileSurface(
+          padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (controller.hasPlan) ...[
+              _MobileGroupLabel(v3Copy(context,
+                  zh: '偏好设置', en: 'PREFERENCES', tw: '偏好設定')),
+              _MobilePreference(
+                title: v3Copy(context, zh: '到期提醒',
+                  en: 'Expiry reminder', tw: '到期提醒'),
+                subtitle: v3Copy(context, zh: '套餐即将到期时通知',
+                  en: 'Before your plan expires', tw: '方案即將到期時通知'),
+                value: controller.user.remindExpire,
+                onChanged: preferencesBusy ? null : onExpireChanged,
+              ),
+              const _MobileHairline(indent: 10),
+              _MobilePreference(
+                title: v3Copy(context, zh: '流量提醒',
+                  en: 'Traffic reminder', tw: '流量提醒'),
+                subtitle: v3Copy(context, zh: '流量不足时通知',
+                  en: 'When data is low', tw: '流量不足時通知'),
+                value: controller.user.remindTraffic,
+                onChanged: preferencesBusy ? null : onTrafficChanged,
+              ),
+              const _MobileHairline(indent: 10),
+              _MobilePreference(
+                title: v3Copy(context, zh: '自动续费',
+                  en: 'Auto-renewal', tw: '自動續費'),
+                subtitle: v3Copy(context, zh: '符合条件时自动续费',
+                  en: 'Renew when eligible', tw: '符合條件時自動續費'),
+                value: controller.user.autoRenewal,
+                onChanged: preferencesBusy ? null : onAutoRenewalChanged,
+              ),
+              const SizedBox(height: 8),
+            ],
+            _MobileGroupLabel(v3Copy(context,
+                zh: '安全与设置', en: 'SECURITY & SETTINGS', tw: '安全與設定')),
+            _MobileAccountLink(
+              key: hubRowKey(AppPage.settings),
+              icon: Icons.tune_rounded,
+              title: v3Copy(context, zh: '应用设置',
+                en: 'Settings', tw: '應用設定'),
+              onTap: () => openV3Page(context, AppPage.settings),
+            ),
+            const _MobileHairline(indent: 10),
+            _MobileAccountLink(
+              icon: Icons.lock_outline_rounded,
+              title: v3Copy(context, zh: '修改密码',
+                en: 'Change password', tw: '修改密碼'),
+              onTap: onPassword,
+            ),
+            const _MobileHairline(indent: 10),
+            _MobileAccountLink(
+              key: const ValueKey('v3-account-telegram'),
+              icon: Icons.send_outlined,
+              title: v3Copy(context, zh: 'Telegram 通知',
+                en: 'Telegram alerts', tw: 'Telegram 通知'),
+              onTap: onTelegram,
+            ),
+            const _MobileHairline(indent: 10),
+            _MobileAccountLink(
+              icon: Icons.logout_rounded,
+              title: v3Copy(context, zh: '退出登录',
+                en: 'Sign out', tw: '登出'),
+              danger: true,
+              onTap: onLogout,
+            ),
+          ]),
+        ),
+        if (controller.dataLoadError != null) ...[
+          const SizedBox(height: 12),
+          V3EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: v3Copy(context, zh: '账户加载失败',
+                en: 'Could not load account', tw: '帳戶載入失敗'),
+            subtitle: controller.dataLoadError!,
+            actionLabel: v3Copy(context, zh: '重试',
+                en: 'Retry', tw: '重試'),
+            onAction: controller.refreshData,
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+class _MobileGroupLabel extends StatelessWidget {
+  const _MobileGroupLabel(this.value);
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 5),
+      child: Text(value, style: TextStyle(color: p.inkMuted,
+        fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1.4)),
     );
   }
 }
