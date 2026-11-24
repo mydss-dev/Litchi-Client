@@ -345,6 +345,15 @@ class _MobileAccountOverview extends StatelessWidget {
             _MobileGroupLabel(v3Copy(sheetContext,
               zh: '安全', en: 'SECURITY', tw: '安全')),
             _MobileAccountLink(
+              icon: Icons.tune_rounded,
+              title: v3Copy(sheetContext, zh: '应用设置',
+                en: 'App settings', tw: '應用設定'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                controller.goToPage(AppPage.settings);
+              }),
+            const _MobileHairline(indent: 10),
+            _MobileAccountLink(
               icon: Icons.lock_outline_rounded,
               title: v3Copy(sheetContext, zh: '修改密码',
                 en: 'Change password', tw: '修改密碼'),
@@ -417,11 +426,16 @@ class _MobileAccountOverview extends StatelessWidget {
           controller: controller,
           onManage: () => _showManage(context),
         ),
-        if (walletVisible) ...[
-          const SizedBox(height: 12),
-          _MobileWalletCard(controller: controller),
-        ],
         const SizedBox(height: 12),
+        _MobilePlanCard(controller: controller),
+        const SizedBox(height: 18),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(v3Copy(context, zh: '账户服务',
+            en: 'Account services', tw: '帳戶服務'),
+            style: TextStyle(color: p.inkMuted,
+              fontSize: 12, fontWeight: FontWeight.w700)),
+        ),
         _MobileSurface(
           padding: const EdgeInsets.all(12),
           child: Column(children: [
@@ -489,18 +503,22 @@ class _MobileAccountOverview extends StatelessWidget {
           ]),
         ),
 
-        const SizedBox(height: 10),
-        V3MobileHubTile(
-          key: hubRowKey(AppPage.settings),
-          icon: Icons.tune_rounded,
-          title: v3Copy(context, zh: '设置', en: 'Settings', tw: '設定'),
-          value: v3Copy(context, zh: '应用设置',
-            en: 'App settings', tw: '應用設定'),
-          subtitle: v3Copy(context, zh: '通用 · 代理 · 网络',
-            en: 'General · Proxy · Network',
-            tw: '通用 · 代理 · 網路'),
-          onTap: () => openV3Page(context, AppPage.settings),
-        ),
+        if (walletVisible) ...[
+          const SizedBox(height: 10),
+          V3MobileHubTile(
+            icon: Icons.account_balance_wallet_outlined,
+            title: v3Copy(context, zh: '钱包',
+              en: 'Wallet', tw: '錢包'),
+            value: v3Copy(context, zh: '我的钱包',
+              en: 'My wallet', tw: '我的錢包'),
+            subtitle: v3Copy(context, zh: '余额 · 提现 · 划转',
+              en: 'Balance · Withdraw · Transfer',
+              tw: '餘額 · 提領 · 轉帳'),
+            onTap: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(
+                builder: (_) => const _MobileWalletPage())),
+          ),
+        ],
         if (controller.dataLoadError != null) ...[
           const SizedBox(height: 12),
           V3EmptyState(
@@ -568,91 +586,133 @@ class _MobileIdentityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final user = controller.user;
-    final plan = PlanPresentation.fromController(controller);
-    final remain = plan.expiryDate?.difference(DateTime.now());
     final letter = user.avatarLetter.trim().isEmpty
         ? 'L' : user.avatarLetter.trim().substring(0, 1).toUpperCase();
-    final statusColor = v3PlanStatusColor(p, plan.statusKind);
 
     return _MobileSurface(
-      padding: const EdgeInsets.all(18),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          CircleAvatar(radius: 28, backgroundColor: p.lychee,
-            child: Text(letter, style: TextStyle(
-              color: p.onLychee, fontWeight: FontWeight.w800, fontSize: 22))),
-          const SizedBox(width: 12),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(v3AccountDisplayName(context, user.name),
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: p.ink, fontSize: 18,
-                  fontWeight: FontWeight.w800)),
-              const SizedBox(height: 3),
-              Text(v3AccountEmailLabel(
-                context, controller.accountDetails?.email),
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: p.inkMuted, fontSize: 12)),
-            ],
-          )),
-          const SizedBox(width: 5),
-          TextButton(
-            onPressed: onManage,
-            style: TextButton.styleFrom(
-              foregroundColor: p.inkMuted,
-              minimumSize: const Size(0, 36),
-              padding: const EdgeInsets.symmetric(horizontal: 5)),
-            child: Text(v3Copy(context, zh: '管理账户',
-              en: 'Manage', tw: '管理帳戶'),
-              style: const TextStyle(fontSize: 11,
-                  fontWeight: FontWeight.w700)),
-          ),
-        ]),
-        const SizedBox(height: 12),
-        Divider(height: 1, color: p.line),
-        const SizedBox(height: 12),
-        Row(children: [
-          Expanded(child: _MobileMiniMoney(
-            title: v3Copy(context, zh: '到期时间',
-              en: 'Expires', tw: '到期時間'),
-            amount: plan.expiryDate == null
-                ? '—' : '${plan.expiryDate!.year}-${plan.expiryDate!.month.toString().padLeft(2, '0')}-${plan.expiryDate!.day.toString().padLeft(2, '0')}')),
-          const SizedBox(width: 12),
-          Expanded(child: _MobileMiniMoney(
-            title: v3Copy(context, zh: '剩余有效期',
-              en: 'Time remaining', tw: '剩餘有效期'),
-            amount: remain != null && remain > Duration.zero
-                ? v3Copy(context, zh: '${remain.inDays} 天',
-                    en: '${remain.inDays} days', tw: '${remain.inDays} 天')
-                : '—',
-          )),
-        ]),
-        const SizedBox(height: 12),
-        Text(v3PlanShortLabel(context, plan),
-          maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: p.inkMuted, fontSize: 11)),
-        Align(alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: () => _openAccountPlan(context, controller),
-            icon: const Icon(Icons.chevron_right_rounded, size: 16),
-            iconAlignment: IconAlignment.end,
-            label: Text(controller.hasPlan
-                ? v3Copy(context, zh: '续费套餐',
-                    en: 'Renew plan', tw: '續費方案')
-                : v3Copy(context, zh: '选择套餐',
-                    en: 'Choose plan', tw: '選擇方案')),
-            style: TextButton.styleFrom(
-              foregroundColor: p.lycheeInk,
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(0, 32)),
-          ),
+      padding: const EdgeInsets.all(14),
+      child: Row(children: [
+        CircleAvatar(radius: 21, backgroundColor: p.lychee,
+          child: Text(letter, style: TextStyle(
+            color: p.onLychee, fontWeight: FontWeight.w700, fontSize: 17))),
+        const SizedBox(width: 10),
+        Expanded(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(v3AccountDisplayName(context, user.name),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.ink, fontSize: 15,
+                fontWeight: FontWeight.w700)),
+            const SizedBox(height: 3),
+            Text(v3AccountEmailLabel(
+              context, controller.accountDetails?.email),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+          ],
+        )),
+        const SizedBox(width: 4),
+        TextButton(
+          onPressed: onManage,
+          style: TextButton.styleFrom(
+            foregroundColor: p.lycheeInk,
+            minimumSize: const Size(0, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 5)),
+          child: Text(v3Copy(context, zh: '管理账户',
+            en: 'Manage', tw: '管理帳戶'),
+            style: const TextStyle(fontSize: 11,
+                fontWeight: FontWeight.w600)),
         ),
       ]),
     );
   }
 }
 
+/// Subscription details belong in their own compact surface, not the profile.
+class _MobilePlanCard extends StatelessWidget {
+  const _MobilePlanCard({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final plan = PlanPresentation.fromController(controller);
+    final expiry = plan.expiryDate;
+    final remaining = expiry?.difference(DateTime.now());
+    final expiryText = expiry == null
+        ? '—'
+        : '${expiry.year}-${expiry.month.toString().padLeft(2, '0')}-${expiry.day.toString().padLeft(2, '0')}';
+    final daysText = remaining == null || remaining <= Duration.zero
+        ? '—'
+        : v3Copy(context, zh: '${remaining.inDays} 天',
+            en: '${remaining.inDays} days', tw: '${remaining.inDays} 天');
+    return _MobileSurface(
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 11),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.workspace_premium_outlined,
+            size: 18, color: p.lycheeInk),
+          const SizedBox(width: 7),
+          Expanded(child: Text(
+            controller.hasPlan ? v3PlanShortLabel(context, plan)
+                : v3Copy(context, zh: '暂无套餐',
+                    en: 'No active plan', tw: '暫無套餐'),
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: p.ink, fontSize: 14,
+              fontWeight: FontWeight.w700))),
+          TextButton(
+            onPressed: () => _openAccountPlan(context, controller),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              minimumSize: const Size(0, 38)),
+            child: Text(controller.hasPlan
+              ? v3Copy(context, zh: '续费', en: 'Renew', tw: '續費')
+              : v3Copy(context, zh: '购买', en: 'Choose', tw: '購買'),
+              style: TextStyle(color: p.lycheeInk, fontSize: 12)),
+          ),
+        ]),
+        if (controller.hasPlan) ...[
+          Divider(height: 12, color: p.line),
+          Row(children: [
+            Expanded(child: Text(
+              v3Copy(context, zh: '到期 $expiryText',
+                en: 'Expires $expiryText', tw: '到期 $expiryText'),
+              maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: p.inkMuted, fontSize: 11))),
+            Text(v3Copy(context, zh: '剩余 $daysText',
+              en: '$daysText left', tw: '剩餘 $daysText'),
+              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+          ]),
+        ],
+      ]),
+    );
+  }
+}
+
+/// Full-screen wallet page, reached from Account services; bottom tabs stay
+/// on the Account root, not on this pushed route.
+class _MobileWalletPage extends StatelessWidget {
+  const _MobileWalletPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final controller = AppScope.of(context);
+    return Scaffold(
+      backgroundColor: p.canvas,
+      body: SafeArea(child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          V3PageHeader(
+            title: v3Copy(context, zh: '我的钱包', en: 'Wallet', tw: '我的錢包'),
+            onBack: () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(height: 16),
+          _MobileWalletCard(controller: controller),
+        ]),
+      )),
+    );
+  }
+}
 
 class _MobileWalletCard extends StatelessWidget {
   const _MobileWalletCard({required this.controller});
