@@ -32,7 +32,7 @@ class V3NavIsland extends StatelessWidget {
     if (items.isEmpty) return const SizedBox.shrink();
 
     return CupertinoTabBar(
-      currentIndex: selectedIndex.clamp(0, items.length - 1),
+      currentIndex: selectedIndex < items.length ? selectedIndex : 0,
       onTap: (index) => controller.goToPage(items[index].page),
       activeColor: p.lycheeInk,
       inactiveColor: p.inkMuted,
