@@ -17,7 +17,13 @@ void main() {
       // Cupertino uses the Text family for body and Display for tabs,
       // navigation buttons and prominent controls. Load the same CJK face
       // for both so screenshots do not show placeholder rectangles.
-      for (final family in <String>['.SF Pro Text', '.SF Pro Display']) {
+      for (final family in <String>[
+        '.SF Pro Text',
+        '.SF Pro Display',
+        'CupertinoSystemText',
+        'CupertinoSystemDisplay',
+        'Roboto',
+      ]) {
         final loader = FontLoader(family)
           ..addFont(Future.value(ByteData.sublistView(typeface)));
         await loader.load();
