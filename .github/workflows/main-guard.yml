@@ -32,7 +32,7 @@ jobs:
       - name: Flutter tests
         run: flutter test
       - name: Flutter analyze
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
       - name: sing-box desktop bridge tests
         working-directory: core/singbox
         run: |

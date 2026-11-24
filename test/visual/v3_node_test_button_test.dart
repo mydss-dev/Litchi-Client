@@ -35,6 +35,10 @@ void main() {
     );
     await tester.pump();
     expect(find.byKey(const Key('v3-node-speed-test')), findsOneWidget);
+    expect(find.descendant(
+      of: find.byKey(const Key('v3-node-speed-test')),
+      matching: find.byIcon(Icons.bolt_rounded),
+    ), findsOneWidget);
     await tester.tap(find.byKey(const Key('v3-node-speed-test')));
     await tester.pump();
     expect(controller.calls, 1);

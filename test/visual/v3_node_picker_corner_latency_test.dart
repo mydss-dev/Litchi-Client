@@ -8,13 +8,11 @@ import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 
 import 'v3_visual_fixture.dart';
 
-/// V3NodeRow now shows one latency readout everywhere: a colored dot plus the
-/// value, vertically centered against the row's right edge. The old corner
-/// badge («42MS» on the name line) and the 「当前」 pill are gone, so the
-/// picker, the nodes overview, and the narrow-screen sheet all share this one
-/// tail grammar driven by the shared per-region tier scale.
+/// The picker and desktop overview share a minimal node row:
+/// one lightning icon before a valid latency and one number afterward.
+/// The tail remains a separate action from switching the selected node.
 void main() {
-  testWidgets('rows show the centered dot+value tail, not a name-line badge', (
+  testWidgets('rows show millisecond values without duplicate status badges', (
     tester,
   ) async {
     final controller = VisualV3Controller(AppPage.nodes);
@@ -30,39 +28,23 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The tail uses the lower-case grammar; the badge's 42MS is gone.
-    expect(find.text('42ms'), findsOneWidget);
-    expect(find.text('128ms'), findsOneWidget);
+    expect(find.text('42 ms'), findsOneWidget);
+    expect(find.text('128 ms'), findsOneWidget);
     expect(find.text('42MS'), findsNothing);
+    expect(find.text('未测速'), findsNothing);
+    expect(find.text('超时'), findsNothing);
 
     // The 「当前」 pill no longer sits on the current node's name line.
     expect(find.text('当前'), findsNothing);
     expect(find.text('Current'), findsNothing);
   });
 
-  testWidgets('the tail colour reads the per-region tier scale', (tester) async {
+  testWidgets('valid latencies are numeric; missing and timeout show lightning',
+      (tester) async {
     final controller = VisualV3Controller(AppPage.nodes);
     addTearDown(controller.disposeVisual);
-    final p = V3Palette.light;
-    // (region, latency, expected ink) — the shared scale behind the tail.
-    final cases = <(NodeRegion, int, Color)>[
-      (NodeRegion.asia, 80, p.successInk),
-      (NodeRegion.asia, 150, p.warningInk),
-      (NodeRegion.asia, 250, p.dangerInk),
-      (NodeRegion.america, 180, p.successInk),
-      (NodeRegion.america, 300, p.warningInk),
-      (NodeRegion.america, 400, p.dangerInk),
-      (NodeRegion.europe, 200, p.successInk),
-      (NodeRegion.europe, 300, p.warningInk),
-      (NodeRegion.europe, 450, p.dangerInk),
-      (NodeRegion.oceania, 180, p.successInk),
-      (NodeRegion.oceania, 350, p.dangerInk),
-      // Timeout is a caution, not a measured failure — the shared scale
-      // reads it amber (see v3_latency_tier.dart).
-      (NodeRegion.asia, 9999, p.warningInk),
-      (NodeRegion.asia, 0, p.inkMuted),
-    ];
-    for (final (region, latency, expected) in cases) {
+
+    for (final latency in [0, -1, 80, 350, 9999]) {
       final node = NodeModel(
         id: 'tier',
         name: '阈值节点',
@@ -70,33 +52,39 @@ void main() {
         code: 'TT',
         englishName: 'Tier Node',
         latency: latency,
-        region: region,
+        region: NodeRegion.asia,
       );
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: V3Theme.light(),
-          home: Scaffold(
-            body: V3NodeRow(
-              node: node,
-              controller: controller,
-              onTap: () {},
-              busy: false,
-            ),
+      var testCalls = 0;
+      var rowCalls = 0;
+      await tester.pumpWidget(MaterialApp(
+        theme: V3Theme.light(),
+        home: Scaffold(
+          body: V3NodeRow(
+            node: node,
+            controller: controller,
+            onTap: () => rowCalls++,
+            onTest: () => testCalls++,
+            busy: false,
           ),
         ),
-      );
+      ));
       await tester.pumpAndSettle();
-      final label = latency >= 9999
-          ? '超时'
-          : latency <= 0
-          ? '未测速'
-          : '${latency}ms';
-      final color = tester.widget<Text>(find.text(label)).style!.color!;
-      expect(
-        color,
-        expected,
-        reason: '$region ${latency}ms should tier to $expected',
-      );
+      final action = find.byKey(const ValueKey('v3-node-latency-tier'));
+      expect(action, findsOneWidget);
+      if (latency > 0 && latency < 9999) {
+        expect(find.text('${latency} ms'), findsOneWidget);
+        expect(find.descendant(of: action,
+          matching: find.byIcon(Icons.bolt_rounded)), findsNothing);
+      } else {
+        expect(find.descendant(of: action,
+          matching: find.byIcon(Icons.bolt_rounded)), findsOneWidget);
+        expect(find.text('超时'), findsNothing);
+        expect(find.text('未测速'), findsNothing);
+      }
+      await tester.tap(action);
+      await tester.pump();
+      expect(testCalls, 1);
+      expect(rowCalls, 0, reason: 'latency tap must not switch nodes');
     }
   });
 

@@ -36,6 +36,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
   String? _region;
   bool _latencyFirst = false;
   String? _pending;
+  String? _testingNodeId;
   // Multi-select latency testing: while on, tapping rows toggles membership
   // in [_selectedIds] instead of switching nodes; exiting clears the set.
   bool _selecting = false;
@@ -68,6 +69,16 @@ class _V3NodesPageState extends State<V3NodesPage> {
     final ok = await controller.testLatencies(ids: ids.isEmpty ? null : ids);
     if (!ok && mounted) {
       V3Toast.showInOverlay(overlay, failureText, type: V3ToastType.warning);
+    }
+  }
+
+  Future<void> _testNode(String id) async {
+    if (_testingNodeId != null) return;
+    setState(() => _testingNodeId = id);
+    try {
+      await _testLatencies(ids: {id});
+    } finally {
+      if (mounted) setState(() => _testingNodeId = null);
     }
   }
 
@@ -273,7 +284,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.speed_rounded, size: 17),
+                    : const Icon(Icons.bolt_rounded, size: 17),
                 label: Text(v3Copy(context, zh: '测速', en: 'Test', tw: '測速')),
               ),
             ),
@@ -468,7 +479,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
                           color: p.onLychee,
                         ),
                       )
-                    : const Icon(Icons.speed_rounded, size: 16),
+                    : const Icon(Icons.bolt_rounded, size: 16),
                 label: Text(
                   _selectedIds.isEmpty
                       ? v3Copy(context, zh: '测速', en: 'Test', tw: '測速')
@@ -614,6 +625,10 @@ class _V3NodesPageState extends State<V3NodesPage> {
                         node: node,
                         controller: controller,
                         busy: _pending == node.id,
+                        testing: _testingNodeId == node.id,
+                        onTest: _pending != null || controller.isLatencyTesting
+                            ? null
+                            : () => _testNode(node.id),
                         onTap:
                             _pending != null ||
                                 (!controller.autoSelected &&

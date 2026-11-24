@@ -9,7 +9,6 @@ import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import 'v3_empty_state.dart';
-import 'v3_latency_tier.dart';
 import 'v3_locale_copy.dart';
 import 'v3_node_tags.dart';
 import 'v3_sheet.dart';
@@ -35,6 +34,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
   final _queryCtrl = TextEditingController();
   String _query = '';
   String? _pending;
+  String? _testingNodeId;
 
   @override
   void dispose() {
@@ -72,6 +72,31 @@ class _V3NodePickerState extends State<V3NodePicker> {
     } else {
       V3Toast.showInOverlay(overlay, error, type: V3ToastType.error);
       setState(() => _pending = null);
+    }
+  }
+
+  Future<void> _testNode(String id) async {
+    final controller = AppScope.read(context);
+    if (_testingNodeId != null || controller.isLatencyTesting) return;
+    final overlay = Overlay.of(context, rootOverlay: true);
+    final failureText = v3Copy(context,
+      zh: '测速失败或节点超时',
+      en: 'Test failed or node timed out',
+      tw: '測速失敗或節點逾時');
+    setState(() => _testingNodeId = id);
+    try {
+      final ok = await controller.testLatencies(ids: {id});
+      if (!ok && mounted) {
+        V3Toast.showInOverlay(overlay, failureText,
+          type: V3ToastType.warning);
+      }
+    } catch (_) {
+      if (mounted) {
+        V3Toast.showInOverlay(overlay, failureText,
+          type: V3ToastType.warning);
+      }
+    } finally {
+      if (mounted) setState(() => _testingNodeId = null);
     }
   }
 
@@ -143,7 +168,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.speed_rounded, size: 17),
+                    : const Icon(Icons.bolt_rounded, size: 17),
                 label: Text(v3Copy(context, zh: '测速', en: 'Test', tw: '測速')),
               ),
             ),
@@ -230,6 +255,10 @@ class _V3NodePickerState extends State<V3NodePicker> {
                 node: node,
                 controller: controller,
                 busy: _pending == node.id,
+                testing: _testingNodeId == node.id,
+                onTest: _pending != null || controller.isLatencyTesting
+                    ? null
+                    : () => _testNode(node.id),
                 onTap: _pending != null
                     ? null
                     : !controller.autoSelected &&
@@ -363,11 +392,15 @@ class V3NodeRow extends StatelessWidget {
     required this.controller,
     required this.onTap,
     required this.busy,
+    this.onTest,
+    this.testing = false,
   });
   final NodeModel node;
   final AppController controller;
   final VoidCallback? onTap;
   final bool busy;
+  final VoidCallback? onTest;
+  final bool testing;
 
   @override
   Widget build(BuildContext context) {
@@ -501,7 +534,41 @@ class V3NodeRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              V3LatencyBadge(region: node.region, latency: node.latency),
+              // Consistent desktop / phone affordance: lightning for an
+              // untested or timed-out node, milliseconds for a valid result.
+              // This is the only per-row latency action; it never switches
+              // the selected node when tapped.
+              SizedBox(
+                width: 70,
+                height: 44,
+                child: Tooltip(
+                  message: v3Copy(context,
+                    zh: '测速', en: 'Test latency', tw: '測速'),
+                  child: TextButton(
+                    key: ValueKey('v3-node-latency-${node.id}'),
+                    onPressed: onTest,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(48, 44),
+                      padding: EdgeInsets.zero,
+                      foregroundColor: p.inkMuted,
+                    ),
+                    child: testing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : node.latency > 0 && node.latency < 9999
+                            ? Text('${node.latency} ms',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: p.inkMuted))
+                            : Icon(Icons.bolt_rounded,
+                                size: 20, color: p.inkMuted),
+                  ),
+                ),
+              ),
               const SizedBox(width: 12),
               // Fixed trailing slot: spinner, chevron or nothing always occupy
               // the same width, so the badge sits at a constant distance from
