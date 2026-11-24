@@ -169,6 +169,10 @@ abstract final class RemoteConfigService {
 
       // Also apply to current session.
       AppConfig.applyRemote(config);
+      SecureLogger.debug(
+        'CONFIG_DIAG signed payload verified and applied; '
+        'apiBaseCount=${AppConfig.effectiveApiBases.length}',
+      );
     } catch (e) {
       // Network unavailable, JSON malformed, or signature invalid — non-fatal,
       // but record it so a persistently broken remote config is diagnosable.

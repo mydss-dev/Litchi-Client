@@ -147,7 +147,17 @@ Future<void> _boot(AppLaunchOptions launchOptions) async {
   // Load remote config from cache before the window appears so the first
   // frame already has the correct branding / API base URL.
   final prefs = await SharedPreferences.getInstance();
+  // Debug-only startup evidence: never print the public key itself.
+  // A valid key format is not proof that the downloaded signature verifies.
+  SecureLogger.debug(
+    'CONFIG_DIAG defines url=${RemoteConfigService.configUrl} '
+    'keyPresent=${RemoteConfigService.publicKeyBase64Url.isNotEmpty} '
+    'definesValid=${RemoteConfigService.isConfigured}',
+  );
   await RemoteConfigService.initialize(prefs);
+  SecureLogger.debug(
+    'CONFIG_DIAG startup apiBaseCount=${AppConfig.effectiveApiBases.length}',
+  );
 
   await BrandAssetCache.initialize();
 
