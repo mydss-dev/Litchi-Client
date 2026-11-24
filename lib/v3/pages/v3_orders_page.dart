@@ -11,6 +11,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_mobile_components.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
 
@@ -169,43 +170,13 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
       v3Copy(context, zh: '已取消', en: 'Cancelled', tw: '已取消'),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Container(
-        height: 46,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: p.surfaceRaised,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Row(children: [
-          for (var i = 0; i < filters.length; i++)
-            Expanded(child: Semantics(
-              button: true,
-              selected: _filter == i,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(11),
-                onTap: () => setState(() {
-                  _filter = i;
-                  _limit = _pageSize;
-                }),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: _filter == i ? p.surface : Colors.transparent,
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Text(filters[i], maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _filter == i ? p.ink : p.inkMuted,
-                      fontSize: 12,
-                      fontWeight: _filter == i
-                          ? FontWeight.w700 : FontWeight.w500,
-                    )),
-                ),
-              ),
-            )),
-        ]),
+      V3MobileSegmented(
+        labels: filters,
+        selectedIndex: _filter,
+        onChanged: (index) => setState(() {
+          _filter = index;
+          _limit = _pageSize;
+        }),
       ),
       const SizedBox(height: 10),
       Row(children: [
@@ -257,12 +228,8 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
               ? () => controller.goToPage(AppPage.shop) : null,
         )
       else
-        Container(
-          decoration: BoxDecoration(
-            color: p.surface,
-            borderRadius: BorderRadius.circular(19),
-            border: Border.all(color: p.hairline),
-          ),
+        V3MobileCard(
+          padding: EdgeInsets.zero,
           child: Column(children: [
             for (var i = 0; i < shown.length; i++) ...[
               if (i > 0)
