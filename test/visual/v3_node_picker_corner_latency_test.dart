@@ -72,7 +72,7 @@ void main() {
       final action = find.byKey(const ValueKey('v3-node-latency-tier'));
       expect(action, findsOneWidget);
       if (latency > 0 && latency < 9999) {
-        expect(find.text('${latency} ms'), findsOneWidget);
+        expect(find.text('$latency ms'), findsOneWidget);
         expect(find.descendant(of: action,
           matching: find.byIcon(Icons.bolt_rounded)), findsNothing);
       } else {
