@@ -191,11 +191,11 @@ class _V3WorkspaceState extends State<_V3Workspace> {
               : stack;
           return Scaffold(
             backgroundColor: p.canvas,
-            // The island floats: the body extends behind the bottom bar so
-            // page content scrolls under it (§12.1#11). Pages keep their own
-            // bottom insets; the injected MediaQuery bottom padding still
-            // lets overlays (toasts) clear the island.
-            extendBody: false,
+            // Extend the page *under* the floating dock. Reserving a solid
+            // bottomNavigationBar strip painted an oversized canvas block
+            // behind the capsule on Android, unlike the reference design.
+            // Scaffold injects bottom padding for scrollable content.
+            extendBody: true,
             body: mobilePage,
             // Four destinations own the bottom bar. Every account
             // subpage has a page-level back affordance instead.
