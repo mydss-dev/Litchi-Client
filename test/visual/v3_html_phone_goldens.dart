@@ -32,6 +32,13 @@ void main() {
   for (final (page, name) in <(AppPage, String)>[
     (AppPage.dashboard, '01_html_connect'),
     (AppPage.nodes, '02_html_nodes'),
+    (AppPage.shop, '03_html_plans'),
+    (AppPage.account, '04_html_account'),
+    (AppPage.orders, '05_html_orders'),
+    (AppPage.traffic, '06_html_traffic'),
+    (AppPage.tickets, '07_html_tickets'),
+    (AppPage.invite, '08_html_invite'),
+    (AppPage.settings, '09_html_settings'),
   ]) {
     testWidgets('HTML faithful Android phone $name screenshot',
         (tester) async {
