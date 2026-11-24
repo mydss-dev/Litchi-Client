@@ -504,7 +504,7 @@ class _MobileSurface extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: p.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: p.line.withValues(alpha: .72)),
       ),
       child: child,
@@ -512,21 +512,7 @@ class _MobileSurface extends StatelessWidget {
   }
 }
 
-class _MobileSectionTitle extends StatelessWidget {
-  const _MobileSectionTitle(this.label);
-  final String label;
 
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Text(label, style: TextStyle(
-      color: p.inkMuted,
-      fontSize: 11,
-      fontWeight: FontWeight.w800,
-      letterSpacing: 1.15,
-    ));
-  }
-}
 
 class _MobileIdentityCard extends StatelessWidget {
   const _MobileIdentityCard({required this.controller});
@@ -537,103 +523,88 @@ class _MobileIdentityCard extends StatelessWidget {
     final p = V3Palette.of(context);
     final user = controller.user;
     final plan = PlanPresentation.fromController(controller);
+    final remain = plan.expiryDate?.difference(DateTime.now());
     final letter = user.avatarLetter.trim().isEmpty
         ? 'L' : user.avatarLetter.trim().substring(0, 1).toUpperCase();
     final statusColor = v3PlanStatusColor(p, plan.statusKind);
-    final remaining = plan.expiryDate?.difference(DateTime.now());
-    final remainingLabel = remaining != null && remaining > Duration.zero
-        ? v3Copy(context,
-            zh: '剩余 ${remaining.inDays} 天 ${remaining.inHours % 24} 小时',
-            en: '${remaining.inDays}d ${remaining.inHours % 24}h left',
-            tw: '剩餘 ${remaining.inDays} 天 ${remaining.inHours % 24} 小時')
-        : null;
+
     return _MobileSurface(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+      padding: const EdgeInsets.all(18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: p.surfaceRaised,
+          CircleAvatar(radius: 28, backgroundColor: p.lychee,
             child: Text(letter, style: TextStyle(
-              color: p.ink, fontSize: 18, fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(width: 13),
+              color: p.onLychee, fontWeight: FontWeight.w800, fontSize: 22))),
+          const SizedBox(width: 12),
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(v3AccountDisplayName(context, user.name),
                 maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: p.ink,
-                    fontSize: 17, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text(v3AccountEmailLabel(context, controller.accountDetails?.email),
+                style: TextStyle(color: p.ink, fontSize: 18,
+                  fontWeight: FontWeight.w800)),
+              const SizedBox(height: 3),
+              Text(v3AccountEmailLabel(
+                context, controller.accountDetails?.email),
                 maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: p.inkMuted, fontSize: 12)),
             ],
           )),
-        ]),
-        const SizedBox(height: 21),
-        Container(height: 1, color: p.line.withValues(alpha: .85)),
-        const SizedBox(height: 17),
-        Row(children: [
-          Text(v3Copy(context, zh: '当前套餐', en: 'CURRENT PLAN', tw: '目前方案'),
-              style: TextStyle(color: p.inkMuted,
-                  fontSize: 11, fontWeight: FontWeight.w700,
-                  letterSpacing: .7)),
-          const Spacer(),
+          const SizedBox(width: 5),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
             decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: .10),
-              borderRadius: BorderRadius.circular(99),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 5, height: 5,
-                  decoration: BoxDecoration(color: statusColor,
-                      shape: BoxShape.circle)),
-              const SizedBox(width: 5),
-              Text(v3PlanStatusLabel(context, plan.statusKind),
-                  style: TextStyle(color: statusColor,
-                      fontSize: 10, fontWeight: FontWeight.w700)),
-            ]),
+              color: statusColor.withValues(alpha: .13),
+              borderRadius: BorderRadius.circular(99)),
+            child: Text(v3PlanStatusLabel(context, plan.statusKind),
+              style: TextStyle(color: statusColor,
+                fontSize: 10, fontWeight: FontWeight.w700)),
           ),
         ]),
-        const SizedBox(height: 9),
+        const SizedBox(height: 12),
+        Divider(height: 1, color: p.line),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _MobileMiniMoney(
+            title: v3Copy(context, zh: '到期时间',
+              en: 'Expires', tw: '到期時間'),
+            amount: plan.expiryDate == null
+                ? '—' : '${plan.expiryDate!.year}-${plan.expiryDate!.month.toString().padLeft(2, '0')}-${plan.expiryDate!.day.toString().padLeft(2, '0')}')),
+          const SizedBox(width: 12),
+          Expanded(child: _MobileMiniMoney(
+            title: v3Copy(context, zh: '剩余有效期',
+              en: 'Time remaining', tw: '剩餘有效期'),
+            amount: remain != null && remain > Duration.zero
+                ? v3Copy(context, zh: '${remain.inDays} 天',
+                    en: '${remain.inDays} days', tw: '${remain.inDays} 天')
+                : '—',
+          )),
+        ]),
+        const SizedBox(height: 12),
         Text(v3PlanShortLabel(context, plan),
-          maxLines: 2, overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: p.ink,
-              fontSize: 19, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        Text(v3PlanExpiryLabel(context, plan),
-          style: TextStyle(color: p.inkMuted, fontSize: 12)),
-        if (remainingLabel != null) ...[
-          const SizedBox(height: 5),
-          Text(remainingLabel,
-            style: TextStyle(color: p.ink,
-                fontSize: 12, fontWeight: FontWeight.w600)),
-        ],
-        const SizedBox(height: 13),
-        Align(
-          alignment: Alignment.centerLeft,
+          maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: p.inkMuted, fontSize: 11)),
+        Align(alignment: Alignment.centerLeft,
           child: TextButton.icon(
             onPressed: () => _openAccountPlan(context, controller),
-            style: TextButton.styleFrom(
-              foregroundColor: p.ink,
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(80, 40),
-            ),
-            label: Text(controller.hasPlan
-                ? v3Copy(context, zh: '续费套餐', en: 'Renew plan', tw: '續費方案')
-                : v3Copy(context, zh: '选择套餐', en: 'Choose a plan', tw: '選擇方案'),
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 17),
+            icon: const Icon(Icons.chevron_right_rounded, size: 16),
             iconAlignment: IconAlignment.end,
+            label: Text(controller.hasPlan
+                ? v3Copy(context, zh: '续费套餐',
+                    en: 'Renew plan', tw: '續費方案')
+                : v3Copy(context, zh: '选择套餐',
+                    en: 'Choose plan', tw: '選擇方案')),
+            style: TextButton.styleFrom(
+              foregroundColor: p.lycheeInk,
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(0, 32)),
           ),
         ),
       ]),
     );
   }
 }
+
 
 class _MobileWalletCard extends StatelessWidget {
   const _MobileWalletCard({required this.controller});
@@ -644,49 +615,52 @@ class _MobileWalletCard extends StatelessWidget {
     final p = V3Palette.of(context);
     final symbol = controller.currencySymbol;
     return _MobileSurface(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(v3Copy(context, zh: '钱包余额',
-            en: 'WALLET BALANCE', tw: '錢包餘額'),
-            style: TextStyle(color: p.inkMuted, fontSize: 11,
-                fontWeight: FontWeight.w700, letterSpacing: .8)),
+        Text(v3Copy(context, zh: '我的钱包',
+            en: 'MY WALLET', tw: '我的錢包'),
+          style: TextStyle(color: p.inkMuted, fontSize: 11,
+            fontWeight: FontWeight.w800, letterSpacing: 1.4)),
         const SizedBox(height: 8),
         V3RollingMoney(value: controller.user.balance / 100,
           symbol: symbol,
-          style: TextStyle(color: p.ink,
-              fontSize: 29, fontWeight: FontWeight.w700,
-              fontFeatures: const [FontFeature.tabularFigures()])),
-        const SizedBox(height: 17),
+          style: TextStyle(color: p.ink, fontSize: 24,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()])),
+        const SizedBox(height: 10),
         Row(children: [
           Expanded(child: _MobileMiniMoney(
-            title: v3Copy(context, zh: '可提现', en: 'Withdrawable', tw: '可提領'),
+            title: v3Copy(context, zh: '可提现',
+              en: 'Withdrawable', tw: '可提領'),
             amount: '$symbol${controller.withdrawable.toStringAsFixed(2)}')),
           const SizedBox(width: 14),
-          Container(width: 1, height: 35, color: p.line),
-          const SizedBox(width: 14),
           Expanded(child: _MobileMiniMoney(
-            title: v3Copy(context, zh: '累计佣金', en: 'Commission', tw: '累計佣金'),
+            title: v3Copy(context, zh: '累计佣金',
+              en: 'Commission', tw: '累計佣金'),
             amount: '$symbol${controller.earnedCommission.toStringAsFixed(2)}')),
         ]),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         Row(children: [
           if (AppConfig.panelFeatures.wallet) ...[
             Expanded(child: _MobileWalletAction(
               icon: Icons.add_rounded,
-              label: v3Copy(context, zh: '充值', en: 'Top up', tw: '儲值'),
+              label: v3Copy(context, zh: '充值',
+                en: 'Top up', tw: '儲值'),
               emphasized: true,
               onTap: () => showV3RechargeDialog(context))),
             const SizedBox(width: 8),
           ],
           Expanded(child: _MobileWalletAction(
             icon: Icons.account_balance_outlined,
-            label: v3Copy(context, zh: '提现', en: 'Withdraw', tw: '提領'),
+            label: v3Copy(context, zh: '提现',
+              en: 'Withdraw', tw: '提領'),
             busy: controller.walletBusy,
             onTap: () => showV3WithdrawDialog(context))),
           const SizedBox(width: 8),
           Expanded(child: _MobileWalletAction(
             icon: Icons.swap_horiz_rounded,
-            label: v3Copy(context, zh: '划转', en: 'Transfer', tw: '轉帳'),
+            label: v3Copy(context, zh: '划转',
+              en: 'Transfer', tw: '轉帳'),
             busy: controller.walletBusy,
             onTap: () => showV3TransferDialog(context))),
         ]),
