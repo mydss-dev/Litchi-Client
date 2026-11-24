@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
-import '../../shared/services/settings_service.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
@@ -46,34 +45,8 @@ class _V3NodesPageState extends State<V3NodesPage> {
   // 快 filter and a green badge can never disagree.
   String? _tier;
 
-  // The HTML phone mockup groups by continent; desktop's country filters
-  // remain unchanged. Favorites are persisted using the existing settings
-  // service rather than inventing a temporary-only star state.
+  // Mobile continent filter; favorites are intentionally not surfaced.
   NodeRegion? _phoneRegion;
-  final Set<String> _phoneFavorites = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPhoneFavorites();
-  }
-
-  Future<void> _loadPhoneFavorites() async {
-    try {
-      final favorites = await SettingsService.loadFavorites();
-      if (mounted) setState(() => _phoneFavorites.addAll(favorites));
-    } catch (_) {
-      // Favorites are optional UI state. A missing preferences host (widget
-      // tests or an unavailable platform plugin) must not crash the node view.
-    }
-  }
-
-  void _togglePhoneFavorite(NodeModel node) {
-    setState(() {
-      if (!_phoneFavorites.add(node.id)) _phoneFavorites.remove(node.id);
-    });
-    SettingsService.saveFavorites(_phoneFavorites);
-  }
 
   @override
   void dispose() {
@@ -225,8 +198,6 @@ class _V3NodesPageState extends State<V3NodesPage> {
             tw: '已切換至自動選擇'),
         ),
         pendingId: _pending,
-        isFavorite: (node) => node.favorite || _phoneFavorites.contains(node.id),
-        onFavorite: _togglePhoneFavorite,
       );
     }
 
