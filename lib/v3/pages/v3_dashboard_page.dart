@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
@@ -29,7 +30,6 @@ class V3DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final status = controller.connectionStatus;
     // Only a confirmed account without a plan sees the purchase guidance.
     final confirmedNoPlan =
         !controller.isInitialLoading && controller.hasConfirmedNoPlan;
@@ -57,19 +57,10 @@ class V3DashboardPage extends StatelessWidget {
             // suffix, usage lives in the Mine tab.
             _MobileConnectSection(controller: controller),
           ] else ...[
-            _ConnectionWorkspace(
-              controller: controller,
-              connected: status == ConnectionStatus.connected,
-              connecting:
-                  status == ConnectionStatus.connecting ||
-                  status == ConnectionStatus.disconnecting,
-            ),
-            const SizedBox(height: 12),
-            _ModeRail(controller: controller),
-            const SizedBox(height: 12),
-            _SessionMetrics(controller: controller),
-            const SizedBox(height: 12),
-            _PlanSummary(controller: controller),
+            // Desktop composition (blueprint §2.2): the dot map is the page
+            // stage, and one floating glass panel carries every live control
+            // — node, modes, speed curve + metrics, plan summary.
+            _DesktopWorkspace(controller: controller),
           ],
         ]),
       ),
@@ -159,23 +150,133 @@ const kConnectActionCardKey = Key('v3-connect-action-card');
 const kCurrentNodeCardKey = Key('v3-current-node-card');
 const kConnectOrbKey = Key('v3-connect-orb');
 
-class _ConnectionWorkspace extends StatelessWidget {
-  const _ConnectionWorkspace({
-    required this.controller,
-    required this.connected,
-    required this.connecting,
-  });
+
+/// Desktop composition (blueprint §2.2): the dot map owns the stage; one
+/// floating glass panel carries every live control — node, modes, the live
+/// speed curve with the four metrics, and the plan summary.
+class _DesktopWorkspace extends StatelessWidget {
+  const _DesktopWorkspace({required this.controller});
   final AppController controller;
-  final bool connected;
-  final bool connecting;
+
+  /// The stage holds the map, orb and timer; the panel matches its height.
+  static const double _stageHeight = 536;
+  static const double _panelWidth = 320;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final status = controller.connectionStatus;
+    final stage = V3WorkspaceCard(
+      key: kConnectActionCardKey,
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
+        child: _ConnectIntroContent(
+          controller: controller,
+          status: status,
+        ),
+      ),
+    );
+    final panel = _GlassPanel(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _NodeSection(controller: controller),
+                    const SizedBox(height: 16),
+                    Divider(color: p.line, height: 1),
+                    const SizedBox(height: 16),
+                    _ModeRail(controller: controller, flat: true),
+                    const SizedBox(height: 16),
+                    Divider(color: p.line, height: 1),
+                    const SizedBox(height: 16),
+                    _SessionMetrics(
+                      controller: controller,
+                      flat: true,
+                      showCurve: true,
+                    ),
+                    const SizedBox(height: 16),
+                    Divider(color: p.line, height: 1),
+                    const SizedBox(height: 16),
+                    _PlanSummary(controller: controller, flat: true),
+                  ],
+                ),
+              ),
+            );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Narrow windows stack: the stage keeps the hero, the panel drops
+        // under it at full width. Desktop at 900×700 uses the side-by-side
+        // composition.
+        if (constraints.maxWidth < 700) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: 320, child: stage),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 520,
+                child: panel,
+              ),
+            ],
+          );
+        }
+        return SizedBox(
+          height: _stageHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: stage),
+              const SizedBox(width: 12),
+              SizedBox(width: _panelWidth, child: panel),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The light glass surface (blueprint §1.4): a static blur behind a
+/// translucent fill and a 1px highlight stroke. Desktop-only.
+class _GlassPanel extends StatelessWidget {
+  const _GlassPanel({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final radius = BorderRadius.circular(V3Radius.panel);
+    return Container(
+      decoration: BoxDecoration(borderRadius: radius, boxShadow: p.shadows),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: p.glass,
+              borderRadius: radius,
+              border: Border.all(color: p.glassBorder),
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The panel's node section: identity, latency, tags and the switch entry.
+class _NodeSection extends StatelessWidget {
+  const _NodeSection({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
     final node = controller.currentNode;
-    // In automatic mode the card still names the node the resolver picked —
-    // only the flag changing told users which node they were on before.
     final displayName = controller.autoSelected
         ? node.name.isEmpty
               ? v3Copy(context, zh: '自动选择', en: 'Automatic', tw: '自動選擇')
@@ -183,215 +284,304 @@ class _ConnectionWorkspace extends StatelessWidget {
         : node.name.isEmpty
         ? v3Copy(context, zh: '尚未选择节点', en: 'No node selected', tw: '尚未選擇節點')
         : node.name;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final stacked = constraints.maxWidth < 500;
-        final cardHeight = stacked ? 224.0 : 212.0;
-        final intro = SizedBox(
-          key: kConnectActionCardKey,
-          height: cardHeight,
-          child: _DashboardCard(
-            padding: EdgeInsets.zero,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(V3Radius.card),
-              child: _ConnectIntroContent(
-                controller: controller,
-                status: status,
+    return Column(
+      key: kCurrentNodeCardKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              v3Copy(context, zh: '当前节点', en: 'Current node', tw: '目前節點'),
+              style: TextStyle(
+                color: p.ink,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
               ),
             ),
-          ),
-        );
-        final route = SizedBox(
-          key: kCurrentNodeCardKey,
-          height: cardHeight,
-          child: _DashboardCard(
-            padding: const EdgeInsets.all(V3Layout.cardPadding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      v3Copy(
-                        context,
-                        zh: '当前节点',
-                        en: 'Current node',
-                        tw: '目前節點',
-                      ),
-                      style: TextStyle(
-                        color: p.ink,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const Spacer(),
-                    // Latency is this card's status: the header-right signal
-                    // pill mirrors the connection card's status badge at the
-                    // same size, so the two headers read as a pair.
-                    V3LatencyBadge(
-                      region: node.region,
-                      latency: node.latency,
-                      signal: true,
-                      statusSized: true,
-                    ),
-                  ],
-                ),
-                // The identity block keeps the left rail — flag, name,
-                // english name, then tags on their own line — while the
-                // latency number lives in the header corner the eye already
-                // scans on the card beside it.
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: p.surfaceRaised,
-                                borderRadius: BorderRadius.circular(
-                                  V3Radius.field,
-                                ),
-                              ),
-                              child: V3NodeFlag(code: node.code, large: true),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          displayName,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: p.ink,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ),
-                                      if (controller.autoSelected &&
-                                          node.name.isNotEmpty) ...[
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: p.lycheeSoft,
-                                            borderRadius: BorderRadius.circular(
-                                              99,
-                                            ), // pill
-                                          ),
-                                          child: Text(
-                                            v3Copy(
-                                              context,
-                                              zh: '自动',
-                                              en: 'Auto',
-                                              tw: '自動',
-                                            ),
-                                            style: TextStyle(
-                                              color: p.lycheeInk,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    node.englishName.isNotEmpty
-                                        ? node.englishName
-                                        : node.code,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+            const Spacer(),
+            V3LatencyBadge(
+              region: node.region,
+              latency: node.latency,
+              signal: true,
+              statusSized: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: p.surfaceRaised,
+                borderRadius: BorderRadius.circular(V3Radius.field),
+              ),
+              child: V3NodeFlag(code: node.code, large: true),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: p.ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                        if (node.tags.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          V3NodeTags(tags: node.tags, maxVisible: 2),
-                        ],
+                      ),
+                      if (controller.autoSelected && node.name.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: p.lycheeSoft,
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Text(
+                            v3Copy(context, zh: '自动', en: 'Auto', tw: '自動'),
+                            style: TextStyle(
+                              color: p.lycheeInk,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
                       ],
-                    ),
+                    ],
                   ),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: OutlinedButton.icon(
-                    onPressed: () => V3NodePicker.show(context),
-                    style: OutlinedButton.styleFrom(
-                      // Quiet secondary: the connect orb owns the page's pink.
-                      // A full lychee outline here competed with it.
-                      foregroundColor: p.ink,
-                      side: BorderSide(color: p.line),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(V3Radius.field),
-                      ),
-                    ),
-                    icon: Icon(
-                      Icons.swap_horiz_rounded,
-                      size: 18,
-                      color: p.lychee,
-                    ),
-                    label: Text(
-                      v3Copy(
-                        context,
-                        zh: '切换节点',
-                        en: 'Change node',
-                        tw: '切換節點',
-                      ),
-                    ),
+                  const SizedBox(height: 3),
+                  Text(
+                    node.englishName.isNotEmpty ? node.englishName : node.code,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-              ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (node.tags.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          V3NodeTags(tags: node.tags, maxVisible: 2),
+        ],
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 40,
+          child: OutlinedButton.icon(
+            onPressed: () => V3NodePicker.show(context),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: p.ink,
+              side: BorderSide(color: p.line),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(V3Radius.field),
+              ),
+            ),
+            icon: Icon(Icons.swap_horiz_rounded, size: 18, color: p.lychee),
+            label: Text(
+              v3Copy(context, zh: '切换节点', en: 'Change node', tw: '切換節點'),
             ),
           ),
-        );
-        if (stacked) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [intro, const SizedBox(height: 12), route],
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: intro),
-            const SizedBox(width: 12),
-            Expanded(child: route),
-          ],
-        );
-      },
+        ),
+      ],
     );
   }
 }
 
-/// The orb section of the connection workspace: status header, the connect
-/// orb and its caption over the faded world map. Shared by the desktop
-/// workspace card and the phone's merged connection card.
+/// The live throughput curve (blueprint §4): a 90-sample ring buffer fed by
+/// the controller's speed notifiers — event-driven, no timers. Download
+/// draws green with a soft area fill, upload draws aqua; the y-scale is
+/// fixed at 14 MB/s so idle flatlines read as idle.
+class _SpeedSparkline extends StatefulWidget {
+  const _SpeedSparkline({required this.controller, required this.height});
+  final AppController controller;
+  final double height;
+
+  @override
+  State<_SpeedSparkline> createState() => _SpeedSparklineState();
+}
+
+class _SpeedSparklineState extends State<_SpeedSparkline> {
+  static const int _kSamples = 90;
+  final List<double> _down = <double>[];
+  final List<double> _up = <double>[];
+  bool _filled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _attach();
+  }
+
+  void _attach() {
+    widget.controller.downBpsNotifier.addListener(_sample);
+    widget.controller.upBpsNotifier.addListener(_sample);
+  }
+
+  void _detach() {
+    widget.controller.downBpsNotifier.removeListener(_sample);
+    widget.controller.upBpsNotifier.removeListener(_sample);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SpeedSparkline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.downBpsNotifier.removeListener(_sample);
+      oldWidget.controller.upBpsNotifier.removeListener(_sample);
+      _attach();
+    }
+  }
+
+  @override
+  void dispose() {
+    _detach();
+    super.dispose();
+  }
+
+  void _sample() {
+    if (!mounted) return;
+    _push();
+    setState(() {});
+  }
+
+  void _push() {
+    final down = widget.controller.downBpsNotifier.value / (1024 * 1024);
+    final up = widget.controller.upBpsNotifier.value / (1024 * 1024);
+    if (!_filled) {
+      _down.addAll(List<double>.filled(_kSamples, down));
+      _up.addAll(List<double>.filled(_kSamples, up));
+      _filled = true;
+      return;
+    }
+    _down.add(down);
+    _up.add(up);
+    if (_down.length > _kSamples) _down.removeAt(0);
+    if (_up.length > _kSamples) _up.removeAt(0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    if (!_filled) _push();
+    return RepaintBoundary(
+      child: SizedBox(
+        height: widget.height,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _SparkPainter(
+            down: List<double>.of(_down),
+            up: List<double>.of(_up),
+            palette: p,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SparkPainter extends CustomPainter {
+  _SparkPainter({required this.down, required this.up, required this.palette});
+  final List<double> down;
+  final List<double> up;
+  final V3Palette palette;
+
+  static const double _maxMbps = 14;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final w = size.width;
+    final h = size.height;
+    double yOf(double mbps) =>
+        h - 1 - (mbps.clamp(0, _maxMbps) / _maxMbps) * (h - 4);
+    double xOf(int i) => down.length < 2 ? 0 : w * i / (down.length - 1);
+
+    canvas.drawLine(
+      Offset(0, h - 0.5),
+      Offset(w, h - 0.5),
+      Paint()
+        ..color = palette.line
+        ..strokeWidth = 1,
+    );
+
+    if (down.length > 1) {
+      // Download: soft area under the line, then the line itself.
+      final area = Path()..moveTo(0, h);
+      for (var i = 0; i < down.length; i++) {
+        area.lineTo(xOf(i), yOf(down[i]));
+      }
+      area
+        ..lineTo(w, h)
+        ..close();
+      canvas.drawPath(
+        area,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              palette.success.withValues(alpha: 0.18),
+              palette.success.withValues(alpha: 0),
+            ],
+          ).createShader(Rect.fromLTWH(0, 0, w, h)),
+      );
+      final downLine = Path()..moveTo(xOf(0), yOf(down[0]));
+      for (var i = 1; i < down.length; i++) {
+        downLine.lineTo(xOf(i), yOf(down[i]));
+      }
+      canvas.drawPath(
+        downLine,
+        Paint()
+          ..color = palette.success
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
+
+    if (up.length > 1) {
+      final upLine = Path()..moveTo(xOf(0), yOf(up[0]));
+      for (var i = 1; i < up.length; i++) {
+        upLine.lineTo(xOf(i), yOf(up[i]));
+      }
+      canvas.drawPath(
+        upLine,
+        Paint()
+          ..color = palette.aqua
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SparkPainter old) =>
+      old.down.length != down.length ||
+      old.up.length != up.length ||
+      old.down.lastOrNull != down.lastOrNull ||
+      old.up.lastOrNull != up.lastOrNull ||
+      old.palette != palette;
+}
+
 class _ConnectIntroContent extends StatefulWidget {
   const _ConnectIntroContent({required this.controller, required this.status});
   final AppController controller;
@@ -1279,8 +1469,11 @@ bool v3UsesMergedConnectionCard(TargetPlatform platform) =>
     platform == TargetPlatform.android || platform == TargetPlatform.iOS;
 
 class _ModeRail extends StatefulWidget {
-  const _ModeRail({required this.controller});
+  const _ModeRail({required this.controller, this.flat = false});
   final AppController controller;
+
+  /// When true the rail renders bare (the glass panel supplies the surface).
+  final bool flat;
 
   @override
   State<_ModeRail> createState() => _ModeRailState();
@@ -1408,9 +1601,7 @@ class _ModeRailState extends State<_ModeRail> with _ModeSwitching {
         ),
       ],
     );
-    return _DashboardCard(
-      padding: const EdgeInsets.all(V3Layout.cardPadding),
-      child: LayoutBuilder(
+    final content = LayoutBuilder(
         builder: (context, constraints) {
           if (network == null) return routing;
           if (constraints.maxWidth < 555) {
@@ -1433,8 +1624,13 @@ class _ModeRailState extends State<_ModeRail> with _ModeSwitching {
             ],
           );
         },
-      ),
-    );
+      );
+    return widget.flat
+        ? content
+        : _DashboardCard(
+            padding: const EdgeInsets.all(V3Layout.cardPadding),
+            child: content,
+          );
   }
 }
 
@@ -1579,17 +1775,27 @@ class _ModeSegment<T> extends StatelessWidget {
 /// phones. The reachability strip is appended on desktop only — a phone's
 /// slots are far too narrow for four sites.
 class _SessionMetrics extends StatelessWidget {
-  const _SessionMetrics({required this.controller});
+  const _SessionMetrics({
+    required this.controller,
+    this.flat = false,
+    this.showCurve = false,
+  });
   final AppController controller;
+
+  /// Bare mode for the glass panel; [showCurve] adds the live sparkline.
+  final bool flat;
+  final bool showCurve;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return _DashboardCard(
-      padding: const EdgeInsets.all(V3Layout.cardPadding),
-      child: Column(
+    final content = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (showCurve) ...[
+            _SpeedSparkline(controller: controller, height: 64),
+            const SizedBox(height: 14),
+          ],
           LayoutBuilder(
             builder: (context, constraints) {
               final compact = constraints.maxWidth < 450;
@@ -1688,8 +1894,13 @@ class _SessionMetrics extends StatelessWidget {
             },
           ),
         ],
-      ),
-    );
+      );
+    return flat
+        ? content
+        : _DashboardCard(
+            padding: const EdgeInsets.all(V3Layout.cardPadding),
+            child: content,
+          );
   }
 }
 
@@ -1756,8 +1967,12 @@ class _Metric extends StatelessWidget {
 
 
 class _PlanSummary extends StatelessWidget {
-  const _PlanSummary({required this.controller});
+  const _PlanSummary({required this.controller, this.flat = false});
   final AppController controller;
+
+  /// When true the summary renders bare (the glass panel supplies the
+  /// surface); the desktop workspace uses this form.
+  final bool flat;
 
   @override
   Widget build(BuildContext context) {
@@ -1792,9 +2007,7 @@ class _PlanSummary extends StatelessWidget {
         expiryUrgent = remaining.inDays < 3;
       }
     }
-    return _DashboardCard(
-      padding: const EdgeInsets.all(V3Layout.cardPadding),
-      child: Column(
+    final content = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Header mirrors the current-node card: title left, the status
@@ -1932,8 +2145,13 @@ class _PlanSummary extends StatelessWidget {
               style: TextStyle(color: p.inkMuted, fontSize: 11),
             ),
         ],
-      ),
-    );
+      );
+    return flat
+        ? content
+        : _DashboardCard(
+            padding: const EdgeInsets.all(V3Layout.cardPadding),
+            child: content,
+          );
   }
 }
 

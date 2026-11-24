@@ -71,11 +71,17 @@ void main() {
       final left = tester.getRect(connect);
       final right = tester.getRect(node);
       if (size.width >= 900) {
-        expect((left.top - right.top).abs(), lessThan(1));
-        expect((left.height - right.height).abs(), lessThan(1));
-        expect((left.width - right.width).abs(), lessThan(1));
+        // New desktop composition (blueprint §2.2): the dot-map stage owns
+        // the left pane and the glass control panel floats to its right,
+        // carrying the node section inside it.
+        expect(left.right, lessThanOrEqualTo(right.left),
+            reason: 'the map stage sits left of the control panel');
+        expect(left.width, greaterThan(right.width),
+            reason: 'the stage is wider than the 320dp panel section');
+        expect(left.height, greaterThanOrEqualTo(right.height));
       } else {
-        expect(left.bottom, lessThan(right.top));
+        // Narrow windows stack the stage above the panel.
+        expect(left.bottom, lessThanOrEqualTo(right.top));
       }
       debugDefaultTargetPlatformOverride = null;
       expect(tester.takeException(), isNull);
