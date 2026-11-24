@@ -273,6 +273,11 @@ void main() {
       ).map((item) => item.page)) {
         controller.goToPage(page);
         await tester.pumpAndSettle();
+        if (page == AppPage.orders) {
+          expect(find.byType(V3NavIsland), findsNothing,
+              reason: 'order history is a secondary page without a tab bar');
+          continue;
+        }
         expect(
           tester.widget<V3NavIsland>(find.byType(V3NavIsland)).selectedIndex,
           accountIndex,
@@ -387,6 +392,12 @@ void main() {
         for (final page in enabledNavItems(items).map((item) => item.page)) {
           controller.goToPage(page);
           await tester.pumpAndSettle();
+          if (page == AppPage.orders) {
+            expect(find.byType(V3NavIsland), findsNothing);
+            await _tap(tester, find.byTooltip('返回我的'), 'orders back');
+            expect(controller.page, AppPage.account);
+            continue;
+          }
           expect(
             find.byTooltip('返回账户'),
             findsNothing,
