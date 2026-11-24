@@ -15,7 +15,15 @@ void main() {
     final file = File('/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc');
     if (!file.existsSync()) return;
     final data = ByteData.sublistView(await file.readAsBytes());
-    for (final family in <String>['Roboto', 'Noto Sans CJK SC']) {
+    for (final family in <String>[
+      'Segoe UI',
+      'Segoe UI Variable',
+      'SF Pro Text',
+      'Microsoft YaHei UI',
+      'Roboto',
+      'Noto Sans',
+      'Noto Sans CJK SC',
+    ]) {
       final loader = FontLoader(family)..addFont(Future.value(data));
       await loader.load();
     }
