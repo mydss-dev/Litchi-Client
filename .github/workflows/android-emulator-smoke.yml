@@ -64,7 +64,7 @@ jobs:
       - name: Install Android host toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpulse0
+          sudo apt-get install -y libpulse0 python3-pil
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             'platform-tools' \
@@ -152,7 +152,8 @@ jobs:
             -noaudio \
             -no-boot-anim \
             -no-snapshot \
-            -gpu software \
+            -gpu swiftshader_indirect \
+            -feature -Vulkan \
             -camera-back none \
             -camera-front none \
             > "$evidence/emulator.log" 2>&1 &
@@ -191,8 +192,8 @@ jobs:
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
-          adb shell wm size 1073x2321
-          adb shell wm density 440
+          adb shell wm size 780x1688
+          adb shell wm density 320
           adb shell input keyevent KEYCODE_WAKEUP || true
           adb shell wm dismiss-keyguard || true
           adb shell settings put system user_rotation 0 || true
@@ -258,7 +259,7 @@ jobs:
             return 1
           }
           capture screenshot "$evidence/launch-logical-390x844.png" exec-out screencap -p
-          test -s "$evidence/launch-logical-390x844.png"
+          /usr/bin/python3 -c 'from PIL import Image; import sys; im=Image.open(sys.argv[1]); assert im.format == "PNG" and im.size == (780, 1688); im.verify()' "$evidence/launch-logical-390x844.png"
           capture wm-size "$evidence/wm-size.txt" shell wm size
           capture wm-density "$evidence/wm-density.txt" shell wm density
           capture window "$evidence/window.txt" shell dumpsys window
@@ -280,7 +281,8 @@ jobs:
           adb shell monkey -p "$PACKAGE_ID" -c android.intent.category.LAUNCHER 1
           sleep 4
           test -n "$(adb shell pidof "$PACKAGE_ID" | tr -d '\r')"
-          adb exec-out screencap -p > build/emulator-smoke/relaunch-after-back.png
+          timeout 45s adb exec-out screencap -p > build/emulator-smoke/relaunch-after-back.png
+          /usr/bin/python3 -c 'from PIL import Image; import sys; im=Image.open(sys.argv[1]); assert im.format == "PNG" and im.size == (780, 1688); im.verify()' build/emulator-smoke/relaunch-after-back.png
       - name: Upload emulator evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
