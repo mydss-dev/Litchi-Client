@@ -345,15 +345,6 @@ class _MobileAccountOverview extends StatelessWidget {
             _MobileGroupLabel(v3Copy(sheetContext,
               zh: '安全', en: 'SECURITY', tw: '安全')),
             _MobileAccountLink(
-              icon: Icons.tune_rounded,
-              title: v3Copy(sheetContext, zh: '应用设置',
-                en: 'App settings', tw: '應用設定'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                controller.goToPage(AppPage.settings);
-              }),
-            const _MobileHairline(indent: 10),
-            _MobileAccountLink(
               icon: Icons.lock_outline_rounded,
               title: v3Copy(sheetContext, zh: '修改密码',
                 en: 'Change password', tw: '修改密碼'),
@@ -395,13 +386,6 @@ class _MobileAccountOverview extends StatelessWidget {
     final p = V3Palette.of(context);
     final walletVisible = AppConfig.panelFeatures.wallet ||
         controller.user.balance > 0 || controller.withdrawable > 0;
-    final remain = controller.traffic.remainGb;
-    final total = controller.traffic.totalGb;
-    final used = controller.traffic.usedGb;
-    final ticketsOpen = controller.tickets.where((t) => t.isOpen).length;
-    final symbol = controller.currencySymbol;
-    final recent = controller.hasAccountSummary
-        ? '${remain.toStringAsFixed(1)} GB' : '—';
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 110),
@@ -428,97 +412,79 @@ class _MobileAccountOverview extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         _MobilePlanCard(controller: controller),
-        const SizedBox(height: 18),
+        // Restore the original one-column account-services list. All
+        // service destinations, including wallet and app settings, live here.
+        const SizedBox(height: 25),
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(v3Copy(context, zh: '账户服务',
-            en: 'Account services', tw: '帳戶服務'),
-            style: TextStyle(color: p.inkMuted,
-              fontSize: 12, fontWeight: FontWeight.w700)),
+          padding: const EdgeInsets.only(left: 1),
+          child: Text(
+            v3Copy(context, zh: '账户服务',
+              en: 'YOUR SERVICES', tw: '帳戶服務'),
+            style: TextStyle(
+              color: p.inkMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.15,
+            ),
+          ),
         ),
+        const SizedBox(height: 10),
         _MobileSurface(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.zero,
           child: Column(children: [
-            Row(children: [
-              Expanded(child: V3MobileHubTile(
-                key: hubRowKey(AppPage.orders),
-                icon: Icons.receipt_long_outlined,
-                title: v3Copy(context, zh: '订单', en: 'Orders', tw: '訂單'),
-                value: v3Copy(context, zh: '订单记录',
-                  en: 'Order history', tw: '訂單紀錄'),
-                subtitle: v3Copy(context, zh: '支付记录与详情',
-                  en: 'Payment history', tw: '付款紀錄與詳情'),
-                onTap: () => openV3Page(context, AppPage.orders),
-              )),
-              const SizedBox(width: 10),
-              Expanded(child: V3MobileHubTile(
-                key: hubRowKey(AppPage.traffic),
-                icon: Icons.data_usage_outlined,
-                title: v3Copy(context, zh: '流量',
-                    en: 'Traffic', tw: '流量'),
-                value: recent,
-                subtitle: total > 0
-                    ? v3Copy(context,
-                        zh: '已用 ${used.toStringAsFixed(1)} GB',
-                        en: 'Used ${used.toStringAsFixed(1)} GB',
-                        tw: '已用 ${used.toStringAsFixed(1)} GB')
-                    : v3Copy(context, zh: '查看使用情况',
-                        en: 'View usage', tw: '查看用量'),
-                onTap: () => openV3Page(context, AppPage.traffic),
-                footer: total <= 0 ? null : ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: LinearProgressIndicator(
-                    value: (used / total).clamp(0.0, 1.0),
-                    minHeight: 4,
-                    backgroundColor: p.line,
-                    valueColor: AlwaysStoppedAnimation(p.success),
-                  ),
-                ),
-              )),
-            ]),
-            const SizedBox(height: 10),
-            Row(children: [
-              Expanded(child: V3MobileHubTile(
-                key: hubRowKey(AppPage.tickets),
-                icon: Icons.chat_bubble_outline_rounded,
-                title: v3Copy(context, zh: '工单', en: 'Support', tw: '工單'),
-                value: controller.ticketsLoaded
-                    ? '$ticketsOpen' : '—',
-                subtitle: v3Copy(context, zh: '待处理工单',
-                    en: 'Open tickets', tw: '待處理工單'),
-                onTap: () => openV3Page(context, AppPage.tickets),
-              )),
-              const SizedBox(width: 10),
-              Expanded(child: V3MobileHubTile(
-                key: hubRowKey(AppPage.invite),
-                icon: Icons.people_outline_rounded,
-                title: v3Copy(context, zh: '邀请',
-                    en: 'Invite', tw: '邀請'),
-                value: '$symbol${controller.earnedCommission.toStringAsFixed(2)}',
-                subtitle: v3Copy(context, zh: '累计佣金',
-                    en: 'Commission', tw: '累計佣金'),
-                onTap: () => openV3Page(context, AppPage.invite),
-              )),
-            ]),
+            _MobileAccountLink(
+              key: hubRowKey(AppPage.orders),
+              icon: Icons.receipt_long_outlined,
+              title: v3Copy(context, zh: '订单记录',
+                en: 'Orders', tw: '訂單紀錄'),
+              onTap: () => openV3Page(context, AppPage.orders),
+            ),
+            const _MobileHairline(),
+            _MobileAccountLink(
+              key: hubRowKey(AppPage.traffic),
+              icon: Icons.data_usage_outlined,
+              title: v3Copy(context, zh: '流量用量',
+                en: 'Data usage', tw: '流量用量'),
+              onTap: () => openV3Page(context, AppPage.traffic),
+            ),
+            const _MobileHairline(),
+            _MobileAccountLink(
+              key: hubRowKey(AppPage.tickets),
+              icon: Icons.chat_bubble_outline_rounded,
+              title: v3Copy(context, zh: '帮助与工单',
+                en: 'Help & support', tw: '幫助與工單'),
+              onTap: () => openV3Page(context, AppPage.tickets),
+            ),
+            const _MobileHairline(),
+            _MobileAccountLink(
+              key: hubRowKey(AppPage.invite),
+              icon: Icons.people_outline_rounded,
+              title: v3Copy(context, zh: '邀请好友',
+                en: 'Invite friends', tw: '邀請好友'),
+              onTap: () => openV3Page(context, AppPage.invite),
+            ),
+            if (walletVisible) ...[
+              const _MobileHairline(),
+              _MobileAccountLink(
+                key: const ValueKey('v3-account-wallet-service'),
+                icon: Icons.account_balance_wallet_outlined,
+                title: v3Copy(context, zh: '我的钱包',
+                  en: 'Wallet', tw: '我的錢包'),
+                onTap: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const _MobileWalletPage())),
+              ),
+            ],
+            const _MobileHairline(),
+            _MobileAccountLink(
+              key: hubRowKey(AppPage.settings),
+              icon: Icons.tune_rounded,
+              title: v3Copy(context, zh: '应用设置',
+                en: 'Settings', tw: '應用設定'),
+              onTap: () => openV3Page(context, AppPage.settings),
+            ),
           ]),
         ),
-
-        if (walletVisible) ...[
-          const SizedBox(height: 10),
-          V3MobileHubTile(
-            icon: Icons.account_balance_wallet_outlined,
-            title: v3Copy(context, zh: '钱包',
-              en: 'Wallet', tw: '錢包'),
-            value: v3Copy(context, zh: '我的钱包',
-              en: 'My wallet', tw: '我的錢包'),
-            subtitle: v3Copy(context, zh: '余额 · 提现 · 划转',
-              en: 'Balance · Withdraw · Transfer',
-              tw: '餘額 · 提領 · 轉帳'),
-            onTap: () => Navigator.of(context).push<void>(
-              MaterialPageRoute<void>(
-                builder: (_) => const _MobileWalletPage())),
-          ),
-        ],
         if (controller.dataLoadError != null) ...[
           const SizedBox(height: 12),
           V3EmptyState(
