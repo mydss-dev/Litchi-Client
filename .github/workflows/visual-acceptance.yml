@@ -28,6 +28,7 @@ concurrency:
 permissions:
   contents: read
 
+# Keep layout/overflow checks on all targets, without generating or uploading PNGs.
 jobs:
   windows-layout-fallback:
     name: V3 Windows 900x700 (Linux render)
@@ -41,20 +42,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: mkdir -p test/visual/goldens
-      - name: Render V3 Windows light/dark snapshots
-        run: >-
-          flutter test
-          --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
-          --update-goldens
-          --name 'V3 Windows'
-          test/visual/v3_visual_acceptance_test.dart
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: v3-windows-900x700-linux-${{ github.sha }}
-          path: test/visual/goldens/v3_windows_*.png
-          if-no-files-found: error
-          retention-days: 14
+      - name: Check Windows V3 layouts
+        run: flutter test --name 'V3 Windows' test/visual/v3_visual_acceptance_test.dart
 
   windows-native:
     name: V3 Windows 900x700 (Native)
@@ -68,21 +57,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - shell: pwsh
-        run: New-Item -ItemType Directory -Force test/visual/goldens | Out-Null
-      - name: Render V3 Windows light/dark snapshots
-        run: >-
-          flutter test
-          --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
-          --update-goldens
-          --name "V3 Windows"
-          test/visual/v3_visual_acceptance_test.dart
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: v3-windows-900x700-native-${{ github.sha }}
-          path: test/visual/goldens/v3_windows_*.png
-          if-no-files-found: error
-          retention-days: 14
+      - name: Check Windows V3 layouts
+        run: flutter test --name "V3 Windows" test/visual/v3_visual_acceptance_test.dart
 
   android-compact:
     name: V3 Android 360-390 compact
@@ -96,17 +72,5 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: mkdir -p test/visual/goldens
-      - name: Render V3 Android light/dark snapshots and 360 smoke
-        run: >-
-          flutter test
-          --dart-define=LITCHI_VISUAL_SNAPSHOTS=true
-          --update-goldens
-          --name 'V3 Android'
-          test/visual/v3_visual_acceptance_test.dart
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: v3-android-360-390-${{ github.sha }}
-          path: test/visual/goldens/v3_android_*.png
-          if-no-files-found: error
-          retention-days: 14
+      - name: Check Android V3 layouts
+        run: flutter test --name 'V3 Android' test/visual/v3_visual_acceptance_test.dart

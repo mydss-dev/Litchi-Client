@@ -28,8 +28,6 @@ class _InkNavController extends VisualV3Controller {
   }
 }
 
-const _snapshotsEnabled = bool.fromEnvironment('LITCHI_VISUAL_SNAPSHOTS');
-
 /// Captured window pixels — the ink is an [InkFeature] on the pressable's
 /// Material, invisible to finder-based assertions. Returns the pixels and the
 /// captured pixel width (the test surface runs at DPR 1).
@@ -123,14 +121,6 @@ void main() {
         await tester.pumpAndSettle();
         final (pressed, pressedWidth) = await _snapshot(tester);
         expect(pressedWidth, width);
-        if (_snapshotsEnabled) {
-          await expectLater(
-            find.byType(V3Shell),
-            matchesGoldenFile(
-              'goldens/press_ink_rail_${themeName}_pressed.png',
-            ),
-          );
-        }
         await gesture.up();
         await tester.pump(const Duration(milliseconds: 300));
 

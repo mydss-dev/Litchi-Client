@@ -29,8 +29,6 @@ class _InkNavController extends VisualV3Controller {
   }
 }
 
-const _snapshotsEnabled = bool.fromEnvironment('LITCHI_VISUAL_SNAPSHOTS');
-
 /// Captured window pixels — the hover wash is an [InkFeature] on the
 /// pressable's Material, invisible to finder-based assertions.
 Future<(Uint8List, int)> _snapshot(WidgetTester tester) async {
@@ -111,14 +109,6 @@ void main() {
         await tester.pumpAndSettle();
         final (hovered, hoveredWidth) = await _snapshot(tester);
         expect(hoveredWidth, width);
-        if (_snapshotsEnabled) {
-          await expectLater(
-            find.byType(V3Shell),
-            matchesGoldenFile(
-              'goldens/hover_ink_rail_${themeName}_hovered.png',
-            ),
-          );
-        }
         await gesture.moveTo(Offset.zero);
 
         expect(hovered.length, idle.length);

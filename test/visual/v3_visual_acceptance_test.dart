@@ -7,8 +7,6 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
 
-const _visualSnapshotsEnabled = bool.fromEnvironment('LITCHI_VISUAL_SNAPSHOTS');
-
 const _pages = <(AppPage, String)>[
   (AppPage.dashboard, 'dashboard'),
   (AppPage.nodes, 'nodes'),
@@ -47,14 +45,6 @@ void main() {
             themeMode: themeMode,
             page: page,
           );
-          if (_visualSnapshotsEnabled) {
-            await expectLater(
-              find.byType(V3Shell),
-              matchesGoldenFile(
-                'goldens/v3_windows_${name}_${themeName}_900x700.png',
-              ),
-            );
-          }
         } finally {
           debugDefaultTargetPlatformOverride = null;
         }
@@ -69,14 +59,6 @@ void main() {
             themeMode: themeMode,
             page: page,
           );
-          if (_visualSnapshotsEnabled) {
-            await expectLater(
-              find.byType(V3Shell),
-              matchesGoldenFile(
-                'goldens/v3_android_${name}_${themeName}_390x844.png',
-              ),
-            );
-          }
         } finally {
           debugDefaultTargetPlatformOverride = null;
         }
@@ -114,15 +96,6 @@ void main() {
         debugDefaultTargetPlatformOverride = platform;
         try {
           await _pumpSignIn(tester, size: size, themeMode: themeMode);
-          if (_visualSnapshotsEnabled) {
-            await expectLater(
-              find.byType(V3Shell),
-              matchesGoldenFile(
-                'goldens/v3_${platformName}_login_${themeName}_'
-                '${size.width.toInt()}x${size.height.toInt()}.png',
-              ),
-            );
-          }
         } finally {
           debugDefaultTargetPlatformOverride = null;
         }
