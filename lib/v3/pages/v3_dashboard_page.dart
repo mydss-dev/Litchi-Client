@@ -12,6 +12,7 @@ import '../theme/v3_palette.dart';
 import '../theme/v3_motion.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_dashboard_alerts.dart';
+import '../ui/v3_html_phone_notice.dart';
 import '../ui/v3_latency_tier.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_picker.dart';
@@ -35,14 +36,18 @@ class V3DashboardPage extends StatelessWidget {
         !controller.isInitialLoading && controller.hasConfirmedNoPlan;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: V3Layout.pageInsets,
+      padding: v3UsesMergedConnectionCard(defaultTargetPlatform)
+          ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+          : V3Layout.pageInsets,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: V3Entrance.wave([
           // Phones: announcement images from the backend rotate in a card;
           // desktop keeps the slim ticker so the orb stays above the fold.
           if (v3UsesMergedConnectionCard(defaultTargetPlatform))
-            V3NoticeCarousel(controller: controller)
+            controller.updateInfo != null
+                ? V3NoticeCarousel(controller: controller)
+                : V3HtmlPhoneNotice(controller: controller)
           else
             V3NoticeBar(controller: controller),
           V3DashboardAlerts(controller: controller),
@@ -791,6 +796,7 @@ class _MobileConnectSectionState extends State<_MobileConnectSection>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const SizedBox(height: 4),
         _MobileConnectStage(controller: controller),
         const SizedBox(height: V3Layout.cardGap),
         _MobileNodeCard(controller: controller),
@@ -929,22 +935,26 @@ class _MobileNodeCard extends StatelessWidget {
         : node.name.isEmpty
         ? v3Copy(context, zh: '尚未选择节点', en: 'No node selected', tw: '尚未選擇節點')
         : node.name;
-    return _DashboardCard(
-      padding: EdgeInsets.zero,
+    return Container(
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
+        border: Border.all(color: p.hairline),
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(V3Layout.cardRadius),
         // V3Pressable keeps the press ink above the card's opaque fill - a
         // bare InkWell paints it on the root Material below.
         child: V3Pressable(
           key: kCurrentNodeCardKey,
-          onTap: () => V3NodePicker.show(context),
+          onTap: () => controller.goToPage(AppPage.nodes),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
             child: Row(
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 40,
+                  height: 40,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: p.surfaceRaised,
@@ -966,8 +976,8 @@ class _MobileNodeCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: p.ink,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
