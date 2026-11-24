@@ -4,7 +4,6 @@ import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
-import 'v3_latency_tier.dart';
 import 'v3_locale_copy.dart';
 import 'v3_node_tags.dart';
 
