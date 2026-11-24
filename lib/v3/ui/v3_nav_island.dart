@@ -10,7 +10,6 @@ import '../../config/app_identity.dart';
 import '../app/v3_nav.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
-import 'v3_components.dart';
 
 /// Fixed-height, safe-area-aware phone navigation. The selected destination
 /// uses a single dark capsule; secondary tabs stay quiet and readable.
@@ -65,7 +64,7 @@ class _IslandTab extends StatelessWidget {
     final label = item.localizedLabel(context);
     final foreground = selected ? p.surface : p.inkMuted;
     return Semantics(
-      key: ValueKey('v3-mobile-nav-' + item.page.name),
+      key: ValueKey('v3-mobile-nav-${item.page.name}'),
       button: true,
       selected: selected,
       label: label,
