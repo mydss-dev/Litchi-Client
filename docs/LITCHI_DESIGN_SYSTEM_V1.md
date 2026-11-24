@@ -51,3 +51,8 @@ Status: approved design direction, incremental implementation. Do not change unr
 - Cross-platform: Android and Windows build checks.
 - Do not merge into `main` unless required gates are green.
 - Once merged, the user reviews the integrated result and may send defects back for repair.
+
+## Android CI toolchain compatibility
+
+Flutter 3.50.1 requires Gradle 9.3.1 or newer; the preexisting `gradle-8.14.5` wrapper blocked Android CI before compilation.
+The build engineer aligns the Android toolchain with the Flutter 3.50 template (Gradle 9.5.0, AGP 9.3.1, Kotlin 2.4.20). Existing legacy migration flags stay until all third-party plugins are audited for built-in Kotlin compatibility.
