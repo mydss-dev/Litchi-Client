@@ -51,9 +51,10 @@ abstract final class RemoteConfigService {
   static const _timeout = Duration(seconds: 5);
 
   /// Maximum time the *first* launch will block on the remote config fetch
-  /// before continuing with the compiled default. The fetch still runs to
-  /// completion in the background and updates the cache for the next launch.
-  static const _firstLaunchBudget = Duration(milliseconds: 1500);
+  /// before continuing with the compiled default. Give a cold Android emulator
+  /// enough time for DNS, TLS and signature validation; signed cached config
+  /// remains immediate. A late fetch still updates the live API endpoints.
+  static const _firstLaunchBudget = Duration(seconds: 8);
 
   static bool get isConfigured {
     final uri = Uri.tryParse(configUrl.trim());
