@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
@@ -52,7 +53,10 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
       // Keep the back affordance even when the account has no active plan.
       return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: V3Layout.pageInsets,
+        padding: (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              : V3Layout.pageInsets,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
             backPage: AppPage.account,
@@ -86,7 +90,10 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
       // Failure is not emptiness: name the error and offer the retry.
       return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: V3Layout.pageInsets,
+        padding: (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              : V3Layout.pageInsets,
         child: V3WaveColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -120,7 +127,10 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
       // placeholders in the page's own shape instead of a 0.0 GB flash.
       return SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: V3Layout.pageInsets,
+        padding: (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              : V3Layout.pageInsets,
         child: V3WaveColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -154,7 +164,10 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     // side-by-side split — every block owns the whole row.
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: V3Layout.pageInsets,
+      padding: (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)
+              ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+              : V3Layout.pageInsets,
       child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
