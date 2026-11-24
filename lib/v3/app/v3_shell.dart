@@ -195,7 +195,7 @@ class _V3WorkspaceState extends State<_V3Workspace> {
             // page content scrolls under it (§12.1#11). Pages keep their own
             // bottom insets; the injected MediaQuery bottom padding still
             // lets overlays (toasts) clear the island.
-            extendBody: true,
+            extendBody: false,
             body: mobilePage,
             bottomNavigationBar: V3NavIsland(controller: controller),
           );
@@ -329,6 +329,7 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.traffic => const V3TrafficPage(),
     AppPage.orders => V3SheetPageFallback(
       title: l.orders,
+      backPage: AppPage.account,
       child: const V3OrdersPage(),
     ),
     AppPage.tickets => const V3TicketsPage(),
