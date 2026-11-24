@@ -197,9 +197,15 @@ class _V3WorkspaceState extends State<_V3Workspace> {
             // lets overlays (toasts) clear the island.
             extendBody: false,
             body: mobilePage,
-            // Order history is a secondary full-screen page, not a primary tab.
-            bottomNavigationBar: current == AppPage.orders
-                ? null : V3NavIsland(controller: controller),
+            // Four destinations own the bottom bar. Every account
+            // subpage has a page-level back affordance instead.
+            bottomNavigationBar: switch (current) {
+              AppPage.dashboard ||
+              AppPage.nodes ||
+              AppPage.shop ||
+              AppPage.account => V3NavIsland(controller: controller),
+              _ => null,
+            },
           );
         }
         // 12 + 68 + 12 = 92dp for the entire desktop rail, not 92dp
