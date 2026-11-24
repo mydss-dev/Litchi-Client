@@ -13,8 +13,7 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'v3_visual_fixture.dart';
 
 class _NavigableVisualController extends VisualV3Controller {
-  _NavigableVisualController(AppPage initial)
-      : _current = initial, super(initial);
+  _NavigableVisualController(super.initial) : _current = initial;
 
   AppPage _current;
   @override
