@@ -12,37 +12,15 @@ import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import 'v3_components.dart';
 
-/// The island's box height (mockup `.p-bnav`).
-const double _kIslandHeight = 64;
+/// Fixed-height, safe-area-aware phone navigation. The selected destination
+/// uses a single dark capsule; secondary tabs stay quiet and readable.
+const double _kIslandHeight = 68;
 
-/// The float above the screen edge: 10dp of canvas shows under the island.
-const double _kIslandFloat = 10;
-
-/// The island's corner — half the height, so the ends are perfect half-caps.
-const double _kIslandRadius = 32;
-
-/// The selected tab's coral pill behind the icon (mockup `.bnav-pill`).
-const double _kIslandPillHeight = 28;
-
-/// The compact shell's floating bottom navigation — the "nav island".
-///
-/// §12.1#11 / §13.3: the four primary destinations (连接 / 节点 / 套餐 / 我的)
-/// float as a rounded island above the canvas instead of a full-width bar, and
-/// page content scrolls behind it — the shell hosts this widget through
-/// Scaffold.bottomNavigationBar with `extendBody`, so the system gesture-bar
-/// inset machinery stays in one place. The selected tab keeps the original
-/// shape language: a coral soft pill pads the icon while the label stays
-/// beneath it, untouched — selection recolours, never distorts (the
-/// merged-pill trial was withdrawn by user ruling). The island itself stays
-/// opaque surface fill: mobile does not get glass (§1.4).
 class V3NavIsland extends StatelessWidget {
   const V3NavIsland({super.key, required this.controller});
 
   final AppController controller;
 
-  /// Which tab the island highlights: the page's own tab, or — for the
-  /// overflow pages that lost their 更多 tab (§13.3) — the 我的 tab that now
-  /// leads to them.
   int get selectedIndex => selectedPrimaryIndex(controller.page) ?? 0;
 
   @override
@@ -50,95 +28,100 @@ class V3NavIsland extends StatelessWidget {
     final p = V3Palette.of(context);
     final inset = MediaQuery.paddingOf(context).bottom;
     final items = enabledNavItems(kMobilePrimary);
-    return SizedBox(
-      // The island plus its float and the gesture-bar inset. The extra height
-      // is transparent: the island is the decoration below, the rest is the
-      // slot that keeps the Scaffold's bottom inset arithmetic honest.
-      height: _kIslandHeight + _kIslandFloat + inset,
-      child: Container(
-        padding: EdgeInsets.fromLTRB(12, 0, 12, _kIslandFloat + inset),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: p.surface,
-            borderRadius: BorderRadius.circular(_kIslandRadius),
-            border: Border.all(color: p.hairline),
-            boxShadow: p.shadows,
-          ),
-          child: Row(
-            children: [
-              for (final item in items)
-                Expanded(
-                  child: _IslandTab(controller: controller, item: item),
-                ),
-            ],
-          ),
-        ),
+    return Container(
+      height: _kIslandHeight + inset,
+      padding: EdgeInsets.fromLTRB(15, 7, 15, 8 + inset),
+      decoration: BoxDecoration(
+        color: p.surface,
+        border: Border(top: BorderSide(
+          color: p.line.withValues(alpha: .7))),
       ),
+      child: Row(children: [
+        for (var i = 0; i < items.length; i++)
+          Expanded(child: _IslandTab(
+            controller: controller,
+            item: items[i],
+            selected: i == selectedIndex,
+          )),
+      ]),
     );
   }
 }
 
-/// One island destination: icon in a coral pill on top, label always below.
-/// The 64dp-tall slot and the Expanded share of a 360dp window keep the touch
-/// target well past 44dp in both axes.
 class _IslandTab extends StatelessWidget {
-  const _IslandTab({required this.controller, required this.item});
+  const _IslandTab({
+    required this.controller,
+    required this.item,
+    required this.selected,
+  });
 
   final AppController controller;
   final V3NavItem item;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final selected = controller.page == item.page;
+    final label = item.localizedLabel(context);
+    final foreground = selected ? p.surface : p.inkMuted;
     return Semantics(
-      container: true,
+      key: ValueKey('v3-mobile-nav-' + item.page.name),
       button: true,
       selected: selected,
-      label: item.localizedLabel(context),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(end: selected ? 1 : 0),
-        duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.fast,
-        curve: V3Motion.ease,
-        builder: (context, t, _) {
-          final ink = Color.lerp(p.inkMuted, p.lycheeInk, t)!;
-          return V3Pressable(
+      label: label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
             onTap: () => controller.goToPage(item.page),
-            child: SizedBox(
-              height: _kIslandHeight,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    height: _kIslandPillHeight,
-                    constraints: const BoxConstraints(minWidth: 44),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      // The sanctioned 99 pill: selection recolours the pad,
-                      // the glyph and the label — nothing resizes.
-                      color: Color.lerp(Colors.transparent, p.lycheeSoft, t),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                    child: Icon(item.icon, size: 20, color: ink),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    item.localizedLabel(context),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 10,
-                      height: 1,
-                      fontWeight: FontWeight.w700,
-                      color: ink,
-                    ),
-                  ),
-                ],
+            borderRadius: BorderRadius.circular(18),
+            child: AnimatedContainer(
+              duration: v3ReducedMotion(context)
+                  ? Duration.zero : V3Motion.fast,
+              curve: V3Motion.ease,
+              height: 49,
+              decoration: BoxDecoration(
+                color: selected ? p.ink : Colors.transparent,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Center(
+                child: selected
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(item.icon, size: 19, color: foreground),
+                          const SizedBox(width: 5),
+                          Flexible(child: Text(label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: foreground,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ))),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(item.icon, size: 20, color: foreground),
+                          const SizedBox(height: 4),
+                          Text(label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: foreground,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            )),
+                        ],
+                      ),
               ),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
