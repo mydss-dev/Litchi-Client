@@ -561,7 +561,7 @@ class _HtmlPhonePlanCard extends StatelessWidget {
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Text(price == null
               ? _tr(context, '不可购买', 'Unavailable', '無法購買')
-              : '$currencySymbol${price.toStringAsFixed(2)}',
+              : '$currencySymbol${price?.toStringAsFixed(2)}',
             style: TextStyle(color: p.ink, fontSize: 28,
               fontWeight: FontWeight.w900,
               fontFeatures: const [FontFeature.tabularFigures()])),
