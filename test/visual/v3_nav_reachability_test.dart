@@ -148,6 +148,34 @@ void main() {
     });
   });
 
+  testWidgets('Android account services restores vertical list with wallet and settings',
+      (tester) async {
+    await _onPlatform(TargetPlatform.android, () async {
+      final controller = await _pumpShell(tester, const Size(390, 844));
+      controller.goToPage(AppPage.account);
+      await tester.pumpAndSettle();
+      final orders = find.byKey(hubRowKey(AppPage.orders));
+      final wallet = find.byKey(
+          const ValueKey('v3-account-wallet-service'));
+      final settings = find.byKey(hubRowKey(AppPage.settings));
+      expect(find.text('账户服务'), findsOneWidget);
+      expect(orders, findsOneWidget);
+      expect(wallet, findsOneWidget);
+      expect(settings, findsOneWidget);
+      expect(tester.getRect(wallet).top,
+          greaterThan(tester.getRect(orders).top));
+      expect(tester.getRect(settings).top,
+          greaterThan(tester.getRect(wallet).top));
+
+      await _tap(tester, settings);
+      expect(controller.page, AppPage.settings);
+      expect(find.byType(V3NavIsland), findsNothing);
+      await _tap(tester,
+          find.byKey(const ValueKey('v3-mobile-secondary-back')));
+      expect(controller.page, AppPage.account);
+    });
+  });
+
   testWidgets('Android order history is reachable from account services',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
