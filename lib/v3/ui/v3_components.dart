@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:country_flags/country_flags.dart';
 
@@ -337,14 +338,15 @@ class V3PageHeader extends StatelessWidget {
           SizedBox(
             width: 43,
             height: 44,
-            child: IconButton(
-              key: const ValueKey('v3-mobile-secondary-back'),
-              tooltip: v3Copy(context,
+            child: Tooltip(
+              message: v3Copy(context,
                 zh: '返回我的', en: 'Back to account', tw: '返回我的'),
-              padding: EdgeInsets.zero,
-              icon: Icon(Icons.arrow_back_ios_new_rounded,
-                size: 19, color: p.ink),
-              onPressed: () => AppScope.read(context).goToPage(backPage!),
+              child: CupertinoNavigationBarBackButton(
+                key: const ValueKey('v3-mobile-secondary-back'),
+                color: p.ink,
+                previousPageTitle: '',
+                onPressed: () => AppScope.read(context).goToPage(backPage!),
+              ),
             ),
           ),
           const SizedBox(width: 5),
