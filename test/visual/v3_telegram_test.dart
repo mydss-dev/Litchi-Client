@@ -36,8 +36,10 @@ Future<VisualV3Controller> _pumpAccount(WidgetTester tester,
   await tester.pumpWidget(AppScope(controller: controller,
     child: MaterialApp(theme: V3Theme.dark(), home: const V3Shell())));
   await tester.pumpAndSettle();
-  // The bottom action opens the sheet directly: no expansion is needed.
-  expect(find.text('账户偏好与安全'), findsNothing);
+  // Account actions are now intentionally behind the management button.
+  expect(find.byKey(_telegramRow), findsNothing);
+  await tester.tap(find.text('管理账户'));
+  await tester.pumpAndSettle();
   expect(find.byKey(_telegramRow), findsOneWidget);
   expect(tester.takeException(), isNull);
   return controller;
@@ -63,7 +65,7 @@ void main() {
     await _onPlatform(TargetPlatform.android, () async {
       await _pumpAccount(tester);
       expect(find.byKey(_telegramRow), findsOneWidget);
-      expect(find.text('TG 通知'), findsOneWidget);
+      expect(find.text('Telegram 绑定'), findsOneWidget);
       // An unbound row stays quiet: no warning subtitle, the sheet explains
       // how to link. A bound row shows the positive confirmation instead.
       expect(find.text('未绑定'), findsNothing);

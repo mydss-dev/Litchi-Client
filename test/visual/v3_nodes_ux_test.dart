@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
@@ -71,6 +72,9 @@ class _NodesFixture extends VisualV3Controller {
 }
 
 Future<void> _pump(WidgetTester tester, _NodesFixture controller) async {
+  // These are desktop-specific bulk-selection and latency-tier behaviors.
+  debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+  addTearDown(() => debugDefaultTargetPlatformOverride = null);
   await tester.binding.setSurfaceSize(const Size(900, 700));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   addTearDown(controller.disposeVisual);

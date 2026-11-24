@@ -131,7 +131,7 @@ class V3Palette {
     warning: Color(0xFFBA771C),
     danger: Color(0xFFD5321F),
     lycheeInk: Color(0xFFB03A26),
-    successInk: Color(0xFF0B7440),
+    successInk: Color(0xFF096B38),
     warningInk: Color(0xFF8A5000),
     dangerInk: Color(0xFFA8281B),
     aquaInk: Color(0xFF0B6F6C),

@@ -191,7 +191,7 @@ class _RegionChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(99),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           child: Text(title, style: TextStyle(
             color: selected ? p.lycheeInk : p.inkMuted,
             fontSize: 12, fontWeight: FontWeight.w700)),
