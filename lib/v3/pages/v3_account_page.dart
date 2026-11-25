@@ -371,7 +371,6 @@ class _MobileAccountOverview extends StatelessWidget {
         controller.user.balance > 0 || controller.withdrawable > 0;
     final body = dark ? const Color(0xFF141519) : const Color(0xFFFFFEFD);
     final muted = dark ? const Color(0xFFA4A0A5) : const Color(0xFF83858C);
-    final serviceCount = walletVisible ? 5 : 4;
 
     return ColoredBox(
       color: body,
@@ -447,28 +446,21 @@ class _MobileAccountOverview extends StatelessWidget {
             ]),
           ),
           const SizedBox(height: 27),
-          Row(children: [
-            Expanded(child: Text(
-              v3Copy(context, zh: '账户服务',
-                en: 'Account services', tw: '帳戶服務'),
-              style: TextStyle(color: dark ? const Color(0xFFF4F2F2)
-                : const Color(0xFF202226),
-                fontSize: 16, fontWeight: FontWeight.w800))),
-            Text(v3Copy(context, zh: '$serviceCount 项功能',
-                en: '$serviceCount services', tw: '$serviceCount 項功能'),
-              style: TextStyle(color: muted, fontSize: 10)),
-          ]),
+          Text(v3Copy(context, zh: '账户服务',
+              en: 'Account services', tw: '帳戶服務'),
+            style: TextStyle(color: dark ? const Color(0xFFF4F2F2)
+              : const Color(0xFF202226),
+              fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 13),
           CupertinoListSection.insetGrouped(
             margin: EdgeInsets.zero,
             backgroundColor: body,
-            separatorColor: dark
-              ? const Color(0xFF33343A) : const Color(0xFFEFEFF1),
+            separatorColor: V3Palette.of(context).line.withValues(alpha: .72),
             decoration: BoxDecoration(
-              color: dark ? const Color(0xFF202126) : Colors.white,
-              borderRadius: BorderRadius.circular(23),
-              border: Border.all(color: dark
-                ? const Color(0xFF333439) : const Color(0xFFEBEBEE)),
+              color: V3Palette.of(context).surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: V3Palette.of(context).line
+                  .withValues(alpha: .72)),
             ),
             children: [
               if (walletVisible)
@@ -580,27 +572,23 @@ class _MobileServiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
-    final muted = dark ? const Color(0xFFAEB1B8) : const Color(0xFF737780);
+    final p = V3Palette.of(context);
     return CupertinoListTile.notched(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-      leadingSize: 33,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      leadingSize: 34,
       leading: Container(
-        width: 33, height: 33,
+        width: 34, height: 34,
         decoration: BoxDecoration(
-          color: dark ? const Color(0xFF313238)
-            : const Color(0xFFF4F4F5),
+          color: p.surfaceRaised,
           borderRadius: BorderRadius.circular(11)),
         alignment: Alignment.center,
-        child: Icon(icon, size: 18, color: muted),
+        child: Icon(icon, size: 18, color: p.inkMuted),
       ),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: ink, fontSize: 13,
+        style: TextStyle(color: p.ink, fontSize: 14,
           fontWeight: FontWeight.w600)),
       trailing: Icon(LucideIcons.chevronRight,
-        size: 16, color: dark ? const Color(0xFF777A83)
-          : const Color(0xFFB8B9BF)),
+        size: 16, color: p.inkMuted.withValues(alpha: .70)),
       onTap: onTap,
     );
   }
@@ -627,6 +615,7 @@ class _MobileIdentityCard extends StatelessWidget {
         ? 'L' : avatarSource.substring(0, 1).toUpperCase();
     final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
     final muted = dark ? const Color(0xFFAAA3A6) : const Color(0xFF92929A);
+    final p = V3Palette.of(context);
     return FCard(
       style: FCardStyle(
         decoration: const BoxDecoration(),
@@ -640,18 +629,17 @@ class _MobileIdentityCard extends StatelessWidget {
       decoration: const BoxDecoration(),
       child: Row(children: [
         Container(
+          key: const ValueKey('v3-account-identity-avatar'),
           width: 51, height: 51,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: dark ? const Color(0xFF533B3D)
-              : const Color(0xFFF8DDD7),
-            borderRadius: BorderRadius.circular(17)),
+            color: p.surfaceRaised,
+            borderRadius: BorderRadius.circular(16)),
           child: FAvatar.raw(
             size: 51,
             style: .delta(backgroundColor: Colors.transparent),
             child: Text(letter, style: TextStyle(
-              color: dark ? const Color(0xFFFFD5C9)
-                : const Color(0xFFB35043),
+              color: p.lycheeInk,
               fontSize: 20, fontWeight: FontWeight.w800)),
           ),
         ),
@@ -666,24 +654,20 @@ class _MobileIdentityCard extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(0, 36),
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            side: BorderSide(color: dark
-              ? const Color(0xFF4A3D3F) : const Color(0xFFF0E7E7)),
-            backgroundColor: dark
-              ? const Color(0xFF322C30) : Colors.white,
+            side: BorderSide(color: p.line.withValues(alpha: .72)),
+            backgroundColor: p.surfaceRaised,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
+              borderRadius: BorderRadius.circular(13)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text(v3Copy(context, zh: '管理账户',
                 en: 'Manage', tw: '管理帳戶'),
               style: TextStyle(fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: dark ? const Color(0xFFF3C1B8)
-                  : const Color(0xFF7B6160))),
+                color: p.inkMuted)),
             const SizedBox(width: 3),
             Icon(LucideIcons.chevronRight, size: 13,
-              color: dark ? const Color(0xFFF3C1B8)
-                : const Color(0xFF7B6160)),
+              color: p.inkMuted),
           ]),
         ),
       ]),

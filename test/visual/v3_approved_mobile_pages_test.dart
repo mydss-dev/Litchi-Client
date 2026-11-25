@@ -57,6 +57,8 @@ void main() {
     expect(find.text('Litchi User'), findsNothing);
     expect(find.text('litchi-user@example.com'), findsOneWidget);
     expect(find.text('管理账户'), findsOneWidget);
+    expect(find.byKey(const ValueKey('v3-account-identity-avatar')),
+        findsOneWidget);
     expect(find.byKey(const ValueKey('v3-account-merged-card')),
         findsOneWidget);
     expect(find.text('当前套餐'), findsOneWidget);
@@ -69,6 +71,7 @@ void main() {
         matching: find.byKey(const ValueKey('v3-mobile-plan-card'))),
         findsOneWidget);
     expect(find.text('账户服务'), findsOneWidget);
+    expect(find.text('5 项功能'), findsNothing);
     expect(find.text('流量用量'), findsNothing);
     expect(find.text('订单记录'), findsOneWidget);
     expect(find.text('工单支持'), findsOneWidget);

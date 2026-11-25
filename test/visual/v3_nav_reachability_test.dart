@@ -178,7 +178,7 @@ void main() {
           const ValueKey('v3-account-wallet-service'));
       final settings = find.byKey(hubRowKey(AppPage.settings));
       expect(find.text('账户服务'), findsOneWidget);
-      expect(find.text('5 项功能'), findsOneWidget);
+      expect(find.text('5 项功能'), findsNothing);
       expect(find.byKey(hubRowKey(AppPage.traffic)), findsNothing);
       expect(find.text('流量用量'), findsNothing);
       expect(find.byType(CupertinoListSection), findsOneWidget);
@@ -186,6 +186,8 @@ void main() {
       expect(find.byKey(const ValueKey('v3-account-merged-card')),
           findsOneWidget);
       expect(find.byType(FAvatar), findsOneWidget);
+      expect(find.byKey(const ValueKey('v3-account-identity-avatar')),
+          findsOneWidget);
       expect(orders, findsOneWidget);
       expect(wallet, findsOneWidget);
       expect(settings, findsOneWidget);
