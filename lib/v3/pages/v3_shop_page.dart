@@ -37,13 +37,19 @@ class V3ShopPage extends StatefulWidget {
 
 class _V3ShopPageState extends State<V3ShopPage> {
   PlanCategory? _category;
-  BillingCycle _phoneCycle = BillingCycle.monthly;
 
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final plans = controller.plans.where((plan) =>
-        _category == null || plan.category == _category).toList(growable: false);
+    final plans = controller.plans.where((plan) {
+      if (_category == null) return true;
+      if (_category == PlanCategory.oneTime) {
+        return plan.category == PlanCategory.oneTime ||
+            (plan.category == PlanCategory.dataPack &&
+              plan.oneTimePrice != null);
+      }
+      return plan.category == _category;
+    }).toList(growable: false);
     return LayoutBuilder(builder: (context, constraints) {
       // Horizontal gutters follow the shared page insets so the card-width
       // math matches what the scroll view actually applies.
@@ -60,19 +66,22 @@ class _V3ShopPageState extends State<V3ShopPage> {
             : V3Layout.pageInsets,
         child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
-            title: _tr(context, '套餐', 'Plans', '套餐'),
-            subtitle: _tr(context,
-                '${controller.plans.length} 个可用套餐',
-                '${controller.plans.length} available plans',
-                '${controller.plans.length} 個可用套餐')),
+            title: phone ? _tr(context, '套餐订阅', 'Plans', '套餐訂閱')
+                : _tr(context, '套餐', 'Plans', '套餐'),
+            subtitle: phone
+                ? _tr(context, '选择适合你的连接与流量方案',
+                    'Find a connection and data plan that fits',
+                    '選擇適合你的連線與流量方案')
+                : _tr(context,
+                    '${controller.plans.length} 个可用套餐',
+                    '${controller.plans.length} available plans',
+                    '${controller.plans.length} 個可用套餐')),
           const SizedBox(height: 18),
-          // The segment rides as its own row directly under the title (the
-          // traffic page's period-seg pattern) instead of reading as part of
-          // the header zone.
           if (phone)
-            _PhoneBillingDeck(
-              selected: _phoneCycle,
-              onChanged: (cycle) => setState(() => _phoneCycle = cycle))
+            _MobileCategoryFilters(
+              selected: _category,
+              count: plans.length,
+              onChanged: (kind) => setState(() => _category = kind))
           else
             _CategoryDeck(selected: _category,
               onChanged: (value) => setState(() => _category = value)),
@@ -148,8 +157,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
                         Expanded(child: _PlanCard(plan: plan,
                           currencySymbol: controller.currencySymbol,
                           desktop: true,
-                          onBuy: () => _openOrder(controller, plan,
-                            v3DefaultCycle(plan)))),
+                          onBuy: (cycle) => _openOrder(controller, plan, cycle))),
                       if (plans.length - i == 1) const Expanded(child: SizedBox()),
                     ]))),
             ])
@@ -158,10 +166,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
               child: _PlanCard(plan: plan,
                 currencySymbol: controller.currencySymbol,
                 desktop: twoColumns,
-                chosenCycle: phone ? _phoneCycle : null,
-                onBuy: () => _openOrder(controller, plan,
-                  phone && plan.category == PlanCategory.recurring
-                      ? _phoneCycle : v3DefaultCycle(plan)))),
+                onBuy: (cycle) => _openOrder(controller, plan, cycle))),
           ]),
         ]),
       );
@@ -181,43 +186,65 @@ class _V3ShopPageState extends State<V3ShopPage> {
 }
 
 
-class _PhoneBillingDeck extends StatelessWidget {
-  const _PhoneBillingDeck({
-    required this.selected,
-    required this.onChanged,
-  });
-  final BillingCycle selected;
-  final ValueChanged<BillingCycle> onChanged;
-
+/// Approved V15: categories filter the catalog; billing cycles live in each
+/// individual recurring plan card instead of a global selector.
+class _MobileCategoryFilters extends StatelessWidget {
+  const _MobileCategoryFilters({required this.selected,
+    required this.count, required this.onChanged});
+  final PlanCategory? selected;
+  final int count;
+  final ValueChanged<PlanCategory?> onChanged;
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final cycles = <(BillingCycle, String)>[
-      (BillingCycle.monthly, _tr(context, '月付', 'Monthly', '月付')),
-      (BillingCycle.quarterly, _tr(context, '季付', 'Quarterly', '季付')),
-      (BillingCycle.yearly, _tr(context, '年付', 'Yearly', '年付')),
+    final options = <(PlanCategory?, String, IconData, String)>[
+      (null, _tr(context, '全部', 'All', '全部'), Icons.grid_view_rounded, 'all'),
+      (PlanCategory.recurring, _tr(context, '周期性', 'Recurring', '週期性'),
+        Icons.access_time_rounded, 'recurring'),
+      (PlanCategory.oneTime, _tr(context, '一次性', 'One-time', '一次性'),
+        Icons.shopping_bag_outlined, 'once'),
     ];
-    return Container(
-      width: 254, height: 42,
-      decoration: BoxDecoration(color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: p.hairline)),
-      padding: const EdgeInsets.all(4),
-      child: Row(children: [
-        for (final (cycle, label) in cycles)
-          Expanded(child: Material(
-            color: selected == cycle ? p.lycheeSoft : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Expanded(child: Text(_tr(context, '可购买套餐',
+            'Available plans', '可購買套餐'),
+          style: TextStyle(color: p.ink, fontSize: 16,
+            fontWeight: FontWeight.w800))),
+        Text(_tr(context, '共 $count 个方案', '$count plans',
+              '共 $count 個方案'),
+          style: TextStyle(color: p.inkMuted, fontSize: 10)),
+      ]),
+      const SizedBox(height: 13),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final (kind, label, glyph, keyName) in options)
+          Material(
+            color: selected == kind ? p.night : p.surface,
+            borderRadius: BorderRadius.circular(25),
             child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () => onChanged(cycle),
-              child: Center(child: Text(label,
-                style: TextStyle(fontSize: 12,
-                  color: selected == cycle ? p.lycheeInk : p.inkMuted,
-                  fontWeight: FontWeight.w700))))),
+              key: ValueKey('shop-filter-$keyName'),
+              onTap: () => onChanged(kind),
+              borderRadius: BorderRadius.circular(25),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 39),
+                padding: const EdgeInsets.symmetric(horizontal: 13,
+                  vertical: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(color: selected == kind
+                      ? p.night : p.line)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(glyph, size: 14, color: selected == kind
+                      ? Colors.white : p.inkMuted),
+                  const SizedBox(width: 6),
+                  Text(label, style: TextStyle(fontSize: 12,
+                    color: selected == kind ? Colors.white : p.ink,
+                    fontWeight: FontWeight.w700)),
+                ]),
+              ),
+            ),
           ),
       ]),
-    );
+    ]);
   }
 }
 
@@ -418,7 +445,7 @@ class _PlanCard extends StatelessWidget {
   final String currencySymbol;
   final bool desktop;
   final BillingCycle? chosenCycle;
-  final VoidCallback onBuy;
+  final ValueChanged<BillingCycle> onBuy;
 
   @override
   Widget build(BuildContext context) {
@@ -429,8 +456,11 @@ class _PlanCard extends StatelessWidget {
     final price = v3PlanPrice(plan, cycle);
     if (!desktop) {
       return _HtmlPhonePlanCard(
-        plan: plan, currencySymbol: currencySymbol,
-        cycle: cycle, price: price, onBuy: onBuy);
+        key: ValueKey('shop-mobile-plan-${plan.id}'),
+        plan: plan,
+        currencySymbol: currencySymbol,
+        onBuy: onBuy,
+      );
     }
     final features = plan.features.take(3).toList(growable: false);
     final info = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -502,7 +532,7 @@ class _PlanCard extends StatelessWidget {
         const SizedBox(height: 12),
         SizedBox(width: double.infinity, height: 44,
           child: FilledButton(
-            onPressed: plan.soldOut || price == null ? null : onBuy,
+            onPressed: plan.soldOut || price == null ? null : () => onBuy(cycle),
             style: FilledButton.styleFrom(backgroundColor: p.lychee,
               foregroundColor: p.onLychee,
               shape: RoundedRectangleBorder(
@@ -525,100 +555,287 @@ class _PlanCard extends StatelessWidget {
 }
 
 
-class _HtmlPhonePlanCard extends StatelessWidget {
-  const _HtmlPhonePlanCard({
-    required this.plan, required this.currencySymbol,
-    required this.cycle, required this.price, required this.onBuy,
-  });
+/// Mobile cycle options use only periods actually priced by the backend.
+List<BillingCycle> _mobileAvailableCycles(PlanModel plan) => [
+  if (plan.monthlyPrice != null) BillingCycle.monthly,
+  if (plan.quarterlyPrice != null) BillingCycle.quarterly,
+  if (plan.halfYearPrice != null) BillingCycle.halfYear,
+  if (plan.yearlyPrice != null) BillingCycle.yearly,
+  if (plan.twoYearPrice != null) BillingCycle.twoYears,
+  if (plan.threeYearPrice != null) BillingCycle.threeYears,
+];
+
+class _HtmlPhonePlanCard extends StatefulWidget {
+  const _HtmlPhonePlanCard({super.key, required this.plan,
+    required this.currencySymbol, required this.onBuy});
   final PlanModel plan;
   final String currencySymbol;
-  final BillingCycle cycle;
-  final double? price;
-  final VoidCallback onBuy;
+  final ValueChanged<BillingCycle> onBuy;
+
+  @override
+  State<_HtmlPhonePlanCard> createState() => _HtmlPhonePlanCardState();
+}
+
+class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
+  BillingCycle? _selected;
+  @override
+  void didUpdateWidget(covariant _HtmlPhonePlanCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.plan.id != widget.plan.id) _selected = null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final features = plan.features.take(3).toList(growable: false);
-    final featured = plan.featured || plan.hot;
-    final isRecurring = plan.category == PlanCategory.recurring;
-    return V3Panel(padding: const EdgeInsets.all(17),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(plan.title,
-          maxLines: 2, overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: p.ink,
-            fontSize: 16, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 8),
-        Row(children: [
-          if (featured)
-            V3StatusBadge(label: plan.featured
-              ? _tr(context, '推荐', 'Recommended', '推薦')
-              : _tr(context, '热门', 'Popular', '熱門'),
-              compact: true, color: p.lychee),
-          if (featured) const SizedBox(width: 8),
-          Text(plan.capacity,
-            style: TextStyle(color: p.inkMuted,
-              fontSize: 11, fontWeight: FontWeight.w600)),
-        ]),
-        const SizedBox(height: 14),
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text(price == null
-              ? _tr(context, '不可购买', 'Unavailable', '無法購買')
-              : '$currencySymbol${price?.toStringAsFixed(2)}',
-            style: TextStyle(color: p.ink, fontSize: 28,
-              fontWeight: FontWeight.w900,
-              fontFeatures: const [FontFeature.tabularFigures()])),
-          const SizedBox(width: 7),
-          Padding(padding: const EdgeInsets.only(bottom: 4),
-            child: Text(isRecurring ? '/${v3CycleLabel(context, cycle)}'
-              : _tr(context, '/一次性', '/one time', '/一次性'),
-              style: TextStyle(color: p.inkMuted, fontSize: 11))),
-        ]),
-        if (plan.deviceLimit != null) ...[
-          const SizedBox(height: 5),
-          Text(_tr(context, '${plan.deviceLimit} 台设备',
-            '${plan.deviceLimit} devices',
-            '${plan.deviceLimit} 台設備'),
-            style: TextStyle(color: p.inkMuted, fontSize: 12)),
-        ],
-        const SizedBox(height: 15),
-        if (features.isEmpty)
-          Text(_tr(context, '暂无套餐说明',
-              'No details available', '尚無方案說明'),
-            style: TextStyle(color: p.inkMuted, fontSize: 12))
-        else
-          for (final feature in features)
-            Padding(padding: const EdgeInsets.only(bottom: 8),
-              child: Row(children: [
-                Icon(Icons.check_rounded,
-                  color: p.successInk, size: 15),
-                const SizedBox(width: 7),
-                Expanded(child: Text(feature, maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.inkMuted, fontSize: 12))),
-              ])),
-        const SizedBox(height: 13),
-        SizedBox(width: double.infinity, height: 42,
-          child: FilledButton(
-            onPressed: plan.soldOut || price == null ? null : onBuy,
-            style: FilledButton.styleFrom(
-              backgroundColor: featured ? p.lychee : p.surfaceRaised,
-              foregroundColor: featured ? p.onLychee : p.ink,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(13))),
-            child: Text(plan.soldOut
-              ? _tr(context, '已售罄', 'Sold out', '已售罄')
-              : _tr(context, '选择此套餐', 'Choose plan', '選擇此方案')))),
-        Align(alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: () => _showPlanDetails(context, plan),
-            style: TextButton.styleFrom(
-              foregroundColor: p.inkMuted,
-              padding: EdgeInsets.zero),
-            child: Text(_tr(context, '查看套餐说明',
-              'View details', '查看方案說明'),
-              style: const TextStyle(fontSize: 11)))),
+    final plan = widget.plan;
+    final recurring = plan.category == PlanCategory.recurring;
+    final cycles = recurring ? _mobileAvailableCycles(plan) : <BillingCycle>[];
+    final cycle = cycles.contains(_selected) ? _selected!
+        : (cycles.isEmpty ? BillingCycle.monthly : cycles.first);
+    final price = v3PlanPrice(plan, cycle);
+    // Recommendation is an explicit data flag only. No inferred ranking.
+    final recommended = plan.featured;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
+    final muted = dark ? const Color(0xFFA4A0A5) : const Color(0xFF83858C);
+    final line = dark ? const Color(0xFF333439)
+        : const Color(0xFFEBEBEE);
+    final surface = dark ? const Color(0xFF202126) : Colors.white;
+    final benefits = plan.features.length > 1
+        ? plan.features.skip(1).toList(growable: false) : <String>[];
+
+    return Container(
+      key: ValueKey('shop-card-${plan.id}'),
+      decoration: BoxDecoration(
+        color: recommended
+            ? (dark ? const Color(0xFF3E2F34)
+                : const Color(0xFFFFE9E4))
+            : surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: recommended
+            ? (dark ? const Color(0xFF68494C)
+                : const Color(0xFFF1D4CE))
+            : line),
+        boxShadow: dark ? null : const [BoxShadow(
+          color: Color(0x0C241D21), offset: Offset(0, 7),
+          blurRadius: 20)],
+      ),
+      child: Stack(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(19, 19, 19, 18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(flex: 51, child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(plan.title, maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: ink, fontSize: 20,
+                      fontWeight: FontWeight.w800, height: 1.22)),
+                  if (plan.features.isNotEmpty) ...[
+                    const SizedBox(height: 7),
+                    Text(plan.features.first, maxLines: 5,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: muted, fontSize: 11.5,
+                        height: 1.5)),
+                  ],
+                ],
+              )),
+              const SizedBox(width: 8),
+              Expanded(flex: 49, child: Padding(
+                // V15: same price anchor with or without recommendation.
+                padding: const EdgeInsets.only(top: 34),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (price == null)
+                      Text(_tr(context, '价格待公布', 'Price unavailable',
+                          '價格待公佈'),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(color: muted, fontSize: 12))
+                    else ...[
+                      SizedBox(width: double.infinity, child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Row(mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end, children: [
+                          Padding(padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(widget.currencySymbol,
+                              style: TextStyle(color: ink,
+                                fontSize: 16, fontWeight: FontWeight.w800))),
+                          Text(price.toStringAsFixed(2),
+                            key: ValueKey('shop-price-${plan.id}'),
+                            style: TextStyle(color: ink,
+                              fontSize: 40, height: 1.1,
+                              letterSpacing: -1.6,
+                              fontWeight: FontWeight.w900,
+                              fontFeatures: const [FontFeature.tabularFigures()])),
+                        ]),
+                      )),
+                      const SizedBox(height: 2),
+                      Text(recurring ? '/ ${v3CycleLabel(context, cycle)}'
+                          : _tr(context, '一次性', 'One-time', '一次性'),
+                        style: TextStyle(color: muted, fontSize: 11)),
+                    ],
+                  ],
+                ),
+              )),
+            ]),
+            if (plan.capacity.isNotEmpty ||
+                (plan.deviceLimit != null && plan.deviceLimit! > 0)) ...[
+              const SizedBox(height: 16),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                if (plan.capacity.isNotEmpty)
+                  _MobilePlanSpec(icon: Icons.grid_view_rounded,
+                    text: _tr(context, '流量 ${plan.capacity}',
+                      'Data ${plan.capacity}', '流量 ${plan.capacity}')),
+                if (plan.deviceLimit != null && plan.deviceLimit! > 0)
+                  _MobilePlanSpec(icon: Icons.devices_outlined,
+                    text: _tr(context, '设备 ${plan.deviceLimit} 台',
+                      '${plan.deviceLimit} devices',
+                      '裝置 ${plan.deviceLimit} 台')),
+              ]),
+            ],
+            // The one-time plan never gets a pseudo-second purchase button.
+            if (recurring && cycles.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              Text(_tr(context, '购买周期', 'Billing period', '購買週期'),
+                style: TextStyle(color: muted, fontSize: 11,
+                  fontWeight: FontWeight.w700)),
+              const SizedBox(height: 10),
+              LayoutBuilder(builder: (context, bounds) {
+                final width = (bounds.maxWidth - 16) / 3;
+                return Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final option in cycles)
+                    SizedBox(width: width, height: 36,
+                      child: _MobileCycleChip(
+                        key: ValueKey('shop-cycle-${plan.id}-${option.name}'),
+                        label: v3CycleLabel(context, option),
+                        selected: cycle == option,
+                        onTap: () => setState(() => _selected = option))),
+                ]);
+              }),
+            ],
+            if (benefits.isNotEmpty) ...[
+              const SizedBox(height: 17),
+              Divider(color: line, height: 1),
+              const SizedBox(height: 16),
+              for (final benefit in benefits)
+                Padding(padding: const EdgeInsets.only(bottom: 11),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.check_rounded, size: 16,
+                        color: recommended ? p.lycheeInk : muted),
+                      const SizedBox(width: 9),
+                      Expanded(child: Text(benefit,
+                        style: TextStyle(color: ink,
+                          fontSize: 12, height: 1.45))),
+                    ])),
+            ],
+            const SizedBox(height: 17),
+            SizedBox(width: double.infinity, height: 46,
+              child: FilledButton(
+                key: ValueKey('shop-buy-${plan.id}'),
+                onPressed: plan.soldOut || price == null
+                    ? null : () => widget.onBuy(cycle),
+                style: FilledButton.styleFrom(
+                  backgroundColor: dark ? const Color(0xFFF3E4E1)
+                    : const Color(0xFF252429),
+                  foregroundColor: dark ? const Color(0xFF2D2529)
+                    : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16))),
+                child: Text(plan.soldOut
+                  ? _tr(context, '已售罄', 'Sold out', '已售罄')
+                  : price == null
+                    ? _tr(context, '暂不可购买', 'Unavailable', '暫不可購買')
+                    : _tr(context, '选择此套餐',
+                        'Choose this plan', '選擇此方案'),
+                  style: const TextStyle(fontWeight: FontWeight.w700))),
+            ),
+          ]),
+        ),
+        if (recommended)
+          Positioned(top: 13, right: 18,
+            child: IgnorePointer(child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: dark ? const Color(0xFF322C30)
+                  : const Color(0xFFFFF9F6),
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: dark
+                  ? const Color(0xFF68494C)
+                  : const Color(0xFFF1D4CE))),
+              child: Text(_tr(context, '★ 推荐',
+                  '★ Recommended', '★ 推薦'),
+                style: TextStyle(color: p.lycheeInk,
+                  fontSize: 11, fontWeight: FontWeight.w700)),
+            ))),
       ]),
+    );
+  }
+}
+
+class _MobilePlanSpec extends StatelessWidget {
+  const _MobilePlanSpec({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF313238)
+          : const Color(0xFFF4F4F5),
+        borderRadius: BorderRadius.circular(10)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 14, color: dark
+          ? const Color(0xFFAEB1B8) : const Color(0xFF737780)),
+        const SizedBox(width: 6),
+        Text(text, style: TextStyle(fontSize: 11,
+          color: dark ? const Color(0xFFAEB1B8)
+            : const Color(0xFF737780), fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
+}
+
+class _MobileCycleChip extends StatelessWidget {
+  const _MobileCycleChip({super.key, required this.label,
+    required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: selected
+        ? (dark ? const Color(0xFFF4F2F2) : const Color(0xFF252429))
+        : (dark ? const Color(0xFF24252A) : Colors.white),
+      borderRadius: BorderRadius.circular(99),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(99),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 9),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border.all(color: selected
+              ? (dark ? const Color(0xFFF4F2F2) : const Color(0xFF252429))
+              : (dark ? const Color(0xFF3A393F)
+                : const Color(0xFFECEBEF))),
+            borderRadius: BorderRadius.circular(99)),
+          child: Text(label, maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+              color: selected
+                ? (dark ? const Color(0xFF252429) : Colors.white)
+                : (dark ? const Color(0xFFF4F2F2)
+                  : const Color(0xFF202226)))),
+        ),
+      ),
     );
   }
 }

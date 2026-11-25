@@ -380,127 +380,144 @@ class _MobileAccountOverview extends StatelessWidget {
     );
   }
 
-  /// Transcribed from elegant_mockup.html account .ac-profile / .ac-wallet /
-  /// .ac-grid / .ac-group: a 12dp rhythm rather than the previous 57dp menu
-  /// stack. Every service tile is still wired to the existing controller.
+  /// Exact approved account V3 visual hierarchy. Account operations remain wired
+  /// to existing callbacks; the bottom dock belongs to the shared shell.
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final walletVisible = AppConfig.panelFeatures.wallet ||
         controller.user.balance > 0 || controller.withdrawable > 0;
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 110),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        V3PageHeader(
-          title: v3Copy(context, zh: '我的', en: 'Account', tw: '我的'),
-          subtitle: v3Copy(context, zh: '账户信息 · 偏好 · 安全',
-              en: 'Account · Preferences · Security',
-              tw: '帳戶資訊 · 偏好 · 安全'),
-          trailing: IconButton(
-            tooltip: v3Copy(context, zh: '刷新账户数据',
-              en: 'Refresh account', tw: '重新整理帳戶資料'),
-            onPressed: refreshing ? null : onRefresh,
-            icon: refreshing
-                ? const SizedBox(width: 18, height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(Icons.refresh_rounded, color: p.inkMuted, size: 19),
-          ),
-        ),
-        const SizedBox(height: 14),
-        _MobileIdentityCard(
-          controller: controller,
-          onManage: () => _showManage(context),
-        ),
-        const SizedBox(height: 12),
-        _MobilePlanCard(controller: controller),
-        // Apple-style grouped services, preserving the existing destinations
-        // and all feature gates. Wallet leads because it is the most frequent
-        // account action; neither page routing nor the main dock is changed.
-        const SizedBox(height: 25),
-        Padding(
-          padding: const EdgeInsets.only(left: 1),
-          child: Text(
-            v3Copy(context, zh: '账户服务', en: 'YOUR SERVICES', tw: '帳戶服務'),
-            style: TextStyle(
-              color: p.inkMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.15,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        CupertinoListSection.insetGrouped(
-          margin: EdgeInsets.zero,
-          backgroundColor: p.canvas,
-          separatorColor: p.line,
-          decoration: BoxDecoration(
-            color: p.surface,
-            borderRadius: BorderRadius.circular(V3Radius.card),
-            border: Border.all(color: p.line.withValues(alpha: .72)),
-          ),
-          children: [
-            if (walletVisible)
-              _MobileServiceTile(
-                key: const ValueKey('v3-account-wallet-service'),
-                icon: LucideIcons.wallet,
-                title: v3Copy(context, zh: '我的钱包',
-                  en: 'Wallet', tw: '我的錢包'),
-                onTap: () => Navigator.of(context).push<void>(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const _MobileWalletPage())),
+    final body = dark ? const Color(0xFF141519) : const Color(0xFFFFFEFD);
+    final muted = dark ? const Color(0xFFA4A0A5) : const Color(0xFF83858C);
+    final serviceCount = walletVisible ? 6 : 5;
+
+    return ColoredBox(
+      color: body,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(v3Copy(context, zh: '我的', en: 'Account', tw: '我的'),
+                  style: TextStyle(color: dark ? const Color(0xFFF4F2F2)
+                    : const Color(0xFF202226),
+                    fontSize: 30, height: 1.1, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 7),
+                Text(v3Copy(context, zh: '账户与订阅管理',
+                    en: 'Account & subscriptions', tw: '帳戶與訂閱管理'),
+                  style: TextStyle(color: muted, fontSize: 12)),
+              ],
+            )),
+            Material(
+              color: dark ? const Color(0xFF202126) : Colors.white,
+              shape: CircleBorder(side: BorderSide(
+                color: dark ? const Color(0xFF303137)
+                    : const Color(0xFFEBEBEE))),
+              child: IconButton(
+                key: const ValueKey('v3-account-refresh'),
+                tooltip: v3Copy(context, zh: '刷新账户数据',
+                  en: 'Refresh account', tw: '重新整理帳戶資料'),
+                onPressed: refreshing ? null : onRefresh,
+                icon: refreshing
+                  ? const SizedBox(width: 17, height: 17,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.refresh_rounded, color: muted, size: 18),
               ),
-            _MobileServiceTile(
-              key: hubRowKey(AppPage.orders),
-              icon: LucideIcons.receipt,
-              title: v3Copy(context, zh: '订单记录',
-                en: 'Orders', tw: '訂單紀錄'),
-              onTap: () => openV3Page(context, AppPage.orders),
             ),
-            _MobileServiceTile(
-              key: hubRowKey(AppPage.traffic),
-              icon: LucideIcons.activity,
-              title: v3Copy(context, zh: '流量用量',
-                en: 'Data usage', tw: '流量用量'),
-              onTap: () => openV3Page(context, AppPage.traffic),
+          ]),
+          const SizedBox(height: 19),
+          _MobileIdentityCard(
+            controller: controller,
+            onManage: () => _showManage(context),
+          ),
+          const SizedBox(height: 19),
+          _MobilePlanCard(controller: controller),
+          const SizedBox(height: 29),
+          Row(children: [
+            Expanded(child: Text(
+              v3Copy(context, zh: '账户服务',
+                en: 'Account services', tw: '帳戶服務'),
+              style: TextStyle(color: dark ? const Color(0xFFF4F2F2)
+                : const Color(0xFF202226),
+                fontSize: 16, fontWeight: FontWeight.w800))),
+            Text(v3Copy(context, zh: '$serviceCount 项功能',
+                en: '$serviceCount services', tw: '$serviceCount 項功能'),
+              style: TextStyle(color: muted, fontSize: 10)),
+          ]),
+          const SizedBox(height: 13),
+          Container(
+            decoration: BoxDecoration(
+              color: dark ? const Color(0xFF202126) : Colors.white,
+              borderRadius: BorderRadius.circular(23),
+              border: Border.all(color: dark
+                ? const Color(0xFF333439) : const Color(0xFFEBEBEE)),
             ),
-            _MobileServiceTile(
-              key: hubRowKey(AppPage.tickets),
-              icon: LucideIcons.messageCircle,
-              title: v3Copy(context, zh: '工单支持',
-                en: 'Ticket support', tw: '工單支援'),
-              onTap: () => openV3Page(context, AppPage.tickets),
-            ),
-            _MobileServiceTile(
-              key: hubRowKey(AppPage.invite),
-              icon: LucideIcons.users,
-              title: v3Copy(context, zh: '邀请好友',
-                en: 'Invite friends', tw: '邀請好友'),
-              onTap: () => openV3Page(context, AppPage.invite),
-            ),
-            _MobileServiceTile(
-              key: hubRowKey(AppPage.settings),
-              icon: LucideIcons.settings,
-              title: v3Copy(context, zh: '应用设置',
-                en: 'Settings', tw: '應用設定'),
-              onTap: () => openV3Page(context, AppPage.settings),
+            clipBehavior: Clip.antiAlias,
+            child: Column(children: [
+              if (walletVisible)
+                _MobileServiceTile(
+                  key: const ValueKey('v3-account-wallet-service'),
+                  icon: LucideIcons.wallet,
+                  title: v3Copy(context, zh: '我的钱包',
+                    en: 'Wallet', tw: '我的錢包'),
+                  onTap: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const _MobileWalletPage())),
+                ),
+              _MobileServiceTile(
+                key: hubRowKey(AppPage.orders),
+                icon: LucideIcons.receipt,
+                title: v3Copy(context, zh: '订单记录',
+                  en: 'Orders', tw: '訂單紀錄'),
+                onTap: () => openV3Page(context, AppPage.orders),
+              ),
+              _MobileServiceTile(
+                key: hubRowKey(AppPage.traffic),
+                icon: LucideIcons.activity,
+                title: v3Copy(context, zh: '流量用量',
+                  en: 'Data usage', tw: '流量用量'),
+                onTap: () => openV3Page(context, AppPage.traffic),
+              ),
+              _MobileServiceTile(
+                key: hubRowKey(AppPage.tickets),
+                icon: LucideIcons.messageCircle,
+                title: v3Copy(context, zh: '工单支持',
+                  en: 'Ticket support', tw: '工單支援'),
+                onTap: () => openV3Page(context, AppPage.tickets),
+              ),
+              _MobileServiceTile(
+                key: hubRowKey(AppPage.invite),
+                icon: LucideIcons.users,
+                title: v3Copy(context, zh: '邀请好友',
+                  en: 'Invite friends', tw: '邀請好友'),
+                onTap: () => openV3Page(context, AppPage.invite),
+              ),
+              _MobileServiceTile(
+                key: hubRowKey(AppPage.settings),
+                icon: LucideIcons.settings,
+                title: v3Copy(context, zh: '应用设置',
+                  en: 'Settings', tw: '應用設定'),
+                onTap: () => openV3Page(context, AppPage.settings),
+              ),
+            ]),
+          ),
+          if (controller.dataLoadError != null) ...[
+            const SizedBox(height: 12),
+            V3EmptyState(
+              icon: Icons.error_outline_rounded,
+              title: v3Copy(context, zh: '账户加载失败',
+                en: 'Could not load account', tw: '帳戶載入失敗'),
+              subtitle: controller.dataLoadError!,
+              actionLabel: v3Copy(context, zh: '重试',
+                en: 'Retry', tw: '重試'),
+              onAction: controller.refreshData,
             ),
           ],
-        ),
-        if (controller.dataLoadError != null) ...[
-          const SizedBox(height: 12),
-          V3EmptyState(
-            icon: Icons.error_outline_rounded,
-            title: v3Copy(context, zh: '账户加载失败',
-                en: 'Could not load account', tw: '帳戶載入失敗'),
-            subtitle: controller.dataLoadError!,
-            actionLabel: v3Copy(context, zh: '重试',
-                en: 'Retry', tw: '重試'),
-            onAction: controller.refreshData,
-          ),
-        ],
-      ]),
+        ]),
+      ),
     );
   }
 }
@@ -545,36 +562,65 @@ class _MobileSurface extends StatelessWidget {
 
 /// Account-only Apple-style service rows. Do not change the rows used by
 /// manage-account sheets or any desktop navigation.
+/// Account service row, scoped to the approved grouped mobile list.
 class _MobileServiceTile extends StatelessWidget {
-  const _MobileServiceTile({
-    super.key, required this.icon, required this.title, required this.onTap,
-  });
-
+  const _MobileServiceTile({super.key, required this.icon,
+    required this.title, required this.onTap});
   final IconData icon;
   final String title;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return CupertinoListTile.notched(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
-      leading: Icon(icon, size: 20, color: p.inkMuted),
-      leadingSize: 24,
-      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontFamily: 'Segoe UI',
-          fontFamilyFallback: const ['Noto Sans CJK SC', 'Roboto'],
-          color: p.ink,
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-        )),
-      trailing: Icon(LucideIcons.chevronRight,
-        size: 18, color: p.inkMuted.withValues(alpha: .65)),
-      onTap: onTap,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
+    final muted = dark ? const Color(0xFFAEB1B8) : const Color(0xFF737780);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 58,
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          child: Row(children: [
+            Container(
+              width: 33, height: 33,
+              decoration: BoxDecoration(
+                color: dark ? const Color(0xFF313238)
+                    : const Color(0xFFF4F4F5),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, size: 18, color: muted),
+            ),
+            const SizedBox(width: 13),
+            Expanded(child: Container(
+              height: double.infinity,
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(
+                  color: dark ? const Color(0xFF33343A)
+                      : const Color(0xFFEFEFF1),
+                  width: .6,
+                )),
+              ),
+              child: Row(children: [
+                Expanded(child: Text(title,
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: ink, fontSize: 13,
+                    fontWeight: FontWeight.w600))),
+                Icon(LucideIcons.chevronRight, size: 16,
+                  color: dark ? const Color(0xFF777A83)
+                      : const Color(0xFFB8B9BF)),
+              ]),
+            )),
+          ]),
+        ),
+      ),
     );
   }
 }
+
 
 /// Use Forui's card implementation only for the two account overview cards.
 /// Their existing dimensions and controller behavior stay unchanged.
@@ -609,117 +655,296 @@ class _ForuiAccountCard extends StatelessWidget {
 }
 
 class _MobileIdentityCard extends StatelessWidget {
-  const _MobileIdentityCard({
-    required this.controller,
-    required this.onManage,
-  });
+  const _MobileIdentityCard({required this.controller, required this.onManage});
   final AppController controller;
   final VoidCallback onManage;
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final user = controller.user;
     final letter = user.avatarLetter.trim().isEmpty
         ? 'L' : user.avatarLetter.trim().substring(0, 1).toUpperCase();
-
-    return _ForuiAccountCard(
-      padding: const EdgeInsets.all(14),
+    final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
+    final muted = dark ? const Color(0xFFAAA3A6) : const Color(0xFF92929A);
+    return Container(
+      constraints: const BoxConstraints(minHeight: 102),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft, end: Alignment.centerRight,
+          colors: dark
+            ? const [Color(0xFF24242A), Color(0xFF2A2528)]
+            : const [Color(0xFFFFFFFF), Color(0xFFFCFBFB),
+                Color(0xFFFFF8F6)],
+        ),
+        borderRadius: BorderRadius.circular(23),
+        border: Border.all(color: dark
+            ? const Color(0xFF3A3337) : const Color(0xFFECEBEF)),
+      ),
       child: Row(children: [
-        FAvatar.raw(size: 42,
-          style: .delta(backgroundColor: p.lycheeSoft),
-          child: Text(letter, style: TextStyle(
-            fontFamily: 'Segoe UI',
-            fontFamilyFallback: const ['Noto Sans CJK SC', 'Roboto'],
-            color: p.lycheeInk, fontWeight: FontWeight.w700, fontSize: 17))),
-        const SizedBox(width: 10),
+        Stack(clipBehavior: Clip.none, children: [
+          Container(
+            width: 51, height: 51,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: dark ? const Color(0xFF4B3436)
+                : const Color(0xFFFCE3DC),
+              borderRadius: BorderRadius.circular(17)),
+            child: Text(letter, style: TextStyle(
+              color: dark ? const Color(0xFFFFD5C9)
+                : const Color(0xFFBA4635),
+              fontSize: 19, fontWeight: FontWeight.w800)),
+          ),
+          Positioned(right: -1, bottom: -1,
+            child: Container(width: 12, height: 12,
+              decoration: BoxDecoration(
+                color: const Color(0xFF43B884),
+                shape: BoxShape.circle,
+                border: Border.all(color: dark
+                  ? const Color(0xFF332A2D) : const Color(0xFFFFF9F6),
+                  width: 2))),
+          ),
+        ]),
+        const SizedBox(width: 13),
         Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(width: 6, height: 6, decoration: const BoxDecoration(
+                shape: BoxShape.circle, color: Color(0xFF43B884))),
+              const SizedBox(width: 5),
+              Text(v3Copy(context, zh: '已登录账户',
+                    en: 'Signed in', tw: '已登入帳戶'),
+                style: TextStyle(color: muted,
+                  fontSize: 10, fontWeight: FontWeight.w700)),
+            ]),
+            const SizedBox(height: 5),
             Text(v3AccountDisplayName(context, user.name),
               maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: p.ink, fontSize: 15,
-                fontWeight: FontWeight.w700)),
+              style: TextStyle(color: ink, fontSize: 17,
+                fontWeight: FontWeight.w800)),
             const SizedBox(height: 3),
             Text(v3AccountEmailLabel(
-              context, controller.accountDetails?.email),
+                context, controller.accountDetails?.email),
               maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+              style: TextStyle(color: muted, fontSize: 11)),
           ],
         )),
-        const SizedBox(width: 4),
-        TextButton(
+        const SizedBox(width: 6),
+        OutlinedButton(
           onPressed: onManage,
-          style: TextButton.styleFrom(
-            foregroundColor: p.lycheeInk,
-            minimumSize: const Size(0, 40),
-            padding: const EdgeInsets.symmetric(horizontal: 5)),
-          child: Text(v3Copy(context, zh: '管理账户',
-            en: 'Manage', tw: '管理帳戶'),
-            style: const TextStyle(fontSize: 11,
-                fontWeight: FontWeight.w600)),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 9),
+            side: BorderSide(color: dark
+              ? const Color(0xFF4A3D3F) : const Color(0xFFF0E7E7)),
+            backgroundColor: dark
+              ? const Color(0xFF322C30) : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(v3Copy(context, zh: '管理账户',
+                en: 'Manage', tw: '管理帳戶'),
+              style: TextStyle(fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: dark ? const Color(0xFFF3C1B8)
+                  : const Color(0xFF7B6160))),
+            const SizedBox(width: 3),
+            Icon(LucideIcons.chevronRight, size: 13,
+              color: dark ? const Color(0xFFF3C1B8)
+                : const Color(0xFF7B6160)),
+          ]),
         ),
       ]),
     );
   }
 }
 
-/// Subscription details belong in their own compact surface, not the profile.
+/// Approved V3: the account subscription is the single soft coral hero.
 class _MobilePlanCard extends StatelessWidget {
   const _MobilePlanCard({required this.controller});
   final AppController controller;
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final plan = PlanPresentation.fromController(controller);
-    final expiry = plan.expiryDate;
-    final remaining = expiry?.difference(DateTime.now());
-    final expiryText = expiry == null
-        ? '—'
-        : '${expiry.year}-${expiry.month.toString().padLeft(2, '0')}-${expiry.day.toString().padLeft(2, '0')}';
-    final daysText = remaining == null || remaining <= Duration.zero
-        ? '—'
-        : v3Copy(context, zh: '${remaining.inDays} 天',
-            en: '${remaining.inDays} days', tw: '${remaining.inDays} 天');
-    return _ForuiAccountCard(
-      padding: const EdgeInsets.fromLTRB(14, 13, 14, 11),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(Icons.workspace_premium_outlined,
-            size: 18, color: p.lycheeInk),
-          const SizedBox(width: 7),
-          Expanded(child: Text(
-            controller.hasPlan ? v3PlanShortLabel(context, plan)
-                : v3Copy(context, zh: '暂无套餐',
-                    en: 'No active plan', tw: '暫無套餐'),
-            maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: p.ink, fontSize: 14,
-              fontWeight: FontWeight.w700))),
-          TextButton(
-            onPressed: () => _openAccountPlan(context, controller),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 5),
-              minimumSize: const Size(0, 38)),
-            child: Text(controller.hasPlan
-              ? v3Copy(context, zh: '续费', en: 'Renew', tw: '續費')
-              : v3Copy(context, zh: '购买', en: 'Choose', tw: '購買'),
-              style: TextStyle(color: p.lycheeInk, fontSize: 12)),
-          ),
-        ]),
-        if (controller.hasPlan) ...[
-          Divider(height: 12, color: p.line),
-          Row(children: [
-            Expanded(child: Text(
-              v3Copy(context, zh: '到期 $expiryText',
-                en: 'Expires $expiryText', tw: '到期 $expiryText'),
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: p.inkMuted, fontSize: 11))),
-            Text(v3Copy(context, zh: '剩余 $daysText',
-              en: '$daysText left', tw: '剩餘 $daysText'),
-              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+    final expires = plan.expiryDate;
+    final days = expires?.difference(DateTime.now());
+    final expiryDate = expires == null ? '—'
+      : '${expires.year}.${expires.month.toString().padLeft(2, '0')}.${expires.day.toString().padLeft(2, '0')}';
+    final remaining = days != null && days > Duration.zero
+        ? v3Copy(context, zh: '${days.inDays} 天',
+            en: '${days.inDays} days', tw: '${days.inDays} 天')
+        : '—';
+    final ink = dark ? const Color(0xFFFFF7F5) : const Color(0xFF25262A);
+    final secondary = dark ? const Color(0xFFE1C8C7)
+      : const Color(0xFF87716F);
+    final dateText = switch (plan.expiryKind) {
+      PlanExpiryKind.permanent => v3Copy(context, zh: '永久',
+        en: 'Permanent', tw: '永久'),
+      PlanExpiryKind.date => expiryDate,
+      _ => '—',
+    };
+    final verified = plan.statusKind == PlanStatus.normal;
+    final status = verified
+      ? v3Copy(context, zh: '有效中', en: 'Active', tw: '有效中')
+      : v3PlanStatusLabel(context, plan.statusKind);
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: dark
+            ? const [Color(0xFF453338), Color(0xFF3B3036),
+                Color(0xFF343038)]
+            : const [Color(0xFFFFF5F1), Color(0xFFFFEDE8),
+                Color(0xFFFFE5E0)],
+        ),
+        borderRadius: BorderRadius.circular(27),
+        border: Border.all(color: dark
+            ? const Color(0xFF68494C) : const Color(0xFFF7DAD4)),
+        boxShadow: dark ? null : const [BoxShadow(
+          color: Color(0x12B86053), blurRadius: 28, offset: Offset(0, 11))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(children: [
+        Positioned(top: -95, right: -75,
+          child: IgnorePointer(child: Container(
+            width: 208, height: 208,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white.withValues(alpha: .45)),
+              shape: BoxShape.circle)))),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(19, 20, 19, 21),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                height: 27, width: 27,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: dark ? .16 : .69),
+                  borderRadius: BorderRadius.circular(9)),
+                child: Icon(LucideIcons.crown, size: 17,
+                  color: dark ? const Color(0xFFFFD1C7)
+                    : const Color(0xFFC55D4B)),
+              ),
+              const SizedBox(width: 7),
+              Expanded(child: Text(v3Copy(context, zh: '订阅计划',
+                    en: 'Subscription plan', tw: '訂閱計劃'),
+                style: TextStyle(color: dark ? const Color(0xFFFFD1C7)
+                  : const Color(0xFFA45A4F),
+                  fontSize: 11, fontWeight: FontWeight.w700))),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: dark ? .12 : .68),
+                  borderRadius: BorderRadius.circular(99)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 6, height: 6,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: verified ? const Color(0xFF3BAC77)
+                        : const Color(0xFFA4A0A5))),
+                  const SizedBox(width: 6),
+                  Text(status, style: TextStyle(
+                    color: dark ? const Color(0xFFDFECE5)
+                      : const Color(0xFF597261),
+                    fontSize: 10, fontWeight: FontWeight.w800)),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 25),
+            Text(v3Copy(context, zh: '当前套餐',
+                en: 'CURRENT PLAN', tw: '目前方案'),
+              style: TextStyle(color: dark ? const Color(0xFFE2B0AC)
+                : const Color(0xFFB5746B),
+                fontSize: 10, fontWeight: FontWeight.w700,
+                letterSpacing: 1.2)),
+            const SizedBox(height: 5),
+            Text(controller.hasPlan ? plan.name :
+              v3Copy(context, zh: '暂无套餐',
+                en: 'No plan', tw: '暫無套餐'),
+              maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: ink, fontSize: 27,
+                height: 1.24, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 7),
+            Text(verified
+                ? v3Copy(context, zh: '你的服务正在有效期内',
+                    en: 'Your subscription is active',
+                    tw: '你的服務目前有效')
+                : status,
+              style: TextStyle(color: secondary, fontSize: 11)),
+            const SizedBox(height: 20),
+            Divider(color: dark
+              ? const Color(0x30FFD2CD) : const Color(0x309A6D67),
+              height: 1),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(v3Copy(context, zh: '到期日期',
+                        en: 'Expiry date', tw: '到期日期'),
+                    style: TextStyle(color: dark
+                      ? const Color(0xFFCEB1AF) : const Color(0xFF9E7D78),
+                      fontSize: 10)),
+                  const SizedBox(height: 6),
+                  Text(dateText, maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: ink, fontSize: 12,
+                      fontWeight: FontWeight.w800)),
+                ],
+              )),
+              Expanded(child: Container(
+                padding: const EdgeInsets.only(left: 11),
+                decoration: BoxDecoration(
+                  border: Border(left: BorderSide(color: dark
+                    ? const Color(0x30FFD2CD)
+                    : const Color(0x309A6D67)))),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(v3Copy(context, zh: '剩余有效期',
+                          en: 'Remaining time', tw: '剩餘有效期'),
+                      style: TextStyle(color: dark
+                        ? const Color(0xFFCEB1AF)
+                        : const Color(0xFF9E7D78), fontSize: 10)),
+                    const SizedBox(height: 6),
+                    Text(plan.expiryKind == PlanExpiryKind.permanent
+                        ? v3Copy(context, zh: '永久',
+                            en: 'Permanent', tw: '永久')
+                        : remaining,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: ink, fontSize: 12,
+                        fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              )),
+              const SizedBox(width: 10),
+              SizedBox(height: 35, child: FilledButton(
+                onPressed: () => _openAccountPlan(context, controller),
+                style: FilledButton.styleFrom(
+                  backgroundColor: dark ? const Color(0xFFF3E4E1)
+                    : const Color(0xFF282629),
+                  foregroundColor: dark ? const Color(0xFF2D2529)
+                    : Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15))),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(controller.hasPlan
+                    ? v3Copy(context, zh: '续费', en: 'Renew', tw: '續費')
+                    : v3Copy(context, zh: '购买', en: 'Buy', tw: '購買'),
+                    style: const TextStyle(fontSize: 11,
+                      fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.arrow_forward_rounded, size: 14),
+                ]),
+              )),
+            ]),
           ]),
-        ],
+        ),
       ]),
     );
   }
