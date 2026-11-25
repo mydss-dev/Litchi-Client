@@ -10,6 +10,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_mobile_plan_card.dart';
 
 /// Supported chart periods are the same on desktop and mobile.
 const List<int> kV3TrafficPeriods = [7, 15, 30];
@@ -160,6 +161,9 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     final usedRatio = traffic.totalGb <= 0
         ? 0.0
         : (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0).toDouble();
+    final mobile = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+         defaultTargetPlatform == TargetPlatform.iOS);
     // Full-width summary, then the stat-tile band, then the chart. No
     // side-by-side split — every block owns the whole row.
     return SingleChildScrollView(
@@ -207,6 +211,10 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
               message: controller.dataLoadError!,
               onRetry: controller.refreshData,
             ),
+            const SizedBox(height: 12),
+          ],
+          if (mobile) ...[
+            V3MobilePlanCard(controller: controller),
             const SizedBox(height: 12),
           ],
           _QuotaPanel(controller: controller, usedRatio: usedRatio),

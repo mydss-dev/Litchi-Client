@@ -5,6 +5,7 @@ import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
 import 'package:litchi_client/v3/pages/v3_account_page.dart';
 import 'package:litchi_client/v3/pages/v3_shop_page.dart';
+import 'package:litchi_client/v3/pages/v3_traffic_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
@@ -47,6 +48,29 @@ void main() {
     expect(find.text('订单记录'), findsOneWidget);
     expect(find.text('工单支持'), findsOneWidget);
     expect(find.text('应用设置'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact account plan card opens real usage page',
+      (tester) async {
+    final controller = VisualV3Controller(AppPage.account);
+    await _pumpMobile(tester, controller, const V3AccountPage());
+    final card = find.byKey(const ValueKey('v3-mobile-plan-card'));
+    expect(card, findsOneWidget);
+    await tester.ensureVisible(card);
+    await tester.tap(card);
+    await tester.pump();
+    expect(controller.page, AppPage.traffic);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('usage page puts the actual subscription card above quota',
+      (tester) async {
+    final controller = VisualV3Controller(AppPage.traffic);
+    await _pumpMobile(tester, controller, const V3TrafficPage());
+    expect(find.byKey(const ValueKey('v3-mobile-plan-card')), findsOneWidget);
+    expect(find.text('订阅计划'), findsOneWidget);
+    expect(find.text('套餐流量'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
