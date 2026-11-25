@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoListSection, CupertinoListTile;
-import 'package:flutter/cupertino.dart' show CupertinoListSection, CupertinoListTile;
 import 'package:forui/forui.dart' show FCard, FCardStyle, FAvatar;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -606,36 +605,6 @@ class _MobileServiceTile extends StatelessWidget {
 
 /// Use Forui's card implementation only for the two account overview cards.
 /// Their existing dimensions and controller behavior stay unchanged.
-class _ForuiAccountCard extends StatelessWidget {
-  const _ForuiAccountCard({required this.child, required this.padding});
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return FCard(
-      style: FCardStyle(
-        decoration: BoxDecoration(
-          color: p.surface,
-          borderRadius: BorderRadius.circular(V3Radius.card),
-          border: Border.all(color: p.line.withValues(alpha: .72)),
-        ),
-        titleTextStyle: TextStyle(color: p.ink,
-          fontSize: 16, fontWeight: FontWeight.w600),
-        subtitleTextStyle: TextStyle(color: p.inkMuted,
-          fontSize: 13),
-        padding: padding,
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        child: Padding(padding: padding, child: child),
-      ),
-    );
-  }
-}
-
 class _MobileIdentityCard extends StatelessWidget {
   const _MobileIdentityCard({required this.controller, required this.onManage});
   final AppController controller;

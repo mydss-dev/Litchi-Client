@@ -440,19 +440,16 @@ class _PlanCardSkeleton extends StatelessWidget {
 
 class _PlanCard extends StatelessWidget {
   const _PlanCard({required this.plan, required this.currencySymbol,
-    required this.desktop, required this.onBuy, this.chosenCycle});
+    required this.desktop, required this.onBuy});
   final PlanModel plan;
   final String currencySymbol;
   final bool desktop;
-  final BillingCycle? chosenCycle;
   final ValueChanged<BillingCycle> onBuy;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final cycle = plan.category == PlanCategory.recurring
-        ? (chosenCycle ?? v3DefaultCycle(plan))
-        : v3DefaultCycle(plan);
+    final cycle = v3DefaultCycle(plan);
     final price = v3PlanPrice(plan, cycle);
     if (!desktop) {
       return _HtmlPhonePlanCard(
