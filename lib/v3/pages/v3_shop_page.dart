@@ -37,18 +37,13 @@ class V3ShopPage extends StatefulWidget {
 
 class _V3ShopPageState extends State<V3ShopPage> {
   PlanCategory? _category;
+  BillingCycle _phoneCycle = BillingCycle.monthly;
 
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
-    final plans = controller.plans.where((plan) {
-      if (_category == null) return true;
-      if (_category == PlanCategory.oneTime) {
-        return plan.category == PlanCategory.oneTime ||
-            (plan.category == PlanCategory.dataPack && plan.oneTimePrice != null);
-      }
-      return plan.category == _category;
-    }).toList(growable: false);
+    final plans = controller.plans.where((plan) =>
+        _category == null || plan.category == _category).toList(growable: false);
     return LayoutBuilder(builder: (context, constraints) {
       // Horizontal gutters follow the shared page insets so the card-width
       // math matches what the scroll view actually applies.
@@ -65,20 +60,19 @@ class _V3ShopPageState extends State<V3ShopPage> {
             : V3Layout.pageInsets,
         child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
-            title: phone ? _tr(context, '套餐订阅', 'Plans', '套餐訂閱')
-                : _tr(context, '套餐', 'Plans', '套餐'),
-            subtitle: phone ? _tr(context, '选择适合你的连接与流量方案',
-                'Find a connection and data plan that fits',
-                '選擇適合你的連線與流量方案')
-                : _tr(context,
-                    '${controller.plans.length} 个可用套餐',
-                    '${controller.plans.length} available plans',
-                    '${controller.plans.length} 個可用套餐')),
+            title: _tr(context, '套餐', 'Plans', '套餐'),
+            subtitle: _tr(context,
+                '${controller.plans.length} 个可用套餐',
+                '${controller.plans.length} available plans',
+                '${controller.plans.length} 個可用套餐')),
           const SizedBox(height: 18),
+          // The segment rides as its own row directly under the title (the
+          // traffic page's period-seg pattern) instead of reading as part of
+          // the header zone.
           if (phone)
-            _MobileCategoryFilters(
-              selected: _category, count: plans.length,
-              onChanged: (value) => setState(() => _category = value))
+            _PhoneBillingDeck(
+              selected: _phoneCycle,
+              onChanged: (cycle) => setState(() => _phoneCycle = cycle))
           else
             _CategoryDeck(selected: _category,
               onChanged: (value) => setState(() => _category = value)),
@@ -154,7 +148,8 @@ class _V3ShopPageState extends State<V3ShopPage> {
                         Expanded(child: _PlanCard(plan: plan,
                           currencySymbol: controller.currencySymbol,
                           desktop: true,
-                          onBuy: (cycle) => _openOrder(controller, plan, cycle))),
+                          onBuy: () => _openOrder(controller, plan,
+                            v3DefaultCycle(plan)))),
                       if (plans.length - i == 1) const Expanded(child: SizedBox()),
                     ]))),
             ])
@@ -163,7 +158,10 @@ class _V3ShopPageState extends State<V3ShopPage> {
               child: _PlanCard(plan: plan,
                 currencySymbol: controller.currencySymbol,
                 desktop: twoColumns,
-                onBuy: (cycle) => _openOrder(controller, plan, cycle))),
+                chosenCycle: phone ? _phoneCycle : null,
+                onBuy: () => _openOrder(controller, plan,
+                  phone && plan.category == PlanCategory.recurring
+                      ? _phoneCycle : v3DefaultCycle(plan)))),
           ]),
         ]),
       );
@@ -183,64 +181,43 @@ class _V3ShopPageState extends State<V3ShopPage> {
 }
 
 
-class _MobileCategoryFilters extends StatelessWidget {
-  const _MobileCategoryFilters({required this.selected, required this.count,
-      required this.onChanged});
-  final PlanCategory? selected;
-  final int count;
-  final ValueChanged<PlanCategory?> onChanged;
+class _PhoneBillingDeck extends StatelessWidget {
+  const _PhoneBillingDeck({
+    required this.selected,
+    required this.onChanged,
+  });
+  final BillingCycle selected;
+  final ValueChanged<BillingCycle> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final options = <(PlanCategory?, String, IconData, String)>[
-      (null, _tr(context, '全部', 'All', '全部'), Icons.grid_view_rounded, 'all'),
-      (PlanCategory.recurring,
-        _tr(context, '周期性', 'Recurring', '週期性'),
-        Icons.schedule_rounded, 'recurring'),
-      (PlanCategory.oneTime,
-        _tr(context, '一次性', 'One-time', '一次性'),
-        Icons.shopping_bag_outlined, 'once'),
+    final cycles = <(BillingCycle, String)>[
+      (BillingCycle.monthly, _tr(context, '月付', 'Monthly', '月付')),
+      (BillingCycle.quarterly, _tr(context, '季付', 'Quarterly', '季付')),
+      (BillingCycle.yearly, _tr(context, '年付', 'Yearly', '年付')),
     ];
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(child: Text(_tr(context, '可购买套餐', 'Available plans',
-          '可購買套餐'), style: TextStyle(
-            fontSize: 15, fontWeight: FontWeight.w800, color: p.ink))),
-        Text(_tr(context, '共 $count 个方案', '$count plans', '共 $count 個方案'),
-          style: TextStyle(fontSize: 11, color: p.inkMuted)),
-      ]),
-      const SizedBox(height: 13),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final (kind, label, glyph, keyName) in options)
-          Material(
-            color: selected == kind ? p.ink : p.surface,
-            borderRadius: BorderRadius.circular(25),
+    return Container(
+      width: 254, height: 42,
+      decoration: BoxDecoration(color: p.surfaceRaised,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: p.hairline)),
+      padding: const EdgeInsets.all(4),
+      child: Row(children: [
+        for (final (cycle, label) in cycles)
+          Expanded(child: Material(
+            color: selected == cycle ? p.lycheeSoft : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
             child: InkWell(
-              key: ValueKey('shop-filter-$keyName'),
-              onTap: () => onChanged(kind),
-              borderRadius: BorderRadius.circular(25),
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 38),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 13, vertical: 9),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: selected == kind ? p.ink : p.line),
-                  borderRadius: BorderRadius.circular(25)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(glyph, size: 14,
-                    color: selected == kind ? p.surface : p.inkMuted),
-                  const SizedBox(width: 6),
-                  Text(label, style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w700,
-                    color: selected == kind ? p.surface : p.ink)),
-                ]),
-              ),
-            ),
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => onChanged(cycle),
+              child: Center(child: Text(label,
+                style: TextStyle(fontSize: 12,
+                  color: selected == cycle ? p.lycheeInk : p.inkMuted,
+                  fontWeight: FontWeight.w700))))),
           ),
       ]),
-    ]);
+    );
   }
 }
 
@@ -441,7 +418,7 @@ class _PlanCard extends StatelessWidget {
   final String currencySymbol;
   final bool desktop;
   final BillingCycle? chosenCycle;
-  final ValueChanged<BillingCycle> onBuy;
+  final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
@@ -451,8 +428,9 @@ class _PlanCard extends StatelessWidget {
         : v3DefaultCycle(plan);
     final price = v3PlanPrice(plan, cycle);
     if (!desktop) {
-      return _HtmlPhonePlanCard(key: ValueKey('phone-plan-${plan.id}'),
-        plan: plan, currencySymbol: currencySymbol, onBuy: onBuy);
+      return _HtmlPhonePlanCard(
+        plan: plan, currencySymbol: currencySymbol,
+        cycle: cycle, price: price, onBuy: onBuy);
     }
     final features = plan.features.take(3).toList(growable: false);
     final info = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -524,7 +502,7 @@ class _PlanCard extends StatelessWidget {
         const SizedBox(height: 12),
         SizedBox(width: double.infinity, height: 44,
           child: FilledButton(
-            onPressed: plan.soldOut || price == null ? null : () => onBuy(cycle),
+            onPressed: plan.soldOut || price == null ? null : onBuy,
             style: FilledButton.styleFrom(backgroundColor: p.lychee,
               foregroundColor: p.onLychee,
               shape: RoundedRectangleBorder(
@@ -547,263 +525,100 @@ class _PlanCard extends StatelessWidget {
 }
 
 
-List<BillingCycle> _shopCycles(PlanModel p) => [
-  if (p.monthlyPrice != null) BillingCycle.monthly,
-  if (p.quarterlyPrice != null) BillingCycle.quarterly,
-  if (p.halfYearPrice != null) BillingCycle.halfYear,
-  if (p.yearlyPrice != null) BillingCycle.yearly,
-  if (p.twoYearPrice != null) BillingCycle.twoYears,
-  if (p.threeYearPrice != null) BillingCycle.threeYears,
-];
-
-class _HtmlPhonePlanCard extends StatefulWidget {
-  const _HtmlPhonePlanCard({super.key, required this.plan,
-    required this.currencySymbol, required this.onBuy});
+class _HtmlPhonePlanCard extends StatelessWidget {
+  const _HtmlPhonePlanCard({
+    required this.plan, required this.currencySymbol,
+    required this.cycle, required this.price, required this.onBuy,
+  });
   final PlanModel plan;
   final String currencySymbol;
-  final ValueChanged<BillingCycle> onBuy;
-  @override
-  State<_HtmlPhonePlanCard> createState() => _HtmlPhonePlanCardState();
-}
-
-class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
-  BillingCycle? _selected;
-  @override
-  void didUpdateWidget(covariant _HtmlPhonePlanCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.plan.id != widget.plan.id) _selected = null;
-  }
+  final BillingCycle cycle;
+  final double? price;
+  final VoidCallback onBuy;
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context), plan = widget.plan;
-    final recurring = plan.category == PlanCategory.recurring;
-    final cycles = recurring ? _shopCycles(plan) : <BillingCycle>[];
-    final cycle = cycles.contains(_selected) ? _selected!
-        : (cycles.isEmpty ? BillingCycle.monthly : cycles.first);
-    final price = v3PlanPrice(plan, cycle);
-    // Recommendations remain explicit-only until backend rules are approved.
-    final featured = plan.featured;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final benefits = plan.features.length > 1
-        ? plan.features.skip(1).toList(growable: false) : <String>[];
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(19, 19, 19, 18),
-      decoration: BoxDecoration(
-        color: featured ? p.lycheeSoft : p.surface,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: featured
-            ? p.lychee.withValues(alpha: .30) : p.line),
-        boxShadow: [BoxShadow(
-          color: p.night.withValues(alpha: dark ? .12 : .035),
-          blurRadius: 20, offset: const Offset(0, 8))]),
+    final p = V3Palette.of(context);
+    final features = plan.features.take(3).toList(growable: false);
+    final featured = plan.featured || plan.hot;
+    final isRecurring = plan.category == PlanCategory.recurring;
+    return V3Panel(padding: const EdgeInsets.all(17),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Keep plan identity and its price on one horizontal level.
-        // No orphan category glyph or guessed plan-type badges.
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(plan.title, maxLines: 3, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: p.ink, fontSize: 20,
-                    height: 1.22, fontWeight: FontWeight.w800)),
-                if (plan.features.isNotEmpty) ...[
-                  const SizedBox(height: 7),
-                  Text(plan.features.first, maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: p.inkMuted,
-                      fontSize: 12, height: 1.5)),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (featured) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: p.surface.withValues(alpha: .8),
-                      borderRadius: BorderRadius.circular(99),
-                      border: Border.all(
-                        color: p.lychee.withValues(alpha: .20))),
-                    child: Text(_tr(context, '推荐', 'Recommended', '推薦'),
-                      style: TextStyle(color: p.lycheeInk,
-                        fontSize: 11, fontWeight: FontWeight.w700)),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                if (price == null)
-                  Text(_tr(context, '价格待公布',
-                      'Price unavailable', '價格待公佈'),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(color: p.inkMuted,
-                      fontSize: 12, fontWeight: FontWeight.w700))
-                else ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Row(mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end, children: [
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: Text(widget.currencySymbol,
-                              style: TextStyle(color: p.ink,
-                                fontSize: 14, fontWeight: FontWeight.w800))),
-                          Text(price.toStringAsFixed(2),
-                            style: TextStyle(color: p.ink, fontSize: 25,
-                              fontWeight: FontWeight.w900,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures()])),
-                        ]),
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(recurring ? '/ ${v3CycleLabel(context, cycle)}'
-                      : _tr(context, '一次性', 'One-time', '一次性'),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(color: p.inkMuted, fontSize: 11)),
-                ],
-              ],
-            ),
-          ),
-        ]),
-        if (plan.capacity.isNotEmpty ||
-            (plan.deviceLimit != null && plan.deviceLimit! > 0)) ...[
-          const SizedBox(height: 15),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            if (plan.capacity.isNotEmpty)
-              _ShopSpecChip(icon: Icons.grid_view_rounded,
-                label: _tr(context, '流量 ${plan.capacity}',
-                  'Data ${plan.capacity}', '流量 ${plan.capacity}')),
-            if (plan.deviceLimit != null && plan.deviceLimit! > 0)
-              _ShopSpecChip(icon: Icons.devices_outlined,
-                label: _tr(context, '设备 ${plan.deviceLimit} 台',
-                  '${plan.deviceLimit} devices',
-                  '裝置 ${plan.deviceLimit} 台')),
-          ]),
-        ],
-        // Only recurring plans have billing choices. A one-time plan goes
-        // directly to the single purchase CTA, without a fake second button.
-        if (recurring && cycles.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          Text(_tr(context, '购买周期', 'Billing period', '購買週期'),
+        Text(plan.title,
+          maxLines: 2, overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: p.ink,
+            fontSize: 16, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Row(children: [
+          if (featured)
+            V3StatusBadge(label: plan.featured
+              ? _tr(context, '推荐', 'Recommended', '推薦')
+              : _tr(context, '热门', 'Popular', '熱門'),
+              compact: true, color: p.lychee),
+          if (featured) const SizedBox(width: 8),
+          Text(plan.capacity,
             style: TextStyle(color: p.inkMuted,
-              fontSize: 11, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          LayoutBuilder(builder: (context, bounds) {
-            final w = (bounds.maxWidth - 16) / 3;
-            return Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final option in cycles)
-                SizedBox(width: w, height: 36,
-                  child: _ShopCycleChip(
-                    key: ValueKey('shop-cycle-${plan.id}-${option.name}'),
-                    title: v3CycleLabel(context, option),
-                    selected: cycle == option,
-                    onTap: () => setState(() => _selected = option))),
-            ]);
-          }),
+              fontSize: 11, fontWeight: FontWeight.w600)),
+        ]),
+        const SizedBox(height: 14),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text(price == null
+              ? _tr(context, '不可购买', 'Unavailable', '無法購買')
+              : '$currencySymbol${price?.toStringAsFixed(2)}',
+            style: TextStyle(color: p.ink, fontSize: 28,
+              fontWeight: FontWeight.w900,
+              fontFeatures: const [FontFeature.tabularFigures()])),
+          const SizedBox(width: 7),
+          Padding(padding: const EdgeInsets.only(bottom: 4),
+            child: Text(isRecurring ? '/${v3CycleLabel(context, cycle)}'
+              : _tr(context, '/一次性', '/one time', '/一次性'),
+              style: TextStyle(color: p.inkMuted, fontSize: 11))),
+        ]),
+        if (plan.deviceLimit != null) ...[
+          const SizedBox(height: 5),
+          Text(_tr(context, '${plan.deviceLimit} 台设备',
+            '${plan.deviceLimit} devices',
+            '${plan.deviceLimit} 台設備'),
+            style: TextStyle(color: p.inkMuted, fontSize: 12)),
         ],
-        if (benefits.isNotEmpty) ...[
-          const SizedBox(height: 17),
-          Divider(color: p.line, height: 1),
-          const SizedBox(height: 16),
-          for (final benefit in benefits)
-            Padding(padding: const EdgeInsets.only(bottom: 11),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.check_rounded, size: 16,
-                    color: featured ? p.lycheeInk : p.inkMuted),
-                  const SizedBox(width: 9),
-                  Expanded(child: Text(benefit,
-                    style: TextStyle(color: p.ink, fontSize: 12,
-                      height: 1.45))),
-                ])),
-        ],
-        const SizedBox(height: 18),
-        SizedBox(width: double.infinity, height: 46,
+        const SizedBox(height: 15),
+        if (features.isEmpty)
+          Text(_tr(context, '暂无套餐说明',
+              'No details available', '尚無方案說明'),
+            style: TextStyle(color: p.inkMuted, fontSize: 12))
+        else
+          for (final feature in features)
+            Padding(padding: const EdgeInsets.only(bottom: 8),
+              child: Row(children: [
+                Icon(Icons.check_rounded,
+                  color: p.successInk, size: 15),
+                const SizedBox(width: 7),
+                Expanded(child: Text(feature, maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: p.inkMuted, fontSize: 12))),
+              ])),
+        const SizedBox(height: 13),
+        SizedBox(width: double.infinity, height: 42,
           child: FilledButton(
-            onPressed: plan.soldOut || price == null
-                ? null : () => widget.onBuy(cycle),
+            onPressed: plan.soldOut || price == null ? null : onBuy,
             style: FilledButton.styleFrom(
-              backgroundColor: dark ? p.ink : p.night,
-              foregroundColor: dark ? p.night : p.surface,
+              backgroundColor: featured ? p.lychee : p.surfaceRaised,
+              foregroundColor: featured ? p.onLychee : p.ink,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16))),
+                borderRadius: BorderRadius.circular(13))),
             child: Text(plan.soldOut
               ? _tr(context, '已售罄', 'Sold out', '已售罄')
-              : price == null
-                ? _tr(context, '暂不可购买', 'Unavailable', '暫不可購買')
-                : _tr(context, '选择此套餐',
-                    'Choose this plan', '選擇此方案'),
-              style: const TextStyle(fontWeight: FontWeight.w700))),
-        ),
+              : _tr(context, '选择此套餐', 'Choose plan', '選擇此方案')))),
+        Align(alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => _showPlanDetails(context, plan),
+            style: TextButton.styleFrom(
+              foregroundColor: p.inkMuted,
+              padding: EdgeInsets.zero),
+            child: Text(_tr(context, '查看套餐说明',
+              'View details', '查看方案說明'),
+              style: const TextStyle(fontSize: 11)))),
       ]),
-    );
-  }
-}
-
-class _ShopSpecChip extends StatelessWidget {
-  const _ShopSpecChip({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-      decoration: BoxDecoration(
-        color: p.surface.withValues(alpha: .63),
-        border: Border.all(color: p.line.withValues(alpha: .75)),
-        borderRadius: BorderRadius.circular(10)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: p.inkMuted),
-        const SizedBox(width: 5),
-        Text(label, style: TextStyle(color: p.inkMuted,
-            fontSize: 11, fontWeight: FontWeight.w600)),
-      ]),
-    );
-  }
-}
-
-class _ShopCycleChip extends StatelessWidget {
-  const _ShopCycleChip({super.key, required this.title,
-      required this.selected, required this.onTap});
-  final String title;
-  final bool selected;
-  final VoidCallback? onTap;
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: selected ? (dark ? p.ink : p.night) : p.surface,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        onTap: onTap, borderRadius: BorderRadius.circular(24),
-        child: Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: selected ? p.night : p.line)),
-          child: Text(title, maxLines: 1,
-            overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-              color: selected ? (dark ? p.night : p.surface) : p.ink)),
-        ),
-      ),
     );
   }
 }
