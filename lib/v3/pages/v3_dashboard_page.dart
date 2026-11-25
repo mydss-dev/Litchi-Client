@@ -981,7 +981,18 @@ class _MobileConnectStage extends StatelessWidget {
               ]),
               if (connected) ...[
                 const SizedBox(height: 7),
-                _SpeedSuffix(controller: controller, visible: connected),
+                // The full up/down readout needs up to 319dp; fit it inside
+                // the available 302dp on compact 360dp phones without
+                // dropping transfer values or overflowing the card.
+                SizedBox(
+                  width: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: _SpeedSuffix(
+                      controller: controller, visible: connected),
+                  ),
+                ),
               ],
               const SizedBox(height: 12),
               // Full-width CTA: neither the timer nor transfer-rate labels

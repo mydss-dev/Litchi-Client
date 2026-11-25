@@ -115,14 +115,6 @@ Future<void> _pumpV3(
 
   final controller = VisualV3Controller(page);
   addTearDown(controller.disposeVisual);
-  final previousFlutterErrorHandler = FlutterError.onError;
-  FlutterError.onError = (details) {
-    if (details.exceptionAsString().contains('RenderFlex overflowed')) {
-      debugPrint('V3_RENDER_OVERFLOW_DETAIL: ${details.toString()}');
-    }
-    previousFlutterErrorHandler?.call(details);
-  };
-  addTearDown(() => FlutterError.onError = previousFlutterErrorHandler);
 
   await tester.pumpWidget(
     MaterialApp(
@@ -139,11 +131,7 @@ Future<void> _pumpV3(
   // the settled truth, never a mid-animation frame.
   await tester.pump(const Duration(milliseconds: 900));
   await tester.pump();
-  final layoutError = tester.takeException();
-  if (layoutError is FlutterError) {
-    debugPrint('V3_LAYOUT_DIAGNOSTIC: ${layoutError.toStringDeep()}');
-  }
-  expect(layoutError, isNull);
+  expect(tester.takeException(), isNull);
 }
 
 Future<void> _pumpSignIn(
