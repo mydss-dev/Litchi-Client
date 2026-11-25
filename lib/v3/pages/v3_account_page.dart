@@ -376,23 +376,13 @@ class _MobileAccountOverview extends StatelessWidget {
       color: body,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 120),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(v3Copy(context, zh: '我的', en: 'Account', tw: '我的'),
-                  style: TextStyle(color: dark ? const Color(0xFFF4F2F2)
-                    : const Color(0xFF202226),
-                    fontSize: 30, height: 1.1, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 7),
-                Text(v3Copy(context, zh: '账户与订阅管理',
-                    en: 'Account & subscriptions', tw: '帳戶與訂閱管理'),
-                  style: TextStyle(color: muted, fontSize: 12)),
-              ],
-            )),
-            Material(
+          V3PrimaryPageHeader(
+            title: v3Copy(context, zh: '我的', en: 'Account', tw: '我的'),
+            subtitle: v3Copy(context, zh: '账户与订阅管理',
+                en: 'Account & subscriptions', tw: '帳戶與訂閱管理'),
+            trailing: Material(
               color: dark ? const Color(0xFF202126) : Colors.white,
               shape: CircleBorder(side: BorderSide(
                 color: dark ? const Color(0xFF303137)
@@ -408,7 +398,7 @@ class _MobileAccountOverview extends StatelessWidget {
                   : Icon(Icons.refresh_rounded, color: muted, size: 18),
               ),
             ),
-          ]),
+          ),
           const SizedBox(height: 19),
           _MobileIdentityCard(
             controller: controller,

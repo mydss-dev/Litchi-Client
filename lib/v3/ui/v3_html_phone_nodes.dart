@@ -61,19 +61,13 @@ class V3HtmlPhoneNodes extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 110),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(v3Copy(context, zh: '节点', en: 'Nodes', tw: '節點'),
-                style: TextStyle(color: p.ink, fontSize: 28,
-                  fontWeight: FontWeight.w700)),
-              const SizedBox(height: 5),
-              Text('$total 个可用节点 · $regions 个地区',
-                style: TextStyle(color: p.inkMuted, fontSize: 13)),
-            ],
-          )),
-          SizedBox(height: 36, child: OutlinedButton.icon(
+        V3PrimaryPageHeader(
+          title: v3Copy(context, zh: '节点', en: 'Nodes', tw: '節點'),
+          subtitle: v3Copy(context,
+            zh: '$total 个节点 · $regions 个地区',
+            en: '$total nodes · $regions regions',
+            tw: '$total 個節點 · $regions 個地區'),
+          trailing: SizedBox(height: 36, child: OutlinedButton.icon(
             key: const Key('v3-overview-speed-test'),
             onPressed: controller.isLatencyTesting || testingNodeId != null
                 ? null : onTest,
@@ -93,7 +87,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12))),
           )),
-        ]),
+        ),
         const SizedBox(height: 18),
         Container(
           height: 44,

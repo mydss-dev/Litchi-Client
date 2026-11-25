@@ -42,6 +42,16 @@ class V3DashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: V3Entrance.wave([
+          if (v3UsesMergedConnectionCard(defaultTargetPlatform)) ...[
+            V3PrimaryPageHeader(
+              title: v3Copy(context, zh: '连接',
+                  en: 'Connect', tw: '連線'),
+              subtitle: v3Copy(context, zh: '连接状态与路由模式',
+                  en: 'Connection and routing',
+                  tw: '連線狀態與路由模式'),
+            ),
+            const SizedBox(height: 14),
+          ],
           // Phones: announcement images from the backend rotate in a card;
           // desktop keeps the slim ticker so the orb stays above the fold.
           if (v3UsesMergedConnectionCard(defaultTargetPlatform))

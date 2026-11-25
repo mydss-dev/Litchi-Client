@@ -65,22 +65,23 @@ class _V3ShopPageState extends State<V3ShopPage> {
             ? const EdgeInsets.fromLTRB(12, 12, 12, 112)
             : V3Layout.pageInsets,
         child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          V3PageHeader(
-            title: phone ? _tr(context, '套餐订阅', 'Plans', '套餐訂閱')
-                : _tr(context, '套餐', 'Plans', '套餐'),
-            subtitle: phone
-                ? _tr(context, '选择适合你的连接与流量方案',
-                    'Find a connection and data plan that fits',
-                    '選擇適合你的連線與流量方案')
-                : _tr(context,
-                    '${controller.plans.length} 个可用套餐',
-                    '${controller.plans.length} available plans',
-                    '${controller.plans.length} 個可用套餐')),
+          if (phone)
+            V3PrimaryPageHeader(
+              title: _tr(context, '套餐', 'Plans', '套餐'),
+              subtitle: _tr(context, '选择适合你的方案',
+                  'Choose a plan that fits', '選擇適合你的方案'),
+            )
+          else
+            V3PageHeader(
+              title: _tr(context, '套餐', 'Plans', '套餐'),
+              subtitle: _tr(context,
+                  '${controller.plans.length} 个可用套餐',
+                  '${controller.plans.length} available plans',
+                  '${controller.plans.length} 個可用套餐')),
           const SizedBox(height: 18),
           if (phone)
             _MobileCategoryFilters(
               selected: _category,
-              count: plans.length,
               onChanged: (kind) => setState(() => _category = kind))
           else
             _CategoryDeck(selected: _category,
@@ -190,9 +191,8 @@ class _V3ShopPageState extends State<V3ShopPage> {
 /// individual recurring plan card instead of a global selector.
 class _MobileCategoryFilters extends StatelessWidget {
   const _MobileCategoryFilters({required this.selected,
-    required this.count, required this.onChanged});
+    required this.onChanged});
   final PlanCategory? selected;
-  final int count;
   final ValueChanged<PlanCategory?> onChanged;
   @override
   Widget build(BuildContext context) {
@@ -205,16 +205,6 @@ class _MobileCategoryFilters extends StatelessWidget {
         Icons.shopping_bag_outlined, 'once'),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(child: Text(_tr(context, '可购买套餐',
-            'Available plans', '可購買套餐'),
-          style: TextStyle(color: p.ink, fontSize: 16,
-            fontWeight: FontWeight.w800))),
-        Text(_tr(context, '共 $count 个方案', '$count plans',
-              '共 $count 個方案'),
-          style: TextStyle(color: p.inkMuted, fontSize: 10)),
-      ]),
-      const SizedBox(height: 13),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final (kind, label, glyph, keyName) in options)
           Material(

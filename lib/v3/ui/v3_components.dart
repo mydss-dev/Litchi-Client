@@ -306,6 +306,67 @@ class V3StatTile extends StatelessWidget {
   }
 }
 
+/// Consistent primary-tab heading for Android/iOS: title above subtitle.
+/// Secondary screens keep [V3PageHeader] with their back navigation.
+/// All four main tabs use the same sizing, spacing and muted subtitle ink.
+class V3PrimaryPageHeader extends StatelessWidget {
+  const V3PrimaryPageHeader({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: p.ink,
+                  fontSize: 28,
+                  height: 1.08,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: p.inkMuted,
+                  fontSize: 12,
+                  height: 1.3,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (trailing != null) ...[
+          const SizedBox(width: 12),
+          trailing!,
+        ],
+      ],
+    );
+  }
+}
+
 /// Shared page header for the Litchi mobile design system.
 ///
 /// Primary tabs render a plain heading. Secondary pages use exactly the same

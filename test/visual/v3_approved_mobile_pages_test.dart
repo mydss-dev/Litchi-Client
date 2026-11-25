@@ -109,8 +109,10 @@ void main() {
       (tester) async {
     final controller = VisualV3Controller(AppPage.shop);
     await _pumpMobile(tester, controller, const V3ShopPage());
-    expect(find.text('套餐订阅'), findsOneWidget);
-    expect(find.text('选择适合你的连接与流量方案'), findsOneWidget);
+    expect(find.text('套餐'), findsOneWidget);
+    expect(find.text('选择适合你的方案'), findsOneWidget);
+    expect(find.text('套餐订阅'), findsNothing);
+    expect(find.text('可购买套餐'), findsNothing);
     expect(find.byKey(const ValueKey('shop-filter-all')), findsOneWidget);
     expect(find.byKey(const ValueKey('shop-filter-recurring')),
         findsOneWidget);
