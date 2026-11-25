@@ -1,9 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forui/forui.dart' show FTheme, FToaster, FToast;
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_toast.dart';
 
 void main() {
+  testWidgets('app-level Forui toaster renders success with brand accent',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: V3Theme.light(),
+      builder: (context, child) => FTheme(
+        data: FTheme.neutral.light.touch,
+        child: FToaster(child: child!),
+      ),
+      home: Scaffold(
+        body: Builder(builder: (context) => TextButton(
+          onPressed: () => V3Toast.show(
+            context,
+            '已连接',
+            type: V3ToastType.success,
+          ),
+          child: const Text('Native Toast'),
+        )),
+      ),
+    ));
+
+    await tester.tap(find.text('Native Toast'));
+    await tester.pump();
+    expect(find.byType(FToast), findsOneWidget);
+    expect(find.text('已连接'), findsOneWidget);
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.check_circle_outline_rounded)).color,
+      V3Palette.light.lychee,
+    );
+
+    V3Toast.dismiss();
+    await tester.pump();
+  });
+
+
   testWidgets('success toast floats with Litchi accent icon and progress',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
