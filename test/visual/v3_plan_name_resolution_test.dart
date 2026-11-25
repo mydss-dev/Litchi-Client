@@ -31,6 +31,14 @@ class _ChangingPlanController extends VisualV3Controller {
   ];
 }
 
+class _SubscriptionTitleController extends _ChangingPlanController {
+  @override
+  List<PlanModel> get plans => const [];
+
+  @override
+  String get currentSubscriptionPlanName => 'Active subscription from backend';
+}
+
 void main() {
   // AppController reads WidgetsBinding.instance during construction.
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -56,7 +64,7 @@ void main() {
     expect(PlanPresentation.nameFromEvidence(
       userName: 'Old cached plan', remoteName: 'Old remote plan',
       catalogName: '', currentPlanId: 9, remotePlanId: 7,
-    ), '当前套餐（ID 9）');
+    ), '套餐名称待同步');
   });
 
   test('direct backend title is used without a catalog match', () {
@@ -66,11 +74,46 @@ void main() {
     ), 'Litchi Ultra');
   });
 
+  test('current subscription name wins over stale account name when IDs differ', () {
+    final controller = _SubscriptionTitleController();
+    addTearDown(controller.disposeVisual);
+    expect(PlanPresentation.fromController(controller).name,
+      'Active subscription from backend');
+  });
+
+  test('backend subscribe response parses active subscription name', () {
+    final nested = RemoteSubscribe.fromJson({
+      'plan_id': 3,
+      'plan': {'id': 3, 'name': '实际套餐名称'},
+      'subscribe_url': 'https://example.com/sub',
+    });
+    expect(nested.planId, 3);
+    expect(nested.planName, '实际套餐名称');
+
+    final flat = RemoteSubscribe.fromJson({
+      'planId': 3, 'plan_name': '服务高级套餐',
+    });
+    expect(flat.planName, '服务高级套餐');
+
+    final idOnly = RemoteSubscribe.fromJson({'plan_id': 3});
+    expect(idOnly.planName, isEmpty);
+  });
+
+  test('a cached synthetic ID must not be displayed as a plan title', () {
+    expect(PlanPresentation.nameFromEvidence(
+      userName: '当前套餐（ID 3）',
+      remoteName: '',
+      catalogName: '',
+      currentPlanId: 3,
+      remotePlanId: 3,
+    ), '套餐名称待同步');
+  });
+
   test('no evidence never invents a product name', () {
     expect(PlanPresentation.nameFromEvidence(
       userName: '', remoteName: '', catalogName: '',
       currentPlanId: 8,
-    ), '当前套餐（ID 8）');
+    ), '套餐名称待同步');
     expect(PlanPresentation.nameFromEvidence(
       userName: '已到期', remoteName: '', catalogName: '',
     ), '套餐名称待同步');

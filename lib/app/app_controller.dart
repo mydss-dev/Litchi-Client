@@ -94,6 +94,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
 
   List<PlanModel> _plans = const [];
   int? _currentPlanId;
+  String? _subscriptionPlanName;
+  int? _subscriptionPlanNameId;
   String? _dataLoadError;
   String? _startupMessage;
   UpdateInfo? _updateInfo;
@@ -249,6 +251,10 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
   List<NodeModel> get nodes => _nodes.nodes;
   List<PlanModel> get plans => _plans;
   int? get currentPlanId => _currentPlanId;
+  String get currentSubscriptionPlanName =>
+      _currentPlanId != null && _subscriptionPlanNameId == _currentPlanId
+          ? (_subscriptionPlanName ?? '')
+          : '';
   bool get hasPlan =>
       _currentPlanId != null ||
       _account.user.plan.trim().isNotEmpty ||
@@ -517,6 +523,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       final hadSubscriptionState =
           hasPlan || _nodes.isNotEmpty || _core.coreProcessRunning;
       _currentPlanId = null;
+      _subscriptionPlanName = null;
+      _subscriptionPlanNameId = null;
       _subscription.reset();
       if (_nodes.isNotEmpty) {
         _invalidateLatencyRuns();
@@ -527,6 +535,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     } else if (snap.currentPlanId != null) {
       _currentPlanId = snap.currentPlanId;
     }
+    _applySubscriptionPlanName(snap);
     if (snap.user != null) {
       final fresh = snap.user!;
       final previous = _account.user;
@@ -827,6 +836,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _nodes.reset();
     _plans = const [];
     _currentPlanId = null;
+    _subscriptionPlanName = null;
+    _subscriptionPlanNameId = null;
     _invite.reset();
     _wallet.reset();
     _subscription.reset();
@@ -863,6 +874,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
       _nodes.reset();
       _plans = const [];
       _currentPlanId = null;
+      _subscriptionPlanName = null;
+      _subscriptionPlanNameId = null;
       _invite.reset();
       _wallet.reset();
       _subscription.reset();
@@ -1096,6 +1109,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  void _applySubscriptionPlanName(DataSnapshot snap) {
+    if (snap.hasPlan == false) {
+      _subscriptionPlanName = null;
+      _subscriptionPlanNameId = null;
+      return;
+    }
+    if (snap.subscriptionPlanNameId == _currentPlanId &&
+        snap.subscriptionPlanName?.trim().isNotEmpty == true) {
+      _subscriptionPlanName = snap.subscriptionPlanName!.trim();
+      _subscriptionPlanNameId = _currentPlanId;
+    }
+  }
+
   void _applySnapshot(DataSnapshot snap) {
     _account.applySnapshot(
       remoteUser: snap.remoteUser,
@@ -1113,6 +1139,7 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     } else if (snap.currentPlanId != null) {
       _currentPlanId = snap.currentPlanId;
     }
+    _applySubscriptionPlanName(snap);
     _invite.applySnapshot(
       codes: snap.inviteCodes,
       code: snap.inviteCode,

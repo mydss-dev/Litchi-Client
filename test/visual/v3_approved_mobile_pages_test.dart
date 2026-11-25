@@ -88,6 +88,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('approved account expiry footer stays usable at 320dp',
+      (tester) async {
+    final controller = VisualV3Controller(AppPage.account);
+    await _pumpMobile(tester, controller, const V3AccountPage(),
+        size: const Size(320, 720));
+    await tester.ensureVisible(find.text('到期日期'));
+    await tester.pumpAndSettle();
+    expect(find.text('剩余有效期'), findsOneWidget);
+    expect(find.text('续费'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('approved compact mobile plans do not overflow at 320dp',
       (tester) async {
     final controller = VisualV3Controller(AppPage.shop);

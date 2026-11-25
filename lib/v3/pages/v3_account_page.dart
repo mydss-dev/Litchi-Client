@@ -852,67 +852,90 @@ class _MobilePlanCard extends StatelessWidget {
               ? const Color(0x30FFD2CD) : const Color(0x309A6D67),
               height: 1),
             const SizedBox(height: 14),
-            Row(children: [
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(v3Copy(context, zh: '到期日期',
-                        en: 'Expiry date', tw: '到期日期'),
-                    style: TextStyle(color: dark
-                      ? const Color(0xFFCEB1AF) : const Color(0xFF9E7D78),
-                      fontSize: 10)),
-                  const SizedBox(height: 6),
-                  Text(dateText, maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: ink, fontSize: 12,
-                      fontWeight: FontWeight.w800)),
-                ],
-              )),
-              Expanded(child: Container(
-                padding: const EdgeInsets.only(left: 11),
-                decoration: BoxDecoration(
-                  border: Border(left: BorderSide(color: dark
-                    ? const Color(0x30FFD2CD)
-                    : const Color(0x309A6D67)))),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(v3Copy(context, zh: '剩余有效期',
-                          en: 'Remaining time', tw: '剩餘有效期'),
+            LayoutBuilder(builder: (context, bounds) {
+              // The HTML footer keeps expiry facts together and renew to
+              // the right. On narrow devices, move only the CTA below them
+              // instead of shrinking dates into clipped fragments.
+              final narrow = bounds.maxWidth < 290;
+              final metadata = Row(children: [
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(v3Copy(context, zh: '到期日期',
+                          en: 'Expiry date', tw: '到期日期'),
                       style: TextStyle(color: dark
                         ? const Color(0xFFCEB1AF)
                         : const Color(0xFF9E7D78), fontSize: 10)),
                     const SizedBox(height: 6),
-                    Text(plan.expiryKind == PlanExpiryKind.permanent
-                        ? v3Copy(context, zh: '永久',
-                            en: 'Permanent', tw: '永久')
-                        : remaining,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                    Text(dateText, maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: ink, fontSize: 12,
                         fontWeight: FontWeight.w800)),
                   ],
+                )),
+                Expanded(child: Container(
+                  padding: const EdgeInsets.only(left: 11),
+                  decoration: BoxDecoration(
+                    border: Border(left: BorderSide(color: dark
+                      ? const Color(0x30FFD2CD)
+                      : const Color(0x309A6D67)))),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(v3Copy(context, zh: '剩余有效期',
+                          en: 'Remaining time', tw: '剩餘有效期'),
+                        style: TextStyle(color: dark
+                          ? const Color(0xFFCEB1AF)
+                          : const Color(0xFF9E7D78), fontSize: 10)),
+                      const SizedBox(height: 6),
+                      Text(plan.expiryKind == PlanExpiryKind.permanent
+                          ? v3Copy(context, zh: '永久',
+                              en: 'Permanent', tw: '永久')
+                          : remaining,
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: ink, fontSize: 12,
+                          fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                )),
+              ]);
+              final action = SizedBox(
+                height: 35,
+                child: FilledButton(
+                  onPressed: () => _openAccountPlan(context, controller),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: dark ? const Color(0xFFF3E4E1)
+                      : const Color(0xFF282629),
+                    foregroundColor: dark ? const Color(0xFF2D2529)
+                      : Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15))),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(controller.hasPlan
+                      ? v3Copy(context, zh: '续费', en: 'Renew', tw: '續費')
+                      : v3Copy(context, zh: '购买', en: 'Buy', tw: '購買'),
+                      style: const TextStyle(fontSize: 11,
+                        fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_forward_rounded, size: 14),
+                  ]),
                 ),
-              )),
-              const SizedBox(width: 10),
-              SizedBox(height: 35, child: FilledButton(
-                onPressed: () => _openAccountPlan(context, controller),
-                style: FilledButton.styleFrom(
-                  backgroundColor: dark ? const Color(0xFFF3E4E1)
-                    : const Color(0xFF282629),
-                  foregroundColor: dark ? const Color(0xFF2D2529)
-                    : Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15))),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(controller.hasPlan
-                    ? v3Copy(context, zh: '续费', en: 'Renew', tw: '續費')
-                    : v3Copy(context, zh: '购买', en: 'Buy', tw: '購買'),
-                    style: const TextStyle(fontSize: 11,
-                      fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward_rounded, size: 14),
-                ]),
-              )),
-            ]),
+              );
+              if (narrow) {
+                return Column(crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    metadata,
+                    const SizedBox(height: 12),
+                    action,
+                  ]);
+              }
+              return Row(children: [
+                Expanded(child: metadata),
+                const SizedBox(width: 10),
+                action,
+              ]);
+            }),
           ]),
         ),
       ]),

@@ -570,6 +570,7 @@ class RemoteTrafficLog {
 class RemoteSubscribe {
   final String subscribeUrl;
   final int? planId;
+  final String planName;
   final double transferEnable; // bytes
   final double upload; // bytes
   final double download; // bytes
@@ -581,6 +582,7 @@ class RemoteSubscribe {
   const RemoteSubscribe({
     required this.subscribeUrl,
     this.planId,
+    this.planName = '',
     required this.transferEnable,
     required this.upload,
     required this.download,
@@ -598,6 +600,7 @@ class RemoteSubscribe {
           _parseOptionalInt(json['plan_id']) ??
           _parseOptionalInt(json['planId']) ??
           (plan is Map ? _parseOptionalInt(plan['id']) : null),
+      planName: _readPlanName(json, plan),
       transferEnable: (json['transfer_enable'] as num?)?.toDouble() ?? 0,
       upload: (json['u'] as num?)?.toDouble() ?? 0,
       download: (json['d'] as num?)?.toDouble() ?? 0,
@@ -608,6 +611,22 @@ class RemoteSubscribe {
       ),
       aliveIp: _parseOptionalInt(json['alive_ip'] ?? json['aliveIp']),
     );
+  }
+
+  static String _readPlanName(Map<String, dynamic> json, Object? plan) {
+    final embedded = plan is Map ? plan : null;
+    for (final candidate in [
+      json['plan_name'],
+      json['planName'],
+      json['plan_title'],
+      json['planTitle'],
+      embedded?['name'],
+      embedded?['title'],
+    ]) {
+      final text = candidate?.toString().trim() ?? '';
+      if (text.isNotEmpty && text.toLowerCase() != 'null') return text;
+    }
+    return '';
   }
 
   static int? _parseOptionalInt(Object? value) {

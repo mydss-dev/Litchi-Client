@@ -53,9 +53,14 @@ class PlanPresentation {
     required String catalogName,
     int? currentPlanId,
     int? remotePlanId,
+    String subscriptionName = '',
   }) {
     final catalog = catalogName.trim();
     if (catalog.isNotEmpty) return catalog;
+    // This name comes from the active subscription and is already bound to
+    // currentPlanId by the controller, unlike the potentially stale user name.
+    final live = subscriptionName.trim();
+    if (live.isNotEmpty) return live;
 
     // Subscription and account endpoints can return different plan IDs while
     // an upgrade is settling. Never attach the old account's name to a new ID.
@@ -66,16 +71,15 @@ class PlanPresentation {
       if (remote.isNotEmpty) return remote;
       final user = userName.trim();
       if (user.isNotEmpty && user != '已到期' &&
-          user != '套餐名称待同步' && user != '暂无套餐') {
+          user != '套餐名称待同步' && user != '暂无套餐' &&
+          !RegExp(r'^当前套餐（ID [0-9]+）$').hasMatch(user)) {
         return user;
       }
     }
 
     // The ID is factual, but it is not a title. Do not manufacture a product
     // name when the panel omits it and the catalog has no matching entry.
-    return currentPlanId != null && currentPlanId > 0
-        ? '当前套餐（ID $currentPlanId）'
-        : '套餐名称待同步';
+    return '套餐名称待同步';
   }
 
   /// A currently loaded account with plan evidence may use the panel's null
@@ -124,6 +128,7 @@ class PlanPresentation {
       catalogName: catalogName,
       currentPlanId: planId,
       remotePlanId: controller.accountDetails?.planId,
+      subscriptionName: controller.currentSubscriptionPlanName,
     );
     final accountExpiry = controller.accountDetails?.expiredAt;
     final subscriptionExpiry = controller.expiredAt;

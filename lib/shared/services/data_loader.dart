@@ -16,6 +16,8 @@ class DataSnapshot {
   UserModel? user;
   bool? hasPlan;
   int? currentPlanId;
+  String? subscriptionPlanName;
+  int? subscriptionPlanNameId;
   TrafficModel? traffic;
   String? subscribeUrl;
   List<NodeModel>? nodes;
@@ -112,6 +114,8 @@ class DataLoader {
     var userLoaded = false;
     var subscribeLoaded = false;
     var subscribeHasPlanEvidence = false;
+    String subscribeTitle = '';
+    int? subscribeTitlePlanId;
 
     Future<void> loadUser() async {
       try {
@@ -149,6 +153,8 @@ class DataLoader {
         if (subscribe.planId != null && subscribe.planId! > 0) {
           snap.currentPlanId = subscribe.planId;
         }
+        subscribeTitle = subscribe.planName.trim();
+        subscribeTitlePlanId = subscribe.planId;
         subscribeHasPlanEvidence =
             (subscribe.planId != null && subscribe.planId! > 0) ||
             subscribe.subscribeUrl.trim().isNotEmpty ||
@@ -180,6 +186,16 @@ class DataLoader {
     }
 
     await Future.wait([loadUser(), loadSubscribe()]);
+    // Bind the subscription's title to the resolved active ID. In particular,
+    // do not attach an unrelated account title to an upgraded subscription.
+    if (subscribeTitle.isNotEmpty &&
+        snap.currentPlanId != null &&
+        snap.currentPlanId! > 0 &&
+        (subscribeTitlePlanId == null ||
+            subscribeTitlePlanId == snap.currentPlanId)) {
+      snap.subscriptionPlanName = subscribeTitle;
+      snap.subscriptionPlanNameId = snap.currentPlanId;
+    }
 
     final hasPlanEvidence =
         (snap.currentPlanId != null && snap.currentPlanId! > 0) ||
