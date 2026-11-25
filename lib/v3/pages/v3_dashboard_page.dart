@@ -1279,14 +1279,9 @@ class _ConnectionOrb extends StatefulWidget {
   const _ConnectionOrb({
     required this.controller,
     required this.status,
-    this.size = 86,
   });
   final AppController controller;
   final ConnectionStatus status;
-
-  /// The orb's diameter. The phone stage enlarges the tap target to 96 (the
-  /// accepted mockup's `.orb` bump); the desktop card keeps 86.
-  final double size;
 
   @override
   State<_ConnectionOrb> createState() => _ConnectionOrbState();
@@ -1374,7 +1369,8 @@ class _ConnectionOrbState extends State<_ConnectionOrb>
     final p = V3Palette.of(context);
     final controller = widget.controller;
     final status = widget.status;
-    final size = widget.size;
+    // This control is desktop-only; the phone uses a full-width pill.
+    const size = 86.0;
     final locked = controller.connectionActionLocked;
     final busy = _isBusy(status);
     final connected = status == ConnectionStatus.connected;
