@@ -592,10 +592,14 @@ class _MobileIdentityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final user = controller.user;
-    final letter = user.avatarLetter.trim().isEmpty
-        ? 'L' : user.avatarLetter.trim().substring(0, 1).toUpperCase();
+    final email = controller.accountDetails?.email.trim() ?? '';
+    // Email login is the identity. Never duplicate its local part as a name.
+    final displayIdentity = email.isNotEmpty
+        ? email : v3AccountDisplayName(context, user.name);
+    final avatarSource = email.isNotEmpty ? email : user.avatarLetter.trim();
+    final letter = avatarSource.isEmpty
+        ? 'L' : avatarSource.substring(0, 1).toUpperCase();
     final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
-    final muted = dark ? const Color(0xFFAAA3A6) : const Color(0xFF92929A);
     return FCard(
       style: FCardStyle(
         decoration: const BoxDecoration(),
@@ -604,78 +608,52 @@ class _MobileIdentityCard extends StatelessWidget {
         subtitleTextStyle: TextStyle(color: muted, fontSize: 13),
         padding: EdgeInsets.zero),
       child: Container(
-      constraints: const BoxConstraints(minHeight: 102),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      constraints: const BoxConstraints(minHeight: 96),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.centerLeft, end: Alignment.centerRight,
           colors: dark
-            ? const [Color(0xFF24242A), Color(0xFF2A2528)]
-            : const [Color(0xFFFFFFFF), Color(0xFFFCFBFB),
-                Color(0xFFFFF8F6)],
+            ? const [Color(0xFF27252B), Color(0xFF30282B)]
+            : const [Color(0xFFFFFEFD), Color(0xFFFFFAF8),
+                Color(0xFFFFF5F2)],
         ),
-        borderRadius: BorderRadius.circular(23),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: dark
-            ? const Color(0xFF3A3337) : const Color(0xFFECEBEF)),
+            ? const Color(0xFF4A3C40) : const Color(0xFFF1E1DE)),
+        boxShadow: dark ? null : const [
+          BoxShadow(color: Color(0x0C5B4440),
+            blurRadius: 20, offset: Offset(0, 7)),
+        ],
       ),
       child: Row(children: [
-        Stack(clipBehavior: Clip.none, children: [
-          Container(
-            width: 51, height: 51,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: dark ? const Color(0xFF4B3436)
-                : const Color(0xFFFCE3DC),
-              borderRadius: BorderRadius.circular(17)),
-            child: FAvatar.raw(
-              size: 51,
-              style: .delta(backgroundColor: Colors.transparent),
-              child: Text(letter, style: TextStyle(
-                color: dark ? const Color(0xFFFFD5C9)
-                  : const Color(0xFFBA4635),
-                fontSize: 19, fontWeight: FontWeight.w800)),
-            ),
+        Container(
+          width: 51, height: 51,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: dark ? const Color(0xFF533B3D)
+              : const Color(0xFFF8DDD7),
+            borderRadius: BorderRadius.circular(17)),
+          child: FAvatar.raw(
+            size: 51,
+            style: .delta(backgroundColor: Colors.transparent),
+            child: Text(letter, style: TextStyle(
+              color: dark ? const Color(0xFFFFD5C9)
+                : const Color(0xFFB35043),
+              fontSize: 20, fontWeight: FontWeight.w800)),
           ),
-          Positioned(right: -1, bottom: -1,
-            child: Container(width: 12, height: 12,
-              decoration: BoxDecoration(
-                color: const Color(0xFF43B884),
-                shape: BoxShape.circle,
-                border: Border.all(color: dark
-                  ? const Color(0xFF332A2D) : const Color(0xFFFFF9F6),
-                  width: 2))),
-          ),
-        ]),
+        ),
         const SizedBox(width: 13),
-        Expanded(child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(width: 6, height: 6, decoration: const BoxDecoration(
-                shape: BoxShape.circle, color: Color(0xFF43B884))),
-              const SizedBox(width: 5),
-              Text(v3Copy(context, zh: '已登录账户',
-                    en: 'Signed in', tw: '已登入帳戶'),
-                style: TextStyle(color: muted,
-                  fontSize: 10, fontWeight: FontWeight.w700)),
-            ]),
-            const SizedBox(height: 5),
-            Text(v3AccountDisplayName(context, user.name),
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: ink, fontSize: 17,
-                fontWeight: FontWeight.w800)),
-            const SizedBox(height: 3),
-            Text(v3AccountEmailLabel(
-                context, controller.accountDetails?.email),
-              maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: muted, fontSize: 11)),
-          ],
-        )),
+        Expanded(child: Text(displayIdentity,
+          maxLines: 2, overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: ink, fontSize: 15,
+            height: 1.25, fontWeight: FontWeight.w700))),
         const SizedBox(width: 6),
         OutlinedButton(
           onPressed: onManage,
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(0, 36),
-            padding: const EdgeInsets.symmetric(horizontal: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             side: BorderSide(color: dark
               ? const Color(0xFF4A3D3F) : const Color(0xFFF0E7E7)),
             backgroundColor: dark
@@ -686,7 +664,7 @@ class _MobileIdentityCard extends StatelessWidget {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text(v3Copy(context, zh: '管理账户',
                 en: 'Manage', tw: '管理帳戶'),
-              style: TextStyle(fontSize: 10,
+              style: TextStyle(fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: dark ? const Color(0xFFF3C1B8)
                   : const Color(0xFF7B6160))),

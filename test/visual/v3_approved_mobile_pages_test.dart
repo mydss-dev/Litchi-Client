@@ -53,7 +53,9 @@ void main() {
     final controller = VisualV3Controller(AppPage.account);
     await _pumpMobile(tester, controller, const V3AccountPage());
     expect(find.text('账户与订阅管理'), findsOneWidget);
-    expect(find.text('已登录账户'), findsOneWidget);
+    expect(find.text('已登录账户'), findsNothing);
+    expect(find.text('Litchi User'), findsNothing);
+    expect(find.text('litchi-user@example.com'), findsOneWidget);
     expect(find.text('管理账户'), findsOneWidget);
     expect(find.text('订阅计划'), findsOneWidget);
     expect(find.text('账户服务'), findsOneWidget);
@@ -77,12 +79,12 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('usage page puts the actual subscription card above quota',
+  testWidgets('usage page shows quota directly without duplicating plan card',
       (tester) async {
     final controller = VisualV3Controller(AppPage.traffic);
     await _pumpMobile(tester, controller, const V3TrafficPage());
-    expect(find.byKey(const ValueKey('v3-mobile-plan-card')), findsOneWidget);
-    expect(find.text('订阅计划'), findsOneWidget);
+    expect(find.byKey(const ValueKey('v3-mobile-plan-card')), findsNothing);
+    expect(find.text('订阅计划'), findsNothing);
     expect(find.text('套餐流量'), findsOneWidget);
     expect(find.text('套餐'), findsOneWidget);
     expect(find.byKey(const ValueKey('v3-usage-renew')), findsOneWidget);

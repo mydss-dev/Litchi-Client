@@ -7,9 +7,8 @@ import '../../app/plan_presentation.dart';
 import 'v3_locale_copy.dart';
 import 'v3_plan_labels.dart';
 
-/// The same compact, real-data subscription hero on Account and Usage.
-/// Account opens Usage; the in-page Usage copy is informational.
-/// Approved V3: the account subscription is the single soft coral hero.
+/// Account-only subscription hero, opening the secondary Usage/Plan page.
+/// Keep this as the page's single softly tinted surface.
 class V3MobilePlanCard extends StatelessWidget {
   const V3MobilePlanCard({super.key, required this.controller,
     this.onOpenUsage});
@@ -66,22 +65,38 @@ class V3MobilePlanCard extends StatelessWidget {
           colors: dark
             ? const [Color(0xFF453338), Color(0xFF3B3036),
                 Color(0xFF343038)]
-            : const [Color(0xFFFFF5F1), Color(0xFFFFEDE8),
-                Color(0xFFFFE5E0)],
+            : const [Color(0xFFFFFAF8), Color(0xFFFFF5F2),
+                Color(0xFFFFECE8)],
         ),
         borderRadius: BorderRadius.circular(27),
         border: Border.all(color: dark
-            ? const Color(0xFF68494C) : const Color(0xFFF7DAD4)),
+            ? const Color(0xFF68494C) : const Color(0xFFF2DEDA)),
         boxShadow: dark ? null : const [BoxShadow(
-          color: Color(0x12B86053), blurRadius: 28, offset: Offset(0, 11))],
+          color: Color(0x0C986A60), blurRadius: 22, offset: Offset(0, 7))],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(children: [
-        Positioned(top: -95, right: -75,
+        // Restore the approved HTML's concentric, very low-contrast rings.
+        Positioned(top: -97, right: -72,
           child: IgnorePointer(child: Container(
             width: 208, height: 208,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white.withValues(alpha: .45)),
+              border: Border.all(color: Colors.white.withValues(
+                alpha: dark ? .20 : .78)),
+              shape: BoxShape.circle)))),
+        Positioned(top: -126, right: -101,
+          child: IgnorePointer(child: Container(
+            width: 266, height: 266,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white.withValues(
+                alpha: dark ? .10 : .42)),
+              shape: BoxShape.circle)))),
+        Positioned(bottom: -153, right: -94,
+          child: IgnorePointer(child: Container(
+            width: 245, height: 245,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.white.withValues(
+                alpha: dark ? .10 : .38)),
               shape: BoxShape.circle)))),
         Padding(
           padding: const EdgeInsets.fromLTRB(15, 12, 15, 13),

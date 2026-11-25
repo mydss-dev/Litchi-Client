@@ -214,6 +214,8 @@ void main() {
       await _tap(tester, find.byKey(const ValueKey('v3-mobile-plan-card')));
       expect(controller.page, AppPage.traffic);
       expect(find.text('套餐'), findsOneWidget);
+      expect(find.byKey(const ValueKey('v3-mobile-plan-card')), findsNothing);
+      expect(find.text('套餐流量'), findsOneWidget);
       expect(find.byKey(const ValueKey('v3-usage-renew')), findsOneWidget);
       await _tap(tester, find.byKey(
           const ValueKey('v3-mobile-secondary-back')));

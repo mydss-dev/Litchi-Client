@@ -10,7 +10,6 @@ import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
-import '../ui/v3_mobile_plan_card.dart';
 import '../ui/v3_plan_renewal.dart';
 
 /// Supported chart periods are the same on desktop and mobile.
@@ -216,10 +215,6 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
               message: controller.dataLoadError!,
               onRetry: controller.refreshData,
             ),
-            const SizedBox(height: 12),
-          ],
-          if (mobile) ...[
-            V3MobilePlanCard(controller: controller),
             const SizedBox(height: 12),
           ],
           _QuotaPanel(controller: controller, usedRatio: usedRatio),
