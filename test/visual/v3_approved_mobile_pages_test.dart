@@ -35,6 +35,18 @@ Future<void> _pumpMobile(
   await tester.pumpAndSettle();
 }
 
+class _PlanRouteController extends VisualV3Controller {
+  _PlanRouteController() : super(AppPage.account);
+  AppPage _selected = AppPage.account;
+  @override
+  AppPage get page => _selected;
+  @override
+  void goToPage(AppPage page) {
+    _selected = page;
+    notifyListeners();
+  }
+}
+
 void main() {
   testWidgets('approved V3 mobile account keeps actual actions and hero',
       (tester) async {
@@ -53,7 +65,7 @@ void main() {
 
   testWidgets('compact account plan card opens real usage page',
       (tester) async {
-    final controller = VisualV3Controller(AppPage.account);
+    final controller = _PlanRouteController();
     await _pumpMobile(tester, controller, const V3AccountPage());
     final card = find.byKey(const ValueKey('v3-mobile-plan-card'));
     expect(card, findsOneWidget);
@@ -71,6 +83,7 @@ void main() {
     expect(find.byKey(const ValueKey('v3-mobile-plan-card')), findsOneWidget);
     expect(find.text('订阅计划'), findsOneWidget);
     expect(find.text('套餐流量'), findsOneWidget);
+    expect(find.byKey(const ValueKey('v3-usage-renew')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -120,7 +133,7 @@ void main() {
     await tester.ensureVisible(find.text('到期日期'));
     await tester.pumpAndSettle();
     expect(find.text('剩余有效期'), findsOneWidget);
-    expect(find.text('续费'), findsOneWidget);
+    expect(find.text('续费'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

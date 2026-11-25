@@ -11,6 +11,7 @@ import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_mobile_plan_card.dart';
+import '../ui/v3_plan_renewal.dart';
 
 /// Supported chart periods are the same on desktop and mobile.
 const List<int> kV3TrafficPeriods = [7, 15, 30];
@@ -192,15 +193,25 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
                   '本月 ${traffic.usedGb.toStringAsFixed(1)} GB / '
                   '${_totalGbLabel(traffic.totalGb)} GB 用量走勢',
             ),
-            trailing: _RefreshIconButton(
-              tooltip: v3Copy(
-                context,
-                zh: '刷新流量',
-                en: 'Refresh traffic',
-                tw: '重新整理流量',
+            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (mobile && controller.hasPlan && isPageEnabled(AppPage.shop))
+                TextButton(
+                  key: const ValueKey('v3-usage-renew'),
+                  onPressed: () => openV3PlanRenewal(context, controller),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 9)),
+                  child: Text(v3Copy(context,
+                    zh: '续费', en: 'Renew', tw: '續費'),
+                    style: const TextStyle(fontSize: 13,
+                      fontWeight: FontWeight.w700)),
+                ),
+              _RefreshIconButton(
+                tooltip: v3Copy(context, zh: '刷新流量',
+                  en: 'Refresh traffic', tw: '重新整理流量'),
+                onRefresh: controller.refreshData,
               ),
-              onRefresh: controller.refreshData,
-            ),
+            ]),
           ),
           const SizedBox(height: 18),
           if (controller.dataLoadError != null) ...[

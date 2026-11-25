@@ -200,6 +200,23 @@ void main() {
     });
   });
 
+  testWidgets('Android card opens usage; renewal is not an account service',
+      (tester) async {
+    await _onPlatform(TargetPlatform.android, () async {
+      final controller = await _pumpShell(tester, const Size(390, 844));
+      controller.goToPage(AppPage.account);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('v3-account-renew-service')), findsNothing);
+      expect(find.text('续费'), findsNothing);
+      await _tap(tester, find.byKey(const ValueKey('v3-mobile-plan-card')));
+      expect(controller.page, AppPage.traffic);
+      expect(find.byKey(const ValueKey('v3-usage-renew')), findsOneWidget);
+      await _tap(tester, find.byKey(
+          const ValueKey('v3-mobile-secondary-back')));
+      expect(controller.page, AppPage.account);
+    });
+  });
+
   testWidgets('Android order history is reachable from account services',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {

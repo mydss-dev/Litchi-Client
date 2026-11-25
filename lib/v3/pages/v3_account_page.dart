@@ -8,7 +8,6 @@ import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
 import '../app/v3_nav.dart';
 import '../../config/app_config.dart';
-import '../commerce/v3_order_dialog.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 import '../ui/v3_account_labels.dart';
@@ -18,6 +17,7 @@ import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_logout_confirmation.dart';
 import '../ui/v3_plan_labels.dart';
+import '../ui/v3_plan_renewal.dart';
 import '../ui/v3_mobile_plan_card.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
@@ -235,27 +235,8 @@ class _V3AccountPageState extends State<V3AccountPage> {
 }
 
 
-void _openAccountPlan(BuildContext context, AppController controller) {
-  if (!controller.hasPlan) {
-    controller.goToPage(AppPage.shop);
-    return;
-  }
-  for (final plan in controller.plans) {
-    if (int.tryParse(plan.id) == controller.currentPlanId) {
-      showV3OrderDialog(
-        context: context,
-        plan: plan,
-        initialCycle: v3DefaultCycle(plan),
-        api: controller.api,
-        currencySymbol: controller.currencySymbol,
-        onPaid: controller.refreshData,
-        onViewOrders: () => openV3Page(context, AppPage.orders),
-      );
-      return;
-    }
-  }
-  controller.goToPage(AppPage.shop);
-}
+void _openAccountPlan(BuildContext context, AppController controller) =>
+    openV3PlanRenewal(context, controller);
 
 /// Phone account layout. The desktop workspace retains its original panels.
 /// This page intentionally uses low-elevation surfaces and one calm type scale;
@@ -438,7 +419,6 @@ class _MobileAccountOverview extends StatelessWidget {
           V3MobilePlanCard(
             controller: controller,
             onOpenUsage: () => openV3Page(context, AppPage.traffic),
-            onRenew: () => _openAccountPlan(context, controller),
           ),
           const SizedBox(height: 29),
           Row(children: [
