@@ -76,6 +76,15 @@ tasks.register("ensureLibboxAar") {
     inputs.files(psScript, shScript, file("../../tool/core_versions.env"))
     outputs.file(aar)
     doLast {
+        // Opt-in local UI testing with an AAR built by the pinned CI workflow.
+        // Default release and CI builds still verify and build sing-box from source.
+        if (System.getenv("LIBBOX_USE_PREBUILT") == "1") {
+            if (!aar.exists() || aar.length() == 0) {
+                throw new GradleException("LIBBOX_USE_PREBUILT=1 requires android/app/libs/libbox.aar")
+            }
+            logger.lifecycle("Using prebuilt libbox.aar for local development")
+            return
+        }
         if (System.getProperty("os.name").toLowerCase().contains("windows")) {
             if (!psScript.exists()) throw new GradleException("Missing libbox build script: ${psScript}")
             providers.exec {
