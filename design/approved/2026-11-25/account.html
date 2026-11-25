@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#fffefd" />
+<title>Litchi · 我的账户｜Elegant 账户页 · V3 稳定修正版</title>
+<style>
+:root{
+ --stage:#eaeef0;--paper:#fcfdfc;--surface:#fff;--text:#171c1c;--muted:#84908c;--line:#e7edeb;
+ --mint:#b6efe1;--mint-strong:#70ddbf;--mint-deep:#1b7665;--soft:#f3f7f6;--shadow:0 18px 52px rgba(35,61,55,.055);
+ --accent:#ee685b;--nav:rgba(250,252,251,.88);
+ color-scheme:light;
+}
+*{box-sizing:border-box} html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft Yahei",Inter,Arial,sans-serif;-webkit-font-smoothing:antialiased}body{background:var(--stage);color:var(--text)}button{font:inherit;cursor:pointer}button:focus-visible{outline:3px solid var(--mint-deep);outline-offset:3px}svg{display:block;flex-shrink:0}button,input{touch-action:manipulation}
+.app-layout{min-height:100vh;display:flex;justify-content:center;align-items:center;gap:56px;padding:38px 28px}.side{width:310px;align-self:center}.side .eyebrow{letter-spacing:.18em;font-size:11px;font-weight:800;color:#4f8176}.side h1{font-size:32px;line-height:1.25;letter-spacing:-1px;margin:16px 0 14px}.side p{font-size:14px;line-height:1.9;color:#687571;margin:0 0 22px}.buttons{display:flex;gap:8px;margin:20px 0 26px}.switch{border:1px solid #dbe5e0;background:white;border-radius:14px;padding:11px 16px;font-size:13px;font-weight:700;color:#404d48}.switch.active{background:#202a26;color:white;border-color:#202a26}.spec{display:flex;gap:14px;align-items:center;padding:13px 0;border-top:1px solid #d5dedb;font-size:13px;color:#64706b}.spec strong{margin-left:auto;color:#222f2a;font-weight:700}.swatch{width:25px;height:25px;border:1px solid rgba(0,0,0,.07);border-radius:9px}.side small{font-size:12px;line-height:1.8;color:#84908a;display:block;margin-top:25px}
+.device{width:396px;height:854px;position:relative;flex-shrink:0;padding:7px;border-radius:51px;background:#161b1a;border:1px solid #35423e;box-shadow:0 28px 90px rgba(18,39,31,.19),inset 0 0 0 2px #38433f}.screen{height:100%;border-radius:44px;position:relative;overflow:hidden;background:var(--paper)}.status{height:39px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 27px 6px 28px;font-size:13px;font-weight:750;letter-spacing:-.3px;position:relative;z-index:5}.camera{width:18px;height:18px;background:#0d1415;border:3px solid #232b29;position:absolute;left:calc(50% - 9px);top:10px;border-radius:50%;box-shadow:inset 0 0 0 2px #080d0d}.status-right{display:flex;align-items:center;gap:5px}.battery{height:11px;width:22px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1px}.battery:after{content:"";position:absolute;width:2px;height:5px;right:-4px;top:2px;background:currentColor;border-radius:1px}.battery i{display:block;width:82%;height:100%;background:currentColor;border-radius:1px}
+.scroller{height:calc(100% - 39px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding:14px 20px 124px}.scroller::-webkit-scrollbar{display:none}.header{display:flex;align-items:center;justify-content:space-between;padding:7px 0 20px}.header h2{font-size:31px;letter-spacing:-1.3px;line-height:1.1;margin:0;font-weight:800}.header p{margin:7px 0 0;font-size:12px;color:var(--muted)}.round-btn{width:39px;height:39px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:#61716c;box-shadow:0 4px 16px rgba(28,45,36,.025)}
+.identity{display:flex;align-items:center;gap:12px;padding:6px 0 27px}.avatar{height:49px;width:49px;border-radius:17px;background:#222c29;color:#fff;display:grid;place-items:center;font-size:19px;font-weight:800;letter-spacing:-1px;position:relative}.avatar:after{content:"";width:9px;height:9px;border-radius:50%;background:#f18470;position:absolute;right:-1px;bottom:0;border:2px solid var(--paper)}.identity-main{min-width:0;flex:1}.identity-name{font-size:15px;font-weight:750;letter-spacing:.2px}.identity-email{color:var(--muted);font-size:11px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.manage{display:flex;align-items:center;gap:3px;border:0;background:transparent;color:#56625e;font-size:11px;font-weight:700;padding:8px 0}
+.plan{border-radius:27px;background:linear-gradient(128deg,#c8f5ea 0%,#b1edde 55%,#a5e9d6 100%);min-height:228px;padding:22px 22px 21px;position:relative;overflow:hidden;box-shadow:0 14px 30px rgba(54,154,123,.12)}.plan:before{content:"";position:absolute;width:200px;height:200px;right:-66px;top:-91px;border:1px solid rgba(255,255,255,.55);border-radius:50%;box-shadow:0 0 0 28px rgba(255,255,255,.095),0 0 0 58px rgba(255,255,255,.065)}.plan:after{content:"";position:absolute;right:12px;bottom:-104px;width:210px;height:210px;border:1px solid rgba(255,255,255,.38);border-radius:50%}.plan-top,.plan-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative;z-index:1}.plan-caption{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#2a6458}.crown-icon{width:26px;height:26px;background:rgba(255,255,255,.42);border-radius:9px;display:grid;place-items:center}.renew{background:#182320;color:white;padding:9px 14px;border:0;border-radius:25px;font-size:11px;font-weight:750;display:flex;align-items:center;gap:6px;box-shadow:0 7px 14px rgba(18,43,33,.12)}.plan-title{font-size:28px;letter-spacing:-.8px;font-weight:820;margin:24px 0 5px;position:relative;z-index:1;line-height:1.25}.plan-sub{font-size:11px;color:#426a5e;position:relative;z-index:1}.plan-line{height:1px;background:rgba(40,116,92,.17);margin:21px 0 16px;position:relative;z-index:1}.plan-meta{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;gap:20px}.plan-meta span{display:block;color:#4a7c6e;font-size:11px;margin-bottom:6px}.plan-meta strong{font-size:14px;font-weight:750;letter-spacing:-.15px}.plan-meta .right{border-left:1px solid rgba(40,116,92,.2);padding-left:18px}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:35px 1px 16px}.section-title h3{margin:0;font-size:17px;font-weight:780;letter-spacing:-.5px}.section-title p{margin:0;font-size:11px;color:var(--muted)}.services{border-radius:24px;background:var(--surface);border:1px solid var(--line);overflow:hidden;box-shadow:0 9px 28px rgba(36,59,50,.025)}.service{width:100%;display:flex;align-items:center;text-align:left;gap:12px;border:0;background:transparent;padding:12px 16px;min-height:61px;color:var(--text);position:relative}.service:not(:last-child):after{position:absolute;content:"";left:61px;right:16px;bottom:0;height:1px;background:#eef1f0}.service:active{background:#f7fbfa}.service-icon{width:34px;height:34px;border-radius:12px;background:#f3f6f5;display:grid;place-items:center;color:#677873}.service:nth-child(1) .service-icon,.service:nth-child(4) .service-icon{background:#edf8f4;color:#2b9c7c}.service:nth-child(6) .service-icon{background:#f5f5f8;color:#6b7280}.service-label{flex:1;font-size:13px;font-weight:640}.chev{color:#a0aba7}.footer-note{font-size:10px;color:#a3aeaa;text-align:center;margin-top:22px}
+.nav-overlay{position:absolute;left:13px;right:13px;bottom:23px;z-index:10;padding:5px;background:var(--nav);backdrop-filter:blur(22px) saturate(1.25);-webkit-backdrop-filter:blur(22px) saturate(1.25);border:1px solid rgba(224,233,229,.9);border-radius:34px;display:grid;grid-template-columns:repeat(4,1fr);box-shadow:0 9px 28px rgba(34,50,43,.11),0 1px 5px rgba(34,50,43,.035)}.nav-btn{border:0;border-radius:29px;background:transparent;min-width:0;min-height:54px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;color:#687672;font-size:10px;font-weight:600;transition:all .22s ease}.nav-btn.active{color:#b03a26;background:rgba(242,94,72,.16);box-shadow:none}.nav-btn svg{width:20px;height:20px}.homebar{position:absolute;width:110px;height:4px;border-radius:10px;background:#313a36;bottom:9px;left:calc(50% - 55px);z-index:11}.toast{position:absolute;z-index:25;top:57px;left:45px;right:45px;text-align:center;background:rgba(24,38,32,.93);color:#fff;padding:12px 13px;border-radius:14px;box-shadow:0 7px 18px rgba(0,0,0,.16);font-size:12px;opacity:0;transform:translateY(-9px);pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translateY(0)}
+.detail{position:absolute;inset:39px 0 0;background:var(--paper);z-index:8;padding:20px;display:none}.detail.show{display:block}.detail-back{border:0;background:none;color:var(--text);display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;padding:6px 0 24px}.detail h2{font-size:28px;margin:3px 0 12px}.detail p{color:var(--muted);line-height:1.7;font-size:13px}
+body.dark{--stage:#151a19;--paper:#111816;--surface:#1d2723;--text:#eaf3ef;--muted:#a2b5ad;--line:#2b3933;--soft:#222f2a;--nav:rgba(33,43,39,.88);color-scheme:dark}.dark .device{border-color:#43524b}.dark .avatar{background:#e2f0e9;color:#16241f}.dark .service-icon{background:#2a3932;color:#a1b8af}.dark .service:nth-child(1) .service-icon,.dark .service:nth-child(4) .service-icon{background:#214638;color:#84d3b5}.dark .service:nth-child(6) .service-icon{background:#333a3f;color:#aab7b6}.dark .service:after{background:#2a3933}.dark .service:active{background:#25352d}.dark .round-btn{color:#aabdb5}.dark .manage{color:#a8bdb4}.dark .nav-btn.active{background:rgba(255,138,114,.17);color:#ff8a72}.dark .homebar{background:#d4e0da}.dark .side h1{color:#e9f4ed}.dark .side p,.dark .side small{color:#a6b9af}.dark .spec{border-color:#36423c;color:#a6b9af}.dark .spec strong{color:#eaf4ef}.dark .switch{border-color:#3d4b44;background:#202c25;color:#e3eee8}.dark .switch.active{background:#b6efe1;color:#192923;border-color:#b6efe1}
+@media (max-width:840px){.app-layout{gap:0;padding:0;display:block;background:var(--paper)}.side{display:none}.device{width:100%;height:100dvh;min-height:600px;padding:0;border:0;box-shadow:none;border-radius:0}.screen{border-radius:0}.nav-overlay{bottom:max(23px,env(safe-area-inset-bottom))}.homebar{bottom:10px}}@media (min-width:841px) and (max-height:920px){.app-layout{padding:14px 24px}.device{transform:scale(.93)}}
+
+/* V2 refinement: calm monochrome services; structured account + mint subscription */
+.scroller{padding-top:14px}
+.header{padding-bottom:16px}
+.identity{
+  min-height:103px;padding:16px 14px;margin:0 0 19px;gap:13px;
+  background:linear-gradient(112deg,#f1f6f4 0%,#fafcfb 72%,#f8faf9 100%);
+  border:1px solid #e5ece8;border-radius:23px;
+  box-shadow:0 5px 18px rgba(32,65,51,.025)
+}
+.avatar{height:51px;width:51px;border-radius:17px;background:#263933;color:#fff;box-shadow:0 3px 9px rgba(24,51,40,.08)}
+.avatar:after{width:10px;height:10px;background:#64c79d;border:2px solid #f6faf8}
+.identity-kicker{font-size:10px;font-weight:700;color:#75837c;display:flex;gap:5px;align-items:center;margin-bottom:4px}
+.status-dot{height:6px;width:6px;border-radius:50%;background:#4faf88;display:inline-block}
+.identity-name{font-size:17px;letter-spacing:.1px;font-weight:800}
+.identity-email{font-size:11px;color:#8a9890;margin-top:4px}
+.manage{color:#445d51;font-size:10px;font-weight:750;gap:2px;white-space:nowrap;padding:9px 9px;border:1px solid #dce8e2;border-radius:16px;background:#fff;box-shadow:0 2px 4px rgba(30,60,44,.02)}
+.plan{min-height:232px;padding:20px 19px 21px;background:linear-gradient(119deg,#d5f6ec 0%,#c2f0e3 55%,#b8e9da 100%);box-shadow:0 11px 27px rgba(63,153,124,.075);border:1px solid rgba(64,135,107,.08)}
+.plan:before{top:-107px;right:-62px;width:230px;height:230px;box-shadow:0 0 0 28px rgba(255,255,255,.085),0 0 0 57px rgba(255,255,255,.055)}
+.plan:after{right:-138px;bottom:-170px;width:310px;height:310px;opacity:.3}
+.plan-caption{font-size:11px;color:#3c7865;font-weight:730;letter-spacing:.1px}
+.crown-icon{background:rgba(255,255,255,.54);width:27px;height:27px;border-radius:10px}
+.plan-state{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.47);border:1px solid rgba(255,255,255,.5);color:#2c765e;font-size:10px;font-weight:800;padding:7px 10px;border-radius:20px;z-index:2}
+.plan-state-dot{width:6px;height:6px;border-radius:50%;background:#329a73}
+.plan-content{position:relative;z-index:2;margin-top:27px}
+.plan-overline{font-size:9px;font-weight:800;letter-spacing:1.7px;color:#4d907b;margin-bottom:5px}
+.plan-title{font-size:27px;letter-spacing:-.9px;margin:0 0 7px;color:#19372b}
+.plan-sub{font-size:11px;color:#518675}
+.plan-demo{color:#6ca48e;font-size:10px}
+.plan-line{margin:20px 0 14px;background:rgba(32,104,78,.15)}
+.plan-bottom{align-items:center;gap:12px}
+.plan-meta{min-width:0;flex:1;gap:10px;grid-template-columns:1fr 1fr}
+.plan-meta span{font-size:10px;margin-bottom:5px;color:#5a8e7c}
+.plan-meta strong{font-size:12px;color:#1e4b3a;white-space:nowrap}
+.plan-meta .right{border-left:1px solid rgba(36,103,80,.17);padding-left:11px}
+.renew{padding:9px 12px;border-radius:15px;background:#1e3029;color:#fff;font-size:11px;white-space:nowrap;box-shadow:0 5px 10px rgba(16,43,33,.09)}
+.section-title{margin-top:29px;margin-bottom:13px}
+.section-title h3{font-size:16px}
+.section-title p{color:#9ba5a0;font-size:10px}
+.services{border-radius:23px;border-color:#e9eeec;box-shadow:none}
+.service{min-height:57px;padding:10px 15px;gap:12px}
+.service:not(:last-child):after{left:61px;right:15px;background:#edf0ee;height:1px}
+.service-icon,.service:nth-child(1) .service-icon,.service:nth-child(4) .service-icon,.service:nth-child(6) .service-icon{
+  width:33px;height:33px;border-radius:11px;background:#f3f5f4;color:#687772;
+}
+.service-icon svg{width:18px;height:18px}
+.service-label{font-weight:630;font-size:13px}
+.chev{color:#a8b1ad}
+.footer-note{display:none}
+.dark .identity{background:linear-gradient(112deg,#26362e,#1a2621);border-color:#31463b;box-shadow:none}
+.dark .avatar{background:#d5ebe0;color:#1b3024}
+.dark .avatar:after{border-color:#26362e}
+.dark .identity-kicker{color:#a2b8ac}
+.dark .identity-email{color:#96a99c}
+.dark .manage{background:#2a3b31;border-color:#395345;color:#d2e5d9}
+.dark .service-icon,.dark .service:nth-child(1) .service-icon,.dark .service:nth-child(4) .service-icon,.dark .service:nth-child(6) .service-icon{background:#27342d;color:#b3c3b9}
+.dark .plan{border-color:#568c77}
+@media(max-width:560px){.identity{padding-left:13px;padding-right:13px}.plan{padding-left:18px;padding-right:18px}.plan-meta strong{font-size:12px}}
+
+/* V3: neutral + coral palette, coordinated with the existing coral nav. */
+:root{
+ --stage:#f1f1f3;--paper:#fffefd;--surface:#ffffff;--text:#202226;
+ --muted:#83858c;--line:#ebebee;--soft:#faf9f8;
+ --nav:rgba(252,252,252,.9);--accent:#ee685b;
+}
+body{color:var(--text)}
+body:not(.dark) .device{background:#202124;border-color:#32333a;box-shadow:0 30px 85px rgba(35,34,46,.17)}
+body:not(.dark) .header p{color:#96959a}
+body:not(.dark) .round-btn{color:#7c8087;border-color:#ececf0}
+/* Header account card is mostly neutral; a softly colored identity tile anchors it. */
+body:not(.dark) .identity{
+ background:linear-gradient(115deg,#ffffff 5%,#fcfbfb 68%,#fff8f6 100%);
+ border:1px solid #ecebef;box-shadow:0 5px 17px rgba(41,42,52,.025);
+}
+body:not(.dark) .avatar{background:#fce3dc;color:#ba4635;box-shadow:none}
+body:not(.dark) .avatar:after{background:#43b884;border-color:#fff9f6}
+body:not(.dark) .identity-kicker{color:#929399}
+body:not(.dark) .identity-name{color:#24252a}
+body:not(.dark) .identity-email{color:#92929a}
+body:not(.dark) .manage{color:#7b6160;background:#fff;border-color:#f0e7e7;box-shadow:none}
+/* The single tinted hero is delicate peach, not a saturated block. */
+body:not(.dark) .plan{
+ background:linear-gradient(123deg,#fff5f1 0%,#ffede8 57%,#ffe5e0 100%);
+ border:1px solid #f7dad4;
+ box-shadow:0 11px 28px rgba(184,96,83,.07);
+}
+body:not(.dark) .plan:before{border-color:rgba(255,255,255,.82);box-shadow:0 0 0 28px rgba(255,255,255,.16),0 0 0 56px rgba(255,255,255,.1)}
+body:not(.dark) .plan:after{border-color:rgba(255,255,255,.62)}
+body:not(.dark) .plan-caption{color:#a45a4f}
+body:not(.dark) .crown-icon{color:#c55d4b;background:rgba(255,255,255,.69)}
+body:not(.dark) .plan-state{background:rgba(255,255,255,.68);border-color:rgba(255,255,255,.87);color:#597261}
+body:not(.dark) .plan-state-dot{background:#3bac77}
+body:not(.dark) .plan-overline{color:#b5746b}
+body:not(.dark) .plan-title{color:#25262a}
+body:not(.dark) .plan-sub{color:#87716f}
+body:not(.dark) .plan-demo{color:#b5a09d}
+body:not(.dark) .plan-line{background:rgba(154,109,103,.19)}
+body:not(.dark) .plan-meta span{color:#9e7d78}
+body:not(.dark) .plan-meta strong{color:#302c2d}
+body:not(.dark) .plan-meta .right{border-left-color:rgba(154,109,103,.19)}
+body:not(.dark) .renew{background:#282629;box-shadow:0 5px 12px rgba(35,30,34,.1)}
+/* Service rows should be monochrome: avoid six colored icons. */
+body:not(.dark) .services{border-color:#ebebee;background:#fff}
+body:not(.dark) .service-icon,
+body:not(.dark) .service:nth-child(1) .service-icon,
+body:not(.dark) .service:nth-child(4) .service-icon,
+body:not(.dark) .service:nth-child(6) .service-icon{
+ background:#f4f4f5;color:#737780;
+}
+body:not(.dark) .service:not(:last-child):after{background:#efeff1}
+body:not(.dark) .service:active{background:#fff7f5}
+body:not(.dark) .chev{color:#b8b9bf}
+body:not(.dark) .nav-overlay{border-color:rgba(229,228,232,.95);box-shadow:0 8px 23px rgba(36,34,40,.095)}
+body:not(.dark) .nav-btn{color:#777c83}
+body:not(.dark) .nav-btn.active{background:#fce7e2;color:#c64e40}
+body:not(.dark) .homebar{background:#36363b}
+body:not(.dark) .side .eyebrow{color:#b36c5f}
+body:not(.dark) .side h1{color:#29282d}
+body:not(.dark) .side p{color:#807d81}
+body:not(.dark) .switch.active{background:#29282d;border-color:#29282d}
+/* Dark mode: graphite and muted coral, no green surface cast. */
+body.dark{
+ --stage:#111216;--paper:#141519;--surface:#202126;--text:#f4f2f2;
+ --muted:#a4a0a5;--line:#303137;--soft:#212026;
+ --nav:rgba(34,35,40,.88)
+}
+.dark .device{background:#0e0f13;border-color:#3a3940}
+.dark .identity{background:linear-gradient(115deg,#24242a 0%,#2a2528 100%);border:1px solid #3a3337;box-shadow:none}
+.dark .avatar{background:#4b3436;color:#ffd5c9;box-shadow:none}
+.dark .avatar:after{background:#4cb991;border-color:#332a2d}
+.dark .identity-kicker,.dark .identity-email{color:#aaa3a6}
+.dark .identity-name{color:#f7f4f4}
+.dark .manage{background:#322c30;color:#f3c1b8;border:1px solid #4a3d3f}
+.dark .plan{background:linear-gradient(124deg,#453338 0%,#3b3036 57%,#343038 100%);border:1px solid #68494c;box-shadow:0 11px 28px rgba(0,0,0,.13)}
+.dark .plan-caption{color:#ffd1c7}
+.dark .crown-icon{background:#684950;color:#ffdcd5}
+.dark .plan-state{background:#59484d;border:1px solid #6d5458;color:#dfece5}
+.dark .plan-state-dot{background:#5ad19a}
+.dark .plan-overline{color:#e2b0ac}
+.dark .plan-title{color:#fff7f5}
+.dark .plan-sub{color:#e1c8c7}
+.dark .plan-demo{color:#c7a8a7}
+.dark .plan-line{background:rgba(255,210,205,.19)}
+.dark .plan-meta span{color:#ceb1af}
+.dark .plan-meta strong{color:#fff3f0}
+.dark .plan-meta .right{border-left-color:rgba(255,210,205,.19)}
+.dark .renew{background:#f3e4e1;color:#2d2529;box-shadow:none}
+.dark .services{border-color:#333439;background:#202126}
+.dark .service-icon,.dark .service:nth-child(1) .service-icon,.dark .service:nth-child(4) .service-icon,.dark .service:nth-child(6) .service-icon{background:#313238;color:#aeb1b8}
+.dark .service:not(:last-child):after{background:#33343a}
+.dark .service:active{background:#2a292e}
+.dark .chev{color:#777a83}
+.dark .round-btn{color:#b7b7be;background:#212126;border-color:#37373e}
+.dark .nav-overlay{border-color:#414048;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.dark .nav-btn.active{background:rgba(242,94,72,.20);color:#ff9888}
+.dark .homebar{background:#d5d3d7}
+.dark .side h1{color:#f5f2f2}
+.dark .side p,.dark .side small{color:#afaaad}
+.dark .spec{border-color:#373339;color:#aaa5a9}
+.dark .spec strong{color:#f5eeee}
+.dark .switch{background:#28262c;border-color:#413b41;color:#f6ecec}
+.dark .switch.active{background:#f5d6ce;border-color:#f5d6ce;color:#3a282b}
+
+/* Stable V3 correction: define text colors explicitly on interactive elements,
+   rather than relying on native button colors or inherited text. */
+body:not(.dark) .identity-name,
+body:not(.dark) .service-label,
+body:not(.dark) .service,
+body:not(.dark) .section-title h3{color:#24252a !important;opacity:1}
+body:not(.dark) .renew,
+body:not(.dark) .renew svg{color:#ffffff !important;opacity:1}
+body:not(.dark) .manage{color:#7b6160 !important}
+body:not(.dark) .plan-title{color:#25262a !important}
+body.dark .service-label,
+body.dark .service,
+body.dark .section-title h3{color:#f4f2f2 !important;opacity:1}
+body.dark .renew,
+body.dark .renew svg{color:#2d2529 !important;opacity:1}
+/* Accessibility and small tactile refinements only; preserve V3 geometry. */
+button{appearance:none;-webkit-appearance:none;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:2px solid #c64e40;outline-offset:2px}
+.service{transition:background-color 150ms ease}
+.renew,.manage{transition:transform 150ms ease}
+.renew:active,.manage:active{transform:scale(.98)}
+@media(prefers-reduced-motion:reduce){.service,.renew,.manage{transition:none}}
+</style>
+</head>
+<body>
+<!-- Inline icon set avoids external CDN dependencies: file works offline. -->
+<svg aria-hidden="true" width="0" height="0" style="position:absolute;overflow:hidden">
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.5 9A7.6 7.6 0 0 1 19 7l1 5M4 12l1 5a7.6 7.6 0 0 0 13.5-2"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="m5 12 14 0m-6-6 6 6-6 6"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-crown" viewBox="0 0 24 24"><path d="M2.5 7.5 7 11l5-7 5 7 4.5-3.5-2.2 11h-14zM5.5 21h13"/></symbol>
+<symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="15" rx="3"/><path d="M3 10h18M5 6V4a2 2 0 0 1 2-2h11"/><path d="M15 15h4"/></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2zM9 8h6m-6 4h6"/></symbol>
+<symbol id="i-pulse" viewBox="0 0 24 24"><path d="M2 12h4l3-7 5 14 3-7h5"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 21l1.3-4.5A8.5 8.5 0 1 1 20 11.5Z"/></symbol>
+<symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2.5 20v-2a6.5 6.5 0 0 1 13 0v2M17 5a3 3 0 0 1 0 6M17 14.5c2.8.3 4.5 2 4.5 5.5"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M10 2h4l.6 2.6 2.1 1.2L19.2 5l2 3.5-1.9 1.8v3l1.9 1.8-2 3.5-2.5-.8-2.1 1.2L14 22h-4l-.6-2.6-2.1-1.2-2.5.8-2-3.5 1.9-1.8v-3L2.8 8.5l2-3.5 2.5.8 2.1-1.2z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v11h-7v-7h-4v7H3z"/></symbol>
+<symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="8" rx="2"/><rect x="3" y="13" width="18" height="8" rx="2"/><path d="M7 7h.01M7 17h.01M11 7h7M11 17h7"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+</svg>
+<div class="app-layout">
+ <aside class="side">
+  <div class="eyebrow">LITCHI / DESIGN STUDY 03</div>
+  <h1>账户页<br>Elegant 视觉原型</h1>
+  <p>第三版：全局采用暖白、浅灰和荔枝珊瑚红。账户卡轻量化，套餐卡低饱和暖红，底部导航与整页保持同一色系。</p>
+  <div class="buttons"><button class="switch active" id="btn-light">浅色模式</button><button class="switch" id="btn-dark">深色模式</button></div>
+  <div class="spec"><span class="swatch" style="background:#fffefd"></span>页面底色<strong>#FFFEFD</strong></div>
+  <div class="spec"><span class="swatch" style="background:#fff0ec"></span>暖珊瑚套餐卡<strong>#FFF0EC</strong></div>
+  <div class="spec"><span class="swatch" style="background:#22252a"></span>黑色主文字 / 按钮<strong>#22252A</strong></div>
+  <div class="spec"><span class="swatch" style="background:#f4f5f6"></span>浅灰服务图标底座<strong>#F4F5F6</strong></div>
+  <small>仅演示布局和色彩。账号与套餐名称为模拟值；底部导航保留既定第三套的浅红选中态，Flutter 源码不改。</small>
+ </aside>
+ <div class="device" aria-label="Litchi 手机账户页预览">
+  <main class="screen">
+   <div class="camera" aria-hidden="true"></div>
+   <div class="status" aria-hidden="true"><span>9:41</span><div class="status-right"><svg width="17" height="13" viewBox="0 0 17 13"><path fill="currentColor" d="M0 11h3V8H0v3Zm4 0h3V6H4v5Zm4 0h3V4H8v7Zm4 0h4V1h-4v10Z"/></svg><svg width="17" height="13" viewBox="0 0 17 13"><path stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" d="M1 4.5q7.5-7 15 0M4.5 8q4-4 8 0"/><circle cx="8.5" cy="11" r="1.5" fill="currentColor"/></svg><div class="battery"><i></i></div></div></div>
+   <div class="scroller" id="scroller">
+    <header class="header"><div><h2>我的</h2><p>账户与订阅管理</p></div><button class="round-btn" aria-label="刷新" data-action="刷新账户信息"><svg width="18" height="18" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button></header>
+    <section class="identity" aria-label="账户信息">
+      <div class="avatar">L</div>
+      <div class="identity-main">
+        <div class="identity-kicker"><span class="status-dot"></span>已登录账户</div>
+        <div class="identity-name">1910•••639</div>
+        <div class="identity-email">account@example.com</div>
+      </div>
+      <button class="manage" data-page="管理账户">管理账户 <svg width="13" height="13" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chev"/></svg></button>
+    </section>
+    <section class="plan" aria-label="当前套餐">
+      <div class="plan-top">
+        <div class="plan-caption"><span class="crown-icon"><svg width="17" height="17" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"><use href="#i-crown"/></svg></span> 订阅计划</div>
+        <div class="plan-state"><span class="plan-state-dot"></span>有效中</div>
+      </div>
+      <div class="plan-content">
+        <div class="plan-overline">CURRENT PLAN</div>
+        <div class="plan-title">高级套餐</div>
+        <div class="plan-sub">你的服务正在有效期内 <span class="plan-demo">· 演示名称</span></div>
+      </div>
+      <div class="plan-line"></div>
+      <div class="plan-bottom">
+        <div class="plan-meta">
+          <div><span>到期日期</span><strong>2043.10.31</strong></div>
+          <div class="right"><span>剩余有效期</span><strong>6,183 天</strong></div>
+        </div>
+        <button class="renew" data-page="续费套餐">续费 <svg width="15" height="15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><use href="#i-arrow"/></svg></button>
+      </div>
+    </section>
+    <div class="section-title"><h3>账户服务</h3><p>6 项功能</p></div>
+    <section class="services" aria-label="账户服务功能">
+      <button class="service" data-page="我的钱包"><span class="service-icon"><svg width="19" height="19" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"><use href="#i-wallet"/></svg></span><span class="service-label">我的钱包</span><svg class="chev" width="16" height="16" stroke="currentColor" stroke-width="1.8" fill="none"><use href="#i-chev"/></svg></button>
+      <button class="service" data-page="订单记录"><span class="service-icon"><svg width="19" height="19" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"><use href="#i-receipt"/></svg></span><span class="service-label">订单记录</span><svg class="chev" width="16" height="16" stroke="currentColor" stroke-width="1.8" fill="none"><use href="#i-chev"/></svg></button>
+      <button class="service" data-page="流量用量"><span class="service-icon"><svg width="19" height="19" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"><use href="#i-pulse"/></svg></span><span class="service-label">流量用量</span><svg class="chev" width="16" height="16" stroke="currentColor" stroke-width="1.8" fill="none"><use href="#i-chev"/></svg></button>
+      <button class="service" data-page="工单支持"><span class="service-icon"><svg width="19" height="19" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"><use href="#i-chat"/></svg></span><span class="service-label">工单支持</span><svg class="chev" width="16" height="16" stroke="currentColor" stroke-width="1.8" fill="none"><use href="#i-chev"/></svg></button>
+      <button class="service" data-page="邀请好友"><span class="service-icon"><svg width="19" height="19" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"><use href="#i-people"/></svg></span><span class="service-label">邀请好友</span><svg class="chev" width="16" height="16" stroke="currentColor" stroke-width="1.8" fill="none"><use href="#i-chev"/></svg></button>
+      <button class="service" data-page="应用设置"><span class="service-icon"><svg width="19" height="19" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"><use href="#i-settings"/></svg></span><span class="service-label">应用设置</span><svg class="chev" width="16" height="16" stroke="currentColor" stroke-width="1.8" fill="none"><use href="#i-chev"/></svg></button>
+    </section><div class="footer-note">LITCHI · ELEGANT EXPERIENCE</div>
+   </div>
+   <section class="detail" id="detail" aria-live="polite"><button class="detail-back" id="back"><svg width="19" height="19" stroke="currentColor" stroke-width="2" fill="none"><use href="#i-back"/></svg>返回</button><h2 id="detail-title">账户服务</h2><p>这里是二级页面的结构演示。真实业务功能会保留原 Flutter 实现；目前只展示返回逻辑。</p></section>
+   <nav class="nav-overlay" aria-label="底部导航">
+     <button class="nav-btn" data-tab="连接"><svg stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>连接</button>
+     <button class="nav-btn" data-tab="节点"><svg stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#i-server"/></svg>节点</button>
+     <button class="nav-btn" data-tab="套餐"><svg stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#i-crown"/></svg>套餐</button>
+     <button class="nav-btn active" data-tab="我的" aria-current="page"><svg stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><use href="#i-user"/></svg>我的</button>
+   </nav>
+   <div class="homebar" aria-hidden="true"></div><div class="toast" id="toast" aria-live="polite"></div>
+  </main>
+ </div>
+</div>
+<script>
+(function(){
+ const body=document.body,light=document.getElementById('btn-light'),dark=document.getElementById('btn-dark'),detail=document.getElementById('detail'),detailTitle=document.getElementById('detail-title'),toast=document.getElementById('toast');let toastTimer;
+ function showToast(str){toast.textContent=str;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2150)}
+ function setTheme(isDark){body.classList.toggle('dark',isDark);light?.classList.toggle('active',!isDark);dark?.classList.toggle('active',isDark)}
+ light?.addEventListener('click',()=>setTheme(false));dark?.addEventListener('click',()=>setTheme(true));
+ document.querySelectorAll('[data-page]').forEach(el=>el.addEventListener('click',()=>{detailTitle.textContent=el.dataset.page;detail.classList.add('show')}));
+ document.getElementById('back').addEventListener('click',()=>detail.classList.remove('show'));
+ document.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',()=>showToast('HTML 原型：'+el.dataset.action)));
+ document.querySelectorAll('[data-tab]').forEach(el=>el.addEventListener('click',()=>{if(el.dataset.tab!=='我的'){showToast('当前仅预览「我的」页，其他页面不在本次改版范围');return}detail.classList.remove('show')}));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')detail.classList.remove('show')});
+})();
+</script>
+</body>
+</html>

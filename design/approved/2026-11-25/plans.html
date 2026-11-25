@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fffefd">
+<title>Litchi · 套餐订阅 · 推荐角标 V15</title>
+<style>
+:root {
+  color-scheme:light;
+  --paper:#fffefd; --ink:#242428; --sub:#82838b; --sub-strong:#65666e;
+  --stroke:#e9e8eb; --stroke-strong:#dddde2; --surface:#ffffff; --muted-bg:#f7f7f8;
+  --coral:#c75345; --coral-soft:#fce8e3; --peach-1:#fff7f3; --peach-2:#ffe8e2;
+  --nav-bg:rgba(252,252,252,.92); --nav-active:#fae7e2;
+  --shadow:0 10px 32px rgba(38,35,45,.045); --cta:#252429; --cta-ink:#ffffff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft YaHei",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+body{background:#e9e8eb;color:var(--ink)}
+button{font:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:2px solid #c75345;outline-offset:2px}
+svg{display:block;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+button:disabled{cursor:not-allowed;opacity:.5}
+.workspace{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:64px;padding:24px 28px}
+.review{width:295px;flex:0 0 295px}
+.review-eyebrow{font-size:11px;letter-spacing:.15em;text-transform:uppercase;font-weight:800;color:#ad655a}
+.review h1{font-size:31px;line-height:1.22;letter-spacing:-1.1px;margin:14px 0 16px;color:#252429}
+.review p{font-size:14px;line-height:1.85;color:#79767a;margin:0 0 20px}
+.review h4{font-size:12px;margin:22px 0 10px;color:#46444a}
+.review-controls{display:flex;gap:9px}
+.review-controls button{padding:11px 15px;font-size:13px;font-weight:750;color:#55545a;background:#fff;border:1px solid #e0dfe2;border-radius:12px}
+.review-controls button.active{background:#262429;border-color:#262429;color:white}
+.spec{display:flex;align-items:center;border-top:1px solid #dddce0;padding:13px 0;gap:12px;font-size:12px;color:#76747b}
+.spec strong{margin-left:auto;font-size:12px;color:#303036}
+.spec-swatch{width:24px;height:24px;border-radius:8px;border:1px solid rgba(0,0,0,.05)}
+.review-note{margin-top:18px;font-size:12px;line-height:1.8;color:#8d898e}
+.device{width:396px;height:858px;position:relative;flex:0 0 396px;background:#232329;border-radius:49px;padding:7px;box-shadow:0 28px 92px rgba(31,29,41,.17),inset 0 0 0 2px #3d3e43}
+.screen{height:100%;position:relative;overflow:hidden;background:var(--paper);border-radius:43px}
+.statusbar{height:43px;padding:0 25px 7px;display:flex;align-items:end;justify-content:space-between;position:relative;font-size:13px;font-weight:750;letter-spacing:-.3px;z-index:3}
+.camera{position:absolute;width:18px;height:18px;border-radius:50%;background:#080c0d;border:3px solid #283131;top:11px;left:calc(50% - 9px);box-shadow:inset 0 0 0 1px #0a1212}
+.status-sigs{display:flex;align-items:center;gap:5px}
+.battery{height:11px;width:22px;position:relative;border:1.5px solid currentColor;border-radius:3px;padding:1px}
+.battery:after{content:"";height:5px;width:2px;position:absolute;right:-4px;top:2px;background:currentColor;border-radius:2px}
+.battery b{display:block;width:75%;height:100%;background:currentColor;border-radius:1px}
+.scroll{height:calc(100% - 43px);overflow:auto;overscroll-behavior:contain;scrollbar-width:none;padding:15px 20px 132px}
+.scroll::-webkit-scrollbar{display:none}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:26px}
+.head h2{font-size:31px;line-height:1.12;font-weight:830;letter-spacing:-1.2px;margin:3px 0 9px;color:var(--ink)}
+.head p{font-size:12px;line-height:1.5;color:var(--sub);margin:0}
+.head-actions{display:flex;align-items:center;gap:8px;padding-top:4px}
+.head-circle{width:39px;height:39px;border-radius:50%;background:var(--surface);border:1px solid var(--stroke);color:var(--sub-strong);display:grid;place-items:center;box-shadow:0 3px 10px rgba(0,0,0,.02)}
+.head-circle svg{width:17px;height:17px}
+.searchlabel{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.searchlabel h3{margin:0;font-size:15px;font-weight:760;letter-spacing:-.3px}
+.searchlabel small{font-size:11px;color:var(--sub)}
+.filters{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -20px 24px;padding:0 20px 2px}
+.filters::-webkit-scrollbar{display:none}
+.filter{border:1px solid var(--stroke);white-space:nowrap;background:var(--surface);border-radius:99px;min-height:38px;padding:0 11px;color:var(--sub-strong);font-size:11.5px;font-weight:700;display:flex;align-items:center;gap:6px}
+.filter.active{background:#29272b;border-color:#29272b;color:white}
+.filter svg{width:14px;height:14px}
+.cards{display:flex;flex-direction:column;gap:15px}
+.offer{position:relative;overflow:hidden;border:1px solid var(--stroke);border-radius:26px;background:var(--surface);padding:19px 19px 18px;box-shadow:var(--shadow);color:var(--ink)}
+.offer.highlight{background:linear-gradient(126deg,var(--peach-1) 0%, #fff0eb 50%,var(--peach-2) 100%);border:1px solid #f5d8d1;box-shadow:0 13px 34px rgba(176,93,81,.085)}
+.offer.highlight:before{content:"";position:absolute;width:210px;height:210px;right:-88px;top:-100px;border:1px solid rgba(255,255,255,.82);border-radius:50%;box-shadow:0 0 0 26px rgba(255,255,255,.16),0 0 0 58px rgba(255,255,255,.10);pointer-events:none}
+.offer-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:19px}
+.offer-tag{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:760;color:var(--coral)}
+.offer-tag-icon{width:27px;height:27px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.64);color:var(--coral)}
+.offer-tag-icon svg{width:15px;height:15px}
+.offer-tag.neutral{color:var(--sub-strong)}.offer-tag.neutral .offer-tag-icon{background:var(--muted-bg);color:var(--sub-strong)}
+.offer-badge{border:1px solid rgba(255,255,255,.8);background:rgba(255,255,255,.70);border-radius:99px;display:inline-flex;align-items:center;gap:6px;font-size:10px;padding:7px 10px;color:#a36559;font-weight:760}
+.offer-badge .dot{height:6px;width:6px;border-radius:50%;background:#df8372}
+.offer h4{position:relative;font-size:23px;font-weight:830;line-height:1.2;letter-spacing:-.7px;margin:0 0 6px}
+.offer-sub{position:relative;font-size:11px;line-height:1.55;color:var(--sub-strong);margin:0}
+.offer.highlight .offer-sub{color:#9b7771}
+.price-row{display:flex;align-items:baseline;gap:6px;margin:19px 0 2px;position:relative}
+.currency{font-weight:800;font-size:17px;transform:translateY(-2px)}
+.price-value{font-size:40px;line-height:1.12;letter-spacing:-2px;font-weight:850;font-variant-numeric:tabular-nums}
+.price-suffix{font-size:12px;color:var(--sub-strong);font-weight:600}
+.cycle-title{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:770;color:var(--sub-strong);margin:17px 0 10px}
+.cycle-title small{font-size:10px;font-weight:500;color:var(--sub)}
+.cycle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;position:relative}
+.cycle{height:33px;border:1px solid var(--stroke);border-radius:100px;color:var(--sub-strong);background:rgba(255,255,255,.76);font-size:11px;font-weight:670;white-space:nowrap}
+.cycle.active{background:#29272b;color:#fff;border-color:#29272b;box-shadow:0 4px 9px rgba(36,34,38,.08)}
+.offline-list{border-top:1px solid var(--stroke);padding-top:17px;margin-top:17px;display:flex;flex-direction:column;gap:12px}
+.highlight .offline-list{border-color:rgba(168,106,98,.18)}
+.feature{display:flex;align-items:flex-start;gap:10px;font-size:12px;line-height:1.5;font-weight:590;color:var(--ink)}
+.feature svg{width:15px;height:15px;margin-top:1px;stroke-width:2.1;color:var(--coral)}
+.offer-foot{display:flex;align-items:center;gap:12px;margin-top:18px}
+.buy{background:var(--cta);color:var(--cta-ink);border:0;border-radius:16px;min-height:45px;padding:0 15px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:760;flex:1;box-shadow:0 7px 17px rgba(26,24,29,.11)}
+.buy svg{width:16px;height:16px;stroke-width:2.1}.buy:hover{filter:brightness(1.08)}.buy:active{transform:scale(.992)}
+/* Every plan uses the same card template. Only surface color and badges vary. */
+.cycle-static{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:0 18px;grid-column:1 / 3;cursor:default}
+.offer:not(.highlight){box-shadow:0 7px 25px rgba(38,35,45,.025)}
+.offer:not(.highlight) .offer-tag-icon{border:1px solid var(--stroke)}
+.empty-state{text-align:center;border:1px dashed var(--stroke-strong);border-radius:24px;padding:38px 16px;color:var(--sub);font-size:13px;background:var(--surface)}
+.sample-note{margin:18px 5px 0;text-align:center;font-size:10px;color:var(--sub);line-height:1.7}
+.bottomnav{position:absolute;left:13px;right:13px;bottom:24px;z-index:8;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:5px;background:var(--nav-bg);backdrop-filter:blur(22px) saturate(1.15);-webkit-backdrop-filter:blur(22px) saturate(1.15);border:1px solid rgba(228,226,231,.88);border-radius:32px;box-shadow:0 8px 26px rgba(40,37,44,.09),0 1px 5px rgba(40,37,44,.025)}
+.nav-item{height:55px;min-width:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;border:0;border-radius:27px;background:transparent;color:#777d83;font-size:10px;font-weight:640;line-height:1}
+.nav-item svg{width:20px;height:20px}.nav-item.active{background:var(--nav-active);color:var(--coral)}
+.home-bar{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);width:109px;height:4px;border-radius:3px;background:#303137;z-index:9}
+.toast{position:absolute;z-index:28;top:60px;left:44px;right:44px;text-align:center;padding:12px 13px;border-radius:14px;background:rgba(28,27,32,.93);color:white;font-size:12px;line-height:1.5;opacity:0;transform:translateY(-8px);pointer-events:none;transition:all .18s}.toast.show{opacity:1;transform:translateY(0)}
+[data-theme="dark"]{color-scheme:dark;--paper:#151519;--ink:#f4f2f2;--sub:#a4a4aa;--sub-strong:#c0bec3;--stroke:#33343a;--stroke-strong:#4b4b52;--surface:#222227;--muted-bg:#2d2d33;--coral:#ff9c8e;--coral-soft:#423238;--peach-1:#433238;--peach-2:#382f36;--nav-bg:rgba(40,40,46,.91);--nav-active:#583d42;--cta:#f3e7e4;--cta-ink:#2d2529;--shadow:0 10px 32px rgba(0,0,0,.12)}
+[data-theme="dark"] .offer.highlight{background:linear-gradient(125deg,#463238 0%,#3c3037 60%,#332e35);border-color:#704f53;box-shadow:0 12px 27px rgba(0,0,0,.12)}
+[data-theme="dark"] .offer.highlight:before{opacity:.23}
+[data-theme="dark"] .offer.highlight .offer-sub{color:#d8b4b0}
+[data-theme="dark"] .offer-badge{background:#634b4f;color:#f4d5ce;border-color:#745b5d}
+[data-theme="dark"] .offer-tag-icon{background:#5b4147}
+[data-theme="dark"] .cycle{background:#302e34;border-color:#51444b;color:#e5cfcf}
+[data-theme="dark"] .cycle.active{background:#eee2e2;border-color:#eee2e2;color:#29262a}
+[data-theme="dark"] .offer.highlight .offline-list{border-color:#614950}
+
+[data-theme="dark"] .filter.active{background:#eee3e3;color:#29262b;border-color:#eee3e3}
+[data-theme="dark"] .nav-item{color:#adaeb4}
+[data-theme="dark"] .nav-item.active{color:#ffab9b;background:#52393d}
+[data-theme="dark"] .home-bar{background:#d4d2d6}
+[data-theme="dark"] .bottomnav{border-color:#46464e;box-shadow:0 8px 24px rgba(0,0,0,.32)}
+[data-theme="dark"] .battery{color:#e5e5e7}
+[data-theme="dark"] .review-controls button{background:#302f35;border-color:#45434a;color:#ddd}
+[data-theme="dark"] .review-controls button.active{background:#efe0dc;color:#272429}
+@media(max-width:760px){
+ body{background:var(--paper)}
+ .workspace{display:block;min-height:100dvh;padding:0}
+ .review{display:none}
+ .device{width:100%;height:100dvh;min-height:600px;padding:0;background:var(--paper);border:0;border-radius:0;box-shadow:none}
+ .screen{border-radius:0}
+ .statusbar{height:47px;padding:0 27px 7px}
+ .scroll{height:calc(100% - 47px);padding:13px 21px 138px}
+ .bottomnav{bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+ .home-bar{bottom:calc(5px + env(safe-area-inset-bottom,0px))}
+}
+@media(max-width:340px){.scroll{padding-left:16px;padding-right:16px}.head h2{font-size:28px}.offer{padding-left:16px;padding-right:16px}.cycle{font-size:10px}.offer-foot{gap:4px}}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+
+/* Data-driven UI; no automatic recommendation or marketing labels. */
+.cards .offer[hidden]{display:none}
+.offer-no-price{font-size:13px;font-weight:700;color:var(--sub-strong);margin:20px 0 8px}
+.no-feature{font-size:12px;line-height:1.7;color:var(--sub);font-weight:500}
+.offer-tag{letter-spacing:0}
+.data-import{display:none;margin:16px 0 0;background:var(--muted-bg);border:1px solid var(--stroke);border-radius:18px;padding:13px 14px;font-size:11px;color:var(--sub-strong)}
+.data-import summary{font-weight:750;color:var(--ink);cursor:pointer}
+.data-import p{line-height:1.6;margin:10px 0;font-size:11px}
+.data-import textarea{display:block;box-sizing:border-box;width:100%;min-height:136px;resize:vertical;outline:none;padding:10px;border-radius:12px;background:var(--surface);color:var(--ink);border:1px solid var(--stroke);font-size:11px;line-height:1.5}
+.import-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.import-actions button{border:1px solid var(--stroke);border-radius:12px;padding:9px 12px;background:var(--surface);color:var(--ink);font-size:11px;font-weight:700}
+.import-actions #load-backend{background:var(--cta);color:var(--cta-ink);border-color:var(--cta)}
+.debug-mode .data-import{display:block}
+
+/* V9: all cards share one structure; recommendation is a visual-only demo placeholder. */
+.searchlabel{margin-bottom:18px}
+.offer-head{margin-bottom:19px}
+.offer-spec-chip{position:relative;display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.68);border:1px solid rgba(196,177,175,.30);color:#8f625b;font-size:11px;font-weight:760;font-variant-numeric:tabular-nums;white-space:nowrap}
+.offer:not(.highlight) .offer-spec-chip{background:#f7f7f8;color:#666771;border-color:#ecebf0}
+.offer-sub{max-width:100%;font-size:12px;line-height:1.65;color:#78747c;margin:0}
+.offer.highlight .offer-sub{color:#986e67}
+.offer-device{display:inline-flex;align-items:center;gap:6px;margin-top:9px;color:#756d74;font-size:11px;line-height:1.45;font-weight:610}
+.offer-device svg{width:15px;height:15px;stroke-width:1.8}
+.price-row{margin-top:19px}
+.no-feature-gap{margin-top:17px}
+[data-theme="dark"] .offer-spec-chip{background:rgba(255,255,255,.11);border-color:#70565c;color:#f3c3b8}
+[data-theme="dark"] .offer:not(.highlight) .offer-spec-chip{background:#2b2d35;border-color:#43444e;color:#e2dbe0}
+[data-theme="dark"] .offer-device{color:#d5b4b1}
+
+.offer-specs{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px;margin-bottom:1px}
+.spec-item{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:10px;color:var(--sub-strong);font-size:11px;font-weight:650;border:1px solid rgba(190,175,176,.26);background:rgba(255,255,255,.48)}
+.spec-item svg{width:14px;height:14px;stroke-width:1.8}
+.offer:not(.highlight) .spec-item{background:var(--muted-bg)}
+.offer-spec-chip.is-recommended{color:#a74738;background:#fff6f2;border-color:#f4d0c7;box-shadow:0 2px 8px rgba(198,101,83,.06)}
+[data-theme="dark"] .spec-item{color:#ddd3d5;background:rgba(255,255,255,.06);border-color:#625157}
+[data-theme="dark"] .offer-spec-chip.is-recommended{background:#6c4546;color:#ffe2d9;border-color:#966262}
+
+/* V12: Larger, genuinely prominent pricing at top-right. Recommended goes left. */
+.offer-main{position:relative;display:flex;align-items:flex-start;gap:10px}
+.offer-identity{flex:1 1 auto;min-width:0}
+/* Recommended is a non-flow badge outside the clipped card.
+   Recommended and ordinary plans therefore start their titles and prices
+   at precisely the same Y coordinate; no blank placeholder on normal plans. */
+.offer-shell{position:relative;min-width:0}
+.offer-recommend-flag{position:absolute;z-index:4;top:0;left:19px;
+  transform:translateY(-50%);display:inline-flex;align-items:center;
+  padding:5px 11px;border-radius:999px;background:#fff5f1;
+  color:#a74738;border:1px solid #f2cdc3;box-shadow:0 3px 10px rgba(159,73,58,.12);
+  font-size:10px;font-weight:800;line-height:1.2;white-space:nowrap;pointer-events:none}
+[data-theme="dark"] .offer-recommend-flag{background:#553234;color:#ffe4de;border-color:#95646a}
+
+.offer-identity h4{margin:0 0 7px;font-size:20px;line-height:1.22;letter-spacing:-.5px;overflow-wrap:anywhere}
+.offer-identity .offer-sub{margin:0;font-size:11.5px;line-height:1.5;overflow-wrap:anywhere}
+.offer-price-side{width:49%;max-width:181px;flex:0 0 49%;min-width:0;display:flex;align-items:flex-end;flex-direction:column;gap:4px;text-align:right}
+.offer-price-side .price-row{margin:0;display:flex;align-items:baseline;justify-content:flex-end;gap:2px;white-space:nowrap;width:100%;max-width:100%;overflow:visible}
+.offer-price-side .currency{font-size:16px;font-weight:790;transform:none}
+.offer-price-side .price-value{font-size:clamp(32px,9.5vw,40px);letter-spacing:-1.6px;line-height:1.10;font-weight:870;white-space:nowrap}
+.offer-price-side .price-row.long-price .price-value{font-size:clamp(25px,7.6vw,32px);letter-spacing:-1.25px}
+.offer-price-side .price-row.very-long-price .price-value{font-size:clamp(20px,6.6vw,28px);letter-spacing:-.8px}
+.offer-price-side .price-suffix{font-size:11px;font-weight:650;color:var(--sub);margin-top:2px}
+.offer-price-side .offer-no-price{margin:3px 0 0;line-height:1.4;text-align:right}
+.offer-specs{margin-top:16px}
+.cycle-title{margin-top:18px}
+.offer-foot{margin-top:17px}
+@media(max-width:340px){
+  .offer-main{gap:7px}
+  .offer-identity h4{font-size:18px}
+  .offer-price-side{width:50%;flex-basis:50%}
+  .offer-price-side .price-value{font-size:32px;letter-spacing:-1.2px}
+  .offer-price-side .price-row.long-price .price-value{font-size:26px}
+  .offer-price-side .price-row.very-long-price .price-value{font-size:21px}
+}
+
+/* V15: recommended is an INSIDE top-right overlay, never on the border.
+   Price aligns below that reserved top-right zone on every card, regardless
+   of whether a recommendation badge exists. No change to title flow. */
+.offer-main{align-items:flex-start}
+.offer-recommend-flag{
+  top:13px;right:18px;left:auto;transform:none;
+  padding:5px 10px;box-shadow:none;
+  border-color:#f1d4ce;background:#fff9f6;
+}
+.offer-price-side{padding-top:34px;box-sizing:border-box;align-self:flex-start}
+@media(max-width:340px){
+  .offer-recommend-flag{top:12px;right:15px}
+  .offer-price-side{padding-top:34px}
+}
+
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+ <symbol id="ico-crown" viewBox="0 0 24 24"><path d="m2 8 5 4 5-7 5 7 5-4-2 11H4L2 8Z"/><path d="M4 22h16"/></symbol>
+ <symbol id="ico-check" viewBox="0 0 24 24"><path d="m5 12 4.2 4.2L19 6.5"/></symbol>
+ <symbol id="ico-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+ <symbol id="ico-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+ <symbol id="ico-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+ <symbol id="ico-box" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+ <symbol id="ico-bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-12h-8l1-8Z"/></symbol>
+ <symbol id="ico-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v11a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V11Z"/></symbol>
+ <symbol id="ico-server" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6.5h.01M7 17.5h.01M11 6.5h6M11 17.5h6"/></symbol>
+ <symbol id="ico-user" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></symbol>
+<symbol id="ico-device" viewBox="0 0 24 24"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M8 20h5m-2-4v4"/><rect x="18" y="8" width="4" height="11" rx="1"/></symbol>
+ <symbol id="ico-moon" viewBox="0 0 24 24"><path d="M20 15.5A9 9 0 0 1 8.5 4 9 9 0 1 0 20 15.5Z"/></symbol>
+ <symbol id="ico-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+ <symbol id="ico-close" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></symbol>
+ <symbol id="ico-bag" viewBox="0 0 24 24"><path d="M4 7h16l-1 14H5L4 7Z"/><path d="M9 8V5a3 3 0 0 1 6 0v3"/></symbol>
+</svg>
+<div class="workspace">
+ <aside class="review">
+  <div class="review-eyebrow">LITCHI / ELEGANT DESIGN</div>
+  <h1>套餐订阅<br>标签定位 · V15</h1>
+  <p>保留套餐名称、价格并排布局。推荐徽标位于卡片内部右上角，不再跨越边框。所有卡片的价格保持右侧固定起点；一次性套餐仍只有一个购买按钮。</p>
+  <div class="review-controls"><button id="light-btn" class="active">浅色模式</button><button id="dark-btn">深色模式</button></div>
+  <h4>本版设计规范</h4>
+  <div class="spec"><i class="spec-swatch" style="background:#fffefd"></i>背景色<strong>#FFFEFD</strong></div>
+  <div class="spec"><i class="spec-swatch" style="background:#ffe9e4"></i>珊瑚重点卡<strong>视觉演示</strong></div>
+  <div class="spec"><i class="spec-swatch" style="background:#252429"></i>购买按钮<strong>石墨黑</strong></div>
+  <div class="spec"><i class="spec-swatch" style="background:#fae7e2"></i>选中状态<strong>荔枝红</strong></div>
+  <div class="review-note">推荐仅作视觉占位；徽标独立定位，不影响套餐标题、价格的对齐。后台推荐规则尚未启用。开发调试可在网址后添加 ?dev=1 导入套餐数据。</div>
+ </aside>
+ <div class="device"><div class="screen" id="screen">
+  <div class="statusbar"><span>9:41</span><div class="camera"></div><span class="status-sigs"><svg style="width:17px;height:14px;stroke-width:2"><path d="m2 12 3-3m2 3V6m2 6V3m2 9V1"/></svg><svg style="width:15px;height:14px"><path d="M1 5q6-7 13 0M4 8q3.5-4 7 0M7 11h.01"/></svg><i class="battery"><b></b></i></span></div>
+  <main class="scroll" id="scroller">
+   <header class="head"><div><h2>套餐订阅</h2><p>选择适合你的连接与流量方案</p></div><div class="head-actions"><button class="head-circle" id="theme-toggle" aria-label="切换深浅色主题" title="切换深浅色主题"><svg><use href="#ico-moon"/></svg></button></div></header>
+   <div class="searchlabel"><h3>可购买套餐</h3><small id="count">0 个方案</small></div>
+   <div class="filters" id="filters" aria-label="套餐分类">
+    <button type="button" class="filter active" data-filter="all" aria-pressed="true"><svg><use href="#ico-box"/></svg>全部</button>
+    <button type="button" class="filter" data-filter="recurring" aria-pressed="false"><svg><use href="#ico-clock"/></svg>周期性</button>
+    <button type="button" class="filter" data-filter="once" aria-pressed="false"><svg><use href="#ico-bag"/></svg>一次性</button>
+   </div>
+   <!-- 套餐完全由下面的后台兼容 JSON 驱动，不写死营销名称、描述或价格。 -->
+   <section class="cards" id="cards" aria-label="可购买套餐"></section>
+   <div id="empty" class="empty-state" hidden>当前分类暂无可购买套餐</div>
+   <details class="data-import" id="data-import">
+     <summary>开发预览：导入真实后台套餐 JSON</summary>
+     <p>仅在本浏览器页面解析，不发送数据。支持 /user/plan/fetch 返回的 JSON（data 数组）或直接传套餐数组。请勿粘贴 Token、密码及用户资料。</p>
+     <textarea id="backend-json" rows="8" spellcheck="false" placeholder='例如：{"data":[{"id":1,"name":"实际套餐名","month_price":2900,"transfer_enable":100,"show":1,"content":"真实权益说明"}]}'></textarea>
+     <div class="import-actions"><button type="button" id="load-backend">本地载入套餐</button><button type="button" id="restore-demo">恢复结构示例</button></div>
+     <p id="import-result" role="status" aria-live="polite"></p>
+   </details>
+  </main>
+  <nav class="bottomnav" aria-label="底部导航"><button class="nav-item" data-nav="连接"><svg><use href="#ico-home"/></svg>连接</button><button class="nav-item" data-nav="节点"><svg><use href="#ico-server"/></svg>节点</button><button class="nav-item active" data-nav="套餐" aria-current="page"><svg><use href="#ico-crown"/></svg>套餐</button><button class="nav-item" data-nav="我的"><svg><use href="#ico-user"/></svg>我的</button></nav>
+  <div class="home-bar"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+ </div></div>
+</div>
+<script>
+(() => {
+  // These examples are schematic and deliberately labelled: not real plans.
+  const EXAMPLES = [
+    {id:901, name:'套餐示例 A（非真实）', transfer_enable:200, month_price:2900, quarter_price:7900, year_price:27900,
+      content:'此处展示后台套餐描述的第一行\n后台说明示例：多地区节点\n后台说明示例：详细使用规则', device_limit:3, show:1},
+    {id:902, name:'套餐示例 B（非真实）', transfer_enable:100, month_price:1900, quarter_price:4200, half_year_price:8000,
+      content:'此处展示第二款套餐的真实描述\n后台说明示例：具体服务内容', show:1},
+    {id:903, name:'一次性示例（非真实）', transfer_enable:50, onetime_price:1200,
+      content:'一次性套餐简介（演示）\n套餐权益条目 A（演示）\n套餐权益条目 B（演示）', show:1}
+  ];
+  const PERIODS = [
+    ['month_price','月付','/ 月'], ['quarter_price','季付','/ 季'],
+    ['half_year_price','半年付','/ 半年'], ['year_price','年付','/ 年'],
+    ['two_year_price','两年付','/ 两年'], ['three_year_price','三年付','/ 三年']
+  ];
+  let planList = [];
+  let activeFilter = 'all';
+  let currencySymbol = '¥'; // UI preview default; production uses controller.currencySymbol.
+  let sourceIsDemo = true;
+  const selectedCycleById = new Map();
+  const cardContainer = document.getElementById('cards');
+  const count = document.getElementById('count');
+  let toastTimer;
+
+  const icon = key => {
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    const use=document.createElementNS('http://www.w3.org/2000/svg','use');
+    use.setAttribute('href', '#ico-'+key);
+    svg.appendChild(use);return svg;
+  };
+  function el(tag, className, content) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (content !== undefined) node.textContent = content; // Never insert panel text via innerHTML.
+    return node;
+  }
+  function positiveCents(x) {
+    const n=Number(x);return Number.isSafeInteger(n)&&n>0?n:null;
+  }
+  function parsedDescription(x) {
+    if (x==null||String(x).trim()==='') return [];
+    const raw=String(x)
+      .replace(/<!--[\s\S]*?-->/g,'')
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi,'')
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi,'')
+      .replace(/<br\s*\/?\s*>/gi,'\n')
+      .replace(/<\/\s*(?:p|li|div|ul|ol|h[1-6])\s*>/gi,'\n');
+    const parsed = new DOMParser().parseFromString(raw,'text/html');
+    return (parsed.body.textContent||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  }
+  function parsePlan(raw) {
+    if (!raw || typeof raw!=='object') return null;
+    // Mirrors RemotePlan.fromJson + ModelMappers.toPlan in the repository.
+    const periods = PERIODS.map(([key,label,suffix])=>({key,label,suffix,cents:positiveCents(raw[key])})).filter(v=>v.cents!==null);
+    const oneTimePrice=positiveCents(raw.onetime_price);
+    const kind=periods.length?'recurring':oneTimePrice!==null?'once':'unavailable';
+    const id = raw.id === undefined ? '' : String(raw.id);
+    const name = String(raw.name??'').trim();
+    // In panel data, show=0 marks a hidden plan. Do not show unlisted plans.
+    if (!name || Number(raw.show??1)===0) return null;
+    const cap=Number(raw.transfer_enable ?? 0);
+    const capacity=Number.isFinite(cap)&&cap>0 ? (cap>=1024 ? `${Math.round(cap/1024)} TB` : `${Math.round(cap)} GB`) : '';
+    const quotaGb=Number.isFinite(cap)&&cap>0?cap:null;
+    const deviceCount=Number(raw.device_limit);
+    const soldOut=raw.capacity_limit!==undefined && raw.capacity_limit!==null && Number(raw.capacity_limit)===0;
+    const description=parsedDescription(raw.content??raw.description);
+    return {id,name,kind,periods,once:oneTimePrice,capacity,quotaGb,
+      deviceLimit:Number.isInteger(deviceCount)&&deviceCount>0?deviceCount:null,
+      soldOut,summary:description[0]??'',features:description.slice(1),selected:null};
+  }
+  function normalizedList(payload) {
+    let list=payload;
+    if (!Array.isArray(list)) list = payload?.data;
+    if (!Array.isArray(list)) list = payload?.data?.data;
+    if (!Array.isArray(list)) throw new Error('未找到套餐数组。应为 {"data":[...]} 或直接传入数组。');
+    return list.map(parsePlan).filter(Boolean);
+  }
+  function chooseCycle(plan) {
+    const prev=selectedCycleById.get(plan.id);
+    return plan.periods.find(v=>v.key===prev)||plan.periods[0]||null;
+  }
+  function formatAmount(cents){return (cents/100).toFixed(2)}
+
+  function makeCard(plan) {
+    // Recommended is a DEMO visual only. No ranking or guessed marketing claims.
+    const isRecommended=sourceIsDemo && plan.id==='901';
+    const period=plan.kind==='recurring'?chooseCycle(plan):null;
+    const cents=period?.cents??plan.once;
+    const card=el('article','offer'+(isRecommended?' highlight':''));
+    card.dataset.kind=plan.kind;
+    card.dataset.plan=plan.id;
+
+    const main=el('div','offer-main');
+    const identity=el('div','offer-identity');
+    identity.appendChild(el('h4','',plan.name));
+    if (plan.summary) identity.appendChild(el('p','offer-sub',plan.summary));
+
+    const priceSide=el('div','offer-price-side');
+    if (cents !== null) {
+      const price=el('div','price-row');
+      const amount=formatAmount(cents);
+      if(amount.length>=9) price.classList.add('very-long-price');
+      else if(amount.length>=7) price.classList.add('long-price');
+      price.append(el('span','currency',currencySymbol),el('span','price-value',amount));
+      priceSide.appendChild(price);
+      priceSide.appendChild(el('span','price-suffix',
+        plan.kind==='recurring'?period.suffix:'一次性'));
+    } else priceSide.appendChild(el('p','offer-no-price','价格待公布'));
+    main.append(identity,priceSide);
+    card.appendChild(main);
+
+    // Specifications are informative, never additional purchase actions.
+    if (plan.capacity || plan.deviceLimit!==null) {
+      const specs=el('div','offer-specs');
+      if (plan.capacity) {
+        const quota=el('span','spec-item');
+        quota.append(icon('box'),el('span','',`流量 ${plan.capacity}`));
+        specs.appendChild(quota);
+      }
+      if (plan.deviceLimit!==null) {
+        const devices=el('span','spec-item');
+        devices.append(icon('device'),el('span','',`设备 ${plan.deviceLimit} 台`));
+        specs.appendChild(devices);
+      }
+      card.appendChild(specs);
+    }
+
+    // Only recurring plans have a selectable billing period.
+    // One-time plans have exactly one actionable CTA, at the card bottom.
+    if (plan.kind==='recurring' && plan.periods.length) {
+      const cycleHeading=el('div','cycle-title');
+      cycleHeading.append(el('span','','购买周期'));
+      card.appendChild(cycleHeading);
+      const cycleGrid=el('div','cycle-grid');
+      cycleGrid.setAttribute('aria-label',`${plan.name}购买周期`);
+      for (const item of plan.periods) {
+        const btn=el('button','cycle'+(period?.key===item.key?' active':''),item.label);
+        btn.type='button';
+        btn.setAttribute('aria-pressed',String(period?.key===item.key));
+        btn.addEventListener('click',()=>{
+          selectedCycleById.set(plan.id,item.key);render();
+        });
+        cycleGrid.appendChild(btn);
+      }
+      card.appendChild(cycleGrid);
+    }
+
+    if (plan.features.length) {
+      const features=el('div','offline-list');
+      for(const benefit of plan.features) {
+        const line=el('div','feature');
+        line.append(icon('check'),el('span','',benefit));
+        features.appendChild(line);
+      }
+      card.appendChild(features);
+    }
+    const foot=el('div','offer-foot');
+    const btn=el('button','buy',plan.soldOut?'已售罄':cents===null?'暂不可购买':'选择此套餐');
+    btn.type='button';btn.disabled=plan.soldOut||cents===null;
+    if(!btn.disabled)btn.appendChild(icon('arrow'));
+    btn.addEventListener('click',()=>toast('HTML 仅用于设计预览，不创建订单'));
+    foot.appendChild(btn);card.appendChild(foot);
+    const shell=el('div','offer-shell');
+    shell.appendChild(card);
+    if (isRecommended) {
+      // Pinned inside the card's top-right corner, clear of the border.
+      // It never shifts the title or the fixed price area.
+      shell.appendChild(el('span','offer-recommend-flag','★ 推荐'));
+    }
+    return shell;
+  }
+  function render(){
+    const shown=planList.filter(p=>activeFilter==='all'||p.kind===activeFilter);
+    cardContainer.replaceChildren(...shown.map(p=>makeCard(p)));
+    count.textContent=`共 ${shown.length} 个方案`;
+    document.getElementById('empty').hidden=shown.length!==0;
+    for (const btn of document.querySelectorAll('[data-filter]')) {
+      const selected=btn.dataset.filter===activeFilter;
+      btn.classList.toggle('active',selected);
+      btn.setAttribute('aria-pressed',String(selected));
+    }
+  }
+  function toast(message) {
+    const box=document.getElementById('toast');box.textContent=message;box.classList.add('show');
+    clearTimeout(toastTimer);toastTimer=setTimeout(()=>box.classList.remove('show'),2500);
+  }
+  document.querySelectorAll('[data-filter]').forEach(btn=>btn.addEventListener('click',()=>{
+    activeFilter=btn.dataset.filter;
+    render();
+  }));
+  document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>{
+    if(b.dataset.nav!=='套餐') toast('这里仅是套餐页 HTML 结构预览');
+  }));
+  function theme(isDark){
+    document.documentElement.setAttribute('data-theme',isDark?'dark':'light');
+    document.querySelectorAll('.review-controls button').forEach(b=>b.classList.toggle('active',b.id===(isDark?'dark-btn':'light-btn')));
+    document.querySelector('#theme-toggle use').setAttribute('href',isDark?'#ico-sun':'#ico-moon');
+  }
+  document.getElementById('light-btn').addEventListener('click',()=>theme(false));
+  document.getElementById('dark-btn').addEventListener('click',()=>theme(true));
+  document.getElementById('theme-toggle').addEventListener('click',()=>theme(document.documentElement.getAttribute('data-theme')!=='dark'));
+  document.getElementById('load-backend').addEventListener('click',()=>{
+    const result=document.getElementById('import-result');
+    try {
+      const input=JSON.parse(document.getElementById('backend-json').value);
+      const imported=normalizedList(input);
+      planList=imported;sourceIsDemo=false;activeFilter='all';selectedCycleById.clear();render();
+      result.textContent=`成功加载 ${imported.length} 个可显示套餐（show=0 或无名称的套餐不显示）。`;
+      document.getElementById('scroller').scrollTo({top:0,behavior:'smooth'});
+    } catch(error) {result.textContent='载入失败：'+String(error?.message||error)}
+  });
+  document.documentElement.classList.toggle('debug-mode', new URLSearchParams(window.location.search).has('dev'));
+  document.getElementById('restore-demo').addEventListener('click',()=>{
+    planList=normalizedList(EXAMPLES);sourceIsDemo=true;selectedCycleById.clear();render();
+    document.getElementById('import-result').textContent='已恢复结构演示数据';
+  });
+  planList=normalizedList(EXAMPLES);render();
+})();
+</script>
+</body>
+</html>
