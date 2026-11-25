@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_controller.dart';
 import '../commerce/v3_order_dialog.dart';
-import 'v3_plan_labels.dart';
 import 'v3_sheet.dart';
 
 /// Continue using the existing checkout from the Usage detail header.
