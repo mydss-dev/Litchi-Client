@@ -86,6 +86,13 @@ jobs:
           bash tool/build_libbox_android.sh
           test -s android/app/libs/libbox.aar
           unzip -l android/app/libs/libbox.aar | grep -q 'jni/arm64-v8a/libbox.so'
+      - name: Upload pinned libbox AAR for local Flutter debugging
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: litchi-android-libbox-aar-${{ github.sha }}
+          path: android/app/libs/libbox.aar
+          if-no-files-found: error
+          retention-days: 14
       - name: Compile Android Kotlin bridge
         working-directory: android
         run: ./gradlew :app:compileDebugKotlin --stacktrace
