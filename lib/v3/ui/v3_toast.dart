@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart' show FToasterState, FToasterEntry, FToastVariant, FToastAlignment, showFToast;
 
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
@@ -18,6 +19,7 @@ class V3Toast {
   V3Toast._();
 
   static OverlayEntry? _current;
+  static FToasterEntry? _foruiEntry;
   static Timer? _timer;
 
   /// Auto-dismiss window for success/info/warning toasts.
@@ -53,6 +55,32 @@ class V3Toast {
   }) {
     _clear();
     final effective = duration == _autoDuration ? _durationFor(type) : duration;
+    // Prefer the approved mature component when the app-level Forui toaster
+    // is installed. Keep the legacy path only for isolated widget harnesses
+    // that intentionally do not contain the app root.
+    final context = overlay.context;
+    if (context.findAncestorStateOfType<FToasterState>() != null) {
+      final p = V3Palette.of(context);
+      final (glyph, tint) = switch (type) {
+        V3ToastType.success => (Icons.check_circle_outline_rounded, p.lychee),
+        V3ToastType.error => (Icons.error_outline_rounded, p.danger),
+        V3ToastType.warning => (Icons.warning_amber_rounded, p.warning),
+        V3ToastType.info => (Icons.info_outline_rounded, p.inkMuted),
+      };
+      _foruiEntry = showFToast(
+        context: context,
+        title: Text(message),
+        icon: Icon(glyph, size: 20, color: tint),
+        variant: type == V3ToastType.error
+            ? FToastVariant.destructive
+            : FToastVariant.primary,
+        alignment: FToastAlignment.topCenter,
+        duration: effective,
+        onDismiss: () => _foruiEntry = null,
+      );
+      return;
+    }
+
     final entry = OverlayEntry(
       builder: (_) => _V3ToastView(
         message: message,
@@ -73,6 +101,8 @@ class V3Toast {
   static void dismiss() => _clear();
 
   static void _clear() {
+    _foruiEntry?.dismiss();
+    _foruiEntry = null;
     _timer?.cancel();
     _timer = null;
     final entry = _current;
