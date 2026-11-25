@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:forui/forui.dart' show FTheme, FToaster;
 import 'package:window_manager/window_manager.dart';
 
 import '../config/app_config.dart';
@@ -68,6 +69,14 @@ class _LitchiAppState extends State<LitchiApp> {
             supportedLocales: AppLocalizations.supportedLocales,
             builder: (context, child) {
               Widget content = child ?? const SizedBox.shrink();
+              // Forui's toaster wraps the Navigator/Overlay; route changes and
+              // existing V3Toast callers keep their current API.
+              content = FTheme(
+                data: Theme.of(context).brightness == Brightness.dark
+                    ? FTheme.neutral.dark.touch
+                    : FTheme.neutral.light.touch,
+                child: FToaster(child: content),
+              );
               if (Platform.isLinux) content = LinuxWindowClip(child: content);
               // Keep the platform-provided text scaler. Desktop previously
               // forced it to 1.0, which ignored OS accessibility preferences.
