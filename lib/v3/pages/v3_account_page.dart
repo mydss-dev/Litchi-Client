@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoListSection, CupertinoListTile;
+import 'package:flutter/cupertino.dart' show CupertinoListSection, CupertinoListTile;
 import 'package:forui/forui.dart' show FCard, FCardStyle, FAvatar;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -448,15 +449,18 @@ class _MobileAccountOverview extends StatelessWidget {
               style: TextStyle(color: muted, fontSize: 10)),
           ]),
           const SizedBox(height: 13),
-          Container(
+          CupertinoListSection.insetGrouped(
+            margin: EdgeInsets.zero,
+            backgroundColor: body,
+            separatorColor: dark
+              ? const Color(0xFF33343A) : const Color(0xFFEFEFF1),
             decoration: BoxDecoration(
               color: dark ? const Color(0xFF202126) : Colors.white,
               borderRadius: BorderRadius.circular(23),
               border: Border.all(color: dark
                 ? const Color(0xFF333439) : const Color(0xFFEBEBEE)),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(children: [
+            children: [
               if (walletVisible)
                 _MobileServiceTile(
                   key: const ValueKey('v3-account-wallet-service'),
@@ -502,7 +506,7 @@ class _MobileAccountOverview extends StatelessWidget {
                   en: 'Settings', tw: '應用設定'),
                 onTap: () => openV3Page(context, AppPage.settings),
               ),
-            ]),
+            ],
           ),
           if (controller.dataLoadError != null) ...[
             const SizedBox(height: 12),
@@ -563,6 +567,7 @@ class _MobileSurface extends StatelessWidget {
 /// Account-only Apple-style service rows. Do not change the rows used by
 /// manage-account sheets or any desktop navigation.
 /// Account service row, scoped to the approved grouped mobile list.
+/// A mature Cupertino row with the approved V3 monochrome icon tile.
 class _MobileServiceTile extends StatelessWidget {
   const _MobileServiceTile({super.key, required this.icon,
     required this.title, required this.onTap});
@@ -575,48 +580,25 @@ class _MobileServiceTile extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
     final muted = dark ? const Color(0xFFAEB1B8) : const Color(0xFF737780);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          height: 58,
-          padding: const EdgeInsets.symmetric(horizontal: 15),
-          child: Row(children: [
-            Container(
-              width: 33, height: 33,
-              decoration: BoxDecoration(
-                color: dark ? const Color(0xFF313238)
-                    : const Color(0xFFF4F4F5),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, size: 18, color: muted),
-            ),
-            const SizedBox(width: 13),
-            Expanded(child: Container(
-              height: double.infinity,
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(
-                  color: dark ? const Color(0xFF33343A)
-                      : const Color(0xFFEFEFF1),
-                  width: .6,
-                )),
-              ),
-              child: Row(children: [
-                Expanded(child: Text(title,
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: ink, fontSize: 13,
-                    fontWeight: FontWeight.w600))),
-                Icon(LucideIcons.chevronRight, size: 16,
-                  color: dark ? const Color(0xFF777A83)
-                      : const Color(0xFFB8B9BF)),
-              ]),
-            )),
-          ]),
-        ),
+    return CupertinoListTile.notched(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 6),
+      leadingSize: 33,
+      leading: Container(
+        width: 33, height: 33,
+        decoration: BoxDecoration(
+          color: dark ? const Color(0xFF313238)
+            : const Color(0xFFF4F4F5),
+          borderRadius: BorderRadius.circular(11)),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 18, color: muted),
       ),
+      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: ink, fontSize: 13,
+          fontWeight: FontWeight.w600)),
+      trailing: Icon(LucideIcons.chevronRight,
+        size: 16, color: dark ? const Color(0xFF777A83)
+          : const Color(0xFFB8B9BF)),
+      onTap: onTap,
     );
   }
 }
@@ -667,7 +649,14 @@ class _MobileIdentityCard extends StatelessWidget {
         ? 'L' : user.avatarLetter.trim().substring(0, 1).toUpperCase();
     final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
     final muted = dark ? const Color(0xFFAAA3A6) : const Color(0xFF92929A);
-    return Container(
+    return FCard(
+      style: FCardStyle(
+        decoration: const BoxDecoration(),
+        titleTextStyle: TextStyle(color: ink,
+          fontSize: 16, fontWeight: FontWeight.w600),
+        subtitleTextStyle: TextStyle(color: muted, fontSize: 13),
+        padding: EdgeInsets.zero),
+      child: Container(
       constraints: const BoxConstraints(minHeight: 102),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       decoration: BoxDecoration(
@@ -691,10 +680,14 @@ class _MobileIdentityCard extends StatelessWidget {
               color: dark ? const Color(0xFF4B3436)
                 : const Color(0xFFFCE3DC),
               borderRadius: BorderRadius.circular(17)),
-            child: Text(letter, style: TextStyle(
-              color: dark ? const Color(0xFFFFD5C9)
-                : const Color(0xFFBA4635),
-              fontSize: 19, fontWeight: FontWeight.w800)),
+            child: FAvatar.raw(
+              size: 51,
+              style: .delta(backgroundColor: Colors.transparent),
+              child: Text(letter, style: TextStyle(
+                color: dark ? const Color(0xFFFFD5C9)
+                  : const Color(0xFFBA4635),
+                fontSize: 19, fontWeight: FontWeight.w800)),
+            ),
           ),
           Positioned(right: -1, bottom: -1,
             child: Container(width: 12, height: 12,
@@ -757,6 +750,7 @@ class _MobileIdentityCard extends StatelessWidget {
           ]),
         ),
       ]),
+      ),
     );
   }
 }
@@ -791,7 +785,14 @@ class _MobilePlanCard extends StatelessWidget {
     final status = verified
       ? v3Copy(context, zh: '有效中', en: 'Active', tw: '有效中')
       : v3PlanStatusLabel(context, plan.statusKind);
-    return Container(
+    return FCard(
+      style: FCardStyle(
+        decoration: const BoxDecoration(),
+        titleTextStyle: TextStyle(color: ink,
+          fontSize: 16, fontWeight: FontWeight.w600),
+        subtitleTextStyle: TextStyle(color: secondary, fontSize: 13),
+        padding: EdgeInsets.zero),
+      child: Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -946,6 +947,7 @@ class _MobilePlanCard extends StatelessWidget {
           ]),
         ),
       ]),
+      ),
     );
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:crystal_navigation_bar/crystal_navigation_bar.dart';
+import 'package:ios26_bottom_navigationbar/ios26_bottom_navigationbar.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/v3/app/v3_nav.dart';
@@ -104,13 +104,13 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
       await _pump(tester, AppPage.dashboard);
-      final nav = find.byType(CrystalNavigationBar);
+      final nav = find.byType(IOS26BottomNavigationBar);
       expect(nav, findsOneWidget);
       final rect = tester.getRect(nav);
-      // Crystal's default is icon-only. Check the actual visual icons, not
-      // legacy Material NavigationBar text labels that are no longer rendered.
+      // The approved iOS26 dock displays both icons and labels. Measure its
+      // visual icons against the Android gesture-safe region.
       final icons = find.descendant(of: nav, matching: find.byType(Icon));
-      expect(icons, findsNWidgets(4));
+      expect(icons, findsAtLeastNWidgets(4));
       for (final element in icons.evaluate()) {
         final icon = tester.getRect(find.byWidget(element.widget));
         expect(icon.bottom, lessThanOrEqualTo(_phone.height - _gestureBar),
