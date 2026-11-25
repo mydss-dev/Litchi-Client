@@ -8,9 +8,8 @@ import '../theme/v3_palette.dart';
 
 /// Short-lived feedback for user actions, not server announcements.
 ///
-/// Successful actions confirm with the semantic green (the brand pink stays
-/// reserved for CTA/selected/link); errors and warnings retain their distinct
-/// icons and semantic colors, and info reads as a quiet grey. A toast can be
+/// Successful actions confirm with the approved Litchi brand accent;
+/// errors and warnings retain their distinct semantic colors, and info is quiet grey. A toast can be
 /// tapped away at any time, and errors linger longer (M3 snackbar guidance:
 /// leave time to read) before auto-dismissing.
 enum V3ToastType { success, error, warning, info }
@@ -140,7 +139,7 @@ class _V3ToastViewState extends State<_V3ToastView>
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final (icon, accent) = switch (widget.type) {
-      V3ToastType.success => (Icons.check_circle_outline_rounded, p.success),
+      V3ToastType.success => (Icons.check_circle_outline_rounded, p.lychee),
       V3ToastType.error => (Icons.error_outline_rounded, p.danger),
       V3ToastType.warning => (Icons.warning_amber_rounded, p.warning),
       V3ToastType.info => (Icons.info_outline_rounded, p.inkMuted),

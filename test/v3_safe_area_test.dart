@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:crystal_navigation_bar/crystal_navigation_bar.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/v3/app/v3_nav.dart';
@@ -103,18 +104,17 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
       await _pump(tester, AppPage.dashboard);
-      final nav = find.byType(NavigationBar);
+      final nav = find.byType(CrystalNavigationBar);
+      expect(nav, findsOneWidget);
       final rect = tester.getRect(nav);
-      // NavigationBar pads itself internally, so its own box may extend to the
-      // screen edge — what matters is that its content sits above the bar.
-      for (final element
-          in find.descendant(of: nav, matching: find.byType(Text)).evaluate()) {
-        final label = tester.getRect(find.byWidget(element.widget));
-        expect(
-          label.bottom,
-          lessThanOrEqualTo(_phone.height - _gestureBar),
-          reason: 'nav label sits under the ${_gestureBar}dp gesture bar',
-        );
+      // Crystal's default is icon-only. Check the actual visual icons, not
+      // legacy Material NavigationBar text labels that are no longer rendered.
+      final icons = find.descendant(of: nav, matching: find.byType(Icon));
+      expect(icons, findsNWidgets(4));
+      for (final element in icons.evaluate()) {
+        final icon = tester.getRect(find.byWidget(element.widget));
+        expect(icon.bottom, lessThanOrEqualTo(_phone.height - _gestureBar),
+          reason: 'dock icon renders below the Android gesture-safe region');
       }
       expect(rect.bottom, lessThanOrEqualTo(_phone.height));
     } finally {

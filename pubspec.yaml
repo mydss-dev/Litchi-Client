@@ -43,6 +43,8 @@ dependencies:
   lucide_icons_flutter: ^3.0.7
   # Official frosted floating mobile bottom navigation component
   crystal_navigation_bar: ^2.0.0
+  # Litchi Design System: mature card, avatar and interaction components.
+  forui: ^0.28.0
   # SVG rendering for brand logo
   flutter_svg: ^2.0.10+1
   # Charts for the statistics page (donut + bar)
