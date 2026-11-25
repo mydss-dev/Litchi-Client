@@ -8,9 +8,9 @@ import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 
 import 'v3_visual_fixture.dart';
 
-/// The picker and desktop overview share a minimal node row:
-/// one lightning icon before a valid latency and one number afterward.
-/// The tail remains a separate action from switching the selected node.
+/// The picker and desktop overview share an outline bolt before testing,
+/// and the same tier-coloured capsule as the phone after measuring.
+/// Testing remains independent of selecting a node.
 void main() {
   testWidgets('rows show millisecond values without duplicate status badges', (
     tester,
@@ -28,8 +28,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('42 ms'), findsOneWidget);
-    expect(find.text('128 ms'), findsOneWidget);
+    expect(find.text('42ms'), findsOneWidget);
+    expect(find.text('128ms'), findsOneWidget);
     expect(find.text('42MS'), findsNothing);
     expect(find.text('未测速'), findsNothing);
     expect(find.text('超时'), findsNothing);
@@ -39,7 +39,7 @@ void main() {
     expect(find.text('Current'), findsNothing);
   });
 
-  testWidgets('valid latencies are numeric; missing and timeout show lightning',
+  testWidgets('valid latencies show capsules; missing bolts and timeout warning',
       (tester) async {
     final controller = VisualV3Controller(AppPage.nodes);
     addTearDown(controller.disposeVisual);
@@ -71,15 +71,15 @@ void main() {
       await tester.pumpAndSettle();
       final action = find.byKey(const ValueKey('v3-node-latency-tier'));
       expect(action, findsOneWidget);
-      if (latency > 0 && latency < 9999) {
-        expect(find.text('$latency ms'), findsOneWidget);
+      if (latency <= 0) {
         expect(find.descendant(of: action,
-          matching: find.byIcon(Icons.bolt_rounded)), findsNothing);
+          matching: find.byIcon(Icons.bolt_outlined)), findsOneWidget);
+        expect(find.text('超时'), findsNothing);
       } else {
         expect(find.descendant(of: action,
-          matching: find.byIcon(Icons.bolt_rounded)), findsOneWidget);
-        expect(find.text('超时'), findsNothing);
-        expect(find.text('未测速'), findsNothing);
+          matching: find.byIcon(Icons.bolt_outlined)), findsNothing);
+        expect(find.text(latency >= 9999 ? '超时' : '${latency}ms'),
+          findsOneWidget);
       }
       await tester.tap(action);
       await tester.pump();

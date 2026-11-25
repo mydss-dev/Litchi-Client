@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
+import '../theme/v3_motion.dart';
 import 'v3_components.dart';
 import 'v3_empty_state.dart';
 import 'v3_node_picker.dart';
 import 'v3_locale_copy.dart';
+import 'v3_latency_tier.dart';
 import 'v3_node_tags.dart';
 
 /// Flutter translation of design/elegant_mockup.html phone nodes:
@@ -28,6 +30,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
     required this.onSelect,
     required this.onSelectAuto,
     required this.pendingId,
+    required this.testingNodeId,
   });
 
   final AppController controller;
@@ -43,6 +46,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
   final ValueChanged<NodeModel> onSelect;
   final VoidCallback onSelectAuto;
   final String? pendingId;
+  final String? testingNodeId;
 
   @override
   Widget build(BuildContext context) {
@@ -71,8 +75,13 @@ class V3HtmlPhoneNodes extends StatelessWidget {
           )),
           SizedBox(height: 36, child: OutlinedButton.icon(
             key: const Key('v3-overview-speed-test'),
-            onPressed: controller.isLatencyTesting ? null : onTest,
-            icon: const Icon(Icons.bolt_rounded, size: 17),
+            onPressed: controller.isLatencyTesting || testingNodeId != null
+                ? null : onTest,
+            icon: controller.isLatencyTesting
+                ? SizedBox(width: 17, height: 17,
+                    child: CircularProgressIndicator(strokeWidth: 2,
+                      color: p.lycheeInk))
+                : const Icon(Icons.bolt_outlined, size: 17),
             label: Text(v3Copy(context, zh: '全部测速',
               en: 'Test all', tw: '全部測速')),
             style: OutlinedButton.styleFrom(
@@ -152,6 +161,10 @@ class V3HtmlPhoneNodes extends StatelessWidget {
                     controller.currentNode.id == node.id,
                   blocked: pendingId != null,
                   pending: pendingId == node.id,
+                  testing: testingNodeId == node.id ||
+                    (controller.isLatencyTesting && testingNodeId == null),
+                  canTest: pendingId == null &&
+                    !controller.isLatencyTesting && testingNodeId == null,
                   onTap: () => onSelect(node),
                   onTest: () => onTestNode(node.id)),
           ]),
@@ -204,7 +217,8 @@ class _RegionChip extends StatelessWidget {
 class _HtmlNodeRow extends StatelessWidget {
   const _HtmlNodeRow({
     required this.node, required this.selected,
-    required this.blocked, required this.pending, required this.onTap,
+    required this.blocked, required this.pending,
+    required this.testing, required this.canTest, required this.onTap,
     required this.onTest,
   });
 
@@ -212,6 +226,8 @@ class _HtmlNodeRow extends StatelessWidget {
   final bool selected;
   final bool blocked;
   final bool pending;
+  final bool testing;
+  final bool canTest;
   final VoidCallback onTap;
   final VoidCallback onTest;
 
@@ -275,29 +291,36 @@ class _HtmlNodeRow extends StatelessWidget {
                 ],
               )),
               const SizedBox(width: 5),
-              // A single per-node latency affordance: lightning before a
-              // valid measurement, milliseconds after it. No favorite star,
-              // duplicate speed-test button, or timeout label.
+              // Untested: outline bolt. Testing: live spinner. Result:
+              // shared region-aware latency capsule (green/amber/red).
+              // Retesting the capsule stays possible via the same hit area.
               SizedBox(
-                width: 65, height: 42,
+                width: 74, height: 44,
                 child: TextButton(
                   key: ValueKey('v3-node-latency-${node.id}'),
-                  onPressed: blocked ? null : onTest,
+                  onPressed: canTest ? onTest : null,
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     foregroundColor: p.inkMuted,
-                    minimumSize: const Size(48, 42)),
-                  child: pending
-                    ? const SizedBox(width: 17, height: 17,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : node.latency > 0 && node.latency < 9999
-                      ? Text('${node.latency} ms',
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w700,
-                            color: p.inkMuted))
-                      : Icon(Icons.bolt_rounded,
-                          size: 20, color: p.inkMuted),
+                    minimumSize: const Size(48, 44)),
+                  child: AnimatedSwitcher(
+                    duration: V3Motion.fast,
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    child: testing
+                      ? SizedBox(
+                          key: const ValueKey('v3-node-speed-loading'),
+                          width: 18, height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2, color: p.lycheeInk))
+                      : node.latency <= 0
+                        ? Icon(Icons.bolt_outlined,
+                            key: const ValueKey('v3-node-speed-untested'),
+                            size: 21, color: p.inkMuted)
+                        : V3LatencyBadge(
+                            key: ValueKey('v3-node-speed-result-${node.id}'),
+                            region: node.region, latency: node.latency),
+                  ),
                 ),
               ),
             ]),

@@ -54,12 +54,9 @@ class V3DashboardPage extends StatelessWidget {
           if (confirmedNoPlan)
             _NoPlanDashboardPanel(controller: controller)
           else if (v3UsesMergedConnectionCard(defaultTargetPlatform)) ...[
-            // Plan A "minimal connection" (§13.1/§13.3): a page-level map
-            // stage, an independent node row card and a bare routing segment.
-            // The metrics card never belonged to the phone (it was a desktop
-            // surface the mockup carried over) and the plan card has left the
-            // connection page entirely — traffic reads in the timer's speed
-            // suffix, usage lives in the Mine tab.
+            // A clean mobile connection flow: map + animated connect orb,
+            // routing capsule, real daily usage, and the node shortcut.
+            // Desktop-only metrics and the subscription hero stay off this page.
             _MobileConnectSection(controller: controller),
           ] else ...[
             // Desktop composition (blueprint §2.2): the dot map is the page
@@ -775,11 +772,8 @@ class _ConnectIntroContentState extends State<_ConnectIntroContent> {
   }
 }
 
-/// The phone's Plan-A "minimal connection" section (§13.1/§13.3): a page-level
-/// dot-map stage with no card shell, then an independent node row card, then
-/// the bare routing segment. The merged card is gone, and the phone renders
-/// neither the metrics card nor the plan card - per the plan's per-platform
-/// division rule (§13.4) the desktop workspace keeps all of its surfaces.
+/// Mobile: map and connection orb, routing mode, compact daily usage,
+/// then the current-node shortcut. The desktop workspace is unchanged.
 class _MobileConnectSection extends StatefulWidget {
   const _MobileConnectSection({required this.controller});
   final AppController controller;
@@ -799,10 +793,7 @@ class _MobileConnectSectionState extends State<_MobileConnectSection>
         const SizedBox(height: 4),
         _MobileConnectStage(controller: controller),
         const SizedBox(height: V3Layout.cardGap),
-        _MobileNodeCard(controller: controller),
-        const SizedBox(height: V3Layout.cardGap),
-        // Bare segment: the routing label would repeat what the options
-        // already say, and the stage above owns the page's context.
+        // Native routing mode values stay bound to the existing controller.
         _ModeSegment<ProxyMode>(
           values: ProxyMode.values,
           label: _modeTitle,
@@ -811,8 +802,86 @@ class _MobileConnectSectionState extends State<_MobileConnectSection>
           onSelect: (mode) => _runModeSwitch(() => _setProxyMode(mode)),
           trackKey: 'v3-route-mode-track',
         ),
+        const SizedBox(height: V3Layout.cardGap),
+        _MobileTodayUsageCard(controller: controller),
+        const SizedBox(height: V3Layout.cardGap),
+        _MobileNodeCard(controller: controller),
       ],
     );
+  }
+}
+
+/// Two compact, real-data metrics in the same neutral visual language as
+/// Wallet and the account-service cards. Never infer today's traffic from
+/// the subscription's total used quota.
+class _MobileTodayUsageCard extends StatelessWidget {
+  const _MobileTodayUsageCard({required this.controller});
+
+  final AppController controller;
+
+  static String _formatGb(double value) => value < 1
+      ? '${(value * 1024).toStringAsFixed(0)} MB'
+      : '${value.toStringAsFixed(2)} GB';
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final hasDailyData = controller.trafficUsage.isNotEmpty;
+    final today = hasDailyData
+        ? _formatGb(controller.todayTrafficGb)
+        : '—';
+    final remaining = controller.isInitialLoading &&
+            controller.traffic.totalGb <= 0
+        ? '—'
+        : '${controller.traffic.remainGb.toStringAsFixed(1)} GB';
+    return Container(
+      key: const ValueKey('v3-mobile-daily-usage'),
+      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 14),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        border: Border.all(color: p.line.withValues(alpha: .72)),
+      ),
+      child: Row(children: [
+        Expanded(child: _MobileUsageStat(
+          label: v3Copy(context, zh: '今日已用',
+            en: 'Used today', tw: '今日已用'),
+          value: today,
+        )),
+        Container(width: 1, height: 38,
+          color: p.line.withValues(alpha: .72)),
+        const SizedBox(width: 18),
+        Expanded(child: _MobileUsageStat(
+          label: v3Copy(context, zh: '剩余流量',
+            en: 'Remaining', tw: '剩餘流量'),
+          value: remaining,
+        )),
+      ]),
+    );
+  }
+}
+
+class _MobileUsageStat extends StatelessWidget {
+  const _MobileUsageStat({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: TextStyle(color: p.inkMuted, fontSize: 11)),
+      const SizedBox(height: 5),
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(value, maxLines: 1,
+          style: TextStyle(color: p.ink, fontSize: 18,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()])),
+      ),
+    ]);
   }
 }
 

@@ -194,7 +194,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
         region: _phoneRegion,
         onRegion: (value) => setState(() => _phoneRegion = value),
         onTest: () => _testLatencies(),
-        onTestNode: (id) => _testLatencies(ids: {id}),
+        onTestNode: _testNode,
         onSelect: (node) => _select(
           node.id,
           () => controller.setCurrentNode(node),
@@ -209,6 +209,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
             tw: '已切換至自動選擇'),
         ),
         pendingId: _pending,
+        testingNodeId: _testingNodeId,
       );
     }
 

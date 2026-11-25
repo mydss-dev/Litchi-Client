@@ -197,8 +197,21 @@ void main() {
     // The plan card has left the connection page on the phone.
     expect(find.text('我的套餐'), findsNothing);
 
-    // The node row is its own card; the whole row opens the picker, and the
-    // routing segment is bare - no group labels, no switch button.
+    // Map → routing capsule → daily usage → node shortcut, with no duplicate
+    // marketing hero or desktop-only transfer cards.
+    final map = tester.getRect(find.byKey(kConnectActionCardKey));
+    final routing = tester.getRect(
+      find.byKey(const ValueKey('v3-route-mode-track')));
+    final usage = tester.getRect(
+      find.byKey(const ValueKey('v3-mobile-daily-usage')));
+    final nodeCard = tester.getRect(find.byKey(kCurrentNodeCardKey));
+    expect(map.bottom, lessThanOrEqualTo(routing.top));
+    expect(routing.bottom, lessThanOrEqualTo(usage.top));
+    expect(usage.bottom, lessThanOrEqualTo(nodeCard.top));
+    expect(find.text('今日已用'), findsOneWidget);
+    expect(find.text('2.48 GB'), findsOneWidget);
+    expect(find.text('剩余流量'), findsOneWidget);
+    expect(find.text('383.6 GB'), findsOneWidget);
     expect(find.text('切换节点'), findsNothing);
     expect(find.text('路由模式'), findsNothing);
     expect(find.text('代理模式'), findsNothing);

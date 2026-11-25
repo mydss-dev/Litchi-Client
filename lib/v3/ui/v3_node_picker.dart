@@ -10,6 +10,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import 'v3_empty_state.dart';
 import 'v3_locale_copy.dart';
+import 'v3_latency_tier.dart';
 import 'v3_node_tags.dart';
 import 'v3_sheet.dart';
 import 'v3_toast.dart';
@@ -168,7 +169,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.bolt_rounded, size: 17),
+                    : const Icon(Icons.bolt_outlined, size: 17),
                 label: Text(v3Copy(context, zh: '测速', en: 'Test', tw: '測速')),
               ),
             ),
@@ -552,20 +553,24 @@ class V3NodeRow extends StatelessWidget {
                       padding: EdgeInsets.zero,
                       foregroundColor: p.inkMuted,
                     ),
-                    child: testing
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : node.latency > 0 && node.latency < 9999
-                            ? Text('${node.latency} ms',
-                                maxLines: 1,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: p.inkMuted))
-                            : Icon(Icons.bolt_rounded,
-                                size: 20, color: p.inkMuted),
+                    child: AnimatedSwitcher(
+                      duration: V3Motion.fast,
+                      child: testing
+                          ? SizedBox(
+                              key: const ValueKey('v3-node-speed-loading'),
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2, color: p.lycheeInk))
+                          : node.latency <= 0
+                              ? Icon(Icons.bolt_outlined,
+                                  key: const ValueKey('v3-node-speed-untested'),
+                                  size: 20, color: p.inkMuted)
+                              : V3LatencyBadge(
+                                  key: ValueKey('v3-node-speed-result-${node.id}'),
+                                  region: node.region,
+                                  latency: node.latency),
+                    ),
                   ),
                 ),
               ),
