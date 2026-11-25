@@ -182,7 +182,7 @@ void main() {
 
     // A framed map shows the current node's approximate country position.
     // The primary phone connection action is a wide capsule, not a circle.
-    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 320);
+    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 345);
     expect(find.descendant(of: find.byKey(kConnectActionCardKey),
         matching: find.byKey(const ValueKey('v3-map-country-marker'))),
         findsOneWidget);

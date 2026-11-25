@@ -914,7 +914,7 @@ class _MobileConnectStage extends StatelessWidget {
         : node.name;
     return Container(
       key: kConnectActionCardKey,
-      height: 320,
+      height: 345,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: p.surface,
@@ -962,24 +962,31 @@ class _MobileConnectStage extends StatelessWidget {
           color: p.line.withValues(alpha: .72)),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
-          child: Row(children: [
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(v3Copy(context, zh: '连接时长',
-                    en: 'Duration', tw: '連線時長'),
-                  style: TextStyle(color: p.inkMuted, fontSize: 10)),
-                const SizedBox(height: 5),
-                _ConnectionDuration(controller: controller),
-                if (connected) ...[
-                  const SizedBox(height: 5),
-                  _SpeedSuffix(controller: controller, visible: connected),
-                ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(v3Copy(context, zh: '连接时长',
+                        en: 'Duration', tw: '連線時長'),
+                      style: TextStyle(color: p.inkMuted, fontSize: 10)),
+                    const SizedBox(height: 5),
+                    _ConnectionDuration(controller: controller),
+                  ],
+                )),
+                const SizedBox(width: 10),
+                _MobileConnectCapsule(controller: controller, status: status),
+              ]),
+              if (connected) ...[
+                const SizedBox(height: 8),
+                // Full-width second row: up/down speeds do not compete with
+                // the fixed-width connection capsule on 320-390dp devices.
+                _SpeedSuffix(controller: controller, visible: connected),
               ],
-            )),
-            const SizedBox(width: 10),
-            _MobileConnectCapsule(controller: controller, status: status),
-          ]),
+            ],
+          ),
         ),
       ]),
     );
