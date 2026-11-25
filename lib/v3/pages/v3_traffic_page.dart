@@ -51,6 +51,13 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
   @override
   Widget build(BuildContext context) {
     final controller = AppScope.of(context);
+    final mobile = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+         defaultTargetPlatform == TargetPlatform.iOS);
+    final pageTitle = v3Copy(context,
+      zh: mobile ? '套餐' : '用量',
+      en: mobile ? 'Plan' : 'Usage',
+      tw: mobile ? '方案' : '用量');
     if (controller.hasConfirmedNoPlan && !controller.isInitialLoading) {
       // Keep the back affordance even when the account has no active plan.
       return SingleChildScrollView(
@@ -62,7 +69,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
             backPage: AppPage.account,
-            title: v3Copy(context, zh: '用量', en: 'Usage', tw: '用量'),
+            title: pageTitle,
           ),
           const SizedBox(height: 36),
           V3EmptyState(
@@ -101,12 +108,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
           children: [
             V3PageHeader(
               backPage: AppPage.account,
-              title: v3Copy(
-                context,
-                zh: '用量',
-                en: 'Usage',
-                tw: '用量',
-              ),
+              title: pageTitle,
             ),
             V3EmptyState(
               icon: Icons.error_outline_rounded,
@@ -138,12 +140,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
           children: [
             V3PageHeader(
               backPage: AppPage.account,
-              title: v3Copy(
-                context,
-                zh: '用量',
-                en: 'Usage',
-                tw: '用量',
-              ),
+              title: pageTitle,
             ),
             const SizedBox(height: 18),
             const _TrafficSkeleton(),
@@ -162,9 +159,6 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
     final usedRatio = traffic.totalGb <= 0
         ? 0.0
         : (traffic.usedGb / traffic.totalGb).clamp(0.0, 1.0).toDouble();
-    final mobile = !kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.android ||
-         defaultTargetPlatform == TargetPlatform.iOS);
     // Full-width summary, then the stat-tile band, then the chart. No
     // side-by-side split — every block owns the whole row.
     return SingleChildScrollView(
@@ -178,7 +172,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
         children: [
           V3PageHeader(
               backPage: AppPage.account,
-            title: v3Copy(context, zh: '用量', en: 'Usage', tw: '用量'),
+            title: pageTitle,
             // The scope line carries the month's live quota, the same numbers
             // the quota panel holds below.
             subtitle: v3Copy(

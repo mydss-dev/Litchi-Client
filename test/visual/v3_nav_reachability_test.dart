@@ -178,6 +178,9 @@ void main() {
           const ValueKey('v3-account-wallet-service'));
       final settings = find.byKey(hubRowKey(AppPage.settings));
       expect(find.text('账户服务'), findsOneWidget);
+      expect(find.text('5 项功能'), findsOneWidget);
+      expect(find.byKey(hubRowKey(AppPage.traffic)), findsNothing);
+      expect(find.text('流量用量'), findsNothing);
       expect(find.byType(CupertinoListSection), findsOneWidget);
       expect(find.byType(FCard), findsNWidgets(2));
       expect(find.byType(FAvatar), findsOneWidget);
@@ -210,6 +213,7 @@ void main() {
       expect(find.text('续费'), findsNothing);
       await _tap(tester, find.byKey(const ValueKey('v3-mobile-plan-card')));
       expect(controller.page, AppPage.traffic);
+      expect(find.text('套餐'), findsOneWidget);
       expect(find.byKey(const ValueKey('v3-usage-renew')), findsOneWidget);
       await _tap(tester, find.byKey(
           const ValueKey('v3-mobile-secondary-back')));

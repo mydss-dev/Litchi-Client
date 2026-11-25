@@ -371,7 +371,7 @@ class _MobileAccountOverview extends StatelessWidget {
         controller.user.balance > 0 || controller.withdrawable > 0;
     final body = dark ? const Color(0xFF141519) : const Color(0xFFFFFEFD);
     final muted = dark ? const Color(0xFFA4A0A5) : const Color(0xFF83858C);
-    final serviceCount = walletVisible ? 6 : 5;
+    final serviceCount = walletVisible ? 5 : 4;
 
     return ColoredBox(
       color: body,
@@ -461,13 +461,6 @@ class _MobileAccountOverview extends StatelessWidget {
                 title: v3Copy(context, zh: '订单记录',
                   en: 'Orders', tw: '訂單紀錄'),
                 onTap: () => openV3Page(context, AppPage.orders),
-              ),
-              _MobileServiceTile(
-                key: hubRowKey(AppPage.traffic),
-                icon: LucideIcons.activity,
-                title: v3Copy(context, zh: '流量用量',
-                  en: 'Data usage', tw: '流量用量'),
-                onTap: () => openV3Page(context, AppPage.traffic),
               ),
               _MobileServiceTile(
                 key: hubRowKey(AppPage.tickets),
