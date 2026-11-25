@@ -973,7 +973,15 @@ class _MobileConnectStage extends StatelessWidget {
                         en: 'Duration', tw: '連線時長'),
                       style: TextStyle(color: p.inkMuted, fontSize: 10)),
                     const SizedBox(height: 5),
-                    _ConnectionDuration(controller: controller),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 29,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: _ConnectionDuration(controller: controller),
+                      ),
+                    ),
                   ],
                 )),
                 const SizedBox(width: 10),
