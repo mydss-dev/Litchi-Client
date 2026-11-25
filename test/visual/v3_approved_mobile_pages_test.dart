@@ -59,17 +59,15 @@ void main() {
     expect(find.text('管理账户'), findsOneWidget);
     expect(find.byKey(const ValueKey('v3-account-identity-avatar')),
         findsOneWidget);
-    expect(find.byKey(const ValueKey('v3-account-merged-card')),
-        findsOneWidget);
+    final identity = find.byKey(const ValueKey('v3-account-identity-card'));
+    final plan = find.byKey(const ValueKey('v3-mobile-plan-card'));
+    expect(identity, findsOneWidget);
+    expect(plan, findsOneWidget);
+    expect(find.byKey(const ValueKey('v3-account-merged-card')), findsNothing);
+    expect(tester.getRect(identity).bottom,
+        lessThan(tester.getRect(plan).top));
     expect(find.text('当前套餐'), findsOneWidget);
     expect(find.text('查看套餐'), findsOneWidget);
-    // Both interaction regions share one outer surface, without a gap.
-    final merged = find.byKey(const ValueKey('v3-account-merged-card'));
-    expect(find.descendant(of: merged, matching: find.text('管理账户')),
-        findsOneWidget);
-    expect(find.descendant(of: merged,
-        matching: find.byKey(const ValueKey('v3-mobile-plan-card'))),
-        findsOneWidget);
     expect(find.text('账户服务'), findsOneWidget);
     expect(find.text('5 项功能'), findsNothing);
     expect(find.text('流量用量'), findsNothing);
@@ -84,8 +82,9 @@ void main() {
     final controller = _PlanRouteController();
     await _pumpMobile(tester, controller, const V3AccountPage());
     final card = find.byKey(const ValueKey('v3-mobile-plan-card'));
-    expect(find.byKey(const ValueKey('v3-account-merged-card')),
+    expect(find.byKey(const ValueKey('v3-account-identity-card')),
         findsOneWidget);
+    expect(find.byKey(const ValueKey('v3-account-merged-card')), findsNothing);
     expect(card, findsOneWidget);
     await tester.ensureVisible(card);
     await tester.tap(card);

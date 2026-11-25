@@ -7,8 +7,8 @@ import '../../app/plan_presentation.dart';
 import 'v3_locale_copy.dart';
 import 'v3_plan_labels.dart';
 
-/// Lower subscription section of the single combined Account hero.
-/// The parent owns the shared gradient, border, shadow, and rounded corners.
+/// Independent subscription card, using the existing soft coral treatment.
+/// Only Account renders this card; Usage details start with quota statistics.
 class V3MobilePlanCard extends StatelessWidget {
   const V3MobilePlanCard({super.key, required this.controller,
     this.onOpenUsage});
@@ -59,7 +59,21 @@ class V3MobilePlanCard extends StatelessWidget {
         padding: EdgeInsets.zero),
       child: Container(
       width: double.infinity,
-      decoration: const BoxDecoration(),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: dark
+            ? const [Color(0xFF453338), Color(0xFF3B3036),
+                Color(0xFF343038)]
+            : const [Color(0xFFFFFAF8), Color(0xFFFFF5F2),
+                Color(0xFFFFECE8)],
+        ),
+        borderRadius: BorderRadius.circular(27),
+        border: Border.all(color: dark
+            ? const Color(0xFF68494C) : const Color(0xFFF2DEDA)),
+        boxShadow: dark ? null : const [BoxShadow(
+          color: Color(0x0C986A60), blurRadius: 22, offset: Offset(0, 7))],
+      ),
       clipBehavior: Clip.antiAlias,
       child: Stack(children: [
         // Restore the approved HTML's concentric, very low-contrast rings.

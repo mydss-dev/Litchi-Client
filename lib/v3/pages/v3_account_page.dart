@@ -410,40 +410,14 @@ class _MobileAccountOverview extends StatelessWidget {
             ),
           ]),
           const SizedBox(height: 19),
-          Container(
-            key: const ValueKey('v3-account-merged-card'),
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(27),
-              border: Border.all(color: dark
-                  ? const Color(0xFF4B3C41) : const Color(0xFFF0DFDB)),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: dark
-                  ? const [Color(0xFF29262B), Color(0xFF342B32),
-                      Color(0xFF3B3036)]
-                  : const [Color(0xFFFFFEFD), Color(0xFFFFFAF8),
-                      Color(0xFFFFF5F2), Color(0xFFFFEFEB)],
-              ),
-              boxShadow: dark ? null : const [
-                BoxShadow(color: Color(0x108F6059),
-                    blurRadius: 24, offset: Offset(0, 9)),
-              ],
-            ),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              _MobileIdentityCard(
-                controller: controller,
-                onManage: () => _showManage(context),
-              ),
-              Divider(height: 1, thickness: 1,
-                color: dark ? const Color(0x224F4146)
-                  : const Color(0x66EAD6D1)),
-              V3MobilePlanCard(
-                controller: controller,
-                onOpenUsage: () => openV3Page(context, AppPage.traffic),
-              ),
-            ]),
+          _MobileIdentityCard(
+            controller: controller,
+            onManage: () => _showManage(context),
+          ),
+          const SizedBox(height: 16),
+          V3MobilePlanCard(
+            controller: controller,
+            onOpenUsage: () => openV3Page(context, AppPage.traffic),
           ),
           const SizedBox(height: 27),
           Text(v3Copy(context, zh: '账户服务',
@@ -595,8 +569,7 @@ class _MobileServiceTile extends StatelessWidget {
 }
 
 
-/// Use Forui's card implementation only for the two account overview cards.
-/// Their existing dimensions and controller behavior stay unchanged.
+/// Independent Wallet-style identity card above the subscription card.
 class _MobileIdentityCard extends StatelessWidget {
   const _MobileIdentityCard({required this.controller, required this.onManage});
   final AppController controller;
@@ -617,6 +590,7 @@ class _MobileIdentityCard extends StatelessWidget {
     final muted = dark ? const Color(0xFFAAA3A6) : const Color(0xFF92929A);
     final p = V3Palette.of(context);
     return FCard(
+      key: const ValueKey('v3-account-identity-card'),
       style: FCardStyle(
         decoration: const BoxDecoration(),
         titleTextStyle: TextStyle(color: ink,
@@ -626,7 +600,11 @@ class _MobileIdentityCard extends StatelessWidget {
       child: Container(
       constraints: const BoxConstraints(minHeight: 92),
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 17),
-      decoration: const BoxDecoration(),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: p.line.withValues(alpha: .72)),
+      ),
       child: Row(children: [
         Container(
           key: const ValueKey('v3-account-identity-avatar'),

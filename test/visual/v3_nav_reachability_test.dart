@@ -183,8 +183,10 @@ void main() {
       expect(find.text('流量用量'), findsNothing);
       expect(find.byType(CupertinoListSection), findsOneWidget);
       expect(find.byType(FCard), findsNWidgets(2));
-      expect(find.byKey(const ValueKey('v3-account-merged-card')),
+      expect(find.byKey(const ValueKey('v3-account-identity-card')),
           findsOneWidget);
+      expect(find.byKey(const ValueKey('v3-account-merged-card')),
+          findsNothing);
       expect(find.byType(FAvatar), findsOneWidget);
       expect(find.byKey(const ValueKey('v3-account-identity-avatar')),
           findsOneWidget);
