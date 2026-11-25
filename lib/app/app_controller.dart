@@ -395,6 +395,13 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     final cached = await AccountSummaryCache.load(authData);
     if (cached == null) return;
     _hasAccountSummary = true;
+    // Cached title is encrypted and ID-scoped; a changed ID invalidates it.
+    if (cached.planId != null && cached.planId! > 0 &&
+        cached.planName.trim().isNotEmpty) {
+      _currentPlanId = cached.planId;
+      _subscriptionPlanNameId = cached.planId;
+      _subscriptionPlanName = cached.planName.trim();
+    }
     _account.applySnapshot(user: cached.user, traffic: cached.traffic);
     _subscription.applySnapshot(
       aliveIp: cached.aliveIp,
@@ -578,6 +585,19 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     final deviceLimit = _subscription.deviceLimit;
     final resetDay = _subscription.resetDay;
     final expiredAt = _subscription.expiredAt;
+    final activeId = _currentPlanId;
+    final catalogTitle = activeId == null ? '' :
+        _plans.where((plan) => int.tryParse(plan.id) == activeId)
+          .map((plan) => plan.title.trim())
+          .where((title) => title.isNotEmpty).firstOrNull ?? '';
+    final subscriptionTitle = activeId != null &&
+        _subscriptionPlanNameId == activeId
+        ? (_subscriptionPlanName ?? '').trim() : '';
+    final remote = _account.remoteUser;
+    final remoteTitle = activeId != null && remote?.planId == activeId
+        ? (remote?.planName ?? '').trim() : '';
+    final verifiedTitle = catalogTitle.isNotEmpty ? catalogTitle :
+        subscriptionTitle.isNotEmpty ? subscriptionTitle : remoteTitle;
     _accountSummarySave = (_accountSummarySave ?? Future<void>.value()).then(
       (_) => AccountSummaryCache.save(
         authData,
@@ -587,6 +607,8 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
         deviceLimit: deviceLimit,
         resetDay: resetDay,
         expiredAt: expiredAt,
+        planId: verifiedTitle.isNotEmpty ? activeId : null,
+        planName: verifiedTitle,
       ),
     );
   }
@@ -924,10 +946,16 @@ class AppController extends ChangeNotifier with WidgetsBindingObserver {
     _applyAccountStatus(snap);
 
     final secondaryLoad = _dataLoader.loadSecondary(snap);
-    await _dataLoader.loadPrimary(snap);
+    // Start both concurrently; publish the verified catalog name first.
+    final nodesLoad = _dataLoader.loadAccountNodes(snap);
+    await _dataLoader.loadPlanCatalog(snap);
     if (!_isSessionCurrent(sessionEpoch)) return;
     _applySnapshot(snap);
     _saveAccountSummary();
+    if (!_disposed) notifyListeners();
+    await nodesLoad;
+    if (!_isSessionCurrent(sessionEpoch)) return;
+    _applySnapshot(snap);
     if (_nodes.isNotEmpty) {
       _lastNodesRefreshAt = DateTime.now();
       unawaited(NodeCacheService.save(_nodes.nodes, _authData!));

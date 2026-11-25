@@ -43,6 +43,7 @@ void main() {
       user: _user,
       traffic: _traffic,
       expiredAt: 1798675200,
+      planId: 8, planName: 'Litchi Ultra',
     );
 
     final prefs = await SharedPreferences.getInstance();
@@ -64,6 +65,8 @@ void main() {
     expect(cached?.user.expiry, '2026-12-31');
     expect(cached?.traffic.remainGb, 75);
     expect(cached?.expiredAt, 1798675200);
+    expect(cached?.planId, 8);
+    expect(cached?.planName, 'Litchi Ultra');
     expect(await AccountSummaryCache.load('session-b'), isNull);
     await AccountSummaryCache.clear();
   });

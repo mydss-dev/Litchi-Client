@@ -21,6 +21,8 @@ class AccountSummaryCache {
     this.deviceLimit,
     this.resetDay,
     this.expiredAt,
+    this.planId,
+    this.planName = '',
   });
 
   final UserModel user;
@@ -29,6 +31,8 @@ class AccountSummaryCache {
   final int? deviceLimit;
   final int? resetDay;
   final int? expiredAt;
+  final int? planId;
+  final String planName;
 
   static String get _key =>
       AppIdentity.preferenceKey('account_summary_cache_v1');
@@ -91,6 +95,8 @@ class AccountSummaryCache {
         deviceLimit: (json['deviceLimit'] as num?)?.toInt(),
         resetDay: (json['resetDay'] as num?)?.toInt(),
         expiredAt: (json['expiredAt'] as num?)?.toInt(),
+        planId: (json['planId'] as num?)?.toInt(),
+        planName: json['planName'] as String? ?? '',
       );
     } catch (_) {
       return null;
@@ -105,6 +111,8 @@ class AccountSummaryCache {
     int? deviceLimit,
     int? resetDay,
     int? expiredAt,
+    int? planId,
+    String planName = '',
   }) async {
     if (user.name.isEmpty && user.plan.isEmpty && user.expiry.isEmpty) return;
     try {
@@ -130,6 +138,8 @@ class AccountSummaryCache {
         'deviceLimit': deviceLimit,
         'resetDay': resetDay,
         'expiredAt': expiredAt,
+        'planId': planId,
+        'planName': planId != null && planId > 0 ? planName.trim() : '',
       });
       final protected = await CredentialsStorage.protectString(
         payload,

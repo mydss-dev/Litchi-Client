@@ -77,11 +77,13 @@ class DataLoader {
 
   /// Loads the remaining fields visible on the first dashboard frame.
   Future<void> loadPrimary(DataSnapshot snap) async {
-    await Future.wait([
-      _fillNodes(snap),
-      if (AppConfig.panelFeatures.shop) _fillPlans(snap),
-    ]);
+    await Future.wait([loadAccountNodes(snap), loadPlanCatalog(snap)]);
   }
+
+  /// Catalog and nodes resolve separately: plan names must not wait for nodes.
+  Future<void> loadAccountNodes(DataSnapshot snap) => _fillNodes(snap);
+  Future<void> loadPlanCatalog(DataSnapshot snap) =>
+      AppConfig.panelFeatures.shop ? _fillPlans(snap) : Future<void>.value();
 
   /// Loads non-critical detail pages without delaying first-frame content.
   Future<void> loadSecondary(DataSnapshot snap) async {
