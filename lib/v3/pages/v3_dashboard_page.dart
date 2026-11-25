@@ -914,7 +914,7 @@ class _MobileConnectStage extends StatelessWidget {
         : node.name;
     return Container(
       key: kConnectActionCardKey,
-      height: 345,
+      height: 375,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: p.surface,
@@ -961,38 +961,32 @@ class _MobileConnectStage extends StatelessWidget {
         Divider(height: 1, thickness: 1,
           color: p.line.withValues(alpha: .72)),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(children: [
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(v3Copy(context, zh: '连接时长',
-                        en: 'Duration', tw: '連線時長'),
-                      style: TextStyle(color: p.inkMuted, fontSize: 10)),
-                    const SizedBox(height: 5),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 29,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: _ConnectionDuration(controller: controller),
-                      ),
-                    ),
-                  ],
+                Text(v3Copy(context, zh: '连接时长',
+                    en: 'Duration', tw: '連線時長'),
+                  style: TextStyle(color: p.inkMuted, fontSize: 11)),
+                const SizedBox(width: 12),
+                Expanded(child: SizedBox(
+                  height: 28,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: _ConnectionDuration(controller: controller),
+                  ),
                 )),
-                const SizedBox(width: 10),
-                _MobileConnectCapsule(controller: controller, status: status),
               ]),
               if (connected) ...[
-                const SizedBox(height: 8),
-                // Full-width second row: up/down speeds do not compete with
-                // the fixed-width connection capsule on 320-390dp devices.
+                const SizedBox(height: 7),
                 _SpeedSuffix(controller: controller, visible: connected),
               ],
+              const SizedBox(height: 12),
+              // Full-width CTA: neither the timer nor transfer-rate labels
+              // share its row on 320–390dp devices.
+              _MobileConnectCapsule(controller: controller, status: status),
             ],
           ),
         ),
@@ -1056,7 +1050,7 @@ class _MobileConnectCapsule extends StatelessWidget {
       child: ExcludeSemantics(
         child: AnimatedContainer(
           duration: V3Motion.fast,
-          width: 150, height: 50,
+          width: double.infinity, height: 48,
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(99)),

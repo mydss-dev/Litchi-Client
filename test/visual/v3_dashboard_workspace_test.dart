@@ -182,7 +182,7 @@ void main() {
 
     // A framed map shows the current node's approximate country position.
     // The primary phone connection action is a wide capsule, not a circle.
-    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 345);
+    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 375);
     expect(find.descendant(of: find.byKey(kConnectActionCardKey),
         matching: find.byKey(const ValueKey('v3-map-country-marker'))),
         findsOneWidget);
@@ -190,7 +190,7 @@ void main() {
         findsOneWidget);
     final capsule = tester.getRect(
         find.byKey(const ValueKey('v3-mobile-connect-pill')));
-    expect(capsule.width, 150);
+    expect(capsule.width, greaterThan(250));
     expect(capsule.width, greaterThan(capsule.height));
     expect(find.text('保护中'), findsOneWidget);
     expect(find.text('01:26:18'), findsOneWidget);
