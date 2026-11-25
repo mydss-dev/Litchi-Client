@@ -600,6 +600,7 @@ class _MobileIdentityCard extends StatelessWidget {
     final letter = avatarSource.isEmpty
         ? 'L' : avatarSource.substring(0, 1).toUpperCase();
     final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
+    final muted = dark ? const Color(0xFFAAA3A6) : const Color(0xFF92929A);
     return FCard(
       style: FCardStyle(
         decoration: const BoxDecoration(),
