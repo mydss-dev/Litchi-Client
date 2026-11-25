@@ -131,7 +131,11 @@ Future<void> _pumpV3(
   // the settled truth, never a mid-animation frame.
   await tester.pump(const Duration(milliseconds: 900));
   await tester.pump();
-  expect(tester.takeException(), isNull);
+  final layoutError = tester.takeException();
+  if (layoutError is FlutterError) {
+    debugPrint('V3_LAYOUT_DIAGNOSTIC: ${layoutError.toStringDeep()}');
+  }
+  expect(layoutError, isNull);
 }
 
 Future<void> _pumpSignIn(
