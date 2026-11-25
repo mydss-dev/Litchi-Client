@@ -411,16 +411,42 @@ class _MobileAccountOverview extends StatelessWidget {
             ),
           ]),
           const SizedBox(height: 19),
-          _MobileIdentityCard(
-            controller: controller,
-            onManage: () => _showManage(context),
+          Container(
+            key: const ValueKey('v3-account-merged-card'),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(27),
+              border: Border.all(color: dark
+                  ? const Color(0xFF4B3C41) : const Color(0xFFF0DFDB)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: dark
+                  ? const [Color(0xFF29262B), Color(0xFF342B32),
+                      Color(0xFF3B3036)]
+                  : const [Color(0xFFFFFEFD), Color(0xFFFFFAF8),
+                      Color(0xFFFFF5F2), Color(0xFFFFEFEB)],
+              ),
+              boxShadow: dark ? null : const [
+                BoxShadow(color: Color(0x108F6059),
+                    blurRadius: 24, offset: Offset(0, 9)),
+              ],
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _MobileIdentityCard(
+                controller: controller,
+                onManage: () => _showManage(context),
+              ),
+              Divider(height: 1, thickness: 1,
+                color: dark ? const Color(0x224F4146)
+                  : const Color(0x66EAD6D1)),
+              V3MobilePlanCard(
+                controller: controller,
+                onOpenUsage: () => openV3Page(context, AppPage.traffic),
+              ),
+            ]),
           ),
-          const SizedBox(height: 19),
-          V3MobilePlanCard(
-            controller: controller,
-            onOpenUsage: () => openV3Page(context, AppPage.traffic),
-          ),
-          const SizedBox(height: 29),
+          const SizedBox(height: 27),
           Row(children: [
             Expanded(child: Text(
               v3Copy(context, zh: '账户服务',
@@ -609,24 +635,9 @@ class _MobileIdentityCard extends StatelessWidget {
         subtitleTextStyle: TextStyle(color: muted, fontSize: 13),
         padding: EdgeInsets.zero),
       child: Container(
-      constraints: const BoxConstraints(minHeight: 96),
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft, end: Alignment.centerRight,
-          colors: dark
-            ? const [Color(0xFF27252B), Color(0xFF30282B)]
-            : const [Color(0xFFFFFEFD), Color(0xFFFFFAF8),
-                Color(0xFFFFF5F2)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: dark
-            ? const Color(0xFF4A3C40) : const Color(0xFFF1E1DE)),
-        boxShadow: dark ? null : const [
-          BoxShadow(color: Color(0x0C5B4440),
-            blurRadius: 20, offset: Offset(0, 7)),
-        ],
-      ),
+      constraints: const BoxConstraints(minHeight: 92),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 17),
+      decoration: const BoxDecoration(),
       child: Row(children: [
         Container(
           width: 51, height: 51,

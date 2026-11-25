@@ -7,8 +7,8 @@ import '../../app/plan_presentation.dart';
 import 'v3_locale_copy.dart';
 import 'v3_plan_labels.dart';
 
-/// Account-only subscription hero, opening the secondary Usage/Plan page.
-/// Keep this as the page's single softly tinted surface.
+/// Lower subscription section of the single combined Account hero.
+/// The parent owns the shared gradient, border, shadow, and rounded corners.
 class V3MobilePlanCard extends StatelessWidget {
   const V3MobilePlanCard({super.key, required this.controller,
     this.onOpenUsage});
@@ -59,21 +59,7 @@ class V3MobilePlanCard extends StatelessWidget {
         padding: EdgeInsets.zero),
       child: Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: dark
-            ? const [Color(0xFF453338), Color(0xFF3B3036),
-                Color(0xFF343038)]
-            : const [Color(0xFFFFFAF8), Color(0xFFFFF5F2),
-                Color(0xFFFFECE8)],
-        ),
-        borderRadius: BorderRadius.circular(27),
-        border: Border.all(color: dark
-            ? const Color(0xFF68494C) : const Color(0xFFF2DEDA)),
-        boxShadow: dark ? null : const [BoxShadow(
-          color: Color(0x0C986A60), blurRadius: 22, offset: Offset(0, 7))],
-      ),
+      decoration: const BoxDecoration(),
       clipBehavior: Clip.antiAlias,
       child: Stack(children: [
         // Restore the approved HTML's concentric, very low-contrast rings.
@@ -113,8 +99,8 @@ class V3MobilePlanCard extends StatelessWidget {
                     : const Color(0xFFC55D4B)),
               ),
               const SizedBox(width: 7),
-              Expanded(child: Text(v3Copy(context, zh: '订阅计划',
-                    en: 'Subscription plan', tw: '訂閱計劃'),
+              Expanded(child: Text(v3Copy(context, zh: '当前套餐',
+                    en: 'Current plan', tw: '目前方案'),
                 style: TextStyle(color: dark ? const Color(0xFFFFD1C7)
                   : const Color(0xFFA45A4F),
                   fontSize: 11, fontWeight: FontWeight.w700))),
@@ -137,19 +123,8 @@ class V3MobilePlanCard extends StatelessWidget {
                     fontSize: 10, fontWeight: FontWeight.w800)),
                 ]),
               ),
-              if (onOpenUsage != null) ...[
-                const SizedBox(width: 6),
-                Icon(LucideIcons.chevronRight, size: 15, color: secondary),
-              ],
             ]),
-            const SizedBox(height: 10),
-            Text(v3Copy(context, zh: '当前套餐',
-                en: 'CURRENT PLAN', tw: '目前方案'),
-              style: TextStyle(color: dark ? const Color(0xFFE2B0AC)
-                : const Color(0xFFB5746B),
-                fontSize: 10, fontWeight: FontWeight.w700,
-                letterSpacing: 1.2)),
-            const SizedBox(height: 3),
+            const SizedBox(height: 13),
             if (waitingForName && controller.isInitialLoading)
               Container(
                 key: const ValueKey('v3-plan-name-loading'),
@@ -213,6 +188,17 @@ class V3MobilePlanCard extends StatelessWidget {
                 ),
               )),
             ]),
+            if (onOpenUsage != null) ...[
+              const SizedBox(height: 10),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                Text(v3Copy(context, zh: '查看套餐',
+                    en: 'View plan', tw: '查看方案'),
+                  style: TextStyle(color: secondary,
+                    fontSize: 11, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 4),
+                Icon(LucideIcons.arrowRight, color: secondary, size: 13),
+              ]),
+            ],
           ]),
         ),
       ]),

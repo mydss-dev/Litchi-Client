@@ -183,6 +183,8 @@ void main() {
       expect(find.text('流量用量'), findsNothing);
       expect(find.byType(CupertinoListSection), findsOneWidget);
       expect(find.byType(FCard), findsNWidgets(2));
+      expect(find.byKey(const ValueKey('v3-account-merged-card')),
+          findsOneWidget);
       expect(find.byType(FAvatar), findsOneWidget);
       expect(orders, findsOneWidget);
       expect(wallet, findsOneWidget);
