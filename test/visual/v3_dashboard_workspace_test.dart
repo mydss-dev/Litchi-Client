@@ -232,7 +232,9 @@ void main() {
     // Selecting the node card now routes to the Nodes tab instead
     // of opening the old picker overlay. Navigation is covered in the
     // shell reachability tests; this fixture has no mutable page routing.
-    await tester.tap(find.text('日本 东京 · Premium'));
+    await tester.ensureVisible(find.byKey(kCurrentNodeCardKey));
+    await tester.pump();
+    await tester.tap(find.byKey(kCurrentNodeCardKey));
     await tester.pumpAndSettle();
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);

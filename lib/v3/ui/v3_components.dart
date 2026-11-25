@@ -393,9 +393,9 @@ class V3MobileFilterChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(99),
         onTap: onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 39),
+          constraints: const BoxConstraints(minHeight: 44),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Text(label, maxLines: 1,
               style: TextStyle(
                 fontSize: 12, fontWeight: FontWeight.w700,
