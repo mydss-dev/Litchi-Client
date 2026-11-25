@@ -21,7 +21,8 @@ class PlanDataService {
     final remotePlans = await _api.getPlans();
     if (remotePlans.isEmpty) return const PlanDataResult();
 
-    final plans = remotePlans.map(ModelMappers.toPlan).toList();
+    final plans = remotePlans.where((plan) => plan.show != 0)
+        .map(ModelMappers.toPlan).toList();
     return PlanDataResult(
       plans: plans,
       user: syncCurrentPlanTitle(
