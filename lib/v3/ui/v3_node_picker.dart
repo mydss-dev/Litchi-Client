@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
@@ -169,7 +170,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.bolt_outlined, size: 17),
+                    : const Icon(LucideIcons.zap, size: 17),
                 label: Text(v3Copy(context, zh: '测速', en: 'Test', tw: '測速')),
               ),
             ),
@@ -563,7 +564,7 @@ class V3NodeRow extends StatelessWidget {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2, color: p.lycheeInk))
                           : node.latency <= 0
-                              ? Icon(Icons.bolt_outlined,
+                              ? Icon(LucideIcons.zap,
                                   key: const ValueKey('v3-node-speed-untested'),
                                   size: 20, color: p.inkMuted)
                               : V3LatencyBadge(

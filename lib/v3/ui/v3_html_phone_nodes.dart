@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
@@ -75,7 +76,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
                 ? SizedBox(width: 17, height: 17,
                     child: CircularProgressIndicator(strokeWidth: 2,
                       color: p.lycheeInk))
-                : const Icon(Icons.bolt_outlined, size: 17),
+                : const Icon(LucideIcons.zap, size: 17),
             label: Text(v3Copy(context, zh: '全部测速',
               en: 'Test all', tw: '全部測速')),
             style: OutlinedButton.styleFrom(
@@ -106,7 +107,6 @@ class V3HtmlPhoneNodes extends StatelessWidget {
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
               prefixIcon: Icon(Icons.search_rounded, color: p.inkMuted, size: 17),
-              suffixIcon: Icon(Icons.tune_rounded, color: p.inkMuted, size: 17),
               hintText: v3Copy(context, zh: '搜索节点',
                 en: 'Search nodes', tw: '搜尋節點'),
               hintStyle: TextStyle(color: p.inkMuted,
@@ -115,95 +115,111 @@ class V3HtmlPhoneNodes extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final (code, label) in filters)
-            _RegionChip(
-              key: ValueKey(code == null ? 'v3-map-country-all' : 'v3-region-$code'),
-              selected: region == code, title: label,
-              onTap: () => onRegion(code)),
-        ]),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: p.surface,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: p.hairline)),
-          child: Column(children: [
-            if (controller.isInitialLoading)
-              for (var i = 0; i < 3; i++) const V3NodeSkeletonRow()
-            else if (controller.dataLoadError != null && total == 0)
-              V3EmptyState(
-                icon: Icons.error_outline_rounded,
-                title: v3Copy(context, zh: '节点同步失败',
-                  en: 'Could not load nodes', tw: '節點同步失敗'),
-                subtitle: controller.dataLoadError!,
-                actionLabel: v3Copy(context,
-                  zh: '重试', en: 'Retry', tw: '重試'),
-                onAction: controller.refreshData,
-              )
-            else if (nodes.isEmpty)
-              Padding(padding: const EdgeInsets.all(20),
-                child: Text(v3Copy(context, zh: '没有匹配的节点',
-                  en: 'No matching nodes', tw: '沒有符合的節點'),
-                  style: TextStyle(color: p.inkMuted)))
-            else
-              for (final node in nodes)
-                _HtmlNodeRow(
-                  node: node,
-                  selected: !controller.autoSelected &&
-                    controller.currentNode.id == node.id,
-                  blocked: pendingId != null,
-                  pending: pendingId == node.id,
-                  testing: testingNodeId == node.id ||
-                    (controller.isLatencyTesting && testingNodeId == null),
-                  canTest: pendingId == null &&
-                    !controller.isLatencyTesting && testingNodeId == null,
-                  onTap: () => onSelect(node),
-                  onTest: () => onTestNode(node.id)),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            for (final (index, filter) in filters.indexed) ...[
+              if (index > 0) const SizedBox(width: 8),
+              V3MobileFilterChip(
+                key: ValueKey(filter.$1 == null
+                    ? 'v3-map-country-all' : 'v3-region-${filter.$1}'),
+                selected: region == filter.$1, label: filter.$2,
+                onTap: () => onRegion(filter.$1)),
+            ],
           ]),
         ),
-        const SizedBox(height: 10),
-        if (!controller.autoSelected)
-          TextButton.icon(
-            onPressed: onSelectAuto,
-            icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-            label: Text(v3Copy(context, zh: '自动选择节点',
-              en: 'Automatic selection', tw: '自動選擇節點')),
+        const SizedBox(height: 15),
+        Material(
+          color: controller.autoSelected ? p.lycheeSoft : p.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: controller.autoSelected
+                ? p.lychee.withValues(alpha: .65)
+                : p.line.withValues(alpha: .72))),
+          child: InkWell(
+            key: const ValueKey('v3-mobile-auto-node'),
+            borderRadius: BorderRadius.circular(18),
+            onTap: controller.autoSelected || pendingId != null
+                ? null : onSelectAuto,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 13, vertical: 12),
+              child: Row(children: [
+                Container(
+                  height: 36, width: 36,
+                  decoration: BoxDecoration(
+                    color: p.surfaceRaised,
+                    borderRadius: BorderRadius.circular(12)),
+                  child: Icon(Icons.auto_awesome_rounded,
+                    color: p.lycheeInk, size: 19),
+                ),
+                const SizedBox(width: 11),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(v3Copy(context, zh: '自动选择节点',
+                        en: 'Automatic selection', tw: '自動選擇節點'),
+                      style: TextStyle(color: p.ink,
+                        fontSize: 14, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 3),
+                    Text(v3Copy(context, zh: '由系统选择合适线路',
+                        en: 'Let the app select a route',
+                        tw: '由系統選擇合適線路'),
+                      style: TextStyle(color: p.inkMuted, fontSize: 11)),
+                  ],
+                )),
+                if (controller.autoSelected)
+                  Icon(Icons.check_circle_rounded,
+                    color: p.lycheeInk, size: 19)
+                else
+                  Icon(Icons.chevron_right_rounded,
+                    color: p.inkMuted, size: 19),
+              ]),
+            ),
           ),
-      ]),
-    );
-  }
-}
-
-class _RegionChip extends StatelessWidget {
-  const _RegionChip({
-    super.key,
-    required this.selected,
-    required this.title,
-    required this.onTap,
-  });
-  final bool selected;
-  final String title;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    return Material(
-      color: selected ? p.lycheeSoft : p.surfaceRaised,
-      shape: StadiumBorder(side: BorderSide(
-        color: selected ? p.lychee : p.hairline)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(99),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          child: Text(title, style: TextStyle(
-            color: selected ? p.lycheeInk : p.inkMuted,
-            fontSize: 12, fontWeight: FontWeight.w700)),
         ),
-      ),
+        const SizedBox(height: 13),
+        if (controller.isInitialLoading)
+          for (var i = 0; i < 3; i++)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 9),
+              child: V3NodeSkeletonRow())
+        else if (controller.dataLoadError != null && total == 0)
+          V3EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: v3Copy(context, zh: '节点同步失败',
+              en: 'Could not load nodes', tw: '節點同步失敗'),
+            subtitle: controller.dataLoadError!,
+            actionLabel: v3Copy(context, zh: '重试',
+              en: 'Retry', tw: '重試'),
+            onAction: controller.refreshData,
+          )
+        else if (nodes.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text(v3Copy(context, zh: '没有匹配的节点',
+              en: 'No matching nodes', tw: '沒有符合的節點'),
+              style: TextStyle(color: p.inkMuted)),
+          )
+        else
+          for (final node in nodes)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: _HtmlNodeRow(
+                node: node,
+                selected: !controller.autoSelected &&
+                  controller.currentNode.id == node.id,
+                blocked: pendingId != null,
+                pending: pendingId == node.id,
+                testing: testingNodeId == node.id ||
+                  (controller.isLatencyTesting && testingNodeId == null),
+                canTest: pendingId == null &&
+                  !controller.isLatencyTesting && testingNodeId == null,
+                onTap: () => onSelect(node),
+                onTest: () => onTestNode(node.id),
+              ),
+            ),
+      ]),
     );
   }
 }
@@ -229,16 +245,20 @@ class _HtmlNodeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Material(
-      color: selected ? p.lycheeSoft : Colors.transparent,
-      borderRadius: BorderRadius.circular(16),
+      color: selected ? p.lycheeSoft : p.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: selected
+            ? p.lychee.withValues(alpha: .60)
+            : p.line.withValues(alpha: .72))),
       child: InkWell(
         key: ValueKey('v3-html-node-${node.id}'),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: blocked || selected ? null : onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 72),
+          constraints: const BoxConstraints(minHeight: 73),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
             child: Row(children: [
               Container(
                 height: 34, width: 34,
@@ -255,7 +275,7 @@ class _HtmlNodeRow extends StatelessWidget {
                   Text(node.name, maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: selected ? p.lycheeInk : p.ink,
-                      fontSize: 13, fontWeight: FontWeight.w700)),
+                      fontSize: 14, fontWeight: FontWeight.w700)),
                   if (node.englishName.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(node.englishName, maxLines: 1,
@@ -269,11 +289,11 @@ class _HtmlNodeRow extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(color: p.lychee,
+                          decoration: BoxDecoration(color: p.lycheeSoft,
                             borderRadius: BorderRadius.circular(99)),
                           child: Text(v3Copy(context, zh: '当前',
                             en: 'Current', tw: '目前'),
-                            style: TextStyle(color: p.onLychee, fontSize: 10)),
+                            style: TextStyle(color: p.lycheeInk, fontSize: 10)),
                         ),
                         const SizedBox(width: 4),
                       ],
@@ -308,7 +328,7 @@ class _HtmlNodeRow extends StatelessWidget {
                           child: CircularProgressIndicator(
                             strokeWidth: 2, color: p.lycheeInk))
                       : node.latency <= 0
-                        ? Icon(Icons.bolt_outlined,
+                        ? Icon(LucideIcons.zap,
                             key: const ValueKey('v3-node-speed-untested'),
                             size: 21, color: p.inkMuted)
                         : V3LatencyBadge(

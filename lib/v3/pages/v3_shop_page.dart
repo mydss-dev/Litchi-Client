@@ -190,51 +190,37 @@ class _V3ShopPageState extends State<V3ShopPage> {
 /// Approved V15: categories filter the catalog; billing cycles live in each
 /// individual recurring plan card instead of a global selector.
 class _MobileCategoryFilters extends StatelessWidget {
-  const _MobileCategoryFilters({required this.selected,
-    required this.onChanged});
+  const _MobileCategoryFilters({
+    required this.selected,
+    required this.onChanged,
+  });
+
   final PlanCategory? selected;
   final ValueChanged<PlanCategory?> onChanged;
+
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final options = <(PlanCategory?, String, IconData, String)>[
-      (null, _tr(context, '全部', 'All', '全部'), Icons.grid_view_rounded, 'all'),
-      (PlanCategory.recurring, _tr(context, '周期性', 'Recurring', '週期性'),
-        Icons.access_time_rounded, 'recurring'),
-      (PlanCategory.oneTime, _tr(context, '一次性', 'One-time', '一次性'),
-        Icons.shopping_bag_outlined, 'once'),
+    final options = <(PlanCategory?, String, String)>[
+      (null, _tr(context, '全部', 'All', '全部'), 'all'),
+      (PlanCategory.recurring,
+        _tr(context, '周期性', 'Recurring', '週期性'), 'recurring'),
+      (PlanCategory.oneTime,
+        _tr(context, '一次性', 'One-time', '一次性'), 'once'),
     ];
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final (kind, label, glyph, keyName) in options)
-          Material(
-            color: selected == kind ? p.night : p.surface,
-            borderRadius: BorderRadius.circular(25),
-            child: InkWell(
-              key: ValueKey('shop-filter-$keyName'),
-              onTap: () => onChanged(kind),
-              borderRadius: BorderRadius.circular(25),
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 39),
-                padding: const EdgeInsets.symmetric(horizontal: 13,
-                  vertical: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(color: selected == kind
-                      ? p.night : p.line)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(glyph, size: 14, color: selected == kind
-                      ? Colors.white : p.inkMuted),
-                  const SizedBox(width: 6),
-                  Text(label, style: TextStyle(fontSize: 12,
-                    color: selected == kind ? Colors.white : p.ink,
-                    fontWeight: FontWeight.w700)),
-                ]),
-              ),
-            ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        for (final (index, option) in options.indexed) ...[
+          if (index > 0) const SizedBox(width: 8),
+          V3MobileFilterChip(
+            key: ValueKey('shop-filter-${option.$3}'),
+            selected: selected == option.$1,
+            label: option.$2,
+            onTap: () => onChanged(option.$1),
           ),
+        ],
       ]),
-    ]);
+    );
   }
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
@@ -285,7 +286,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.bolt_rounded, size: 17),
+                    : const Icon(LucideIcons.zap, size: 17),
                 label: Text(v3Copy(context, zh: '测速', en: 'Test', tw: '測速')),
               ),
             ),
@@ -480,7 +481,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
                           color: p.onLychee,
                         ),
                       )
-                    : const Icon(Icons.bolt_rounded, size: 16),
+                    : const Icon(LucideIcons.zap, size: 16),
                 label: Text(
                   _selectedIds.isEmpty
                       ? v3Copy(context, zh: '测速', en: 'Test', tw: '測速')

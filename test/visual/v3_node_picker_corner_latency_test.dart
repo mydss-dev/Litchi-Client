@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
@@ -73,11 +74,11 @@ void main() {
       expect(action, findsOneWidget);
       if (latency <= 0) {
         expect(find.descendant(of: action,
-          matching: find.byIcon(Icons.bolt_outlined)), findsOneWidget);
+          matching: find.byIcon(LucideIcons.zap)), findsOneWidget);
         expect(find.text('超时'), findsNothing);
       } else {
         expect(find.descendant(of: action,
-          matching: find.byIcon(Icons.bolt_outlined)), findsNothing);
+          matching: find.byIcon(LucideIcons.zap)), findsNothing);
         expect(find.text(latency >= 9999 ? '超时' : '${latency}ms'),
           findsOneWidget);
       }

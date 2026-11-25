@@ -143,3 +143,91 @@ class V3WorldMap extends StatelessWidget {
     );
   }
 }
+
+/// Country/region marker for the selected node. Coordinates are approximate
+/// geographic centroids, not the server's physical position: NodeModel has
+/// a country code but no latitude or longitude. Unsupported codes show no pin.
+class V3WorldMapNodePin extends StatelessWidget {
+  const V3WorldMapNodePin({
+    super.key,
+    required this.countryCode,
+    required this.connected,
+  });
+
+  final String countryCode;
+  final bool connected;
+
+  // Offset(dx: longitude, dy: latitude).
+  static const _centers = <String, Offset>{
+    'JP': Offset(139.7, 35.7),
+    'HK': Offset(114.2, 22.3),
+    'SG': Offset(103.8, 1.3),
+    'US': Offset(-98.6, 39.8),
+    'CA': Offset(-106.3, 56.1),
+    'GB': Offset(-1.5, 52.3),
+    'DE': Offset(10.5, 51.2),
+    'FR': Offset(2.2, 46.6),
+    'NL': Offset(5.3, 52.1),
+    'CH': Offset(8.2, 46.8),
+    'IT': Offset(12.6, 42.5),
+    'SE': Offset(15.0, 62.0),
+    'FI': Offset(25.7, 64.0),
+    'TR': Offset(35.2, 39.0),
+    'AE': Offset(54.3, 24.5),
+    'IN': Offset(78.9, 22.8),
+    'KR': Offset(127.8, 36.4),
+    'TW': Offset(121.0, 23.7),
+    'MY': Offset(101.7, 3.1),
+    'TH': Offset(100.9, 15.9),
+    'VN': Offset(106.3, 16.0),
+    'ID': Offset(117.2, -2.5),
+    'PH': Offset(122.8, 12.9),
+    'AU': Offset(134.5, -25.3),
+    'NZ': Offset(172.0, -41.0),
+    'BR': Offset(-51.9, -14.2),
+    'MX': Offset(-102.5, 23.6),
+    'RU': Offset(95.0, 61.5),
+    'ZA': Offset(24.0, -29.0),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final location = _centers[countryCode.trim().toUpperCase()];
+    if (location == null) return const SizedBox.shrink();
+    final p = V3Palette.of(context);
+    final ink = connected ? p.success : p.lychee;
+    return IgnorePointer(
+      child: LayoutBuilder(builder: (context, constraints) {
+        // Match the dot painter's 96 x 48 contain-fit geometry exactly.
+        final width = constraints.maxWidth;
+        final height = constraints.maxHeight;
+        final cell = math.min(width / 96, height / 48);
+        final originX = (width - cell * 96) / 2;
+        final originY = (height - cell * 48) / 2;
+        final x = originX + (location.dx + 180) / 360 * cell * 96;
+        final y = originY + (90 - location.dy) / 180 * cell * 48;
+        return Stack(children: [
+          Positioned(left: x - 12, top: y - 12,
+            child: Container(
+              key: const ValueKey('v3-map-country-marker'),
+              width: 24, height: 24,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: ink.withValues(alpha: .15),
+                border: Border.all(color: ink.withValues(alpha: .35)),
+              ),
+              child: Container(
+                width: 9, height: 9,
+                decoration: BoxDecoration(
+                  color: ink, shape: BoxShape.circle,
+                  border: Border.all(color: p.surface, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+        ]);
+      }),
+    );
+  }
+}

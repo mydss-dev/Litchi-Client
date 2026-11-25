@@ -180,9 +180,18 @@ void main() {
     ));
     await tester.pump();
 
-    // The stage replaces the merged card's orb section: same action-card key,
-    // now a shell-free 340dp hero carrying badge, orb, timer and caption.
-    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 340);
+    // A framed map shows the current node's approximate country position.
+    // The primary phone connection action is a wide capsule, not a circle.
+    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 320);
+    expect(find.descendant(of: find.byKey(kConnectActionCardKey),
+        matching: find.byKey(const ValueKey('v3-map-country-marker'))),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('v3-mobile-connect-pill')),
+        findsOneWidget);
+    final capsule = tester.getRect(
+        find.byKey(const ValueKey('v3-mobile-connect-pill')));
+    expect(capsule.width, 150);
+    expect(capsule.width, greaterThan(capsule.height));
     expect(find.text('保护中'), findsOneWidget);
     expect(find.text('01:26:18'), findsOneWidget);
     expect(find.text('断开连接'), findsOneWidget);

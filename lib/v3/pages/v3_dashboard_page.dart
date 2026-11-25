@@ -895,10 +895,9 @@ class _MobileUsageStat extends StatelessWidget {
   }
 }
 
-/// The connect hero: the dot map unfurls straight onto the page background
-/// (no card shell), with the protection badge, the enlarged 96dp orb, the
-/// session timer, the narrative caption and the connected-only speed suffix
-/// stacked dead center - the accepted phone mockup's stage, 340dp tall.
+/// The phone connection surface: framed dot map with an approximate
+/// country marker for the active node, then a wide capsule action and timer.
+/// Desktop continues to use the existing animated connection orb.
 class _MobileConnectStage extends StatelessWidget {
   const _MobileConnectStage({required this.controller});
   final AppController controller;
@@ -908,89 +907,174 @@ class _MobileConnectStage extends StatelessWidget {
     final p = V3Palette.of(context);
     final status = controller.connectionStatus;
     final connected = status == ConnectionStatus.connected;
-    final connecting =
-        status == ConnectionStatus.connecting ||
-        status == ConnectionStatus.disconnecting;
-    final caption = connected
-        ? v3Copy(context, zh: '断开连接', en: 'Disconnect', tw: '中斷連線')
-        : connecting
-        ? v3Copy(context, zh: '处理中', en: 'Processing', tw: '處理中')
-        : v3Copy(context, zh: '点击开始连接', en: 'Tap to connect', tw: '點擊開始連線');
-    return SizedBox(
+    final node = controller.currentNode;
+    final nodeName = node.name.isEmpty
+        ? v3Copy(context, zh: '尚未选择节点',
+            en: 'No node selected', tw: '尚未選擇節點')
+        : node.name;
+    return Container(
       key: kConnectActionCardKey,
-      height: 340,
-      child: Stack(
-        children: [
-          // The map is ambience, not a surface: no pointer events, its own
-          // repaint layer, and no card chrome around it.
+      height: 320,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        border: Border.all(color: p.line.withValues(alpha: .72)),
+      ),
+      child: Column(children: [
+        Expanded(child: Stack(children: [
           const Positioned.fill(child: V3WorldMap()),
-          Positioned.fill(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedSwitcher(
-                    duration: V3Motion.fast,
-                    switchInCurve: V3Motion.ease,
-                    switchOutCurve: V3Motion.ease.flipped,
-                    transitionBuilder: (child, animation) =>
-                        FadeTransition(opacity: animation, child: child),
-                    child: V3StatusBadge(
-                      key: ValueKey(status),
-                      label: _protectionLabel(context, status),
-                      color: _protectionColor(p, status),
-                      icon: status == ConnectionStatus.connected
-                          ? Icons.shield_rounded
-                          : Icons.shield_outlined,
-                    ),
+          // Backend supplies a country code, not precise server coordinates.
+          Positioned.fill(child: V3WorldMapNodePin(
+            countryCode: node.code, connected: connected)),
+          Positioned(left: 15, top: 15,
+            child: V3StatusBadge(
+              label: _protectionLabel(context, status),
+              color: _protectionColor(p, status),
+              icon: connected ? Icons.shield_rounded : Icons.shield_outlined,
+            )),
+          Positioned(left: 15, right: 15, bottom: 12,
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: p.surface.withValues(alpha: .94),
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                    color: p.line.withValues(alpha: .72)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  V3NodeFlag(code: node.code),
+                  const SizedBox(width: 6),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 205),
+                    child: Text(nodeName,
+                      overflow: TextOverflow.ellipsis, maxLines: 1,
+                      style: TextStyle(color: p.ink, fontSize: 11,
+                        fontWeight: FontWeight.w700)),
                   ),
-                  // Mockup spacing: badge → orb → timer → caption → suffix.
-                  const SizedBox(height: 18),
-                  _ConnectionOrb(
-                    controller: controller,
-                    status: status,
-                    size: 96,
-                  ),
-                  const SizedBox(height: 10),
-                  _ConnectionDuration(controller: controller),
-                  const SizedBox(height: 6),
-                  AnimatedSwitcher(
-                    duration: V3Motion.fast,
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween(
-                          begin: const Offset(0, 0.35),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    ),
-                    child: Text(
-                      caption,
-                      key: ValueKey(caption),
-                      // The action hint is a footnote beneath the display-size
-                      // session timer above it.
-                      style: TextStyle(
-                        color: p.inkMuted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  // The phone's traffic readout lives here: a suffix under the
-                  // timer while connected, absent otherwise (§13.1).
-                  if (connected) ...[
-                    const SizedBox(height: 8),
-                    _SpeedSuffix(controller: controller, visible: connected),
-                  ],
-                ],
+                ]),
               ),
+            ])),
+        ])),
+        Divider(height: 1, thickness: 1,
+          color: p.line.withValues(alpha: .72)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+          child: Row(children: [
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(v3Copy(context, zh: '连接时长',
+                    en: 'Duration', tw: '連線時長'),
+                  style: TextStyle(color: p.inkMuted, fontSize: 10)),
+                const SizedBox(height: 5),
+                _ConnectionDuration(controller: controller),
+                if (connected) ...[
+                  const SizedBox(height: 5),
+                  _SpeedSuffix(controller: controller, visible: connected),
+                ],
+              ],
+            )),
+            const SizedBox(width: 10),
+            _MobileConnectCapsule(controller: controller, status: status),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+/// Mobile-only primary connection control. Reuse the actual controller action,
+/// busy/locked state and status colours rather than a decorative mock button.
+class _MobileConnectCapsule extends StatelessWidget {
+  const _MobileConnectCapsule({
+    required this.controller,
+    required this.status,
+  });
+
+  final AppController controller;
+  final ConnectionStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final busy = status == ConnectionStatus.connecting ||
+        status == ConnectionStatus.disconnecting;
+    final connected = status == ConnectionStatus.connected;
+    final locked = controller.connectionActionLocked;
+    final color = switch (status) {
+      ConnectionStatus.connected => p.success,
+      ConnectionStatus.connecting ||
+      ConnectionStatus.disconnecting => p.warning,
+      ConnectionStatus.error => p.danger,
+      ConnectionStatus.disconnected => p.lychee,
+    };
+    final label = busy
+        ? v3Copy(context, zh: '连接处理中',
+            en: 'Processing', tw: '連線處理中')
+        : connected
+            ? v3Copy(context, zh: '断开连接',
+                en: 'Disconnect', tw: '中斷連線')
+            : v3Copy(context, zh: '立即连接',
+                en: 'Connect', tw: '立即連線');
+
+    Future<void> runToggle() async {
+      final error = await controller.toggleConnection();
+      if (error == null &&
+          context.mounted &&
+          controller.connectionStatus == ConnectionStatus.connected) {
+        V3Toast.show(context, v3Copy(context,
+          zh: '连接成功', en: 'Connected', tw: '連線成功'),
+          type: V3ToastType.success);
+      }
+    }
+
+    return Semantics(
+      key: kConnectOrbKey,
+      container: true,
+      button: true,
+      enabled: !locked,
+      label: label,
+      onTap: locked ? null : runToggle,
+      child: ExcludeSemantics(
+        child: AnimatedContainer(
+          duration: V3Motion.fast,
+          width: 150, height: 50,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(99)),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              key: const ValueKey('v3-mobile-connect-pill'),
+              onTap: locked ? null : runToggle,
+              borderRadius: BorderRadius.circular(99),
+              child: Center(child: AnimatedSwitcher(
+                duration: V3Motion.fast,
+                child: busy
+                    ? SizedBox(
+                        key: const ValueKey('v3-mobile-connect-loading'),
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2, color: p.onLychee))
+                    : Row(
+                        key: ValueKey('v3-mobile-connect-${connected ? 'on' : 'off'}'),
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(connected ? Icons.stop_rounded
+                              : Icons.power_settings_new_rounded,
+                            size: 18, color: connected ? p.night : p.onLychee),
+                          const SizedBox(width: 7),
+                          Text(label, style: TextStyle(
+                            color: connected ? p.night : p.onLychee,
+                            fontSize: 13, fontWeight: FontWeight.w800)),
+                        ]),
+              )),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

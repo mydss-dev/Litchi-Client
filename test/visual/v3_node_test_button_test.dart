@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
@@ -37,7 +38,7 @@ void main() {
     expect(find.byKey(const Key('v3-node-speed-test')), findsOneWidget);
     expect(find.descendant(
       of: find.byKey(const Key('v3-node-speed-test')),
-      matching: find.byIcon(Icons.bolt_outlined),
+      matching: find.byIcon(LucideIcons.zap),
     ), findsOneWidget);
     await tester.tap(find.byKey(const Key('v3-node-speed-test')));
     await tester.pump();

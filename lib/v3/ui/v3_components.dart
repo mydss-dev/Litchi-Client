@@ -367,6 +367,46 @@ class V3PrimaryPageHeader extends StatelessWidget {
   }
 }
 
+/// Shared text-only filter chip for mobile Plan and Nodes screens.
+/// Selected, idle and pressed states have identical geometry and colour in
+/// both places; the parent owns the horizontal scroll layout.
+class V3MobileFilterChip extends StatelessWidget {
+  const V3MobileFilterChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Material(
+      color: selected ? p.night : p.surface,
+      shape: StadiumBorder(side: BorderSide(
+        color: selected ? p.night : p.line)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(99),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 39),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Text(label, maxLines: 1,
+              style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : p.inkMuted)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Shared page header for the Litchi mobile design system.
 ///
 /// Primary tabs render a plain heading. Secondary pages use exactly the same

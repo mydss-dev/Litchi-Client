@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
@@ -64,7 +65,7 @@ void main() {
     final probe = find.byKey(const ValueKey('v3-node-latency-untested'));
     expect(probe, findsOneWidget);
     expect(find.descendant(of: probe,
-      matching: find.byIcon(Icons.bolt_outlined)), findsOneWidget);
+      matching: find.byIcon(LucideIcons.zap)), findsOneWidget);
     expect(tester.widget<Text>(find.text('150ms')).style?.color,
       V3Palette.light.warningInk);
     expect(tester.widget<Text>(find.text('400ms')).style?.color,
@@ -84,7 +85,7 @@ void main() {
     expect(tester.widget<Text>(find.text('80ms')).style?.color,
       V3Palette.light.successInk);
     expect(find.descendant(of: probe,
-      matching: find.byIcon(Icons.bolt_outlined)), findsNothing);
+      matching: find.byIcon(LucideIcons.zap)), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
