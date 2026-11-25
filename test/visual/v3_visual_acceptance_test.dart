@@ -115,6 +115,14 @@ Future<void> _pumpV3(
 
   final controller = VisualV3Controller(page);
   addTearDown(controller.disposeVisual);
+  final previousFlutterErrorHandler = FlutterError.onError;
+  FlutterError.onError = (details) {
+    if (details.exceptionAsString().contains('RenderFlex overflowed')) {
+      debugPrint('V3_RENDER_OVERFLOW_DETAIL: ${details.toString()}');
+    }
+    previousFlutterErrorHandler?.call(details);
+  };
+  addTearDown(() => FlutterError.onError = previousFlutterErrorHandler);
 
   await tester.pumpWidget(
     MaterialApp(
