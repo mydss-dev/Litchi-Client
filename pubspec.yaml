@@ -41,8 +41,8 @@ dependencies:
   window_manager: ^0.5.1
   # Lucide icon set — unified icon library per design spec
   lucide_icons_flutter: ^3.0.7
-  # Official frosted floating mobile bottom navigation component
-  crystal_navigation_bar: ^2.0.0
+  # iOS 26 floating glass mobile dock (third option)
+  ios26_bottom_navigationbar: 0.0.4
   # Litchi Design System: mature card, avatar and interaction components.
   forui: ^0.28.0
   # SVG rendering for brand logo

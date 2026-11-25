@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
-import 'package:crystal_navigation_bar/crystal_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ios26_bottom_navigationbar/ios26_bottom_navigationbar.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,9 +13,8 @@ import '../app/v3_nav.dart';
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
 
-/// Android-only dock. Use Crystal's native frosted layout and animation;
-/// only the destinations, Lucide glyphs and Litchi colors are configured.
-/// Desktop rail behavior below is intentionally unchanged.
+/// Mobile floating dock: use the iOS26 navigation component directly.
+/// The desktop navigation rail below is intentionally unchanged.
 class V3NavIsland extends StatelessWidget {
   const V3NavIsland({super.key, required this.controller});
 
@@ -37,33 +36,55 @@ class V3NavIsland extends StatelessWidget {
     final items = enabledNavItems(kMobilePrimary);
     if (items.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      // Preserve the original dock's Android gesture/navigation safe area.
-      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
-      child: CrystalNavigationBar(
-        currentIndex: selectedIndex.clamp(0, items.length - 1),
-        onTap: (index) => controller.goToPage(items[index].page),
-        items: [
-          for (final item in items)
-            CrystalNavigationBarItem(
-              icon: _iconFor(item.page),
-              label: item.localizedLabel(context),
-            ),
-        ],
-        // Keep Crystal's native icon-only presentation. Labels still serve
-        // semantic/accessibility naming; no custom expanding-tab behavior.
-        showLabels: false,
-        selectedItemColor: p.lycheeInk,
-        unselectedItemColor: p.inkMuted,
-        indicatorColor: p.lychee,
-        backgroundColor: p.glass,
-        outlineBorderColor: p.glassBorder,
-        borderWidth: 1,
-        borderRadius: 32,
-        blurSigma: 15,
-        splashColor: p.lycheeSoft,
-        boxShadow: p.shadows,
-        marginR: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+    final style = IOS26NavThemeData.light(
+      activeColor: p.lycheeInk,
+      inactiveColor: p.inkMuted,
+      backgroundColor: p.glass,
+      indicatorColor: p.lychee.withValues(alpha: 0.16),
+      borderColor: p.glassBorder,
+      borderWidth: 1,
+      height: 62,
+      borderRadius: BorderRadius.circular(30),
+      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+      selectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+    ).copyWith(
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.all(5),
+      iconSize: 22,
+      selectedIconScale: 1.08,
+      labelSpacing: 3,
+      showLabels: true,
+      showSelectedLabels: true,
+      showUnselectedLabels: true,
+      indicatorBorderRadius: BorderRadius.circular(25),
+      indicatorPadding: const EdgeInsets.symmetric(vertical: 2, horizontal: 1),
+      blurSigmaX: 18,
+      blurSigmaY: 18,
+      boxShadow: p.shadows,
+      indicatorAnimationDuration: const Duration(milliseconds: 280),
+      enableAmbientFade: false,
+    );
+
+    // The Scaffold owns the bottom-navigation slot. SafeArea consumes the
+    // Android gesture/navigation inset once; do not stack another inset.
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6, bottom: 6),
+        child: IOS26BottomNavigationBar(
+          currentIndex: selectedIndex.clamp(0, items.length - 1),
+          onTap: (index) => controller.goToPage(items[index].page),
+          items: [
+            for (final item in items)
+              IOS26NavItem.icon(
+                icon: _iconFor(item.page),
+                label: item.localizedLabel(context),
+              ),
+          ],
+          style: style,
+        ),
       ),
     );
   }

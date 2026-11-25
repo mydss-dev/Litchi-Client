@@ -1,4 +1,4 @@
-import 'package:crystal_navigation_bar/crystal_navigation_bar.dart';
+import 'package:ios26_bottom_navigationbar/ios26_bottom_navigationbar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoListSection;
@@ -81,12 +81,18 @@ Future<void> _tap(WidgetTester tester, Finder target) async {
 }
 
 void main() {
-  testWidgets('Android Crystal primary navigation and four routes remain functional',
+  testWidgets('Android iOS26 navigation shows four labels and all routes remain functional',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, const Size(390, 844));
       expect(find.byType(V3NavIsland), findsOneWidget);
-      expect(find.byType(CrystalNavigationBar), findsOneWidget);
+      expect(find.byType(IOS26BottomNavigationBar), findsOneWidget);
+      final dock = find.byType(IOS26BottomNavigationBar);
+      for (final label in ['连接', '节点', '套餐', '我的']) {
+        expect(find.descendant(of: dock, matching: find.text(label)), findsOneWidget);
+      }
+      expect(tester.getSize(dock).height, 62);
+      expect(tester.getRect(dock).bottom, lessThanOrEqualTo(844 - 6));
       const destinations = [
         AppPage.dashboard, AppPage.nodes, AppPage.shop, AppPage.account,
       ];
@@ -94,12 +100,13 @@ void main() {
           AppPage.dashboard]) {
         final tabIndex = destinations.indexOf(page);
         final tabs = find.descendant(
-          of: find.byType(CrystalNavigationBar),
-          matching: find.byType(InkWell),
+          of: find.byType(IOS26BottomNavigationBar),
+          matching: find.byType(GestureDetector),
         );
+        expect(tabs, findsNWidgets(4));
         await _tap(tester, tabs.at(tabIndex));
         expect(controller.page, page);
-        expect(find.byType(CrystalNavigationBar), findsOneWidget);
+        expect(find.byType(IOS26BottomNavigationBar), findsOneWidget);
       }
     });
   });
