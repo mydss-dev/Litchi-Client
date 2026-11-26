@@ -9,6 +9,8 @@ import '../../app/core_controller.dart';
 import '../../app/plan_presentation.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
+import '../theme/v3_luxury_tokens.dart';
+import '../ui/v3_luxury_surface.dart';
 import '../theme/v3_motion.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_dashboard_alerts.dart';
@@ -35,10 +37,10 @@ class V3DashboardPage extends StatelessWidget {
     // Only a confirmed account without a plan sees the purchase guidance.
     final confirmedNoPlan =
         !controller.isInitialLoading && controller.hasConfirmedNoPlan;
-    return SingleChildScrollView(
+    final view = SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: v3UsesMergedConnectionCard(defaultTargetPlatform)
-          ? const EdgeInsets.fromLTRB(12, 12, 12, 110)
+          ? const EdgeInsets.fromLTRB(20, 12, 20, 110)
           : V3Layout.pageInsets,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -78,6 +80,9 @@ class V3DashboardPage extends StatelessWidget {
         ]),
       ),
     );
+    return v3UsesMergedConnectionCard(defaultTargetPlatform)
+        ? V3LuxuryBackdrop(child: view)
+        : view;
   }
 }
 
@@ -870,7 +875,7 @@ class _MobileTodayUsageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
+    final c = V3LuxuryTokens.of(context);
     final hasDailyData = controller.trafficUsage.isNotEmpty;
     final today = hasDailyData
         ? _formatGb(controller.todayTrafficGb)
@@ -879,14 +884,9 @@ class _MobileTodayUsageCard extends StatelessWidget {
             controller.traffic.totalGb <= 0
         ? '—'
         : '${controller.traffic.remainGb.toStringAsFixed(1)} GB';
-    return Container(
+    return V3LuxuryGlassCard(
       key: const ValueKey('v3-mobile-daily-usage'),
       padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 14),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(V3Radius.card),
-        border: Border.all(color: p.line.withValues(alpha: .72)),
-      ),
       child: Row(children: [
         Expanded(child: _MobileUsageStat(
           label: v3Copy(context, zh: '今日已用',
@@ -894,7 +894,7 @@ class _MobileTodayUsageCard extends StatelessWidget {
           value: today,
         )),
         Container(width: 1, height: 38,
-          color: p.line.withValues(alpha: .72)),
+          color: c.lineStrong),
         const SizedBox(width: 18),
         Expanded(child: _MobileUsageStat(
           label: v3Copy(context, zh: '剩余流量',
@@ -939,113 +939,72 @@ class _MobileNodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
+    final c = V3LuxuryTokens.of(context);
     final node = controller.currentNode;
     final displayName = controller.autoSelected
         ? node.name.isEmpty
-              ? v3Copy(context, zh: '自动选择', en: 'Automatic', tw: '自動選擇')
-              : node.name
+            ? v3Copy(context,
+                zh: '自动选择', en: 'Automatic', tw: '自動選擇')
+            : node.name
         : node.name.isEmpty
-        ? v3Copy(context, zh: '尚未选择节点', en: 'No node selected', tw: '尚未選擇節點')
-        : node.name;
-    return Container(
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
-        border: Border.all(color: p.hairline),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(V3Layout.cardRadius),
-        // V3Pressable keeps the press ink above the card's opaque fill - a
-        // bare InkWell paints it on the root Material below.
-        child: V3Pressable(
-          key: kCurrentNodeCardKey,
-          onTap: () => controller.goToPage(AppPage.nodes),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-            child: Row(
+            ? v3Copy(context,
+                zh: '尚未选择节点',
+                en: 'No node selected', tw: '尚未選擇節點')
+            : node.name;
+
+    return V3LuxuryGlassCard(
+      padding: EdgeInsets.zero,
+      child: V3Pressable(
+        key: kCurrentNodeCardKey,
+        onTap: () => controller.goToPage(AppPage.nodes),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
+          child: Row(children: [
+            Container(
+              width: 40, height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: c.surfaceStrong,
+                borderRadius: BorderRadius.circular(V3LuxuryRadius.tag)),
+              child: V3NodeFlag(code: node.code)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: p.surfaceRaised,
-                    borderRadius: BorderRadius.circular(V3Radius.field),
-                  ),
-                  child: V3NodeFlag(code: node.code),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              displayName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: p.ink,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          if (controller.autoSelected &&
-                              node.name.isNotEmpty) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: p.lycheeSoft,
-                                borderRadius: BorderRadius.circular(
-                                  99,
-                                ), // pill
-                              ),
-                              child: Text(
-                                v3Copy(
-                                  context,
-                                  zh: '自动',
-                                  en: 'Auto',
-                                  tw: '自動',
-                                ),
-                                style: TextStyle(
-                                  color: p.lycheeInk,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      V3LatencyBadge(
-                        region: node.region,
-                        latency: node.latency,
-                      ),
-                      if (node.tags.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        V3NodeTags(tags: node.tags, maxVisible: 2),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: p.inkMuted,
-                  size: 22,
-                ),
+                Row(children: [
+                  Flexible(child: Text(displayName,
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: c.ink,
+                      fontSize: 14, fontWeight: FontWeight.w600))),
+                  if (controller.autoSelected && node.name.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: c.goldTint,
+                        borderRadius: BorderRadius.circular(
+                          V3LuxuryRadius.pill)),
+                      child: Text(v3Copy(context,
+                          zh: '自动', en: 'Auto', tw: '自動'),
+                        style: TextStyle(color: c.gold,
+                          fontSize: 10, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ]),
+                const SizedBox(height: 5),
+                V3LatencyBadge(
+                    region: node.region, latency: node.latency),
+                if (node.tags.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  V3NodeTags(tags: node.tags, maxVisible: 2),
+                ],
               ],
-            ),
-          ),
+            )),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded,
+              color: c.ink3, size: 20),
+          ]),
         ),
       ),
     );
