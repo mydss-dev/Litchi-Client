@@ -2,9 +2,11 @@ import 'package:material_ui/material_ui.dart';
 
 import '../theme/v3_palette.dart';
 
-/// The phone-only implementation of the Elegant reference geometry.
-/// Shared between the account hub and the full-screen account subpages.
-/// Shared phone surfaces based on the Ardot light and dark frame gradients.
+/// Phone geometry for the primary tabs, the account hub and its subpages.
+///
+/// Every colour resolves through [V3Palette]: the phone no longer carries a
+/// second warm-tinted palette, so all surfaces in both brightness modes draw
+/// from one source of truth.
 abstract final class V3MobileDesign {
   static const double pageInset = 16;
   static const pageInsets = EdgeInsets.fromLTRB(pageInset, 12, pageInset, 28);
@@ -12,44 +14,48 @@ abstract final class V3MobileDesign {
   static bool isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
 
-  static Color card(BuildContext context) =>
-      isDark(context) ? const Color(0xFF1A1E20) : const Color(0xFFFFFEFC);
+  static Color card(BuildContext context) => V3Palette.of(context).surface;
 
-  static Color stroke(BuildContext context) =>
-      isDark(context) ? const Color(0xFF343839) : const Color(0xFFDFD8D1);
+  static Color stroke(BuildContext context) => V3Palette.of(context).line;
 
   static Color accentCard(BuildContext context) =>
-      isDark(context) ? const Color(0xFF302623) : const Color(0xFFFFF1EB);
+      V3Palette.of(context).lycheeSoft;
 
-  static ButtonStyle primaryButton(BuildContext context) => FilledButton.styleFrom(
-    backgroundColor: isDark(context) ? const Color(0xFFF5F2ED) : const Color(0xFF17171A),
-    foregroundColor: isDark(context) ? const Color(0xFF17171A) : Colors.white,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field)),
-  );
-  static const double cardRadius = 22;
-  static const double cellRadius = 14;
+  /// The one primary action: an ink slab (black on light, near-white on
+  /// dark), flat, no glow. Coral is reserved for brand and status.
+  static ButtonStyle primaryButton(BuildContext context) {
+    final p = V3Palette.of(context);
+    return FilledButton.styleFrom(
+      backgroundColor: p.ink,
+      foregroundColor: p.surface,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      minimumSize: const Size(64, 48),
+      textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(V3Radius.field)),
+    );
+  }
+
+  static const double cardRadius = V3Radius.card;
+  static const double cellRadius = V3Radius.control;
   static const double cardGap = 12;
   static const double sectionGap = 22;
+
+  /// Bottom scroll padding on primary tabs so the last card clears the
+  /// floating dock (the shell uses extendBody).
+  static const double dockClearance = 112;
 }
 
+/// One flat canvas behind every phone page (no per-page tinted gradients).
 class V3MobileBackdrop extends StatelessWidget {
   const V3MobileBackdrop({super.key, required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: V3MobileDesign.isDark(context)
-            ? const [Color(0xFF0A0D0F), Color(0xFF050808)]
-            : const [Color(0xFFF2F0EB), Color(0xFFE6E0D9)],
-      ),
-    ),
-    child: child,
-  );
+  Widget build(BuildContext context) =>
+      ColoredBox(color: V3Palette.of(context).canvas, child: child);
 }
 
 class V3MobileCard extends StatelessWidget {
@@ -189,7 +195,7 @@ class V3MobileSegmented extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: p.surfaceRaised,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(V3Radius.field),
       ),
       child: Row(children: [
         for (var i = 0; i < labels.length; i++)
@@ -200,9 +206,9 @@ class V3MobileSegmented extends StatelessWidget {
               child: Material(
                 color: selectedIndex == i
                     ? p.surface : Colors.transparent,
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(V3Radius.control),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(V3Radius.control),
                   onTap: () => onChanged(i),
                   child: Center(child: Text(labels[i],
                     maxLines: 1, overflow: TextOverflow.ellipsis,

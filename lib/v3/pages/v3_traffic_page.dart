@@ -54,9 +54,9 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
         (defaultTargetPlatform == TargetPlatform.android ||
          defaultTargetPlatform == TargetPlatform.iOS);
     final pageTitle = v3Copy(context,
-      zh: mobile ? '套餐' : '用量',
-      en: mobile ? 'Plan' : 'Usage',
-      tw: mobile ? '方案' : '用量');
+      zh: '用量',
+      en: 'Usage',
+      tw: '用量');
     if (controller.hasConfirmedNoPlan && !controller.isInitialLoading) {
       // Keep the back affordance even when the account has no active plan.
       return SingleChildScrollView(
@@ -576,20 +576,10 @@ class _TrendPanelView extends StatelessWidget {
                 ),
               ),
               SegmentedButton<int>(
-                style: ButtonStyle(
+                style: const ButtonStyle(
                   visualDensity: VisualDensity.compact,
-                  backgroundColor: WidgetStateProperty.resolveWith(
-                    (states) => states.contains(WidgetState.selected)
-                        ? p.lycheeSoft
-                        : p.surfaceRaised,
-                  ),
-                  foregroundColor: WidgetStateProperty.resolveWith(
-                    (states) => states.contains(WidgetState.selected)
-                        ? p.lycheeInk
-                        : p.ink,
-                  ),
-                  textStyle: const WidgetStatePropertyAll(
-                    TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                  textStyle: WidgetStatePropertyAll(
+                    TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
                 segments: [

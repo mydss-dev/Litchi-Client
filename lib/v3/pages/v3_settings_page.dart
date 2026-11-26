@@ -428,11 +428,22 @@ class _SettingRow extends StatelessWidget {
         // A control never leaves its title line on a wide pane: it sits right
         // of the copy, so every row reads "title left / control right". On a
         // narrow pane the control drops below the copy, left-aligned.
+        // Switches always ride the title line (iOS/Android list convention);
+        // only wide controls such as dropdowns drop below on narrow panes,
+        // and then they span the row instead of floating at half width.
+        if (control is V3Switch || constraints.maxWidth >= 168 + 12 + 150) {
+          return Row(children: [
+            Expanded(child: copy),
+            const SizedBox(width: 12),
+            slot(control),
+          ]);
+        }
         return stacked
             ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 copy,
-                const SizedBox(height: 14),
-                Align(alignment: Alignment.centerLeft, child: slot(control)),
+                const SizedBox(height: 12),
+                Padding(padding: const EdgeInsets.only(left: 50),
+                  child: slot(control)),
               ])
             : Row(children: [
                 Expanded(child: copy),

@@ -374,7 +374,6 @@ class _MobileAccountOverview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final walletVisible = AppConfig.panelFeatures.wallet ||
         controller.user.balance > 0 || controller.withdrawable > 0;
     final inviteEnabled = isPageEnabled(AppPage.invite);
@@ -395,15 +394,7 @@ class _MobileAccountOverview extends StatelessWidget {
     );
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.topCenter,
-          radius: .75,
-          colors: [Color.alphaBlend(
-            p.lycheeInk.withValues(alpha: dark ? .10 : .06), p.canvas),
-            p.canvas],
-        ),
-      ),
+      decoration: BoxDecoration(color: p.canvas),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
@@ -642,7 +633,7 @@ class _MobileIdentityCard extends StatelessWidget {
             label: v3Copy(context, zh: '剩余天数', en: 'Days left', tw: '剩餘天數'))),
           VerticalDivider(width: 1, thickness: 1, indent: 8, endIndent: 8, color: p.line),
           Expanded(child: _MobileAccountMetric(value: remainingTraffic,
-            emphasize: traffic.totalGb > 0, onTap: onOpenUsage,
+            onTap: onOpenUsage,
             label: v3Copy(context, zh: '剩余流量', en: 'Data left', tw: '剩餘流量'))),
         ])),
       ]),
@@ -652,11 +643,10 @@ class _MobileIdentityCard extends StatelessWidget {
 
 class _MobileAccountMetric extends StatelessWidget {
   const _MobileAccountMetric({required this.label, required this.value,
-    this.onTap, this.emphasize = false});
+    this.onTap});
   final String label;
   final String value;
   final VoidCallback? onTap;
-  final bool emphasize;
 
   @override
   Widget build(BuildContext context) {
@@ -668,7 +658,7 @@ class _MobileAccountMetric extends StatelessWidget {
           style: TextStyle(color: p.inkMuted, fontSize: 11)),
         const SizedBox(height: 4),
         Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: emphasize ? p.lycheeInk : p.ink,
+          style: TextStyle(color: p.ink,
             fontSize: 16, fontWeight: FontWeight.w800,
             fontFeatures: const [FontFeature.tabularFigures()])),
       ]),
@@ -698,13 +688,12 @@ class _MobileInviteBanner extends StatelessWidget {
     final p = V3Palette.of(context);
     return Container(
       key: const ValueKey('v3-account-invite-banner'),
-      constraints: const BoxConstraints(minHeight: 96),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      constraints: const BoxConstraints(minHeight: 72),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Color.alphaBlend(
-          p.lycheeInk.withValues(alpha: .13), p.surface), p.surface]),
-        border: Border.all(color: p.lycheeInk.withValues(alpha: .22)),
-        borderRadius: BorderRadius.circular(24),
+        color: p.surface,
+        border: Border.all(color: p.line),
+        borderRadius: BorderRadius.circular(V3Radius.card),
       ),
       child: Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,10 +3,15 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../theme/v3_palette.dart';
+import 'v3_locale_copy.dart';
 import 'v3_mobile_components.dart';
 import 'v3_notice_bar.dart';
 
-/// Text-first announcement card backed by real server notices.
+/// Slim announcement strip backed by real server notices.
+///
+/// One line (icon, headline, page dots, chevron) instead of a full card, so
+/// the connection surface keeps the top of the screen. Tapping opens the
+/// reader on the visible notice; swiping pages through up to six notices.
 class V3HtmlPhoneNotice extends StatefulWidget {
   const V3HtmlPhoneNotice({super.key, required this.controller});
   final AppController controller;
@@ -32,49 +37,51 @@ class _V3HtmlPhoneNoticeState extends State<V3HtmlPhoneNotice> {
     if (notices.isEmpty) return const SizedBox.shrink();
     final count = notices.length;
     final scaler = MediaQuery.textScalerOf(context);
-    // PageView needs a bounded height. Grow it with all four preview lines
-    // instead of squeezing the text into the default-height card.
-    final extraHeight = (scaler.scale(10) - 10 + scaler.scale(14) - 14 +
-        2 * 1.55 * (scaler.scale(12) - 12)).clamp(0.0, double.infinity);
-    final surface = V3MobileDesign.card(context);
-    return Container(
-      height: 128 + extraHeight,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(V3MobileDesign.cardRadius),
-        border: Border.all(color: V3MobileDesign.stroke(context)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.alphaBlend(p.lychee.withValues(alpha: .07), surface),
-            surface,
-          ],
+    final height = 52 + (scaler.scale(13) - 13).clamp(0.0, double.infinity);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: V3MobileDesign.cardGap),
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: V3MobileDesign.card(context),
+          borderRadius: BorderRadius.circular(V3Radius.field),
+          border: Border.all(color: V3MobileDesign.stroke(context)),
         ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(V3MobileDesign.cardRadius),
-        child: Stack(children: [
-          PageView.builder(
-            controller: _pages,
-            itemCount: count,
-            onPageChanged: (i) => setState(() => _index = i),
-            itemBuilder: (context, i) =>
-              _NoticeItem(notice: notices[i], onTap: () async {
-                await V3NoticeDialog.showReader(
-                  context, notices: notices, initialIndex: i);
-              }),
-          ),
-          Positioned(top: 14, right: 14, child: Row(children: [
-            for (var i = 0; i < count; i++) ...[
-              Container(
-                width: 6, height: 6,
-                decoration: BoxDecoration(
-                  color: i == _index ? p.lychee : p.inkMuted.withValues(alpha: .35),
-                  shape: BoxShape.circle)),
-              if (i < count - 1) const SizedBox(width: 4),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(V3Radius.field),
+          child: Row(children: [
+            const SizedBox(width: 14),
+            Icon(Icons.campaign_outlined, size: 18, color: p.lycheeInk),
+            const SizedBox(width: 10),
+            Expanded(
+              child: PageView.builder(
+                controller: _pages,
+                itemCount: count,
+                onPageChanged: (i) => setState(() => _index = i),
+                itemBuilder: (context, i) => _NoticeItem(
+                  notice: notices[i],
+                  onTap: () => V3NoticeDialog.showReader(
+                    context, notices: notices, initialIndex: i),
+                ),
+              ),
+            ),
+            if (count > 1) ...[
+              const SizedBox(width: 8),
+              for (var i = 0; i < count; i++) ...[
+                Container(
+                  width: i == _index ? 12 : 5, height: 5,
+                  decoration: BoxDecoration(
+                    color: i == _index
+                        ? p.ink : p.inkMuted.withValues(alpha: .35),
+                    borderRadius: BorderRadius.circular(99))),
+                if (i < count - 1) const SizedBox(width: 3),
+              ],
             ],
-          ])),
-        ]),
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right_rounded, size: 18, color: p.inkMuted),
+            const SizedBox(width: 10),
+          ]),
+        ),
       ),
     );
   }
@@ -88,40 +95,20 @@ class _NoticeItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    final fallback = v3Copy(context, zh: '公告', en: 'Notice', tw: '公告');
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  color: p.surfaceRaised,
-                  borderRadius: BorderRadius.circular(99)),
-                child: Text('公告', style: TextStyle(
-                  color: p.inkMuted, fontSize: 10,
-                  fontWeight: FontWeight.w600)),
-              ),
-              const Spacer(),
-              Text(
-                v3NoticeHeadline(notice, fallback: '公告'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: p.ink,
-                  fontSize: 14, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 6),
-              Text(v3NoticeText(notice.content).replaceAll('\n', ' '),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: p.inkMuted, fontSize: 12, height: 1.55)),
-            ],
-          ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            v3NoticeHeadline(notice, fallback: fallback),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: p.ink,
+              fontSize: 13, fontWeight: FontWeight.w600)),
         ),
       ),
     );

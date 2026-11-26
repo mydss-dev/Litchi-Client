@@ -67,7 +67,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
     ];
     final scroll = SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: V3MobileDesign.pageInsets.copyWith(bottom: 110),
+      padding: V3MobileDesign.pageInsets.copyWith(bottom: V3MobileDesign.dockClearance),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         V3PrimaryPageHeader(
           title: v3Copy(context, zh: '节点', en: 'Nodes', tw: '節點'),
@@ -144,16 +144,15 @@ class V3HtmlPhoneNodes extends StatelessWidget {
         ),
         const SizedBox(height: 15),
         Material(
-          color: controller.autoSelected
-              ? V3MobileDesign.accentCard(context) : V3MobileDesign.card(context),
+          color: V3MobileDesign.card(context),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(color: controller.autoSelected
-                ? p.lychee.withValues(alpha: .65)
-                : p.line.withValues(alpha: .72))),
+            borderRadius: BorderRadius.circular(V3Radius.card),
+            side: controller.autoSelected
+                ? BorderSide(color: p.ink, width: 1.5)
+                : BorderSide(color: p.line)),
           child: InkWell(
             key: const ValueKey('v3-mobile-auto-node'),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(V3Radius.card),
             onTap: controller.autoSelected || pendingId != null
                 ? null : onSelectAuto,
             child: Padding(
@@ -164,7 +163,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
                   height: 36, width: 36,
                   decoration: BoxDecoration(
                     color: p.surfaceRaised,
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(V3Radius.control)),
                   child: Icon(Icons.auto_awesome_rounded,
                     color: p.lycheeInk, size: 19),
                 ),
@@ -185,7 +184,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
                 )),
                 if (controller.autoSelected)
                   Icon(Icons.check_circle_rounded,
-                    color: p.lycheeInk, size: 19)
+                    color: p.ink, size: 19)
                 else
                   Icon(Icons.chevron_right_rounded,
                     color: p.inkMuted, size: 19),
@@ -286,16 +285,17 @@ class _HtmlNodeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Material(
-      color: selected
-          ? V3MobileDesign.accentCard(context) : V3MobileDesign.card(context),
+      color: V3MobileDesign.card(context),
+      // Selection is an ink outline, same as every other V3 selection;
+      // the row itself never floods with colour.
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: selected
-            ? p.lychee.withValues(alpha: .60)
-            : p.line.withValues(alpha: .72))),
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        side: selected
+            ? BorderSide(color: p.ink, width: 1.5)
+            : BorderSide(color: p.line)),
       child: InkWell(
         key: ValueKey('v3-html-node-${node.id}'),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(V3Radius.card),
         onTap: blocked || selected ? null : onTap,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 73),
@@ -307,7 +307,7 @@ class _HtmlNodeRow extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(color: p.surfaceRaised,
                   border: Border.all(color: p.hairline),
-                  borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(V3Radius.control)),
                 child: V3NodeFlag(code: node.code),
               ),
               const SizedBox(width: 10),
@@ -316,7 +316,7 @@ class _HtmlNodeRow extends StatelessWidget {
                 children: [
                   Text(node.name, maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: selected ? p.lycheeInk : p.ink,
+                    style: TextStyle(color: p.ink,
                       fontSize: 14, fontWeight: FontWeight.w700)),
                   if (node.englishName.isNotEmpty) ...[
                     const SizedBox(height: 2),
@@ -331,11 +331,12 @@ class _HtmlNodeRow extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(color: p.lycheeSoft,
+                          decoration: BoxDecoration(color: p.ink,
                             borderRadius: BorderRadius.circular(99)),
                           child: Text(v3Copy(context, zh: '当前',
                             en: 'Current', tw: '目前'),
-                            style: TextStyle(color: p.lycheeInk, fontSize: 10)),
+                            style: TextStyle(color: p.surface, fontSize: 11,
+                              fontWeight: FontWeight.w700)),
                         ),
                         const SizedBox(width: 4),
                       ],

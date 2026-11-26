@@ -40,8 +40,7 @@ class V3DashboardPage extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: phone
           ? V3MobileDesign.pageInsets.copyWith(
-              bottom: V3MobileDesign.pageInsets.bottom +
-                  MediaQuery.paddingOf(context).bottom,
+              bottom: V3MobileDesign.dockClearance,
             )
           : V3Layout.pageInsets,
       child: Column(
@@ -802,6 +801,9 @@ class _MobileConnectSectionState extends State<_MobileConnectSection>
         const SizedBox(height: 4),
         _MobileConnectStage(controller: controller),
         const SizedBox(height: V3Layout.cardGap),
+        // The node belongs to the connection: it sits directly under it.
+        _MobileNodeCard(controller: controller),
+        const SizedBox(height: V3Layout.cardGap),
         // Native routing mode values stay bound to the existing controller.
         _ModeSegment<ProxyMode>(
           values: ProxyMode.values,
@@ -813,8 +815,6 @@ class _MobileConnectSectionState extends State<_MobileConnectSection>
         ),
         const SizedBox(height: V3Layout.cardGap),
         _MobileTodayUsageCard(controller: controller),
-        const SizedBox(height: V3Layout.cardGap),
-        _MobileNodeCard(controller: controller),
       ],
     );
   }
@@ -1062,9 +1062,11 @@ class _MobileConnectCapsule extends StatelessWidget {
         status == ConnectionStatus.disconnecting;
     final connected = status == ConnectionStatus.connected;
     final locked = controller.connectionActionLocked;
-    final filled = !connected && !busy;
-    final color = filled ? p.lychee : p.surfaceRaised;
-    final foreground = filled ? p.onLychee : p.ink;
+    // Idle: brand coral (the one coral primary in the app). Connected: the
+    // app-wide ink primary. Busy: a quiet raised track under the spinner.
+    final filled = !busy;
+    final color = busy ? p.surfaceRaised : connected ? p.ink : p.lychee;
+    final foreground = busy ? p.ink : connected ? p.surface : p.onLychee;
     final duration = v3ReducedMotion(context) ? Duration.zero : V3Motion.fast;
     final label = busy
         ? v3Copy(context, zh: '连接处理中',
@@ -1098,10 +1100,10 @@ class _MobileConnectCapsule extends StatelessWidget {
           duration: duration,
           curve: V3Motion.ease,
           width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 50),
+          constraints: const BoxConstraints(minHeight: 54),
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(99),
+            borderRadius: BorderRadius.circular(V3Radius.field),
             border: Border.all(color: filled ? Colors.transparent : p.hairline),
           ),
           child: Material(
@@ -1109,7 +1111,7 @@ class _MobileConnectCapsule extends StatelessWidget {
             child: InkWell(
               key: const ValueKey('v3-mobile-connect-pill'),
               onTap: locked ? null : runToggle,
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: BorderRadius.circular(V3Radius.field),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Center(
@@ -1141,7 +1143,7 @@ class _MobileConnectCapsule extends StatelessWidget {
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: foreground,
-                                    fontSize: 14,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -1882,8 +1884,8 @@ class _ModeRailState extends State<_ModeRail> with _ModeSwitching {
 }
 
 /// A continuous segmented capsule: one raised track holding every option,
-/// the current selection a soft lychee pill that slides between options —
-/// the same pink selection language as the node rows and chips. Both
+/// the current selection a neutral surface thumb that slides between options,
+/// the one segmented language shared with V3MobileSegmented. Both
 /// dashboard mode groups render through this widget so the 2-option and
 /// 3-option groups read as one control family.
 class _ModeSegment<T> extends StatelessWidget {
@@ -1942,9 +1944,16 @@ class _ModeSegment<T> extends StatelessWidget {
                   child: SizedBox.expand(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        color: p.lycheeSoft,
-                        border: Border.all(color: p.lychee),
+                        color: p.surface,
+                        border: Border.all(color: p.hairline),
                         borderRadius: BorderRadius.circular(V3Radius.control),
+                        boxShadow: [
+                          BoxShadow(
+                            color: p.ink.withValues(alpha: .06),
+                            offset: const Offset(0, 1),
+                            blurRadius: 3,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -1987,7 +1996,7 @@ class _ModeSegment<T> extends StatelessWidget {
                           // bare TextStyle color would snap while the pill glides.
                           child: TweenAnimationBuilder<Color?>(
                             tween: ColorTween(
-                              end: value == selected ? p.lycheeInk : p.inkMuted,
+                              end: value == selected ? p.ink : p.inkMuted,
                             ),
                             duration: V3Motion.fast,
                             curve: V3Motion.ease,
@@ -1998,7 +2007,7 @@ class _ModeSegment<T> extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: color,
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: selected == value
                                     ? FontWeight.w800
                                     : FontWeight.w700,

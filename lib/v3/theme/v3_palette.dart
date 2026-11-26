@@ -350,17 +350,20 @@ class V3Theme {
       // green.
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
+          // One selection language app-wide: a raised neutral track with a
+          // surface thumb and ink label (same as V3MobileSegmented). Coral
+          // never means "selected".
           backgroundColor: WidgetStateProperty.resolveWith(
             (states) => states.contains(WidgetState.selected)
-                ? p.lycheeSoft
+                ? p.surface
                 : p.surfaceRaised,
           ),
           foregroundColor: WidgetStateProperty.resolveWith(
             (states) =>
-                states.contains(WidgetState.selected) ? p.lycheeInk : p.ink,
+                states.contains(WidgetState.selected) ? p.ink : p.inkMuted,
           ),
           side: WidgetStatePropertyAll(BorderSide(color: p.hairline)),
-          iconColor: WidgetStatePropertyAll(p.lycheeInk),
+          iconColor: WidgetStatePropertyAll(p.ink),
           textStyle: const WidgetStatePropertyAll(
             TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
           ),
@@ -373,14 +376,10 @@ class V3Theme {
                 borderRadius: BorderRadius.circular(V3Radius.field),
               ),
             ).copyWith(
-              // The primary action glows in the brand color from underneath.
-              // Disabled drops flat.
-              elevation: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.disabled) ? 0.0 : 5.0,
-              ),
-              shadowColor: WidgetStatePropertyAll(
-                p.lychee.withValues(alpha: 0.35),
-              ),
+              // Flat primary actions: a coloured glow under every button read
+              // as a stuck focus ring and competed with the content.
+              elevation: const WidgetStatePropertyAll(0.0),
+              shadowColor: const WidgetStatePropertyAll(Colors.transparent),
               surfaceTintColor: const WidgetStatePropertyAll(
                 Colors.transparent,
               ),

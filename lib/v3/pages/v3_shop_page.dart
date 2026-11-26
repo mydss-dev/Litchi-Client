@@ -63,7 +63,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
       final scroll = SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: phone
-            ? V3MobileDesign.pageInsets.copyWith(bottom: 112)
+            ? V3MobileDesign.pageInsets.copyWith(bottom: V3MobileDesign.dockClearance)
             : V3Layout.pageInsets,
         child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (phone)
@@ -576,87 +576,68 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
     final price = v3PlanPrice(plan, cycle);
     // Recommendation is an explicit data flag only. No inferred ranking.
     final recommended = plan.featured;
-    final dark = V3MobileDesign.isDark(context);
     final ink = p.ink;
     final muted = p.inkMuted;
     final line = V3MobileDesign.stroke(context);
-    final surface = V3MobileDesign.card(context);
     final benefits = plan.features.where((feature) => feature.trim().isNotEmpty);
 
     return Container(
       key: ValueKey('shop-card-${plan.id}'),
       decoration: BoxDecoration(
-        color: surface,
-        gradient: recommended ? LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [V3MobileDesign.accentCard(context), surface],
-        ) : null,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: recommended
-            ? (dark ? const Color(0xFF68494C)
-                : const Color(0xFFF1D4CE))
-            : line),
-        boxShadow: dark ? null : const [BoxShadow(
-          color: Color(0x0C241D21), offset: Offset(0, 7),
-          blurRadius: 20)],
+        color: V3MobileDesign.card(context),
+        borderRadius: BorderRadius.circular(V3Radius.card),
+        // Recommendation is a quiet coral edge, not a tinted gradient card.
+        border: Border.all(
+          color: recommended ? p.lychee.withValues(alpha: .55) : line,
+          width: recommended ? 1.5 : 1,
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (recommended) ...[
-              Text(_tr(context, '★ 推荐', '★ Recommended', '★ 推薦'),
-                style: TextStyle(color: p.lycheeInk,
-                  fontSize: 11, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 6),
-            ],
+            // Title owns the full row so plan names never break mid-word.
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(flex: 51, child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(plan.title, maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: ink, fontSize: 20,
-                      fontWeight: FontWeight.w800, height: 1.22)),
-                ],
-              )),
-              const SizedBox(width: 8),
-              Expanded(flex: 49, child: Column(crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (price == null)
-                      Text(_tr(context, '价格待公布', 'Price unavailable',
-                          '價格待公佈'),
-                        textAlign: TextAlign.right,
-                        style: TextStyle(color: muted, fontSize: 12))
-                    else ...[
-                      SizedBox(width: double.infinity, child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
-                        child: Row(mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.end, children: [
-                          Padding(padding: const EdgeInsets.only(bottom: 4),
-                            child: Text(widget.currencySymbol,
-                              style: TextStyle(color: ink,
-                                fontSize: 16, fontWeight: FontWeight.w800))),
-                          Text(price.toStringAsFixed(2),
-                            key: ValueKey('shop-price-${plan.id}'),
-                            style: TextStyle(color: ink,
-                              fontSize: 40, height: 1.1,
-                              letterSpacing: -1.6,
-                              fontWeight: FontWeight.w900,
-                              fontFeatures: const [FontFeature.tabularFigures()])),
-                        ]),
-                      )),
-                      const SizedBox(height: 2),
-                      Text(recurring ? '/ ${v3CycleLabel(context, cycle)}'
-                          : _tr(context, '一次性', 'One-time', '一次性'),
-                        style: TextStyle(color: muted, fontSize: 11)),
-                    ],
-                  ],
-              )),
+              Expanded(child: Text(plan.title, maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: ink, fontSize: 17,
+                  fontWeight: FontWeight.w700, height: 1.3))),
+              if (recommended) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: p.lycheeSoft,
+                    borderRadius: BorderRadius.circular(99)),
+                  child: Text(_tr(context, '推荐', 'Recommended', '推薦'),
+                    style: TextStyle(color: p.lycheeInk,
+                      fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+              ],
             ]),
+            const SizedBox(height: 10),
+            if (price == null)
+              Text(_tr(context, '价格待公布', 'Price unavailable', '價格待公佈'),
+                style: TextStyle(color: muted, fontSize: 13))
+            else
+              Row(crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic, children: [
+                Text(widget.currencySymbol,
+                  style: TextStyle(color: ink, fontSize: 16,
+                    fontWeight: FontWeight.w700)),
+                const SizedBox(width: 2),
+                Text(price.toStringAsFixed(2),
+                  key: ValueKey('shop-price-${plan.id}'),
+                  style: TextStyle(color: ink, fontSize: 30, height: 1.1,
+                    letterSpacing: -.8, fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()])),
+                const SizedBox(width: 6),
+                Text(recurring ? '/ ${v3CycleLabel(context, cycle)}'
+                    : _tr(context, '一次性', 'One-time', '一次性'),
+                  style: TextStyle(color: muted, fontSize: 12)),
+              ]),
             if (plan.capacity.isNotEmpty ||
                 (plan.deviceLimit != null && plan.deviceLimit! > 0)) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 if (plan.capacity.isNotEmpty)
                   _MobilePlanSpec(icon: Icons.grid_view_rounded,
@@ -671,54 +652,50 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
             ],
             // The one-time plan never gets a pseudo-second purchase button.
             if (recurring && cycles.isNotEmpty) ...[
-              const SizedBox(height: 18),
-              Text(_tr(context, '购买周期', 'Billing period', '購買週期'),
-                style: TextStyle(color: muted, fontSize: 11,
-                  fontWeight: FontWeight.w700)),
-              const SizedBox(height: 10),
-              LayoutBuilder(builder: (context, bounds) {
-                final width = (bounds.maxWidth - 16) / 3;
-                return Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final option in cycles)
-                    SizedBox(width: width, height: 44,
-                      child: _MobileCycleChip(
-                        key: ValueKey('shop-cycle-${plan.id}-${option.name}'),
-                        label: v3CycleLabel(context, option),
-                        selected: cycle == option,
-                        onTap: () => setState(() => _selected = option))),
-                ]);
-              }),
+              const SizedBox(height: 16),
+              _MobileCycleTrack(
+                planId: plan.id,
+                cycles: cycles,
+                selected: cycle,
+                onChanged: (option) => setState(() => _selected = option),
+              ),
             ],
             if (benefits.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               TextButton.icon(
                 key: ValueKey('shop-details-${plan.id}'),
                 onPressed: () => setState(() => _showDetails = !_showDetails),
-                icon: Icon(_showDetails ? Icons.expand_less : Icons.expand_more),
+                icon: Icon(_showDetails ? Icons.expand_less : Icons.expand_more,
+                  size: 18),
                 label: Text(_showDetails
                     ? _tr(context, '收起套餐详情', 'Hide details', '收起方案詳情')
                     : _tr(context, '套餐详情', 'Plan details', '方案詳情')),
                 style: TextButton.styleFrom(
-                  foregroundColor: ink,
+                  foregroundColor: muted,
+                  textStyle: const TextStyle(fontSize: 13,
+                    fontWeight: FontWeight.w600),
                   minimumSize: const Size(0, 44),
                   padding: EdgeInsets.zero,
                 ),
               ),
-            ],
-            if (_showDetails)
+            ] else
+              const SizedBox(height: 16),
+            if (_showDetails) ...[
               for (final benefit in benefits)
-                Padding(padding: const EdgeInsets.only(bottom: 11),
+                Padding(padding: const EdgeInsets.only(bottom: 10),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.check_rounded, size: 16,
-                        color: recommended ? p.lycheeInk : muted),
-                      const SizedBox(width: 9),
+                      Padding(padding: const EdgeInsets.only(top: 1),
+                        child: Icon(Icons.check_rounded, size: 16,
+                          color: p.successInk)),
+                      const SizedBox(width: 8),
                       Expanded(child: Text(benefit,
                         style: TextStyle(color: ink,
-                          fontSize: 12, height: 1.45))),
+                          fontSize: 13, height: 1.45))),
                     ])),
-            const SizedBox(height: 12),
-            SizedBox(width: double.infinity, height: 46,
+              const SizedBox(height: 6),
+            ],
+            SizedBox(width: double.infinity, height: 48,
               child: FilledButton(
                 key: ValueKey('shop-buy-${plan.id}'),
                 onPressed: plan.soldOut || price == null
@@ -729,8 +706,7 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
                   : price == null
                     ? _tr(context, '暂不可购买', 'Unavailable', '暫不可購買')
                     : _tr(context, '选择此套餐',
-                        'Choose this plan', '選擇此方案'),
-                  style: const TextStyle(fontWeight: FontWeight.w700))),
+                        'Choose this plan', '選擇此方案'))),
             ),
           ]),
       ),
@@ -744,60 +720,72 @@ class _MobilePlanSpec extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
+    final p = V3Palette.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: dark ? const Color(0xFF313238)
-          : const Color(0xFFF4F4F5),
-        borderRadius: BorderRadius.circular(10)),
+        color: p.surfaceRaised,
+        borderRadius: BorderRadius.circular(99)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 14, color: dark
-          ? const Color(0xFFAEB1B8) : const Color(0xFF737780)),
+        Icon(icon, size: 14, color: p.inkMuted),
         const SizedBox(width: 6),
-        Text(text, style: TextStyle(fontSize: 11,
-          color: dark ? const Color(0xFFAEB1B8)
-            : const Color(0xFF737780), fontWeight: FontWeight.w600)),
+        Text(text, style: TextStyle(fontSize: 12, color: p.inkMuted,
+          fontWeight: FontWeight.w600)),
       ]),
     );
   }
 }
 
-class _MobileCycleChip extends StatelessWidget {
-  const _MobileCycleChip({super.key, required this.label,
-    required this.selected, required this.onTap});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+/// Billing periods as the app-wide segmented track: raised neutral track,
+/// surface thumb, ink label. Long period lists wrap into rows of three.
+class _MobileCycleTrack extends StatelessWidget {
+  const _MobileCycleTrack({required this.planId, required this.cycles,
+    required this.selected, required this.onChanged});
+  final Object planId;
+  final List<BillingCycle> cycles;
+  final BillingCycle selected;
+  final ValueChanged<BillingCycle> onChanged;
+
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: selected
-        ? (dark ? const Color(0xFFF4F2F2) : const Color(0xFF252429))
-        : (dark ? const Color(0xFF24252A) : Colors.white),
-      borderRadius: BorderRadius.circular(99),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(99),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 9),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            border: Border.all(color: selected
-              ? (dark ? const Color(0xFFF4F2F2) : const Color(0xFF252429))
-              : (dark ? const Color(0xFF3A393F)
-                : const Color(0xFFECEBEF))),
-            borderRadius: BorderRadius.circular(99)),
-          child: Text(label, maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-              color: selected
-                ? (dark ? const Color(0xFF252429) : Colors.white)
-                : (dark ? const Color(0xFFF4F2F2)
-                  : const Color(0xFF202226)))),
-        ),
-      ),
+    final p = V3Palette.of(context);
+    final rows = <List<BillingCycle>>[
+      for (var i = 0; i < cycles.length; i += 3)
+        cycles.sublist(i, i + 3 > cycles.length ? cycles.length : i + 3),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: p.surfaceRaised,
+        borderRadius: BorderRadius.circular(V3Radius.field)),
+      child: Column(children: [
+        for (final row in rows) Row(children: [
+          for (final option in row) Expanded(child: Semantics(
+            button: true,
+            selected: option == selected,
+            inMutuallyExclusiveGroup: true,
+            child: Material(
+              key: ValueKey('shop-cycle-$planId-${option.name}'),
+              color: option == selected ? p.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(V3Radius.control),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(V3Radius.control),
+                onTap: () => onChanged(option),
+                child: SizedBox(height: 40, child: Center(child: Text(
+                  v3CycleLabel(context, option),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 13,
+                    color: option == selected ? p.ink : p.inkMuted,
+                    fontWeight: option == selected
+                        ? FontWeight.w700 : FontWeight.w500)))),
+              ),
+            ),
+          )),
+          // Keep partial last rows aligned to the same column grid.
+          for (var i = row.length; i < 3 && rows.length > 1; i++)
+            const Expanded(child: SizedBox()),
+        ]),
+      ]),
     );
   }
 }
