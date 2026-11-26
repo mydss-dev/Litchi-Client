@@ -14,6 +14,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_dashboard_alerts.dart';
 import '../ui/v3_html_phone_notice.dart';
 import '../ui/v3_latency_tier.dart';
+import '../ui/v3_luxury_connect_stage.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_picker.dart';
 import '../ui/v3_toast.dart';
@@ -794,16 +795,52 @@ class _MobileConnectSection extends StatefulWidget {
 
 class _MobileConnectSectionState extends State<_MobileConnectSection>
     with _ModeSwitching {
+  void _onToggleConnection() {
+    final controller = widget.controller;
+    // Preserve the exact existing connection command and toast semantics.
+    controller.toggleConnection().then((error) {
+      if (!mounted) return;
+      if (error == null &&
+          controller.connectionStatus == ConnectionStatus.connected) {
+        V3Toast.show(context, v3Copy(context,
+          zh: '连接成功', en: 'Connected', tw: '連線成功'),
+          type: V3ToastType.success);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
+    final node = controller.currentNode;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 4),
-        _MobileConnectStage(controller: controller),
+        V3LuxuryConnectionHero(
+          key: kConnectActionCardKey,
+          orbKey: kConnectOrbKey,
+          status: controller.connectionStatus,
+          locked: controller.connectionActionLocked,
+          onToggle: _onToggleConnection,
+          nodeCode: node.code,
+          nodeName: node.name,
+          nodeLatencyMs: node.latency,
+          connectedDuration: controller.connectedDuration,
+          upBps: controller.upBpsNotifier,
+          downBps: controller.downBpsNotifier,
+        ),
         const SizedBox(height: V3Layout.cardGap),
-        // Native routing mode values stay bound to the existing controller.
+        _MobileNodeCard(controller: controller),
+        const SizedBox(height: V3Layout.cardGap),
+        V3LuxurySessionMetrics(
+          status: controller.connectionStatus,
+          downBps: controller.downBpsNotifier,
+          upBps: controller.upBpsNotifier,
+          sessionBytes: controller.sessionBytesNotifier,
+        ),
+        const SizedBox(height: V3Layout.cardGap),
+        // Keep the established routing control and actual proxy-mode values.
         _ModeSegment<ProxyMode>(
           values: ProxyMode.values,
           label: _modeTitle,
@@ -814,8 +851,6 @@ class _MobileConnectSectionState extends State<_MobileConnectSection>
         ),
         const SizedBox(height: V3Layout.cardGap),
         _MobileTodayUsageCard(controller: controller),
-        const SizedBox(height: V3Layout.cardGap),
-        _MobileNodeCard(controller: controller),
       ],
     );
   }
@@ -892,211 +927,6 @@ class _MobileUsageStat extends StatelessWidget {
             fontFeatures: const [FontFeature.tabularFigures()])),
       ),
     ]);
-  }
-}
-
-/// The phone connection surface: framed dot map with an approximate
-/// country marker for the active node, then a wide capsule action and timer.
-/// Desktop continues to use the existing animated connection orb.
-class _MobileConnectStage extends StatelessWidget {
-  const _MobileConnectStage({required this.controller});
-  final AppController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final status = controller.connectionStatus;
-    final connected = status == ConnectionStatus.connected;
-    final node = controller.currentNode;
-    final nodeName = node.name.isEmpty
-        ? v3Copy(context, zh: '尚未选择节点',
-            en: 'No node selected', tw: '尚未選擇節點')
-        : node.name;
-    return Container(
-      key: kConnectActionCardKey,
-      height: 375,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(V3Radius.card),
-        border: Border.all(color: p.line.withValues(alpha: .72)),
-      ),
-      child: Column(children: [
-        Expanded(child: Stack(children: [
-          const Positioned.fill(child: V3WorldMap()),
-          // Backend supplies a country code, not precise server coordinates.
-          Positioned.fill(child: V3WorldMapNodePin(
-            countryCode: node.code, connected: connected)),
-          Positioned(left: 15, top: 15,
-            child: V3StatusBadge(
-              label: _protectionLabel(context, status),
-              color: _protectionColor(p, status),
-              icon: connected ? Icons.shield_rounded : Icons.shield_outlined,
-            )),
-          Positioned(left: 15, right: 15, bottom: 12,
-            child: Row(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: p.surface.withValues(alpha: .94),
-                  borderRadius: BorderRadius.circular(99),
-                  border: Border.all(
-                    color: p.line.withValues(alpha: .72)),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  V3NodeFlag(code: node.code),
-                  const SizedBox(width: 6),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 205),
-                    child: Text(nodeName,
-                      overflow: TextOverflow.ellipsis, maxLines: 1,
-                      style: TextStyle(color: p.ink, fontSize: 11,
-                        fontWeight: FontWeight.w700)),
-                  ),
-                ]),
-              ),
-            ])),
-        ])),
-        Divider(height: 1, thickness: 1,
-          color: p.line.withValues(alpha: .72)),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(children: [
-                Text(v3Copy(context, zh: '连接时长',
-                    en: 'Duration', tw: '連線時長'),
-                  style: TextStyle(color: p.inkMuted, fontSize: 11)),
-                const SizedBox(width: 12),
-                Expanded(child: SizedBox(
-                  height: 28,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: _ConnectionDuration(controller: controller),
-                  ),
-                )),
-              ]),
-              if (connected) ...[
-                const SizedBox(height: 7),
-                // The full up/down readout needs up to 319dp; fit it inside
-                // the available 302dp on compact 360dp phones without
-                // dropping transfer values or overflowing the card.
-                SizedBox(
-                  width: double.infinity,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: _SpeedSuffix(
-                      controller: controller, visible: connected),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              // Full-width CTA: neither the timer nor transfer-rate labels
-              // share its row on 320–390dp devices.
-              _MobileConnectCapsule(controller: controller, status: status),
-            ],
-          ),
-        ),
-      ]),
-    );
-  }
-}
-
-/// Mobile-only primary connection control. Reuse the actual controller action,
-/// busy/locked state and status colours rather than a decorative mock button.
-class _MobileConnectCapsule extends StatelessWidget {
-  const _MobileConnectCapsule({
-    required this.controller,
-    required this.status,
-  });
-
-  final AppController controller;
-  final ConnectionStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
-    final busy = status == ConnectionStatus.connecting ||
-        status == ConnectionStatus.disconnecting;
-    final connected = status == ConnectionStatus.connected;
-    final locked = controller.connectionActionLocked;
-    final color = switch (status) {
-      ConnectionStatus.connected => p.success,
-      ConnectionStatus.connecting ||
-      ConnectionStatus.disconnecting => p.warning,
-      ConnectionStatus.error => p.danger,
-      ConnectionStatus.disconnected => p.lychee,
-    };
-    final label = busy
-        ? v3Copy(context, zh: '连接处理中',
-            en: 'Processing', tw: '連線處理中')
-        : connected
-            ? v3Copy(context, zh: '断开连接',
-                en: 'Disconnect', tw: '中斷連線')
-            : v3Copy(context, zh: '立即连接',
-                en: 'Connect', tw: '立即連線');
-
-    Future<void> runToggle() async {
-      final error = await controller.toggleConnection();
-      if (error == null &&
-          context.mounted &&
-          controller.connectionStatus == ConnectionStatus.connected) {
-        V3Toast.show(context, v3Copy(context,
-          zh: '连接成功', en: 'Connected', tw: '連線成功'),
-          type: V3ToastType.success);
-      }
-    }
-
-    return Semantics(
-      key: kConnectOrbKey,
-      container: true,
-      button: true,
-      enabled: !locked,
-      label: label,
-      onTap: locked ? null : runToggle,
-      child: ExcludeSemantics(
-        child: AnimatedContainer(
-          duration: V3Motion.fast,
-          width: double.infinity, height: 48,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(99)),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              key: const ValueKey('v3-mobile-connect-pill'),
-              onTap: locked ? null : runToggle,
-              borderRadius: BorderRadius.circular(99),
-              child: Center(child: AnimatedSwitcher(
-                duration: V3Motion.fast,
-                child: busy
-                    ? SizedBox(
-                        key: const ValueKey('v3-mobile-connect-loading'),
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2, color: p.onLychee))
-                    : Row(
-                        key: ValueKey('v3-mobile-connect-${connected ? 'on' : 'off'}'),
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(connected ? Icons.stop_rounded
-                              : Icons.power_settings_new_rounded,
-                            size: 18, color: connected ? p.night : p.onLychee),
-                          const SizedBox(width: 7),
-                          Text(label, style: TextStyle(
-                            color: connected ? p.night : p.onLychee,
-                            fontSize: 13, fontWeight: FontWeight.w800)),
-                        ]),
-              )),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 
@@ -1216,55 +1046,6 @@ class _MobileNodeCard extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The phone stage's speed suffix under the timer: `↑ up · ↓ down` in the
-/// aqua/green pair, connected only. Event-driven - the traffic values arrive
-/// through ValueNotifiers, so this rebuilds only on a real value or
-/// visibility change and carries no timer or ticker of its own, which also
-/// makes it TickerMode-safe by construction.
-class _SpeedSuffix extends StatelessWidget {
-  const _SpeedSuffix({required this.controller, required this.visible});
-  final AppController controller;
-  final bool visible;
-
-  /// The suffix's shared type: 12px bold tabular figures — the mockup's
-  /// `.js-speed-suffix` set — with the per-segment ink passed in.
-  static TextStyle suffixInk(Color color) => TextStyle(
-        color: color,
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        fontFeatures: const [FontFeature.tabularFigures()],
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    if (!visible) return const SizedBox.shrink();
-    final p = V3Palette.of(context);
-    return ValueListenableBuilder<int>(
-      valueListenable: controller.upBpsNotifier,
-      builder: (context, up, _) => ValueListenableBuilder<int>(
-        valueListenable: controller.downBpsNotifier,
-        builder: (context, down, _) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '↑ ${_speed(up)}',
-              style: suffixInk(p.aquaInk),
-            ),
-            Text(
-              '  ·  ',
-              style: suffixInk(p.inkMuted),
-            ),
-            Text(
-              '↓ ${_speed(down)}',
-              style: suffixInk(p.successInk),
-            ),
-          ],
         ),
       ),
     );

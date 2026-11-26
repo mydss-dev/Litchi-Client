@@ -1,8 +1,9 @@
 # Litchi Client · Champagne Gold UI (2026-11-26)
 
 > **Status:** approved direction; staged implementation. The source of truth for
-> pixel comparison is the user-provided `litchi-design-spec.zip` (HTML + 14
-> screenshots, seven screens × light/dark). These reference PNGs are **not**
+> pixel comparison is the user-provided `litchi-design-spec (1).zip` (HTML +
+> 20 screenshots: seven core screens in both modes plus three extra connection
+> status variants in both modes). These reference PNGs are **not**
 > included in this commit. Visual reviewers must obtain the original archive
 > before claiming fidelity. The values below are the implementation contract.
 
@@ -60,6 +61,22 @@ pointer-transparent and never blocking gestures.
    floating nav. Preserve all existing connect/disconnect/error/loading
    states and business actions. The newer design intentionally uses a
    circular main orb, overriding the prior temporary mobile pill.
+   **Updated 2026-11-26 status images (new 01B section):**
+   - **Disconnected:** translucent glass button with a gold outline, gray
+     protection badge, 00:00:00 timer and "Tap to connect".
+   - **Connecting:** opaque gold (dark) or charcoal (light) button, busy
+     indicator and "Connecting" label. Disconnecting also reads as busy.
+   - **Connected:** solid face, green protection badge, real duration, real
+     up/down/session values; the circular button's tap disconnects.
+   - **Error:** translucent glass face with a danger-colored outline,
+     "Connection failed" and a retry action. Do not claim a specific cause
+     that the backend has not diagnosed.
+   - **Hard rule:** if status is NOT Connected, render 0 B/s for upload and
+     download and 0 MB for *this-session* usage regardless of any stale
+     ValueNotifier counters. Subscription lifetime usage/quota is **not**
+     a session counter and must still show real account data.
+   - Layout geometry and button action must remain stable across variants.
+
 2. **Nodes:** header, search, segment, region-grouped node rows,
    latency and selection status. **Do not add favorites** (previous
    user decision), and do not add unsupported streaming flags. Untested =
@@ -94,3 +111,18 @@ rather than a duplicate four-tab navigation bar. No fake feature controls.
    analyze/test and build. **No merge until audit and final user review.**
 
 Implementation tasks: #133 / #134 / #135 / #136; independent audit: #137.
+
+## Revised archive delta
+
+The updated ZIP adds six 824×1784 status images and an HTML `01B`
+section: `3_1` / `3_114` / `3_227` (dark disconnected,
+connecting, failed) and `3_340` / `3_453` / `3_566`
+(light versions). All fourteen earlier page images are unchanged, and
+the page list, theme colors, type scale and navigation contract are unchanged.
+The existing HTML cover counts ten pairs (seven screens plus three extra
+states), not ten new navigation pages.
+
+Open issue #134 and its child PR for implementation; #137 independently
+reviews the three new states in both themes as well as connected and
+disconnecting behavior.
+

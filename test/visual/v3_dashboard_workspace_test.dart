@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
 import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
+import 'package:litchi_client/v3/ui/v3_luxury_connect_stage.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
@@ -180,43 +181,39 @@ void main() {
     ));
     await tester.pump();
 
-    // A framed map shows the current node's approximate country position.
-    // The primary phone connection action is a wide capsule, not a circle.
-    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 375);
-    expect(find.descendant(of: find.byKey(kConnectActionCardKey),
-        matching: find.byKey(const ValueKey('v3-map-country-marker'))),
+    // The revised screenshot uses a 140dp circular layered primary control.
+    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 358);
+    expect(find.byKey(const Key('v3-luxury-orb-action')),
         findsOneWidget);
-    expect(find.byKey(const ValueKey('v3-mobile-connect-pill')),
+    final orb = tester.getRect(find.byKey(
+        const Key('v3-luxury-orb-action')));
+    expect(orb.width, 140);
+    expect(orb.height, 140);
+    expect(find.byKey(const Key('v3-luxury-protection-status')),
         findsOneWidget);
-    final capsule = tester.getRect(
-        find.byKey(const ValueKey('v3-mobile-connect-pill')));
-    expect(capsule.width, greaterThan(250));
-    expect(capsule.width, greaterThan(capsule.height));
-    expect(find.text('保护中'), findsOneWidget);
+    expect(find.text('已保护'), findsOneWidget);
     expect(find.text('01:26:18'), findsOneWidget);
     expect(find.text('断开连接'), findsOneWidget);
-    // Connected, so the timer's speed suffix shows (aqua up, green down)...
     expect(find.text('↑ 3.0 MB/s'), findsOneWidget);
     expect(find.text('↓ 12.0 MB/s'), findsOneWidget);
-    // ...and the metrics card the suffix replaces stays gone.
-    expect(find.text('下载速度'), findsNothing);
-    expect(find.text('上传速度'), findsNothing);
-    expect(find.text('本次流量'), findsNothing);
+    expect(find.text('下载'), findsOneWidget);
+    expect(find.text('上传'), findsOneWidget);
+    expect(find.text('本次流量'), findsOneWidget);
     expect(find.text('活动连接'), findsNothing);
-    // The plan card has left the connection page on the phone.
     expect(find.text('我的套餐'), findsNothing);
 
-    // Map → routing capsule → daily usage → node shortcut, with no duplicate
-    // marketing hero or desktop-only transfer cards.
-    final map = tester.getRect(find.byKey(kConnectActionCardKey));
+    // New design: hero → node → session metrics → routing → daily quota.
+    final hero = tester.getRect(find.byKey(kConnectActionCardKey));
+    final nodeCard = tester.getRect(find.byKey(kCurrentNodeCardKey));
+    final session = tester.getRect(find.byType(V3LuxurySessionMetrics));
     final routing = tester.getRect(
       find.byKey(const ValueKey('v3-route-mode-track')));
     final usage = tester.getRect(
       find.byKey(const ValueKey('v3-mobile-daily-usage')));
-    final nodeCard = tester.getRect(find.byKey(kCurrentNodeCardKey));
-    expect(map.bottom, lessThanOrEqualTo(routing.top));
+    expect(hero.bottom, lessThanOrEqualTo(nodeCard.top));
+    expect(nodeCard.bottom, lessThanOrEqualTo(session.top));
+    expect(session.bottom, lessThanOrEqualTo(routing.top));
     expect(routing.bottom, lessThanOrEqualTo(usage.top));
-    expect(usage.bottom, lessThanOrEqualTo(nodeCard.top));
     expect(find.text('今日已用'), findsOneWidget);
     expect(find.text('2.48 GB'), findsOneWidget);
     expect(find.text('剩余流量'), findsOneWidget);
