@@ -119,7 +119,7 @@ class _V3LuxuryConnectionHeroState extends State<V3LuxuryConnectionHero> {
     final solidFace = connected || busy;
     final face = solidFace ? c.orbFace : c.surfaceStrong;
     final edge = failed ? c.danger : c.gold;
-    final faceInk = solidFace ? c.onGold : edge;
+    final faceInk = solidFace ? c.onGold : failed ? c.danger : dark ? c.gold : c.ink;
 
     return V3LuxuryGlassCard(
       hero: true,

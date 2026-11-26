@@ -987,7 +987,7 @@ class _MobileNodeCard extends StatelessWidget {
                           V3LuxuryRadius.pill)),
                       child: Text(v3Copy(context,
                           zh: '自动', en: 'Auto', tw: '自動'),
-                        style: TextStyle(color: c.gold,
+                        style: TextStyle(color: c.ink,
                           fontSize: 10, fontWeight: FontWeight.w600)),
                     ),
                   ],
