@@ -1,4 +1,3 @@
-import 'package:ios26_bottom_navigationbar/ios26_bottom_navigationbar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:cupertino_ui/cupertino_ui.dart' show CupertinoListSection;
@@ -9,6 +8,7 @@ import 'package:litchi_client/v3/app/v3_nav.dart';
 import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/pages/v3_gift_card_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
+import 'package:litchi_client/v3/ui/v3_bottom_dock.dart';
 import 'package:litchi_client/v3/ui/v3_nav_island.dart';
 
 import 'v3_visual_fixture.dart';
@@ -80,32 +80,25 @@ Future<void> _tap(WidgetTester tester, Finder target) async {
 }
 
 void main() {
-  testWidgets('Android iOS26 navigation shows four labels and all routes remain functional',
+  testWidgets('Android dock shows four labels and every tab routes',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, const Size(390, 844));
       expect(find.byType(V3NavIsland), findsOneWidget);
-      expect(find.byType(IOS26BottomNavigationBar), findsOneWidget);
-      final dock = find.byType(IOS26BottomNavigationBar);
+      final dock = find.byType(V3BottomDock);
+      expect(dock, findsOneWidget);
       for (final label in ['连接', '节点', '套餐', '我的']) {
         expect(find.descendant(of: dock, matching: find.text(label)), findsOneWidget);
       }
-      expect(tester.getSize(dock).height, 62);
-      expect(tester.getRect(dock).bottom, lessThanOrEqualTo(844 - 6));
-      const destinations = [
-        AppPage.dashboard, AppPage.nodes, AppPage.shop, AppPage.account,
-      ];
+      expect(find.descendant(of: dock, matching: find.text('更多')), findsNothing);
+      expect(tester.getSize(dock).height, greaterThanOrEqualTo(V3BottomDock.height));
+      expect(tester.getRect(dock).bottom, lessThanOrEqualTo(844));
       for (final page in [AppPage.nodes, AppPage.shop, AppPage.account,
           AppPage.dashboard]) {
-        final tabIndex = destinations.indexOf(page);
-        final tabs = find.descendant(
-          of: find.byType(IOS26BottomNavigationBar),
-          matching: find.byType(GestureDetector),
-        );
-        expect(tabs, findsNWidgets(4));
-        await _tap(tester, tabs.at(tabIndex));
+        await _tap(tester, find.byKey(ValueKey('v3-dock-${page.name}')));
+        await tester.pumpAndSettle();
         expect(controller.page, page);
-        expect(find.byType(IOS26BottomNavigationBar), findsOneWidget);
+        expect(find.byType(V3BottomDock), findsOneWidget);
       }
     });
   });
@@ -116,7 +109,6 @@ void main() {
     AppPage.invite,
     AppPage.tickets,
     AppPage.settings,
-    AppPage.more,
   ]) {
     testWidgets('Android secondary ${page.name} has back and no bottom bar',
         (tester) async {

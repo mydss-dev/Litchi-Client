@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
@@ -15,6 +14,7 @@ import 'v3_latency_tier.dart';
 import 'v3_node_tags.dart';
 import 'v3_sheet.dart';
 import 'v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Pick a node without leaving the current page.
 class V3NodePicker extends StatefulWidget {
@@ -126,7 +126,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
                 controller: _queryCtrl,
                 autofocus: true,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search_rounded),
+                  prefixIcon: const Icon(AppIcons.search),
                   hintText: v3Copy(
                     context,
                     zh: '搜索节点',
@@ -170,7 +170,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(LucideIcons.zap, size: 17),
+                    : const Icon(AppIcons.zap, size: 17),
                 label: Text(v3Copy(context, zh: '测速', en: 'Test', tw: '測速')),
               ),
             ),
@@ -205,7 +205,7 @@ class _V3NodePickerState extends State<V3NodePicker> {
         else if (controller.dataLoadError != null && controller.nodes.isEmpty)
           // Failure is not emptiness: name the error and offer the retry.
           V3EmptyState(
-            icon: Icons.error_outline_rounded,
+            icon: AppIcons.error,
             title: v3Copy(
               context,
               zh: '节点加载失败',
@@ -219,8 +219,8 @@ class _V3NodePickerState extends State<V3NodePicker> {
         else if (nodes.isEmpty)
           V3EmptyState(
             icon: controller.nodes.isEmpty
-                ? Icons.public_off_rounded
-                : Icons.search_off_rounded,
+                ? AppIcons.globeOff
+                : AppIcons.searchOff,
             title: controller.nodes.isEmpty
                 ? v3Copy(context,
                     zh: '暂无可用节点',
@@ -336,7 +336,7 @@ class V3AutoRouteRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(V3Radius.control),
                 ),
                 child: Icon(
-                  Icons.auto_awesome_rounded,
+                  AppIcons.sparkles,
                   color: active ? p.lycheeInk : p.ink,
                   size: 19,
                 ),
@@ -564,7 +564,7 @@ class V3NodeRow extends StatelessWidget {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2, color: p.lycheeInk))
                           : node.latency <= 0
-                              ? Icon(LucideIcons.zap,
+                              ? Icon(AppIcons.zap,
                                   key: const ValueKey('v3-node-speed-untested'),
                                   size: 20, color: p.inkMuted)
                               : V3LatencyBadge(
@@ -592,7 +592,7 @@ class V3NodeRow extends StatelessWidget {
                         )
                       : showTrailingChevron
                       ? Icon(
-                          Icons.chevron_right_rounded,
+                          AppIcons.chevronRight,
                           color: p.inkMuted,
                           size: 20,
                         )

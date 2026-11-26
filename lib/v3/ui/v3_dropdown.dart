@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// V3's single selection control. One dropdown spec serves both the settings
 /// rows and the title-bar language switch: a raised field that opens a menu
@@ -193,7 +194,7 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
             else
               _text(triggerText, p.ink, fontSize, FontWeight.w700),
             SizedBox(width: dense ? 6 : 8),
-            Icon(Icons.keyboard_arrow_down_rounded,
+            Icon(AppIcons.chevronDown,
                 size: dense ? 16 : 18, color: p.inkMuted),
           ],
         ),
@@ -338,7 +339,7 @@ class _V3DropdownState<T> extends State<V3Dropdown<T>> {
                                   : FontWeight.w500,
                             )),
                             if (item == widget.value)
-                              Icon(Icons.check_rounded,
+                              Icon(AppIcons.check,
                                   size: 16, color: p.lycheeInk),
                           ],
                         ),

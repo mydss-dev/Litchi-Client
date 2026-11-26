@@ -1,10 +1,11 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
+import '../../app/core_controller.dart';
 import '../../shared/models/app_models.dart';
 import '../theme/v3_palette.dart';
 import '../theme/v3_motion.dart';
+import 'v3_bottom_dock.dart';
 import 'v3_components.dart';
 import 'v3_empty_state.dart';
 import 'v3_node_picker.dart';
@@ -12,10 +13,16 @@ import 'v3_locale_copy.dart';
 import 'v3_mobile_components.dart';
 import 'v3_latency_tier.dart';
 import 'v3_node_tags.dart';
+import 'v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
-/// Flutter translation of design/elegant_mockup.html phone nodes:
-/// .page-head, .nsearch, .nchips, .nlist, .nrow, .nright.
-/// Business operations remain in V3NodesPage.
+/// Phone "Select a node" screen — the reference's dot-free list design:
+/// a large heading, a capsule search with round utility buttons, one card per
+/// node with a circular flag and a radio tick for the active one, and a
+/// floating connect pill above the dock.
+///
+/// Business operations stay in V3NodesPage; this widget only paints and
+/// forwards callbacks.
 class V3HtmlPhoneNodes extends StatelessWidget {
   const V3HtmlPhoneNodes({
     super.key,
@@ -59,115 +66,183 @@ class V3HtmlPhoneNodes extends StatelessWidget {
       search.clear();
       onQuery('');
     }
+
     final filters = <(NodeRegion?, String)>[
       (null, v3Copy(context, zh: '全部', en: 'All', tw: '全部')),
       (NodeRegion.asia, v3Copy(context, zh: '亚洲', en: 'Asia', tw: '亞洲')),
       (NodeRegion.europe, v3Copy(context, zh: '欧洲', en: 'Europe', tw: '歐洲')),
       (NodeRegion.america, v3Copy(context, zh: '美洲', en: 'Americas', tw: '美洲')),
     ];
-    final scroll = SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: V3MobileDesign.pageInsets.copyWith(bottom: V3MobileDesign.dockClearance),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        V3PrimaryPageHeader(
-          title: v3Copy(context, zh: '节点', en: 'Nodes', tw: '節點'),
-          subtitle: v3Copy(context,
-            zh: '$total 个节点 · $regions 个地区',
-            en: '$total nodes · $regions regions',
-            tw: '$total 個節點 · $regions 個地區'),
-          trailing: SizedBox(height: 44, child: OutlinedButton.icon(
-            key: const Key('v3-overview-speed-test'),
-            onPressed: controller.isLatencyTesting || testingNodeId != null
-                ? null : onTest,
-            icon: controller.isLatencyTesting
-                ? SizedBox(width: 17, height: 17,
-                    child: CircularProgressIndicator(strokeWidth: 2,
-                      color: p.lycheeInk))
-                : const Icon(LucideIcons.zap, size: 17),
-            label: Text(v3Copy(context, zh: '全部测速',
-              en: 'Test all', tw: '全部測速')),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: p.ink,
-              side: BorderSide(color: p.line),
-              minimumSize: const Size(0, 44),
-              textStyle: const TextStyle(fontSize: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12))),
-          )),
-        ),
-        const SizedBox(height: 18),
-        Container(
-          height: 44,
-          decoration: BoxDecoration(
-            color: V3MobileDesign.card(context),
-            border: Border.all(color: V3MobileDesign.stroke(context)),
-            borderRadius: BorderRadius.circular(16)),
-          child: TextField(
-            controller: search,
-            onChanged: onQuery,
-            textInputAction: TextInputAction.search,
-            style: TextStyle(color: p.ink, fontSize: 12),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.only(top: 12),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              prefixIcon: Icon(Icons.search_rounded, color: p.inkMuted, size: 17),
-              suffixIcon: hasQuery ? IconButton(
-                key: const ValueKey('v3-node-clear-search'),
-                tooltip: v3Copy(context, zh: '清除搜索', en: 'Clear search', tw: '清除搜尋'),
-                onPressed: clearSearch,
-                icon: const Icon(Icons.close_rounded, size: 18),
-              ) : null,
-              hintText: v3Copy(context, zh: '搜索节点',
-                en: 'Search nodes', tw: '搜尋節點'),
-              hintStyle: TextStyle(color: p.inkMuted,
-                fontWeight: FontWeight.w600, fontSize: 12),
-            ),
+
+    Widget roundButton({
+      required String heroKey,
+      required String tooltip,
+      required VoidCallback? onTap,
+      required Widget child,
+    }) {
+      return Semantics(
+        button: true,
+        label: tooltip,
+        child: Material(
+          color: V3MobileDesign.card(context),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(99),
+            side: BorderSide(color: V3MobileDesign.stroke(context)),
+          ),
+          child: InkWell(
+            key: ValueKey(heroKey),
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(99),
+            child: SizedBox(width: 46, height: 46, child: child),
           ),
         ),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(children: [
-            for (final (index, filter) in filters.indexed) ...[
-              if (index > 0) const SizedBox(width: 8),
-              V3MobileFilterChip(
-                key: ValueKey(filter.$1 == null
-                    ? 'v3-map-country-all' : 'v3-region-${filter.$1}'),
-                selected: region == filter.$1, label: filter.$2,
-                onTap: () => onRegion(filter.$1)),
-            ],
-          ]),
+      );
+    }
+
+    final scroll = SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: V3MobileDesign.pageInsets.copyWith(
+        bottom: V3MobileDesign.dockClearance + 64),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        V3PrimaryPageHeader(
+          title: v3Copy(context, zh: '选择节点', en: 'Select a node',
+            tw: '選擇節點'),
+          subtitle: v3Copy(context, zh: '选择最适合你的地区',
+            en: 'Pick the region that fits you best',
+            tw: '選擇最適合你的地區'),
         ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 20),
+        Row(children: [
+          Expanded(
+            child: Container(
+              height: 46,
+              decoration: BoxDecoration(
+                color: V3MobileDesign.card(context),
+                border: Border.all(color: V3MobileDesign.stroke(context)),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: TextField(
+                controller: search,
+                onChanged: onQuery,
+                textInputAction: TextInputAction.search,
+                style: TextStyle(color: p.ink, fontSize: 13),
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.only(top: 13),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(AppIcons.search, color: p.inkMuted, size: 18),
+                  ),
+                  suffixIcon: hasQuery
+                      ? IconButton(
+                          key: const ValueKey('v3-node-clear-search'),
+                          tooltip: v3Copy(context, zh: '清除搜索',
+                            en: 'Clear search', tw: '清除搜尋'),
+                          onPressed: clearSearch,
+                          icon: const Icon(AppIcons.close, size: 18),
+                        )
+                      : null,
+                  hintText: v3Copy(context, zh: '搜索节点',
+                    en: 'Search nodes', tw: '搜尋節點'),
+                  hintStyle: TextStyle(color: p.inkMuted,
+                    fontWeight: FontWeight.w500, fontSize: 13),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          PopupMenuButton<NodeRegion?>(
+            key: const ValueKey('v3-node-region-filter'),
+            color: V3MobileDesign.card(context),
+            elevation: 8,
+            position: PopupMenuPosition.under,
+            offset: const Offset(0, 6),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(V3Radius.field),
+              side: BorderSide(color: V3MobileDesign.stroke(context)),
+            ),
+            onSelected: onRegion,
+            itemBuilder: (context) => [
+              for (final (value, label) in filters)
+                PopupMenuItem<NodeRegion?>(
+                  key: ValueKey(value == null
+                      ? 'v3-map-country-all' : 'v3-region-$value'),
+                  value: value,
+                  child: Row(children: [
+                    Expanded(child: Text(label,
+                      style: TextStyle(color: p.ink, fontSize: 13))),
+                    if (region == value)
+                      Icon(AppIcons.check, size: 16, color: p.aquaInk),
+                  ]),
+                ),
+            ],
+            child: roundButton(
+              heroKey: 'v3-node-filter-button',
+              tooltip: v3Copy(context, zh: '按地区筛选', en: 'Filter by region',
+                tw: '依地區篩選'),
+              onTap: null,
+              child: Icon(AppIcons.sliders, size: 18, color: p.ink),
+            ),
+          ),
+          const SizedBox(width: 8),
+          roundButton(
+            heroKey: 'v3-node-refresh',
+            tooltip: v3Copy(context, zh: '刷新节点', en: 'Refresh nodes',
+              tw: '重新整理節點'),
+            onTap: controller.isInitialLoading ? null : controller.refreshData,
+            child: controller.isInitialLoading
+                ? SizedBox(width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2,
+                      color: p.lycheeInk))
+                : Icon(AppIcons.refresh, size: 18, color: p.ink),
+          ),
+          const SizedBox(width: 8),
+          roundButton(
+            heroKey: 'v3-overview-speed-test',
+            tooltip: v3Copy(context, zh: '全部测速', en: 'Test all',
+              tw: '全部測速'),
+            onTap: controller.isLatencyTesting || testingNodeId != null
+                ? null : onTest,
+            child: controller.isLatencyTesting
+                ? SizedBox(width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2,
+                      color: p.lycheeInk))
+                : Icon(AppIcons.zap, size: 18, color: p.ink),
+          ),
+        ]),
+        const SizedBox(height: 18),
         Material(
-          color: V3MobileDesign.card(context),
+          color: controller.autoSelected
+              ? p.aqua.withValues(alpha: .10)
+              : V3MobileDesign.card(context),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(V3Radius.card),
             side: controller.autoSelected
-                ? BorderSide(color: p.ink, width: 1.5)
-                : BorderSide(color: p.line)),
+                ? BorderSide(color: p.aqua.withValues(alpha: .45), width: 1.2)
+                : BorderSide(color: V3MobileDesign.stroke(context)),
+          ),
           child: InkWell(
             key: const ValueKey('v3-mobile-auto-node'),
             borderRadius: BorderRadius.circular(V3Radius.card),
             onTap: controller.autoSelected || pendingId != null
                 ? null : onSelectAuto,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 13, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(children: [
                 Container(
-                  height: 36, width: 36,
+                  height: 40, width: 40,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: p.surfaceRaised,
-                    borderRadius: BorderRadius.circular(V3Radius.control)),
-                  child: Icon(Icons.auto_awesome_rounded,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(AppIcons.sparkles,
                     color: p.lycheeInk, size: 19),
                 ),
-                const SizedBox(width: 11),
+                const SizedBox(width: 12),
                 Expanded(child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -183,24 +258,20 @@ class V3HtmlPhoneNodes extends StatelessWidget {
                   ],
                 )),
                 if (controller.autoSelected)
-                  Icon(Icons.check_circle_rounded,
-                    color: p.ink, size: 19)
-                else
-                  Icon(Icons.chevron_right_rounded,
-                    color: p.inkMuted, size: 19),
+                  Icon(AppIcons.check, color: p.aquaInk, size: 19),
               ]),
             ),
           ),
         ),
-        const SizedBox(height: 13),
+        const SizedBox(height: 14),
         if (controller.isInitialLoading)
           for (var i = 0; i < 3; i++)
             const Padding(
-              padding: EdgeInsets.only(bottom: 9),
+              padding: EdgeInsets.only(bottom: 10),
               child: V3NodeSkeletonRow())
         else if (controller.dataLoadError != null && total == 0)
           V3EmptyState(
-            icon: Icons.error_outline_rounded,
+            icon: AppIcons.error,
             title: v3Copy(context, zh: '节点同步失败',
               en: 'Could not load nodes', tw: '節點同步失敗'),
             subtitle: controller.dataLoadError!,
@@ -210,7 +281,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
           )
         else if (nodes.isEmpty)
           V3EmptyState(
-            icon: Icons.search_off_rounded,
+            icon: AppIcons.searchOff,
             title: filtered
                 ? v3Copy(context, zh: '没有匹配的节点',
                     en: 'No matching nodes', tw: '沒有符合的節點')
@@ -232,7 +303,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
         else ...[
           if (filtered) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
+              padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
               child: Text(v3Copy(context,
                 zh: '${nodes.length} 个匹配节点',
                 en: '${nodes.length} matching nodes',
@@ -242,7 +313,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
           ],
           for (final node in nodes)
             Padding(
-              padding: const EdgeInsets.only(bottom: 9),
+              padding: const EdgeInsets.only(bottom: 10),
               child: _HtmlNodeRow(
                 node: node,
                 selected: !controller.autoSelected &&
@@ -260,7 +331,110 @@ class V3HtmlPhoneNodes extends StatelessWidget {
         ],
       ]),
     );
-    return V3MobileBackdrop(child: scroll);
+    return V3MobileBackdrop(
+      child: Stack(children: [
+        scroll,
+        Positioned(
+          left: V3MobileDesign.pageInset,
+          right: V3MobileDesign.pageInset,
+          bottom: V3BottomDock.height + 14,
+          child: _NodesConnectButton(controller: controller),
+        ),
+      ]),
+    );
+  }
+}
+
+/// The floating connect state pill. Same semantics and tone as the dashboard
+/// action; the visible label is the connection *state*, the spoken label the
+/// *action*, so a screen reader still knows what a tap will do.
+class _NodesConnectButton extends StatelessWidget {
+  const _NodesConnectButton({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final status = controller.connectionStatus;
+    final busy = status == ConnectionStatus.connecting ||
+        status == ConnectionStatus.disconnecting;
+    final connected = status == ConnectionStatus.connected;
+    final locked = controller.connectionActionLocked;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final tone = connected ? p.success : p.lychee;
+    final foreground = busy ? p.ink : (dark ? p.onLychee : Colors.white);
+    final spoken = connected
+        ? v3Copy(context, zh: '断开连接', en: 'Disconnect', tw: '中斷連線')
+        : v3Copy(context, zh: '立即连接', en: 'Connect', tw: '立即連線');
+    final visible = busy
+        ? v3Copy(context, zh: '连接处理中', en: 'Processing', tw: '連線處理中')
+        : connected
+            ? v3Copy(context, zh: '已连接', en: 'Connected', tw: '已連線')
+            : v3Copy(context, zh: '未连接', en: 'Not connected', tw: '未連線');
+
+    Future<void> runToggle() async {
+      final error = await controller.toggleConnection();
+      if (error == null && context.mounted &&
+          controller.connectionStatus == ConnectionStatus.connected) {
+        V3Toast.show(context, v3Copy(context,
+            zh: '连接成功', en: 'Connected', tw: '連線成功'),
+            type: V3ToastType.success);
+      }
+    }
+
+    return Semantics(
+      button: true,
+      enabled: !locked,
+      label: spoken,
+      child: Center(
+        child: AnimatedContainer(
+          duration: v3ReducedMotion(context) ? Duration.zero : V3Motion.fast,
+          width: 220,
+          height: 46,
+          decoration: BoxDecoration(
+            gradient: busy ? null : LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color.lerp(tone, Colors.white, .18)!, tone],
+            ),
+            color: busy ? p.surfaceRaised : null,
+            borderRadius: BorderRadius.circular(99),
+            border: busy ? Border.all(color: p.line) : null,
+            boxShadow: busy ? null : [
+              BoxShadow(color: tone.withValues(alpha: dark ? .28 : .32),
+                blurRadius: 16, offset: const Offset(0, 6)),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              key: const ValueKey('v3-nodes-connect-pill'),
+              onTap: locked ? null : runToggle,
+              borderRadius: BorderRadius.circular(99),
+              child: Center(
+                child: busy
+                    ? SizedBox(width: 18, height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2, color: p.warningInk))
+                    : Row(
+                        key: ValueKey('v3-nodes-connect-${connected ? 'on' : 'off'}'),
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(connected ? AppIcons.check : AppIcons.power,
+                            size: 17, color: foreground),
+                          const SizedBox(width: 8),
+                          Text(visible,
+                            style: TextStyle(color: foreground,
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -285,32 +459,32 @@ class _HtmlNodeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Material(
-      color: V3MobileDesign.card(context),
-      // Selection is an ink outline, same as every other V3 selection;
-      // the row itself never floods with colour.
+      color: selected ? p.aqua.withValues(alpha: .09) : V3MobileDesign.card(context),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(V3Radius.card),
         side: selected
-            ? BorderSide(color: p.ink, width: 1.5)
-            : BorderSide(color: p.line)),
+            ? BorderSide(color: p.aqua.withValues(alpha: .45), width: 1.2)
+            : BorderSide(color: V3MobileDesign.stroke(context)),
+      ),
       child: InkWell(
         key: ValueKey('v3-html-node-${node.id}'),
         borderRadius: BorderRadius.circular(V3Radius.card),
         onTap: blocked || selected ? null : onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 73),
+          constraints: const BoxConstraints(minHeight: 72),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
             child: Row(children: [
               Container(
-                height: 34, width: 34,
+                height: 40, width: 40,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: p.surfaceRaised,
-                  border: Border.all(color: p.hairline),
-                  borderRadius: BorderRadius.circular(V3Radius.control)),
+                decoration: BoxDecoration(
+                  color: selected ? p.surface : p.surfaceRaised,
+                  shape: BoxShape.circle,
+                ),
                 child: V3NodeFlag(code: node.code),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -318,41 +492,27 @@ class _HtmlNodeRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: p.ink,
                       fontSize: 14, fontWeight: FontWeight.w700)),
-                  if (node.englishName.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                  const SizedBox(height: 3),
+                  if (node.tags.isNotEmpty)
+                    V3NodeTags(
+                      tags: node.tags, maxVisible: 2,
+                      chipMaxWidth: 60, showOverflow: false)
+                  else if (node.englishName.isNotEmpty)
                     Text(node.englishName, maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: p.inkMuted, fontSize: 11)),
-                  ],
-                  if (selected || node.tags.isNotEmpty) ...[
-                    const SizedBox(height: 5),
-                    Row(children: [
-                      if (selected) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(color: p.ink,
-                            borderRadius: BorderRadius.circular(99)),
-                          child: Text(v3Copy(context, zh: '当前',
-                            en: 'Current', tw: '目前'),
-                            style: TextStyle(color: p.surface, fontSize: 11,
-                              fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      Flexible(child: V3NodeTags(
-                        tags: node.tags, maxVisible: 2,
-                        chipMaxWidth: 50, showOverflow: false)),
-                    ]),
-                  ],
                 ],
               )),
-              const SizedBox(width: 5),
-              // Untested: outline bolt. Testing: live spinner. Result:
-              // shared region-aware latency capsule (green/amber/red).
-              // Retesting the capsule stays possible via the same hit area.
+              const SizedBox(width: 6),
+              if (selected)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Icon(AppIcons.check, size: 19, color: p.aquaInk),
+                ),
+              // Untested: outline bolt. Testing: spinner. Result: the shared
+              // region-aware latency capsule. The same hit area retests.
               SizedBox(
-                width: 74, height: 44,
+                width: 72, height: 44,
                 child: TextButton(
                   key: ValueKey('v3-node-latency-${node.id}'),
                   onPressed: canTest ? onTest : null,
@@ -371,7 +531,7 @@ class _HtmlNodeRow extends StatelessWidget {
                           child: CircularProgressIndicator(
                             strokeWidth: 2, color: p.lycheeInk))
                       : node.latency <= 0
-                        ? Icon(LucideIcons.zap,
+                        ? Icon(AppIcons.zap,
                             key: const ValueKey('v3-node-speed-untested'),
                             size: 21, color: p.inkMuted)
                         : V3LatencyBadge(

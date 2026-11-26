@@ -8,6 +8,7 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_dashboard_alerts.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 class _AlertFixture extends VisualV3Controller {
   _AlertFixture() : super(AppPage.dashboard);
@@ -97,7 +98,7 @@ void main() {
       expect(
         find.descendant(
           of: alert,
-          matching: find.byIcon(Icons.error_outline_rounded),
+          matching: find.byIcon(AppIcons.error),
         ),
         findsOneWidget,
       );
@@ -186,7 +187,7 @@ void main() {
       expect(
         find.descendant(
           of: data,
-          matching: find.byIcon(Icons.warning_amber_rounded),
+          matching: find.byIcon(AppIcons.warning),
         ),
         findsOneWidget,
       );

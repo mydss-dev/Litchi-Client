@@ -81,20 +81,20 @@ void main() {
             AppLocalePreference.english);
         expect(tester.takeException(), isNull);
 
-        controller.goToPage(AppPage.more);
+        // The 更多 tab is gone: the account hub carries the same destinations.
+        controller.goToPage(AppPage.account);
         await tester.pumpAndSettle();
-        expect(find.text('More services'), findsOneWidget);
         expect(
           find.descendant(
-            of: find.byKey(moreRowKey(AppPage.tickets)),
-            matching: find.text('Support'),
+            of: find.byKey(hubRowKey(AppPage.tickets)),
+            matching: find.text('Ticket support'),
           ),
           findsOneWidget,
         );
         expect(
           find.descendant(
-            of: find.byKey(moreRowKey(AppPage.settings)),
-            matching: find.text('Client settings'),
+            of: find.byKey(hubRowKey(AppPage.settings)),
+            matching: find.text('Settings'),
           ),
           findsOneWidget,
         );

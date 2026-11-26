@@ -11,6 +11,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// The one payment dialog. Every entry point that can take money — a plan
 /// purchase, a wallet top-up, an unpaid order — goes through here.
@@ -264,7 +265,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
             color: p.success.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.check_rounded, color: p.success, size: 34),
+          child: Icon(AppIcons.check, color: p.success, size: 34),
         ),
         const SizedBox(height: 18),
         Text(
@@ -343,7 +344,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
               IconButton(
                 tooltip: _copy(zh: '关闭', en: 'Close', tw: '關閉'),
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded),
+                icon: const Icon(AppIcons.close),
               ),
             ],
           ),
@@ -475,7 +476,7 @@ class _V3PaymentDialogState extends State<_V3PaymentDialog> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: () => UrlOpener.open(_paymentUrl!),
-                    icon: const Icon(Icons.open_in_new_rounded, size: 17),
+                    icon: const Icon(AppIcons.externalLink, size: 17),
                     label: Text(
                       _copy(
                         zh: '重新打开支付页面',

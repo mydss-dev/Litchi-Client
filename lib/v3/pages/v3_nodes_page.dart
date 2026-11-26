@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../shared/models/app_models.dart';
@@ -15,6 +14,7 @@ import '../ui/v3_locale_copy.dart';
 import '../ui/v3_node_groups.dart';
 import '../ui/v3_node_picker.dart';
 import '../ui/v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// The node overview: search, filter by region and latency tier, multi-select
 /// nodes for a targeted latency test, and switch. It is the deep-dive view
@@ -235,7 +235,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
             child: TextField(
               controller: _queryCtrl,
               decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search_rounded),
+                prefixIcon: const Icon(AppIcons.search),
                 hintText: v3Copy(
                   context,
                   zh: '搜索节点',
@@ -259,8 +259,8 @@ class _V3NodesPageState extends State<V3NodesPage> {
                     }),
               icon: Icon(
                 _selecting
-                    ? Icons.check_circle_rounded
-                    : Icons.checklist_rounded,
+                    ? AppIcons.checkCircle
+                    : AppIcons.listChecks,
                 size: 17,
               ),
               label: Text(
@@ -286,7 +286,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(LucideIcons.zap, size: 17),
+                    : const Icon(AppIcons.zap, size: 17),
                 label: Text(v3Copy(context, zh: '测速', en: 'Test', tw: '測速')),
               ),
             ),
@@ -481,7 +481,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
                           color: p.onLychee,
                         ),
                       )
-                    : const Icon(LucideIcons.zap, size: 16),
+                    : const Icon(AppIcons.zap, size: 16),
                 label: Text(
                   _selectedIds.isEmpty
                       ? v3Copy(context, zh: '测速', en: 'Test', tw: '測速')
@@ -512,7 +512,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
       else if (controller.dataLoadError != null && all.isEmpty)
         // Failure is not emptiness: name the error and offer the retry.
         V3EmptyState(
-          icon: Icons.error_outline_rounded,
+          icon: AppIcons.error,
           title: v3Copy(context, zh: '节点加载失败', en: 'Could not load nodes',
             tw: '節點載入失敗'),
           subtitle: controller.dataLoadError!,
@@ -521,7 +521,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
         )
       else if (all.isEmpty)
         V3EmptyState(
-          icon: Icons.public_off_rounded,
+          icon: AppIcons.globeOff,
           title: v3Copy(context, zh: '暂无节点', en: 'No nodes yet', tw: '暫無節點'),
           subtitle: v3Copy(
             context,
@@ -562,7 +562,7 @@ class _V3NodesPageState extends State<V3NodesPage> {
         const SizedBox(height: 8),
         if (nodes.isEmpty)
           V3EmptyState(
-            icon: Icons.search_off_rounded,
+            icon: AppIcons.searchOff,
             title: v3Copy(
               context,
               zh: '没有匹配的节点',
@@ -733,7 +733,7 @@ class _SelectionRow extends StatelessWidget {
                 ),
               ),
               child: selected
-                  ? Icon(Icons.check_rounded, size: 15, color: p.onLychee)
+                  ? Icon(AppIcons.check, size: 15, color: p.onLychee)
                   : null,
             ),
             const SizedBox(width: 10),

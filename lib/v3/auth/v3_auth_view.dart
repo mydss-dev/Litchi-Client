@@ -12,6 +12,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_dropdown.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
 class V3AuthView extends StatefulWidget {
   const V3AuthView({super.key});
@@ -241,8 +242,8 @@ class _LoginFormState extends State<_LoginForm> {
             : v3Copy(context, zh: '隐藏密码',
               en: 'Hide password', tw: '隱藏密碼'),
           onPressed: () => setState(() => _obscure = !_obscure),
-          icon: Icon(_obscure ? Icons.visibility_off_rounded
-              : Icons.visibility_rounded, size: 18, color: p.inkMuted)),
+          icon: Icon(_obscure ? AppIcons.hidden
+              : AppIcons.visible, size: 18, color: p.inkMuted)),
         onSubmitted: (_) => _login()),
       const SizedBox(height: 8),
       Row(children: [
@@ -574,8 +575,8 @@ class _RegisterFormState extends State<_RegisterForm> {
             ? v3Copy(context, zh: '显示密码', en: 'Show password', tw: '顯示密碼')
             : v3Copy(context, zh: '隐藏密码', en: 'Hide password', tw: '隱藏密碼'),
           onPressed: () => setState(() => _obscure = !_obscure),
-          icon: Icon(_obscure ? Icons.visibility_off_rounded
-            : Icons.visibility_rounded, size: 18, color: p.inkMuted))),
+          icon: Icon(_obscure ? AppIcons.hidden
+            : AppIcons.visible, size: 18, color: p.inkMuted))),
       const SizedBox(height: 16),
       _V3Field(controller: _confirm, label: v3Copy(context,
             zh: '确认密码', en: 'CONFIRM PASSWORD', tw: '確認密碼'), hint: '••••••••',
@@ -792,8 +793,8 @@ class _ForgotPasswordFormState extends State<_ForgotPasswordForm> {
             ? v3Copy(context, zh: '显示密码', en: 'Show password', tw: '顯示密碼')
             : v3Copy(context, zh: '隐藏密码', en: 'Hide password', tw: '隱藏密碼'),
           onPressed: () => setState(() => _obscure = !_obscure),
-          icon: Icon(_obscure ? Icons.visibility_off_rounded
-            : Icons.visibility_rounded, size: 18, color: p.inkMuted))),
+          icon: Icon(_obscure ? AppIcons.hidden
+            : AppIcons.visible, size: 18, color: p.inkMuted))),
       const SizedBox(height: 16),
       _V3Field(controller: _confirm,
         label: v3Copy(context, zh: '确认新密码',

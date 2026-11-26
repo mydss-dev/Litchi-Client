@@ -6,6 +6,7 @@ import 'package:forui/forui.dart' show FToasterState, FToasterEntry, FToastVaria
 
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Short-lived feedback for user actions, not server announcements.
 ///
@@ -62,10 +63,10 @@ class V3Toast {
     if (context.findAncestorStateOfType<FToasterState>() != null) {
       final p = V3Palette.of(context);
       final (glyph, tint) = switch (type) {
-        V3ToastType.success => (Icons.check_circle_outline_rounded, p.lychee),
-        V3ToastType.error => (Icons.error_outline_rounded, p.danger),
-        V3ToastType.warning => (Icons.warning_amber_rounded, p.warning),
-        V3ToastType.info => (Icons.info_outline_rounded, p.inkMuted),
+        V3ToastType.success => (AppIcons.checkCircle, p.lychee),
+        V3ToastType.error => (AppIcons.error, p.danger),
+        V3ToastType.warning => (AppIcons.warning, p.warning),
+        V3ToastType.info => (AppIcons.info, p.inkMuted),
       };
       _foruiEntry = showFToast(
         context: context,
@@ -169,10 +170,10 @@ class _V3ToastViewState extends State<_V3ToastView>
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     final (icon, accent) = switch (widget.type) {
-      V3ToastType.success => (Icons.check_circle_outline_rounded, p.lychee),
-      V3ToastType.error => (Icons.error_outline_rounded, p.danger),
-      V3ToastType.warning => (Icons.warning_amber_rounded, p.warning),
-      V3ToastType.info => (Icons.info_outline_rounded, p.inkMuted),
+      V3ToastType.success => (AppIcons.checkCircle, p.lychee),
+      V3ToastType.error => (AppIcons.error, p.danger),
+      V3ToastType.warning => (AppIcons.warning, p.warning),
+      V3ToastType.info => (AppIcons.info, p.inkMuted),
     };
     final platform = Theme.of(context).platform;
     final mobile = !kIsWeb &&

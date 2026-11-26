@@ -5,6 +5,7 @@ import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/v3/pages/v3_nodes_page.dart';
 import 'package:litchi_client/v3/pages/v3_shop_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 import 'package:litchi_client/v3/ui/v3_components.dart';
 
 import 'v3_visual_fixture.dart';
@@ -45,18 +46,25 @@ void main() {
       find.byKey(const ValueKey('shop-filter-recurring'))).selected, isTrue);
 
     await show(nodes, const V3NodesPage());
-    expect(find.byType(V3MobileFilterChip), findsNWidgets(4));
+    // The node page keeps one round filter button in the search row; the
+    // region choices open as a popup menu instead of a permanent chip row.
+    final nodeFilter = find.byKey(const ValueKey('v3-node-filter-button'));
+    expect(nodeFilter, findsOneWidget);
+    expect(tester.getSize(nodeFilter).height, greaterThanOrEqualTo(44));
+    await tester.tap(nodeFilter);
+    await tester.pumpAndSettle();
     final nodeAll = find.byKey(const ValueKey('v3-map-country-all'));
-    expect(tester.widget<V3MobileFilterChip>(nodeAll).selected, isTrue);
-    final nodeMaterial = tester.widget<Material>(
-      find.descendant(of: nodeAll, matching: find.byType(Material)).first);
-    expect(nodeMaterial.color, shopMaterial.color);
-    expect(nodeMaterial.shape.runtimeType, shopMaterial.shape.runtimeType);
+    expect(nodeAll, findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('v3-region-NodeRegion.asia')));
-    await tester.pump();
-    expect(tester.widget<V3MobileFilterChip>(
-      find.byKey(const ValueKey('v3-region-NodeRegion.asia'))).selected,
-      isTrue);
+    await tester.pumpAndSettle();
+    // Re-open: the checked item marks the active filter.
+    await tester.tap(nodeFilter);
+    await tester.pumpAndSettle();
+    expect(find.descendant(
+      of: find.byKey(const ValueKey('v3-region-NodeRegion.asia')),
+      matching: find.byIcon(AppIcons.check)), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('v3-region-NodeRegion.asia')));
+    await tester.pumpAndSettle();
     final search = find.byType(TextField);
     await tester.enterText(search, 'impossible-node-match');
     await tester.pumpAndSettle();
@@ -65,8 +73,13 @@ void main() {
     await tester.tap(clearSearch);
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(search).controller!.text, isEmpty);
-    expect(tester.widget<V3MobileFilterChip>(
-      find.byKey(const ValueKey('v3-region-NodeRegion.asia'))).selected, isTrue);
+    await tester.tap(nodeFilter);
+    await tester.pumpAndSettle();
+    expect(find.descendant(
+      of: find.byKey(const ValueKey('v3-region-NodeRegion.asia')),
+      matching: find.byIcon(AppIcons.check)), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('v3-region-NodeRegion.asia')));
+    await tester.pumpAndSettle();
     await tester.enterText(search, 'impossible-node-match');
     await tester.pumpAndSettle();
     final reset = find.text('清除筛选');
@@ -74,7 +87,10 @@ void main() {
     await tester.tap(reset);
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(search).controller!.text, isEmpty);
-    expect(tester.widget<V3MobileFilterChip>(nodeAll).selected, isTrue);
+    await tester.tap(nodeFilter);
+    await tester.pumpAndSettle();
+    expect(find.descendant(
+      of: nodeAll, matching: find.byIcon(AppIcons.check)), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

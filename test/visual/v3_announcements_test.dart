@@ -10,6 +10,7 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_notice_bar.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 /// Notices and update prompts must consume existing controller state.
 class _NewsController extends VisualV3Controller {
@@ -143,7 +144,7 @@ void main() {
 
     expect(find.byType(V3NoticeBar), findsOneWidget);
     expect(find.text('查看'), findsNothing);
-    expect(find.byIcon(Icons.campaign_rounded), findsNothing);
+    expect(find.byIcon(AppIcons.broadcast), findsNothing);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });

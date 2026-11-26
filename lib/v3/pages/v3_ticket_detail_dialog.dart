@@ -12,6 +12,7 @@ import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Stable outer bounds and title position while detail requests complete.
 class V3TicketDetailDialog extends StatefulWidget {
@@ -158,7 +159,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
               IconButton(tooltip: v3Copy(context, zh: '关闭',
                   en: 'Close', tw: '關閉'),
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded)),
+                icon: const Icon(AppIcons.close)),
             ])),
           const SizedBox(height: 18),
           Expanded(child: Container(
@@ -178,7 +179,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                   ]))
               : _ticket == null
                 ? Center(child: SingleChildScrollView(
-                    child: V3EmptyState(icon: Icons.error_outline_rounded,
+                    child: V3EmptyState(icon: AppIcons.error,
                       title: v3Copy(context, zh: '无法打开工单',
                         en: 'Cannot open ticket', tw: '無法開啟工單'),
                       subtitle: _error ??
@@ -189,7 +190,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                         en: 'Retry', tw: '重試'),
                       onAction: _load)))
                 : _ticket!.messages.isEmpty
-                  ? V3EmptyState(icon: Icons.chat_bubble_outline_rounded,
+                  ? V3EmptyState(icon: AppIcons.message,
                       title: v3Copy(context, zh: '暂无消息',
                         en: 'No messages yet', tw: '暫無訊息'),
                       subtitle: v3Copy(context,
@@ -245,7 +246,7 @@ class _V3TicketDetailDialogState extends State<V3TicketDetailDialog> {
                   ? SizedBox(width: 17, height: 17,
                       child: CircularProgressIndicator(strokeWidth: 2,
                         color: p.onLychee))
-                  : const Icon(Icons.send_rounded, size: 17),
+                  : const Icon(AppIcons.send, size: 17),
                 label: Text(v3Copy(context, zh: '发送', en: 'Send', tw: '傳送')))),
             ])),
           ],

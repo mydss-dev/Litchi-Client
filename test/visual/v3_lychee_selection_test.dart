@@ -9,6 +9,7 @@ import 'package:litchi_client/v3/ui/v3_components.dart';
 import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 class _SystemModeController extends VisualV3Controller {
   _SystemModeController() : super(AppPage.dashboard);
@@ -118,7 +119,7 @@ void main() {
           ),
         ),
       );
-      final icon = tester.widget<Icon>(find.byIcon(Icons.auto_awesome_rounded));
+      final icon = tester.widget<Icon>(find.byIcon(AppIcons.sparkles));
       expect(icon.color, palette.lycheeInk);
       expect(icon.color, isNot(palette.successInk));
       expect(tester.takeException(), isNull);

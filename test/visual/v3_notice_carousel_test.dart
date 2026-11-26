@@ -10,6 +10,7 @@ import 'package:litchi_client/v3/ui/v3_notice_carousel.dart';
 import 'package:litchi_client/v3/ui/v3_html_phone_notice.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 /// Round-3 audit N10: the phone dashboard's notice carousel had zero behavior
 /// tests. These drive the real [V3NoticeCarousel] with a two-notice fixture
@@ -167,7 +168,7 @@ void main() {
     // The page turns on demand under a hovering pointer. The tap schedules
     // the 320ms page animation; it needs an epoch frame to start and one to
     // finish.
-    await tester.tap(find.byIcon(Icons.chevron_right_rounded));
+    await tester.tap(find.byIcon(AppIcons.chevronRight));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('公告乙'), findsOneWidget);

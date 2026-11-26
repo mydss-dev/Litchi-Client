@@ -7,6 +7,7 @@ import 'package:litchi_client/v3/pages/v3_dashboard_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 class _SystemProxyFixture extends VisualV3Controller {
   _SystemProxyFixture() : super(AppPage.dashboard);
@@ -176,12 +177,12 @@ void main() {
     ));
     await tester.pump();
 
-    // A framed map shows the current node's approximate country position.
-    // The primary phone connection action is a wide capsule, not a circle.
-    expect(tester.getSize(find.byKey(kConnectActionCardKey)).height,
-        lessThan(375));
+    // The map owns the top of the screen and carries the node's approximate
+    // country marker; the sheet below it holds the single wide action.
     expect(find.descendant(of: find.byKey(kConnectActionCardKey),
         matching: find.byKey(const ValueKey('v3-map-country-marker'))),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('v3-mobile-security-card')),
         findsOneWidget);
     expect(find.byKey(const ValueKey('v3-mobile-connect-pill')),
         findsOneWidget);
@@ -191,12 +192,14 @@ void main() {
     expect(capsule.height, greaterThanOrEqualTo(48));
     expect(capsule.bottom, lessThan(tester.getTopLeft(
       find.byKey(const Key('v3-connection-duration'))).dy));
-    expect(find.text('保护中'), findsOneWidget);
+    expect(find.text('安全状态'), findsOneWidget);
+    expect(find.text('已连接 · 网络检测通过'), findsOneWidget);
     expect(find.text('01:26:18'), findsOneWidget);
-    expect(find.text('断开连接'), findsOneWidget);
-    // Connected, so the timer's speed suffix shows (aqua up, green down)...
-    expect(find.text('↑ 3.0 MB/s'), findsOneWidget);
-    expect(find.text('↓ 12.0 MB/s'), findsOneWidget);
+    // The visible label is the state; the spoken label is the action.
+    expect(find.text('已连接'), findsOneWidget);
+    // Connected, so both direction tiles read their live rate.
+    expect(find.text('3.0 MB/s'), findsOneWidget);
+    expect(find.text('12.0 MB/s'), findsOneWidget);
     // ...and the metrics card the suffix replaces stays gone.
     expect(find.text('下载速度'), findsNothing);
     expect(find.text('上传速度'), findsNothing);
@@ -205,17 +208,22 @@ void main() {
     // The plan card has left the connection page on the phone.
     expect(find.text('我的套餐'), findsNothing);
 
-    // Map → routing capsule → daily usage → node shortcut, with no duplicate
-    // marketing hero or desktop-only transfer cards.
-    final map = tester.getRect(find.byKey(kConnectActionCardKey));
+    // Reference order inside the sheet: safety → routing → live speed → node
+    // → action → session → plan usage, with no desktop-only transfer cards.
+    final security = tester.getRect(
+      find.byKey(const ValueKey('v3-mobile-security-card')));
     final routing = tester.getRect(
       find.byKey(const ValueKey('v3-route-mode-track')));
+    final nodeCard = tester.getRect(find.byKey(kCurrentNodeCardKey));
     final usage = tester.getRect(
       find.byKey(const ValueKey('v3-mobile-daily-usage')));
-    final nodeCard = tester.getRect(find.byKey(kCurrentNodeCardKey));
-    expect(map.bottom, lessThanOrEqualTo(routing.top));
-    expect(routing.bottom, lessThanOrEqualTo(usage.top));
-    expect(usage.bottom, lessThanOrEqualTo(nodeCard.top));
+    final duration = tester.getRect(
+      find.byKey(const Key('v3-connection-duration')));
+    expect(security.bottom, lessThanOrEqualTo(routing.top));
+    expect(routing.bottom, lessThanOrEqualTo(nodeCard.top));
+    expect(nodeCard.bottom, lessThanOrEqualTo(capsule.top));
+    expect(capsule.bottom, lessThanOrEqualTo(duration.top));
+    expect(duration.bottom, lessThanOrEqualTo(usage.top));
     expect(find.text('今日已用'), findsOneWidget);
     expect(find.text('2.48 GB'), findsOneWidget);
     expect(find.text('剩余流量'), findsOneWidget);
@@ -226,7 +234,8 @@ void main() {
     expect(find.text('系统代理'), findsNothing);
     expect(find.text('TUN 模式'), findsNothing);
     expect(find.text('规则'), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    // One chevron in the notice strip, one on the node row.
+    expect(find.byIcon(AppIcons.chevronRight), findsAtLeastNWidgets(1));
 
     // Selecting the node card now routes to the Nodes tab instead
     // of opening the old picker overlay. Navigation is covered in the
@@ -259,14 +268,12 @@ void main() {
     await tester.pump();
 
     final action = find.byKey(const ValueKey('v3-mobile-connect-pill'));
-    final cardRect = tester.getRect(find.byKey(kConnectActionCardKey));
     final actionRect = tester.getRect(action);
-    expect(cardRect.left, 16);
-    expect(cardRect.right, 304);
-    expect(actionRect.left, greaterThan(cardRect.left));
-    expect(actionRect.right, lessThan(cardRect.right));
+    // The sheet is full-bleed; the action keeps a 14dp gutter inside it.
+    expect(actionRect.left, 14);
+    expect(actionRect.right, 306);
     expect(actionRect.height, greaterThanOrEqualTo(48));
-    expect(find.text('断开连接'), findsOneWidget);
-    expect(find.text('↓ 12.0 MB/s'), findsOneWidget);
+    expect(find.text('已连接'), findsOneWidget);
+    expect(find.text('12.0 MB/s'), findsOneWidget);
   });
 }

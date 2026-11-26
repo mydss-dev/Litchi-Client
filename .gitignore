@@ -100,3 +100,15 @@ config.json
 
 # Generated UI snapshots are transient and should never be committed.
 /test/visual/goldens/
+
+# 忽略 UI 测试生成的图片
+/test/visual/html_goldens/*.png
+
+# 忽略测试失败生成的图片
+/test/**/failures/
+
+# 忽略 Flutter 构建产物
+/build/
+/.dart_tool/
+# 忽略 UI 审核截图
+/test/_audit/shots/

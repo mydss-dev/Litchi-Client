@@ -14,6 +14,7 @@ import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
 class V3InvitePage extends StatefulWidget {
   const V3InvitePage({super.key});
@@ -221,18 +222,18 @@ class _V3InvitePageState extends State<V3InvitePage> {
     final symbol = controller.currencySymbol;
     final records = controller.inviteRecords;
     final metrics = <(IconData, String, String, Color)>[
-      (Icons.person_outline_rounded,
+      (AppIcons.user,
         v3Copy(context, zh: '已邀请好友', en: 'Invited', tw: '已邀請好友'),
         '${controller.invitedCount}', p.lycheeInk),
-      (Icons.auto_awesome_rounded,
+      (AppIcons.sparkles,
         v3Copy(context, zh: '累计佣金', en: 'Commission', tw: '累計佣金'),
         '$symbol${controller.earnedCommission.toStringAsFixed(2)}',
         p.successInk),
-      (Icons.storage_outlined,
+      (AppIcons.database,
         v3Copy(context, zh: '待结算佣金', en: 'Pending', tw: '待結算佣金'),
         '$symbol${controller.pendingCommission.toStringAsFixed(2)}',
         p.warningInk),
-      (Icons.link_rounded,
+      (AppIcons.link,
         v3Copy(context, zh: '可提现余额', en: 'Withdrawable', tw: '可提領餘額'),
         '$symbol${controller.withdrawable.toStringAsFixed(2)}',
         p.aquaInk),
@@ -254,7 +255,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
               en: 'Refresh invite data', tw: '重新整理邀請資料'),
             onPressed: _refreshing != null
                 ? null : () => _startRefresh(controller),
-            icon: Icon(Icons.refresh_rounded, size: 19, color: p.inkMuted)),
+            icon: Icon(AppIcons.refresh, size: 19, color: p.inkMuted)),
         ),
         const SizedBox(height: 14),
         if (controller.isInitialLoading ||
@@ -262,7 +263,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
           const _InviteSkeleton()
         else if (controller.dataLoadError != null && codeCount == 0)
           V3EmptyState(
-            icon: Icons.error_outline_rounded,
+            icon: AppIcons.error,
             title: v3Copy(context, zh: '邀请数据加载失败',
               en: 'Could not load invitations', tw: '邀請資料載入失敗'),
             subtitle: controller.dataLoadError!,
@@ -291,7 +292,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
                     OutlinedButton.icon(
                       onPressed: () => _copy(code, v3Copy(context,
                         zh: '邀请码已复制', en: 'Code copied', tw: '邀請碼已複製')),
-                      icon: const Icon(Icons.copy_rounded, size: 15),
+                      icon: const Icon(AppIcons.copy, size: 15),
                       label: Text(v3Copy(context,
                         zh: '复制邀请码', en: 'Copy code', tw: '複製邀請碼'),
                         style: const TextStyle(fontSize: 11))),
@@ -309,7 +310,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
                   Divider(height: 1, color: p.line),
                   const SizedBox(height: 10),
                   Row(children: [
-                    Icon(Icons.link_rounded, color: p.inkMuted, size: 16),
+                    Icon(AppIcons.link, color: p.inkMuted, size: 16),
                     const SizedBox(width: 8),
                     Expanded(child: Text(link, maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -320,7 +321,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
                       onPressed: () => _copy(link, v3Copy(context,
                         zh: '邀请链接已复制', en: 'Link copied',
                         tw: '邀請連結已複製')),
-                      icon: Icon(Icons.copy_rounded,
+                      icon: Icon(AppIcons.copy,
                         color: p.inkMuted, size: 17)),
                   ]),
                 ],
@@ -375,7 +376,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
                 else for (final record in records.take(8)) ...[
                   Row(children: [
                     CircleAvatar(radius: 16, backgroundColor: p.surfaceRaised,
-                      child: Icon(Icons.person_outline_rounded,
+                      child: Icon(AppIcons.user,
                         size: 17, color: p.inkMuted)),
                     const SizedBox(width: 10),
                     Expanded(child: Column(
@@ -501,7 +502,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.refresh_rounded),
+                  : const Icon(AppIcons.refresh),
             ),
           ),
           const SizedBox(height: 18),
@@ -515,7 +516,7 @@ class _V3InvitePageState extends State<V3InvitePage> {
           else if (controller.dataLoadError != null && codes.isEmpty)
             // Failure is not emptiness: name the error and offer the retry.
             V3EmptyState(
-              icon: Icons.error_outline_rounded,
+              icon: AppIcons.error,
               title: v3Copy(
                 context,
                 zh: '邀请数据加载失败',
@@ -800,7 +801,7 @@ class _InviteHero extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.link_rounded, size: 16, color: p.inkMuted),
+                  Icon(AppIcons.link, size: 16, color: p.inkMuted),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -947,7 +948,7 @@ class _InviteHero extends StatelessWidget {
                             color: p.lycheeInk,
                           ),
                         )
-                      : Icon(Icons.add_rounded, color: p.lycheeInk, size: 20),
+                      : Icon(AppIcons.add, color: p.lycheeInk, size: 20),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -1237,7 +1238,7 @@ class _InvitePagerState extends State<_InvitePager> {
                   child: _arrow(
                     p,
                     key: const ValueKey('v3-invite-previous'),
-                    icon: Icons.chevron_left_rounded,
+                    icon: AppIcons.chevronLeft,
                     enabled: widget.canPrevious,
                     onTap: widget.onPrevious,
                     tooltip: v3Copy(
@@ -1257,7 +1258,7 @@ class _InvitePagerState extends State<_InvitePager> {
                   child: _arrow(
                     p,
                     key: const ValueKey('v3-invite-next'),
-                    icon: Icons.chevron_right_rounded,
+                    icon: AppIcons.chevronRight,
                     enabled: widget.canNext,
                     onTap: widget.onNext,
                     tooltip: v3Copy(
@@ -1325,7 +1326,7 @@ class _InviteStats extends StatelessWidget {
     // (the ratio already lives in the page subtitle).
     final tiles = [
       V3StatTile(
-        icon: Icons.person_rounded,
+        icon: AppIcons.user,
         label: v3Copy(context, zh: '邀请人数', en: 'Friends invited', tw: '邀請人數'),
         value: v3Copy(
           context,
@@ -1336,7 +1337,7 @@ class _InviteStats extends StatelessWidget {
         accent: p.lycheeInk,
       ),
       V3StatTile(
-        icon: Icons.auto_awesome_rounded,
+        icon: AppIcons.sparkles,
         label: v3Copy(context, zh: '累计佣金', en: 'Total commission', tw: '累計佣金'),
         valueWidget: V3RollingMoney(
           value: controller.earnedCommission,
@@ -1351,7 +1352,7 @@ class _InviteStats extends StatelessWidget {
         accent: p.successInk,
       ),
       V3StatTile(
-        icon: Icons.storage_rounded,
+        icon: AppIcons.database,
         label: v3Copy(context, zh: '待结算佣金', en: 'Settling commission', tw: '待結算佣金'),
         valueWidget: V3RollingMoney(
           value: controller.pendingCommission,
@@ -1366,7 +1367,7 @@ class _InviteStats extends StatelessWidget {
         accent: p.warningInk,
       ),
       V3StatTile(
-        icon: Icons.link_rounded,
+        icon: AppIcons.link,
         label: v3Copy(context, zh: '可提现余额', en: 'Withdrawable', tw: '可提現餘額'),
         valueWidget: V3RollingMoney(
           value: controller.withdrawable,
@@ -1454,7 +1455,7 @@ class _ReferralLedger extends StatelessWidget {
           const SizedBox(height: 12),
           if (records.isEmpty)
             V3EmptyState(
-              icon: Icons.receipt_long_rounded,
+              icon: AppIcons.receipt,
               title: v3Copy(
                 context,
                 zh: '暂无返佣记录',
@@ -1483,7 +1484,7 @@ class _ReferralLedger extends StatelessWidget {
                         borderRadius: BorderRadius.circular(V3Radius.field),
                       ),
                       child: Icon(
-                        Icons.person_add_alt_1_rounded,
+                        AppIcons.userPlus,
                         color: p.lycheeInk,
                         size: 17,
                       ),

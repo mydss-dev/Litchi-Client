@@ -2,18 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_localizations/flutter_localizations.dart'
-    show GlobalCupertinoLocalizations, GlobalMaterialLocalizations,
-        GlobalWidgetsLocalizations;
-// V3 widgets come from the material_ui fork, whose MaterialLocalizations is a
-// distinct type from flutter_localizations'. Register both delegates: the
-// official one satisfies plain Flutter MaterialApp harnesses, the fork one
-// satisfies the app's real MaterialApp. Without the fork delegate, zh locale
-// makes RefreshIndicator throw "No MaterialLocalizations found".
-import 'package:material_ui/material_ui.dart'
-    as ui show GlobalMaterialLocalizations;
-import 'package:cupertino_ui/cupertino_ui.dart'
-    as cupertino show GlobalCupertinoLocalizations;
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
@@ -99,8 +88,6 @@ abstract class AppLocalizations {
       <LocalizationsDelegate<dynamic>>[
         delegate,
         GlobalMaterialLocalizations.delegate,
-        ui.GlobalMaterialLocalizations.delegate,
-        cupertino.GlobalCupertinoLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
       ];

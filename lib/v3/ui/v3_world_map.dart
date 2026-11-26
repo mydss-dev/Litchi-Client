@@ -95,16 +95,13 @@ class V3WorldMapPainter extends CustomPainter {
     final originY = (size.height - cell * _gridRows) / 2;
     // The palette instances are the two static const themes, so identity tells
     // the two washes apart without threading a brightness through the painter.
-    // The Elegant reference paints the light-stage map in a soft blue wash,
-    // not ink-grey: the dots read as geography, not as text debris. Dark
-    // keeps the restrained white at 10% so the field never glows.
     final dot = identical(palette, V3Palette.dark)
-        ? Colors.white.withValues(alpha: 0.10)
-        : const Color(0xFF8FA9CC).withValues(alpha: 0.34);
+        ? Colors.white.withValues(alpha: 0.14)
+        : palette.ink.withValues(alpha: 0.20);
     final dpr = devicePixelRatio > 0 ? devicePixelRatio : 1.0;
     final radius = math.max(
       0.5,
-      ((cell * 0.52 / 2) * dpr).roundToDouble() / dpr,
+      ((cell * 0.56 / 2) * dpr).roundToDouble() / dpr,
     );
     final dots = Path();
     for (var row = 0; row < _gridRows && row < rows.length; row++) {
@@ -155,10 +152,15 @@ class V3WorldMapNodePin extends StatelessWidget {
     super.key,
     required this.countryCode,
     required this.connected,
+    this.glow = false,
   });
 
   final String countryCode;
   final bool connected;
+
+  /// Adds a soft halo around the marker — the phone's map reads the position
+  /// as a live light source, not a map pin on a printed chart.
+  final bool glow;
 
   // Offset(dx: longitude, dy: latitude).
   static const _centers = <String, Offset>{
@@ -210,6 +212,19 @@ class V3WorldMapNodePin extends StatelessWidget {
         final x = originX + (location.dx + 180) / 360 * cell * 96;
         final y = originY + (90 - location.dy) / 180 * cell * 48;
         return Stack(children: [
+          if (glow)
+            Positioned(left: x - 18, top: y - 18,
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    ink.withValues(alpha: .30),
+                    ink.withValues(alpha: 0),
+                  ]),
+                ),
+              ),
+            ),
           Positioned(left: x - 12, top: y - 12,
             child: Container(
               key: const ValueKey('v3-map-country-marker'),

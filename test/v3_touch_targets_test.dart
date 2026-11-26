@@ -74,8 +74,8 @@ void main() {
   ) async {
     try {
       await _pump(tester, AppPage.nodes, const Size(390, 844));
-      // Mobile HTML region controls are InkWell chips, not ChoiceChip.
-      final chips = find.byKey(const ValueKey('v3-map-country-all'));
+      // Region filters live behind the round filter button in the search row.
+      final chips = find.byKey(const ValueKey('v3-node-filter-button'));
       expect(chips, findsOneWidget,
           reason: 'the overview must present a region filter');
       final rect = tester.getRect(chips);

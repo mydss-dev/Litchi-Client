@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
@@ -8,6 +7,7 @@ import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 /// The picker and desktop overview share an outline bolt before testing,
 /// and the same tier-coloured capsule as the phone after measuring.
@@ -74,11 +74,11 @@ void main() {
       expect(action, findsOneWidget);
       if (latency <= 0) {
         expect(find.descendant(of: action,
-          matching: find.byIcon(LucideIcons.zap)), findsOneWidget);
+          matching: find.byIcon(AppIcons.zap)), findsOneWidget);
         expect(find.text('超时'), findsNothing);
       } else {
         expect(find.descendant(of: action,
-          matching: find.byIcon(LucideIcons.zap)), findsNothing);
+          matching: find.byIcon(AppIcons.zap)), findsNothing);
         expect(find.text(latency >= 9999 ? '超时' : '${latency}ms'),
           findsOneWidget);
       }
@@ -118,13 +118,13 @@ void main() {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.pumpWidget(MaterialApp(theme: V3Theme.light(), home: row()));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+    expect(find.byIcon(AppIcons.chevronRight), findsNothing);
 
     // Android: the chevron is a touch-platform affordance.
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     await tester.pumpWidget(MaterialApp(theme: V3Theme.light(), home: row()));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    expect(find.byIcon(AppIcons.chevronRight), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
   });
 }

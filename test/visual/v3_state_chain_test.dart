@@ -17,6 +17,7 @@ import 'package:litchi_client/v3/ui/v3_empty_state.dart';
 import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 /// Round-3 audit N11: the shared three-state chain (loading skeleton ->
 /// loaded -> named failure with a retry) was only ever pinned to its loaded
@@ -113,7 +114,7 @@ Future<void> _pumpAndTapRetry(
 
   expect(find.byType(V3EmptyState), findsOneWidget);
   // Failure is not emptiness: the state names itself with the error icon.
-  expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+  expect(find.byIcon(AppIcons.error), findsOneWidget);
   expect(find.byType(V3SkeletonBlock), findsNothing);
 
   await tester.tap(find.text('重试'));
@@ -208,7 +209,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(V3EmptyState), findsOneWidget);
-    expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+    expect(find.byIcon(AppIcons.error), findsOneWidget);
 
     // The page's mount-time refresh already ran once; the retry adds another.
     final before = controller.refreshTicketsCalls;
@@ -259,7 +260,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(V3EmptyState), findsOneWidget);
-    expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+    expect(find.byIcon(AppIcons.error), findsOneWidget);
 
     api.fail = false;
     await tester.tap(find.text('重试'));

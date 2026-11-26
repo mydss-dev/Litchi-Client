@@ -11,6 +11,7 @@ import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_plan_renewal.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Supported chart periods are the same on desktop and mobile.
 const List<int> kV3TrafficPeriods = [7, 15, 30];
@@ -72,7 +73,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
           ),
           const SizedBox(height: 36),
           V3EmptyState(
-            icon: Icons.data_usage_rounded,
+            icon: AppIcons.gauge,
             title: v3Copy(context,
               zh: '还没有可统计的套餐',
               en: 'No plan with usage data',
@@ -110,7 +111,7 @@ class _V3TrafficPageState extends State<V3TrafficPage> {
               title: pageTitle,
             ),
             V3EmptyState(
-              icon: Icons.error_outline_rounded,
+              icon: AppIcons.error,
               title: v3Copy(
                 context,
                 zh: '流量加载失败',
@@ -416,25 +417,25 @@ class _TimingGrid extends StatelessWidget {
           );
     final tiles = [
       V3StatTile(
-        icon: Icons.arrow_downward_rounded,
+        icon: AppIcons.arrowDown,
         label: v3Copy(context, zh: '今日用量', en: 'Used today', tw: '今日用量'),
         value: '${controller.todayTrafficGb.toStringAsFixed(2)} GB',
         accent: p.successInk,
       ),
       V3StatTile(
-        icon: Icons.link_rounded,
+        icon: AppIcons.link,
         label: v3Copy(context, zh: '在线设备', en: 'Online devices', tw: '線上裝置'),
         value: devices,
         accent: p.aquaInk,
       ),
       V3StatTile(
-        icon: Icons.storage_rounded,
+        icon: AppIcons.database,
         label: v3Copy(context, zh: '本月已用', en: 'Used this month', tw: '本月已用'),
         value: usedLabel,
         accent: p.warningInk,
       ),
       V3StatTile(
-        icon: Icons.bar_chart_rounded,
+        icon: AppIcons.chartBar,
         label: v3Copy(context, zh: '剩余流量', en: 'Remaining data', tw: '剩餘流量'),
         value: remainLabel,
         accent: p.successInk,
@@ -659,7 +660,7 @@ class _TrendPanelView extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            Icons.stacked_line_chart_rounded,
+                            AppIcons.chartStacked,
                             color: p.inkMuted,
                             size: 18,
                           ),
@@ -991,7 +992,7 @@ class _RefreshIconButtonState extends State<_RefreshIconButton> {
                 color: p.inkMuted,
               ),
             )
-          : const Icon(Icons.refresh_rounded),
+          : const Icon(AppIcons.refresh),
     );
   }
 }
@@ -1018,7 +1019,7 @@ class _DataErrorRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.warning_amber_rounded, size: 18, color: p.warning),
+          Icon(AppIcons.warning, size: 18, color: p.warning),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

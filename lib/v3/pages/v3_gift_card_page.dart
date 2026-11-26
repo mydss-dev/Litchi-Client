@@ -7,7 +7,9 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_mobile_components.dart';
 import '../ui/v3_sheet.dart';
+import '../../shared/theme/app_icons.dart';
 
 AppLocalizations _copy(BuildContext context) =>
     Localizations.of<AppLocalizations>(context, AppLocalizations) ??
@@ -163,7 +165,24 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
                 autofocus: true,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _redeem(),
-                decoration: InputDecoration(hintText: l.giftCardEnterHint),
+                decoration: InputDecoration(
+                  hintText: l.giftCardEnterHint,
+                  hintStyle: TextStyle(color: p.inkMuted, fontSize: 13),
+                  filled: true,
+                  fillColor: p.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(V3Radius.field),
+                    borderSide: BorderSide(color: p.line),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(V3Radius.field),
+                    borderSide: BorderSide(color: p.line),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(V3Radius.field),
+                    borderSide: BorderSide(color: p.inkMuted),
+                  ),
+                ),
               ),
               if (_error != null || _success != null) ...[
                 const SizedBox(height: 12),
@@ -181,16 +200,10 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
-                height: 46,
+                height: 48,
                 child: FilledButton(
                   onPressed: _busy ? null : _redeem,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: p.lychee,
-                    foregroundColor: p.onLychee,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(V3Radius.field),
-                    ),
-                  ),
+                  style: V3MobileDesign.primaryButton(context),
                   child: Text(_busy ? l.giftCardRedeeming : l.giftCardRedeemNow),
                 ),
               ),
@@ -202,7 +215,7 @@ class _V3GiftCardPageState extends State<V3GiftCardPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.info_outline_rounded, color: p.inkMuted, size: 18),
+              Icon(AppIcons.info, color: p.inkMuted, size: 18),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(

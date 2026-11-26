@@ -7,6 +7,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// The bind command is copied, never rendered with the subscription URL.
 class V3TelegramPage extends StatefulWidget {
@@ -148,7 +149,7 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
           Container(width: 42, height: 42,
             decoration: BoxDecoration(color: p.lycheeSoft,
               borderRadius: BorderRadius.circular(V3Radius.field)),
-            child: Icon(Icons.send_rounded, size: 20, color: p.lycheeInk)),
+            child: Icon(AppIcons.send, size: 20, color: p.lycheeInk)),
           const SizedBox(width: 13),
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,7 +184,7 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
       if (bound)
         V3ActionButton(label: v3Copy(context, zh: '解除绑定',
           en: 'Unlink Telegram', tw: '解除綁定'),
-          icon: Icons.link_off_rounded, secondary: true,
+          icon: AppIcons.linkOff, secondary: true,
           busy: _working, onPressed: _working ? null : _unbind)
       else ...[
         Text(v3Copy(context,
@@ -197,19 +198,19 @@ class _V3TelegramPageState extends State<V3TelegramPage> {
         if (!_loading && _botUsername.isEmpty) ...[
           TextButton.icon(
             onPressed: _working ? null : _loadBot,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
+            icon: const Icon(AppIcons.refresh, size: 18),
             label: Text(v3Copy(context, zh: '重试读取机器人',
               en: 'Retry bot lookup', tw: '重試讀取機器人'))),
           const SizedBox(height: 4),
         ],
         V3ActionButton(label: v3Copy(context, zh: '复制绑定命令',
           en: 'Copy bind command', tw: '複製綁定指令'),
-          icon: Icons.content_copy_rounded, busy: _working,
+          icon: AppIcons.copy, busy: _working,
           onPressed: _working || _loading ? null : _copyBindCommand),
         const SizedBox(height: 10),
         V3ActionButton(label: v3Copy(context, zh: '打开 Telegram',
           en: 'Open Telegram', tw: '開啟 Telegram'),
-          icon: Icons.send_rounded, secondary: true,
+          icon: AppIcons.send, secondary: true,
           onPressed: _loading || _botUsername.isEmpty ? null : _openTelegram),
         const SizedBox(height: 4),
         TextButton(onPressed: _working ? null : _refreshStatus,

@@ -11,6 +11,7 @@ import '../theme/v3_palette.dart';
 import 'v3_components.dart';
 import 'v3_locale_copy.dart';
 import 'v3_notice_bar.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Phone landing lane: backend notice images rotate as a carousel with the
 /// title overlaid, arrows on both sides and a page counter. The update
@@ -181,12 +182,12 @@ class _V3NoticeCarouselState extends State<V3NoticeCarousel>
                 ),
                 if (_pageCount > 1) ...[
                   _NoticeCarouselArrow(
-                    icon: Icons.chevron_left_rounded,
+                    icon: AppIcons.chevronLeft,
                     onTap: () => _go(-1),
                     alignLeft: true,
                   ),
                   _NoticeCarouselArrow(
-                    icon: Icons.chevron_right_rounded,
+                    icon: AppIcons.chevronRight,
                     onTap: () => _go(1),
                     alignLeft: false,
                   ),
@@ -311,7 +312,7 @@ class _NoticeUpdatePage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(V3Radius.field),
                 ),
                 child: Icon(
-                  Icons.system_update_rounded,
+                  AppIcons.download,
                   color: p.onLychee,
                   size: 20,
                 ),
@@ -346,7 +347,7 @@ class _NoticeUpdatePage extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: p.lychee, size: 22),
+              Icon(AppIcons.chevronRight, color: p.lychee, size: 22),
             ],
           ),
         ),

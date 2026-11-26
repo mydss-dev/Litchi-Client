@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:ios26_bottom_navigationbar/ios26_bottom_navigationbar.dart';
+import 'package:litchi_client/v3/ui/v3_bottom_dock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/v3/app/v3_nav.dart';
@@ -104,12 +104,13 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     try {
       await _pump(tester, AppPage.dashboard);
-      final nav = find.byType(IOS26BottomNavigationBar);
+      final nav = find.byType(V3BottomDock);
       expect(nav, findsOneWidget);
       final rect = tester.getRect(nav);
       // The approved iOS26 dock displays both icons and labels. Measure its
       // visual icons against the Android gesture-safe region.
       final icons = find.descendant(of: nav, matching: find.byType(Icon));
+      // Four primary tabs after the 更多 tab was retired.
       expect(icons, findsAtLeastNWidgets(4));
       for (final element in icons.evaluate()) {
         final icon = tester.getRect(find.byWidget(element.widget));

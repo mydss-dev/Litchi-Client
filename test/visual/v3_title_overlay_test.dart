@@ -8,6 +8,7 @@ import 'package:litchi_client/v3/app/v3_shell.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 /// The visual fixture pins `themeMode` to light for stable goldens, so the
 /// theme assertion records the setter call instead of reading the pinned
@@ -56,7 +57,7 @@ Future<void> _run(WidgetTester tester) async {
   await tester.pumpAndSettle();
 
   // Light mode shows the moon; tapping it commits an explicit dark mode.
-  await tester.tap(find.byIcon(Icons.dark_mode_rounded));
+  await tester.tap(find.byIcon(AppIcons.sleep));
   await tester.pump();
   expect(controller.requestedTheme, ThemeMode.dark);
 

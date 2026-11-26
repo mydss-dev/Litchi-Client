@@ -10,6 +10,7 @@ import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Wallet actions retain independent dialogs, rather than a nested funds hub.
 Future<void> showV3RechargeDialog(BuildContext context) {
@@ -233,7 +234,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
                 // Busy-window parity with PopScope: a disabled close is the
                 // visible half of the not-dismissible contract.
                 onPressed: _busy ? null : () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded)),
+                icon: const Icon(AppIcons.close)),
             ]),
             const SizedBox(height: 6),
             TextField(controller: _amountController, autofocus: true,
@@ -267,7 +268,7 @@ class _RechargeDialogState extends State<_RechargeDialog> {
                     ? SizedBox(width: 18, height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2,
                           color: p.onLychee))
-                    : const Icon(Icons.add_card_rounded, size: 18),
+                    : const Icon(AppIcons.card, size: 18),
                 label: Text(v3Copy(context, zh: '去支付',
                   en: 'Continue to payment', tw: '前往付款')))),
           ])))));
@@ -321,7 +322,7 @@ class _AmountDialogState extends State<_AmountDialog> {
               IconButton(tooltip: v3Copy(context, zh: '关闭',
                   en: 'Close', tw: '關閉'),
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded)),
+                icon: const Icon(AppIcons.close)),
             ]),
             const SizedBox(height: 6),
             Text(widget.subtitle,
@@ -420,7 +421,7 @@ class _WithdrawDialogState extends State<_WithdrawDialog> {
               IconButton(tooltip: v3Copy(context, zh: '关闭',
                   en: 'Close', tw: '關閉'),
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded)),
+                icon: const Icon(AppIcons.close)),
             ]),
             const SizedBox(height: 18),
             Text(v3Copy(context, zh: '提现方式',

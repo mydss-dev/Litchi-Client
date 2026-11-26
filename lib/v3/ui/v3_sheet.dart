@@ -10,6 +10,7 @@ import 'v3_components.dart';
 import 'v3_layout.dart';
 import 'v3_locale_copy.dart';
 import 'v3_mobile_components.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// The width at which the workspace and its sheets switch layouts.
 const double kV3CompactBreakpoint = 760;
@@ -145,7 +146,7 @@ class V3SheetHeader extends StatelessWidget {
         IconButton(
           tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.close_rounded, size: 20),
+          icon: const Icon(AppIcons.close, size: 20),
           color: p.inkMuted),
       ]));
   }

@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/app_controller.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Where a destination is surfaced in the v3 shell.
 ///
@@ -12,9 +13,9 @@ enum V3NavPlacement {
   /// Compact bottom-navigation tab.
   mobilePrimary,
 
-  /// Reached from the compact overflow surfaces: the 我的 grid (the account
-  /// page re-surfaces these destinations, §13.3) and the legacy more page,
-  /// whose route stays compatible even though its tab is gone.
+  /// Reached from the compact 我的 hub, which re-surfaces these destinations
+  /// (§13.3). The legacy more page keeps its route for old deep links but is
+  /// no longer a navigation surface.
   mobileMore,
 
   /// Compact rail entry on wide layouts.
@@ -89,71 +90,70 @@ class V3NavItem {
 
 // ── Compact IA ──────────────────────────────────────────────────────────────
 //
-// Four tabs (§13.3): 连接 / 节点 / 套餐 / 我的. The 更多 tab is deleted —
-// everything it aggregated moved into the 我的 grid — so the floating island
-// stays at four destinations and never crowds a 360dp window.
+// Four tabs: 连接 / 节点 / 套餐 / 我的. The 更多 tab is retired because the
+// account hub already carries the same destinations; 更多's two extras (site
+// notices and gift-card redemption) moved onto 我的 as well. The legacy route
+// stays parseable, but nothing in the compact shell links to it.
 
 const List<V3NavItem> kMobilePrimary = [
   V3NavItem(
     page: AppPage.dashboard,
-    icon: Icons.radar_rounded,
+    icon: AppIcons.connection,
     placement: V3NavPlacement.mobilePrimary,
   ),
   V3NavItem(
     page: AppPage.nodes,
-    icon: Icons.hub_rounded,
+    icon: AppIcons.nodes,
     placement: V3NavPlacement.mobilePrimary,
   ),
   V3NavItem(
     page: AppPage.shop,
-    icon: Icons.shopping_bag_rounded,
+    icon: AppIcons.plans,
     placement: V3NavPlacement.mobilePrimary,
   ),
   V3NavItem(
     page: AppPage.account,
-    icon: Icons.person_outline_rounded,
+    icon: AppIcons.account,
     placement: V3NavPlacement.mobilePrimary,
   ),
 ];
 
 /// The overflow destinations, in the order the desktop rail presents its
-/// equivalents. The 更多 tab no longer presents this list (§13.3), but the
-/// model stays: the legacy more page renders these rows and the nav-model
-/// declaration contract reads it, while the 我的 grid batch re-surfaces the
-/// same destinations on compact layouts.
+/// equivalents. The 我的 hub re-surfaces these destinations on compact layouts
+/// (§13.3); the nav-model declaration contract reads this list too.
 const List<V3NavItem> kMobileMore = [
   // The rail keeps orders adjacent to the shop; this list mirrors the rail's
   // order, so orders leads here too.
   V3NavItem(
     page: AppPage.orders,
-    icon: Icons.receipt_long_rounded,
+    icon: AppIcons.receipt,
     placement: V3NavPlacement.mobileMore,
   ),
   // Compact has no window bar, so the redemption form lives here instead of
   // the desktop title-bar gift button.
   V3NavItem(
     page: AppPage.giftCard,
-    icon: Icons.card_giftcard_rounded,
+    icon: AppIcons.gift,
     placement: V3NavPlacement.mobileMore,
   ),
   V3NavItem(
     page: AppPage.traffic,
-    icon: Icons.insights_rounded,
+    icon: AppIcons.chartLine,
     placement: V3NavPlacement.mobileMore,
   ),
   V3NavItem(
     page: AppPage.invite,
-    icon: Icons.auto_awesome_rounded,
+    icon: AppIcons.sparkles,
     placement: V3NavPlacement.mobileMore,
   ),
   V3NavItem(
     page: AppPage.tickets,
-    icon: Icons.forum_rounded,
+    icon: AppIcons.support,
     placement: V3NavPlacement.mobileMore,
   ),
   V3NavItem(
     page: AppPage.settings,
-    icon: Icons.tune_rounded,
+    icon: AppIcons.sliders,
     placement: V3NavPlacement.mobileMore,
   ),
 ];
@@ -168,44 +168,44 @@ const List<V3NavItem> kMobileMore = [
 
 const V3NavItem kRailConnect = V3NavItem(
   page: AppPage.dashboard,
-  icon: Icons.radar_outlined,
+  icon: AppIcons.radar,
   placement: V3NavPlacement.desktopRail,
 );
 const V3NavItem kRailNodes = V3NavItem(
   page: AppPage.nodes,
-  icon: Icons.hub_outlined,
+  icon: AppIcons.nodes,
   placement: V3NavPlacement.desktopRail,
 );
 const V3NavItem kRailShop = V3NavItem(
   page: AppPage.shop,
-  icon: Icons.shopping_bag_outlined,
+  icon: AppIcons.shoppingBag,
   placement: V3NavPlacement.desktopRail,
 );
 // Adjacent to shop: buy a plan, then verify the order without moving to
 // another IA region. The rail entry is feature-gated like every other item.
 const V3NavItem kRailOrders = V3NavItem(
   page: AppPage.orders,
-  icon: Icons.receipt_long_outlined,
+  icon: AppIcons.receipt,
   placement: V3NavPlacement.desktopRail,
 );
 const V3NavItem kRailTraffic = V3NavItem(
   page: AppPage.traffic,
-  icon: Icons.insights_outlined,
+  icon: AppIcons.chartLine,
   placement: V3NavPlacement.desktopRail,
 );
 const V3NavItem kRailInvite = V3NavItem(
   page: AppPage.invite,
-  icon: Icons.auto_awesome_outlined,
+  icon: AppIcons.sparkles,
   placement: V3NavPlacement.desktopRail,
 );
 const V3NavItem kRailTickets = V3NavItem(
   page: AppPage.tickets,
-  icon: Icons.forum_outlined,
+  icon: AppIcons.support,
   placement: V3NavPlacement.desktopRail,
 );
 const V3NavItem kRailSettings = V3NavItem(
   page: AppPage.settings,
-  icon: Icons.tune_outlined,
+  icon: AppIcons.sliders,
   placement: V3NavPlacement.desktopRail,
 );
 
@@ -222,7 +222,7 @@ const List<V3NavItem> kDesktopRail = [
 
 const V3NavItem kAccountDestination = V3NavItem(
   page: AppPage.account,
-  icon: Icons.person_outline_rounded,
+  icon: AppIcons.user,
   placement: V3NavPlacement.mobilePrimary,
 );
 
@@ -250,10 +250,8 @@ List<V3NavItem> enabledNavItems(List<V3NavItem> items) =>
 /// Bottom-navigation index for [current], or null when the bottom bar should
 /// not be rendered at all.
 ///
-/// A page with no tab of its own highlights the tab that leads to it — 我的
-/// since the 更多 tab is gone (§13.3; the more branch below survives the tab's
-/// removal untouched and simply resolves to null) — which is what tells the
-/// user which corner of the app they are standing in.
+/// A page with no tab of its own highlights 我的, the tab that leads to every
+/// secondary destination (§13.3).
 int? selectedPrimaryIndex(AppPage current) {
   final primary = enabledNavItems(kMobilePrimary);
   if (primary.isEmpty) return null;
@@ -264,8 +262,5 @@ int? selectedPrimaryIndex(AppPage current) {
 
   final own = indexOf(current);
   if (own != null) return own;
-  final viaMore = kMobileMore.any((item) => item.page == current);
-  return (viaMore ? indexOf(AppPage.more) : null) ??
-      indexOf(AppPage.account) ??
-      0;
+  return indexOf(AppPage.account) ?? 0;
 }

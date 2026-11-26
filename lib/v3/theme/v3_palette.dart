@@ -111,15 +111,15 @@ class V3Palette {
 
   static const light = V3Palette(
     // Four tiers, darkest to lightest: canvas -> hero -> surfaceRaised -> surface.
-    canvas: Color(0xFFF1F2F4),
+    canvas: Color(0xFFF7F8FA),
     surface: Color(0xFFFFFFFF),
-    surfaceRaised: Color(0xFFF6F7F9),
-    hero: Color(0xFFEAECF0),
+    surfaceRaised: Color(0xFFF3F4F7),
+    hero: Color(0xFFEDEFF3),
     night: Color(0xFF17191E),
     ink: Color(0xFF17191E),
     // Secondary text reads crisp, not atmospheric (~6:1 on cards).
     inkMuted: Color(0xFF5D6470),
-    line: Color(0xFFE4E6EB),
+    line: Color(0xFFE9EAEF),
     hairline: Color(0x1217191E),
     cardGradient: [Color(0xFFFFFFFF), Color(0xFFFAFAFB)],
     lychee: Color(0xFFF25E48),

@@ -14,6 +14,7 @@ import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_mobile_components.dart';
 import '../ui/v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
 // Reuse the existing ARB translations for established UI copy. These short
 // hints have no ARB entries yet; keeping them together avoids mixing Chinese
@@ -126,7 +127,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                 group(
                   child: Column(children: [
                     if (desktopTools) _SettingRow(
-                      icon: Icons.power_settings_new_rounded,
+                      icon: AppIcons.power,
                       title: l.launchAtStartup,
                       description: _hint(l,
                         zh: '登录系统时自动启动 Litchi。',
@@ -140,7 +141,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         }, l.settingsUpdated)),
                     ),
                     if (desktopTools) _SettingRow(
-                      icon: Icons.visibility_off_rounded,
+                      icon: AppIcons.hidden,
                       title: l.silentStartup,
                       description: _hint(l,
                         zh: '启动时隐藏主窗口。',
@@ -154,7 +155,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                         }, l.settingsUpdated)),
                     ),
                     _SettingRow(
-                      icon: Icons.system_update_alt_rounded,
+                      icon: AppIcons.download,
                       title: l.automaticUpdates,
                       description: _hint(l,
                         zh: '在后台检查是否有新版本。',
@@ -175,28 +176,37 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                 const SizedBox(height: 10),
                 group(
                   child: Column(children: [
-                    _SettingRow(
-                      icon: Icons.dark_mode_rounded,
+                    _SettingField(
+                      icon: AppIcons.sleep,
                       title: _hint(l, zh: '主题', en: 'Theme', tw: '主題'),
                       description: _hint(l,
                         zh: '跟随系统外观，或手动选择浅色和深色界面。',
                         en: 'Follow your system appearance or choose light/dark.',
                         tw: '跟隨系統外觀，或手動選擇淺色與深色介面。'),
-                      control: V3Dropdown<ThemeMode>(
+                      control: V3MobileSegmented(
                         key: const ValueKey('v3-theme-select'),
-                        value: controller.themeMode,
-                        items: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],
-                        label: (v) => switch (v) {
-                          ThemeMode.system => l.followSystem,
-                          ThemeMode.light => l.lightMode,
-                          ThemeMode.dark => l.darkMode,
+                        labels: [
+                          l.followSystem, l.lightMode, l.darkMode,
+                        ],
+                        icons: const [
+                          AppIcons.devices, AppIcons.daylight, AppIcons.sleep,
+                        ],
+                        selectedIndex: switch (controller.themeMode) {
+                          ThemeMode.system => 0,
+                          ThemeMode.light => 1,
+                          ThemeMode.dark => 2,
                         },
-                        onChanged: controller.setThemeMode,
-                        width: 168,
+                        onChanged: (i) => controller.setThemeMode(
+                          switch (i) {
+                            0 => ThemeMode.system,
+                            1 => ThemeMode.light,
+                            _ => ThemeMode.dark,
+                          },
+                        ),
                       ),
                     ),
-                    _SettingRow(
-                      icon: Icons.language_rounded,
+                    _SettingField(
+                      icon: AppIcons.language,
                       title: l.language,
                       description: _hint(l,
                         zh: '选择界面语言；跟随系统将使用设备的语言。',
@@ -214,7 +224,6 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                           AppLocalePreference.english => l.english,
                         },
                         onChanged: controller.setLanguage,
-                        width: 168,
                       ),
                     ),
                   ]),
@@ -228,7 +237,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                     // proxy mode, so this row only names the current mode and
                     // where switching happens — no second control to drift.
                     _SettingRow(
-                      icon: Icons.shield_rounded,
+                      icon: AppIcons.shield,
                       title: v3Copy(context,
                         zh: '代理模式', en: 'Network mode', tw: '代理模式'),
                       description: _hint(l,
@@ -245,7 +254,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       ),
                     ),
                     _SettingRow(
-                      icon: Icons.dns_rounded,
+                      icon: AppIcons.server,
                       title: l.dns,
                       description: _hint(l,
                         zh: '使用系统 DNS，或选择其他解析服务。',
@@ -274,7 +283,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                       // Round-3 audit F37: one icon family per surface —
                       // every content glyph here is rounded; the outlined
                       // variant mixed families inside the same panel.
-                      icon: Icons.shield_rounded,
+                      icon: AppIcons.shield,
                       title: l.connectionProtection,
                       description: _hint(l,
                         zh: '节点意外断开时暂停联网，防止流量绕过代理直接暴露；重新连接后自动恢复。',
@@ -357,6 +366,56 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
       ),
     );
     return phone ? V3MobileBackdrop(child: scroll) : scroll;
+  }
+}
+
+/// A setting whose control is too wide for a trailing slot (segmented
+/// switches, full-width dropdowns). The copy rides above the control, which
+/// spans the card — the reference's 外观 layout, distinct from the compact
+/// [_SettingRow] used for switches and narrow values.
+class _SettingField extends StatelessWidget {
+  const _SettingField({required this.icon, required this.title,
+    required this.description, required this.control, this.last = false});
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final Widget control;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 17, 20, 17),
+      decoration: last ? null : BoxDecoration(
+        border: Border(bottom: BorderSide(color: p.line)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 38, height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: p.surfaceRaised,
+              borderRadius: BorderRadius.circular(V3Radius.control),
+            ),
+            child: Icon(icon, color: p.ink, size: 19),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 5),
+              Text(description, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          )),
+        ]),
+        const SizedBox(height: 14),
+        control,
+      ]),
+    );
   }
 }
 
@@ -477,7 +536,7 @@ class _RecoveryPanel extends StatelessWidget {
           width: 42, height: 42,
           decoration: BoxDecoration(color: p.citrus,
             borderRadius: BorderRadius.circular(V3Radius.field)),
-          child: Icon(Icons.build_circle_rounded, color: p.night, size: 21),
+          child: Icon(AppIcons.wrench, color: p.night, size: 21),
         ),
         const SizedBox(width: 14),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,

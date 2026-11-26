@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forui/forui.dart' show FTheme, FToaster, FToast;
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_toast.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 void main() {
   testWidgets('app-level Forui toaster renders success with brand accent',
@@ -30,7 +31,7 @@ void main() {
     expect(find.byType(FToast), findsOneWidget);
     expect(find.text('已连接'), findsOneWidget);
     expect(
-      tester.widget<Icon>(find.byIcon(Icons.check_circle_outline_rounded)).color,
+      tester.widget<Icon>(find.byIcon(AppIcons.checkCircle)).color,
       V3Palette.light.lychee,
     );
 
@@ -60,7 +61,7 @@ void main() {
     expect(find.text('节点切换成功'), findsOneWidget);
     // Approved UI V1: success feedback uses the Litchi brand accent.
     expect(
-      tester.widget<Icon>(find.byIcon(Icons.check_circle_outline_rounded)).color,
+      tester.widget<Icon>(find.byIcon(AppIcons.checkCircle)).color,
       V3Palette.light.lychee,
     );
     expect(
@@ -104,7 +105,7 @@ void main() {
     expect(find.text('第一次'), findsNothing);
     expect(find.text('第二次'), findsOneWidget);
     expect(
-      tester.widget<Icon>(find.byIcon(Icons.error_outline_rounded)).color,
+      tester.widget<Icon>(find.byIcon(AppIcons.error)).color,
       V3Palette.dark.danger,
     );
 

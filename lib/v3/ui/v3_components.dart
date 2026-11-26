@@ -8,6 +8,7 @@ import 'v3_mobile_components.dart';
 
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
+import '../../shared/theme/app_icons.dart';
 
 class V3NodeFlag extends StatelessWidget {
   const V3NodeFlag({super.key, required this.code, this.large = false});
@@ -26,7 +27,7 @@ class V3NodeFlag extends StatelessWidget {
       return SizedBox(
         width: width,
         height: height,
-        child: Icon(Icons.public_rounded, size: height),
+        child: Icon(AppIcons.globe, size: height),
       );
     }
     // Hairline in the shared line colour: white-field flags (US, JP) sit on
@@ -449,7 +450,7 @@ class V3PageHeader extends StatelessWidget {
               tooltip: v3Copy(context,
                 zh: '返回我的', en: 'Back to account', tw: '返回我的'),
               padding: EdgeInsets.zero,
-              icon: Icon(Icons.arrow_back_ios_new_rounded,
+              icon: Icon(AppIcons.chevronLeft,
                 size: 19, color: p.ink),
               onPressed: onBack ?? () => AppScope.read(context).goToPage(backPage!),
             ),
@@ -998,7 +999,7 @@ class V3NavRow extends StatelessWidget {
               ),
             ),
             Icon(
-              Icons.chevron_right_rounded,
+              AppIcons.chevronRight,
               size: 19,
               color: selected ? p.lychee : p.inkMuted,
             ),
@@ -1048,7 +1049,7 @@ class V3BrandMark extends StatelessWidget {
                 borderRadius: BorderRadius.circular(boxSize / 3),
               ),
               child: Icon(
-                Icons.blur_on_rounded,
+                AppIcons.brand,
                 color: p.night,
                 size: boxSize * 2 / 3,
               ),

@@ -5,6 +5,7 @@ import '../../app/core_controller.dart' show ConnectionStatus;
 import '../../app/core_error_message_service.dart';
 import '../theme/v3_palette.dart';
 import 'v3_locale_copy.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Persistent, actionable connection errors. This is independent of the
 /// short-lived toast used by node selection.
@@ -108,8 +109,8 @@ class _DashboardAlertTileState extends State<_DashboardAlertTile> {
           children: [
             Icon(
               widget.warning
-                  ? Icons.warning_amber_rounded
-                  : Icons.error_outline_rounded,
+                  ? AppIcons.warning
+                  : AppIcons.error,
               size: 18,
               color: color,
             ),

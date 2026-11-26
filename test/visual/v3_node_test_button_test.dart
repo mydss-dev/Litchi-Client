@@ -1,11 +1,11 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 class _TestFixture extends VisualV3Controller {
   _TestFixture() : super(AppPage.dashboard);
@@ -38,7 +38,7 @@ void main() {
     expect(find.byKey(const Key('v3-node-speed-test')), findsOneWidget);
     expect(find.descendant(
       of: find.byKey(const Key('v3-node-speed-test')),
-      matching: find.byIcon(LucideIcons.zap),
+      matching: find.byIcon(AppIcons.zap),
     ), findsOneWidget);
     await tester.tap(find.byKey(const Key('v3-node-speed-test')));
     await tester.pump();

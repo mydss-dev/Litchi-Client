@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:material_ui/material_ui.dart';
 import 'package:cupertino_ui/cupertino_ui.dart' show CupertinoListSection, CupertinoListTile;
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
 import '../../app/plan_presentation.dart';
@@ -22,6 +21,7 @@ import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
 import 'v3_telegram_page.dart';
 import 'v3_wallet_actions.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Account layout: identity/plan hero, wallet, then preferences and security
 /// — all directly visible. Do not turn the account into a collapsed menu.
@@ -170,7 +170,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.refresh_rounded),
+                  : const Icon(AppIcons.refresh),
             ),
           ),
           const SizedBox(height: 18),
@@ -215,7 +215,7 @@ class _V3AccountPageState extends State<V3AccountPage> {
             // one muted line, one retry step) instead of a private yellow
             // strip.
             V3EmptyState(
-              icon: Icons.error_outline_rounded,
+              icon: AppIcons.error,
               title: v3Copy(
                 context,
                 zh: '账户信息加载失败',
@@ -295,7 +295,7 @@ class _MobileAccountOverview extends StatelessWidget {
                 tooltip: v3Copy(sheetContext,
                     zh: '关闭', en: 'Close', tw: '關閉'),
                 onPressed: () => Navigator.of(sheetContext).pop(),
-                icon: Icon(Icons.close_rounded, color: p.inkMuted)),
+                icon: Icon(AppIcons.close, color: p.inkMuted)),
             ]),
             if (controller.hasPlan || isPageEnabled(AppPage.shop)) ...[
               V3MobilePlanSummary(
@@ -338,7 +338,7 @@ class _MobileAccountOverview extends StatelessWidget {
             _MobileGroupLabel(v3Copy(sheetContext,
               zh: '安全', en: 'SECURITY', tw: '安全')),
             _MobileAccountLink(
-              icon: Icons.lock_outline_rounded,
+              icon: AppIcons.lock,
               title: v3Copy(sheetContext, zh: '修改密码',
                 en: 'Change password', tw: '修改密碼'),
               onTap: () {
@@ -348,7 +348,7 @@ class _MobileAccountOverview extends StatelessWidget {
             const _MobileHairline(indent: 10),
             _MobileAccountLink(
               key: const ValueKey('v3-account-telegram'),
-              icon: Icons.send_outlined,
+              icon: AppIcons.send,
               title: v3Copy(sheetContext, zh: 'Telegram 绑定',
                 en: 'Telegram', tw: 'Telegram 綁定'),
               onTap: () {
@@ -357,7 +357,7 @@ class _MobileAccountOverview extends StatelessWidget {
               }),
             const _MobileHairline(indent: 10),
             _MobileAccountLink(
-              icon: Icons.logout_rounded,
+              icon: AppIcons.logout,
               title: v3Copy(sheetContext, zh: '退出登录',
                 en: 'Sign out', tw: '登出'),
               danger: true,
@@ -411,7 +411,7 @@ class _MobileAccountOverview extends StatelessWidget {
               icon: refreshing
                 ? const SizedBox(width: 17, height: 17,
                     child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(Icons.refresh_rounded, color: p.inkMuted, size: 18),
+                : Icon(AppIcons.refresh, color: p.inkMuted, size: 18),
             ),
           ),
           const SizedBox(height: 18),
@@ -427,11 +427,18 @@ class _MobileAccountOverview extends StatelessWidget {
             _MobileInviteBanner(onTap: openInvite),
           ],
           const SizedBox(height: 18),
+          // 我的 is the account's service hub: one honest list of destinations.
+          // Orders has its own full page (search, filters, paging), so embedding
+          // a half list here would duplicate it; sensitive actions stay behind
+          // 管理账户 instead of being laid out as a second tab.
+          _MobileGroupLabel(v3Copy(context,
+            zh: '服务与工具', en: 'SERVICES & TOOLS', tw: '服務與工具')),
+          const SizedBox(height: 4),
           services([
             if (isPageEnabled(AppPage.tickets))
               _MobileServiceTile(
                 key: hubRowKey(AppPage.tickets),
-                icon: LucideIcons.messageCircle,
+                icon: AppIcons.message,
                 title: v3Copy(context, zh: '工单支持',
                   en: 'Ticket support', tw: '工單支援'),
                 onTap: () => openV3Page(context, AppPage.tickets),
@@ -439,7 +446,7 @@ class _MobileAccountOverview extends StatelessWidget {
             if (walletVisible)
               _MobileServiceTile(
                 key: const ValueKey('v3-account-wallet-service'),
-                icon: LucideIcons.wallet,
+                icon: AppIcons.wallet,
                 title: v3Copy(context, zh: '我的钱包',
                   en: 'Wallet', tw: '我的錢包'),
                 onTap: () => Navigator.of(context).push<void>(
@@ -448,23 +455,25 @@ class _MobileAccountOverview extends StatelessWidget {
             if (ordersEnabled)
               _MobileServiceTile(
                 key: hubRowKey(AppPage.orders),
-                icon: LucideIcons.receipt,
+                icon: AppIcons.receipt,
                 title: v3Copy(context, zh: '订单记录',
                   en: 'Orders', tw: '訂單紀錄'),
                 onTap: () => openV3Page(context, AppPage.orders),
               ),
             _MobileServiceTile(
               key: hubRowKey(AppPage.settings),
-              icon: LucideIcons.settings,
+              icon: AppIcons.settings,
               title: v3Copy(context, zh: '应用设置',
                 en: 'Settings', tw: '應用設定'),
               onTap: () => openV3Page(context, AppPage.settings),
             ),
+            // Redemption lives on the shop page's redeem strip under the same
+            // no-plan gate; duplicating it here gave the same entry twice.
           ]),
           if (controller.dataLoadError != null) ...[
             const SizedBox(height: 12),
             V3EmptyState(
-              icon: Icons.error_outline_rounded,
+              icon: AppIcons.error,
               title: v3Copy(context, zh: '账户加载失败',
                 en: 'Could not load account', tw: '帳戶載入失敗'),
               subtitle: controller.dataLoadError!,
@@ -545,7 +554,7 @@ class _MobileServiceTile extends StatelessWidget {
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
         style: TextStyle(color: p.ink, fontSize: 14,
           fontWeight: FontWeight.w600)),
-      trailing: Icon(LucideIcons.chevronRight,
+      trailing: Icon(AppIcons.chevronRight,
         size: 16, color: p.inkMuted.withValues(alpha: .70)),
       onTap: onTap,
     );
@@ -568,7 +577,6 @@ class _MobileIdentityCard extends StatelessWidget {
     final email = controller.accountDetails?.email.trim() ?? '';
     final identity = email.isNotEmpty
         ? email : v3AccountDisplayName(context, controller.user.name);
-    final avatar = email.isNotEmpty ? email : controller.user.avatarLetter.trim();
     final days = plan.expiryDate?.difference(DateTime.now());
     final remainingDays = switch (plan.expiryKind) {
       PlanExpiryKind.permanent => v3Copy(context,
@@ -596,12 +604,10 @@ class _MobileIdentityCard extends StatelessWidget {
             width: 52, height: 52,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: p.lycheeInk.withValues(alpha: .13),
+              color: p.surfaceRaised,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Text(avatar.isEmpty ? 'L' : avatar.characters.first.toUpperCase(),
-              style: TextStyle(color: p.lycheeInk, fontSize: 21,
-                fontWeight: FontWeight.w800)),
+            child: Icon(AppIcons.plans, size: 24, color: p.ink),
           ),
           const SizedBox(width: 12),
           Expanded(child: Column(
@@ -780,7 +786,7 @@ class _MobileWalletCard extends StatelessWidget {
         Row(children: [
           if (AppConfig.panelFeatures.wallet) ...[
             Expanded(child: _MobileWalletAction(
-              icon: Icons.add_rounded,
+              icon: AppIcons.add,
               label: v3Copy(context, zh: '充值',
                 en: 'Top up', tw: '儲值'),
               emphasized: true,
@@ -788,14 +794,14 @@ class _MobileWalletCard extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           Expanded(child: _MobileWalletAction(
-            icon: Icons.account_balance_outlined,
+            icon: AppIcons.bank,
             label: v3Copy(context, zh: '提现',
               en: 'Withdraw', tw: '提領'),
             busy: controller.walletBusy,
             onTap: () => showV3WithdrawDialog(context))),
           const SizedBox(width: 8),
           Expanded(child: _MobileWalletAction(
-            icon: Icons.swap_horiz_rounded,
+            icon: AppIcons.swap,
             label: v3Copy(context, zh: '划转',
               en: 'Transfer', tw: '轉帳'),
             busy: controller.walletBusy,
@@ -918,7 +924,7 @@ class _MobileAccountLink extends StatelessWidget {
                 maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: fg,
                     fontSize: 14, fontWeight: FontWeight.w600))),
-            Icon(Icons.chevron_right_rounded, size: 19,
+            Icon(AppIcons.chevronRight, size: 19,
                 color: p.inkMuted.withValues(alpha: .65)),
           ]),
         ),
@@ -1112,8 +1118,8 @@ class _AccountSummaryPanel extends StatelessWidget {
                 // directly; without a plan it takes you to pick one in the shop.
                 icon: Icon(
                   controller.hasPlan
-                      ? Icons.autorenew_rounded
-                      : Icons.storefront_rounded,
+                      ? AppIcons.refresh
+                      : AppIcons.store,
                   size: 17,
                 ),
                 label: Text(
@@ -1160,27 +1166,27 @@ class _AccountHubRows extends StatelessWidget {
     final p = V3Palette.of(context);
     final rows = <(IconData, String, AppPage)>[
       (
-        Icons.receipt_long_rounded,
+        AppIcons.receipt,
         v3Copy(context, zh: '订单', en: 'Orders', tw: '訂單'),
         AppPage.orders,
       ),
       (
-        Icons.insights_rounded,
+        AppIcons.chartLine,
         v3Copy(context, zh: '用量', en: 'Usage', tw: '用量'),
         AppPage.traffic,
       ),
       (
-        Icons.forum_rounded,
+        AppIcons.support,
         v3Copy(context, zh: '工单', en: 'Support', tw: '工單'),
         AppPage.tickets,
       ),
       (
-        Icons.auto_awesome_rounded,
+        AppIcons.sparkles,
         v3Copy(context, zh: '邀请', en: 'Invite', tw: '邀請'),
         AppPage.invite,
       ),
       (
-        Icons.tune_rounded,
+        AppIcons.sliders,
         v3Copy(context, zh: '设置', en: 'Settings', tw: '設定'),
         AppPage.settings,
       ),
@@ -1242,7 +1248,7 @@ class _AccountHubRow extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               )),
           ),
-          Icon(Icons.chevron_right_rounded, size: 20, color: p.inkMuted),
+          Icon(AppIcons.chevronRight, size: 20, color: p.inkMuted),
         ]),
       ),
     );
@@ -1328,7 +1334,7 @@ class _WalletPanel extends StatelessWidget {
               if (AppConfig.panelFeatures.wallet) ...[
                 Expanded(
                   child: _WalletActionButton(
-                    icon: Icons.add_card_rounded,
+                    icon: AppIcons.card,
                     label: v3Copy(context, zh: '充值', en: 'Top up', tw: '儲值'),
                     primary: true,
                     onTap: () => showV3RechargeDialog(context),
@@ -1338,7 +1344,7 @@ class _WalletPanel extends StatelessWidget {
               ],
               Expanded(
                 child: _WalletActionButton(
-                  icon: Icons.account_balance_rounded,
+                  icon: AppIcons.bank,
                   label: v3Copy(context, zh: '提现', en: 'Withdraw', tw: '提領'),
                   busy: controller.walletBusy,
                   onTap: () => showV3WithdrawDialog(context),
@@ -1347,7 +1353,7 @@ class _WalletPanel extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: _WalletActionButton(
-                  icon: Icons.swap_horiz_rounded,
+                  icon: AppIcons.swap,
                   label: v3Copy(context, zh: '划转', en: 'Transfer', tw: '轉帳'),
                   busy: controller.walletBusy,
                   onTap: () => showV3TransferDialog(context),
@@ -1629,7 +1635,7 @@ class _AccountActions extends StatelessWidget {
         children: [
           Expanded(
             child: _AccountAction(
-              icon: Icons.password_rounded,
+              icon: AppIcons.key,
               label: v3Copy(
                 context,
                 zh: '修改密码',
@@ -1642,14 +1648,14 @@ class _AccountActions extends StatelessWidget {
           Expanded(
             child: _AccountAction(
               key: const ValueKey('v3-account-telegram'),
-              icon: Icons.send_rounded,
+              icon: AppIcons.send,
               label: v3Copy(context, zh: 'TG 通知', en: 'Telegram', tw: 'TG 通知'),
               onTap: onTelegram,
             ),
           ),
           Expanded(
             child: _AccountAction(
-              icon: Icons.logout_rounded,
+              icon: AppIcons.logout,
               label: v3Copy(context, zh: '退出登录', en: 'Log out', tw: '登出'),
               danger: true,
               onTap: onLogout,
@@ -1826,7 +1832,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                   IconButton(
                     tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
+                    icon: const Icon(AppIcons.close),
                   ),
                 ],
               ),
@@ -1870,8 +1876,8 @@ class _PasswordDialogState extends State<_PasswordDialog> {
                   onPressed: () => setState(() => _obscure = !_obscure),
                   icon: Icon(
                     _obscure
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
+                        ? AppIcons.hidden
+                        : AppIcons.visible,
                     size: 18,
                     color: p.inkMuted,
                   ),

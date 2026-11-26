@@ -15,6 +15,7 @@ import 'v3_components.dart';
 import 'v3_layout.dart';
 import 'v3_locale_copy.dart';
 import 'v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Backend notice titles and bodies are supplied by the server. Only the
 /// surrounding application controls are translated here.
@@ -255,7 +256,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
               decoration: BoxDecoration(
                 color: p.ink.withValues(alpha: .06),
                 borderRadius: BorderRadius.circular(V3Radius.control)),
-              child: Icon(Icons.cloud_off_rounded, size: 15,
+              child: Icon(AppIcons.cloudOff, size: 15,
                 color: p.inkMuted)),
             const SizedBox(width: 10),
             Expanded(child: Text(
@@ -325,8 +326,8 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                       borderRadius: BorderRadius.circular(V3Radius.control)),
                     child: Icon(
                       isUpdatePage
-                          ? Icons.arrow_circle_up_rounded
-                          : Icons.campaign_rounded,
+                          ? AppIcons.arrowUpCircle
+                          : AppIcons.broadcast,
                       size: 15,
                       color: isUpdatePage ? p.lycheeInk : p.inkMuted)),
                   const SizedBox(width: 10),
@@ -355,7 +356,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                         style: TextStyle(color: p.ink, fontSize: 12)))),
                   if (multiple && MediaQuery.sizeOf(context).width >= 520) ...[
                     const SizedBox(width: 10),
-                    _NavButton(icon: Icons.chevron_left_rounded,
+                    _NavButton(icon: AppIcons.chevronLeft,
                       tooltip: v3Copy(context, zh: '上一条', en: 'Previous', tw: '上一則'),
                       size: _isTouchNavPlatform ? 44 : 32,
                       onPressed: () => _goTo(safeIndex - 1)),
@@ -364,7 +365,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                       textAlign: TextAlign.center,
                       style: TextStyle(color: p.inkMuted, fontSize: 10,
                         fontWeight: FontWeight.w600))),
-                    _NavButton(icon: Icons.chevron_right_rounded,
+                    _NavButton(icon: AppIcons.chevronRight,
                       tooltip: v3Copy(context, zh: '下一条', en: 'Next', tw: '下一則'),
                       size: _isTouchNavPlatform ? 44 : 32,
                       onPressed: () => _goTo(safeIndex + 1)),
@@ -394,7 +395,7 @@ class _V3NoticeBarState extends State<V3NoticeBar>
                         en: 'Dismiss update', tw: '暫不提示'),
                       onPressed: _downloading
                           ? null : widget.controller.dismissUpdate,
-                      icon: const Icon(Icons.close_rounded, size: 17),
+                      icon: const Icon(AppIcons.close, size: 17),
                       color: p.inkMuted,
                       visualDensity: VisualDensity.compact),
                   ] else ...[
@@ -516,7 +517,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                   Container(width: 30, height: 30, alignment: Alignment.center,
                     decoration: BoxDecoration(color: p.ink.withValues(alpha: .06),
                       borderRadius: BorderRadius.circular(V3Radius.control)),
-                    child: Icon(Icons.campaign_rounded, size: 16,
+                    child: Icon(AppIcons.broadcast, size: 16,
                       color: p.inkMuted)),
                   const SizedBox(width: 12),
                 ],
@@ -532,7 +533,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                 if (!widget.mustRead) IconButton(
                   tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
                   onPressed: () => Navigator.of(context).pop(_index),
-                  icon: const Icon(Icons.close_rounded, size: 20),
+                  icon: const Icon(AppIcons.close, size: 20),
                   color: p.inkMuted),
               ])),
           Flexible(child: SingleChildScrollView(
@@ -566,7 +567,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
               V3Layout.dialogPadding, 14, V3Layout.dialogPadding, 18),
             child: Row(children: [
               if (multiple) ...[
-                _NavButton(icon: Icons.chevron_left_rounded,
+                _NavButton(icon: AppIcons.chevronLeft,
                   tooltip: v3Copy(context, zh: '上一条公告',
                     en: 'Previous notice', tw: '上一則公告'),
                   size: 44, iconSize: 20,
@@ -577,7 +578,7 @@ class _V3NoticeDialogState extends State<V3NoticeDialog> {
                   textAlign: TextAlign.center,
                   style: TextStyle(color: p.inkMuted, fontSize: 11,
                     fontWeight: FontWeight.w600))),
-                _NavButton(icon: Icons.chevron_right_rounded,
+                _NavButton(icon: AppIcons.chevronRight,
                   tooltip: v3Copy(context, zh: '下一条公告',
                     en: 'Next notice', tw: '下一則公告'),
                   size: 44, iconSize: 20,

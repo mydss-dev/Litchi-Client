@@ -8,6 +8,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_locale_copy.dart';
 import 'v3_payment_flow.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// The one order-confirm dialog, shared by the shop (buy a plan) and the
 /// account page (renew the current plan). It renders the billing-period /
@@ -179,7 +180,7 @@ class _V3OrderDialogState extends State<_V3OrderDialog> {
                 style: Theme.of(context).textTheme.headlineMedium)),
               IconButton(tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
                 onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded)),
+                icon: const Icon(AppIcons.close)),
             ]),
             Divider(color: p.line),
             Expanded(child: SingleChildScrollView(
@@ -321,7 +322,7 @@ class _CycleOption extends StatelessWidget {
               Expanded(child: Text(label, style: TextStyle(
                 color: selected ? p.lycheeInk : p.ink,
                 fontSize: 13, fontWeight: FontWeight.w800))),
-              if (selected) Icon(Icons.check_circle_rounded,
+              if (selected) Icon(AppIcons.checkCircle,
                 size: 16, color: p.lycheeInk),
             ]),
             const SizedBox(height: 7),

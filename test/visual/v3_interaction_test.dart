@@ -15,6 +15,7 @@ import 'package:litchi_client/v3/ui/v3_node_picker.dart';
 import 'package:litchi_client/v3/ui/v3_toast.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 class _InteractiveController extends VisualV3Controller {
   _InteractiveController(super.page);
@@ -168,7 +169,7 @@ void main() {
 
     expect(find.byType(V3NodePicker), findsOneWidget);
     expect(find.text('节点切换失败'), findsOneWidget);
-    expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+    expect(find.byIcon(AppIcons.error), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
     // Expire the failure toast's timer so teardown has none pending; failure
@@ -220,7 +221,10 @@ void main() {
       // DNS is still a live control: opening its menu and picking another
       // resolver dims the row's control under a spinner; no banner text and
       // no page-wide progress bar shift the sections down.
-      await tester.tap(find.byKey(const ValueKey('v3-dns-select')));
+      final dns = find.byKey(const ValueKey('v3-dns-select'));
+      await tester.ensureVisible(dns);
+      await tester.pumpAndSettle();
+      await tester.tap(dns);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Google'));
       await tester.pump();

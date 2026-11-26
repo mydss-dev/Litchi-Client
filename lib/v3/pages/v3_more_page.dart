@@ -3,15 +3,21 @@ import 'package:material_ui/material_ui.dart';
 import '../../app/app_controller.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/generated/app_localizations_zh.dart';
+import '../../shared/theme/app_icons.dart';
 import '../app/v3_nav.dart';
-import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
+import '../ui/v3_mobile_components.dart';
 import '../ui/v3_sheet.dart';
 
-/// The compact overflow tab. Its labels use the same app locale as settings;
-/// the nav model still owns order and visibility, not presentation language.
+/// Legacy 更多 route, kept only so an old deep link still resolves. The tab is
+/// retired and the account hub owns every destination here; site notices and
+/// redemption moved onto 我的 as well. Nothing in the compact shell links here.
+///
+/// The labels follow the app locale; the nav model still owns order and
+/// visibility, not presentation language. Rows use the shared mobile list row,
+/// so this page, the account hub and settings keep one row rhythm.
 class V3MorePage extends StatelessWidget {
   const V3MorePage({super.key});
 
@@ -23,78 +29,50 @@ class V3MorePage extends StatelessWidget {
     final english = l.localeName.startsWith('en');
     final traditional = l.localeName.toLowerCase().contains('tw');
     final items = enabledNavItems(kMobileMore);
-    final p = V3Palette.of(context);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: V3Layout.pageInsets,
+      padding: V3MobileDesign.pageInsets,
       child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          V3PageHeader(
-            backPage: AppPage.account,
-            title: english ? 'More services' : traditional ? '更多服務' : '更多服务',
+          V3PrimaryPageHeader(
+            title: english ? 'More' : '更多',
+            subtitle: english
+                ? 'Other account and service tools'
+                : traditional
+                    ? '存取其他帳戶與服務功能'
+                    : '访问其他账户与服务功能',
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: V3MobileDesign.sectionGap),
           if (items.isEmpty)
-            // Shared empty-state voice (icon tile, one muted line) instead of
-            // a bare panel of text.
+            // Shared empty-state voice (icon tile, one muted line).
             V3EmptyState(
-              icon: Icons.widgets_rounded,
-              title: english ? 'No extra services on this server.'
-                  : traditional ? '暫無更多服務' : '暂无更多服务',
+              icon: AppIcons.grid,
+              title: english
+                  ? 'No extra services on this server.'
+                  : traditional
+                      ? '暫無更多服務'
+                      : '暂无更多服务',
               subtitle: english
                   ? 'No additional features are enabled on this server.'
-                  : traditional ? '目前伺服器沒有提供其他功能。' : '当前服务端没有提供其他功能。',
+                  : traditional
+                      ? '目前伺服器沒有提供其他功能。'
+                      : '当前服务端没有提供其他功能。',
             )
           else
-            LayoutBuilder(builder: (context, constraints) {
-              // On a phone the destinations stay one list to scan. On a wide
-              // window the full-width card hugs the top of an otherwise empty
-              // page, so the same rows tile two-across and use the canvas
-              // (the Windows-Settings home pattern).
-              if (constraints.maxWidth < V3Layout.paneCompact) {
-                return V3NavPanel(
-                  title:
-                      english ? 'All features' : traditional ? '全部功能' : '全部功能',
-                  children: [
-                    for (final item in items.where((item) =>
-                        item.page != AppPage.giftCard ||
-                        controller.hasConfirmedNoPlan))
-                      V3NavRow(
-                        key: moreRowKey(item.page),
-                        icon: item.icon,
-                        label: item.localizedLabel(context),
-                        selected: controller.page == item.page,
-                        onTap: () => openV3Page(context, item.page),
-                      ),
-                  ],
-                );
-              }
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final item in items)
-                    Container(
-                      width: (constraints.maxWidth - 12) / 2,
-                      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
-                      decoration: BoxDecoration(
-                        color: p.surface,
-                        borderRadius: BorderRadius.circular(V3Radius.panel),
-                        border: Border.all(color: p.hairline),
-                        boxShadow: p.shadows,
-                      ),
-                      child: V3NavRow(
-                        key: moreRowKey(item.page),
-                        icon: item.icon,
-                        label: item.localizedLabel(context),
-                        selected: controller.page == item.page,
-                        onTap: () => openV3Page(context, item.page),
-                      ),
-                    ),
-                ],
-              );
-            }),
+            V3MobileGroupCard(
+              children: [
+                for (final item in items.where((item) =>
+                    item.page != AppPage.giftCard ||
+                    controller.hasConfirmedNoPlan))
+                  V3MobileListRow(
+                    key: moreRowKey(item.page),
+                    icon: item.icon,
+                    label: item.localizedLabel(context),
+                    onTap: () => openV3Page(context, item.page),
+                  ),
+              ],
+            ),
         ],
       ),
     );

@@ -6,6 +6,7 @@ import '../theme/v3_palette.dart';
 import 'v3_locale_copy.dart';
 import 'v3_mobile_components.dart';
 import 'v3_notice_bar.dart';
+import '../../shared/theme/app_icons.dart';
 
 /// Slim announcement strip backed by real server notices.
 ///
@@ -43,15 +44,37 @@ class _V3HtmlPhoneNoticeState extends State<V3HtmlPhoneNotice> {
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: V3MobileDesign.card(context),
-          borderRadius: BorderRadius.circular(V3Radius.field),
-          border: Border.all(color: V3MobileDesign.stroke(context)),
+          // Floats over the dot map: a warm, barely-tinted surface with a
+          // hairline of the same coral, so it reads as a notice laid on the
+          // canvas rather than another white card in the stack.
+          color: Color.alphaBlend(
+            p.lychee.withValues(alpha: .07),
+            V3MobileDesign.card(context),
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: p.lychee.withValues(alpha: .16)),
+          boxShadow: [
+            BoxShadow(
+              color: p.ink.withValues(alpha: .05),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(V3Radius.field),
+          borderRadius: BorderRadius.circular(18),
           child: Row(children: [
-            const SizedBox(width: 14),
-            Icon(Icons.campaign_outlined, size: 18, color: p.lycheeInk),
+            const SizedBox(width: 12),
+            Container(
+              width: 30,
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: p.lychee.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(AppIcons.broadcast, size: 16, color: p.lycheeInk),
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: PageView.builder(
@@ -78,7 +101,7 @@ class _V3HtmlPhoneNoticeState extends State<V3HtmlPhoneNotice> {
               ],
             ],
             const SizedBox(width: 6),
-            Icon(Icons.chevron_right_rounded, size: 18, color: p.inkMuted),
+            Icon(AppIcons.chevronRight, size: 18, color: p.inkMuted),
             const SizedBox(width: 10),
           ]),
         ),

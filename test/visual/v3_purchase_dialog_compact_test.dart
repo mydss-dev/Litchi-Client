@@ -20,7 +20,7 @@ void main() {
           home: const Scaffold(body: V3ShopPage()))));
       await tester.pumpAndSettle();
       final buy = find.widgetWithText(FilledButton,
-          size.width < 600 ? '选择此套餐' : '选择套餐').first;
+          size.width < 600 ? '购买套餐' : '选择套餐').first;
       await tester.ensureVisible(buy);
       await tester.tap(buy);
       await tester.pumpAndSettle();

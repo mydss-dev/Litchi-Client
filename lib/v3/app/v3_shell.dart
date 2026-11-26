@@ -31,6 +31,7 @@ import '../ui/v3_locale_copy.dart';
 import '../ui/v3_nav_island.dart';
 import '../ui/v3_sheet.dart';
 import 'v3_nav.dart';
+import '../../shared/theme/app_icons.dart';
 
 bool get _isDesktopTarget =>
     !kIsWeb &&
@@ -212,8 +213,8 @@ class _V3WorkspaceState extends State<_V3Workspace> {
             // Scaffold injects bottom padding for scrollable content.
             extendBody: true,
             body: mobilePage,
-            // Four destinations own the bottom bar. Every account
-            // subpage has a page-level back affordance instead.
+            // Four destinations own the bottom bar. Every other page — including
+            // the retired 更多 route — is full-screen with its own back.
             bottomNavigationBar: secondary
                 ? null
                 : V3NavIsland(controller: controller),
@@ -521,7 +522,7 @@ class _RailBrandMark extends StatelessWidget {
             color: p.citrus,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(Icons.blur_on_rounded, color: p.night, size: 24),
+          child: Icon(AppIcons.brand, color: p.night, size: 24),
         ),
       ),
     );
@@ -820,7 +821,7 @@ class _DesktopTitleOverlayState extends State<_DesktopTitleOverlay>
           _OverlayIconButton(
             key: kWindowGiftCardKey,
             tooltip: v3Copy(context, zh: '兑换中心', en: 'Redemption', tw: '兌換中心'),
-            icon: Icons.redeem_rounded,
+            icon: AppIcons.gift,
             iconColor: V3Palette.of(context).inkMuted,
             onPressed: () => openV3Page(context, AppPage.giftCard),
           ),
@@ -832,7 +833,7 @@ class _DesktopTitleOverlayState extends State<_DesktopTitleOverlay>
           const SizedBox(width: 4),
           _V3WindowButton(
             tooltip: v3Copy(context, zh: '最小化', en: 'Minimize', tw: '最小化'),
-            icon: Icons.remove_rounded,
+            icon: AppIcons.remove,
             onPressed: windowManager.minimize,
           ),
           _V3WindowButton(
@@ -840,13 +841,13 @@ class _DesktopTitleOverlayState extends State<_DesktopTitleOverlay>
                 ? v3Copy(context, zh: '还原', en: 'Restore', tw: '還原')
                 : v3Copy(context, zh: '最大化', en: 'Maximize', tw: '最大化'),
             icon: _maximized
-                ? Icons.filter_none_rounded
-                : Icons.crop_square_rounded,
+                ? AppIcons.filtered
+                : AppIcons.scan,
             onPressed: _toggleMaximize,
           ),
           _V3WindowButton(
             tooltip: v3Copy(context, zh: '关闭', en: 'Close', tw: '關閉'),
-            icon: Icons.close_rounded,
+            icon: AppIcons.close,
             close: true,
             onPressed: _closeWindow,
           ),
@@ -908,7 +909,7 @@ class _ThemeOverlayButton extends StatelessWidget {
         en: dark ? 'Switch to light mode' : 'Switch to dark mode',
         tw: dark ? '切換為淺色模式' : '切換為深色模式',
       ),
-      icon: dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+      icon: dark ? AppIcons.daylight : AppIcons.sleep,
       onPressed: () =>
           controller.setThemeMode(dark ? ThemeMode.light : ThemeMode.dark),
     );
@@ -1047,7 +1048,7 @@ class _V3BootView extends StatelessWidget {
                 color: p.citrus,
                 borderRadius: BorderRadius.circular(V3Radius.card),
               ),
-              child: Icon(Icons.blur_on_rounded, color: p.night, size: 34),
+              child: Icon(AppIcons.brand, color: p.night, size: 34),
             ),
             const SizedBox(height: 18),
             Text(

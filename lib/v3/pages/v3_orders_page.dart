@@ -14,6 +14,7 @@ import '../ui/v3_locale_copy.dart';
 import '../ui/v3_mobile_components.dart';
 import '../ui/v3_sheet.dart';
 import '../ui/v3_toast.dart';
+import '../../shared/theme/app_icons.dart';
 
 class V3OrdersPage extends StatefulWidget {
   const V3OrdersPage({super.key});
@@ -29,7 +30,7 @@ class V3OrdersPage extends StatefulWidget {
         tooltip: v3Copy(context, zh: '刷新订单',
           en: 'Refresh orders', tw: '重新整理訂單'),
         onPressed: () => key.currentState?.refresh(),
-        icon: const Icon(Icons.refresh_rounded)),
+        icon: const Icon(AppIcons.refresh)),
       builder: (_) => V3OrdersPage(key: key));
   }
 
@@ -49,6 +50,13 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
   List<RemoteOrder> _orders = const [];
   int _filter = 0;
   int _limit = _pageSize;
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -133,12 +141,22 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
     V3Toast.show(context, message, type: V3ToastType.error);
   }
 
-  List<RemoteOrder> get _visibleOrders => switch (_filter) {
-    1 => _orders.where((order) => order.status == 0 || order.status == 1).toList(),
-    2 => _orders.where((order) => order.status == 3 || order.status == 4).toList(),
-    3 => _orders.where((order) => order.status == 2).toList(),
-    _ => _orders,
-  };
+  List<RemoteOrder> get _visibleOrders {
+    final query = _search.text.trim().toLowerCase();
+    final filtered = switch (_filter) {
+      1 => _orders.where((order) => order.status == 0 || order.status == 1).toList(),
+      2 => _orders.where((order) => order.status == 3 || order.status == 4).toList(),
+      3 => _orders.where((order) => order.status == 2).toList(),
+      _ => _orders,
+    };
+    if (query.isEmpty) return filtered;
+    return filtered.where((order) {
+      final title = order.planName?.trim().isNotEmpty == true
+          ? order.planName!.trim() : order.periodLabel;
+      return title.toLowerCase().contains(query) ||
+          order.tradeNo.toLowerCase().contains(query);
+    }).toList(growable: false);
+  }
 
 
   Future<void> _openOrder(RemoteOrder order) async {
@@ -169,6 +187,15 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
       v3Copy(context, zh: '已完成', en: 'Completed', tw: '已完成'),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      V3MobileSearchField(
+        key: const ValueKey('v3-order-search'),
+        controller: _search,
+        hintText: v3Copy(context, zh: '搜索套餐或订单号',
+          en: 'Search plans or order numbers',
+          tw: '搜尋方案或訂單號'),
+        onChanged: (_) => setState(() => _limit = _pageSize),
+      ),
+      const SizedBox(height: 10),
       V3MobileSegmented(
         labels: filters,
         selectedIndex: _filter,
@@ -188,7 +215,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
           tooltip: v3Copy(context, zh: '刷新订单',
               en: 'Refresh orders', tw: '重新整理訂單'),
           onPressed: _loading ? null : refresh,
-          icon: Icon(Icons.refresh_rounded, color: p.inkMuted, size: 19),
+          icon: Icon(AppIcons.refresh, color: p.inkMuted, size: 19),
           constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         ),
       ]),
@@ -197,7 +224,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         const _OrdersSkeleton()
       else if (_error != null)
         V3EmptyState(
-          icon: Icons.error_outline_rounded,
+          icon: AppIcons.error,
           title: v3Copy(context, zh: '订单加载失败',
             en: 'Could not load orders', tw: '訂單載入失敗'),
           subtitle: _error!,
@@ -207,7 +234,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         )
       else if (visible.isEmpty)
         V3EmptyState(
-          icon: Icons.receipt_long_outlined,
+          icon: AppIcons.receipt,
           title: _filter == 0
               ? v3Copy(context, zh: '暂无订单', en: 'No orders', tw: '暫無訂單')
               : v3Copy(context, zh: '没有匹配的订单',
@@ -233,23 +260,19 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                   ? () => controller.goToPage(AppPage.shop) : null,
         )
       else
-        V3MobileCard(
-          padding: EdgeInsets.zero,
-          child: Column(children: [
-            for (var i = 0; i < shown.length; i++) ...[
-              if (i > 0)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 15),
-                  child: Divider(color: p.line, height: 1),
-                ),
-              _MobileOrderRow(
+        Column(children: [
+          for (var i = 0; i < shown.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            V3MobileCard(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+              child: _MobileOrderRow(
                 order: shown[i],
                 currencySymbol: controller.currencySymbol,
                 onTap: () => _openOrder(shown[i]),
               ),
-            ],
-          ]),
-        ),
+            ),
+          ],
+        ]),
       if (visible.length > shown.length) ...[
         const SizedBox(height: 12),
         Center(child: TextButton(
@@ -308,7 +331,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
             child: TextButton.icon(
               onPressed: _loading ? null : refresh,
               style: TextButton.styleFrom(foregroundColor: p.inkMuted),
-              icon: const Icon(Icons.refresh_rounded, size: 17),
+              icon: const Icon(AppIcons.refresh, size: 17),
               label: Text(v3Copy(context,
                 zh: '刷新订单', en: 'Refresh', tw: '重新整理訂單')),
             ),
@@ -363,14 +386,14 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
         if (_loading)
           const _OrdersSkeleton()
         else if (_error != null)
-          V3EmptyState(icon: Icons.error_outline_rounded,
+          V3EmptyState(icon: AppIcons.error,
             title: v3Copy(context, zh: '订单加载失败',
               en: 'Could not load orders', tw: '訂單載入失敗'),
             subtitle: _error!,
             actionLabel: v3Copy(context, zh: '重试',
               en: 'Retry', tw: '重試'), onAction: _load)
         else if (visible.isEmpty)
-          V3EmptyState(icon: Icons.receipt_long_rounded,
+          V3EmptyState(icon: AppIcons.receipt,
             title: v3Copy(context, zh: '这里还没有订单',
               en: 'No orders here yet', tw: '這裡尚無訂單'),
             subtitle: _filter == 0
@@ -431,10 +454,11 @@ class _MobileOrderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
-    final statusColor = switch (order.status) {
-      0 || 1 => p.warningInk,
-      3 || 4 => p.successInk,
-      _ => p.inkMuted,
+    final chipTone = switch (order.status) {
+      0 || 1 => V3ChipTone.warning,
+      2 => V3ChipTone.danger,
+      3 || 4 => V3ChipTone.success,
+      _ => V3ChipTone.neutral,
     };
     final title = order.planName?.trim().isNotEmpty == true
         ? order.planName!.trim() : order.periodLabel;
@@ -457,10 +481,16 @@ class _MobileOrderRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: p.inkMuted, fontSize: 11,
                     fontFeatures: const [FontFeature.tabularFigures()])),
-                const SizedBox(height: 8),
-                Text(_statusLabel(context, order),
-                  style: TextStyle(color: statusColor, fontSize: 11,
-                    fontWeight: FontWeight.w700)),
+                const SizedBox(height: 9),
+                V3MobileStatusChip(
+                  label: _statusLabel(context, order),
+                  tone: chipTone,
+                  icon: order.status == 2
+                      ? AppIcons.close
+                      : order.status == 0 || order.status == 1
+                          ? AppIcons.info
+                          : AppIcons.checkCircle,
+                ),
               ],
             )),
             const SizedBox(width: 8),
@@ -474,7 +504,7 @@ class _MobileOrderRow extends StatelessWidget {
                 style: TextStyle(color: p.inkMuted, fontSize: 11)),
             ]),
             const SizedBox(width: 5),
-            Icon(Icons.chevron_right_rounded, size: 17,
+            Icon(AppIcons.chevronRight, size: 17,
               color: p.inkMuted),
           ]),
         ),
@@ -574,7 +604,7 @@ class _MobileOrderDetailState extends State<_MobileOrderDetail> {
           tooltip: v3Copy(context, zh: '返回订单列表',
             en: 'Back to orders', tw: '返回訂單列表'),
           onPressed: () => Navigator.of(context).pop(),
-          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: p.ink),
+          icon: Icon(AppIcons.chevronLeft, size: 20, color: p.ink),
         ),
         title: Text(v3Copy(context, zh: '订单详情',
           en: 'Order details', tw: '訂單詳情'),
@@ -863,7 +893,7 @@ class _OrderRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: statusColor.withValues(alpha: .1),
             borderRadius: BorderRadius.circular(V3Radius.field)),
-          child: Icon(Icons.receipt_long_rounded,
+          child: Icon(AppIcons.receipt,
             color: statusColor, size: 20)),
         const SizedBox(width: 13),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,

@@ -165,9 +165,9 @@ void main() {
       (tester) async {
     final controller = VisualV3Controller(AppPage.shop);
     await _pumpMobile(tester, controller, const V3ShopPage());
-    expect(find.text('套餐'), findsOneWidget);
-    expect(find.text('选择适合你的方案'), findsOneWidget);
-    expect(find.text('套餐订阅'), findsNothing);
+    expect(find.text('套餐订阅'), findsOneWidget);
+    expect(find.text('选择适合你的线路和流量套餐'), findsOneWidget);
+    expect(find.text('选择适合你的方案'), findsNothing);
     expect(find.text('可购买套餐'), findsNothing);
     expect(find.byKey(const ValueKey('shop-filter-all')), findsOneWidget);
     expect(find.byKey(const ValueKey('shop-filter-recurring')),
@@ -180,16 +180,13 @@ void main() {
     await tester.ensureVisible(title);
     expect(tester.getRect(amount).left, greaterThan(tester.getRect(title).left));
     expect(find.text('12.80'), findsOneWidget);
-    expect(find.text('★ 推荐'), findsWidgets);
+    expect(find.text('推荐'), findsWidgets);
+    // Features are permanently visible under a hairline, with green ticks.
     final details = find.byKey(const ValueKey('shop-details-8'));
-    expect(find.text('高速线路'), findsNothing);
     await tester.ensureVisible(details);
-    await tester.tap(details);
-    await tester.pumpAndSettle();
     expect(find.text('高速线路'), findsOneWidget);
-    await tester.tap(details);
-    await tester.pumpAndSettle();
-    expect(find.text('高速线路'), findsNothing);
+    expect(find.text('多设备'), findsOneWidget);
+    expect(find.text('全球节点'), findsOneWidget);
 
     final quarter = find.byKey(const ValueKey('shop-cycle-8-quarterly'));
     await tester.ensureVisible(quarter);
@@ -202,12 +199,10 @@ void main() {
     await tester.tap(once);
     await tester.pumpAndSettle();
     expect(find.text('300G 流量包'), findsOneWidget);
-    expect(find.text('叠加使用'), findsNothing);
     final onceDetails = find.byKey(const ValueKey('shop-details-10'));
     await tester.ensureVisible(onceDetails);
-    await tester.tap(onceDetails);
-    await tester.pumpAndSettle();
     expect(find.text('叠加使用'), findsOneWidget);
+    expect(find.text('一次性流量'), findsOneWidget);
     expect(find.text('一次性购买'), findsNothing);
     expect(find.text('购买方式'), findsNothing);
     expect(find.byKey(const ValueKey('shop-buy-10')), findsOneWidget);

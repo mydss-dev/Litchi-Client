@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/shared/models/app_models.dart';
@@ -10,6 +9,7 @@ import 'package:litchi_client/v3/pages/v3_nodes_page.dart';
 import 'package:litchi_client/v3/theme/v3_palette.dart';
 
 import 'v3_visual_fixture.dart';
+import 'package:litchi_client/shared/theme/app_icons.dart';
 
 class _PhoneLatencyFixture extends VisualV3Controller {
   _PhoneLatencyFixture() : super(AppPage.nodes);
@@ -65,7 +65,7 @@ void main() {
     final probe = find.byKey(const ValueKey('v3-node-latency-untested'));
     expect(probe, findsOneWidget);
     expect(find.descendant(of: probe,
-      matching: find.byIcon(LucideIcons.zap)), findsOneWidget);
+      matching: find.byIcon(AppIcons.zap)), findsOneWidget);
     expect(tester.widget<Text>(find.text('150ms')).style?.color,
       V3Palette.light.warningInk);
     expect(tester.widget<Text>(find.text('400ms')).style?.color,
@@ -85,7 +85,7 @@ void main() {
     expect(tester.widget<Text>(find.text('80ms')).style?.color,
       V3Palette.light.successInk);
     expect(find.descendant(of: probe,
-      matching: find.byIcon(LucideIcons.zap)), findsNothing);
+      matching: find.byIcon(AppIcons.zap)), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
