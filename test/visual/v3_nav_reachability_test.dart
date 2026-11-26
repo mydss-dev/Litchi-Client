@@ -1,7 +1,7 @@
 import 'package:ios26_bottom_navigationbar/ios26_bottom_navigationbar.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart' show CupertinoListSection;
+import 'package:material_ui/material_ui.dart';
+import 'package:cupertino_ui/cupertino_ui.dart' show CupertinoListSection;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
@@ -118,7 +118,7 @@ void main() {
     AppPage.settings,
     AppPage.more,
   ]) {
-    testWidgets('Android secondary '+page.name+' has back and no bottom bar',
+    testWidgets('Android secondary ${page.name} has back and no bottom bar',
         (tester) async {
       await _onPlatform(TargetPlatform.android, () async {
         final controller = await _pumpShell(tester, const Size(390, 844));

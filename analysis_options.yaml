@@ -19,6 +19,8 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    # Flutter 3.50 gen-l10n still emits deprecated localization delegates.
+    - lib/l10n/generated/app_localizations.dart
 
 linter:
   rules:

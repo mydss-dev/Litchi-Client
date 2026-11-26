@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Litchi's visual language: Elegant — quiet neutral canvas, coral status
 /// accent, green for connected/confirmed, aqua as the fourth note.
