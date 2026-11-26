@@ -64,7 +64,7 @@ void main() {
       var face = tester.widget<AnimatedContainer>(
         find.byKey(const Key('v3-luxury-orb-face')));
       expect((face.decoration as BoxDecoration).color, colors.surfaceStrong);
-      expect((face.decoration as BoxDecoration).border!.top.color,
+      expect(((face.decoration as BoxDecoration).border as Border).top.color,
         colors.gold);
       await tester.tap(find.byKey(const Key('v3-luxury-orb-action')));
       expect(actions, 1);
@@ -82,7 +82,7 @@ void main() {
       expect(find.text('连接失败'), findsOneWidget);
       face = tester.widget<AnimatedContainer>(
         find.byKey(const Key('v3-luxury-orb-face')));
-      expect((face.decoration as BoxDecoration).border!.top.color,
+      expect(((face.decoration as BoxDecoration).border as Border).top.color,
         colors.danger);
       expect(find.text('0 MB'), findsOneWidget);
       expect(find.text('0 B/s'), findsNWidgets(2));
