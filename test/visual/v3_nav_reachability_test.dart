@@ -2,7 +2,6 @@ import 'package:ios26_bottom_navigationbar/ios26_bottom_navigationbar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoListSection;
-import 'package:forui/forui.dart' show FCard, FAvatar;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:litchi_client/app/app_controller.dart';
 import 'package:litchi_client/l10n/generated/app_localizations.dart';
@@ -177,17 +176,12 @@ void main() {
       final wallet = find.byKey(
           const ValueKey('v3-account-wallet-service'));
       final settings = find.byKey(hubRowKey(AppPage.settings));
-      expect(find.text('账户服务'), findsOneWidget);
-      expect(find.text('5 项功能'), findsNothing);
       expect(find.byKey(hubRowKey(AppPage.traffic)), findsNothing);
       expect(find.text('流量用量'), findsNothing);
       expect(find.byType(CupertinoListSection), findsOneWidget);
-      expect(find.byType(FCard), findsNWidgets(2));
       expect(find.byKey(const ValueKey('v3-account-identity-card')),
           findsOneWidget);
-      expect(find.byKey(const ValueKey('v3-account-merged-card')),
-          findsNothing);
-      expect(find.byType(FAvatar), findsOneWidget);
+      expect(find.byKey(hubRowKey(AppPage.invite)), findsNothing);
       expect(find.byKey(const ValueKey('v3-account-identity-avatar')),
           findsOneWidget);
       expect(orders, findsOneWidget);
@@ -197,8 +191,8 @@ void main() {
           lessThan(tester.getRect(orders).top));
       expect(find.text('工单支持'), findsOneWidget);
       expect(find.text('帮助与工单'), findsNothing);
-      expect(tester.getRect(settings).top,
-          greaterThan(tester.getRect(wallet).top));
+      expect(tester.getRect(orders).top,
+          lessThan(tester.getRect(settings).top));
 
       await _tap(tester, settings);
       expect(controller.page, AppPage.settings);
@@ -209,18 +203,18 @@ void main() {
     });
   });
 
-  testWidgets('Android card opens usage; renewal is not an account service',
+  testWidgets('Android account usage metric opens usage details',
       (tester) async {
     await _onPlatform(TargetPlatform.android, () async {
       final controller = await _pumpShell(tester, const Size(390, 844));
       controller.goToPage(AppPage.account);
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('v3-account-renew-service')), findsNothing);
-      expect(find.text('续费'), findsNothing);
-      await _tap(tester, find.byKey(const ValueKey('v3-mobile-plan-card')));
+      expect(find.byKey(const ValueKey('v3-mobile-plan-summary')), findsOneWidget);
+      expect(find.byKey(const ValueKey('v3-account-renew')), findsNothing);
+      await _tap(tester, find.byKey(const ValueKey('v3-account-usage')));
       expect(controller.page, AppPage.traffic);
       expect(find.text('套餐'), findsOneWidget);
-      expect(find.byKey(const ValueKey('v3-mobile-plan-card')), findsNothing);
+      expect(find.byKey(const ValueKey('v3-mobile-plan-summary')), findsNothing);
       expect(find.text('套餐流量'), findsOneWidget);
       expect(find.byKey(const ValueKey('v3-usage-renew')), findsOneWidget);
       await _tap(tester, find.byKey(

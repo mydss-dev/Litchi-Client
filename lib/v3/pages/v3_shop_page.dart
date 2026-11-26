@@ -11,6 +11,7 @@ import '../theme/v3_palette.dart';
 import '../ui/v3_components.dart';
 import '../ui/v3_empty_state.dart';
 import '../ui/v3_layout.dart';
+import '../ui/v3_mobile_components.dart';
 import '../ui/v3_plan_labels.dart';
 import '../ui/v3_sheet.dart';
 
@@ -54,15 +55,15 @@ class _V3ShopPageState extends State<V3ShopPage> {
       // Horizontal gutters follow the shared page insets so the card-width
       // math matches what the scroll view actually applies.
       final phone = constraints.maxWidth < V3Layout.paneCompact;
-      final padding = phone ? 12.0 : V3Layout.pageGutter;
+      final padding = phone ? V3MobileDesign.pageInset : V3Layout.pageGutter;
       const spacing = 12.0;
       final contentWidth = constraints.maxWidth - padding * 2;
       final twoColumns = contentWidth >= 600;
       final cardWidth = twoColumns ? (contentWidth - spacing) / 2 : contentWidth;
-      return SingleChildScrollView(
+      final scroll = SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: phone
-            ? const EdgeInsets.fromLTRB(12, 12, 12, 112)
+            ? V3MobileDesign.pageInsets.copyWith(bottom: 112)
             : V3Layout.pageInsets,
         child: V3WaveColumn(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (phone)
@@ -163,7 +164,8 @@ class _V3ShopPageState extends State<V3ShopPage> {
                     ]))),
             ])
           else Wrap(spacing: spacing, runSpacing: spacing, children: [
-            for (final plan in plans) SizedBox(width: cardWidth,
+            for (final plan in plans) SizedBox(
+              key: ValueKey(plan.id), width: cardWidth,
               child: _PlanCard(plan: plan,
                 currencySymbol: controller.currencySymbol,
                 desktop: twoColumns,
@@ -171,6 +173,7 @@ class _V3ShopPageState extends State<V3ShopPage> {
           ]),
         ]),
       );
+      return phone ? V3MobileBackdrop(child: scroll) : scroll;
     });
   }
 
@@ -551,10 +554,15 @@ class _HtmlPhonePlanCard extends StatefulWidget {
 
 class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
   BillingCycle? _selected;
+  bool _showDetails = false;
+
   @override
   void didUpdateWidget(covariant _HtmlPhonePlanCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.plan.id != widget.plan.id) _selected = null;
+    if (oldWidget.plan.id != widget.plan.id) {
+      _selected = null;
+      _showDetails = false;
+    }
   }
 
   @override
@@ -568,22 +576,21 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
     final price = v3PlanPrice(plan, cycle);
     // Recommendation is an explicit data flag only. No inferred ranking.
     final recommended = plan.featured;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
-    final muted = dark ? const Color(0xFFA4A0A5) : const Color(0xFF83858C);
-    final line = dark ? const Color(0xFF333439)
-        : const Color(0xFFEBEBEE);
-    final surface = dark ? const Color(0xFF202126) : Colors.white;
-    final benefits = plan.features.length > 1
-        ? plan.features.skip(1).toList(growable: false) : <String>[];
+    final dark = V3MobileDesign.isDark(context);
+    final ink = p.ink;
+    final muted = p.inkMuted;
+    final line = V3MobileDesign.stroke(context);
+    final surface = V3MobileDesign.card(context);
+    final benefits = plan.features.where((feature) => feature.trim().isNotEmpty);
 
     return Container(
       key: ValueKey('shop-card-${plan.id}'),
       decoration: BoxDecoration(
-        color: recommended
-            ? (dark ? const Color(0xFF3E2F34)
-                : const Color(0xFFFFE9E4))
-            : surface,
+        color: surface,
+        gradient: recommended ? LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: [V3MobileDesign.accentCard(context), surface],
+        ) : null,
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: recommended
             ? (dark ? const Color(0xFF68494C)
@@ -593,32 +600,27 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
           color: Color(0x0C241D21), offset: Offset(0, 7),
           blurRadius: 20)],
       ),
-      child: Stack(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(19, 19, 19, 18),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (recommended) ...[
+              Text(_tr(context, '★ 推荐', '★ Recommended', '★ 推薦'),
+                style: TextStyle(color: p.lycheeInk,
+                  fontSize: 11, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+            ],
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(flex: 51, child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(plan.title, maxLines: 4,
+                  Text(plan.title, maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: ink, fontSize: 20,
                       fontWeight: FontWeight.w800, height: 1.22)),
-                  if (plan.features.isNotEmpty) ...[
-                    const SizedBox(height: 7),
-                    Text(plan.features.first, maxLines: 5,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: muted, fontSize: 11.5,
-                        height: 1.5)),
-                  ],
                 ],
               )),
               const SizedBox(width: 8),
-              Expanded(flex: 49, child: Padding(
-                // V15: same price anchor with or without recommendation.
-                padding: const EdgeInsets.only(top: 34),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.end,
+              Expanded(flex: 49, child: Column(crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     if (price == null)
                       Text(_tr(context, '价格待公布', 'Price unavailable',
@@ -650,7 +652,6 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
                         style: TextStyle(color: muted, fontSize: 11)),
                     ],
                   ],
-                ),
               )),
             ]),
             if (plan.capacity.isNotEmpty ||
@@ -679,7 +680,7 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
                 final width = (bounds.maxWidth - 16) / 3;
                 return Wrap(spacing: 8, runSpacing: 8, children: [
                   for (final option in cycles)
-                    SizedBox(width: width, height: 36,
+                    SizedBox(width: width, height: 44,
                       child: _MobileCycleChip(
                         key: ValueKey('shop-cycle-${plan.id}-${option.name}'),
                         label: v3CycleLabel(context, option),
@@ -689,9 +690,22 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
               }),
             ],
             if (benefits.isNotEmpty) ...[
-              const SizedBox(height: 17),
-              Divider(color: line, height: 1),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                key: ValueKey('shop-details-${plan.id}'),
+                onPressed: () => setState(() => _showDetails = !_showDetails),
+                icon: Icon(_showDetails ? Icons.expand_less : Icons.expand_more),
+                label: Text(_showDetails
+                    ? _tr(context, '收起套餐详情', 'Hide details', '收起方案詳情')
+                    : _tr(context, '套餐详情', 'Plan details', '方案詳情')),
+                style: TextButton.styleFrom(
+                  foregroundColor: ink,
+                  minimumSize: const Size(0, 44),
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+            if (_showDetails)
               for (final benefit in benefits)
                 Padding(padding: const EdgeInsets.only(bottom: 11),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start,
@@ -703,20 +717,13 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
                         style: TextStyle(color: ink,
                           fontSize: 12, height: 1.45))),
                     ])),
-            ],
-            const SizedBox(height: 17),
+            const SizedBox(height: 12),
             SizedBox(width: double.infinity, height: 46,
               child: FilledButton(
                 key: ValueKey('shop-buy-${plan.id}'),
                 onPressed: plan.soldOut || price == null
                     ? null : () => widget.onBuy(cycle),
-                style: FilledButton.styleFrom(
-                  backgroundColor: dark ? const Color(0xFFF3E4E1)
-                    : const Color(0xFF252429),
-                  foregroundColor: dark ? const Color(0xFF2D2529)
-                    : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16))),
+                style: V3MobileDesign.primaryButton(context),
                 child: Text(plan.soldOut
                   ? _tr(context, '已售罄', 'Sold out', '已售罄')
                   : price == null
@@ -726,25 +733,7 @@ class _HtmlPhonePlanCardState extends State<_HtmlPhonePlanCard> {
                   style: const TextStyle(fontWeight: FontWeight.w700))),
             ),
           ]),
-        ),
-        if (recommended)
-          Positioned(top: 13, right: 18,
-            child: IgnorePointer(child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: dark ? const Color(0xFF322C30)
-                  : const Color(0xFFFFF9F6),
-                borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: dark
-                  ? const Color(0xFF68494C)
-                  : const Color(0xFFF1D4CE))),
-              child: Text(_tr(context, '★ 推荐',
-                  '★ Recommended', '★ 推薦'),
-                style: TextStyle(color: p.lycheeInk,
-                  fontSize: 11, fontWeight: FontWeight.w700)),
-            ))),
-      ]),
+      ),
     );
   }
 }

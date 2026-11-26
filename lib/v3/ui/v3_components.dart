@@ -4,6 +4,7 @@ import 'package:country_flags/country_flags.dart';
 
 import '../../app/app_controller.dart';
 import 'v3_locale_copy.dart';
+import 'v3_mobile_components.dart';
 
 import '../theme/v3_motion.dart';
 import '../theme/v3_palette.dart';
@@ -385,10 +386,11 @@ class V3MobileFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    final selectedFill = V3MobileDesign.isDark(context) ? p.ink : p.night;
     return Material(
-      color: selected ? p.night : p.surface,
+      color: selected ? selectedFill : V3MobileDesign.card(context),
       shape: StadiumBorder(side: BorderSide(
-        color: selected ? p.night : p.line)),
+        color: selected ? selectedFill : V3MobileDesign.stroke(context))),
       child: InkWell(
         borderRadius: BorderRadius.circular(99),
         onTap: onTap,
@@ -399,7 +401,9 @@ class V3MobileFilterChip extends StatelessWidget {
             child: Text(label, maxLines: 1,
               style: TextStyle(
                 fontSize: 12, fontWeight: FontWeight.w700,
-                color: selected ? Colors.white : p.inkMuted)),
+                color: selected
+                    ? (V3MobileDesign.isDark(context) ? p.night : Colors.white)
+                    : p.inkMuted)),
           ),
         ),
       ),

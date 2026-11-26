@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../app/app_controller.dart';
 import '../../shared/models/api_models.dart';
 import '../theme/v3_palette.dart';
+import 'v3_mobile_components.dart';
 import 'v3_notice_bar.dart';
 
-/// Exactly the text-first 128dp announcement from the HTML phone blueprint,
-/// backed by real server notices. No fabricated headline or stock image.
+/// Text-first announcement card backed by real server notices.
 class V3HtmlPhoneNotice extends StatefulWidget {
   const V3HtmlPhoneNotice({super.key, required this.controller});
   final AppController controller;
@@ -31,22 +31,28 @@ class _V3HtmlPhoneNoticeState extends State<V3HtmlPhoneNotice> {
     final notices = widget.controller.notices.take(6).toList();
     if (notices.isEmpty) return const SizedBox.shrink();
     final count = notices.length;
+    final scaler = MediaQuery.textScalerOf(context);
+    // PageView needs a bounded height. Grow it with all four preview lines
+    // instead of squeezing the text into the default-height card.
+    final extraHeight = (scaler.scale(10) - 10 + scaler.scale(14) - 14 +
+        2 * 1.55 * (scaler.scale(12) - 12)).clamp(0.0, double.infinity);
+    final surface = V3MobileDesign.card(context);
     return Container(
-      height: 128,
+      height: 128 + extraHeight,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: p.hairline),
+        borderRadius: BorderRadius.circular(V3MobileDesign.cardRadius),
+        border: Border.all(color: V3MobileDesign.stroke(context)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.alphaBlend(p.lychee.withValues(alpha: .16), p.surface),
-            Color.alphaBlend(p.lychee.withValues(alpha: .06), p.surface),
+            Color.alphaBlend(p.lychee.withValues(alpha: .07), surface),
+            surface,
           ],
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(V3MobileDesign.cardRadius),
         child: Stack(children: [
           PageView.builder(
             controller: _pages,

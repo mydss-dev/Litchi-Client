@@ -57,6 +57,24 @@ void main() {
     expect(tester.widget<V3MobileFilterChip>(
       find.byKey(const ValueKey('v3-region-NodeRegion.asia'))).selected,
       isTrue);
+    final search = find.byType(TextField);
+    await tester.enterText(search, 'impossible-node-match');
+    await tester.pumpAndSettle();
+    expect(find.text('没有匹配的节点'), findsOneWidget);
+    final clearSearch = find.byKey(const ValueKey('v3-node-clear-search'));
+    await tester.tap(clearSearch);
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(search).controller!.text, isEmpty);
+    expect(tester.widget<V3MobileFilterChip>(
+      find.byKey(const ValueKey('v3-region-NodeRegion.asia'))).selected, isTrue);
+    await tester.enterText(search, 'impossible-node-match');
+    await tester.pumpAndSettle();
+    final reset = find.text('清除筛选');
+    await tester.ensureVisible(reset);
+    await tester.tap(reset);
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(search).controller!.text, isEmpty);
+    expect(tester.widget<V3MobileFilterChip>(nodeAll).selected, isTrue);
     expect(tester.takeException(), isNull);
   });
 }

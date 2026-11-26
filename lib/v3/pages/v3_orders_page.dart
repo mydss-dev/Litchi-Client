@@ -189,7 +189,7 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
               en: 'Refresh orders', tw: '重新整理訂單'),
           onPressed: _loading ? null : refresh,
           icon: Icon(Icons.refresh_rounded, color: p.inkMuted, size: 19),
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         ),
       ]),
       const SizedBox(height: 5),
@@ -208,8 +208,10 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
       else if (visible.isEmpty)
         V3EmptyState(
           icon: Icons.receipt_long_outlined,
-          title: v3Copy(context, zh: '暂无订单',
-            en: 'No orders', tw: '暫無訂單'),
+          title: _filter == 0
+              ? v3Copy(context, zh: '暂无订单', en: 'No orders', tw: '暫無訂單')
+              : v3Copy(context, zh: '没有匹配的订单',
+                  en: 'No matching orders', tw: '沒有符合的訂單'),
           subtitle: _filter == 0
               ? v3Copy(context,
                   zh: '购买套餐后，订单会出现在这里。',
@@ -219,12 +221,16 @@ class _V3OrdersPageState extends State<V3OrdersPage> {
                   zh: '没有符合当前筛选条件的订单。',
                   en: 'No orders match this filter.',
                   tw: '沒有符合目前篩選條件的訂單。'),
-          actionLabel: _filter == 0
-              ? v3Copy(context, zh: '查看套餐',
-                  en: 'Browse plans', tw: '查看套餐')
-              : null,
-          onAction: _filter == 0
-              ? () => controller.goToPage(AppPage.shop) : null,
+          actionLabel: _filter != 0
+              ? v3Copy(context, zh: '查看全部订单',
+                  en: 'Show all orders', tw: '查看全部訂單')
+              : isPageEnabled(AppPage.shop)
+                  ? v3Copy(context, zh: '查看套餐',
+                      en: 'Browse plans', tw: '查看套餐') : null,
+          onAction: _filter != 0
+              ? () => setState(() { _filter = 0; _limit = _pageSize; })
+              : isPageEnabled(AppPage.shop)
+                  ? () => controller.goToPage(AppPage.shop) : null,
         )
       else
         V3MobileCard(

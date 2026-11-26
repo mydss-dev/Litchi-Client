@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart' show CupertinoListSection, CupertinoListTile;
-import 'package:forui/forui.dart' show FCard, FCardStyle, FAvatar;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../app/app_controller.dart';
@@ -298,6 +297,16 @@ class _MobileAccountOverview extends StatelessWidget {
                 onPressed: () => Navigator.of(sheetContext).pop(),
                 icon: Icon(Icons.close_rounded, color: p.inkMuted)),
             ]),
+            if (controller.hasPlan || isPageEnabled(AppPage.shop)) ...[
+              V3MobilePlanSummary(
+                plan: PlanPresentation.fromController(controller),
+                onRenew: isPageEnabled(AppPage.shop) ? () {
+                  Navigator.of(sheetContext).pop();
+                  _openAccountPlan(context, controller);
+                } : null,
+              ),
+              const SizedBox(height: 8),
+            ],
             if (controller.hasPlan) ...[
               _MobileGroupLabel(v3Copy(sheetContext,
                 zh: '偏好', en: 'PREFERENCES', tw: '偏好')),
@@ -362,88 +371,73 @@ class _MobileAccountOverview extends StatelessWidget {
     );
   }
 
-  /// Exact approved account V3 visual hierarchy. Account operations remain wired
-  /// to existing callbacks; the bottom dock belongs to the shared shell.
   @override
   Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final walletVisible = AppConfig.panelFeatures.wallet ||
         controller.user.balance > 0 || controller.withdrawable > 0;
-    final body = dark ? const Color(0xFF141519) : const Color(0xFFFFFEFD);
-    final muted = dark ? const Color(0xFFA4A0A5) : const Color(0xFF83858C);
+    final inviteEnabled = isPageEnabled(AppPage.invite);
+    final ordersEnabled = isPageEnabled(AppPage.orders);
+    final plan = PlanPresentation.fromController(controller);
+    void openInvite() => openV3Page(context, AppPage.invite);
 
-    return ColoredBox(
-      color: body,
+    Widget services(List<Widget> children) => CupertinoListSection.insetGrouped(
+      margin: EdgeInsets.zero,
+      backgroundColor: Colors.transparent,
+      separatorColor: p.line,
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: p.line),
+      ),
+      children: children,
+    );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.topCenter,
+          radius: .75,
+          colors: [Color.alphaBlend(
+            p.lycheeInk.withValues(alpha: dark ? .10 : .06), p.canvas),
+            p.canvas],
+        ),
+      ),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 120),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           V3PrimaryPageHeader(
             title: v3Copy(context, zh: '我的', en: 'Account', tw: '我的'),
             subtitle: v3Copy(context, zh: '账户与订阅管理',
                 en: 'Account & subscriptions', tw: '帳戶與訂閱管理'),
-            trailing: Material(
-              color: dark ? const Color(0xFF202126) : Colors.white,
-              shape: CircleBorder(side: BorderSide(
-                color: dark ? const Color(0xFF303137)
-                    : const Color(0xFFEBEBEE))),
-              child: IconButton(
-                key: const ValueKey('v3-account-refresh'),
-                tooltip: v3Copy(context, zh: '刷新账户数据',
-                  en: 'Refresh account', tw: '重新整理帳戶資料'),
-                onPressed: refreshing ? null : onRefresh,
-                icon: refreshing
-                  ? const SizedBox(width: 17, height: 17,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : Icon(Icons.refresh_rounded, color: muted, size: 18),
-              ),
+            trailing: IconButton.outlined(
+              key: const ValueKey('v3-account-refresh'),
+              tooltip: v3Copy(context, zh: '刷新账户数据',
+                en: 'Refresh account', tw: '重新整理帳戶資料'),
+              onPressed: refreshing ? null : onRefresh,
+              icon: refreshing
+                ? const SizedBox(width: 17, height: 17,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(Icons.refresh_rounded, color: p.inkMuted, size: 18),
             ),
           ),
-          const SizedBox(height: 19),
+          const SizedBox(height: 18),
           _MobileIdentityCard(
             controller: controller,
+            plan: plan,
             onManage: () => _showManage(context),
+            onOpenUsage: isPageEnabled(AppPage.traffic)
+                ? () => openV3Page(context, AppPage.traffic) : null,
           ),
-          const SizedBox(height: 16),
-          V3MobilePlanCard(
-            controller: controller,
-            onOpenUsage: () => openV3Page(context, AppPage.traffic),
-          ),
-          const SizedBox(height: 27),
-          Text(v3Copy(context, zh: '账户服务',
-              en: 'Account services', tw: '帳戶服務'),
-            style: TextStyle(color: dark ? const Color(0xFFF4F2F2)
-              : const Color(0xFF202226),
-              fontSize: 16, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 13),
-          CupertinoListSection.insetGrouped(
-            margin: EdgeInsets.zero,
-            backgroundColor: body,
-            separatorColor: V3Palette.of(context).line.withValues(alpha: .72),
-            decoration: BoxDecoration(
-              color: V3Palette.of(context).surface,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: V3Palette.of(context).line
-                  .withValues(alpha: .72)),
-            ),
-            children: [
-              if (walletVisible)
-                _MobileServiceTile(
-                  key: const ValueKey('v3-account-wallet-service'),
-                  icon: LucideIcons.wallet,
-                  title: v3Copy(context, zh: '我的钱包',
-                    en: 'Wallet', tw: '我的錢包'),
-                  onTap: () => Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const _MobileWalletPage())),
-                ),
-              _MobileServiceTile(
-                key: hubRowKey(AppPage.orders),
-                icon: LucideIcons.receipt,
-                title: v3Copy(context, zh: '订单记录',
-                  en: 'Orders', tw: '訂單紀錄'),
-                onTap: () => openV3Page(context, AppPage.orders),
-              ),
+          if (inviteEnabled) ...[
+            const SizedBox(height: 18),
+            _MobileInviteBanner(onTap: openInvite),
+          ],
+          const SizedBox(height: 18),
+          services([
+            if (isPageEnabled(AppPage.tickets))
               _MobileServiceTile(
                 key: hubRowKey(AppPage.tickets),
                 icon: LucideIcons.messageCircle,
@@ -451,22 +445,31 @@ class _MobileAccountOverview extends StatelessWidget {
                   en: 'Ticket support', tw: '工單支援'),
                 onTap: () => openV3Page(context, AppPage.tickets),
               ),
+            if (walletVisible)
               _MobileServiceTile(
-                key: hubRowKey(AppPage.invite),
-                icon: LucideIcons.users,
-                title: v3Copy(context, zh: '邀请好友',
-                  en: 'Invite friends', tw: '邀請好友'),
-                onTap: () => openV3Page(context, AppPage.invite),
+                key: const ValueKey('v3-account-wallet-service'),
+                icon: LucideIcons.wallet,
+                title: v3Copy(context, zh: '我的钱包',
+                  en: 'Wallet', tw: '我的錢包'),
+                onTap: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(builder: (_) => const _MobileWalletPage())),
               ),
+            if (ordersEnabled)
               _MobileServiceTile(
-                key: hubRowKey(AppPage.settings),
-                icon: LucideIcons.settings,
-                title: v3Copy(context, zh: '应用设置',
-                  en: 'Settings', tw: '應用設定'),
-                onTap: () => openV3Page(context, AppPage.settings),
+                key: hubRowKey(AppPage.orders),
+                icon: LucideIcons.receipt,
+                title: v3Copy(context, zh: '订单记录',
+                  en: 'Orders', tw: '訂單紀錄'),
+                onTap: () => openV3Page(context, AppPage.orders),
               ),
-            ],
-          ),
+            _MobileServiceTile(
+              key: hubRowKey(AppPage.settings),
+              icon: LucideIcons.settings,
+              title: v3Copy(context, zh: '应用设置',
+                en: 'Settings', tw: '應用設定'),
+              onTap: () => openV3Page(context, AppPage.settings),
+            ),
+          ]),
           if (controller.dataLoadError != null) ...[
             const SizedBox(height: 12),
             V3EmptyState(
@@ -538,7 +541,7 @@ class _MobileServiceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return CupertinoListTile.notched(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       leadingSize: 34,
       leading: Container(
         width: 34, height: 34,
@@ -559,87 +562,169 @@ class _MobileServiceTile extends StatelessWidget {
 }
 
 
-/// Independent Wallet-style identity card above the subscription card.
+/// One mobile account card for identity, subscription and usage metrics.
 class _MobileIdentityCard extends StatelessWidget {
-  const _MobileIdentityCard({required this.controller, required this.onManage});
+  const _MobileIdentityCard({required this.controller, required this.plan,
+    required this.onManage, this.onOpenUsage});
   final AppController controller;
+  final PlanPresentation plan;
   final VoidCallback onManage;
+  final VoidCallback? onOpenUsage;
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final user = controller.user;
-    final email = controller.accountDetails?.email.trim() ?? '';
-    // Email login is the identity. Never duplicate its local part as a name.
-    final displayIdentity = email.isNotEmpty
-        ? email : v3AccountDisplayName(context, user.name);
-    final avatarSource = email.isNotEmpty ? email : user.avatarLetter.trim();
-    final letter = avatarSource.isEmpty
-        ? 'L' : avatarSource.substring(0, 1).toUpperCase();
-    final ink = dark ? const Color(0xFFF4F2F2) : const Color(0xFF202226);
-    final muted = dark ? const Color(0xFFAAA3A6) : const Color(0xFF92929A);
     final p = V3Palette.of(context);
-    return FCard(
+    final email = controller.accountDetails?.email.trim() ?? '';
+    final identity = email.isNotEmpty
+        ? email : v3AccountDisplayName(context, controller.user.name);
+    final avatar = email.isNotEmpty ? email : controller.user.avatarLetter.trim();
+    final days = plan.expiryDate?.difference(DateTime.now());
+    final remainingDays = switch (plan.expiryKind) {
+      PlanExpiryKind.permanent => v3Copy(context,
+        zh: '永久', en: 'Permanent', tw: '永久'),
+      PlanExpiryKind.date when days != null => '${days > Duration.zero ? (days.inSeconds / 86400).ceil() : 0}',
+      _ => '—',
+    };
+    final traffic = controller.traffic;
+    final remainingTraffic = traffic.totalGb > 0
+        ? '${traffic.remainGb.clamp(0, traffic.totalGb).toStringAsFixed(1)} GB'
+        : '—';
+
+    return Container(
       key: const ValueKey('v3-account-identity-card'),
-      style: FCardStyle(
-        decoration: const BoxDecoration(),
-        titleTextStyle: TextStyle(color: ink,
-          fontSize: 16, fontWeight: FontWeight.w600),
-        subtitleTextStyle: TextStyle(color: muted, fontSize: 13),
-        padding: EdgeInsets.zero),
-      child: Container(
-      constraints: const BoxConstraints(minHeight: 92),
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 17),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: p.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: p.line.withValues(alpha: .72)),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: p.line),
+      ),
+      child: Column(children: [
+        Row(children: [
+          Container(
+            key: const ValueKey('v3-account-identity-avatar'),
+            width: 52, height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: p.lycheeInk.withValues(alpha: .13),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(avatar.isEmpty ? 'L' : avatar.characters.first.toUpperCase(),
+              style: TextStyle(color: p.lycheeInk, fontSize: 21,
+                fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(identity, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: p.ink, fontSize: 15, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 3),
+              V3MobilePlanSummary(
+                key: const ValueKey('v3-mobile-plan-summary'),
+                plan: plan,
+                inline: true,
+              ),
+            ],
+          )),
+          const SizedBox(width: 4),
+          TextButton(
+            onPressed: onManage,
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+            child: Text(v3Copy(context, zh: '管理账户', en: 'Manage', tw: '管理帳戶'),
+              style: TextStyle(color: p.inkMuted, fontSize: 11)),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        Divider(height: 1, color: p.line),
+        const SizedBox(height: 8),
+        IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Expanded(child: _MobileAccountMetric(value: remainingDays,
+            label: v3Copy(context, zh: '剩余天数', en: 'Days left', tw: '剩餘天數'))),
+          VerticalDivider(width: 1, thickness: 1, indent: 8, endIndent: 8, color: p.line),
+          Expanded(child: _MobileAccountMetric(value: remainingTraffic,
+            emphasize: traffic.totalGb > 0, onTap: onOpenUsage,
+            label: v3Copy(context, zh: '剩余流量', en: 'Data left', tw: '剩餘流量'))),
+        ])),
+      ]),
+    );
+  }
+}
+
+class _MobileAccountMetric extends StatelessWidget {
+  const _MobileAccountMetric({required this.label, required this.value,
+    this.onTap, this.emphasize = false});
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: Column(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: p.inkMuted, fontSize: 11)),
+        const SizedBox(height: 4),
+        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: emphasize ? p.lycheeInk : p.ink,
+            fontSize: 16, fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()])),
+      ]),
+    );
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 52),
+      child: onTap == null ? content : Semantics(
+        button: true,
+        child: Material(type: MaterialType.transparency,
+          child: InkWell(
+            key: const ValueKey('v3-account-usage'),
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: content,
+          )),
+      ),
+    );
+  }
+}
+
+class _MobileInviteBanner extends StatelessWidget {
+  const _MobileInviteBanner({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = V3Palette.of(context);
+    return Container(
+      key: const ValueKey('v3-account-invite-banner'),
+      constraints: const BoxConstraints(minHeight: 96),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Color.alphaBlend(
+          p.lycheeInk.withValues(alpha: .13), p.surface), p.surface]),
+        border: Border.all(color: p.lycheeInk.withValues(alpha: .22)),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Row(children: [
-        Container(
-          key: const ValueKey('v3-account-identity-avatar'),
-          width: 51, height: 51,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: p.surfaceRaised,
-            borderRadius: BorderRadius.circular(16)),
-          child: FAvatar.raw(
-            size: 51,
-            style: .delta(backgroundColor: Colors.transparent),
-            child: Text(letter, style: TextStyle(
-              color: p.lycheeInk,
-              fontSize: 20, fontWeight: FontWeight.w800)),
-          ),
-        ),
-        const SizedBox(width: 13),
-        Expanded(child: Text(displayIdentity,
-          maxLines: 2, overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: ink, fontSize: 15,
-            height: 1.25, fontWeight: FontWeight.w700))),
-        const SizedBox(width: 6),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, children: [
+            Text(v3Copy(context, zh: '邀请好友', en: 'Invite friends', tw: '邀請好友'),
+              style: TextStyle(color: p.ink, fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 5),
+            Text(v3Copy(context, zh: '分享你的专属邀请链接',
+              en: 'Share your personal invite link', tw: '分享你的專屬邀請連結'),
+              style: TextStyle(color: p.inkMuted, fontSize: 12)),
+          ])),
+        const SizedBox(width: 8),
         OutlinedButton(
-          onPressed: onManage,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(0, 36),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            side: BorderSide(color: p.line.withValues(alpha: .72)),
-            backgroundColor: p.surfaceRaised,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(13)),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text(v3Copy(context, zh: '管理账户',
-                en: 'Manage', tw: '管理帳戶'),
-              style: TextStyle(fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: p.inkMuted)),
-            const SizedBox(width: 3),
-            Icon(LucideIcons.chevronRight, size: 13,
-              color: p.inkMuted),
-          ]),
+          key: const ValueKey('v3-account-open-invite'),
+          onPressed: onTap,
+          style: OutlinedButton.styleFrom(foregroundColor: p.ink,
+            padding: const EdgeInsets.symmetric(horizontal: 12)),
+          child: Text(v3Copy(context, zh: '去邀请', en: 'Invite', tw: '去邀請')),
         ),
       ]),
-      ),
     );
   }
 }

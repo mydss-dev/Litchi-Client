@@ -9,6 +9,7 @@ import 'v3_components.dart';
 import 'v3_empty_state.dart';
 import 'v3_node_picker.dart';
 import 'v3_locale_copy.dart';
+import 'v3_mobile_components.dart';
 import 'v3_latency_tier.dart';
 import 'v3_node_tags.dart';
 
@@ -52,15 +53,21 @@ class V3HtmlPhoneNodes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
+    final hasQuery = search.text.isNotEmpty;
+    final filtered = search.text.trim().isNotEmpty || region != null;
+    void clearSearch() {
+      search.clear();
+      onQuery('');
+    }
     final filters = <(NodeRegion?, String)>[
       (null, v3Copy(context, zh: '全部', en: 'All', tw: '全部')),
       (NodeRegion.asia, v3Copy(context, zh: '亚洲', en: 'Asia', tw: '亞洲')),
       (NodeRegion.europe, v3Copy(context, zh: '欧洲', en: 'Europe', tw: '歐洲')),
       (NodeRegion.america, v3Copy(context, zh: '美洲', en: 'Americas', tw: '美洲')),
     ];
-    return SingleChildScrollView(
+    final scroll = SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 110),
+      padding: V3MobileDesign.pageInsets.copyWith(bottom: 110),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         V3PrimaryPageHeader(
           title: v3Copy(context, zh: '节点', en: 'Nodes', tw: '節點'),
@@ -68,7 +75,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
             zh: '$total 个节点 · $regions 个地区',
             en: '$total nodes · $regions regions',
             tw: '$total 個節點 · $regions 個地區'),
-          trailing: SizedBox(height: 36, child: OutlinedButton.icon(
+          trailing: SizedBox(height: 44, child: OutlinedButton.icon(
             key: const Key('v3-overview-speed-test'),
             onPressed: controller.isLatencyTesting || testingNodeId != null
                 ? null : onTest,
@@ -82,7 +89,7 @@ class V3HtmlPhoneNodes extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               foregroundColor: p.ink,
               side: BorderSide(color: p.line),
-              minimumSize: const Size(0, 36),
+              minimumSize: const Size(0, 44),
               textStyle: const TextStyle(fontSize: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               shape: RoundedRectangleBorder(
@@ -93,12 +100,13 @@ class V3HtmlPhoneNodes extends StatelessWidget {
         Container(
           height: 44,
           decoration: BoxDecoration(
-            color: p.surface,
-            border: Border.all(color: p.hairline),
+            color: V3MobileDesign.card(context),
+            border: Border.all(color: V3MobileDesign.stroke(context)),
             borderRadius: BorderRadius.circular(16)),
           child: TextField(
             controller: search,
             onChanged: onQuery,
+            textInputAction: TextInputAction.search,
             style: TextStyle(color: p.ink, fontSize: 12),
             decoration: InputDecoration(
               isDense: true,
@@ -107,6 +115,12 @@ class V3HtmlPhoneNodes extends StatelessWidget {
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
               prefixIcon: Icon(Icons.search_rounded, color: p.inkMuted, size: 17),
+              suffixIcon: hasQuery ? IconButton(
+                key: const ValueKey('v3-node-clear-search'),
+                tooltip: v3Copy(context, zh: '清除搜索', en: 'Clear search', tw: '清除搜尋'),
+                onPressed: clearSearch,
+                icon: const Icon(Icons.close_rounded, size: 18),
+              ) : null,
               hintText: v3Copy(context, zh: '搜索节点',
                 en: 'Search nodes', tw: '搜尋節點'),
               hintStyle: TextStyle(color: p.inkMuted,
@@ -130,7 +144,8 @@ class V3HtmlPhoneNodes extends StatelessWidget {
         ),
         const SizedBox(height: 15),
         Material(
-          color: controller.autoSelected ? p.lycheeSoft : p.surface,
+          color: controller.autoSelected
+              ? V3MobileDesign.accentCard(context) : V3MobileDesign.card(context),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
             side: BorderSide(color: controller.autoSelected
@@ -195,13 +210,37 @@ class V3HtmlPhoneNodes extends StatelessWidget {
             onAction: controller.refreshData,
           )
         else if (nodes.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(v3Copy(context, zh: '没有匹配的节点',
-              en: 'No matching nodes', tw: '沒有符合的節點'),
-              style: TextStyle(color: p.inkMuted)),
+          V3EmptyState(
+            icon: Icons.search_off_rounded,
+            title: filtered
+                ? v3Copy(context, zh: '没有匹配的节点',
+                    en: 'No matching nodes', tw: '沒有符合的節點')
+                : v3Copy(context, zh: '暂无可用节点',
+                    en: 'No nodes available', tw: '暫無可用節點'),
+            subtitle: filtered
+                ? v3Copy(context, zh: '试试其他关键词或地区。',
+                    en: 'Try another search or region.', tw: '試試其他關鍵字或地區。')
+                : v3Copy(context, zh: '刷新后再试一次。',
+                    en: 'Refresh to try again.', tw: '重新整理後再試一次。'),
+            actionLabel: filtered
+                ? v3Copy(context, zh: '清除筛选', en: 'Reset filters', tw: '清除篩選')
+                : v3Copy(context, zh: '刷新节点', en: 'Refresh nodes', tw: '重新整理節點'),
+            onAction: filtered ? () {
+              clearSearch();
+              onRegion(null);
+            } : controller.refreshData,
           )
-        else
+        else ...[
+          if (filtered) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
+              child: Text(v3Copy(context,
+                zh: '${nodes.length} 个匹配节点',
+                en: '${nodes.length} matching nodes',
+                tw: '${nodes.length} 個符合的節點'),
+                style: TextStyle(color: p.inkMuted, fontSize: 12)),
+            ),
+          ],
           for (final node in nodes)
             Padding(
               padding: const EdgeInsets.only(bottom: 9),
@@ -219,8 +258,10 @@ class V3HtmlPhoneNodes extends StatelessWidget {
                 onTest: () => onTestNode(node.id),
               ),
             ),
+        ],
       ]),
     );
+    return V3MobileBackdrop(child: scroll);
   }
 }
 
@@ -245,7 +286,8 @@ class _HtmlNodeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = V3Palette.of(context);
     return Material(
-      color: selected ? p.lycheeSoft : p.surface,
+      color: selected
+          ? V3MobileDesign.accentCard(context) : V3MobileDesign.card(context),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(color: selected

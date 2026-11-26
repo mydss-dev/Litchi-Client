@@ -350,6 +350,7 @@ Widget _pageFor(AppPage page, BuildContext context) {
     AppPage.orders => V3SheetPageFallback(
       title: l.orders,
       backPage: AppPage.account,
+      mobileBackdrop: true,
       child: const V3OrdersPage(),
     ),
     AppPage.tickets => const V3TicketsPage(),

@@ -12,6 +12,7 @@ import '../ui/v3_components.dart';
 import '../ui/v3_dropdown.dart';
 import '../ui/v3_layout.dart';
 import '../ui/v3_locale_copy.dart';
+import '../ui/v3_mobile_components.dart';
 import '../ui/v3_toast.dart';
 
 // Reuse the existing ARB translations for established UI copy. These short
@@ -94,12 +95,14 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
     final desktopTools = v3HasDesktopSystemTools(defaultTargetPlatform);
     final currentNetwork = controller.networkMode == NetworkMode.system
         ? l.systemProxy : l.tunMode;
-    return SingleChildScrollView(
+    final phone = !kIsWeb && (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS);
+    Widget group({required Widget child, EdgeInsetsGeometry padding = EdgeInsets.zero}) =>
+        phone ? V3MobileCard(padding: padding, child: child)
+            : V3Panel(padding: padding, child: child);
+    final scroll = SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: (defaultTargetPlatform == TargetPlatform.android ||
-              defaultTargetPlatform == TargetPlatform.iOS)
-              ? const EdgeInsets.fromLTRB(12, 12, 12, 28)
-              : V3Layout.pageInsets,
+      padding: phone ? V3MobileDesign.pageInsets : V3Layout.pageInsets,
       child: V3WaveColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -120,8 +123,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
               children: [
                 V3SectionLabel(l.systemSettings),
                 const SizedBox(height: 10),
-                V3Panel(
-                  padding: EdgeInsets.zero,
+                group(
                   child: Column(children: [
                     if (desktopTools) _SettingRow(
                       icon: Icons.power_settings_new_rounded,
@@ -171,8 +173,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                 const SizedBox(height: 22),
                 V3SectionLabel(l.appearance),
                 const SizedBox(height: 10),
-                V3Panel(
-                  padding: EdgeInsets.zero,
+                group(
                   child: Column(children: [
                     _SettingRow(
                       icon: Icons.dark_mode_rounded,
@@ -221,8 +222,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                 const SizedBox(height: 22),
                 V3SectionLabel(l.connectionSettings),
                 const SizedBox(height: 10),
-                V3Panel(
-                  padding: EdgeInsets.zero,
+                group(
                   child: Column(children: [
                     // Read-only mirror row: the Connect page's segments own
                     // proxy mode, so this row only names the current mode and
@@ -312,7 +312,8 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
                 const SizedBox(height: 22),
                 V3SectionLabel(l.about),
                 const SizedBox(height: 10),
-                V3Panel(
+                group(
+                  padding: const EdgeInsets.all(20),
                   child: Row(children: [
                     Expanded(child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,6 +356,7 @@ class _V3SettingsPageState extends State<V3SettingsPage> {
         ],
       ),
     );
+    return phone ? V3MobileBackdrop(child: scroll) : scroll;
   }
 }
 

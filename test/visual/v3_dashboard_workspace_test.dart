@@ -159,14 +159,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('android renders the plan-A minimal connection section',
+  testWidgets('android keeps the map and primary action in a compact layout',
       (tester) async {
-    // §13.1/§13.3: the phone's connection surface is a page-level dot-map
-    // stage (no card shell), an independent node row card and a bare routing
-    // segment. The metrics card never existed on the phone (it is a desktop
-    // surface the mockup carried over) and the plan card left the connection
-    // page; the desktop workspace keeps both surfaces (端分治, §13.4) and is
-    // covered by the geometry tests above and the plan countdown test below.
+    // The phone keeps a map, a wide action, routing and a node shortcut;
+    // desktop-only metrics and the plan card stay on the desktop workspace.
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.binding.setSurfaceSize(const Size(390, 844));
@@ -182,7 +178,8 @@ void main() {
 
     // A framed map shows the current node's approximate country position.
     // The primary phone connection action is a wide capsule, not a circle.
-    expect(tester.getRect(find.byKey(kConnectActionCardKey)).height, 375);
+    expect(tester.getSize(find.byKey(kConnectActionCardKey)).height,
+        lessThan(375));
     expect(find.descendant(of: find.byKey(kConnectActionCardKey),
         matching: find.byKey(const ValueKey('v3-map-country-marker'))),
         findsOneWidget);
@@ -191,7 +188,9 @@ void main() {
     final capsule = tester.getRect(
         find.byKey(const ValueKey('v3-mobile-connect-pill')));
     expect(capsule.width, greaterThan(250));
-    expect(capsule.width, greaterThan(capsule.height));
+    expect(capsule.height, greaterThanOrEqualTo(48));
+    expect(capsule.bottom, lessThan(tester.getTopLeft(
+      find.byKey(const Key('v3-connection-duration'))).dy));
     expect(find.text('保护中'), findsOneWidget);
     expect(find.text('01:26:18'), findsOneWidget);
     expect(find.text('断开连接'), findsOneWidget);
@@ -240,4 +239,34 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('320dp dark connection page fits with larger text', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.binding.setSurfaceSize(const Size(320, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final controller = _AutoNamedFixture();
+    addTearDown(controller.disposeVisual);
+    await tester.pumpWidget(AppScope(
+      controller: controller,
+      child: MaterialApp(
+        theme: V3Theme.dark(),
+        home: const MediaQuery(
+          data: MediaQueryData(size: Size(320, 700), textScaler: TextScaler.linear(1.5)),
+          child: Scaffold(body: V3DashboardPage()),
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    final action = find.byKey(const ValueKey('v3-mobile-connect-pill'));
+    final cardRect = tester.getRect(find.byKey(kConnectActionCardKey));
+    final actionRect = tester.getRect(action);
+    expect(cardRect.left, 16);
+    expect(cardRect.right, 304);
+    expect(actionRect.left, greaterThan(cardRect.left));
+    expect(actionRect.right, lessThan(cardRect.right));
+    expect(actionRect.height, greaterThanOrEqualTo(48));
+    expect(find.text('断开连接'), findsOneWidget);
+    expect(find.text('↓ 12.0 MB/s'), findsOneWidget);
+  });
 }

@@ -9,6 +9,7 @@ import '../theme/v3_palette.dart';
 import 'v3_components.dart';
 import 'v3_layout.dart';
 import 'v3_locale_copy.dart';
+import 'v3_mobile_components.dart';
 
 /// The width at which the workspace and its sheets switch layouts.
 const double kV3CompactBreakpoint = 760;
@@ -167,12 +168,14 @@ class V3SheetPageFallback extends StatelessWidget {
     this.subtitle,
     required this.child,
     this.backPage,
+    this.mobileBackdrop = false,
   });
 
   final String title;
   final String? subtitle;
   final Widget child;
   final AppPage? backPage;
+  final bool mobileBackdrop;
 
   @override
   Widget build(BuildContext context) {
@@ -180,9 +183,10 @@ class V3SheetPageFallback extends StatelessWidget {
     if (compact && backPage != null) {
       // A phone secondary page uses a true compact toolbar, not the desktop
       // oversized page-header row plus a second refresh/action strip.
-      return SingleChildScrollView(
+      final scroll = SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(18, 9, 18, 25),
+        padding: mobileBackdrop ? V3MobileDesign.pageInsets
+            : const EdgeInsets.fromLTRB(18, 9, 18, 25),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           V3PageHeader(
             title: title,
@@ -193,6 +197,7 @@ class V3SheetPageFallback extends StatelessWidget {
           child,
         ]),
       );
+      return mobileBackdrop ? V3MobileBackdrop(child: scroll) : scroll;
     }
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),

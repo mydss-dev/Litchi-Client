@@ -4,12 +4,52 @@ import '../theme/v3_palette.dart';
 
 /// The phone-only implementation of the Elegant reference geometry.
 /// Shared between the account hub and the full-screen account subpages.
+/// Shared phone surfaces based on the Ardot light and dark frame gradients.
 abstract final class V3MobileDesign {
   static const double pageInset = 16;
+  static const pageInsets = EdgeInsets.fromLTRB(pageInset, 12, pageInset, 28);
+
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  static Color card(BuildContext context) =>
+      isDark(context) ? const Color(0xFF1A1E20) : const Color(0xFFFFFEFC);
+
+  static Color stroke(BuildContext context) =>
+      isDark(context) ? const Color(0xFF343839) : const Color(0xFFDFD8D1);
+
+  static Color accentCard(BuildContext context) =>
+      isDark(context) ? const Color(0xFF302623) : const Color(0xFFFFF1EB);
+
+  static ButtonStyle primaryButton(BuildContext context) => FilledButton.styleFrom(
+    backgroundColor: isDark(context) ? const Color(0xFFF5F2ED) : const Color(0xFF17171A),
+    foregroundColor: isDark(context) ? const Color(0xFF17171A) : Colors.white,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(V3Radius.field)),
+  );
   static const double cardRadius = 22;
   static const double cellRadius = 14;
   static const double cardGap = 12;
   static const double sectionGap = 22;
+}
+
+class V3MobileBackdrop extends StatelessWidget {
+  const V3MobileBackdrop({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: V3MobileDesign.isDark(context)
+            ? const [Color(0xFF0A0D0F), Color(0xFF050808)]
+            : const [Color(0xFFF2F0EB), Color(0xFFE6E0D9)],
+      ),
+    ),
+    child: child,
+  );
 }
 
 class V3MobileCard extends StatelessWidget {
@@ -24,14 +64,13 @@ class V3MobileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = V3Palette.of(context);
     return Container(
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: p.surface,
+        color: V3MobileDesign.card(context),
         borderRadius: BorderRadius.circular(V3MobileDesign.cardRadius),
-        border: Border.all(color: p.hairline),
+        border: Border.all(color: V3MobileDesign.stroke(context)),
       ),
       child: child,
     );
