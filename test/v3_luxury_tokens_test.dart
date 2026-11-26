@@ -32,7 +32,9 @@ void main() {
           )));
         }),
       ));
-      await tester.pump();
+      // ThemeData is applied through AnimatedTheme; allow its default
+      // transition to settle before checking the resolved extension.
+      await tester.pumpAndSettle();
     }
 
     await show(ThemeMode.light);
