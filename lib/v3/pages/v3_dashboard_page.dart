@@ -831,7 +831,7 @@ class _MobileConnectSectionState extends State<_MobileConnectSection>
           nodeCode: node.code,
           nodeName: node.name,
           nodeLatencyMs: node.latency,
-          connectedDuration: controller.connectedDuration,
+          readConnectedDuration: () => controller.connectedDuration,
           upBps: controller.upBpsNotifier,
           downBps: controller.downBpsNotifier,
         ),

@@ -36,7 +36,7 @@ void main() {
                       nodeCode: 'HK',
                       nodeName: '香港 · 中环 01 Premium Extra Long',
                       nodeLatencyMs: 32,
-                      connectedDuration: const Duration(hours: 10),
+                      readConnectedDuration: () => const Duration(hours: 10),
                       upBps: up,
                       downBps: down,
                     ),

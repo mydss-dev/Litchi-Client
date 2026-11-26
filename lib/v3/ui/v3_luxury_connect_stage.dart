@@ -23,7 +23,7 @@ class V3LuxuryConnectionHero extends StatefulWidget {
     required this.nodeCode,
     required this.nodeName,
     required this.nodeLatencyMs,
-    required this.connectedDuration,
+    required this.readConnectedDuration,
     required this.upBps,
     required this.downBps,
     this.orbKey,
@@ -35,7 +35,7 @@ class V3LuxuryConnectionHero extends StatefulWidget {
   final String nodeCode;
   final String nodeName;
   final int nodeLatencyMs;
-  final Duration connectedDuration;
+  final Duration Function() readConnectedDuration;
   final ValueListenable<int> upBps;
   final ValueListenable<int> downBps;
   final Key? orbKey;
@@ -262,7 +262,7 @@ class _V3LuxuryConnectionHeroState extends State<V3LuxuryConnectionHero> {
                   else
                     Text(
                       connected
-                          ? _duration(widget.connectedDuration)
+                          ? _duration(widget.readConnectedDuration())
                           : busy ? '--:--:--' : '00:00:00',
                       key: const Key('v3-luxury-connection-duration'),
                       style: TextStyle(
