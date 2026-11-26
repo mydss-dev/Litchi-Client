@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'v3_luxury_tokens.dart';
+
 /// Litchi's visual language: Elegant — quiet neutral canvas, coral status
 /// accent, green for connected/confirmed, aqua as the fourth note.
 /// Light and dark palettes are composed independently, not simply inverted.
@@ -245,6 +247,13 @@ class V3Theme {
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
+      // The new design system coexists with the legacy palette until each
+      // screen migrates. Both modes are resolved via ThemeExtension.
+      extensions: <ThemeExtension<dynamic>>[
+        brightness == Brightness.dark
+            ? V3LuxuryTokens.dark
+            : V3LuxuryTokens.light,
+      ],
       colorScheme: scheme,
       scaffoldBackgroundColor: p.canvas,
       fontFamily: 'Segoe UI',
