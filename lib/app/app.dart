@@ -65,16 +65,10 @@ class _LitchiAppState extends State<LitchiApp> {
             themeAnimationDuration: const Duration(milliseconds: 220),
             themeAnimationCurve: Curves.easeOutCubic,
             locale: _controller.locale,
-            // material_ui ships its own MaterialLocalizations type. The
-            // generated AppLocalizations.localizationsDelegates registers
-            // flutter_localizations' MaterialLocalizations instead, so on
-            // non-English locales material_ui's built-in delegate is skipped
-            // (isSupported only accepts 'en') and widgets such as
-            // RefreshIndicator throw "No MaterialLocalizations found".
-            localizationsDelegates: <LocalizationsDelegate<dynamic>>[
-              AppLocalizations.delegate,
-              ...GlobalMaterialLocalizations.delegates,
-            ],
+            // The generated list registers both the official and the
+            // material_ui fork MaterialLocalizations delegates, so zh works
+            // in the real app and in plain Flutter test harnesses alike.
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             builder: (context, child) {
               Widget content = child ?? const SizedBox.shrink();

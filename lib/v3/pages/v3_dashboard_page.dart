@@ -16,6 +16,7 @@ import '../ui/v3_html_phone_notice.dart';
 import '../ui/v3_latency_tier.dart';
 import '../ui/v3_locale_copy.dart';
 import '../ui/v3_mobile_components.dart';
+import '../ui/v3_mobile_safety_card.dart';
 import '../ui/v3_node_picker.dart';
 import '../ui/v3_toast.dart';
 import '../ui/v3_node_tags.dart';
@@ -799,6 +800,11 @@ class _MobileConnectSectionState extends State<_MobileConnectSection>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 4),
+        // Elegant reference leads with a standalone safety banner so the
+        // network state is legible before the map. Read-only; the orb below
+        // stays the only connection control.
+        V3MobileSafetyCard(status: controller.connectionStatus),
+        const SizedBox(height: V3Layout.cardGap),
         _MobileConnectStage(controller: controller),
         const SizedBox(height: V3Layout.cardGap),
         // The node belongs to the connection: it sits directly under it.

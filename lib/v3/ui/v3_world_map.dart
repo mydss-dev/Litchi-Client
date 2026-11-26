@@ -95,9 +95,12 @@ class V3WorldMapPainter extends CustomPainter {
     final originY = (size.height - cell * _gridRows) / 2;
     // The palette instances are the two static const themes, so identity tells
     // the two washes apart without threading a brightness through the painter.
+    // The Elegant reference paints the light-stage map in a soft blue wash,
+    // not ink-grey: the dots read as geography, not as text debris. Dark
+    // keeps the restrained white at 10% so the field never glows.
     final dot = identical(palette, V3Palette.dark)
         ? Colors.white.withValues(alpha: 0.10)
-        : palette.ink.withValues(alpha: 0.13);
+        : const Color(0xFF8FA9CC).withValues(alpha: 0.34);
     final dpr = devicePixelRatio > 0 ? devicePixelRatio : 1.0;
     final radius = math.max(
       0.5,

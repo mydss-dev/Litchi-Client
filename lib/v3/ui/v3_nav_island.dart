@@ -36,11 +36,16 @@ class V3NavIsland extends StatelessWidget {
     final items = enabledNavItems(kMobilePrimary);
     if (items.isEmpty) return const SizedBox.shrink();
 
+    // Elegant reference: the selected tab is a solid ink capsule with a
+    // light glyph — the same "quiet chrome, loud selection" language as the
+    // plan cards. Dark inverts to a near-white capsule with a dark glyph.
+    // Tab count, keys and the 44dp touch targets are untouched.
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final style = IOS26NavThemeData.light(
-      activeColor: p.lycheeInk,
+      activeColor: dark ? p.night : p.surface,
       inactiveColor: p.inkMuted,
       backgroundColor: p.glass,
-      indicatorColor: p.lychee.withValues(alpha: 0.16),
+      indicatorColor: dark ? p.ink : p.night,
       borderColor: p.glassBorder,
       borderWidth: 1,
       height: 62,
