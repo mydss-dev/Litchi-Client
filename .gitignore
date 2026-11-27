@@ -112,3 +112,5 @@ config.json
 /.dart_tool/
 # 忽略 UI 审核截图
 /test/_audit/shots/
+# Claude Code 临时工作树
+/.claude/worktrees/
